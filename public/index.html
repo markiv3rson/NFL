@@ -171,8 +171,18 @@
   @media (max-width: 640px) {
     .gteams { grid-template-columns: 1fr; }
     .tteam + .tteam { border-left: none; border-top: 1px solid var(--border); }
-    #rows-lines tr, #rows-totals tr, #rows-best tr { background: var(--bg-row); border: 1px solid var(--border) !important; border-radius: 12px; margin-bottom: 8px; }
-    #rows-lines td, #rows-totals td, #rows-best td { border: none !important; }
+    #rows-lines tr, #rows-totals tr, #rows-best tr, #rows-injuries tr { background: var(--bg-row); border: 1px solid var(--border) !important; border-radius: 12px; margin-bottom: 8px; }
+    #rows-lines td, #rows-totals td, #rows-best td, #rows-injuries td { border: none !important; }
+    #rows-injuries tr { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; padding: 10px 8px; }
+    #rows-injuries td { padding: 0 !important; text-align: left !important; }
+    #rows-injuries td:first-child { grid-column: 1 / -1; }
+    #rows-injuries td[data-label="Status"] { order: 2; }
+    #rows-injuries td[data-label="Team"] { order: 1; }
+    #rows-injuries td[data-label="Injury"] { order: 3; grid-column: 1 / -1; }
+    #rows-injuries td:first-child { order: 0; }
+    #rows-injuries tr { gap: 4px 12px; padding: 9px 12px; }
+    #rows-injuries td[data-label]::before { content: attr(data-label); display: block; font-size: 9.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); }
+    #panel-injuries thead { display: none; }
     #rows-best tr { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; padding: 10px 8px; }
     #rows-best td { padding: 0 !important; text-align: left !important; }
     #rows-best td.full { grid-column: 1 / -1; }

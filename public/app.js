@@ -39,12 +39,16 @@ function lockTag(g) {
   if (!g.started) return "";
   return `<div class="game" style="margin-top:2px;">🔒 ${g.final ? "Closing line" : "Locked — in progress"}</div>`;
 }
+const SEC_BADGE = { bet: ["Bet", "badge-pos"], recheck: ["Recheck", "badge-warn"], estimate: ["Estimate", ""] };
 function betCell(g, markets) {
   if (g.started) return `<td data-label="Bet">${dash}</td>`;
   const b = S.best.filter((x) => x.game === g.key && markets.includes(x.market)).sort((a, c) => c.ev - a.ev)[0];
   if (!b) return `<td data-label="Bet"><span class="dim">No edge</span></td>`;
-  return `<td data-label="Bet"><span class="badge badge-pos">Bet</span> <b>${b.label}</b> ${odds(b.odds)}` +
-    `<div class="game" style="margin-top:2px;">${evStr(b.ev)} edge · ${b.stake ? "$" + b.stake : "$0 (" + (b.capped || "cap") + ")"}${b.estimate ? " · Estimate" : ""}${b.agrees === true ? " · model agrees" : b.agrees === false ? " · model disagrees" : ""}${b.recheck ? " · ⚠ recheck (>30%)" : ""}</div></td>`;
+  const [label, cls] = SEC_BADGE[b.section] || SEC_BADGE.bet;
+  const stakeStr = b.section === "bet" ? (b.stake ? "$" + b.stake : `$0 (${b.capped || "cap"})`)
+    : b.section === "recheck" ? "gap too big to trust — no stake" : "no sportsbook odds yet — no stake";
+  return `<td data-label="Bet"><span class="badge ${cls}">${label}</span> <b>${b.label}</b> ${odds(b.odds)}` +
+    `<div class="game" style="margin-top:2px;">${evStr(b.ev)} edge · ${stakeStr}${b.agrees === true ? " · model agrees" : b.agrees === false ? " · model disagrees" : ""}</div></td>`;
 }
 function moved(g, kind) {
   const o = g.open, n = g.poly;
@@ -180,8 +184,9 @@ function renderInjuries() {
     .sort((a, b) => (order[(a.status || "").toLowerCase()] ?? 9) - (order[(b.status || "").toLowerCase()] ?? 9) || a.team.localeCompare(b.team));
   const wk = [...new Set(rows.map((p) => p.week))].sort().map((w) => "Week " + w).join(", ");
   $("injuries-status").innerHTML = S.injuries ? `<b>Injury report updated ${S.injuriesUpdated ? hm(S.injuriesUpdated) : "—"}</b> · ${wk || ""} official team reports · ${rows.length} players. Players listed Out are removed from the TD tab automatically.` : "Injury feed unavailable right now.";
-  $("rows-injuries").innerHTML = rows.map((p) => `<tr><td class="player">${esc(p.name)} <span class="pos-tag">${esc(p.pos || "")}</span></td><td>${p.team} <span class="game">wk ${p.week}</span></td><td>${esc(p.detail || "—")}</td>` +
-    `<td class="${/^out$/i.test(p.status) ? "ev-neg" : /doubt/i.test(p.status) ? "status-pending" : ""}">${esc(p.status)}</td></tr>`).join("");
+  $("rows-injuries").innerHTML = rows.map((p) => `<tr><td class="player" data-label="Player">${esc(p.name)} <span class="pos-tag">${esc(p.pos || "")}</span></td>` +
+    `<td data-label="Team">${p.team} <span class="game">wk ${p.week}</span></td><td data-label="Injury">${esc(p.detail || "—")}</td>` +
+    `<td data-label="Status" class="${/^out$/i.test(p.status) ? "ev-neg" : /doubt|quest/i.test(p.status) ? "status-pending" : ""}">${esc(p.status)}</td></tr>`).join("");
 }
 // ---------- Results ----------
 async function loadResults() {
