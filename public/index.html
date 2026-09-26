@@ -765,10 +765,12 @@ async function loadResults() {
     weeks.forEach(wk => {
       const games = byWeek[wk];
       const graded = games.filter(r => r.graded);
-      const modelHits = graded.filter(r => r.modelSpreadHit).length;
-      const marketHits = graded.filter(r => r.marketSpreadHit).length;
+      const mG = graded.filter(r => r.modelSpreadHit != null), kG = graded.filter(r => r.marketSpreadHit != null);
+      const modelHits = mG.filter(r => r.modelSpreadHit).length;
+      const marketHits = kG.filter(r => r.marketSpreadHit).length;
+      const pct = (a, b) => b ? (a / b * 100).toFixed(0) + "%" : "—";
       const summary = graded.length
-        ? `Model ${modelHits}/${graded.length} (${(modelHits/graded.length*100).toFixed(0)}%) · Market ${marketHits}/${graded.length} (${(marketHits/graded.length*100).toFixed(0)}%)`
+        ? `Model ${modelHits}/${mG.length} (${pct(modelHits, mG.length)}) · Market ${marketHits}/${kG.length} (${pct(marketHits, kG.length)})`
         : `${games.length} saved, none graded yet`;
       html += `<tr class="note-row"><td colspan="6" style="padding-top:16px;"><span class="player" style="font-size:14px;">${wk.toUpperCase()}</span><div class="game" style="margin-top:2px;">${summary}</div></td></tr>`;
       games.forEach(r => {
@@ -778,8 +780,8 @@ async function loadResults() {
             <td>${r.leanSide || "—"} ${r.leanPct ? "(" + r.leanPct.toFixed(1) + "%)" : ""}</td>
             <td>${r.marketSpread != null ? r.marketSpread : "—"}</td>
             <td>${r.graded ? `${r.finalAwayScore}–${r.finalHomeScore}` : '<span class="dim">Not final yet</span>'}</td>
-            <td>${r.graded ? (r.modelSpreadHit ? '<span class="ev-pos">✓</span>' : '<span class="ev-neg">✗</span>') : "—"}</td>
-            <td>${r.graded ? (r.marketSpreadHit ? '<span class="ev-pos">✓</span>' : '<span class="ev-neg">✗</span>') : "—"}</td>
+            <td>${!r.graded || r.modelSpreadHit == null ? "—" : (r.modelSpreadHit ? '<span class="ev-pos">✓</span>' : '<span class="ev-neg">✗</span>')}</td>
+            <td>${!r.graded || r.marketSpreadHit == null ? "—" : (r.marketSpreadHit ? '<span class="ev-pos">✓</span>' : '<span class="ev-neg">✗</span>')}</td>
           </tr>`;
       });
     });
@@ -787,7 +789,7 @@ async function loadResults() {
       `<tr><td colspan="6" class="dim">No saved results yet — tap "Save current lines" before a game kicks off.</td></tr>`;
     statusEl.textContent = `${results.length} saved across ${weeks.length} week(s)`;
   } catch (e) {
-    statusEl.textContent = "Needs Vercel KV connected — see README. (" + e.message + ")";
+    statusEl.textContent = "Redis error — check UPSTASH_REDIS_REST_URL_REDIS_URL in Vercel. (" + e.message + ")";
   }
 }
 document.getElementById("save-snapshot-btn").addEventListener("click", async () => {
@@ -801,7 +803,7 @@ document.getElementById("save-snapshot-btn").addEventListener("click", async () 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           game: g.g, week: (document.getElementById("week-label").value || "wk3").trim(),
-          modelSpread: parseFloat((g.mSpread.match(/-?\d+\.?\d*/) || [0])[0]),
+          modelSpread: g.mSpread,
           modelTotal: g.mTotal, modelWinPct: g.mWin,
           marketSpread: g.mktSpread, marketTotal: g.mktTotal, marketML: g.mktML,
           leanSide: g.spreadLean.side, leanPct: g.spreadLean.pct,
@@ -811,7 +813,7 @@ document.getElementById("save-snapshot-btn").addEventListener("click", async () 
     statusEl.textContent = "Saved current lines for all games.";
     loadResults();
   } catch (e) {
-    statusEl.textContent = "Save failed: " + e.message + " — needs Vercel KV connected (see README).";
+    statusEl.textContent = "Save failed: " + e.message + " — check Redis env var in Vercel.";
   }
 });
 document.getElementById("grade-btn").addEventListener("click", async () => {

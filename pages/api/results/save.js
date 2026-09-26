@@ -10,7 +10,11 @@ export default async function handler(req, res) {
     const redis = getRedis();
     const { game, week, modelSpread, modelTotal, modelWinPct, marketSpread, marketTotal, marketML, leanSide, leanPct } = req.body;
     if (!game) return res.status(400).json({ ok: false, error: "game is required" });
-    const id = `${week || "wk"}-${game.replace(/\s+/g, "")}-${Date.now()}`;
+    // One record per week+game: re-saving overwrites instead of duplicating,
+    // but never overwrites a game that's already been graded.
+    const id = `${String(week || "wk").replace(/\s+/g, "")}-${game.replace(/\s+/g, "")}`;
+    const existing = await redis.get(`result:${id}`);
+    if (existing && JSON.parse(existing).graded) return res.status(200).json({ ok: true, id, skipped: "already graded" });
     const record = { id, game, week, modelSpread, modelTotal, modelWinPct, marketSpread, marketTotal, marketML, leanSide, leanPct, savedAt: new Date().toISOString(), graded: false };
     await redis.set(`result:${id}`, JSON.stringify(record));
     await redis.sadd("result:ids", id);

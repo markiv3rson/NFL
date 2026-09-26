@@ -2,10 +2,10 @@
 // serverless function, so it has its own execution limit even though Railway
 // is always-on — extend it, and handle non-JSON upstream responses cleanly
 // instead of crashing on .json() when Vercel's own timeout page comes back.
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 300 };
 
 export default async function handler(req, res) {
-  const base = process.env.MODEL_SERVICE_URL;
+  const base = (process.env.MODEL_SERVICE_URL || "").trim().replace(/\/+$/, "");
   if (!base) {
     return res.status(500).json({ ok: false, error: "MODEL_SERVICE_URL isn't set in Vercel env vars yet — deploy railway-model-service/ first (see its README)." });
   }

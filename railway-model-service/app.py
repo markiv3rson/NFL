@@ -21,6 +21,11 @@ import td_prob
 app = Flask(__name__)
 CORS(app)
 
+# ESPN (schedule tab) uses LAR / WSH; nflverse (the models) uses LA / WAS.
+ALIASES = {"LAR": "LA", "WSH": "WAS", "JAC": "JAX"}
+def nv(team):
+    return ALIASES.get(team, team)
+
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"ok": True, "service": "nfl-bettors-model"})
@@ -39,7 +44,7 @@ def rerun_game_lines():
             if M is None:
                 M, cur = fair_line.build(g.get("season", 2026))
             adj = {k: float(v) for k, v in (g.get("adj") or {}).items()}
-            ph, pa = fair_line.predict(M, g["away"], g["home"], adj)
+            ph, pa = fair_line.predict(M, nv(g["away"]), nv(g["home"]), {nv(k): v for k, v in adj.items()})
             margin = ph - pa
             total, wd = fair_line.wind_adj(ph + pa, g.get("wind"), g.get("outdoor", False))
             ph2, pa2 = ph + wd / 2, pa + wd / 2
@@ -68,8 +73,8 @@ def rerun_td_probs():
     for g in games:
         try:
             outs = g.get("outs", [])
-            away_df = td_prob.run(g["away"], g["home"], g["total"] / 2 - g["spread"] / 2, outs, True)
-            home_df = td_prob.run(g["home"], g["away"], g["total"] / 2 + g["spread"] / 2, outs, True)
+            away_df = td_prob.run(nv(g["away"]), nv(g["home"]), g["total"] / 2 - g["spread"] / 2, outs, True)
+            home_df = td_prob.run(nv(g["home"]), nv(g["away"]), g["total"] / 2 + g["spread"] / 2, outs, True)
             out.append({
                 "game": f"{g['away']} @ {g['home']}",
                 "away": [{"name": r["name"], "pos": r.pos, "fair": round(r.p * 100, 1)} for _, r in away_df.iterrows()],
