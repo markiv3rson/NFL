@@ -103,7 +103,8 @@ function renderTotals() {
 // ---------- Anytime TD: one card per matchup, away + home sections ----------
 let tdSort = "likely";
 const GAME_STATUS = /out|doubtful|questionable/i; // only game-status tags; practice notes stay on the Injuries tab
-const LEAN_TD = { Bet: "badge-pos", Pass: "badge-neg" };
+// Bet bubble color = price: Underpriced green, Fair yellow, Overpriced red. Pass = gray.
+const BET_CLS = { Underpriced: "badge-pos", Fair: "badge-warn", Overpriced: "badge-neg" };
 const PRICE_CLS = { Underpriced: "ev-pos", Fair: "dim", Overpriced: "ev-neg" };
 function tdMeaning(r) {
   if (r.ev == null) return '<span class="dim">No Polymarket price</span>';
@@ -112,7 +113,8 @@ function tdMeaning(r) {
 }
 function prow(r, g, showGame = false) {
   const inj = r.injury && GAME_STATUS.test(r.injury) ? `<span class="inj">${esc(r.injury)}</span>` : "";
-  const lean = r.lean === "—" ? dash : `<span class="badge ${LEAN_TD[r.lean]}">${r.lean}</span>`;
+  const lean = r.lean === "—" ? dash : r.lean === "Pass" ? '<span class="badge">Pass</span>'
+    : `<span class="badge ${BET_CLS[r.priceLabel] || ""}">Bet</span>`;
   const price = r.odds == null ? dash
     : `<span class="price-link" data-market="${esc(r.market || (r.stale ? "Old screenshot price — not live" : ""))}">${odds(r.odds)}</span>`;
   const info = r.note ? ` <span class="info" title="${esc(r.note)}">ⓘ</span>` : "";
