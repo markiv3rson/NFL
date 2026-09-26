@@ -1,42 +1,5 @@
-// Official NFL team injury reports via nflverse (ESPN blocks Vercel's servers).
-// Shows each team's most recent week of reports.
-export const config = { runtime: "edge" };
-const URL = "https://github.com/nflverse/nflverse-data/releases/download/injuries/injuries_2026.csv";
-
-function parseCSV(text) {
-  const rows = []; let row = [], cur = "", q = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (q) { if (ch === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
-    else if (ch === '"') q = true;
-    else if (ch === ",") { row.push(cur); cur = ""; }
-    else if (ch === "\n") { row.push(cur); rows.push(row); row = []; cur = ""; }
-    else if (ch !== "\r") cur += ch;
-  }
-  if (cur || row.length) { row.push(cur); rows.push(row); }
-  return rows;
-}
-
-export default async function handler() {
-  try {
-    const res = await fetch(URL, { cache: "no-store" });
-    if (!res.ok) throw new Error(`injury source returned ${res.status}`);
-    const [head, ...rows] = parseCSV(await res.text());
-    const ix = (k) => head.indexOf(k);
-    const T = ix("team"), W = ix("week"), N = ix("full_name"), RI = ix("report_primary_injury"), RS = ix("report_status"),
-          PI = ix("practice_primary_injury"), PS = ix("practice_status"), ST = ix("season_type");
-    const latest = {};
-    rows.forEach((r) => { if (r[ST] === "REG" && r[T]) latest[r[T]] = Math.max(latest[r[T]] || 0, Number(r[W])); });
-    const teams = {};
-    rows.forEach((r) => {
-      if (r[ST] !== "REG" || !r[T] || Number(r[W]) !== latest[r[T]]) return;
-      const injury = r[RI] || r[PI] || "";
-      const status = r[RS] || r[PS] || "Listed";
-      const detail = [injury, r[RS] && r[PS] ? r[PS] : ""].filter(Boolean).join(" — ");
-      (teams[r[T]] = teams[r[T]] || []).push({ name: r[N], status, detail });
-    });
-    return new Response(JSON.stringify({ ok: true, fetchedAt: new Date().toISOString(), teams }), { headers: { "Content-Type": "application/json" } });
-  } catch (err) {
-    return new Response(JSON.stringify({ ok: false, error: String(err) }), { status: 500, headers: { "Content-Type": "application/json" } });
-  }
+import { loadInjuries } from "../../lib/injuries";
+export default async function handler(req, res) {
+  try { res.status(200).json({ ok: true, fetchedAt: new Date().toISOString(), teams: await loadInjuries() }); }
+  catch (err) { res.status(500).json({ ok: false, error: String(err) }); }
 }

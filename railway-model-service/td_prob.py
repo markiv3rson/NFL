@@ -136,13 +136,25 @@ def run(team,opp,imp,outs=(),posadj=True):
         rows.append(dict(pid=r.pid,name=names.get(r.pid,r.pid),r_rzt=bl('rz','rz'),r_i10=bl('i10','i10'),r_rzc=bl('rzc','rzc'),r_i5=bl('i5','i5'),
              r_t=bl('t','t'),r_c=bl('c','c'),r_td=bl('td','td'),imp=imp,o_rush=o_rush,o_rec=o_rec))
     df=pd.DataFrame(rows).join(pos,on='pid'); df['pos']=df.position.map(lambda v:{'FB':'RB','HB':'RB'}.get(v,v))
-    def _lastname(s):
-        # "P.Nacua" -> "nacua"; "Puka Nacua" -> "nacua"; handles both pbp short
-        # names and full names so --out works either way.
-        parts = s.replace(".", " ").split()
-        return parts[-1].lower() if parts else s.lower()
-    outs_last = {_lastname(o) for o in outs}
-    df=df[df.pos.isin(['RB','WR','TE'])&~df.name.apply(lambda n: _lastname(n) in outs_last or n in outs)].copy()
+    def _norm(t): return "".join(ch for ch in t.lower() if ch.isalpha() or ch == " ")
+    def _is_out(short):
+        # Match pbp short name ("Bi.Robinson", "A.St.Brown") to a full name ("Bijan Robinson", "Amon-Ra St. Brown"):
+        # same last name AND the pbp first-name prefix starts the full first name. "Brian Robinson" out
+        # must NOT remove "Bi.Robinson".
+        if short in outs: return True
+        if "." not in short: return False
+        pre, rest = short.split(".", 1)
+        pre, rest = pre.lower(), _norm(rest).replace(" ", "")
+        for o in outs:
+            w = _norm(o.replace("-", " ").replace(".", " ")).split()
+            for a in range(1, len(w)):
+                acc = ""
+                for b in range(a, len(w)):
+                    acc += w[b]
+                    if acc == rest and (w[a - 1].startswith(pre) or (a > 1 and w[a - 2].startswith(pre))): return True
+                    if len(acc) >= len(rest): break
+        return False
+    df=df[df.pos.isin(['RB','WR','TE'])&~df.name.apply(_is_out)].copy()
     if posadj: df['o_rec']=df.pos.map(pos_rec(opp))
     df['p']=shrink(m.predict_proba(design(df))[:,1])
     return df.sort_values('p',ascending=False)[['name','pos','p']]

@@ -5,3 +5,4 @@ numpy==1.26.4
 scikit-learn==1.5.1
 pyarrow==17.0.0
 gunicorn==22.0.0
+tzdata==2025.2
