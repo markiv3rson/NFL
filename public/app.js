@@ -8,6 +8,9 @@ const sgn = (n) => (n > 0 ? "+" : "") + n;
 const odds = (o) => (o == null ? "—" : (o > 0 ? "+" : "") + o);
 function toAmerican(p) { if (!(p > 0 && p < 1)) return null; return Math.round(p >= 0.5 ? (-100 * p) / (1 - p) : (100 * (1 - p)) / p); }
 const pct = (p, d = 1) => (p == null ? "—" : (p * 100).toFixed(d) + "%");
+const signCls = (x) => (x == null || Math.abs(x) < 1e-9 ? "" : x > 0 ? "ev-pos" : "ev-neg");
+const cMoney = (x) => (x == null ? "—" : `<span class="${signCls(x)}">${x < 0 ? "−$" : x > 0 ? "+$" : "$"}${Math.abs(x).toFixed(2)}</span>`);
+const cPct = (x, d = 1) => (x == null ? "—" : `<span class="${signCls(x)}">${x >= 0 ? "+" : "−"}${Math.abs(x * 100).toFixed(d)}%</span>`);
 const evStr = (ev) => (ev == null ? "—" : (ev >= 0 ? "+" : "") + (ev * 100).toFixed(1) + "%");
 const tm = (iso) => new Date(iso).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" });
 const hm = (iso) => new Date(iso).toLocaleString(undefined, { weekday: "short", month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -48,7 +51,7 @@ function betCell(g, markets) {
   const stakeStr = b.section === "bet" ? (b.stake ? "$" + b.stake : `$0 (${b.capped || "cap"})`)
     : b.section === "recheck" ? "gap too big to trust — no stake" : "no sportsbook odds yet — no stake";
   return `<td data-label="Bet"><span class="badge ${cls}">${label}</span> <b>${b.label}</b> ${odds(b.odds)}` +
-    `<div class="game" style="margin-top:2px;">${evStr(b.ev)} edge · ${stakeStr}${b.agrees === true ? " · model agrees" : b.agrees === false ? " · model disagrees" : ""}</div></td>`;
+    `<div class="game" style="margin-top:2px;">${cPct(b.ev)} edge · ${stakeStr}${b.agrees === true ? " · model agrees" : b.agrees === false ? " · model disagrees" : ""}</div></td>`;
 }
 function moved(g, kind) {
   const o = g.open, n = g.poly;
@@ -110,7 +113,7 @@ const MODEL_SAYS = { Underpriced: "Model says good price", Fair: "Model says fai
 function tdMeaning(r) {
   if (r.ev == null) return '<span class="dim">No Polymarket price</span>';
   const why = `<span class="dim">: gets ${odds(r.odds)}, should be ${odds(r.fairOdds)}${r.stale ? " (old price)" : ""}</span>`;
-  return `<span class="${PRICE_CLS[r.priceLabel]}">${MODEL_SAYS[r.priceLabel]}</span>${why}`;
+  return `<span class="${PRICE_CLS[r.priceLabel]}">${MODEL_SAYS[r.priceLabel]}</span>${why} <span class="game">(${cPct(r.ev)} value)</span>`;
 }
 function prow(r, g, showGame = false) {
   const inj = r.injury && GAME_STATUS.test(r.injury) ? `<span class="inj">${esc(r.injury)}</span>` : "";
@@ -166,7 +169,7 @@ function bestRow(b) {
   return `<tr><td class="full"><span class="player">${b.label}</span><span class="pos-tag">${kind}</span>${b.injury && GAME_STATUS.test(b.injury) ? `<span class="inj">${esc(b.injury)}</span>` : ""}` +
     `<div class="game" style="margin-top:2px;">${b.game} · ${g ? tm(g.kickoff) : ""}${b.agrees === true ? " · model agrees" : b.agrees === false ? " · model disagrees" : ""}</div>${warn}</td>` +
     `<td class="num" data-label="Polymarket">${polyCell}</td><td class="num" data-label="Fair">${odds(b.fairOdds)}</td>` +
-    `<td class="num ${b.section === "bet" ? "ev-pos" : "status-pending"}" data-label="Edge">${evStr(b.ev)}</td>` +
+    `<td class="num" data-label="Edge">${b.section === "bet" ? cPct(b.ev) : `<span class="status-pending">${evStr(b.ev)}</span>`}</td>` +
     `<td class="num" data-label="Stake"><b>${b.stake ? "$" + b.stake : "—"}</b>${b.capped ? `<div class="game">${b.capped}</div>` : ""}</td></tr>`;
 }
 function renderBest() {
@@ -194,24 +197,29 @@ function renderMyBets(d) {
   const s = d.summary;
   $("mybets-summary").innerHTML =
     `<span class="rec-big">Record <b>${s.wins}–${s.losses}${s.pushes ? "–" + s.pushes : ""}</b></span>` +
-    `<span class="rec-big">P/L <b class="${s.pl > 0 ? "ev-pos" : s.pl < 0 ? "ev-neg" : ""}">${money(s.pl)}</b></span>` +
-    `<span class="rec-big">ROI <b>${s.roi == null ? "—" : (s.roi * 100).toFixed(1) + "%"}</b></span>` +
-    `<span class="rec-big">Avg CLV <b>${s.avgClv == null ? "—" : evStr(s.avgClv)}</b></span>` +
-    `<span class="rec-big">Open <b>${money(s.openCost)}</b> of $200 this week</span>` +
+    `<span class="rec-big">P/L <b>${cMoney(s.pl)}</b></span>` +
+    `<span class="rec-big">ROI <b>${cPct(s.roi)}</b></span>` +
+    `<span class="rec-big">Avg CLV <b>${cPct(s.avgClv)}</b></span>` +
+    `<span class="rec-big">Open <b>${money(s.openCost)}</b> of $200 this week</span><br>` +
+    `<span class="rec-big">If everything hits <b>${money(s.maxPayout)}</b> <span class="game">(${cMoney(s.maxPayout - s.openCost)})</span></span>` +
+    `<span class="rec-big">Expected · market <b>${money(s.expMarket)}</b> <span class="game">(${cMoney(s.expMarket - s.openCost)})</span></span>` +
+    `<span class="rec-big">Expected · your model <b>${s.modelCovered ? money(s.expModel) : "—"}</b>` +
+    `${s.modelCovered ? ` <span class="game">(${cMoney(s.expModel - s.expModelCost)}${s.modelCovered < s.open ? `, ${s.modelCovered} of ${s.open} bets` : ""})</span>` : ""}</span>` +
     `<div class="game">${d.keysSet ? `Account sync on${d.synced ? ` · last synced ${hm(d.synced.t)} · ${d.synced.list.length} positions` : " · not synced yet"}` : "Account sync off — add POLYMARKET_KEY_ID and POLYMARKET_SECRET_KEY in Vercel"}. ` +
-    `CLV = closing price vs your price (positive = you beat the close). Graded automatically once games are final.</div>`;
+    `Expected = payout × chance all legs hit (market = Polymarket's prices, model = your model's chances). CLV = closing price vs your price. Graded automatically once games are final.</div>`;
   const card = (b) => {
     const [icon, word] = RES[b.result];
     const legs = b.legs.map((l) => { const [m] = RES[l.result];
       return `<div class="leg">${m}<div>${legLabel(l)}<div class="game">${l.game} · ${l.kickoff ? tm(l.kickoff) : ""}</div></div>` +
         `<div class="num">${odds(toAmerican(l.price))}<div class="game">${Math.round(l.price * 1000) / 10}¢ paid</div></div>` +
-        `<div class="num">${l.close != null ? odds(toAmerican(l.close)) : dash}<div class="game">${l.clv != null ? `CLV ${evStr(l.clv)}` : "close"}</div></div></div>`; }).join("");
+        `<div class="num">${l.close != null ? odds(toAmerican(l.close)) : dash}<div class="game">${l.clv != null ? `CLV ${cPct(l.clv)}` : "close"}</div></div></div>`; }).join("");
     return `<div class="bet-card"><div class="bet-head"><div><span class="player">${b.legs.length > 1 ? `Combo · ${b.legs.length} legs` : "Single"}</span> ` +
       `<span class="badge ${b.result === "W" ? "badge-pos" : b.result === "L" ? "badge-neg" : ""}">${word}</span></div>` +
       `<div class="num"><b>${money(b.cost)}</b> → ${money(b.toWin)} <span class="dim">(${b.multiplier.toFixed(2)}x)</span>` +
-      `${b.pl != null ? ` · <b class="${b.pl > 0 ? "ev-pos" : b.pl < 0 ? "ev-neg" : ""}">${money(b.pl)}</b>` : ""}</div></div>` +
-      `<div class="game" style="margin-top:3px;">Pays ${(Math.abs(b.payoutVsLegs) * 100).toFixed(0)}% ${b.payoutVsLegs < 0 ? "under" : "over"} the legs multiplied (${b.legsMultiplier.toFixed(2)}x) · break-even ${(b.breakEven * 100).toFixed(1)}%` +
-      `${b.clv != null ? ` · combo CLV <b>${evStr(b.clv)}</b>` : ""}</div>${legs}</div>`;
+      `${b.pl != null ? ` · <b>${cMoney(b.pl)}</b>` : ""}</div></div>` +
+      `<div class="game" style="margin-top:3px;">Expected · market ${money(b.expMarket)} (${cMoney(b.expMarket - b.cost)})` +
+      ` · your model ${b.expModel != null ? `${money(b.expModel)} (${cMoney(b.expModel - b.cost)})` : "—"}` +
+      ` · payout vs legs ${cPct(b.payoutVsLegs, 0)} · break-even ${(b.breakEven * 100).toFixed(1)}%${b.clv != null ? ` · combo CLV <b>${cPct(b.clv)}</b>` : ""}</div>${legs}</div>`;
   };
   const synced = d.synced && d.synced.list.length ? `<div class="section-title">Synced from your account</div>` +
     d.synced.list.map((p) => `<div class="bet-card"><div class="bet-head"><span class="player">${esc(p.title)}${p.outcome ? ` — ${esc(p.outcome)}` : ""}</span>` +
@@ -263,7 +271,7 @@ async function loadResults() {
       `<div class="game">Graded at the closing line (last price before kickoff). CLV pts = how much the line moved your way from the week's first snapshot.</div>`
       : "No graded games yet — games are graded automatically once they're final and have a closing line.";
     const pick = (x) => !x ? dash : `${x.label} <span class="${x.result === "W" ? "ev-pos" : x.result === "L" ? "ev-neg" : "dim"}">${x.result}</span>` +
-      `<div class="game">${x.pct.toFixed(1)}% · ${LEAN[x.tier] ? LEAN[x.tier][0] : x.tier}${x.clvPts != null ? ` · CLV ${sgn(x.clvPts)} pts` : ""}</div>`;
+      `<div class="game">${x.pct.toFixed(1)}% · ${LEAN[x.tier] ? LEAN[x.tier][0] : x.tier}${x.clvPts != null ? ` · CLV <span class="${signCls(x.clvPts)}">${sgn(x.clvPts)} pts</span>` : ""}</div>`;
     $("rows-results").innerHTML = res.map((r) => `<tr><td class="player">${r.game}<div class="game">Week ${r.week}</div></td><td>${r.awayScore}–${r.homeScore}</td><td>${pick(r.spread)}</td><td>${pick(r.total)}</td></tr>`).join("");
   } catch (e) { $("results-summary").textContent = "Results failed: " + e.message; }
 }
