@@ -65,6 +65,9 @@
   .ev-neg { color: var(--neg); font-weight: 600; }
   .badge { font-size: 10.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px; border: 1.5px solid var(--border); color: var(--text-dim); display: inline-block; }
   .badge-pos { border-color: var(--pos); color: var(--pos); background: rgba(111,207,151,0.12); }
+  .badge-warn { border-color: var(--warn); color: var(--warn); background: rgba(217,154,91,0.12); }
+  .info { cursor: help; color: var(--text-faint); margin-left: 6px; font-size: 12px; }
+  .live-dot { color: var(--pos); font-size: 9px; margin-right: 3px; }
   .badge-neg { border-color: var(--neg); color: var(--neg); background: rgba(224,122,122,0.12); }
   .dim { color: var(--text-faint); }
   .tier { font-size: 10.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px; border: 1.5px solid var(--accent); color: var(--accent); background: rgba(123,167,217,0.12); }
@@ -84,7 +87,6 @@
     tbody td { padding: 6px 3px; }
     .pos-tag { font-size: 8px; padding: 0px 3px; margin-left: 2px; }
     .game { font-size: 9.5px; }
-    .tier, #panel-td thead th:nth-child(7), #rows-td td:nth-child(7) { display: none; }
     .tabs button { padding: 6px 9px; font-size: 11.5px; }
     .controls button { padding: 5px 8px; font-size: 11px; }
   }
@@ -119,7 +121,7 @@
     <div class="table-scroll">
     <table>
       <thead><tr>
-        <th>Game</th><th>Model Spread</th><th>Model Win %</th><th>Market Spread</th><th>Market ML</th><th>Lean (model prob.)</th>
+        <th>Game</th><th>Model</th><th>Market</th><th>Model pick</th><th>Lean</th>
       </tr></thead>
       <tbody id="rows-lines"></tbody>
     </table>
@@ -131,7 +133,7 @@
     <div class="table-scroll">
     <table>
       <thead><tr>
-        <th>Game</th><th class="num">Model Total</th><th>Market Total</th><th>Lean (model prob.)</th>
+        <th>Game</th><th class="num">Model</th><th class="num">Market</th><th>Model pick</th><th>Lean</th>
       </tr></thead>
       <tbody id="rows-totals"></tbody>
     </table>
@@ -151,7 +153,7 @@
       <thead><tr>
         <th data-key="player">Player</th>
         <th class="num" data-key="fair">Likely %</th><th class="num" data-key="price">Price</th>
-        <th class="num" data-key="odds">Odds (≈)</th><th data-key="ev">What it means</th><th>Lean</th><th>Tier</th>
+        <th class="num" data-key="odds">Odds (≈)</th><th data-key="ev">What it means</th><th>Lean</th>
       </tr></thead>
       <tbody id="rows-td"></tbody>
     </table>
@@ -273,7 +275,7 @@ const games = [
    mTotal:41.2, mktTotal:"42.5–43.5",
    totalLean:{side:"Under 42.5", pct:55.3, tier:"weak"}},
   {g:"CAR @ CLE", mSpread:"CLE +2.7", mWin:"CLE 41.8% / CAR 58.2%", mktSpread:"—", mktML:"CAR 58% / CLE 42% (live)",
-   spreadLean:{side:"CAR moneyline agrees with model (58/58.2)", pct:58.2, tier:"moderate", note:"model and market now agree on this one"}, mTotal:43.8, mktTotal:"—", totalLean:null},
+   spreadLean:{side:"CAR ML", pct:58.2, tier:"moderate", note:"model and market now agree on this one"}, mTotal:43.8, mktTotal:"—", totalLean:null},
   {g:"CIN @ PIT", mSpread:"PIT +0.2", mWin:"PIT 49.4% / CIN 50.6%", mktSpread:"CIN -3.5", mktML:"CIN 63% / PIT 38% (live)",
    spreadLean:{side:"PIT +3.5", pct:60.0, tier:"strong", note:"real ATS gap — recheck before betting"},
    mTotal:42.0, mktTotal:"42.5",
@@ -307,7 +309,7 @@ const games = [
    mTotal:44.0, mktTotal:"44.5",
    totalLean:{side:"Under 44.5", pct:52.0, tier:"none"}},
   {g:"PHI @ CHI", day:"Mon", mSpread:"CHI -1.0", mWin:"CHI 53.0% / PHI 47.0%", mktSpread:"PHI -4.5", mktML:"PHI 68% / CHI 32% (live) — HUGE gap vs model, which still has CHI slightly favored. Confirmed cause: Caleb Williams DOUBTFUL (hamstring), Bagent still in concussion protocol, Case Keenum CONFIRMED starting for Chicago — his first NFL start since 2023. The model has zero injury/QB awareness. Trust the market here, not the model.",
-   spreadLean:{side:"model says CHI -4.5", pct:66.3, tier:"conflict", note:"conflicts hard with the real market (PHI 68%) — no confident lean here, it's a QB-situation gap not a betting signal"},
+   spreadLean:{side:"CHI -4.5", pct:66.3, tier:"conflict", note:"conflicts hard with the real market (PHI 68%) — no confident lean here, it's a QB-situation gap not a betting signal"},
    mTotal:48.4, mktTotal:"41.5",
    totalLean:{side:"Over 41.5", pct:75.5, tier:"strong-lt", note:"same QB-situation gap, not a real edge"}},
   {g:"NE @ JAX", mSpread:"JAX +0.3", mWin:"JAX 49.0% / NE 51.0%", mktSpread:"JAX -2.5", mktML:"NE 41% / JAX 60% (live)",
@@ -328,7 +330,7 @@ const games = [
    totalLean:{side:"Under 50.5", pct:57.1, tier:"moderate"}},
   {g:"NYJ @ DET", mSpread:"DET -3.7", mWin:"DET 61.1% / NYJ 38.9%", mktSpread:"DET -6.5", mktML:"NYJ 27% / DET 74% (live) — matches model direction, market more lopsided",
    spreadLean:{side:"NYJ +6.5", pct:58.7, tier:"moderate"},
-   mTotal:47.4, mktTotal:"— (only NYJ team total seen: Over 20.5)", totalLean:null},
+   mTotal:47.4, mktTotal:"—", totalLean:null},
 ];
 
 const tierLabel = {none:"No lean", weak:"Weak", moderate:"Moderate", strong:"Strong", "strong-lt":"Strong (low trust)", conflict:"Conflict — no lean"};
@@ -341,22 +343,58 @@ function renderLean(lean) {
   return `<span class="${cls}"${style}>${lean.side} — ${lean.pct.toFixed(1)}%</span> <span class="tier">${tierLabel[lean.tier]}</span>${noteHtml}`;
 }
 
-document.getElementById("rows-lines").innerHTML = games.map(x => `
-  <tr>
-    <td><span class="player">${x.g}</span>${x.day ? `<span class="pos-tag">${x.day}</span>` : ""}${gameTimeInfo(x.g)}</td>
-    <td>${x.mSpread}</td><td>${x.mWin}</td>
-    <td class="${x.mktSpread==="—"?"dim":""}">${x.mktSpread}</td>
-    <td class="${x.mktML==="—"?"dim":""}">${x.mktML}</td>
-    <td>${renderLean(x.spreadLean)}</td>
-  </tr>`).join("");
-
-document.getElementById("rows-totals").innerHTML = games.map(x => `
-  <tr>
-    <td><span class="player">${x.g}</span>${x.day ? `<span class="pos-tag">${x.day}</span>` : ""}${gameTimeInfo(x.g)}</td>
-    <td class="num">${x.mTotal}</td>
-    <td class="${x.mktTotal==="—"?"dim":""}">${x.mktTotal}</td>
-    <td>${renderLean(x.totalLean)}</td>
-  </tr>`).join("");
+const LEAN_BADGE = {none:["No lean","badge"], weak:["Weak","badge"], moderate:["Moderate","badge-pos"], strong:["Strong","badge-pos"],
+  "strong-lt":["Low trust","badge-warn"], conflict:["Conflict","badge-neg"]};
+const PICK_CLS = {none:"dim", weak:"", moderate:"ev-pos", strong:"ev-pos", "strong-lt":"", conflict:"ev-neg"};
+const dash = '<span class="dim">—</span>';
+const esc = (t) => String(t).replace(/"/g, "&quot;");
+function gameCell(x) {
+  return `<td><span class="player">${x.g}</span>${x.day ? `<span class="pos-tag">${x.day}</span>` : ""}${gameTimeInfo(x.g)}</td>`;
+}
+function pickCells(lean) {
+  if (!lean) return `<td style="padding-left:22px;">${dash}</td><td>${dash}</td>`;
+  const [label, badge] = LEAN_BADGE[lean.tier] || ["", "badge"];
+  const info = lean.note ? `<span class="info" title="${esc(lean.note)}">ⓘ</span>` : "";
+  return `<td style="padding-left:22px;"><span class="${PICK_CLS[lean.tier] || ""}">${lean.side}</span><div class="game" style="margin-top:2px;">${lean.pct.toFixed(1)}% model chance</div></td>
+    <td style="white-space:nowrap;"><span class="badge ${badge}">${label}</span>${info}</td>`;
+}
+// "GB 58.4% / ATL 41.6%" -> "GB 58.4% to win" (the side the model favors)
+function modelWin(mWin) {
+  const m = [...String(mWin).matchAll(/([A-Z]{2,3}) (\d+(?:\.\d+)?)%/g)];
+  if (!m.length) return "";
+  const top = m.reduce((p, c) => (parseFloat(c[2]) > parseFloat(p[2]) ? c : p));
+  return `${top[1]} ${top[2]}% to win`;
+}
+// Strip commentary from ML text -> "ML GB 70 · ATL 31"
+function mlShort(mktML) {
+  const m = [...String(mktML).matchAll(/([A-Z]{2,3}) (\d+)%/g)].slice(0, 2);
+  return m.length === 2 ? `ML ${m[0][1]} ${m[0][2]} · ${m[1][1]} ${m[1][2]}` : "";
+}
+const cleanMkt = (t) => String(t || "—").replace(/\s*\(live[^)]*\)/, "").trim();
+function renderLinesTable() {
+  document.getElementById("rows-lines").innerHTML = games.map(x => {
+    const spread = cleanMkt(x.mktSpread), ml = mlShort(x.mktML);
+    const live = x.liveLines ? '<span class="live-dot">●</span>' : "";
+    return `<tr>
+    ${gameCell(x)}
+    <td>${x.mSpread}<div class="game" style="margin-top:2px;">${modelWin(x.mWin)}</div></td>
+    <td>${live}${spread === "—" ? dash : spread}${ml ? `<div class="game" style="margin-top:2px;">${ml}</div>` : ""}</td>
+    ${pickCells(x.spreadLean)}
+  </tr>`;}).join("");
+}
+renderLinesTable();
+function renderTotalsTable() {
+  document.getElementById("rows-totals").innerHTML = games.map(x => {
+    const tot = cleanMkt(x.mktTotal);
+    const live = x.liveLines && x.ou ? '<span class="live-dot">●</span>' : "";
+    return `<tr>
+    ${gameCell(x)}
+    <td class="num">${Number(x.mTotal).toFixed(1)}</td>
+    <td class="num">${live}${tot === "—" ? dash : tot}${x.ou ? `<div class="game" style="margin-top:2px;">${x.ou}</div>` : ""}</td>
+    ${pickCells(x.totalLean)}
+  </tr>`;}).join("");
+}
+renderTotalsTable();
 
 // ---- ANYTIME TD ----
 const td = [
@@ -484,9 +522,10 @@ const td = [
 function tdLean(ev, rank, total) {
   if (ev === null) return {label:"—", cls:"dim"};
   const isThreat = rank <= Math.ceil(total / 2);
-  if (!isThreat) return {label: "Pass", cls: "dim"};
-  // Just Bet/Pass. Price is never restated here — "What it means" already owns that.
-  return {label: "Bet", cls: "ev-pos"};
+  // Bet only when the price is actually in your favor; Pass when overpriced.
+  if (ev <= -5) return {label: "Pass", cls: "ev-neg"};
+  if (ev >= 5 && isThreat) return {label: "Bet", cls: "ev-pos"};
+  return {label: "Fair", cls: "dim"};
 }
 function plainMeaning(fair, ev, rank, total) {
   if (fair === null || ev === null) return {text:"—", cls:"dim"};
@@ -558,8 +597,7 @@ function rowHtml(d) {
     <td class="num">${priceStr}</td>
     <td class="num">${d.price === null ? '<span class="dim">—</span>' : fmtOdds(odds)}</td>
     <td>${meaningStr}</td>
-    <td><span class="badge ${lean.cls === 'ev-pos' ? 'badge-pos' : lean.cls === 'ev-neg' ? 'badge-neg' : 'badge'}">${lean.label}</span></td>
-    <td><span class="tier">Form</span></td>
+    <td>${lean.label === "—" ? '<span class="dim">—</span>' : `<span class="badge ${lean.cls === 'ev-pos' ? 'badge-pos' : lean.cls === 'ev-neg' ? 'badge-neg' : 'badge'}">${lean.label}</span>`}</td>
   </tr>`;
 }
 
@@ -678,14 +716,63 @@ document.getElementById("refresh-btn").addEventListener("click", async () => {
   const statusEl = document.getElementById("refresh-status");
   statusEl.textContent = "Refreshing prices + injuries…";
   try {
-    const [priceCount] = await Promise.all([refreshLivePrices(true), refreshInjuries(true)]);
-    statusEl.textContent = `Updated ${priceCount} prices, injuries refreshed — ${new Date().toLocaleTimeString()}`;
+    const [priceCount, , lineCount] = await Promise.all([
+      refreshLivePrices(true), refreshInjuries(true),
+      refreshGameLines().catch(e => "failed (" + e.message + ")"),
+    ]);
+    statusEl.textContent = `Updated ${priceCount} TD prices, game lines for ${lineCount} of ${games.length} games, injuries refreshed — ${new Date().toLocaleTimeString()}`;
     rerenderActive();
   } catch (e) {
     statusEl.textContent = "Refresh failed: " + e.message + " — only works once deployed to Vercel.";
   }
 });
 document.getElementById("refresh-injuries-btn").addEventListener("click", () => refreshInjuries());
+
+// ---- LIVE GAME LINES (Polymarket moneyline / spread / total) ----
+// Recomputes the model's lean at the NEW market line with the same math as
+// fair_line.py: margin ~ Normal(model margin, 13), total ~ Normal(model total, 10).
+function ncdf(x) {
+  const t = 1 / (1 + 0.2316419 * Math.abs(x));
+  const d = 0.3989423 * Math.exp(-x * x / 2);
+  const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  return x > 0 ? 1 - p : p;
+}
+function tierFor(pct) { return pct < 52.4 ? "none" : pct < 55 ? "weak" : pct < 60 ? "moderate" : "strong"; }
+const sgn = (n) => (n > 0 ? "+" : "") + n;
+function applyLiveLines(g, live) {
+  const [away, home] = g.g.split(" @ ");
+  const keepFlag = (old) => old && (old.tier === "strong-lt" || old.tier === "conflict");
+  g.liveLines = true;
+  if (live.ml) g.mktML = `${away} ${live.ml.away}% / ${home} ${live.ml.home}%`;
+  if (live.spread) {
+    g.mktSpread = `${live.spread.team} ${sgn(live.spread.line)}`;
+    const modelMargin = -parseFloat((g.mSpread.match(/[+-]?\d+(\.\d+)?/) || [0])[0]); // home margin
+    const hs = live.spread.homeSpread; // home spread, negative = home favored
+    const pHome = 1 - ncdf((-hs - modelMargin) / 13);
+    const homeSide = pHome >= 0.5;
+    const pct = (homeSide ? pHome : 1 - pHome) * 100;
+    const old = g.spreadLean;
+    g.spreadLean = { side: homeSide ? `${home} ${sgn(hs)}` : `${away} ${sgn(-hs)}`, pct,
+      tier: keepFlag(old) ? old.tier : tierFor(pct), note: keepFlag(old) ? old.note : undefined };
+  }
+  if (live.total) {
+    g.mktTotal = `${live.total.line}`; g.ou = `O ${live.total.over}¢ · U ${live.total.under}¢`;
+    const pUnder = ncdf((live.total.line - g.mTotal) / 10);
+    const under = pUnder >= 0.5, pct = (under ? pUnder : 1 - pUnder) * 100;
+    const old = g.totalLean;
+    g.totalLean = { side: `${under ? "Under" : "Over"} ${live.total.line}`, pct,
+      tier: keepFlag(old) ? old.tier : tierFor(pct), note: keepFlag(old) ? old.note : undefined };
+  }
+}
+async function refreshGameLines() {
+  const res = await fetch("/api/nfl-game-lines?games=" + encodeURIComponent(games.map(g => g.g).join(",")));
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || "game lines failed");
+  let n = 0;
+  games.forEach(g => { const live = data.games[g.g]; if (live) { applyLiveLines(g, live); n++; } });
+  renderLinesTable(); renderTotalsTable();
+  return n;
+}
 
 // ---- MODEL RERUN ----
 document.getElementById("rerun-model-btn").addEventListener("click", async () => {
