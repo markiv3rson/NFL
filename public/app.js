@@ -103,12 +103,13 @@ function renderTotals() {
 // ---------- Anytime TD: one card per matchup, away + home sections ----------
 let tdSort = "likely";
 const GAME_STATUS = /out|doubtful|questionable/i; // only game-status tags; practice notes stay on the Injuries tab
-const LEAN_TD = { Bet: "badge-pos", Pass: "badge-neg", Recheck: "badge-warn" };
+const LEAN_TD = { Bet: "badge-pos", Pass: "badge-neg", Recheck: "badge-warn", Thin: "badge-warn" };
 function tdMeaning(r) {
   if (r.stale) return '<span class="dim">Waiting for a live price</span>';
   if (r.ev == null) return '<span class="dim">No Polymarket price</span>';
   const v = `${evStr(r.ev)} value`;
   if (r.lean === "Long shot") return `<span class="dim">Long shot — model unreliable (${v})</span>`;
+  if (r.lean === "Thin") return `<span class="status-pending">Thin market — buy ${Math.round(r.price * 100)}¢ / sell ${r.bid != null ? Math.round(r.bid * 100) + "¢" : "—"}, recheck on the app (${v})</span>`;
   if (r.lean === "Recheck") return `<span class="status-pending">Gap too big to trust — recheck (${v})</span>`;
   const ev = r.ev * 100;
   const [txt, cls] = ev <= -5 ? ["Overpriced", "ev-neg"] : ev < 5 ? ["Priced about right", ""] : ["Underpriced", "ev-pos"];
