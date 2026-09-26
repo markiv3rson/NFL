@@ -1,4 +1,5 @@
 import Redis from "ioredis";
+import { loadGames } from "../../../lib/games";
 let client;
 function getRedis() {
   if (!client) client = new Redis(process.env.UPSTASH_REDIS_REST_URL_REDIS_URL, { maxRetriesPerRequest: 3, connectTimeout: 8000 });
@@ -10,17 +11,11 @@ const norm = (t) => ALIAS[t] || t;
 const SEASON = 2026;
 
 async function fetchScores(week) {
-  const q = week ? `?week=${week}&seasontype=2&year=${SEASON}` : "";
-  const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard${q}`, { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" } });
-  const data = await res.json();
   const map = {};
-  (data.events || []).forEach((e) => {
-    const comp = e.competitions && e.competitions[0];
-    const home = comp.competitors.find((c) => c.homeAway === "home");
-    const away = comp.competitors.find((c) => c.homeAway === "away");
-    const key = `${norm(away.team.abbreviation)} @ ${norm(home.team.abbreviation)}`;
-    map[key] = { final: e.status.type.name === "STATUS_FINAL", homeScore: Number(home.score), awayScore: Number(away.score) };
-  });
+  if (!week) return map;
+  for (const g of await loadGames(SEASON, week)) {
+    map[`${g.away} @ ${g.home}`] = { final: g.final, homeScore: g.homeScore, awayScore: g.awayScore };
+  }
   return map;
 }
 
@@ -59,7 +54,7 @@ export default async function handler(req, res) {
     let graded = 0;
     for (const record of pending) {
       const w = (String(record.week || "").match(/\d+/) || [null])[0];
-      const s = scoresByWeek[w][record.game];
+      const s = (scoresByWeek[w] || {})[record.game];
       if (!s || !s.final) continue;
       const margin = s.homeScore - s.awayScore;
       record.finalHomeScore = s.homeScore; record.finalAwayScore = s.awayScore;
