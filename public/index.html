@@ -8,7 +8,7 @@
   :root {
     --bg: #16181c; --bg-row: #1c1f24; --bg-row-alt: #1a1d22; --border: #2a2e35; --row-sep: #40454f;
     --text: #e6e7ea; --text-dim: #8b909a; --text-faint: #5c6068;
-    --pos: #6fcf97; --neg: #e07a7a; --neutral: #d7b56d; --accent: #7ba7d9; --warn: #d99a5b;
+    --pos: #6fcf97; --neg: #e07a7a; --neutral: #e8c547; --accent: #e6e7ea; --warn: #e8c547;
   }
   * { box-sizing: border-box; }
   html, body {
@@ -135,6 +135,51 @@
   .hist { display: none; } .hist.open { display: table-row; }
   #rows-lines tr.hist:not(.open), #rows-totals tr.hist:not(.open) { display: none !important; }
   @media (max-width: 640px) { #rows-lines tr.hist.open, #rows-totals tr.hist.open { display: block !important; } .fab button { padding: 8px 12px; font-size: 12px; } }
+
+  /* ---- 9/26 restyle: square tabs, pulse, one color, bubble rows, no blue ---- */
+  .tabs button, .controls button { border-radius: 8px; }
+  .tabs button.active, .controls button.active { background: #e6e7ea; border-color: #e6e7ea; color: #0d0f12; animation: pulse 2.2s ease-in-out infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(230,231,234,0.40); } 70% { box-shadow: 0 0 0 7px rgba(230,231,234,0); } 100% { box-shadow: 0 0 0 0 rgba(230,231,234,0); } }
+  table { border-collapse: separate; border-spacing: 0 6px; }
+  tbody tr, tbody tr:nth-child(even) { background: var(--bg-row); }
+  tbody td { border-bottom: none; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  tbody td:first-child { border-left: 1px solid var(--border); border-radius: 10px 0 0 10px; }
+  tbody td:last-child { border-right: 1px solid var(--border); border-radius: 0 10px 10px 0; }
+  tbody tr.hist td { border: none; background: var(--bg); }
+  .pick { padding-left: 14px; }
+  .fab button, .fab button.warn { border-color: rgba(230,231,234,0.35); }
+  .tier { border-color: var(--border); color: var(--text-dim); background: transparent; }
+  .howto summary { cursor: pointer; color: var(--text-dim); font-size: 12.5px; margin: 2px 0 6px; list-style: none; }
+  .howto summary::-webkit-details-marker { display: none; }
+  .section-title { margin: 18px 0 4px; font-size: 13px; font-weight: 700; color: var(--text); }
+  .section-title .sub { font-weight: 400; margin-left: 6px; }
+  .price-link { cursor: pointer; border-bottom: 1px dotted var(--text-faint); }
+  /* TD matchup cards */
+  .gcard { background: var(--bg-row); border: 1px solid var(--border); border-radius: 12px; margin: 10px 0; overflow: hidden; }
+  .gcard.done { opacity: .55; }
+  .ghead { padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; border-bottom: 1px solid var(--border); }
+  .ghead .player { font-size: 14px; }
+  .gteams { display: grid; grid-template-columns: 1fr 1fr; }
+  .tteam { padding: 8px 12px 10px; }
+  .tteam + .tteam { border-left: 1px solid var(--border); }
+  .tname { font-weight: 700; font-size: 12.5px; margin: 2px 0 6px; }
+  .tname .game { font-weight: 400; margin-left: 6px; }
+  .prow { display: grid; grid-template-columns: 1fr auto auto auto; gap: 2px 12px; align-items: center; padding: 7px 8px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); margin-bottom: 5px; }
+  .prow .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .prow .why { grid-column: 1 / -1; font-size: 11px; }
+  details.gdone > summary { cursor: pointer; color: var(--text-dim); font-size: 12.5px; margin: 16px 0 4px; }
+  @media (max-width: 640px) {
+    .gteams { grid-template-columns: 1fr; }
+    .tteam + .tteam { border-left: none; border-top: 1px solid var(--border); }
+    #rows-lines tr, #rows-totals tr, #rows-best tr { background: var(--bg-row); border: 1px solid var(--border) !important; border-radius: 12px; margin-bottom: 8px; }
+    #rows-lines td, #rows-totals td, #rows-best td { border: none !important; }
+    #rows-best tr { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; padding: 10px 8px; }
+    #rows-best td { padding: 0 !important; text-align: left !important; }
+    #rows-best td.full { grid-column: 1 / -1; }
+    #rows-best td[data-label]::before { content: attr(data-label); display: block; font-size: 9.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); }
+    #panel-best thead { display: none; }
+  }
+  .sub b { color: var(--text); }
 </style>
 </head>
 <body data-theme="dark">
@@ -155,10 +200,12 @@
   </div>
 
   <div class="panel" id="panel-best">
-    <div id="best-note" class="sub" style="margin:4px 0 10px;"></div>
+    <details class="howto"><summary>ⓘ How this works</summary><div id="best-note" class="sub"></div></details>
+    <div id="best-summary" class="sub" style="margin:6px 0 4px;"></div>
     <div class="table-scroll"><table>
       <thead><tr><th>Bet</th><th class="num">Polymarket</th><th class="num">Fair</th><th class="num">Edge</th><th class="num">Stake</th></tr></thead>
       <tbody id="rows-best"></tbody></table></div>
+    <div id="best-extra"></div>
   </div>
 
   <div class="panel active" id="panel-lines">
@@ -176,14 +223,11 @@
 
   <div class="panel" id="panel-td">
     <div class="controls">
-      <button data-sort="ev" class="active">Sort: Edge</button>
-      <button data-sort="fair">Sort: Likely</button>
-      <button data-sort="game2">By Game: Top 2</button>
-      <button data-sort="game1">By Game: Top 1</button>
+      <button data-sort="likely" class="active">Likely</button>
+      <button data-sort="game2">Top 2</button>
+      <button data-sort="game1">Top 1</button>
     </div>
-    <div class="table-scroll"><table>
-      <thead><tr><th>Player</th><th class="num">Model</th><th class="num">Polymarket</th><th>What it means</th><th>Lean</th></tr></thead>
-      <tbody id="rows-td"></tbody></table></div>
+    <div id="td-cards"></div>
   </div>
 
   <div class="panel" id="panel-injuries">

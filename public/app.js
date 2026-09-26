@@ -96,61 +96,81 @@ function renderTotals() {
       `${pickCell(g.totalPick)}${betCell(g, ["total"])}</tr>` + histRow(g, 6);
   }).join("");
 }
-// ---------- Anytime TD ----------
-let tdSort = "ev";
-function meaning(r) {
-  if (r.fair == null || r.ev == null) return dash;
-  const rank = r.rank === 1 ? "Most likely to score in this game" : r.rank === 2 ? "2nd most likely" : r.rank === 3 ? "3rd most likely" : `${r.rank}th of ${r.of}`;
+// ---------- Anytime TD: one card per matchup, away + home sections ----------
+let tdSort = "likely";
+const GAME_STATUS = /out|doubtful|questionable/i; // only game-status tags; practice notes stay on the Injuries tab
+const LEAN_TD = { Bet: "badge-pos", Pass: "badge-neg", Recheck: "badge-warn" };
+function tdMeaning(r) {
+  if (r.stale) return '<span class="dim">Waiting for a live price</span>';
+  if (r.ev == null) return '<span class="dim">No Polymarket price</span>';
+  const v = `${evStr(r.ev)} value`;
+  if (r.lean === "Long shot") return `<span class="dim">Long shot — model unreliable (${v})</span>`;
+  if (r.lean === "Recheck") return `<span class="status-pending">Gap too big to trust — recheck (${v})</span>`;
   const ev = r.ev * 100;
-  const [txt, cls] = ev <= -20 ? ["way overpriced", "ev-neg"] : ev <= -5 ? ["overpriced", "ev-neg"] : ev < 5 ? ["priced about right", ""] : ev < 20 ? ["underpriced, good value", "ev-pos"] : ["way underpriced — recheck", "ev-pos"];
-  return `<span class="${cls}">${rank}, ${txt}</span><div class="game" style="margin-top:2px;">(${evStr(r.ev)} value)</div>`;
+  const [txt, cls] = ev <= -5 ? ["Overpriced", "ev-neg"] : ev < 5 ? ["Priced about right", ""] : ["Underpriced", "ev-pos"];
+  return `<span class="${cls}">${txt}</span> <span class="dim">(${v})</span>`;
 }
-const note = (r) => (r.note ? `<div class="warnline">${esc(r.note)}</div>` : "");
-function tdRowHtml(r, g, inj, noteHtml, lean) {
-  return `<tr><td class="full"><span class="player">${r.player}</span><span class="pos-tag">${r.pos}</span><span class="pos-tag">${r.team}</span>${inj}` +
-    `<div class="game" style="margin-top:2px;">${r.game} · ${g ? tm(g.kickoff) + " — " + gameStatus(g) : ""}</div>${noteHtml}</td>` +
-    `<td class="num" data-label="Model">${r.fairOdds != null ? odds(r.fairOdds) : dash}<div class="game" style="margin-top:2px;">${r.fair != null ? r.fair.toFixed(1) + "%" : ""}${r.rank ? ` · #${r.rank} of ${r.of}` : ""}</div></td>` +
-    `<td class="num" data-label="Polymarket">${r.odds != null ? odds(r.odds) : dash}${r.stale ? '<div class="game">old</div>' : ""}${g && g.started ? '<div class="game">🔒</div>' : ""}</td>` +
-    `<td class="wide" data-label="What it means">${r.stale ? '<span class="dim">Waiting for a live price</span>' : meaning(r)}</td><td data-label="Lean">${lean}</td></tr>`;
+function prow(r, g) {
+  const inj = r.injury && GAME_STATUS.test(r.injury) ? `<span class="inj">${esc(r.injury)}</span>` : "";
+  const lean = r.lean === "—" ? dash : r.lean === "Old price" ? '<span class="dim">old price</span>'
+    : `<span class="badge ${LEAN_TD[r.lean] || ""}">${r.lean}</span>`;
+  const price = r.odds == null ? dash
+    : `<span class="price-link" data-market="${esc(r.market || (r.stale ? "Old screenshot price — not live" : ""))}">${odds(r.odds)}</span>${r.stale ? ' <span class="dim">old</span>' : ""}`;
+  const info = r.note ? ` <span class="info" title="${esc(r.note)}">ⓘ</span>` : "";
+  return `<div class="prow"><div><span class="player">${r.player}</span><span class="pos-tag">${r.pos}</span>${inj}${info}` +
+    `<div class="game">#${r.teamRank} on team</div></div>` +
+    `<div class="num">${r.fairOdds != null ? odds(r.fairOdds) : dash}<div class="game">${r.fair != null ? r.fair.toFixed(1) + "%" : ""} model</div></div>` +
+    `<div class="num">${price}<div class="game">Polymarket</div></div><div>${lean}</div>` +
+    `<div class="why">${tdMeaning(r)}</div></div>`;
 }
-function tdRow(r) {
-  const g = S.games.find((x) => x.key === r.game);
-  const inj = r.injury ? `<span class="inj${/^out$/i.test(r.injury) ? " out" : ""}">${esc(r.injury)}</span>` : "";
-  const leanCls = r.lean === "Bet" ? "badge-pos" : r.lean === "Pass" ? "badge-neg" : "";
-  if (r.lean === "Old price") return tdRowHtml(r, g, inj, note(r), `<span class="dim" title="Last seen on a screenshot earlier in the week — not live. Tap ↻ to pull live prices.">old price</span>`);
-  const lean = r.lean === "—" ? dash : `<span class="badge ${leanCls}">${r.lean}${r.lean === "Bet" && r.stake ? ` $${r.stake}` : ""}</span>`;
-  return tdRowHtml(r, g, inj, note(r), lean);
+function tdCard(g) {
+  const p = g.poly || {}, hs = p.spread ? p.spread.homeSpread : null, tot = p.total ? p.total.line : null;
+  const lines = hs != null && tot != null ? `${g.home} ${sgn(hs)} · O/U ${tot}` : "";
+  const implied = (team) => hs == null || tot == null ? "" : `implied ${(team === g.home ? tot / 2 - hs / 2 : tot / 2 + hs / 2).toFixed(1)} pts`;
+  const n = tdSort === "game2" ? 2 : tdSort === "game1" ? 1 : 99;
+  const side = (team) => {
+    const rows = (g.td || []).filter((r) => r.team === team && r.fair != null).sort((a, b) => b.fair - a.fair).slice(0, n);
+    return `<div class="tteam"><div class="tname">${team}<span class="game">${implied(team)}</span></div>` +
+      (rows.map((r) => prow(r, g)).join("") || '<div class="game">No players yet — tap ▶ Rerun model.</div>') + `</div>`;
+  };
+  return `<div class="gcard${g.started ? " done" : ""}"><div class="ghead"><span class="player">${g.key}</span>` +
+    `<span class="game">${tm(g.kickoff)} — ${gameStatus(g)}</span><span class="game">${lines}${g.started ? " 🔒" : ""}</span></div>` +
+    `<div class="gteams">${side(g.away)}${side(g.home)}</div></div>`;
 }
 function renderTd() {
-  let rows = S.games.flatMap((g) => g.td || []);
-  if (tdSort === "ev") rows.sort((a, b) => (b.ev ?? -9) - (a.ev ?? -9));
-  else if (tdSort === "fair") rows.sort((a, b) => (b.fair ?? -1) - (a.fair ?? -1));
-  else {
-    const n = tdSort === "game2" ? 2 : 1, out = [];
-    S.games.forEach((g) => ["away", "home"].forEach((side) => {
-      const team = side === "away" ? g.away : g.home;
-      out.push(...(g.td || []).filter((r) => r.team === team && r.fair != null).sort((a, b) => b.fair - a.fair).slice(0, n));
-    }));
-    rows = out;
-  }
-  $("rows-td").innerHTML = rows.map(tdRow).join("") || `<tr><td colspan="5" class="dim">No TD numbers yet — tap Rerun model.</td></tr>`;
+  const byKick = [...S.games].sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
+  const open = byKick.filter((g) => !g.started), done = byKick.filter((g) => g.started);
+  $("td-cards").innerHTML = open.map(tdCard).join("") +
+    (done.length ? `<details class="gdone"><summary>🔒 Started / final games (${done.length})</summary>${done.map(tdCard).join("")}</details>` : "");
 }
+document.addEventListener("click", (e) => {
+  const el = e.target.closest(".price-link"); if (!el) return;
+  toast(el.dataset.market ? "Polymarket market: " + el.dataset.market : "No market recorded for this price.", 8000);
+});
 // ---------- Best Bets ----------
+function bestRow(b) {
+  const g = S.games.find((x) => x.key === b.game);
+  const warn = (b.warnings || []).map((w) => `<div class="warnline">⚠ ${esc(w)}</div>`).join("");
+  const kind = b.market === "td" ? "TD prop" : b.market === "ml" ? "Moneyline" : b.market === "spread" ? "Spread" : "Total";
+  const polyCell = b.kind === "td" && b.marketQ ? `<span class="price-link" data-market="${esc(b.marketQ)}">${odds(b.odds)}</span>` : odds(b.odds);
+  return `<tr><td class="full"><span class="player">${b.label}</span><span class="pos-tag">${kind}</span>${b.injury && GAME_STATUS.test(b.injury) ? `<span class="inj">${esc(b.injury)}</span>` : ""}` +
+    `<div class="game" style="margin-top:2px;">${b.game} · ${g ? tm(g.kickoff) : ""}${b.agrees === true ? " · model agrees" : b.agrees === false ? " · model disagrees" : ""}</div>${warn}</td>` +
+    `<td class="num" data-label="Polymarket">${polyCell}</td><td class="num" data-label="Fair">${odds(b.fairOdds)}</td>` +
+    `<td class="num ${b.section === "bet" ? "ev-pos" : "status-pending"}" data-label="Edge">${evStr(b.ev)}</td>` +
+    `<td class="num" data-label="Stake"><b>${b.stake ? "$" + b.stake : "—"}</b>${b.capped ? `<div class="game">${b.capped}</div>` : ""}</td></tr>`;
+}
 function renderBest() {
-  const lines = S.best;
-  const cap = ` Total $${S.totalStake} of your $${S.weeklyCap} weekly cap — best edges get money first; same-team spread + moneyline keeps only the better one; correlated bets share one stake.`;
-  $("best-note").innerHTML = `Only positive-edge Polymarket plays on games that haven't kicked off. Fair = sportsbook no-vig for game lines (model = Estimate if no book line), TD model for props. ` +
-    `Stakes = quarter Kelly on $1,000, max $50.${cap}` + (S.hasBooks ? "" : ` <span class="status-pending">No sportsbook odds yet — game-line edges use the model and are labeled Estimate.</span>`);
-  $("rows-best").innerHTML = lines.map((b) => {
-    const g = S.games.find((x) => x.key === b.game);
-    const warn = (b.warnings || []).map((w) => `<div class="warnline">⚠ ${esc(w)}</div>`).join("");
-    const kind = b.market === "td" ? "TD prop" : b.market === "ml" ? "Moneyline" : b.market === "spread" ? "Spread" : "Total";
-    return `<tr><td class="full"><span class="player">${b.label}</span><span class="pos-tag">${kind}</span>${b.injury ? `<span class="inj">${esc(b.injury)}</span>` : ""}` +
-      `<div class="game" style="margin-top:2px;">${b.game} · ${g ? tm(g.kickoff) : ""}${b.agrees === true ? " · model agrees" : b.agrees === false ? " · model disagrees" : ""}${b.recheck ? " · ⚠ recheck (>30%)" : ""}</div>${warn}</td>` +
-      `<td class="num" data-label="Polymarket">${odds(b.odds)}</td><td class="num" data-label="Fair">${odds(b.fairOdds)}</td>` +
-      `<td class="num ev-pos" data-label="Edge">${evStr(b.ev)}${b.estimate ? '<div class="game">Estimate</div>' : ""}</td>` +
-      `<td class="num" data-label="Stake"><b>${b.stake ? "$" + b.stake : "$0"}</b>${b.capped ? `<div class="game">${b.capped}</div>` : ""}</td></tr>`;
-  }).join("") || `<tr><td colspan="5" class="dim">No positive-edge bets right now.</td></tr>`;
+  const all = S.best.map((b) => ({ ...b, marketQ: b.market === "td" ? null : null }));
+  S.best.forEach((b, i) => { if (b.kind === "td") all[i].marketQ = b.marketName || b.market_q || null; });
+  const bets = all.filter((b) => b.section === "bet"), est = all.filter((b) => b.section === "estimate"), rc = all.filter((b) => b.section === "recheck");
+  $("best-note").innerHTML = `Positive-edge Polymarket plays on games that haven't kicked off, best edge first. <b>Fair</b> = sportsbook no-vig price for game lines, TD model for props. ` +
+    `<b>Stake</b> = quarter Kelly on $1,000, max $50 per bet, $200 per week — best edges get money first. Same-team spread + moneyline keeps only the better one; ` +
+    `correlated bets share one stake. Edges over +30% are listed under <b>Needs a recheck</b> with no stake. Game-line edges from the model alone (no sportsbook odds yet) are listed under <b>Estimate</b> with no stake.`;
+  $("best-summary").innerHTML = `<b>${bets.length}</b> bets · <b>$${S.totalStake}</b> of $${S.weeklyCap} weekly cap` + (S.hasBooks ? "" : ` · <span class="status-pending">sportsbook odds not in yet</span>`);
+  $("rows-best").innerHTML = bets.map(bestRow).join("") || `<tr><td colspan="5" class="dim">No bets right now.</td></tr>`;
+  const sec = (title, sub, list) => !list.length ? "" : `<div class="section-title">${title}<span class="sub">${sub}</span></div>` +
+    `<div class="table-scroll"><table><tbody>${list.map(bestRow).join("")}</tbody></table></div>`;
+  $("best-extra").innerHTML = sec("Estimate", "model only — no stake until sportsbook odds arrive", est) + sec("Needs a recheck", "edge over +30% — something is probably off, no stake", rc);
 }
 // ---------- Injuries ----------
 function renderInjuries() {
@@ -158,8 +178,9 @@ function renderInjuries() {
   const order = { out: 0, doubtful: 1, questionable: 2 };
   const rows = Object.entries(S.injuries || {}).filter(([t]) => teams.has(t)).flatMap(([t, ps]) => ps.map((p) => ({ ...p, team: t })))
     .sort((a, b) => (order[(a.status || "").toLowerCase()] ?? 9) - (order[(b.status || "").toLowerCase()] ?? 9) || a.team.localeCompare(b.team));
-  $("injuries-status").textContent = S.injuries ? `Official team injury reports — ${rows.length} players on this week's teams. Players listed Out are left out of the TD model automatically.` : "Injury feed unavailable right now.";
-  $("rows-injuries").innerHTML = rows.map((p) => `<tr><td class="player">${esc(p.name)} <span class="pos-tag">${esc(p.pos || "")}</span></td><td>${p.team}</td><td>${esc(p.detail || "—")}</td>` +
+  const wk = [...new Set(rows.map((p) => p.week))].sort().map((w) => "Week " + w).join(", ");
+  $("injuries-status").innerHTML = S.injuries ? `<b>Injury report updated ${S.injuriesUpdated ? hm(S.injuriesUpdated) : "—"}</b> · ${wk || ""} official team reports · ${rows.length} players. Players listed Out are removed from the TD tab automatically.` : "Injury feed unavailable right now.";
+  $("rows-injuries").innerHTML = rows.map((p) => `<tr><td class="player">${esc(p.name)} <span class="pos-tag">${esc(p.pos || "")}</span></td><td>${p.team} <span class="game">wk ${p.week}</span></td><td>${esc(p.detail || "—")}</td>` +
     `<td class="${/^out$/i.test(p.status) ? "ev-neg" : /doubt/i.test(p.status) ? "status-pending" : ""}">${esc(p.status)}</td></tr>`).join("");
 }
 // ---------- Results ----------
