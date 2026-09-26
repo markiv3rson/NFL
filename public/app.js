@@ -106,10 +106,11 @@ const GAME_STATUS = /out|doubtful|questionable/i; // only game-status tags; prac
 // Bet bubble color = price: Underpriced green, Fair yellow, Overpriced red. Pass = gray.
 const BET_CLS = { Underpriced: "badge-pos", Fair: "badge-warn", Overpriced: "badge-neg" };
 const PRICE_CLS = { Underpriced: "ev-pos", Fair: "dim", Overpriced: "ev-neg" };
+const MODEL_SAYS = { Underpriced: "Model says good price", Fair: "Model says fair price", Overpriced: "Model says pass on price" };
 function tdMeaning(r) {
   if (r.ev == null) return '<span class="dim">No Polymarket price</span>';
-  const lab = r.stale ? '<span class="dim">Old price</span>' : `<span class="${PRICE_CLS[r.priceLabel]}">${r.priceLabel}</span>`;
-  return `${lab} <span class="dim">(${evStr(r.ev)} value)</span>`;
+  const why = `<span class="dim">: gets ${odds(r.odds)}, should be ${odds(r.fairOdds)}${r.stale ? " (old price)" : ""}</span>`;
+  return `<span class="${PRICE_CLS[r.priceLabel]}">${MODEL_SAYS[r.priceLabel]}</span>${why}`;
 }
 function prow(r, g, showGame = false) {
   const inj = r.injury && GAME_STATUS.test(r.injury) ? `<span class="inj">${esc(r.injury)}</span>` : "";
