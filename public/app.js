@@ -103,27 +103,22 @@ function renderTotals() {
 // ---------- Anytime TD: one card per matchup, away + home sections ----------
 let tdSort = "likely";
 const GAME_STATUS = /out|doubtful|questionable/i; // only game-status tags; practice notes stay on the Injuries tab
-const LEAN_TD = { Bet: "badge-pos", Pass: "badge-neg", Recheck: "badge-warn", Thin: "badge-warn" };
+const LEAN_TD = { Bet: "badge-pos", Pass: "badge-neg" };
+const PRICE_CLS = { Underpriced: "ev-pos", Fair: "dim", Overpriced: "ev-neg" };
 function tdMeaning(r) {
-  if (r.stale) return '<span class="dim">Waiting for a live price</span>';
   if (r.ev == null) return '<span class="dim">No Polymarket price</span>';
-  const v = `${evStr(r.ev)} value`;
-  if (r.lean === "Long shot") return `<span class="dim">Long shot — model unreliable (${v})</span>`;
-  if (r.lean === "Thin") return `<span class="status-pending">Thin market — buy ${Math.round(r.price * 100)}¢ / sell ${r.bid != null ? Math.round(r.bid * 100) + "¢" : "—"}, recheck on the app (${v})</span>`;
-  if (r.lean === "Recheck") return `<span class="status-pending">Gap too big to trust — recheck (${v})</span>`;
-  const ev = r.ev * 100;
-  const [txt, cls] = ev <= -5 ? ["Overpriced", "ev-neg"] : ev < 5 ? ["Priced about right", ""] : ["Underpriced", "ev-pos"];
-  return `<span class="${cls}">${txt}</span> <span class="dim">(${v})</span>`;
+  const lab = r.stale ? '<span class="dim">Old price</span>' : `<span class="${PRICE_CLS[r.priceLabel]}">${r.priceLabel}</span>`;
+  return `${lab} <span class="dim">(${evStr(r.ev)} value)</span>`;
 }
-function prow(r, g) {
+function prow(r, g, showGame = false) {
   const inj = r.injury && GAME_STATUS.test(r.injury) ? `<span class="inj">${esc(r.injury)}</span>` : "";
-  const lean = r.lean === "—" ? dash : r.lean === "Old price" ? '<span class="dim">old price</span>'
-    : `<span class="badge ${LEAN_TD[r.lean] || ""}">${r.lean}</span>`;
+  const lean = r.lean === "—" ? dash : `<span class="badge ${LEAN_TD[r.lean]}">${r.lean}</span>`;
   const price = r.odds == null ? dash
-    : `<span class="price-link" data-market="${esc(r.market || (r.stale ? "Old screenshot price — not live" : ""))}">${odds(r.odds)}</span>${r.stale ? ' <span class="dim">old</span>' : ""}`;
+    : `<span class="price-link" data-market="${esc(r.market || (r.stale ? "Old screenshot price — not live" : ""))}">${odds(r.odds)}</span>`;
   const info = r.note ? ` <span class="info" title="${esc(r.note)}">ⓘ</span>` : "";
+  const sub = showGame ? `${r.team} · ${r.game} · ${g ? tm(g.kickoff) : ""} · #${r.teamRank} on team` : `#${r.teamRank} on team`;
   return `<div class="prow"><div><span class="player">${r.player}</span><span class="pos-tag">${r.pos}</span>${inj}${info}` +
-    `<div class="game">#${r.teamRank} on team</div></div>` +
+    `<div class="game">${sub}</div></div>` +
     `<div class="num">${r.fairOdds != null ? odds(r.fairOdds) : dash}<div class="game">${r.fair != null ? r.fair.toFixed(1) + "%" : ""} model</div></div>` +
     `<div class="num">${price}<div class="game">Polymarket</div></div><div>${lean}</div>` +
     `<div class="why">${tdMeaning(r)}</div></div>`;
@@ -143,6 +138,13 @@ function tdCard(g) {
     `<div class="gteams">${side(g.away)}${side(g.home)}</div></div>`;
 }
 function renderTd() {
+  if (tdSort === "likely") {
+    const rows = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).map((r) => ({ r, g })))
+      .filter((x) => x.r.fair != null).sort((a, b) => b.r.fair - a.r.fair);
+    $("td-cards").innerHTML = `<div class="gcard"><div class="tteam">` + (rows.map((x) => prow(x.r, x.g, true)).join("") ||
+      '<div class="game">No players yet — tap ▶ Rerun model.</div>') + `</div></div>`;
+    return;
+  }
   const byKick = [...S.games].sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
   const open = byKick.filter((g) => !g.started), done = byKick.filter((g) => g.started);
   $("td-cards").innerHTML = open.map(tdCard).join("") +
