@@ -6,6 +6,7 @@ import { getRedis, getJSON, setJSON, K } from "../../lib/redis";
 import { fetchEvents, gameLines, tdProps } from "../../lib/poly";
 import { fetchBooks } from "../../lib/books";
 import { gradeRecent } from "../../lib/grade";
+import { syncAccount } from "../../lib/mybets";
 export const config = { maxDuration: 120 };
 
 export default async function handler(req, res) {
@@ -49,6 +50,7 @@ export default async function handler(req, res) {
     meta.lastSnapshot = t; meta.lastSrc = src; if (books) meta.lastBooks = t;
     await setJSON(K.meta(season, week), meta);
     const graded = await gradeRecent(season).catch(() => 0);
-    res.status(200).json({ ok: true, week, upcoming: open.length, locked: games.length - open.length, lines, props, books: booksNote, closedLate, graded });
+    const acct = await syncAccount().catch((e) => ({ ok: false, note: String(e) }));  // auto-sync My Bets
+    res.status(200).json({ ok: true, week, upcoming: open.length, locked: games.length - open.length, lines, props, books: booksNote, closedLate, graded, account: acct.ok ? `synced ${acct.positions} positions` : acct.note });
   } catch (err) { res.status(500).json({ ok: false, error: String(err) }); }
 }

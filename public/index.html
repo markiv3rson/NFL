@@ -190,6 +190,12 @@
     #panel-best thead { display: none; }
   }
   .sub b { color: var(--text); }
+  .bet-card { background: var(--bg-row); border: 1px solid var(--border); border-radius: 12px; margin: 10px 0; padding: 10px 14px; }
+  .bet-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; align-items: baseline; }
+  .leg { display: grid; grid-template-columns: 22px 1fr auto auto; gap: 2px 12px; align-items: center; padding: 6px 8px; margin-top: 5px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+  .leg .mark { font-weight: 800; text-align: center; }
+  .rec-big { display: inline-block; margin: 0 16px 6px 0; } .rec-big b { color: var(--text); font-size: 15px; }
 </style>
 </head>
 <body data-theme="dark">
@@ -204,6 +210,7 @@
     <button data-tab="lines" class="active">Game Lines</button>
     <button data-tab="totals">Totals</button>
     <button data-tab="td">Anytime TD</button>
+    <button data-tab="mybets">My Bets</button>
     <button data-tab="injuries">Injuries</button>
     <button data-tab="results">Results</button>
     <button data-tab="schedule">Schedule</button>
@@ -239,6 +246,13 @@
     </div>
     <div class="sub" style="margin:0 0 6px;">Model = your TD model vs Polymarket's price.</div>
     <div id="td-cards"></div>
+  </div>
+
+  <div class="panel" id="panel-mybets">
+    <div class="controls"><button id="sync-btn">↻ Sync account</button></div>
+    <div id="mybets-summary" class="sub" style="margin:4px 0 8px;"></div>
+    <div id="mybets-list"></div>
+    <details class="howto" id="mybets-raw-wrap" style="margin-top:14px;"><summary>ⓘ Raw account data (setup check)</summary><pre id="mybets-raw" class="sub" style="white-space:pre-wrap;font-size:11px;"></pre></details>
   </div>
 
   <div class="panel" id="panel-injuries">

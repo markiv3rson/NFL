@@ -182,6 +182,53 @@ function renderBest() {
     `<div class="table-scroll"><table><tbody>${list.map(bestRow).join("")}</tbody></table></div>`;
   $("best-extra").innerHTML = sec("Estimate", "model only — no stake until sportsbook odds arrive", est) + sec("Needs a recheck", "edge over +30% — something is probably off, no stake", rc);
 }
+// ---------- My Bets ----------
+const RES = { W: ['<span class="mark ev-pos">✓</span>', "Won"], L: ['<span class="mark ev-neg">✗</span>', "Lost"], P: ['<span class="mark dim">=</span>', "Push"], pending: ['<span class="mark dim">•</span>', "Open"] };
+const money = (x) => (x < 0 ? "−$" : "$") + Math.abs(x).toFixed(2);
+function legLabel(l) {
+  if (l.kind === "td") return `${l.player} <span class="pos-tag">${l.team}</span> TD`;
+  if (l.kind === "spread") return `${l.team} ${sgn(l.line)}`;
+  return `${l.side === "over" ? "Over" : "Under"} ${l.line}`;
+}
+function renderMyBets(d) {
+  const s = d.summary;
+  $("mybets-summary").innerHTML =
+    `<span class="rec-big">Record <b>${s.wins}–${s.losses}${s.pushes ? "–" + s.pushes : ""}</b></span>` +
+    `<span class="rec-big">P/L <b class="${s.pl > 0 ? "ev-pos" : s.pl < 0 ? "ev-neg" : ""}">${money(s.pl)}</b></span>` +
+    `<span class="rec-big">ROI <b>${s.roi == null ? "—" : (s.roi * 100).toFixed(1) + "%"}</b></span>` +
+    `<span class="rec-big">Avg CLV <b>${s.avgClv == null ? "—" : evStr(s.avgClv)}</b></span>` +
+    `<span class="rec-big">Open <b>${money(s.openCost)}</b> of $200 this week</span>` +
+    `<div class="game">${d.keysSet ? `Account sync on${d.synced ? ` · last synced ${hm(d.synced.t)} · ${d.synced.list.length} positions` : " · not synced yet"}` : "Account sync off — add POLYMARKET_KEY_ID and POLYMARKET_SECRET_KEY in Vercel"}. ` +
+    `CLV = closing price vs your price (positive = you beat the close). Graded automatically once games are final.</div>`;
+  const card = (b) => {
+    const [icon, word] = RES[b.result];
+    const legs = b.legs.map((l) => { const [m] = RES[l.result];
+      return `<div class="leg">${m}<div>${legLabel(l)}<div class="game">${l.game} · ${l.kickoff ? tm(l.kickoff) : ""}</div></div>` +
+        `<div class="num">${odds(toAmerican(l.price))}<div class="game">${Math.round(l.price * 1000) / 10}¢ paid</div></div>` +
+        `<div class="num">${l.close != null ? odds(toAmerican(l.close)) : dash}<div class="game">${l.clv != null ? `CLV ${evStr(l.clv)}` : "close"}</div></div></div>`; }).join("");
+    return `<div class="bet-card"><div class="bet-head"><div><span class="player">${b.legs.length > 1 ? `Combo · ${b.legs.length} legs` : "Single"}</span> ` +
+      `<span class="badge ${b.result === "W" ? "badge-pos" : b.result === "L" ? "badge-neg" : ""}">${word}</span></div>` +
+      `<div class="num"><b>${money(b.cost)}</b> → ${money(b.toWin)} <span class="dim">(${b.multiplier.toFixed(2)}x)</span>` +
+      `${b.pl != null ? ` · <b class="${b.pl > 0 ? "ev-pos" : b.pl < 0 ? "ev-neg" : ""}">${money(b.pl)}</b>` : ""}</div></div>` +
+      `<div class="game" style="margin-top:3px;">Pays ${(Math.abs(b.payoutVsLegs) * 100).toFixed(0)}% ${b.payoutVsLegs < 0 ? "under" : "over"} the legs multiplied (${b.legsMultiplier.toFixed(2)}x) · break-even ${(b.breakEven * 100).toFixed(1)}%` +
+      `${b.clv != null ? ` · combo CLV <b>${evStr(b.clv)}</b>` : ""}</div>${legs}</div>`;
+  };
+  const synced = d.synced && d.synced.list.length ? `<div class="section-title">Synced from your account</div>` +
+    d.synced.list.map((p) => `<div class="bet-card"><div class="bet-head"><span class="player">${esc(p.title)}${p.outcome ? ` — ${esc(p.outcome)}` : ""}</span>` +
+      `<span class="num">${money(p.cost || 0)} · ${p.shares} shares${p.value != null ? ` · now ${money(p.value)}` : ""}${p.expired ? " · settled" : ""}</span></div></div>`).join("") : "";
+  $("mybets-list").innerHTML = [...d.bets].sort((a, b) => (a.result === "pending") - (b.result === "pending")).reverse().map(card).join("") + synced;
+  $("mybets-raw").textContent = d.raw ? JSON.stringify(d.raw, null, 1).slice(0, 20000) : "No account data yet.";
+}
+async function loadMyBetsTab(sync = false) {
+  $("mybets-summary").textContent = sync ? "Syncing your Polymarket account…" : "Loading…";
+  try {
+    const d = await (await fetch(`/api/mybets${sync ? "?sync=1" : ""}`)).json();
+    if (!d.ok) throw new Error(d.error);
+    renderMyBets(d);
+    if (sync && d.sync) toast(d.sync.ok ? `Synced ${d.sync.positions} positions from your account.` : `Sync: ${d.sync.note}`, 9000);
+  } catch (e) { $("mybets-summary").textContent = "My Bets failed: " + e.message; }
+}
+$("sync-btn").addEventListener("click", () => loadMyBetsTab(true));
 // ---------- Injuries ----------
 function renderInjuries() {
   const teams = new Set(S.games.flatMap((g) => [g.away, g.home]));
@@ -296,6 +343,7 @@ document.querySelectorAll(".tabs button").forEach((btn) => btn.addEventListener(
   document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
   btn.classList.add("active"); $("panel-" + btn.dataset.tab).classList.add("active");
   if (btn.dataset.tab === "results") loadResults();
+  if (btn.dataset.tab === "mybets") loadMyBetsTab();
   if (btn.dataset.tab === "schedule" && S) initSchedule();
 }));
 document.querySelectorAll("#panel-td .controls button").forEach((btn) => btn.addEventListener("click", () => {

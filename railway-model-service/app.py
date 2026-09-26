@@ -26,6 +26,23 @@ ALIASES = {"LAR": "LA", "WSH": "WAS", "JAC": "JAX"}
 def nv(team):
     return ALIASES.get(team, team)
 
+@app.route("/td-scorers", methods=["GET"])
+def td_scorers():
+    """Rushing/receiving TD scorers per game from nflverse play-by-play (defensive/special teams TDs excluded,
+    matching Polymarket's anytime-TD rules). Used to grade TD bets on the My Bets tab."""
+    try:
+        season = int(request.args.get("season", 2026)); week = int(request.args.get("week"))
+        p = td_prob.fetch_pbp(season)
+        p = p[(p.season_type == "REG") & (p.week == week)]
+        out = {}
+        for gid, g in p.groupby("game_id"):
+            key = f"{nv(g.away_team.iloc[0])} @ {nv(g.home_team.iloc[0])}"
+            names = list(g[g.rush_touchdown == 1].rusher_player_name.dropna()) + list(g[g.pass_touchdown == 1].receiver_player_name.dropna())
+            out[key] = sorted(set(names))
+        return jsonify({"ok": True, "season": season, "week": week, "games": out})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"ok": True, "service": "nfl-bettors-model"})
