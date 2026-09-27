@@ -90,14 +90,14 @@ function renderTotals() {
 }
 // ---------- Anytime TD ----------
 const PRICE_CLS = { Underpriced: "g", Fair: "y", Overpriced: "r" };
-const PRICE_WORD = { Underpriced: "good price", Fair: "fair price", Overpriced: "bad price" };
+const PRICE_WORD = { Underpriced: "Good price", Fair: "Fair price", Overpriced: "Bad price" };
 const GAME_STATUS = /out|doubtful|questionable/i;
 const ORDINAL = (n) => (n === 1 ? "Most likely to score" : n === 2 ? "Very likely to score" : n === 3 ? "Least likely to score" : n === 4 ? "Unlikely to score" : "Very unlikely to score");
 function prow(r, g, showGame) {
   const inj = r.injury && GAME_STATUS.test(r.injury) ? ` <span class="pill ${/out|doubt/i.test(r.injury) ? "p-r" : "p-y"}" style="padding:0 6px;font-size:10px">${esc(r.injury)}</span>` : "";
   const cls = r.ev == null ? "" : PRICE_CLS[r.priceLabel];
   const price = r.odds == null ? dash : `<span class="price-link" data-market="${esc(r.market || (r.stale ? "Old screenshot price — not live" : ""))}">${odds(r.odds)}</span>`;
-  const verdict = r.ev == null ? '<span class="dim">no Polymarket price</span>' : `<span class="${cls}">Polymarket, ${PRICE_WORD[r.priceLabel]}${r.stale ? " (old)" : ""}</span>`;
+  const verdict = r.ev == null ? '<span class="dim">no Polymarket price</span>' : `<span class="${cls}">${PRICE_WORD[r.priceLabel]} against &#8594; Polymarket${r.stale ? " (old)" : ""}</span>`;
   const snap = r.snap ? ` · snaps ${r.snap.pct}%${r.snap.trend === "up" ? ' <span class="g">↑</span>' : r.snap.trend === "down" ? ' <span class="r">↓ role shrinking</span>' : ""}` : "";
   const sub = `${showGame ? `${r.team} · ${r.game} · ` : ""}#${r.teamRank} on team${snap}`;
   const rank = `${ORDINAL(r.teamRank)}${r.fair != null ? ` — model reads ${r.fair.toFixed(1)}% chance` : ""}`;
