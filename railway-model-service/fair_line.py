@@ -64,16 +64,23 @@ def wind_adj(total, wind, outdoor):
 
 def ncdf(x): return 0.5 * (1 + math.erf(x / math.sqrt(2)))
 
+def recency_weight(cur):
+    """Recent-games weighting: this season's last 3 weeks count up to 1.5x a week 1 game, so a team's
+    current form (injuries, role changes, a hot/cold stretch) moves the rating faster than a flat season average."""
+    mx = cur.week.max()
+    return 1.0 + 0.5 * ((cur.week - max(mx - 3, 1)) / max(mx - max(mx - 3, 1), 1)).clip(0, 1)
+
 def build(season):
     cur = team_games(fetch(season)); prior = team_games(fetch(season - 1))
-    rows = pd.concat([prior, cur]); w = np.r_[np.full(len(prior), PRIOR_W), np.ones(len(cur))]
+    rows = pd.concat([prior, cur])
+    w = np.r_[np.full(len(prior), PRIOR_W), recency_weight(cur)]
     return fit(rows, w), cur
 
 def backtest(season):
     allg = team_games(fetch(season)); prior = team_games(fetch(season - 1)); out = []
     for wk in range(4, int(allg.week.max()) + 1):
         cur = allg[allg.week < wk]
-        M = fit(pd.concat([prior, cur]), np.r_[np.full(len(prior), PRIOR_W), np.ones(len(cur))])
+        M = fit(pd.concat([prior, cur]), np.r_[np.full(len(prior), PRIOR_W), recency_weight(cur) if len(cur) else np.ones(0)])
         for gid, x in allg[(allg.week == wk) & (allg.home == 1)].set_index("game_id").iterrows():
             ph, pa = predict(M, x.defteam, x.posteam)
             t, _ = wind_adj(ph + pa, x.wind, x.roof in ("outdoors", "open"))

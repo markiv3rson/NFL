@@ -2,7 +2,8 @@
 // the latest Polymarket spread/total (sportsbook consensus if Polymarket has none),
 // players listed OUT on the official injury report, and the kickoff wind forecast (outdoor only).
 import { SEASON, currentWeek, loadGames, started } from "../../lib/games";
-import { getJSON, setJSON, K } from "../../lib/redis";
+import { getRedis, getJSON, setJSON, K } from "../../lib/redis";
+import { logError } from "../../lib/status";
 import { history } from "../../lib/week";
 import { loadInjuries } from "../../lib/injuries";
 import { windAtKickoff } from "../../lib/wind";
@@ -52,6 +53,11 @@ export default async function handler(req, res) {
     });
     store.runAt = runAt;
     await setJSON(K.model(season, week), store);
+    // Rerun history: every run with its inputs and outputs (logged only; included in Export)
+    await getRedis().lpush(`rerunlog:${season}:${week}`, JSON.stringify({ t: runAt, src: req.query.src || "manual",
+      games: payload.map((x) => ({ key: x.key, inputs: { homeSpread: x.spread == null ? null : -x.spread, total: x.total, wind: x.wind, outs: x.outs.length },
+        model: store.games[x.key] || null, td: (store.td[x.key] ? [...store.td[x.key].away, ...store.td[x.key].home].map((p) => [p.name, p.fair]) : null) })) }));
+    await getRedis().ltrim(`rerunlog:${season}:${week}`, 0, 60);
     res.status(200).json({ ok: true, week, rerun: nLines, td: nTd, skippedTd: payload.length - tdIn.length, locked: all.length - games.length, errors });
-  } catch (err) { res.status(500).json({ ok: false, error: String(err) }); }
+  } catch (err) { await logError("rerun", err).catch(() => {}); res.status(500).json({ ok: false, error: String(err) }); }
 }

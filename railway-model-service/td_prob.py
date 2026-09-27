@@ -17,7 +17,7 @@ position (WR/TE/RB, shrunk 4 games toward league avg 0.55/0.20/0.10 per game). A
 players ~1 pt and acts oddly on low-usage players -- trust the direction for main targets only.
 Blind spots (call out manually): snap-share/role shifts, QB changes, new-team players' prior usage.
 """
-import pandas as pd, numpy as np
+import pandas as pd, numpy as np, pickle
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import brier_score_loss, log_loss
 import os, urllib.request, argparse
@@ -108,8 +108,57 @@ def load_pos():
     return r.set_index('gsis_id')[['position']]
 
 pos=load_pos()
-tr=pd.concat([features(2024,pos),features(2025,pos)])
-m=LogisticRegression(C=1.0,max_iter=2000).fit(design(tr),tr.scored)
+MODEL_DIR = os.environ.get("MODEL_DIR", "/data")
+CURRENT = 2026
+
+def recency_weight(df):
+    """Recent-games weighting: within a season, a player's last 3 games count more than early ones,
+    so role changes (e.g. a new starter) are picked up faster. Weight 1.0 -> 1.6 over the season, prior-season rows stay at 1.0."""
+    w = pd.Series(1.0, index=df.index)
+    cur = df.season == df.season.max() if "season" in df.columns else pd.Series(True, index=df.index)
+    if "week" in df.columns:
+        mx = df.week.max()
+        w = np.where(cur, 1.0 + 0.6 * (df.week / max(mx, 1)).clip(0, 1), 1.0)
+    return w
+
+def fit_model(train_seasons):
+    """Train on the given seasons (current season's completed weeks included once it has any)."""
+    frames = []
+    for s in train_seasons:
+        try:
+            f = features(s, pos); f["season"] = s; frames.append(f)
+        except Exception: pass
+    tr = pd.concat(frames)
+    w = recency_weight(tr)
+    return LogisticRegression(C=1.0, max_iter=2000).fit(design(tr), tr.scored, sample_weight=w)
+
+def brier(model, df):
+    p = shrink(model.predict_proba(design(df))[:, 1])
+    return float(np.mean((p - df.scored) ** 2))
+
+def eval_holdout(model, season, weeks):
+    """Brier score on specific weeks of a season the model didn't train on (a fair test)."""
+    f = features(season, pos)
+    f = f[f.week.isin(weeks)] if "week" in f.columns else f
+    return brier(model, f) if len(f) else None
+
+def load_active():
+    p = os.path.join(MODEL_DIR, "td_model.pkl")
+    if os.path.exists(p):
+        try:
+            with open(p, "rb") as fh: return pickle.load(fh)
+        except Exception: pass
+    return None
+
+def save_active(obj):
+    try:
+        os.makedirs(MODEL_DIR, exist_ok=True)
+        with open(os.path.join(MODEL_DIR, "td_model.pkl"), "wb") as fh: pickle.dump(obj, fh)
+        return True
+    except Exception: return False
+
+_active = load_active()
+m = _active["model"] if _active else fit_model([2024, 2025])
 def shrink(p): return np.where(p>0.35, 0.35+0.75*(p-0.35), p)
 pg,dal,games,p=player_games(2026); prior,_,_,_=player_games(2025)
 K=3.0
@@ -154,10 +203,28 @@ def run(team,opp,imp,outs=(),posadj=True):
                     if acc == rest and (w[a - 1].startswith(pre) or (a > 1 and w[a - 2].startswith(pre))): return True
                     if len(acc) >= len(rest): break
         return False
-    df=df[df.pos.isin(['RB','WR','TE'])&~df.name.apply(_is_out)].copy()
+    full = df[df.pos.isin(['RB','WR','TE'])].copy()
+    outmask = full.name.apply(_is_out)
+    df = full[~outmask].copy()
     if posadj: df['o_rec']=df.pos.map(pos_rec(opp))
+    # Vacated-usage boost: an Out player's red-zone/inside-10/inside-5 share gets redistributed to the
+    # remaining players at his position, proportional to their own current share (the model can't see this on its own).
+    boost = {}
+    for p_, grp in full.groupby('pos'):
+        gone = grp[outmask.loc[grp.index]]
+        stay = grp[~outmask.loc[grp.index]]
+        if not len(gone) or not len(stay): continue
+        for col in ['r_rzt','r_i10','r_rzc','r_i5']:
+            pool = gone[col].sum()
+            if pool <= 0: continue
+            wsum = stay[col].sum()
+            for pid, row in stay.iterrows():
+                share = (row[col] / wsum) if wsum > 0 else (1 / len(stay))
+                df.loc[pid, col] = df.loc[pid, col] + pool * share
+                boost[pid] = True
     df['p']=shrink(m.predict_proba(design(df))[:,1])
-    return df.sort_values('p',ascending=False)[['name','pos','p']]
+    df['boosted'] = df.index.map(lambda i: bool(boost.get(i)))
+    return df.sort_values('p',ascending=False)[['name','pos','p','boosted']]
 
 if __name__=="__main__":
     ap=argparse.ArgumentParser(); ap.add_argument("--away",required=True); ap.add_argument("--home",required=True)

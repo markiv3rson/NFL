@@ -7,6 +7,7 @@ import { fetchEvents, gameLines, tdProps } from "../../lib/poly";
 import { fetchBooks } from "../../lib/books";
 import { gradeRecent } from "../../lib/grade";
 import { syncAccount } from "../../lib/mybets";
+import { logError } from "../../lib/status";
 export const config = { maxDuration: 120 };
 
 export default async function handler(req, res) {
@@ -29,9 +30,25 @@ export default async function handler(req, res) {
     await Promise.all(open.map(async (g) => {
       const poly = await gameLines(events, g.away, g.home).catch(() => null);
       const snap = { t, src, poly: poly || null, books: books ? books[g.key] || null : undefined };
-      if (poly || snap.books) { await redis.rpush(K.snaps(season, week, g.key), JSON.stringify(snap)); lines += poly ? 1 : 0; }
+      // Bad-data guard: a line jumping this far between snapshots is almost always a feed glitch, not a real move
+      const prevRaw = await redis.lindex(K.snaps(season, week, g.key), -1), prev = prevRaw ? JSON.parse(prevRaw).poly : null;
+      if (prev && poly) {
+        const why = [];
+        if (prev.spread && poly.spread && Math.abs(prev.spread.homeSpread - poly.spread.homeSpread) >= 3) why.push(`spread jumped ${prev.spread.homeSpread} → ${poly.spread.homeSpread}`);
+        if (prev.total && poly.total && Math.abs(prev.total.line - poly.total.line) >= 4) why.push(`total jumped ${prev.total.line} → ${poly.total.line}`);
+        if (prev.ml && poly.ml && Math.abs(prev.ml.home - poly.ml.home) >= 0.25) why.push("moneyline jumped 25+ cents");
+        if (why.length) snap.suspect = `Data check failed: ${why.join(", ")}. Bet held until next refresh.`;
+      }
+      if (poly || snap.books) { await redis.rpush(K.snaps(season, week, g.key), JSON.stringify(snap)); await redis.ltrim(K.snaps(season, week, g.key), -200, -1); lines += poly ? 1 : 0; }
       const px = await tdProps(events, g.away, g.home).catch(() => null);
-      if (px) { await setJSON(K.tdpx(season, week, g.key), px); props++; }
+      if (px) {
+        // TD guard: if 3+ players' prices halve at once, keep the old prices (feed glitch like the 2+ market mix-up)
+        const old = await getJSON(K.tdpx(season, week, g.key));
+        const ask = (v) => (v == null ? null : typeof v === "number" ? v : v.ask);
+        const drops = old ? Object.keys(px).filter((q) => ask(old[q]) && ask(px[q]) < ask(old[q]) * 0.5).length : 0;
+        if (drops >= 3) await logError("snapshot", `${g.key}: ${drops} TD prices halved at once — kept previous prices`);
+        else { await setJSON(K.tdpx(season, week, g.key), px); props++; }
+      }
       if (String(req.query.kickoff || "").split(",").includes(g.key)) {
         const bk = books ? books[g.key] : ((await getJSON(K.books(season, week))) || { games: {} }).games[g.key];
         await setJSON(K.close(season, week, g.key), { t, poly: poly || null, books: bk || null });
@@ -47,10 +64,10 @@ export default async function handler(req, res) {
         await setJSON(K.close(season, week, g.key), { t: pre.t, poly: pre.poly, books: pre.books || bk || null }); closedLate++; }
     }
     const meta = (await getJSON(K.meta(season, week))) || {};
-    meta.lastSnapshot = t; meta.lastSrc = src; if (books) meta.lastBooks = t;
+    meta.lastSnapshot = t; meta.lastSrc = src; if (books) { meta.lastBooks = t; meta.credits = (await getJSON(K.books(season, week)) || {}).remaining; }
     await setJSON(K.meta(season, week), meta);
     const graded = await gradeRecent(season).catch(() => 0);
     const acct = await syncAccount().catch((e) => ({ ok: false, note: String(e) }));  // auto-sync My Bets
     res.status(200).json({ ok: true, week, upcoming: open.length, locked: games.length - open.length, lines, props, books: booksNote, closedLate, graded, account: acct.ok ? `synced ${acct.positions} positions` : acct.note });
-  } catch (err) { res.status(500).json({ ok: false, error: String(err) }); }
+  } catch (err) { await logError("snapshot", err).catch(() => {}); res.status(500).json({ ok: false, error: String(err) }); }
 }

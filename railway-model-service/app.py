@@ -43,6 +43,33 @@ def td_scorers():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
+@app.route("/retrain-td", methods=["POST", "GET"])
+def retrain_td():
+    """Weekly TD retrain: train a candidate on all completed data (current season included),
+    test both the candidate and the currently-active model on the same recent held-out weeks they
+    didn't train on, and only switch if the candidate is measurably more accurate. Every attempt is logged."""
+    try:
+        season = int(request.args.get("season", td_prob.CURRENT))
+        season_pg, _, _, _ = td_prob.player_games(season)
+        cur_weeks = sorted(season_pg.week.unique().tolist())
+        holdout = cur_weeks[-2:] if len(cur_weeks) >= 4 else []           # last 2 completed weeks, held out
+        train_weeks_seasons = [2024, 2025] + ([season] if len(cur_weeks) > 2 else [])
+        candidate = td_prob.fit_model(train_weeks_seasons)
+        cand_brier = td_prob.eval_holdout(candidate, season, holdout) if holdout else None
+        active_brier = td_prob.eval_holdout(td_prob.m, season, holdout) if holdout else None
+        went_live = False
+        if cand_brier is not None and active_brier is not None and cand_brier < active_brier - 1e-4:
+            td_prob.m = candidate
+            saved = td_prob.save_active({"model": candidate, "trained": train_weeks_seasons, "holdout_weeks": holdout,
+                                          "brier": cand_brier, "t": __import__("datetime").datetime.utcnow().isoformat()})
+            went_live = True
+        else:
+            saved = None
+        return jsonify({"ok": True, "went_live": went_live, "candidate_brier": cand_brier, "active_brier": active_brier,
+                         "holdout_weeks": holdout, "trained_on": train_weeks_seasons, "saved": bool(saved)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"ok": True, "service": "nfl-bettors-model"})
@@ -94,8 +121,8 @@ def rerun_td_probs():
             home_df = td_prob.run(nv(g["home"]), nv(g["away"]), g["total"] / 2 + g["spread"] / 2, outs, True)
             out.append({
                 "game": f"{g['away']} @ {g['home']}",
-                "away": [{"name": r["name"], "pos": r.pos, "fair": round(r.p * 100, 1)} for _, r in away_df.iterrows()],
-                "home": [{"name": r["name"], "pos": r.pos, "fair": round(r.p * 100, 1)} for _, r in home_df.iterrows()],
+                "away": [{"name": r["name"], "pos": r.pos, "fair": round(r.p * 100, 1), "boosted": bool(r.boosted)} for _, r in away_df.iterrows()],
+                "home": [{"name": r["name"], "pos": r.pos, "fair": round(r.p * 100, 1), "boosted": bool(r.boosted)} for _, r in home_df.iterrows()],
                 "excluded": outs,
             })
         except Exception as e:
