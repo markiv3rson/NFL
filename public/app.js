@@ -95,29 +95,36 @@ const GAME_STATUS = /out|doubtful|questionable/i;
 const ORDINAL = (n) => (n === 1 ? "Most likely to score" : n === 2 ? "Very likely to score" : n === 3 ? "Least likely to score" : n === 4 ? "Unlikely to score" : "Very unlikely to score");
 function prow(r, g, showGame) {
   const inj = r.injury && GAME_STATUS.test(r.injury) ? ` <span class="pill ${/out|doubt/i.test(r.injury) ? "p-r" : "p-y"}" style="padding:0 6px;font-size:10px">${esc(r.injury)}</span>` : "";
+  const cls = r.ev == null ? "" : PRICE_CLS[r.priceLabel];
   const price = r.odds == null ? dash : `<span class="price-link" data-market="${esc(r.market || (r.stale ? "Old screenshot price — not live" : ""))}">${odds(r.odds)}</span>`;
+  const verdict = r.ev == null ? '<span class="dim">no Polymarket price</span>' : `<span class="${cls}">Polymarket, ${PRICE_WORD[r.priceLabel]}${r.stale ? " (old)" : ""}</span>`;
   const snap = r.snap ? ` · snaps ${r.snap.pct}%${r.snap.trend === "up" ? ' <span class="g">↑</span>' : r.snap.trend === "down" ? ' <span class="r">↓ role shrinking</span>' : ""}` : "";
   const sub = `${showGame ? `${r.team} · ${r.game} · ` : ""}#${r.teamRank} on team${snap}`;
-  const why = r.ev == null ? '<span class="dim">No Polymarket price</span>' :
-    `<span class="${PRICE_CLS[r.priceLabel]}">${ORDINAL(r.teamRank)}, ${PRICE_WORD[r.priceLabel]}</span> · ${cPct(r.ev, 1)} value${r.stale ? " (old price)" : ""}`;
+  const rank = `${ORDINAL(r.teamRank)}${r.fair != null ? ` — model reads ${r.fair.toFixed(1)}% chance` : ""}`;
   const flags = (r.flags || []).map((f) => `<div class="y" style="font-size:11.5px">⚠ ${esc(f)}</div>`).join("");
   return `<div class="prow"><div><b style="font-weight:600">${r.player}</b><span class="pos">${r.pos}</span>${inj}<div class="s">${sub}</div></div>` +
-    `<div class="n">${r.fairOdds != null ? odds(r.fairOdds) : dash}<div class="s">${r.fair != null ? r.fair.toFixed(1) + "%" : ""} model</div></div>` +
-    `<div class="n">${price}<div class="s">Polymarket</div></div><div class="why">${why}${flags}</div></div>`;
+    `<div class="n"><span class="${cls}">Model ${r.fairOdds != null ? odds(r.fairOdds) : dash}</span></div>` +
+    `<div class="n">${price}<div class="s">${verdict}</div></div>` +
+    `<div class="why">${rank}${flags}</div></div>`;
 }
+const usable = (r) => !(r.odds != null && r.odds <= -600);   // drop broken/illiquid prices (-600 or shorter)
 function tdCard(g, id) {
   const p = g.poly || {}, hs = p.spread ? p.spread.homeSpread : null, tot = p.total ? p.total.line : null;
   const lines = hs != null && tot != null ? ` · ${g.home} ${sgn(hs)} · O/U ${tot}` : "";
   const implied = (team) => (hs == null || tot == null ? "" : `implied ${(team === g.home ? tot / 2 - hs / 2 : tot / 2 + hs / 2).toFixed(1)} pts`);
   const n = tdSort === "game2" ? 2 : tdSort === "game1" ? 1 : 99;
-  const side = (team) => { const rows = (g.td || []).filter((r) => r.team === team && r.fair != null).sort((a, b) => b.fair - a.fair).slice(0, n);
+  const side = (team) => { const rows = (g.td || []).filter((r) => r.team === team && r.fair != null && usable(r)).sort((a, b) => b.fair - a.fair).slice(0, n);
     return `<div><div class="sh" style="color:#c9c9cf">${team} <span class="s" style="font-weight:400">${implied(team)}</span></div>${rows.map((r) => prow(r, g, false)).join("") || '<div class="s">No players yet — tap ▶ Rerun model.</div>'}</div>`; };
   return `<div class="card${g.final ? " fin" : ""}" style="margin-top:10px"><div class="inner">${headButtons(g, id, lines)}<div class="teams">${side(g.away)}${side(g.home)}</div></div>${cover(g, null)}</div>`;
 }
 function renderTd() {
+  const wk = S.week ? ` — Week ${S.week}` : "";
+  $("td-header").textContent = `Anytime TD${wk}`;
   if (tdSort === "likely") {
-    const rows = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).map((r) => ({ r, g }))).filter((x) => x.r.fair != null).sort((a, b) => b.r.fair - a.r.fair);
-    $("td").innerHTML = `<div class="card" style="margin-top:10px">${rows.map((x) => prow(x.r, x.g, true)).join("") || '<div class="s">No players yet — tap ▶ Rerun model.</div>'}</div>`;
+    const rows = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).map((r) => ({ r, g })))
+      .filter((x) => x.r.fair != null && usable(x.r)).sort((a, b) => b.r.fair - a.r.fair);
+    $("td").innerHTML = rows.map((x) => `<div class="card" style="margin-top:10px">${prow(x.r, x.g, true)}</div>`).join("") ||
+      '<div class="card" style="margin-top:10px"><div class="s">No players yet — tap ▶ Rerun model.</div></div>';
     return;
   }
   $("td").innerHTML = [...S.games].sort(order).map((g, i) => tdCard(g, "d" + i)).join("");
