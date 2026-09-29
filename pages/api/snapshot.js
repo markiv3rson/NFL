@@ -72,7 +72,11 @@ export default async function handler(req, res) {
           }
         } else await redis.del(`tdrej:${season}:${week}:${g.key}`);
         if (msg) await logError("snapshot", msg);
-        if (accept) { await setJSON(K.tdpx(season, week, g.key), px); props++; }
+        if (accept) { await setJSON(K.tdpx(season, week, g.key), px); props++;
+          // TD price HISTORY (added 9/29): before, each snapshot overwrote the last, so only the latest/closing TD prices
+          // existed. Compact rows {t, p: {market: [ask, bid]}}, last 150 snapshots per game (a week uses ~35).
+          const compact = {}; for (const [q, v] of Object.entries(px)) { const o = typeof v === "number" ? { ask: v } : v; if (o && o.ask > 0) compact[q] = [o.ask, o.bid ?? null]; }
+          await redis.rpush(`tdpxhist:${season}:${week}:${g.key}`, JSON.stringify({ t, src, p: compact })); await redis.ltrim(`tdpxhist:${season}:${week}:${g.key}`, -150, -1); }
       }
       if (String(req.query.kickoff || "").split(",").includes(g.key)) {
         const bk = books ? books[g.key] : ((await getJSON(K.books(season, week))) || { games: {} }).games[g.key];

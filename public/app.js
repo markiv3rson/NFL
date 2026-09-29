@@ -23,7 +23,7 @@ function status(g) {
 }
 function headButtons(g, id, extra = "") {
   const n = (g.injuries || []).length;
-  return `<div class="top"><div><div class="gh">${g.key}${g.badge ? `<span class="badge">${g.badge}</span>` : ""}</div><div class="sub">${tm(g.kickoff)} · ${status(g)}${extra}</div>` +
+  return `<div class="top"><div><div class="gh">${matchup(g)}${g.badge ? `<span class="badge">${g.badge}</span>` : ""}</div><div class="sub">${tm(g.kickoff)} · ${status(g)}${extra}</div>` +
     (g.qb && g.qb.length && !g.final ? `<div class="warn">⚠ ${esc(g.qb.join(" · "))} · ${qbAdjusted(g) ? "model adjusted (estimate)" : "not in the model yet — it adjusts once this week's injury report lists the starter Out/Doubtful (Wed–Fri report, then the Thu/Sat reruns)"}</div>` : "") +
     (g.dataCheck ? `<div class="warn">⚠ ${esc(g.dataCheck)}</div>` : "") + `</div>` +
     `<div class="btns" style="margin-top:0;flex-shrink:0">${n ? `<button class="tag" data-drop="inj-${id}">Injuries ${n} ▾</button>` : ""}<button class="tag" data-drop="his-${id}">History ▾</button></div></div>` +
@@ -158,6 +158,9 @@ const GAME_STATUS = /out|doubtful|questionable/i;
 // clean current mark on the ESPN CDN, so those two come from a community alt-logo set instead.
 const LOGO_OVERRIDES = { WAS: "https://raw.githubusercontent.com/ajreinhard/data-viz/master/alt-logo/WAS.png", KC: "https://raw.githubusercontent.com/ajreinhard/data-viz/master/alt-logo/KC.png" };
 const logoUrl = (team) => (team ? LOGO_OVERRIDES[team] || `https://a.espncdn.com/i/teamlogos/nfl/500/${team}.png` : "");
+// Team logo next to team names on every card (game header + TD team headers). Same logo source as the TD rows.
+function tlogo(team) { return team ? `<img class="tlogo" src="${logoUrl(team)}" alt="" onerror="this.style.display='none'">` : ""; }
+function matchup(g) { return `${tlogo(g.away)}${g.away} @ ${tlogo(g.home)}${g.home}`; }
 function prow(r, g, showGame) {
   const inj = r.injury && GAME_STATUS.test(r.injury) ? ` <span class="pill ${/out|doubt/i.test(r.injury) ? "p-r" : "p-y"}" style="padding:0 6px;font-size:10px">${esc(r.injury)}</span>` : "";
   // Model's chance (big, left) and Polymarket's price (right), each with its plain label directly underneath. No verdict, no edge, no stake.
@@ -171,7 +174,7 @@ function prow(r, g, showGame) {
   const logo = r.team ? `<img class="logo" src="${logoUrl(r.team)}" alt="${r.team}">` : "";
   return `<div class="prow"><div>${logo}<b style="font-weight:600">${r.player}</b><span class="pos">${r.pos}</span>${inj}<div class="s">${sub}</div></div>` +
     `<div class="n"><span class="big">${chance}</span><span class="lbl">model's<br>chance</span></div>` +
-    `<div class="n"><span class="px">${cents}</span><span class="lbl">Polymarket<br>price${r.stale ? " (old)" : r.thin ? '<br><span class="warn-t">thin market</span>' : ""}</span></div>` +
+    `<div class="n"><span class="px">${cents}</span><span class="lbl">Polymarket<br>price${r.stale ? " (old)" : r.thin ? '<br><span class="warn-t">thin market</span>' : ""}${r.open != null && r.price != null && Math.round(r.open * 100) !== Math.round(r.price * 100) ? `<br><span class="dim">opened ${Math.round(r.open * 100)}¢</span>` : ""}</span></div>` +
     `<div class="why">${more}${flags}</div></div>`;
 }
 const usable = (r) => !(r.odds != null && r.odds <= -600 && !r.thin);   // a real -600 price is broken data; never hide a player over a thin placeholder
@@ -182,7 +185,7 @@ function tdCard(g, id) {
   const n = tdSort === "game2" ? 2 : tdSort === "game1" ? 1 : 99;
   const side = (team) => { const rows = (g.td || []).filter((r) => r.team === team && r.fair != null && usable(r)).sort((a, b) => b.fair - a.fair).slice(0, n);
     const gp = g.tdGroups && g.tdGroups[team], groups = gp ? ["RB", "WR", "TE"].filter((k) => gp[k] != null).map((k) => `${k} ${Math.round(gp[k])}%`).join(" · ") : "";
-    return `<div><div class="sh" style="color:#c9c9cf">${team} <span class="s" style="font-weight:400">${implied(team)}</span></div>${groups ? `<div class="s" style="margin-bottom:2px">Chance any one of them scores: ${groups}</div>` : ""}${rows.map((r) => prow(r, g, false)).join("") || '<div class="s">No players yet — tap ▶ Rerun model.</div>'}</div>`; };
+    return `<div><div class="sh" style="color:#c9c9cf">${tlogo(team)}${team} <span class="s" style="font-weight:400">${implied(team)}</span></div>${groups ? `<div class="s" style="margin-bottom:2px">Chance any one of them scores: ${groups}</div>` : ""}${rows.map((r) => prow(r, g, false)).join("") || '<div class="s">No players yet — tap ▶ Rerun model.</div>'}</div>`; };
   return `<div class="card${g.final ? " fin" : ""}" style="margin-top:10px"><div class="inner">${headButtons(g, id, lines)}<div class="teams">${side(g.away)}${side(g.home)}</div>${(g.tdUnmodeled || []).length ? `<div class="s" style="margin-top:6px">Also on Polymarket with a real market, <b>not in the model</b> (QBs, returners, new or dropped players — check before buying): ${g.tdUnmodeled.map((u) => `${esc(u.player)} ${Math.round(u.price * 100)}¢${u.thin ? " (thin)" : ""}`).join(" · ")}</div>` : ""}</div>${cover(g, null)}</div>`;
 }
 function renderTd() {
