@@ -30,18 +30,29 @@ def nv(team):
 
 @app.route("/td-scorers", methods=["GET"])
 def td_scorers():
-    """Rushing/receiving TD scorers per game from nflverse play-by-play (defensive/special teams TDs excluded,
-    matching Polymarket's anytime-TD rules). Used to grade TD bets on the My Bets tab."""
+    """Anytime-TD scorers per game from nflverse play-by-play: rushing, receiving and special-teams return TDs by the
+    player who scored; defensive TDs excluded (Polymarket anytime rules). Used to grade TD bets and the TD model."""
     try:
         season = int(request.args.get("season", 2026)); week = int(request.args.get("week"))
         p = td_prob.fetch_pbp(season)
         p = p[(p.season_type == "REG") & (p.week == week)]
-        out = {}
+        out, counts, first, teams = {}, {}, {}, {}
         for gid, g in p.groupby("game_id"):
             key = f"{nv(g.away_team.iloc[0])} @ {nv(g.home_team.iloc[0])}"
-            names = list(g[g.rush_touchdown == 1].rusher_player_name.dropna()) + list(g[g.pass_touchdown == 1].receiver_player_name.dropna())
-            out[key] = sorted(set(names))
-        return jsonify({"ok": True, "season": season, "week": week, "games": out})
+            # The player who actually crossed the goal line (td_player_name), not the play's rusher/receiver: on a
+            # lateral (e.g. 2026 wk3 Evans catch, lateral to Deebo Samuel for 80 yds) the old way credited the wrong man.
+            # Polymarket anytime rules: rushing, receiving AND special-teams return TDs count; defensive TDs don't.
+            t = g[(g.touchdown == 1) & g.td_player_name.notna()]
+            defensive = (t.td_team != t.posteam) & t.play_type.isin(["pass", "run", "qb_kneel", "qb_spike", "no_play"])
+            off = t[~defensive].sort_values("play_id")
+            out[key] = sorted(set(off.td_player_name))
+            # For grading the 2+ TD and first-TD numbers the site shows: TDs per player, and the game's first TD scorer
+            # (null when the first TD was defensive, which no listed player can win).
+            counts[key] = {k: int(v) for k, v in off.td_player_name.value_counts().items()}
+            teams[key] = {k: sorted(set(nv(t) for t in v)) for k, v in off.groupby("td_player_name").td_team}   # scorer -> team(s), so two "J.Smith"s on opposite teams can't both get credit
+            first_all = t.sort_values("play_id").head(1)
+            first[key] = off.td_player_name.iloc[0] if len(first_all) and not bool(defensive.loc[first_all.index].iloc[0]) else None
+        return jsonify({"ok": True, "season": season, "week": week, "games": out, "counts": counts, "first": first, "teams": teams})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
@@ -52,11 +63,12 @@ def retrain_td():
     didn't train on, and only switch if the candidate is measurably more accurate. Every attempt is logged."""
     try:
         season = int(request.args.get("season", td_prob.CURRENT))
+        td_prob.refresh_live(0)
         season_pg, _, _, _ = td_prob.player_games(season)
         cur_weeks = sorted(season_pg.week.unique().tolist())
         holdout = cur_weeks[-2:] if len(cur_weeks) >= 4 else []           # last 2 completed weeks, held out
-        train_weeks_seasons = [2024, 2025] + ([season] if len(cur_weeks) > 2 else [])
-        candidate = td_prob.fit_model(train_weeks_seasons)
+        train_weeks_seasons = [2023, 2024, 2025] + ([season] if len(cur_weeks) > 2 else [])
+        candidate = td_prob.fit_model(train_weeks_seasons, exclude=(season, holdout) if holdout else None)
         cand_brier = td_prob.eval_holdout(candidate, season, holdout) if holdout else None
         active_brier = td_prob.eval_holdout(td_prob.m, season, holdout) if holdout else None
         went_live = False
@@ -148,6 +160,8 @@ def rerun_td_probs():
     body = request.get_json(force=True)
     games = body.get("games", [])
     out = []
+    try: td_prob.refresh_live()          # fresh play-by-play / snaps / rosters / depth (was: loaded once per server start)
+    except Exception as e: print(f"[td] refresh failed, using previous data: {e}", flush=True)
     for g in games:
         try:
             outs = g.get("outs", [])

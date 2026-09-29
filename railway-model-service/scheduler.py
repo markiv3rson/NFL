@@ -8,13 +8,14 @@ Calls the site's /api/snapshot on Mark's schedule, Pacific time:
   Nightly 11:45 PM: grade finished games
 Env: SITE_URL (https://nfl-nfl9.vercel.app), SITE_LOGIN ("user:password" for the site's login).
 """
-import os, threading, time, base64, csv, io, urllib.request, urllib.parse
+import json, os, threading, time, base64, csv, io, urllib.request, urllib.parse
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 PT, ET = ZoneInfo("America/Los_Angeles"), ZoneInfo("America/New_York")
 SUNDAY = [6, 7, 8, 9, 10, 12, 15]
 WEEKDAY = [7, 12, 15, 19]
+BOOK_HOURS_WK, BOOK_HOURS_SUN = {7, 15}, {7, 9, 12, 15}   # sportsbook pulls: 2 a weekday + 4 Sunday = 16/week (~210 credits/month)
 SCHED_URL = "https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv"
 _started = False
 
@@ -38,8 +39,14 @@ def _call(path, tries=3, timeout=280):
 
 BACKUP_DIR = os.environ.get("BACKUP_DIR", "/data/backups")
 def _backup():
-    body = _call("/api/backup")
-    if not body: return
+    # Pages of ~2 MB (see pages/api/backup.js): keep asking until the cursor comes back "0", then save one file.
+    data, cursor, pages = {}, "0", 0
+    while True:
+        raw = _call(f"/api/backup?cursor={cursor}")
+        if not raw: print("[scheduler] backup page failed — nothing saved", flush=True); return
+        page = json.loads(raw); data.update(page.get("data") or {}); cursor = str(page.get("next", "0")); pages += 1
+        if cursor == "0" or pages > 200: break
+    body = json.dumps({"ok": True, "t": datetime.now(timezone.utc).isoformat(), "keys": len(data), "pages": pages, "data": data}).encode()
     try:
         os.makedirs(BACKUP_DIR, exist_ok=True)
         path = os.path.join(BACKUP_DIR, f"backup-{datetime.now(PT):%Y-%m-%d}.json")
@@ -59,11 +66,15 @@ def _retrain():
     try:
         import td_prob
         season = td_prob.CURRENT
+        # NOTE (9/28): this is the retrain that actually runs every Tuesday. It had its own copy of the logic, so the
+        # leak fix and 3-season training made in app.py's /retrain-td never reached it. Both now share these rules:
+        # fresh data first, 3 past seasons, and the 2 held-out weeks left OUT of training.
+        td_prob.refresh_live(0)
         season_pg, _, _, _ = td_prob.player_games(season)
         cur_weeks = sorted(season_pg.week.unique().tolist())
         holdout = cur_weeks[-2:] if len(cur_weeks) >= 4 else []
-        train_seasons = [2024, 2025] + ([season] if len(cur_weeks) > 2 else [])
-        candidate = td_prob.fit_model(train_seasons)
+        train_seasons = [2023, 2024, 2025] + ([season] if len(cur_weeks) > 2 else [])
+        candidate = td_prob.fit_model(train_seasons, exclude=(season, holdout) if holdout else None)
         cand_brier = td_prob.eval_holdout(candidate, season, holdout) if holdout else None
         active_brier = td_prob.eval_holdout(td_prob.m, season, holdout) if holdout else None
         went_live = cand_brier is not None and active_brier is not None and cand_brier < active_brier - 1e-4
@@ -101,7 +112,11 @@ def _loop():
             hours = SUNDAY if now_pt.weekday() == 6 else WEEKDAY
             if now_pt.hour in hours and now_pt.minute < 5:
                 tag = f"s:{now_pt:%Y-%m-%d-%H}"
-                if tag not in fired: fired.add(tag); _call("/api/snapshot?src=schedule&books=1")
+                # Sportsbook pull (3 credits of the 500/month free tier) only on some snapshots: before 9/28 every one
+                # pulled books -- 31 a week, ~405 credits a month before retries, and a slow site makes _call retry
+                # (each retry pulled again), so the month could run dry. Books are reference only; 16 a week is plenty.
+                bk = "&books=1" if (now_pt.hour in BOOK_HOURS_SUN if now_pt.weekday() == 6 else now_pt.hour in BOOK_HOURS_WK) else ""
+                if tag not in fired: fired.add(tag); _call("/api/snapshot?src=schedule" + bk, tries=2)   # 2 tries, not 3: a timeout usually means it DID run, and each retry appended a duplicate snapshot (and re-pulled books)
             nowu = datetime.now(timezone.utc)
             due = {}
             for k, game in kicks:
@@ -110,8 +125,14 @@ def _loop():
                 tag = f"k:{k:%Y%m%d%H%M}"
                 if tag not in fired: fired.add(tag); _call("/api/snapshot?src=kickoff&kickoff=" + urllib.parse.quote(",".join(glist)))
             # Automatic reruns: Tuesday 7:05 AM (new week loaded) and Sunday 9:05 AM (after final injury reports)
-            if (now_pt.weekday() == 1 and now_pt.hour == 7 or now_pt.weekday() == 6 and now_pt.hour == 9) and 5 <= now_pt.minute < 10:
-                tag = f"r:{now_pt:%Y-%m-%d-%H}"
+            # Added 9/28: Tue 7:30 (so the TD model retrained at 7:15 is actually used before Sunday; before, the Tuesday
+            # numbers came from the OLD model and stayed up all week), Thu 7:05 (Wednesday's first practice report is in
+            # the injury feed by then) and Sat 7:05 (Friday's final report). Before, Thu-Sat showed Tuesday's numbers.
+            rerun_now = ((now_pt.weekday() in (1, 3, 5) and now_pt.hour == 7 and 5 <= now_pt.minute < 10) or
+                         (now_pt.weekday() == 1 and now_pt.hour == 7 and 30 <= now_pt.minute < 35) or
+                         (now_pt.weekday() == 6 and now_pt.hour == 9 and 5 <= now_pt.minute < 10))
+            if rerun_now:
+                tag = f"r:{now_pt:%Y-%m-%d-%H}-{now_pt.minute // 30}"
                 if tag not in fired: fired.add(tag); _call("/api/rerun?src=auto")
             # Kickoff-wave reruns: one rerun per distinct kickoff time (10 AM, 1:05, 1:25, 5:20, TNF, SNF, MNF...),
             # fired ~60 min before that wave kicks off -- after teams must confirm active/inactive (~90 min before

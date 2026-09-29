@@ -117,9 +117,55 @@ def features(season, pos):
     pg = pg.join(pos, on='pid'); pg['pos']=pg.position.map(lambda v: {'FB':'RB','HB':'RB'}.get(v,v))
     pg = pg[pg.pos.isin(['RB','WR','TE'])].dropna(subset=['r_t','r_c','imp'])
     for c in ['r_rzt','r_i10','r_rzc','r_i5','r_td']: pg[c]=pg[c].fillna(0)
-    return add_snap(pg, season)
+    return add_flags(add_snap(pg, season), season, prior)
 
-FEATS=['r_rzt','r_i10','r_rzc','r_i5','r_t','r_c','r_td','imp','o_rush','o_rec','is_rb','is_te','rushx','recx','snap3','snap1','snap_miss']
+
+# ---- Research flags (added 9/28; tested 2008-25, 18 train->test windows: -0.00012 Brier, better in 13 of 18) ----
+# new_team: player's usage history comes from a different team last season. rz_shift: his red-zone looks over his
+# last 2 games minus his season rate so far. depth1: listed first at his spot on the team's depth chart before the game
+# (depth_known = 0 when no chart was found; depth1 is then 0.5). All use only information available before kickoff.
+def fetch_depth(s): return _get(f"depth_charts/depth_charts_{s}.parquet", f"depth_{s}.parquet", s==CUR)
+def depth_starters(season, game_dates=None):
+    """{(pid, week): 1/0} starter flags. Old format (<=2024): depth_team == 1 on offense. New format (2025+, dated
+    snapshots): for each game, the team's latest snapshot BEFORE the game date; a player is a starter if he is first
+    (lowest pos_rank) in any offensive slot. game_dates: DataFrame(team, week, game_date)."""
+    try: d = fetch_depth(season)
+    except Exception: return {}
+    out = {}
+    if "depth_team" in d.columns:
+        d = d[(d.game_type == "REG") & (d.formation == "Offense")].copy()
+        d["r"] = pd.to_numeric(d.depth_team, errors="coerce")
+        for (pid, wk), r in d.groupby(["gsis_id", "week"]).r.min().items():
+            if pd.notna(wk): out[(pid, int(wk))] = int(r == 1)
+        return out
+    if game_dates is None or not len(game_dates): return {}
+    d = d[d.pos_abb.isin(["QB", "RB", "WR", "TE", "FB"])].copy()
+    d["t"] = pd.to_datetime(d.dt).dt.tz_localize(None)
+    for (team, wk), gd in game_dates.groupby(["team", "week"]).game_date.first().items():
+        x = d[(d.team == team) & (d.t < pd.to_datetime(gd))]
+        if not len(x): continue
+        x = x[x.t == x.t.max()]
+        top = x.sort_values("pos_rank").groupby("pos_slot").gsis_id.first()
+        for pid in x.gsis_id.unique(): out[(pid, int(wk))] = int(pid in set(top.values))
+    return out
+def _game_dates(p):
+    g = p.drop_duplicates("game_id")[["week", "game_date", "home_team", "away_team"]]
+    return pd.concat([g.rename(columns={"home_team": "team"})[["team", "week", "game_date"]], g.rename(columns={"away_team": "team"})[["team", "week", "game_date"]]])
+def add_flags(pg, season, prior):
+    pg = pg.copy()
+    prev_team = prior.groupby("pid").team.agg(lambda x: x.mode().iloc[0]) if len(prior) else pd.Series(dtype=object)
+    pg["new_team"] = [int(pid in prev_team.index and prev_team[pid] != tm) for pid, tm in zip(pg.pid, pg.team)]
+    pg = pg.sort_values(["pid", "week"])
+    rzo = pg.rz_tgt + pg.rz_car
+    g = rzo.groupby(pg.pid)
+    pg["rz_shift"] = (g.transform(lambda x: x.shift(1).rolling(2, min_periods=1).mean()) - g.transform(lambda x: x.shift(1).expanding().mean())).fillna(0)
+    try: p = fetch_pbp(season); p = p[p.season_type == "REG"]; gd = _game_dates(p)
+    except Exception: gd = None
+    ds = depth_starters(season, gd)
+    dv = [ds.get((pid, int(wk))) for pid, wk in zip(pg.pid, pg.week)]
+    pg["depth_known"] = [int(v is not None) for v in dv]; pg["depth1"] = [0.5 if v is None else float(v) for v in dv]
+    return pg
+FEATS=['r_rzt','r_i10','r_rzc','r_i5','r_t','r_c','r_td','imp','o_rush','o_rec','is_rb','is_te','rushx','recx','snap3','snap1','snap_miss','new_team','rz_shift','depth1','depth_known']
 def design(df):
     X = df.copy(); X['is_rb']=(X.pos=='RB').astype(int); X['is_te']=(X.pos=='TE').astype(int)
     X['rushx']=(X.r_rzc+X.r_i5)*X.o_rush; X['recx']=(X.r_rzt+X.r_i10)*X.o_rec
@@ -148,12 +194,17 @@ def recency_weight(df):
         w = np.where(cur, 1.0 + 0.6 * (df.week / max(mx, 1)).clip(0, 1), 1.0)
     return w
 
-def fit_model(train_seasons):
-    """Train on the given seasons (current season's completed weeks included once it has any)."""
+def fit_model(train_seasons, exclude=None):
+    """Train on the given seasons (current season's completed weeks included once it has any).
+    exclude=(season, weeks): leave those weeks OUT of training. The weekly retrain tests the candidate on the last 2
+    weeks; before 9/28 it also TRAINED on them, so the test was rigged in the candidate's favor and it would go live
+    on a score it had effectively seen the answers to."""
     frames = []
     for s in train_seasons:
         try:
-            f = features(s, pos); f["season"] = s; frames.append(f)
+            f = features(s, pos); f["season"] = s
+            if exclude and s == exclude[0] and "week" in f.columns: f = f[~f.week.isin(exclude[1])]
+            frames.append(f)
         except Exception: pass
     tr = pd.concat(frames)
     w = recency_weight(tr)
@@ -187,7 +238,7 @@ def save_active(obj):
     except Exception: return False
 
 _active = load_active()
-m = _active["model"] if _active else fit_model([2024, 2025])
+m = _active["model"] if _active else fit_model([2023, 2024, 2025])   # 3 seasons (tested 9/28: better in 10 of 13)
 def shrink(p): return np.where(p>0.35, 0.35+0.75*(p-0.35), p)
 
 # ---- More TD markets, all derived from the calibrated anytime chance p (tested 2016-2025, out-of-sample) ----
@@ -222,6 +273,38 @@ def _live_snap():
     except Exception:
         return pd.DataFrame(columns=["team", "nn", "snap3", "snap1"])
 SNAP_NOW = _live_snap()
+def _live_flags():
+    """Live versions of the three research flags, for the NEXT game (same definitions as training)."""
+    try: prev_team = prior.groupby("pid").team.agg(lambda x: x.mode().iloc[0])
+    except Exception: prev_team = pd.Series(dtype=object)
+    x = pg.assign(rzo=pg.rz_tgt + pg.rz_car).sort_values(["pid", "week"])
+    shift = (x.groupby("pid").rzo.apply(lambda v: v.tail(2).mean()) - x.groupby("pid").rzo.mean()).to_dict()
+    starters, known = set(), set()
+    try:
+        d = fetch_depth(CUR); d = d[d.pos_abb.isin(["QB", "RB", "WR", "TE", "FB"])].copy()
+        d["t"] = pd.to_datetime(d.dt)
+        for team, g in d.groupby("team"):
+            g = g[g.t == g.t.max()]; known |= set(g.gsis_id)
+            starters |= set(g.sort_values("pos_rank").groupby("pos_slot").gsis_id.first().values)
+    except Exception: pass
+    return prev_team, shift, starters, known
+PREV_TEAM, RZ_SHIFT, DEPTH_STARTERS, DEPTH_KNOWN = _live_flags()
+# Latest official weekly roster status. Players on IR/PUP ("RES"), the exempt list ("EXE"), released ("CUT"), retired,
+# or now on ANOTHER team are dropped from the TD list. Before 9/28 the list came only from this season's play-by-play,
+# so injured-reserve players kept showing a TD chance from their early-season usage (Week 3: A.J. Brown 26.5%,
+# J.Mason 28.6%, 7 more), and those were graded as model misses. INA (a game-day inactive) is NOT dropped: it's last
+# game's designation, not this week's; this week's Out list handles that.
+UNAVAILABLE = {"RES", "EXE", "CUT", "RET"}
+def _latest_roster():
+    try:
+        r = fetch_ros(CUR).sort_values("week").drop_duplicates("gsis_id", keep="last").set_index("gsis_id")
+        return r["status"].astype(str), r["team"].astype(str)
+    except Exception:
+        return pd.Series(dtype=str), pd.Series(dtype=str)
+ROS_STATUS, ROS_TEAM = _latest_roster()
+def unavailable(pid, team):
+    st, tm = ROS_STATUS.get(pid), ROS_TEAM.get(pid)
+    return (st in UNAVAILABLE) or (tm is not None and tm != team and tm != "nan")
 try: _ros_nn = fetch_ros(CUR).sort_values("week").drop_duplicates("gsis_id", keep="last").set_index("gsis_id")["full_name"].map(_nn)
 except Exception: _ros_nn = pd.Series(dtype=object)
 def dstats(team):
@@ -237,6 +320,7 @@ def pos_rec(defteam):
 def run(team,opp,imp,outs=(),posadj=True):
     o_rush,o_rec=dstats(opp); rows=[]
     for _,r in cur[cur.team==team].iterrows():
+        if unavailable(r.pid, team): continue
         q=pr.loc[r.pid] if r.pid in pr.index else None
         def bl(a,b):
             if q is None: return r[a]/r.g
@@ -246,7 +330,18 @@ def run(team,opp,imp,outs=(),posadj=True):
     df=pd.DataFrame(rows).join(pos,on='pid'); df['pos']=df.position.map(lambda v:{'FB':'RB','HB':'RB'}.get(v,v))
     df['nn']=df.pid.map(_ros_nn); df['team']=team
     df=df.merge(SNAP_NOW,on=['team','nn'],how='left').set_index(df.index)
+    # Fallback: same team + same last name when that's unique (roster "Kenny Gainwell" vs snap file "Kenneth Gainwell")
+    if df.snap3.isna().any() and len(SNAP_NOW):
+        sn = SNAP_NOW[SNAP_NOW.team == team].assign(last=lambda x: x.nn.str.split().str[-1])
+        uniq = sn.groupby('last').filter(lambda g: len(g) == 1).set_index('last')
+        for i in df.index[df.snap3.isna()]:
+            last = str(df.at[i, 'nn']).split()[-1:] or ['']
+            if last[0] in uniq.index: df.at[i, 'snap3'] = uniq.at[last[0], 'snap3']; df.at[i, 'snap1'] = uniq.at[last[0], 'snap1']
     df['snap_miss']=df.snap3.isna().astype(int); df['snap3']=df.snap3.fillna(SNAP_FILL); df['snap1']=df.snap1.fillna(df.snap3)
+    df['new_team']=[int(pid in PREV_TEAM.index and PREV_TEAM[pid]!=team) for pid in df.pid]
+    df['rz_shift']=[float(RZ_SHIFT.get(pid,0.0)) for pid in df.pid]
+    df['depth_known']=[int(pid in DEPTH_KNOWN) for pid in df.pid]
+    df['depth1']=[(1.0 if pid in DEPTH_STARTERS else 0.0) if pid in DEPTH_KNOWN else 0.5 for pid in df.pid]
     def _norm(t): return "".join(ch for ch in t.lower() if ch.isalpha() or ch == " ")
     def _is_out(short):
         # Match pbp short name ("Bi.Robinson", "A.St.Brown") to a full name ("Bijan Robinson", "Amon-Ra St. Brown"):
@@ -287,6 +382,29 @@ def run(team,opp,imp,outs=(),posadj=True):
     df['p']=shrink(m.predict_proba(design(df))[:,1])
     df['boosted'] = df.index.map(lambda i: bool(boost.get(i)))
     return df.sort_values('p',ascending=False)[['name','pos','p','boosted']]
+
+import time as _time
+_LIVE_T = _time.time()
+def refresh_live(max_age=1800):
+    """Reload this season's data (play-by-play, snap counts, rosters, depth charts, positions) if it is older than
+    max_age seconds. Before 9/28 all of it loaded ONCE when the Railway server started and every rerun reused it --
+    for days, until the next deploy -- so new games, snap counts, IR moves and depth changes never reached the TD
+    numbers even though reruns kept running. Called at the start of every TD rerun and weekly retrain."""
+    global pos, pg, dal, games, p, prior, pr, cur, names, SNAP_NOW, _ros_nn, ROS_STATUS, ROS_TEAM
+    global PREV_TEAM, RZ_SHIFT, DEPTH_STARTERS, DEPTH_KNOWN, _LIVE_T
+    if _time.time() - _LIVE_T < max_age: return False
+    pos = load_pos()
+    pg, dal, games, p = player_games(CUR); prior, _, _, _ = player_games(CUR - 1)
+    pr = prior.groupby('pid').agg(g=('game_id','nunique'),rz=('rz_tgt','sum'),i10=('i10_tgt','sum'),rzc=('rz_car','sum'),i5=('i5_car','sum'),t=('tgt','sum'),c=('car','sum'),td=('td','sum'))
+    cur = pg.groupby(['pid','team']).agg(g=('game_id','nunique'),rz=('rz_tgt','sum'),i10=('i10_tgt','sum'),rzc=('rz_car','sum'),i5=('i5_car','sum'),t=('tgt','sum'),c=('car','sum'),td=('td','sum')).reset_index()
+    names = pd.concat([p[['receiver_player_id','receiver_player_name']].dropna().set_axis(['pid','name'],axis=1),p[['rusher_player_id','rusher_player_name']].dropna().set_axis(['pid','name'],axis=1)]).drop_duplicates('pid').set_index('pid').name
+    SNAP_NOW = _live_snap()
+    try: _ros_nn = fetch_ros(CUR).sort_values("week").drop_duplicates("gsis_id", keep="last").set_index("gsis_id")["full_name"].map(_nn)
+    except Exception: _ros_nn = pd.Series(dtype=object)
+    ROS_STATUS, ROS_TEAM = _latest_roster()
+    PREV_TEAM, RZ_SHIFT, DEPTH_STARTERS, DEPTH_KNOWN = _live_flags()
+    _LIVE_T = _time.time()
+    return True
 
 if __name__=="__main__":
     ap=argparse.ArgumentParser(); ap.add_argument("--away",required=True); ap.add_argument("--home",required=True)

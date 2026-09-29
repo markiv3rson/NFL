@@ -8,6 +8,9 @@ import { fetchBooks } from "../../lib/books";
 import { gradeRecent } from "../../lib/grade";
 import { syncAccount } from "../../lib/mybets";
 import { logError } from "../../lib/status";
+import { loadModel } from "../../lib/week";
+import { isThinMarket } from "../../lib/odds";
+import { nameMatches } from "../../lib/picks";
 export const config = { maxDuration: 120 };
 
 export default async function handler(req, res) {
@@ -26,6 +29,7 @@ export default async function handler(req, res) {
     }
     const open = games.filter((g) => !started(g));
     const events = open.length ? await fetchEvents() : [];
+    const model = open.length ? await loadModel(season, week).catch(() => null) : null;
     let lines = 0, props = 0;
     await Promise.all(open.map(async (g) => {
       const poly = await gameLines(events, g.away, g.home).catch(() => null);
@@ -42,12 +46,33 @@ export default async function handler(req, res) {
       if (poly || snap.books) { await redis.rpush(K.snaps(season, week, g.key), JSON.stringify(snap)); await redis.ltrim(K.snaps(season, week, g.key), -200, -1); lines += poly ? 1 : 0; }
       const px = await tdProps(events, g.away, g.home).catch(() => null);
       if (px) {
-        // TD guard: if 3+ players' prices halve at once, keep the old prices (feed glitch like the 2+ market mix-up)
+        // TD guard. A feed glitch (e.g. the 2+ market read as anytime) halves prices for BOTH teams at once; real news
+        // (a QB ruled out) moves ONE team. Only real markets count: a thin market's ask (see isThinMarket) jumps around
+        // with no trading, so it can't signal anything. Rules:
+        //  - fewer than 3 real-market halvings → accept
+        //  - all halvings on one team → accept (news), and log it
+        //  - both teams → reject and log the actual prices; if the SAME rejection repeats 3 snapshots in a row, accept
+        //    (a price that holds for three checks is the market, not a glitch). Before 9/28 a rejection was permanent.
         const old = await getJSON(K.tdpx(season, week, g.key));
-        const ask = (v) => (v == null ? null : typeof v === "number" ? v : v.ask);
-        const drops = old ? Object.keys(px).filter((q) => ask(old[q]) && ask(px[q]) < ask(old[q]) * 0.5).length : 0;
-        if (drops >= 3) await logError("snapshot", `${g.key}: ${drops} TD prices halved at once — kept previous prices`);
-        else { await setJSON(K.tdpx(season, week, g.key), px); props++; }
+        const rec = (v) => (v == null ? null : typeof v === "number" ? { ask: v } : v);
+        const real = (v) => v && !isThinMarket(v.ask, v.bid ?? null);
+        const drops = old ? Object.keys(px).filter((q) => { const o = rec(old[q]), n = rec(px[q]); return real(o) && real(n) && n.ask < o.ask * 0.5; }) : [];
+        let accept = true, msg = null;
+        if (drops.length >= 3) {
+          const tdModel = (model && model.td && model.td[g.key]) || {};
+          const teamOf = (q) => { for (const side of ["away", "home"]) if ((tdModel[side] || []).some((m) => nameMatches(m.name, q))) return side === "away" ? g.away : g.home; return "?"; };
+          const teams = [...new Set(drops.map(teamOf))];
+          const detail = drops.slice(0, 4).map((q) => `${q.replace(/\s*1\+.*$/i, "")} ${Math.round(rec(old[q]).ask * 100)}¢→${Math.round(rec(px[q]).ask * 100)}¢`).join(", ");
+          if (teams.length === 1 && teams[0] !== "?") msg = `${g.key}: ${drops.length} ${teams[0]} TD prices halved (one team — treated as real news, accepted): ${detail}`;
+          else {
+            const rk = `tdrej:${season}:${week}:${g.key}`, sig = drops.slice().sort().join("|");
+            const prevRej = await getJSON(rk), n = prevRej && prevRej.sig === sig ? prevRej.n + 1 : 1;
+            if (n >= 3) { await redis.del(rk); msg = `${g.key}: same ${drops.length} TD price drops held for 3 checks — accepted as real: ${detail}`; }
+            else { accept = false; await setJSON(rk, { sig, n }); msg = `${g.key}: ${drops.length} TD prices halved on both teams (check ${n} of 3) — kept previous prices: ${detail}`; }
+          }
+        } else await redis.del(`tdrej:${season}:${week}:${g.key}`);
+        if (msg) await logError("snapshot", msg);
+        if (accept) { await setJSON(K.tdpx(season, week, g.key), px); props++; }
       }
       if (String(req.query.kickoff || "").split(",").includes(g.key)) {
         const bk = books ? books[g.key] : ((await getJSON(K.books(season, week))) || { games: {} }).games[g.key];

@@ -26,7 +26,9 @@ function headButtons(g, id, extra = "") {
   return `<div class="top"><div><div class="gh">${g.key}${g.badge ? `<span class="badge">${g.badge}</span>` : ""}</div><div class="sub">${tm(g.kickoff)} · ${status(g)}${extra}</div>` +
     (g.qb && g.qb.length && !g.final ? `<div class="warn">⚠ ${esc(g.qb.join(" · "))} · ${qbAdjusted(g) ? "model adjusted (estimate)" : "model can't see this"}</div>` : "") +
     (g.dataCheck ? `<div class="warn">⚠ ${esc(g.dataCheck)}</div>` : "") + `</div>` +
-    `<div class="btns" style="margin-top:0;flex-shrink:0">${n ? `<button class="tag" data-drop="inj-${id}">Injuries ${n} ▾</button>` : ""}<button class="tag" data-drop="his-${id}">History ▾</button></div></div>` +
+    `<div class="btns" style="margin-top:0;flex-shrink:0">${n ? `<button class="tag" data-drop="inj-${id}">Injuries ${n} ▾</button>` : ""}<button class="tag" data-drop="his-${id}">History ▾</button>${(g.news || []).length ? `<button class="tag" data-drop="news-${id}">News ${g.news.length} ▾</button>` : ""}</div></div>` +
+    `<div class="drop" id="news-${id}"><div class="s" style="margin-bottom:4px">ESPN headlines, last 4 days — verify before acting (never changes the model)</div>` +
+    (g.news || []).map((a) => `<div class="drow"><span>${a.url ? `<a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.headline)}</a>` : esc(a.headline)}</span><span class="dim">${a.published ? hm(a.published) : ""}</span></div>`).join("") + `</div>` +
     `<div class="drop" id="inj-${id}"><div class="s" style="margin-bottom:4px">Official report · updated ${S.injuriesUpdated ? hm(S.injuriesUpdated) : "—"}</div>` +
     (g.injuries || []).map((x) => `<div class="drow"><span>${esc(x.name)} <span class="dim">${esc(x.pos || "")} · ${x.team}</span></span><span class="${/out/i.test(x.status) ? "r" : /doubt/i.test(x.status) ? "r" : "y"}">${esc(x.status)}</span></div>`).join("") + `</div>` +
     `<div class="drop" id="his-${id}"><div class="s" style="margin-bottom:4px">How the line moved this week (Polymarket)</div>` +
@@ -47,7 +49,7 @@ function spreadReason(g) {
     s += ` after injuries (${Math.abs(m.rawMargin) < 0.05 ? "a toss-up" : `${favOf(g, m.rawMargin)} by ${Math.abs(m.rawMargin).toFixed(1)}`} before)`;
   s += ".";
   if (m.fix && m.fix.neutral) s += " Neutral-site game, so no home-field edge is counted.";
-  if (m.fix && m.fix.div) s += " Division rematch.";
+  if (m.fix && m.fix.div) s += " Division game (these play closer than the ratings say).";
   if (m.fix && m.fix.awayBye) s += ` ${g.away} is off a bye.`;
   if (m.fix && m.fix.awayElim) s += ` ${g.away} is all but out of the playoff race.`;
   if (m.fix && m.fix.homeQbFirstStart) s += ` ${g.home}'s backup QB is making his first start.`;
@@ -98,22 +100,20 @@ function leanCell(g, kind) {
   if (p.warn && g.final) p = { ...p, warn: null };
   const reason = kind === "total" ? totalReason(g) : spreadReason(g), adj = injLine(g, kind);
   const m = g.model, wind = kind === "total" && m ? (m.outdoor && m.wind != null ? `wind ${m.wind} mph` : g.outdoor ? "outdoor" : "dome / roof") : "";
-  return wrap(`<span>${p.label}</span>` +
-    `<div class="s">${p.pct.toFixed(1)}% model chance</div>` +
+  // Protocol 3.3: calibrated cover/Under near 50% is the correct output, NOT a lean. Before 9/28 the card still printed
+  // the >50% side as the pick (e.g. "GB -1.5 · 52.1%") even when "Model sees TB by 4.6" sat right under it, because the
+  // calibration slightly fades the model. Within 2.5 pts of 50% it now says so; the tilt stays visible in small text.
+  const coin = Math.abs(p.pct - 50) < 2.5;
+  return wrap((coin ? `<span>No lean · about 50/50</span><div class="s">tilt: ${p.label} ${p.pct.toFixed(1)}%</div>` :
+    `<span>${p.label}</span><div class="s">${p.pct.toFixed(1)}% model chance</div>`) +
+    // Win chance (calibrated cal_win). Its accuracy comes from the MARKET spread; the model's own disagreement enters
+    // with a small NEGATIVE weight (tested 2006-25: when the model likes a team more than the market does, that team
+    // wins slightly LESS often than the line says). So this number can point the other way from "Model sees..." above.
+    (kind !== "total" && g.winPct != null ? `<div class="s">Win chance (market-based): ${g.home} ${Number(g.winPct).toFixed(0)}% · ${g.away} ${(100 - g.winPct).toFixed(0)}%</div>` : "") +
     (reason ? `<div class="s" style="margin-top:6px">${esc(reason)}</div>` : "") +
     (wind ? `<div class="s">${wind}</div>` : "") +
     (adj ? `<div class="s" style="margin-top:6px;border-top:0.5px solid var(--border);padding-top:6px">${esc(adj)}</div>` : "") +
     (p.warn ? `<div class="s y">${esc(p.warn)}</div>` : ""));
-}
-const SEC = { bet: ["Bet", "p-g"], held: ["Held", "p-y"], recheck: ["Recheck", "p-y"], estimate: ["Estimate", "p-n"] };
-function betCell(g, markets) {
-  if (g.started) return `<div><div class="k">Bet check (Polymarket price vs model)</div>${dash}</div>`;
-  const b = S.best.filter((x) => x.game === g.key && markets.includes(x.market)).sort((a, c) => c.ev - a.ev)[0];
-  if (!b) return `<div><div class="k">Bet check (Polymarket price vs model)</div><span class="dim">No edge</span></div>`;
-  const [label, cls] = SEC[b.section] || SEC.bet;
-  const why = b.section === "bet" ? (b.stake ? `$${b.stake}` : `$0 (${b.capped || "cap"})`) : b.section === "held" ? `held: ${b.held}` : b.section === "recheck" ? "gap too big to trust" : "no sportsbook odds yet";
-  return `<div><div class="k">Bet check (Polymarket price vs model)</div><span class="pill ${cls}">${label}</span> <span style="font-size:13px">${b.label} ${odds(b.odds)}</span>` +
-    `<div class="s">${cPct(b.ev)} edge after fees · ${why}</div></div>`;
 }
 function cover(g, pick) {
   if (!g.final) return "";
@@ -165,7 +165,7 @@ function prow(r, g, showGame) {
   // Model's chance (big, left) and Polymarket's price (right), each with its plain label directly underneath. No verdict, no edge, no stake.
   const chance = r.fair != null ? `${Math.round(r.fair)}%` : dash;
   const cents = r.price != null ? `<span class="price-link" data-market="${esc(r.market || (r.stale ? "Old screenshot price — not live" : ""))}">${Math.round(r.price * 100)}¢</span>` : dash;
-  const snap = r.snap ? ` · ${r.snap.pct}% snaps${r.snap.trend === "up" ? ' <span class="g">↑</span>' : r.snap.trend === "down" ? ' <span class="r">↓ role shrinking</span>' : ""}` : "";
+  const snap = r.snap ? ` · ${r.snap.pct}% snaps${r.snap.missed ? ` <span class="warn-t">⚠ didn't play last game (last played week ${r.snap.lastWeek}) — check status</span>` : r.snap.early ? ` <span class="warn-t">⚠ left last game early? (usually ${r.snap.avg}%) — check injury news</span>` : r.snap.trend === "up" ? ' <span class="g">↑</span>' : r.snap.trend === "down" ? ' <span class="r">↓ role shrinking</span>' : ""}` : "";
   // team code dropped from the subtitle when the logo is shown (showGame) — the logo already carries it
   const sub = `${showGame ? `${r.game} · ` : ""}#${r.teamRank} on team${snap}`;
   const more = r.fair != null && (r.two != null || r.first != null) ? `2+ TDs ${r.two != null ? Math.round(r.two) + "%" : "—"} · first TD of the game ${r.first != null ? Math.round(r.first) + "%" : "—"}` : "";
@@ -173,7 +173,7 @@ function prow(r, g, showGame) {
   const logo = r.team ? `<img class="logo" src="${logoUrl(r.team)}" alt="${r.team}">` : "";
   return `<div class="prow"><div>${logo}<b style="font-weight:600">${r.player}</b><span class="pos">${r.pos}</span>${inj}<div class="s">${sub}</div></div>` +
     `<div class="n"><span class="big">${chance}</span><span class="lbl">model's<br>chance</span></div>` +
-    `<div class="n"><span class="px">${cents}</span><span class="lbl">Polymarket<br>price${r.stale ? " (old)" : ""}</span></div>` +
+    `<div class="n"><span class="px">${cents}</span><span class="lbl">Polymarket<br>price${r.stale ? " (old)" : r.thin ? '<br><span class="warn-t">thin market</span>' : ""}</span></div>` +
     `<div class="why">${more}${flags}</div></div>`;
 }
 const usable = (r) => !(r.odds != null && r.odds <= -600);   // drop broken/illiquid prices (-600 or shorter)
@@ -185,7 +185,7 @@ function tdCard(g, id) {
   const side = (team) => { const rows = (g.td || []).filter((r) => r.team === team && r.fair != null && usable(r)).sort((a, b) => b.fair - a.fair).slice(0, n);
     const gp = g.tdGroups && g.tdGroups[team], groups = gp ? ["RB", "WR", "TE"].filter((k) => gp[k] != null).map((k) => `${k} ${Math.round(gp[k])}%`).join(" · ") : "";
     return `<div><div class="sh" style="color:#c9c9cf">${team} <span class="s" style="font-weight:400">${implied(team)}</span></div>${groups ? `<div class="s" style="margin-bottom:2px">Chance any one of them scores: ${groups}</div>` : ""}${rows.map((r) => prow(r, g, false)).join("") || '<div class="s">No players yet — tap ▶ Rerun model.</div>'}</div>`; };
-  return `<div class="card${g.final ? " fin" : ""}" style="margin-top:10px"><div class="inner">${headButtons(g, id, lines)}<div class="teams">${side(g.away)}${side(g.home)}</div></div>${cover(g, null)}</div>`;
+  return `<div class="card${g.final ? " fin" : ""}" style="margin-top:10px"><div class="inner">${headButtons(g, id, lines)}<div class="teams">${side(g.away)}${side(g.home)}</div>${(g.tdUnmodeled || []).length ? `<div class="s" style="margin-top:6px">Also on Polymarket, <b>not in the model</b> (QBs, returners, new players, or players the model dropped as IR / exempt / released — check before buying): ${g.tdUnmodeled.map((u) => `${esc(u.player)} ${Math.round(u.price * 100)}¢${u.thin ? " (thin)" : ""}`).join(" · ")}</div>` : ""}</div>${cover(g, null)}</div>`;
 }
 function renderTd() {
   const wk = S.week ? ` — Week ${S.week}` : "";
@@ -242,17 +242,27 @@ function renderModel() {
   // Tier labels (Weak/Moderate/Strong) were removed from the cards: calibrated spread/total chances sit ~50%, so every
   // pick would land in one bucket. Season record is shown plain instead.
   const seasonRec = pick("spread", res).length || pick("total", res).length
-    ? `<div class="row"><span class="dim">Spreads · Totals</span><span>${rec(pick("spread", res))} · ${rec(pick("total", res))}</span></div>` : "";
+    ? `<div class="row"><span class="dim">Spread · total tilts (~50/50)</span><span>${rec(pick("spread", res))} · ${rec(pick("total", res))}</span></div>` +
+      '<div class="s dim">Spread/total picks sit near 50% by design (the model has no measured edge there), so expect about .500. Picks before 9/28 used the old uncalibrated numbers.</div>' : "";
   const tdAll = res.flatMap((r) => r.td || []);
   const buckets = [[10, 20], [20, 30], [30, 40], [40, 50], [50, 101]].map(([lo, hi]) => {
     const xs = tdAll.filter((p) => p.fair >= lo && p.fair < hi); if (!xs.length) return "";
     const rate = xs.filter((p) => p.scored).length / xs.length * 100, mid = xs.reduce((a, p) => a + p.fair, 0) / xs.length;
-    const verdict = xs.length < 20 ? '<span class="dim">small sample</span>' : Math.abs(rate - mid) <= 5 ? '<span class="g">on target</span>' : rate < mid ? '<span class="r">too high</span>' : '<span class="y">too low</span>';
+    // "too high/low" only when the gap is bigger than chance alone would produce (2 standard errors), not just 5 points:
+    // 28% of 29 vs a 35% forecast is normal luck (±18 pts), and calling it "too high" was a false signal.
+    const se2 = 2 * Math.sqrt(mid * (100 - mid) / xs.length), gap = rate - mid;
+    const verdict = xs.length < 20 ? '<span class="dim">small sample</span>' : Math.abs(gap) <= 5 ? '<span class="g">on target</span>' :
+      Math.abs(gap) <= se2 ? '<span class="dim">within normal luck</span>' : gap < 0 ? '<span class="r">too high</span>' : '<span class="y">too low</span>';
     return `<div class="row"><span class="dim">Said ${lo}–${hi > 100 ? "+" : hi}%</span><span>scored ${rate.toFixed(0)}% of ${xs.length} · ${verdict}</span></div>`;
   }).join("");
   // TD model vs Polymarket: same graded players, scored against the closing price. Brier = average squared miss
   // (lower is better). Market chance = middle of bid/ask when there is a bid (the ask alone includes the spread).
-  const tdPx = tdAll.filter((p) => p.ask > 0 && p.ask < 1);
+  // Only REAL markets count: someone bidding within 5¢ of the ask (40% of it for cheap long shots). A thin market (e.g. 40¢ ask, 1¢ bid) has no
+  // real price, and averaging its bid/ask invented a fake "market chance" that made Polymarket look worse (Week 3:
+  // 170 of 258 players were thin; on real markets model and market were ~tied).
+  const priced = tdAll.filter((p) => p.ask > 0 && p.ask < 1);
+  const isThin = (p) => !(p.bid > 0) || p.ask - p.bid > Math.min(0.05, 0.4 * p.ask);   // same rule as lib/odds.js isThinMarket
+  const tdPx = priced.filter((p) => !isThin(p)), thinN = priced.length - tdPx.length;
   let vsMkt = "";
   if (tdPx.length) {
     const y = (p) => (p.scored ? 1 : 0), mk = (p) => (p.bid ? (p.bid + p.ask) / 2 : p.ask);
@@ -262,11 +272,19 @@ function renderModel() {
     const pl = buys.reduce((a, p) => a + (p.scored ? 1 / p.ask - 1 : -1), 0);
     const hits = buys.filter((p) => p.scored).length;
     const small = tdPx.length < 200 ? ' <span class="dim">· small sample (needs ~200+)</span>' : "";
-    vsMkt = `<div class="row"><span class="dim">Players checked</span><span>${tdPx.length}${small}</span></div>` +
+    vsMkt = `<div class="row"><span class="dim">Players checked (real markets)</span><span>${tdPx.length}${small}</span></div>` +
+      (thinN ? `<div class="row"><span class="dim">Thin markets skipped</span><span>${thinN} <span class="dim">· no real bid</span></span></div>` : "") +
       `<div class="row"><span class="dim">Accuracy (lower wins)</span><span>Model ${bM.toFixed(3)} · Polymarket ${bP.toFixed(3)} ` +
       (bM < bP ? '<span class="g">model ahead</span>' : '<span class="r">market ahead</span>') + `</span></div>` +
-      `<div class="row"><span class="dim">$1 on every model > price</span><span>${hits} of ${buys.length} scored · ${cMoney(pl)} ${buys.length ? `(${cPct(pl / buys.length)})` : ""}</span></div>` +
-      '<div class="s dim">Closing prices, before fees. The real test of whether the TD model beats Polymarket.</div>';
+      `<div class="row"><span class="dim">$1 on Yes when model &gt; price</span><span>${hits} of ${buys.length} scored · ${cMoney(pl)} ${buys.length ? `(${cPct(pl / buys.length)})` : ""}</span></div>` +
+      // The other side of the same markets: most of the model's disagreements are "less likely than the price says"
+      // (Week 3: model below market on 67 of 83 real markets), and a Yes-only check ignored all of them. Buying No
+      // costs 1 − bid. Tracked here, not recommended, until it has a real sample.
+      (() => { const no = tdPx.filter((p) => 1 - p.fair / 100 > 1 - p.bid);
+        const plNo = no.reduce((a, p) => a + (!p.scored ? 1 / (1 - p.bid) - 1 : -1), 0);
+        return `<div class="row"><span class="dim">$1 on No when model &lt; price</span><span>${no.filter((p) => !p.scored).length} of ${no.length} won · ${cMoney(plNo)} ${no.length ? `(${cPct(plNo / no.length)})` : ""}</span></div>`; })() +
+      `<div class="row"><span class="dim">Scored vs priced</span><span>${(tdPx.filter((p) => p.scored).length / tdPx.length * 100).toFixed(0)}% scored · Polymarket priced ${(tdPx.reduce((a, p) => a + mk(p), 0) / tdPx.length * 100).toFixed(0)}% · model ${(tdPx.reduce((a, p) => a + p.fair, 0) / tdPx.length).toFixed(0)}%</span></div>` +
+      '<div class="s dim">Closing prices, before fees, real markets only. The test of whether the TD model beats Polymarket.</div>';
   }
   const st = S.status, wc = S.weekCheck;
   const stOk = st && st.ok && !st.creditWarning;
@@ -287,12 +305,24 @@ function renderModel() {
     `<div class="row"><span class="dim">ROI · Avg CLV</span><span>${cPct(s.roi)} · ${cPct(s.avgClv)}</span></div>` +
     `<div class="row"><span class="dim">Open this week</span><span>${money(s.openCost)} of $200</span></div></div>` +
     `<div class="sec"><div class="sh">Week ${lw ?? S.week} recap</div>` +
-    (wk.length ? `<div class="row"><span class="dim">Spreads · Totals · Moneyline</span><span>${rec(pick("spread", wk))} · ${rec(pick("total", wk))} · ${rec(pick("ml", wk))}</span></div>` : '<div class="s">No finished games graded yet.</div>') +
-    `<div class="row"><span class="dim">Week ${S.week} loaded</span><span>${wc.games} games · lines ${wc.withLines}/${wc.games} · model ${wc.modelRun ? '<span class="g">✓</span>' : '<span class="y">not run yet</span>'}</span></div></div>` +
+    (wk.length ? `<div class="row"><span class="dim">Tilts: spreads · totals · moneyline</span><span>${rec(pick("spread", wk))} · ${rec(pick("total", wk))} · ${rec(pick("ml", wk))}</span></div>` : '<div class="s">No finished games graded yet.</div>') +
+    `<div class="row"><span class="dim">Week ${S.week} loaded</span><span>${wc.games} games · lines ${wc.withLines}/${wc.games} · model ${wc.modelRun ? '<span class="g">✓</span>' : '<span class="y">not run yet</span>'}</span></div>` +
+    ((wc.watch || []).length ? `<div class="s" style="margin-top:6px"><b class="y">Watchdog</b>${wc.watch.map((w) => `<div class="warn">⚠ ${esc(w)}</div>`).join("")}</div>` : '<div class="s dim" style="margin-top:6px">Watchdog: nothing missing or stale.</div>') + `</div>` +
     `<div class="sec"><div class="sh">Season record</div>${seasonRec || '<div class="s">No graded picks yet.</div>'}` +
-    `<div class="row"><span class="dim">Moneyline</span><span>${rec(pick("ml", res))}</span></div>` +
-    `<div class="row"><span class="dim">Blend (logged)</span><span>Spreads ${rec(pick("blendSpread", res))} · Totals ${rec(pick("blendTotal", res))}</span></div></div>` +
+    `<div class="row"><span class="dim">Moneyline (market-based)</span><span>${rec(pick("ml", res))}</span></div>` +
+    `</div>` +
     `<div class="sec"><div class="sh">TD model check</div>${buckets || '<div class="s">Fills in as games go final.</div>'}</div>` +
+    // Top picks: the model's #1 and #2 per team each game, scored vs how many the model itself expected to hit.
+    // A 40% pick misses 6 times in 10, so "most picks missed" is normal; the test is actual vs expected.
+    (() => { const byTeam = {}; for (const r of res) for (const p of r.td || []) (byTeam[r.game + "|" + p.team] = byTeam[r.game + "|" + p.team] || []).push(p);
+      const top = (n) => Object.values(byTeam).flatMap((ps) => ps.slice().sort((a, b) => b.fair - a.fair).slice(0, n));
+      const line = (lab, L) => L.length ? `<div class="row"><span class="dim">${lab}</span><span>${L.filter((p) => p.scored).length} of ${L.length} scored · model expected ${(L.reduce((a, p) => a + p.fair, 0) / 100).toFixed(1)}</span></div>` : "";
+      const t1 = top(1), t2 = top(2);
+      const all = Object.values(byTeam).flat();
+      const two = all.filter((p) => p.two != null), ftd = all.filter((p) => p.ftd != null);
+      const extra = (two.length ? `<div class="row"><span class="dim">2+ TDs</span><span>${two.filter((p) => p.twoHit).length} players did it · model expected ${(two.reduce((a, p) => a + p.two, 0) / 100).toFixed(1)}</span></div>` : "") +
+        (ftd.length ? `<div class="row"><span class="dim">First TD of the game</span><span>${ftd.filter((p) => p.ftdHit).length} listed players scored first · model expected ${(ftd.reduce((a, p) => a + p.ftd, 0) / 100).toFixed(1)}</span></div>` : "");
+      return t1.length ? `<div class="sec"><div class="sh">Top TD picks</div>${line("#1 per team", t1)}${line("Top 2 per team", t2)}${extra}</div>` : ""; })() +
     `<div class="sec"><div class="sh">TD model vs Polymarket</div>${vsMkt || '<div class="s">Fills in as games go final (needs closing TD prices).</div>'}</div>` +
     `<div class="fold" data-drop="miss"><span>Miss finder</span><span>▾</span></div>` +
     `<div class="drop" id="miss">${(S.missFinder && S.missFinder.misses && S.missFinder.misses.length) ?

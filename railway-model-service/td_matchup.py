@@ -44,7 +44,7 @@ def load(season):
     pbp = pbp[pbp.season_type == "REG"].copy()
     ros = fetch(f"weekly_rosters/roster_weekly_{season}.parquet")
     ros = ros.sort_values("week").drop_duplicates("gsis_id", keep="last")
-    pos = ros.set_index("gsis_id")[["position", "team", "full_name"]]
+    pos = ros.set_index("gsis_id")[["position", "team", "full_name", "status"]]
     return pbp, pos
 
 
@@ -128,13 +128,16 @@ def prior_rz(season, pos):
     return (rz / g).round(2).to_dict()
 
 
+TD_POS_STATUS = {}
 def td_rank(u, d, outs, prior, n=8):
     """Ranking aid (NOT a probability).
     Rush side: red-zone / inside-5 carries, weighted by rush TDs the opponent allows.
     Receiving side: red-zone / inside-10 targets, weighted by receiving TDs the opponent allows at that position."""
     if u.empty:
         return u
-    u = u[~u.player.isin(outs) & u.pos.isin(["RB", "WR", "TE", "QB"])].copy()
+    # Also drop players on IR / exempt / released / retired per the latest weekly roster (same rule as td_prob.py, 9/28)
+    st = u.pid.map(lambda i: TD_POS_STATUS.get(i))
+    u = u[~u.player.isin(outs) & u.pos.isin(["RB", "WR", "TE", "QB"]) & ~st.isin(["RES", "EXE", "CUT", "RET"])].copy()
     a = d["allowed"]; g = max(d["games"], 1)
     rush_pg = len(a[a.type == "rush"]) / g
     rec_pg = {p: len(a[(a.type == "rec") & (a.pos == p)]) / g for p in ["RB", "WR", "TE", "QB"]}
@@ -182,6 +185,7 @@ def main():
     P("Source: nflverse public play-by-play + weekly rosters. Ranking scores are NOT probabilities.\n")
     if outs:
         P(f"Excluded as OUT: {', '.join(outs)}\n")
+    global TD_POS_STATUS; TD_POS_STATUS = pos["status"].to_dict()
     prior = prior_rz(a.season, pos)
     res = {}
     for off, dfn in [(a.away, a.home), (a.home, a.away)]:

@@ -269,3 +269,90 @@ divisional, bye, special teams, success rate, backup QB):
 - Verified: every .py compiles under the Railway-pinned versions; CLI output calibrated; /rerun-game-lines and
   /rerun-td-probs return 200; every .js passes node --check; full `next build` of the repo plus this package succeeds;
   all three render harnesses pass (Record tab numbers checked by hand).
+
+## Full audit, round 2 (9/28 evening, after the first upload went live)
+Found from the live site and the Week 3 export (nfl-bettors-results.json). Site files unless marked [Railway].
+- TD self-correction (lib/calibration.js): one noisy week could cut a 35-45% player by 30% and made numbers jump at
+  bucket edges. Now shrunk toward "no change" (150 imaginary players) and interpolated. Old tables ignored until rebuilt.
+- Thin markets (lib/odds.js isThinMarket, used everywhere): a market only counts if someone bids within 5¢ of the ask
+  (40% of it for long shots). Week 3: 175 of 258 priced players were thin; they faked a +83% "model beats Polymarket".
+  Real markets: model 0.194 vs Polymarket 0.200 Brier, $1 Yes bets 3 of 8, +$0.62. Thin markets: no CLV, no money bet,
+  "thin market" tag on the TD tab. Record tab also tracks the No side and scored-vs-priced.
+- CLV: TD legs matched on first + last name (was last word only, so "Jr." matched anyone); thin closing prices skipped.
+- TD price guard (snapshot.js): one-team drops = real news (accepted); both-team drops rejected up to 3 checks, then
+  accepted; logs actual prices. Before, a rejection was permanent (PHI @ CHI frozen from Sunday).
+- Bet sizing (lib/week.js): weekly $200 cap now counts down across bets (each bet was capped separately); same-team
+  dedupe only among bettable bets; correlation rule covers any player TD + his team's side (protocol 2.6).
+- Removed: Blend (logged), dead "edge after fees" code (EV never included fees).
+- TD calibration verdicts: "too high/low" only beyond 2 standard errors ("within normal luck" otherwise).
+- [Railway] TD scorers: credited to the player who actually scored (td_player_name; lateral case Evans→Samuel) and
+  special-teams return TDs count (Polymarket anytime rules; defensive TDs don't). Week 3 anytime: 58.3 expected, 58 actual.
+- [Railway] td_prob.py drops players on IR/PUP, exempt list, released, retired or now on another team (latest weekly
+  roster). Week 3 had 9 such players graded, incl. A.J. Brown 26.5% and J.Mason 28.6%. Snap-share join gets a
+  same-team + last-name fallback (Kenny/Kenneth Gainwell).
+- Injury reports: every decision uses only that week's report (Tue-Wed used last week's Out list for the new week).
+- QB/role logic (lib/snaps.js): names compared without suffixes/punctuation (Penix Jr., D.J. Moore). 64 of 1,468
+  injured players in 2025 never matched before.
+- Neutral sites (lib/wind.js, games.js): schedule's location field + all 8 2026 venues. Before, only Brazil was
+  known, so London (Wk 4 IND @ WAS), Paris, Madrid, Munich, Mexico City got a 2.2-pt home edge and the home city's wind.
+- Turf from the schedule's surface field (latest played game wins); LAC was missing from the hand list.
+- Game Lines cards now show the calibrated win chance, labeled "market-based". Checked 9/28 (4,234 games, 2006-25):
+  its accuracy is the MARKET spread's; adding the model's gap improves Brier only 0.20834 -> 0.20825, and the gap's
+  weight is NEGATIVE (95% range -0.062..-0.002): when the model likes a team more than the market, that team wins
+  slightly less often. So the win chance can point opposite to "Model sees X by N" -- that is the data, not a bug.
+  Earlier notes calling win % "the one model number with real signal" overstated it: the signal is the market's.
+- [Railway] Weekly TD retrain: holdout weeks are now excluded from training (the test was rigged: 0.1394 vs honest
+  0.1403 on 2025, 9x the switch threshold).
+- [Railway] Reruns added Tue 7:30 (after retrain), Thu 7:05, Sat 7:05 (after practice/final injury reports).
+- currentWeek: a game with no score 2+ days after kickoff no longer freezes the site on that week.
+- Backup: paged (~2 MB per request) and pipelined; the single reply likely exceeded Vercel's 4.5 MB response limit.
+  Still needs a Railway volume at /data for backups AND the retrained TD model to survive redeploys.
+- Miss finder: "high-confidence TD misses" now compares misses to what the model itself expected (Week 3: 12 of 22
+  missed vs ~12.6 expected, i.e. normal, so no longer flagged); QB-change pattern needs 3+ games and shows the count.
+- Status panel: database cap shown as 256 MB (Upstash free tier), not 30 MB. The real limit to watch is 500K
+  commands/month (Upstash dashboard → Usage).
+- [Railway] Success-rate term sign fix (fair_line.py): the edge added each defense's "success rate allowed" with the
+  wrong sign (a home defense allowing MORE success raised the home edge). Tested 2006-25, 4,243 games: offense-only
+  edge wins out-of-sample (joint MAE 10.620 -> 10.606, 12 of 20 seasons); refit ST 4.212, SR 30.394, bye -2.189. On the
+  real-code 2021-25 backtest it is neutral (10.159 -> 10.158, 2 of 5 seasons) -- kept because the old form was wrong
+  in direction and the 20-season test favors the fix.
+- Game Lines / Totals cards: a calibrated cover/Under within 2.5 pts of 50% now reads "No lean · about 50/50" with the
+  small tilt shown underneath (protocol 3.3). Before, the >50% side printed as a pick even when it pointed opposite to
+  "Model sees ..." (the calibration slightly fades the model's own gap).
+- fair_line.py CLI: new --neutral flag (London etc.).
+- Record tab "Top TD picks": #1 and Top 2 per team scored vs what the model expected (Week 3: 11 of 30 vs 12.9;
+  18 of 60 vs 22.3), plus 2+ TDs (9 vs 9.9) and first TD of the game (15 vs 13.6). [Railway] /td-scorers now also
+  returns TD counts per player and the game's first TD scorer (null if the first TD was defensive).
+- Record labels: spread/total record shown as "tilts (~50/50)", moneyline as "market-based".
+- td_matchup.py drops IR / exempt / released / retired players too (same rule as td_prob.py).
+- TD rows: "⚠ left last game early? (usually N%) — check injury news" when a regular (50%+ snaps) played under half
+  his usual share last game. Official injury status doesn't exist until Wednesday; after Week 3 this flags Achane
+  (5% vs 81%), Justin Jefferson (12% vs 96%), Jalen Coker and Terrance Ferguson. Flag only; the % is unchanged.
+
+## Round 3 (9/28 late): TD research flags + 15 faults
+- TD model: 3 research flags (depth-chart starter, red-zone role shift, new team) + trained on 3 seasons. Held-out
+  Brier vs old: 2023->24 -0.00011, 2024->25 -0.00031, 2022-23->24 -0.00016, 2023-24->25 -0.00041 (better in all 4).
+  Depth charts: old weekly format (<=2024) depth_team==1; new dated format (2025+) = first in any offensive slot in the
+  team's last snapshot before the game. FEATS grew 17 -> 21, so a saved model is ignored and refit on first start.
+- [Railway] td_prob.refresh_live(): this season's data reloads on every TD rerun (max every 30 min) and before the
+  retrain. Before, it loaded once per server start and every rerun reused it for days.
+- [Railway] scheduler._retrain (the one that runs Tuesdays) had its own copy of the retrain: now fresh data, 3 seasons,
+  hold-out weeks excluded from training -- same rules as /retrain-td.
+- Grading waits for play-by-play (MNF/late games were saved without TD results and never revisited).
+- Doubtful = out for TD (rows removed, red-zone share goes to teammates).
+- TD rows: "didn't play last game (last played week N)"; "left last game early? (usually N%)".
+- [Railway] /td-scorers returns scorer teams; TD credit and 2+ counts check the team.
+- My Bets uses the calibrated TD % the tab showed.
+- [Railway] Sportsbook pulls 16/week (was every snapshot, ~405 of 500 credits/month); scheduled snapshots retry
+  twice, not three times (retries duplicated snapshots).
+- Status turns yellow only for problems in the last 24 h. New Watchdog (Record tab) lists missing/stale data.
+- TD cards list Polymarket TD players the model doesn't cover (QBs, returners, exempt/IR players still priced).
+- News dropdown: ESPN headlines (last 4 days, both teams), tier 4, verify-only, never changes a number.
+- td_matchup.py (local research tool, not used on Railway) needs `pip install tabulate` to print its tables.
+- Round 4 math fixes: first-TD % pool (tab and grading) = model's top 14 per team, not just shown/graded rows;
+  "any RB/WR/TE scores" recomputed from calibrated numbers; TD EV / price label / stake / rank re-run after
+  calibration; spread/total calibrated % and win % shifted to the CURRENT (or closing) line instead of the last
+  rerun's line; fair_line.py CLI adds the dome bonus only with --dome.
+- Calibration re-checked on the new 21-feature TD model (held-out 2024+2025, 9,036 player-games): the existing
+  shrink (above 35%: 0.35 + 0.75x) still beats refits out-of-sample (2025: 0.15681 vs 0.15699). 20-40% players score
+  2-3 pts more than predicted -- the live weekly self-correction absorbs that. No change.

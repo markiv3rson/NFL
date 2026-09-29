@@ -33,7 +33,16 @@ export default async function handler(req, res) {
       return (new Date(kickoff) - new Date(last.kickoff)) / 86400000;
     };
     // 2026 current-season home surface (turf vs grass), from this week's own schedule data when present.
-    const TURF_TEAMS = new Set(["NO","BUF","LA","NE","IND","NYJ","SEA","ATL","MIN","DET","CIN","DAL","HOU","NYG"]);
+    // Turf: the schedule's surface field, preferring the latest PLAYED game at that home stadium (Buffalo's new 2026
+// stadium shows grass for played games but a stale "a_turf" for future ones). Neutral sites: surface unknown -> no
+// turf term. Fallback list (LAC was missing before 9/28; SoFi is turf for both LA teams).
+    const TURF_TEAMS = new Set(["NO","LA","LAC","NE","IND","NYJ","SEA","ATL","MIN","DET","CIN","DAL","HOU","NYG"]);
+    const isTurf = (g) => {
+      if (isNeutral(g)) return false;
+      const played = seasonRows.filter((r) => r.home === g.home && r.final && r.surface && r.stadium === g.stadium).sort((a, b) => (a.kickoff < b.kickoff ? 1 : -1))[0];
+      const s = (played && played.surface) || g.surface;
+      return s ? !/grass/i.test(s) : TURF_TEAMS.has(g.home);
+    };
     const books = (await getJSON(K.books(season, week))) || { games: {} };
     const payload = await Promise.all(games.map(async (g) => {
       const last = [...(await history(season, week, g.key))].reverse().find((s) => s.poly) || {};
@@ -41,9 +50,10 @@ export default async function handler(req, res) {
       const hs = p.spread ? p.spread.homeSpread : b.spread ? b.spread.homeSpread : null;
       const total = p.total ? p.total.line : b.total ? b.total.line : null;
       const w = await windAtKickoff(g), vn = venue(g);
-      const outs = [...(injuries[g.away] || []), ...(injuries[g.home] || [])].filter((x) => /^out$/i.test(x.status)).map((x) => x.name);
+      const outs = [...(injuries[g.away] || []), ...(injuries[g.home] || [])].filter((x) => Number(x.week) === Number(week) && /^(out|doubtful)$/i.test(x.status)).map((x) => x.name);   // Doubtful too: 99% sit, and their red-zone share goes to teammates
+      // (THIS week's report only — before 9/28 a Tuesday rerun dropped last week's Out players from the new week's TD list)
       return { away: g.away, home: g.home, key: g.key, wind: w.wind, outdoor: w.outdoor && w.wind != null,
-        dome: vn ? !vn.outdoor : null, neutral: isNeutral(g), turf: TURF_TEAMS.has(g.home),
+        dome: vn ? !vn.outdoor : null, neutral: isNeutral(g), turf: isTurf(g),
         restAwayDays: g.kickoff ? restDays(g.away, g.kickoff) : null,
         spread: hs == null ? null : -hs, total, outs };
     }));

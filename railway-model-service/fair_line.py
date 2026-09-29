@@ -14,7 +14,7 @@ Method (public nflverse play-by-play):
   4b. Divisional games -0.9 margin / -1.9 total (familiarity -> lower-scoring, closer games).
   4c. Turf (current-season home surface) +0.9 pts on total (weaker evidence, kept -- still net positive combined with the rest).
   4d. Special teams EPA differential (FG/punt/kickoff, season-to-date): +3.77 margin per 1.0 EPA/play edge (t=3.42).
-  4e. Success rate edge (down/distance/field-position-adjusted efficiency, season-to-date, on top of the plain-EPA
+  4e. Success rate edge (offense only, 9/28 fix): +30.39 margin per 1.0 edge in season-to-date offensive success rate.
       power ratings): +14.99 margin per 1.0 edge (t=6.23) -- the strongest single finding in the whole project.
   4f. Road team on a bye (13+ days rest): flat -2.06 margin (t=-2.61). Replaces an earlier bye+travel-distance version --
       that one and a plain bye flag turned out to measure the same thing (they lose significance combined), and the
@@ -51,7 +51,9 @@ CACHE = os.path.expanduser("~/.nfl_cache")
 SD_MARGIN, SD_TOTAL, PRIOR_W, ALPHA, WIND_COEF = 13.0, 13.3, 0.2, 4.0, -0.267
 HFA_FIX, DOME_PTS, PACE_COEF = 2.2, 2.59, 0.12
 DIV_MARGIN, DIV_TOTAL, TURF_TOTAL = -0.905, -1.9, 0.9
-ST_DIFF_COEF, SR_EDGE_COEF, BYE_AWAY_COEF = 3.769, 14.994, -2.061
+# Refit 9/28 with the success-rate term corrected (see predict): special teams 4.212, success-rate edge 30.394,
+# away-off-bye -2.189 (divisional unchanged at -0.904). Joint LOSO 2006-25 margin MAE 10.620 -> 10.606, 12 of 20 seasons.
+ST_DIFF_COEF, SR_EDGE_COEF, BYE_AWAY_COEF = 4.212, 30.394, -2.189
 TO_EDGE_COEF, ELIM_AWAY_COEF = 0.439, 3.167   # turnover-margin edge (per game, prior games) / road team effectively eliminated
 HOME_QB_FIRST_START, AWAY_QB_FIRST_START = -6.29, 4.46   # margin effect; home team's own backup vs. away team's own backup, first career start with that team this season.
 # Corrected DOWN from the solo-fit values (-7.69 / +5.71): about 44% of first-starts also trip injury_adj.py's QB1-out
@@ -100,7 +102,11 @@ def predict(M, away, home, adj=None, neutral=False, rest_away_days=None, home_qb
     if away in st and home in st: margin_extra += ST_DIFF_COEF * (st[home] - st[away])
     sr = M.get("success_rate") or {}
     if away in sr and home in sr and None not in sr[away].values() and None not in sr[home].values():
-        sr_edge = (sr[home]["off"] - sr[away]["def"]) - (sr[away]["off"] - sr[home]["def"])
+        # OFFENSE-ONLY success-rate edge. The old formula (home off - away def) - (away off - home def) added each
+        # team's defensive "success rate allowed" with the wrong sign (a home defense allowing MORE success raised the
+        # home edge). Tested 2006-25 (4,243 games): separately, defense-allowed terms carry little (their EPA side is
+        # already in the ridge ratings), and offense-only beats the old mix out-of-sample (joint MAE 10.620 -> 10.606).
+        sr_edge = sr[home]["off"] - sr[away]["off"]
         margin_extra += SR_EDGE_COEF * sr_edge
     if not neutral and rest_away_days is not None and rest_away_days >= 13:
         margin_extra += BYE_AWAY_COEF
@@ -271,13 +277,16 @@ def main():
     ap.add_argument("--adj", default=""); ap.add_argument("--wind", type=float); ap.add_argument("--outdoor", action="store_true")
     ap.add_argument("--spread", type=float, help="market home favored margin, e.g. 5.5"); ap.add_argument("--total", type=float)
     ap.add_argument("--backtest", type=int)
+    ap.add_argument("--dome", action="store_true", help="indoor / closed roof: +2.59 on the total")
+    ap.add_argument("--neutral", action="store_true", help="neutral site (London, Paris...): no home-field edge")
     a = ap.parse_args()
     if a.backtest: backtest(a.backtest); return
     adj = {k: float(v) for k, v in (x.split("=") for x in a.adj.split(",") if x)}
     M, cur = build(a.season)
-    ph, pa = predict(M, a.away, a.home, adj); margin = ph - pa
+    ph, pa = predict(M, a.away, a.home, adj, neutral=a.neutral); margin = ph - pa
     total, wd = wind_adj(ph + pa, a.wind, a.outdoor)
-    ex, dm, pc = extra_total(M, a.away, a.home, not a.outdoor, None); total += ex
+    # Dome only with --dome (before 9/28 every game without --outdoor got the indoor +2.6, e.g. London +2.6 by mistake)
+    ex, dm, pc = extra_total(M, a.away, a.home, bool(a.dome), None); total += ex
     ph, pa = ph + (wd + ex) / 2, pa + (wd + ex) / 2
     p_home = cal_win(margin, a.spread)
     print(f"{a.away} @ {a.home} ({a.season}, weeks played {int(cur.week.max())}) — Estimate")
