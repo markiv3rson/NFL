@@ -4,6 +4,7 @@ Calls the site's /api/snapshot on Mark's schedule, Pacific time:
   Sunday:  6, 7, 8, 9, 10 AM, 12 PM, 3 PM   (Polymarket + sportsbooks)
   Mon-Sat: 7 AM, 12 PM, 3 PM, 7 PM           (Polymarket + sportsbooks)
   Every kickoff: 3 minutes before -> closing-line snapshot (Polymarket; books reused)
+  Every distinct kickoff wave: ~60 min before -> model rerun (catches that wave's active/inactive news)
   Nightly 11:45 PM: grade finished games
 Env: SITE_URL (https://nfl-nfl9.vercel.app), SITE_LOGIN ("user:password" for the site's login).
 """
@@ -112,6 +113,13 @@ def _loop():
             if (now_pt.weekday() == 1 and now_pt.hour == 7 or now_pt.weekday() == 6 and now_pt.hour == 9) and 5 <= now_pt.minute < 10:
                 tag = f"r:{now_pt:%Y-%m-%d-%H}"
                 if tag not in fired: fired.add(tag); _call("/api/rerun?src=auto")
+            # Kickoff-wave reruns: one rerun per distinct kickoff time (10 AM, 1:05, 1:25, 5:20, TNF, SNF, MNF...),
+            # fired ~60 min before that wave kicks off -- after teams must confirm active/inactive (~90 min before
+            # kickoff) but with enough buffer that the news has settled. Catches every wave, not just the 9:05 AM
+            # Sunday rerun, which only lines up with the 10 AM games.
+            for k in {k for k, _ in kicks if k - timedelta(minutes=65) <= nowu < k - timedelta(minutes=55)}:
+                tag = f"rw:{k:%Y%m%d%H%M}"
+                if tag not in fired: fired.add(tag); _call("/api/rerun?src=wave")
             # Weekly TD retrain: Tuesday 7:15 AM, after the rerun above has the new week's data loaded.
             if now_pt.weekday() == 1 and now_pt.hour == 7 and 15 <= now_pt.minute < 20:
                 tag = f"rt:{now_pt:%Y-%m-%d}"

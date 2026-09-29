@@ -1,12 +1,13 @@
 // Reruns BOTH models on Railway for every game that hasn't kicked off, using:
 // the latest Polymarket spread/total (sportsbook consensus if Polymarket has none),
 // players listed OUT on the official injury report, and the kickoff wind forecast (outdoor only).
-import { SEASON, currentWeek, loadGames, started } from "../../lib/games";
+import { SEASON, currentWeek, loadGames, loadSeason, started } from "../../lib/games";
 import { getRedis, getJSON, setJSON, K } from "../../lib/redis";
 import { logError } from "../../lib/status";
 import { history } from "../../lib/week";
 import { loadInjuries } from "../../lib/injuries";
-import { windAtKickoff } from "../../lib/wind";
+import { windAtKickoff, venue, isNeutral } from "../../lib/wind";
+import { loadSnaps, qbFirstStart } from "../../lib/snaps";
 export const config = { maxDuration: 300 };
 
 async function post(base, path, body) {
@@ -22,18 +23,39 @@ export default async function handler(req, res) {
     const all = await loadGames(season, week), games = all.filter((g) => !started(g));
     if (!games.length) return res.status(200).json({ ok: true, week, rerun: 0, note: "every game has started — nothing to rerun" });
     const injuries = await loadInjuries().catch(() => ({}));
+    const snaps = await loadSnaps().catch(() => ({}));
+    // Rest days: days since a team's last game before THIS kickoff (across the full season, not just this week).
+    const seasonRows = await loadSeason(season);
+    const restDays = (team, kickoff) => {
+      const prior = seasonRows.filter((r) => (r.away === team || r.home === team) && r.kickoff && new Date(r.kickoff) < new Date(kickoff));
+      if (!prior.length) return null;
+      const last = prior.reduce((a, b) => (new Date(a.kickoff) > new Date(b.kickoff) ? a : b));
+      return (new Date(kickoff) - new Date(last.kickoff)) / 86400000;
+    };
+    // 2026 current-season home surface (turf vs grass), from this week's own schedule data when present.
+    const TURF_TEAMS = new Set(["NO","BUF","LA","NE","IND","NYJ","SEA","ATL","MIN","DET","CIN","DAL","HOU","NYG"]);
     const books = (await getJSON(K.books(season, week))) || { games: {} };
     const payload = await Promise.all(games.map(async (g) => {
       const last = [...(await history(season, week, g.key))].reverse().find((s) => s.poly) || {};
       const p = last.poly || {}, b = books.games[g.key] || {};
       const hs = p.spread ? p.spread.homeSpread : b.spread ? b.spread.homeSpread : null;
       const total = p.total ? p.total.line : b.total ? b.total.line : null;
-      const w = await windAtKickoff(g);
+      const w = await windAtKickoff(g), vn = venue(g);
       const outs = [...(injuries[g.away] || []), ...(injuries[g.home] || [])].filter((x) => /^out$/i.test(x.status)).map((x) => x.name);
       return { away: g.away, home: g.home, key: g.key, wind: w.wind, outdoor: w.outdoor && w.wind != null,
+        dome: vn ? !vn.outdoor : null, neutral: isNeutral(g), turf: TURF_TEAMS.has(g.home),
+        restAwayDays: g.kickoff ? restDays(g.away, g.kickoff) : null,
         spread: hs == null ? null : -hs, total, outs };
     }));
-    const lines = await post(base, "/rerun-game-lines", { games: payload.map((x) => ({ away: x.away, home: x.home, wind: x.wind, outdoor: x.outdoor })) });
+    // Injury adjustment only uses THIS week's official report (a stale list from last week must never move a lean).
+    const injFor = (t) => (injuries[t] || []).filter((x) => Number(x.week) === Number(week)).map((x) => ({ name: x.name, pos: x.pos, status: x.status }));
+    const lines = await post(base, "/rerun-game-lines", { games: payload.map((x) => ({ away: x.away, home: x.home, wind: x.wind, outdoor: x.outdoor,
+      spread: x.spread, total: x.total, dome: x.dome, neutral: x.neutral, turf: x.turf, restAwayDays: x.restAwayDays, week,
+      // Backup QB making his first start this week (tested 2016-25, margin effect): homeQbFirstStart -6.29 pts,
+      // awayQbFirstStart +4.46 pts, both split evenly across each team's own score on the model service side.
+      homeQbFirstStart: !!qbFirstStart(snaps[x.home], injFor(x.home), week),
+      awayQbFirstStart: !!qbFirstStart(snaps[x.away], injFor(x.away), week),
+      inj: { away: injFor(x.away), home: injFor(x.home) } })) });
     const tdIn = payload.filter((x) => x.spread != null && x.total != null);
     const td = tdIn.length ? await post(base, "/rerun-td-probs", { games: tdIn.map((x) => ({ away: x.away, home: x.home, spread: x.spread, total: x.total, outs: x.outs })) }) : { results: [] };
     const store = (await getJSON(K.model(season, week))) || { games: {}, td: {} };
@@ -42,13 +64,23 @@ export default async function handler(req, res) {
     (lines.results || []).forEach((r, i) => {
       const x = payload[i];
       if (r.error) return errors.push(`${x.key}: ${r.error}`);
-      store.games[x.key] = { homeMargin: -r.homeSpread, total: r.total, homeWinPct: r.homeWinPct, wind: x.wind, outdoor: x.outdoor, runAt, source: "rerun" };
+      // homeMargin / total / homeWinPct now include the injury adjustment (Estimate); rawMargin / rawTotal / rawWinPct are the plain
+      // model, kept so both can be graded against each other. inj = who caused the shift.
+      store.games[x.key] = { homeMargin: -r.homeSpread, total: r.total, homeWinPct: r.homeWinPct,
+        rawMargin: r.raw ? -r.raw.homeSpread : null, rawTotal: r.raw ? r.raw.total : null, rawWinPct: r.raw ? r.raw.homeWinPct : null,
+        // New: calibrated chances (win uses the market spread; cover/under stay ~50% because the model's gap has no measured signal),
+        // team-points chances, and which fixes applied (home-field, dome, pace, neutral site).
+        calHomeCover: r.calHomeCover ?? null, calUnder: r.calUnder ?? null,
+        // The market lines those calibrated chances were computed at, so other lines (e.g. a My Bets leg at -3.5)
+        // can be converted from the same calibrated number instead of the raw model gap.
+        mktHomeSpread: x.spread != null ? -x.spread : null, mktTotal: x.total ?? null, teamPts: r.teamPts || null, fix: r.fix || null,
+        inj: r.inj || null, wind: x.wind, outdoor: x.outdoor, runAt, source: "rerun" };
       nLines++;
     });
     (td.results || []).forEach((r, i) => {
       const x = tdIn[i];
       if (r.error) return errors.push(`${x.key} TD: ${r.error}`);
-      store.td[x.key] = { away: r.away, home: r.home, outs: r.excluded, linesUsed: { homeSpread: -x.spread, total: x.total }, runAt };
+      store.td[x.key] = { away: r.away, home: r.home, awayGroups: r.awayGroups || null, homeGroups: r.homeGroups || null, outs: r.excluded, linesUsed: { homeSpread: -x.spread, total: x.total }, runAt };
       nTd++;
     });
     store.runAt = runAt;
