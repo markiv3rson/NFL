@@ -24,12 +24,10 @@ function status(g) {
 function headButtons(g, id, extra = "") {
   const n = (g.injuries || []).length;
   return `<div class="top"><div><div class="gh">${g.key}${g.badge ? `<span class="badge">${g.badge}</span>` : ""}</div><div class="sub">${tm(g.kickoff)} · ${status(g)}${extra}</div>` +
-    (g.qb && g.qb.length && !g.final ? `<div class="warn">⚠ ${esc(g.qb.join(" · "))} · ${qbAdjusted(g) ? "model adjusted (estimate)" : "model can't see this"}</div>` : "") +
+    (g.qb && g.qb.length && !g.final ? `<div class="warn">⚠ ${esc(g.qb.join(" · "))} · ${qbAdjusted(g) ? "model adjusted (estimate)" : "not in the model yet — it adjusts once this week's injury report lists the starter Out/Doubtful (Wed–Fri report, then the Thu/Sat reruns)"}</div>` : "") +
     (g.dataCheck ? `<div class="warn">⚠ ${esc(g.dataCheck)}</div>` : "") + `</div>` +
-    `<div class="btns" style="margin-top:0;flex-shrink:0">${n ? `<button class="tag" data-drop="inj-${id}">Injuries ${n} ▾</button>` : ""}<button class="tag" data-drop="his-${id}">History ▾</button>${(g.news || []).length ? `<button class="tag" data-drop="news-${id}">News ${g.news.length} ▾</button>` : ""}</div></div>` +
-    `<div class="drop" id="news-${id}"><div class="s" style="margin-bottom:4px">ESPN headlines, last 4 days — verify before acting (never changes the model)</div>` +
-    (g.news || []).map((a) => `<div class="drow"><span>${a.url ? `<a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.headline)}</a>` : esc(a.headline)}</span><span class="dim">${a.published ? hm(a.published) : ""}</span></div>`).join("") + `</div>` +
-    `<div class="drop" id="inj-${id}"><div class="s" style="margin-bottom:4px">Official report · updated ${S.injuriesUpdated ? hm(S.injuriesUpdated) : "—"}</div>` +
+    `<div class="btns" style="margin-top:0;flex-shrink:0">${n ? `<button class="tag" data-drop="inj-${id}">Injuries ${n} ▾</button>` : ""}<button class="tag" data-drop="his-${id}">History ▾</button></div></div>` +
+    `<div class="drop" id="inj-${id}"><div class="s" style="margin-bottom:4px">Official report${(() => { const w = [...new Set((g.injuries || []).map((x) => x.week))]; return w.length ? ` · Week ${w.join("/")}` + (w.every((x) => Number(x) !== Number(S.week)) ? " (last week's — this week's first report comes out Wednesday)" : "") : ""; })()} · updated ${S.injuriesUpdated ? hm(S.injuriesUpdated) : "—"}</div>` +
     (g.injuries || []).map((x) => `<div class="drow"><span>${esc(x.name)} <span class="dim">${esc(x.pos || "")} · ${x.team}</span></span><span class="${/out/i.test(x.status) ? "r" : /doubt/i.test(x.status) ? "r" : "y"}">${esc(x.status)}</span></div>`).join("") + `</div>` +
     `<div class="drop" id="his-${id}"><div class="s" style="margin-bottom:4px">How the line moved this week (Polymarket)</div>` +
     `<div class="drow dim"><span>When</span><span>Spread</span><span>Total</span></div>` +
@@ -165,7 +163,7 @@ function prow(r, g, showGame) {
   // Model's chance (big, left) and Polymarket's price (right), each with its plain label directly underneath. No verdict, no edge, no stake.
   const chance = r.fair != null ? `${Math.round(r.fair)}%` : dash;
   const cents = r.price != null ? `<span class="price-link" data-market="${esc(r.market || (r.stale ? "Old screenshot price — not live" : ""))}">${Math.round(r.price * 100)}¢</span>` : dash;
-  const snap = r.snap ? ` · ${r.snap.pct}% snaps${r.snap.missed ? ` <span class="warn-t">⚠ didn't play last game (last played week ${r.snap.lastWeek}) — check status</span>` : r.snap.early ? ` <span class="warn-t">⚠ left last game early? (usually ${r.snap.avg}%) — check injury news</span>` : r.snap.trend === "up" ? ' <span class="g">↑</span>' : r.snap.trend === "down" ? ' <span class="r">↓ role shrinking</span>' : ""}` : "";
+  const snap = r.snap ? ` · ${r.snap.pct}% snaps${r.snap.missed ? ` <span class="warn-t">⚠ didn't play last game (last played week ${r.snap.lastWeek})${r.lastWeekOut ? ` · ${esc(r.lastWeekOut)}` : ""} — check status</span>` : r.snap.early ? ` <span class="warn-t">⚠ left last game early? (usually ${r.snap.avg}%) — check injury news</span>` : r.snap.trend === "up" ? ' <span class="g">↑</span>' : r.snap.trend === "down" ? ' <span class="r">↓ role shrinking</span>' : ""}` : "";
   // team code dropped from the subtitle when the logo is shown (showGame) — the logo already carries it
   const sub = `${showGame ? `${r.game} · ` : ""}#${r.teamRank} on team${snap}`;
   const more = r.fair != null && (r.two != null || r.first != null) ? `2+ TDs ${r.two != null ? Math.round(r.two) + "%" : "—"} · first TD of the game ${r.first != null ? Math.round(r.first) + "%" : "—"}` : "";
@@ -176,7 +174,7 @@ function prow(r, g, showGame) {
     `<div class="n"><span class="px">${cents}</span><span class="lbl">Polymarket<br>price${r.stale ? " (old)" : r.thin ? '<br><span class="warn-t">thin market</span>' : ""}</span></div>` +
     `<div class="why">${more}${flags}</div></div>`;
 }
-const usable = (r) => !(r.odds != null && r.odds <= -600);   // drop broken/illiquid prices (-600 or shorter)
+const usable = (r) => !(r.odds != null && r.odds <= -600 && !r.thin);   // a real -600 price is broken data; never hide a player over a thin placeholder
 function tdCard(g, id) {
   const p = g.poly || {}, hs = p.spread ? p.spread.homeSpread : null, tot = p.total ? p.total.line : null;
   const lines = hs != null && tot != null ? ` · ${g.home} ${sgn(hs)} · O/U ${tot}` : "";
@@ -185,7 +183,7 @@ function tdCard(g, id) {
   const side = (team) => { const rows = (g.td || []).filter((r) => r.team === team && r.fair != null && usable(r)).sort((a, b) => b.fair - a.fair).slice(0, n);
     const gp = g.tdGroups && g.tdGroups[team], groups = gp ? ["RB", "WR", "TE"].filter((k) => gp[k] != null).map((k) => `${k} ${Math.round(gp[k])}%`).join(" · ") : "";
     return `<div><div class="sh" style="color:#c9c9cf">${team} <span class="s" style="font-weight:400">${implied(team)}</span></div>${groups ? `<div class="s" style="margin-bottom:2px">Chance any one of them scores: ${groups}</div>` : ""}${rows.map((r) => prow(r, g, false)).join("") || '<div class="s">No players yet — tap ▶ Rerun model.</div>'}</div>`; };
-  return `<div class="card${g.final ? " fin" : ""}" style="margin-top:10px"><div class="inner">${headButtons(g, id, lines)}<div class="teams">${side(g.away)}${side(g.home)}</div>${(g.tdUnmodeled || []).length ? `<div class="s" style="margin-top:6px">Also on Polymarket, <b>not in the model</b> (QBs, returners, new players, or players the model dropped as IR / exempt / released — check before buying): ${g.tdUnmodeled.map((u) => `${esc(u.player)} ${Math.round(u.price * 100)}¢${u.thin ? " (thin)" : ""}`).join(" · ")}</div>` : ""}</div>${cover(g, null)}</div>`;
+  return `<div class="card${g.final ? " fin" : ""}" style="margin-top:10px"><div class="inner">${headButtons(g, id, lines)}<div class="teams">${side(g.away)}${side(g.home)}</div>${(g.tdUnmodeled || []).length ? `<div class="s" style="margin-top:6px">Also on Polymarket with a real market, <b>not in the model</b> (QBs, returners, new or dropped players — check before buying): ${g.tdUnmodeled.map((u) => `${esc(u.player)} ${Math.round(u.price * 100)}¢${u.thin ? " (thin)" : ""}`).join(" · ")}</div>` : ""}</div>${cover(g, null)}</div>`;
 }
 function renderTd() {
   const wk = S.week ? ` — Week ${S.week}` : "";
@@ -302,7 +300,7 @@ function renderModel() {
   $("record-model").innerHTML = `<div class="card" style="margin-top:10px">` +
     `<div class="sec"><div class="sh">Summary</div>` +
     `<div class="row"><span class="dim">Your record · P/L</span><span>${s.wins}–${s.losses}${s.pushes ? "–" + s.pushes : ""} · ${cMoney(s.pl)}</span></div>` +
-    `<div class="row"><span class="dim">ROI · Avg CLV</span><span>${cPct(s.roi)} · ${cPct(s.avgClv)}</span></div>` +
+    `<div class="row"><span class="dim">ROI · Avg CLV</span><span>${cPct(s.roi)} · ${cPct(s.avgClv)}${s.clvCount != null ? ` <span class="dim">(${s.clvCount} bet${s.clvCount === 1 ? "" : "s"} with closing prices)</span>` : ""}</span></div>` +
     `<div class="row"><span class="dim">Open this week</span><span>${money(s.openCost)} of $200</span></div></div>` +
     `<div class="sec"><div class="sh">Week ${lw ?? S.week} recap</div>` +
     (wk.length ? `<div class="row"><span class="dim">Tilts: spreads · totals · moneyline</span><span>${rec(pick("spread", wk))} · ${rec(pick("total", wk))} · ${rec(pick("ml", wk))}</span></div>` : '<div class="s">No finished games graded yet.</div>') +

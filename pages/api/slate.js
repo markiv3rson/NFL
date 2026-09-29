@@ -24,7 +24,6 @@ export default async function handler(req, res) {
     if (status && status.lastSnapshot && now - new Date(status.lastSnapshot) > 8 * H) watch.push(`No price snapshot in ${Math.round((now - new Date(status.lastSnapshot)) / H)} h — check the Railway scheduler.`);
     if (status && (!status.backup || now - new Date(status.backup.t) > 36 * H)) watch.push(`No backup in the last 36 h — check the Railway volume.`);
     if (status && status.retrain && /^failed/.test(status.retrain.summary || "")) watch.push(`Last TD retrain failed: ${String(status.retrain.summary).slice(0, 90)}`);
-    if (data.newsError) watch.push(`News headlines unavailable (${String(data.newsError).slice(0, 60)}).`);
     weekCheck.watch = watch;
     res.status(200).json({ ok: true, ...data, injuries: undefined, injuriesUpdated: inj ? inj.updated : null, status, weekCheck, missFinder, now: new Date().toISOString() });
   } catch (err) { res.status(500).json({ ok: false, error: String(err) }); }
