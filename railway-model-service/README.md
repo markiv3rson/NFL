@@ -475,3 +475,11 @@ Found from the live site and the Week 3 export (nfl-bettors-results.json). Site 
     strategies, no re-tuning; TD/Right-now legs capped at a 30% edge (bigger = likely bad data).
   - Right now: sportsbook odds up to 8 h old more than a day before kickoff (3 h on game day); TD "opened" price only
     shown when the opening market was real.
+- Pick Lab (9/30): "always choose the right side of the spread / total" tested as a learned model-or-market picker
+  (walk-forward 2016-25, both markets). Spread: 51.3% (logistic) / 53.1% (boosted trees, best setting; median of 24
+  settings 51.9%; scrambled labels never above 51.8%; without rest/referee/streak features 51.6%); total: 49-50%; always
+  the model's side: spread 51.1%, total 50.5% (break-even 52.4%). Spread/total outcomes are not linked (favorite covers ->
+  over 49.4%, underdog covers -> over 49.8%). The Pick Lab tab (renamed from Parlay Lab) records the model's side on
+  every game at the kickoff-time Polymarket price (lib/paper.js picksFor/recordPicks/gradePicksWeek/picksSummary, hash
+  picks:<season>:<week>), grades it, and shows hit rate, return per $1 and the break-even price, sliced by how far the
+  model differs from the line. About 270 picks a season per market: a 53% edge needs ~3 seasons to confirm.

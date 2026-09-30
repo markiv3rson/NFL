@@ -104,5 +104,24 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(g.parlays[0].result === "W" && Math.abs(g.parlays[0].ret - (1 / 0.8 - 1)) < 1e-9, "pushed leg drops out, parlay pays the rest");
   ok(g.parlays[1].result === "W" && Math.abs(g.parlays[1].ret - (1 / (0.8 * 0.3) - 1)) < 1e-9, "TD leg graded from scorers");
   ok(booksMaxAgeH(new Date(Date.now() + 48 * 3600e3).toISOString()) === 8 && booksMaxAgeH(new Date(Date.now() + 5 * 3600e3).toISOString()) === 3, "sportsbook-odds age: 8 h early week, 3 h on game day"); }
+// ---------- Pick Lab (model's side on every game)
+{ const { picksFor, recordPicks, gradePicksWeek, picksSummary } = await import("../lib/paper.js");
+  const g = { key: "PIT @ CLE", away: "PIT", home: "CLE" };
+  // CLE is a +2.5 underdog at home; the model has CLE winning by 3.1 -> model side is CLE +2.5; total 37.1 vs 38.5 -> Under
+  const poly = { spread: { homeSpread: 2.5, home: 0.48, away: 0.53 }, total: { line: 38.5, over: 0.5, under: 0.51 } };
+  const p = picksFor(g, poly, { homeMargin: 3.1, total: 37.1 });
+  ok(p.length === 2 && p[0].label === "CLE +2.5" && Math.abs(p[0].gap - 5.6) < 1e-9 && p[0].price === 0.48, "spread: model side is CLE +2.5, differs by 5.6, priced at CLE's price", p[0]);
+  ok(p[1].label === "Under 38.5" && Math.abs(p[1].gap - 1.4) < 1e-9 && p[1].price === 0.51, "total: model side is Under 38.5", p[1]);
+  const q = picksFor(g, { spread: { homeSpread: -6.5, home: 0.5, away: 0.51 } }, { homeMargin: 3.0, total: 40 });
+  ok(q.length === 1 && q[0].label === "PIT +6.5" && q[0].price === 0.51, "home favorite the model likes less -> road team with the points", q);
+  ok(picksFor(g, poly, { homeMargin: -2.5, total: 38.5 }).length === 0, "model exactly on the line -> no pick");
+  ok(picksFor(g, null, { homeMargin: 3 }).length === 0 && picksFor(g, poly, null).length === 0, "no lines or no model -> no pick");
+  await recordPicks(2026, 4, g, poly, { homeMargin: 3.1, total: 37.1 }, "t");
+  await recordPicks(2026, 4, g, poly, { homeMargin: 3.4, total: 37.0 }, "t2");          // a later (closer to kickoff) write replaces the earlier one
+  await gradePicksWeek(2026, 4, [{ key: "PIT @ CLE", homeScore: 20, awayScore: 19 }]);      // CLE wins by 1 -> CLE +2.5 covers; 39 total -> Under 38.5 loses
+  const sm = await picksSummary(2026);
+  ok(sm.spread.w === 1 && sm.spread.l === 0 && Math.abs(sm.spread.roi - (1 / 0.48 - 1)) < 1e-9, "spread graded W, return = 1/price - 1", sm.spread);
+  ok(sm.total.l === 1 && sm.total.roi === -1, "total graded L, return -1", sm.total);
+  ok(sm.spread.bands.find((x) => x.label === "4 and up").graded === 1 && sm.spread.need === 0.48, "disagreement bands + break-even price", sm.spread.bands); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);

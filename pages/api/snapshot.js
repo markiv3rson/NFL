@@ -12,7 +12,7 @@ import { loadModel } from "../../lib/week";
 import { isThinMarket } from "../../lib/odds";
 import { nameMatches } from "../../lib/picks";
 import { logEdges } from "../../lib/edges";
-import { recordPaper } from "../../lib/paper";
+import { recordPaper, recordPicks } from "../../lib/paper";
 import { buildWeek } from "../../lib/week";
 import { loadInjuriesMeta } from "../../lib/injuries";
 export const config = { maxDuration: 120 };
@@ -27,6 +27,7 @@ async function writePrelog(season, week, g, t, poly, bk, model) {
       return { player: p.name, team: p.team, fair: p.fair, ask: v ? v.ask : null, bid: v ? v.bid ?? null : null }; });
   await setJSON(`prelog:${season}:${week}:${g.key}`, { t, game: g.key, poly, books: bk,
     model: mg ? { homeMargin: mg.homeMargin, total: mg.total, homeWinPct: mg.homeWinPct, calHomeCover: mg.calHomeCover, calUnder: mg.calUnder, mktHomeSpread: mg.mktHomeSpread, mktTotal: mg.mktTotal, runAt: mdl.runAt || null } : null, topTd });
+  await recordPicks(season, week, g, poly, mg, t).catch(() => 0);   // Pick Lab: the model's side at the kickoff-time price (9/30)
 }
 
 export default async function handler(req, res) {
