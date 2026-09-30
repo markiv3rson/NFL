@@ -448,3 +448,27 @@ if __name__=="__main__":
             if r['name'] in px:
                 ev=r.p/(px[r['name']]/100)-1; line+=f" | Poly {px[r['name']]:.0f}c | EV at limit {ev*100:+.1f}%" + ("  <- recheck (>30%)" if ev>0.3 else "")
             print(line)
+
+def retrain(season=None):
+    """Weekly TD retrain, shared by the scheduler (Tuesday 7:15) and POST /retrain-td so the two can't drift apart
+    again: fresh data, 3 past seasons (+ current once 3+ weeks are done), the last 2 completed weeks held OUT of
+    training, and the candidate goes live only if its held-out Brier beats the active model's."""
+    global m
+    import datetime as _dt
+    season = season or CURRENT
+    refresh_live(0)
+    season_pg, _, _, _ = player_games(season)
+    cur_weeks = sorted(season_pg.week.unique().tolist())
+    holdout = cur_weeks[-2:] if len(cur_weeks) >= 4 else []
+    train_seasons = [season - 3, season - 2, season - 1] + ([season] if len(cur_weeks) > 2 else [])
+    candidate = fit_model(train_seasons, exclude=(season, holdout) if holdout else None)
+    cand_brier = eval_holdout(candidate, season, holdout) if holdout else None
+    active_brier = eval_holdout(m, season, holdout) if holdout else None
+    went_live = cand_brier is not None and active_brier is not None and cand_brier < active_brier - 1e-4
+    saved = None
+    if went_live:
+        m = candidate   # single assignment: run() reads m once per prediction, so readers see old or new, never a mix
+        saved = save_active({"model": candidate, "trained": train_seasons, "holdout_weeks": holdout, "brier": cand_brier,
+                             "t": _dt.datetime.now(_dt.timezone.utc).isoformat()})
+    return {"went_live": went_live, "candidate_brier": cand_brier, "active_brier": active_brier,
+            "holdout_weeks": holdout, "trained_on": train_seasons, "saved": bool(saved)}

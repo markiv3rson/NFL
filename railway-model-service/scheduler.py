@@ -7,6 +7,7 @@ Calls the site's /api/snapshot on Mark's schedule, Pacific time:
   Every distinct kickoff wave: ~60 min before -> model rerun (catches that wave's active/inactive news)
   Nightly 11:45 PM: grade finished games
 Env: SITE_URL (https://nfl-nfl9.vercel.app), SITE_LOGIN ("user:password" for the site's login).
+     (app.py also reads MODEL_SERVICE_TOKEN; the scheduler itself doesn't call app.py over HTTP.)
 """
 import json, os, threading, time, base64, csv, io, urllib.request, urllib.parse
 from datetime import datetime, timedelta, timezone
@@ -43,7 +44,10 @@ def _backup():
     data, cursor, pages = {}, "0", 0
     while True:
         raw = _call(f"/api/backup?cursor={cursor}")
-        if not raw: print("[scheduler] backup page failed — nothing saved", flush=True); return
+        if not raw:
+            print("[scheduler] backup page failed — nothing saved", flush=True)
+            _call(f"/api/status?backup=failed&files=0", tries=1)   # so the status panel doesn't keep showing last night's as current
+            return
         page = json.loads(raw); data.update(page.get("data") or {}); cursor = str(page.get("next", "0")); pages += 1
         if cursor == "0" or pages > 200: break
     body = json.dumps({"ok": True, "t": datetime.now(timezone.utc).isoformat(), "keys": len(data), "pages": pages, "data": data}).encode()
@@ -58,30 +62,15 @@ def _backup():
         print(f"[scheduler] backup saved {path}", flush=True)
     except Exception as e:
         print(f"[scheduler] backup save failed: {e}", flush=True)
+        _call(f"/api/status?backup=failed&files=0", tries=1)
 
 def _retrain():
-    """Weekly TD retrain, run IN-PROCESS (not over HTTP): a direct Python call so the gunicorn worker's
-    one request slot stays free for real traffic (rerun, health) the whole time this runs. Only the
-    training/network work competes for CPU; it never blocks the site from being reachable."""
+    """Weekly TD retrain, run IN-PROCESS (not over HTTP) so the gunicorn worker's request slot stays free.
+    Same code as POST /retrain-td (td_prob.retrain) -- before, this had its own copy and the two drifted."""
     try:
         import td_prob
-        season = td_prob.CURRENT
-        # NOTE (9/28): this is the retrain that actually runs every Tuesday. It had its own copy of the logic, so the
-        # leak fix and 3-season training made in app.py's /retrain-td never reached it. Both now share these rules:
-        # fresh data first, 3 past seasons, and the 2 held-out weeks left OUT of training.
-        td_prob.refresh_live(0)
-        season_pg, _, _, _ = td_prob.player_games(season)
-        cur_weeks = sorted(season_pg.week.unique().tolist())
-        holdout = cur_weeks[-2:] if len(cur_weeks) >= 4 else []
-        train_seasons = [2023, 2024, 2025] + ([season] if len(cur_weeks) > 2 else [])
-        candidate = td_prob.fit_model(train_seasons, exclude=(season, holdout) if holdout else None)
-        cand_brier = td_prob.eval_holdout(candidate, season, holdout) if holdout else None
-        active_brier = td_prob.eval_holdout(td_prob.m, season, holdout) if holdout else None
-        went_live = cand_brier is not None and active_brier is not None and cand_brier < active_brier - 1e-4
-        if went_live:
-            td_prob.m = candidate
-            td_prob.save_active({"model": candidate, "trained": train_seasons, "holdout_weeks": holdout, "brier": cand_brier})
-        summary = ("went live: " if went_live else "kept current model: ") + f"candidate {cand_brier} vs active {active_brier} on weeks {holdout}"
+        r = td_prob.retrain()
+        summary = ("went live: " if r["went_live"] else "kept current model: ") + f"candidate {r['candidate_brier']} vs active {r['active_brier']} on weeks {r['holdout_weeks']}"
         print(f"[scheduler] retrain-td (in-process) -> {summary}", flush=True)
         _call(f"/api/status?retrain={urllib.parse.quote(summary)}", tries=1)
     except Exception as e:
@@ -102,8 +91,23 @@ def _kickoffs():
         if now - timedelta(minutes=5) < k < now + timedelta(days=8): out.append((k, f"{x['away_team']} @ {x['home_team']}"))
     return out
 
+_running, _running_lock = set(), threading.Lock()
+def _bg(kind, fn, *args, **kw):
+    """Run a job in its own thread. Before 9/30 every call ran inline in the loop, so one slow rerun (up to ~15 min
+    with retries) or a multi-page backup blocked the loop past the 3-minute kickoff-close window and the 5-minute
+    snapshot/rerun windows, silently skipping them. kind = one job of each kind at a time (e.g. no two reruns overlap)."""
+    with _running_lock:
+        if kind in _running: print(f"[scheduler] {kind} still running — skipped", flush=True); return
+        _running.add(kind)
+    def run():
+        try: fn(*args, **kw)
+        except Exception as e: print(f"[scheduler] {kind} failed: {e}", flush=True)
+        finally:
+            with _running_lock: _running.discard(kind)
+    threading.Thread(target=run, daemon=True).start()
+
 def _loop():
-    fired, kicks, kicks_at = set(), [], None
+    fired, kicks, kicks_at = {}, [], None
     while True:
         try:
             now_pt = datetime.now(PT)
@@ -116,14 +120,14 @@ def _loop():
                 # pulled books -- 31 a week, ~405 credits a month before retries, and a slow site makes _call retry
                 # (each retry pulled again), so the month could run dry. Books are reference only; 16 a week is plenty.
                 bk = "&books=1" if (now_pt.hour in BOOK_HOURS_SUN if now_pt.weekday() == 6 else now_pt.hour in BOOK_HOURS_WK) else ""
-                if tag not in fired: fired.add(tag); _call("/api/snapshot?src=schedule" + bk, tries=2)   # 2 tries, not 3: a timeout usually means it DID run, and each retry appended a duplicate snapshot (and re-pulled books)
+                if tag not in fired: fired[tag] = time.time(); _bg("snapshot", _call, "/api/snapshot?src=schedule" + bk, tries=2)   # 2 tries, not 3: a timeout usually means it DID run, and each retry appended a duplicate snapshot (and re-pulled books)
             nowu = datetime.now(timezone.utc)
             due = {}
             for k, game in kicks:
                 if k - timedelta(minutes=3) <= nowu < k: due.setdefault(k, []).append(game)
             for k, glist in due.items():
                 tag = f"k:{k:%Y%m%d%H%M}"
-                if tag not in fired: fired.add(tag); _call("/api/snapshot?src=kickoff&kickoff=" + urllib.parse.quote(",".join(glist)))
+                if tag not in fired: fired[tag] = time.time(); _bg(tag, _call, "/api/snapshot?src=kickoff&kickoff=" + urllib.parse.quote(",".join(glist)))   # own kind per kickoff: a close must never be skipped
             # Automatic reruns: Tuesday 7:05 AM (new week loaded) and Sunday 9:05 AM (after final injury reports)
             # Added 9/28: Tue 7:30 (so the TD model retrained at 7:15 is actually used before Sunday; before, the Tuesday
             # numbers came from the OLD model and stayed up all week), Thu 7:05 (Wednesday's first practice report is in
@@ -133,31 +137,32 @@ def _loop():
                          (now_pt.weekday() == 6 and now_pt.hour == 9 and 5 <= now_pt.minute < 10))
             if rerun_now:
                 tag = f"r:{now_pt:%Y-%m-%d-%H}-{now_pt.minute // 30}"
-                if tag not in fired: fired.add(tag); _call("/api/rerun?src=auto")
+                if tag not in fired: fired[tag] = time.time(); _bg("rerun", _call, "/api/rerun?src=auto")
             # Kickoff-wave reruns: one rerun per distinct kickoff time (10 AM, 1:05, 1:25, 5:20, TNF, SNF, MNF...),
             # fired ~60 min before that wave kicks off -- after teams must confirm active/inactive (~90 min before
             # kickoff) but with enough buffer that the news has settled. Catches every wave, not just the 9:05 AM
             # Sunday rerun, which only lines up with the 10 AM games.
             for k in {k for k, _ in kicks if k - timedelta(minutes=65) <= nowu < k - timedelta(minutes=55)}:
                 tag = f"rw:{k:%Y%m%d%H%M}"
-                if tag not in fired: fired.add(tag); _call("/api/rerun?src=wave")
+                if tag not in fired: fired[tag] = time.time(); _bg("rerun", _call, "/api/rerun?src=wave")
             # Weekly TD retrain: Tuesday 7:15 AM, after the rerun above has the new week's data loaded.
             if now_pt.weekday() == 1 and now_pt.hour == 7 and 15 <= now_pt.minute < 20:
                 tag = f"rt:{now_pt:%Y-%m-%d}"
-                if tag not in fired: fired.add(tag); _retrain()
+                if tag not in fired: fired[tag] = time.time(); _bg("retrain", _retrain)
             # Nightly backup at 12:05 AM
             if now_pt.hour == 0 and 5 <= now_pt.minute < 10:
                 tag = f"b:{now_pt:%Y-%m-%d}"
-                if tag not in fired: fired.add(tag); _backup()
+                if tag not in fired: fired[tag] = time.time(); _bg("backup", _backup)
             # Self-check (added 9/29): Thu 12:05 PM (before TNF), Fri 5:05 PM, Sun 7:35 AM -- the site checks every game
             # for lines, model numbers, TD prices and this week's injury report, and records anything missing.
             if ((now_pt.weekday() == 3 and now_pt.hour == 12) or (now_pt.weekday() == 4 and now_pt.hour == 17) or
                     (now_pt.weekday() == 6 and now_pt.hour == 7 and now_pt.minute >= 30)) and 5 <= now_pt.minute % 30 < 10:
                 tag = f"sc:{now_pt:%Y-%m-%d-%H}"
-                if tag not in fired: fired.add(tag); _call("/api/selfcheck", tries=2)
+                if tag not in fired: fired[tag] = time.time(); _bg("selfcheck", _call, "/api/selfcheck", tries=2)
             if now_pt.hour == 23 and now_pt.minute >= 45:
                 tag = f"g:{now_pt:%Y-%m-%d}"
-                if tag not in fired: fired.add(tag); _call("/api/results/grade")
+                if tag not in fired: fired[tag] = time.time(); _bg("grade", _call, "/api/results/grade")
+            for t in [t for t, at in fired.items() if time.time() - at > 86400]: del fired[t]   # tags only matter inside their window; cap growth
         except Exception as e:
             print(f"[scheduler] loop error: {e}", flush=True)
         time.sleep(30)
