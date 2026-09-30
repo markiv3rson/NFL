@@ -25,6 +25,7 @@ Rules baked in (NFL Research Protocol):
   - Nothing here is a fair probability. Market price is never your fair probability.
 """
 import argparse, os, sys, urllib.request
+import season as _season
 import pandas as pd
 
 BASE = "https://github.com/nflverse/nflverse-data/releases/download"
@@ -35,7 +36,7 @@ def fetch(path, fresh=True):
     os.makedirs(CACHE, exist_ok=True)
     local = os.path.join(CACHE, path.replace("/", "_"))
     if fresh or not os.path.exists(local):
-        urllib.request.urlretrieve(f"{BASE}/{path}", local)
+        _season.download(f"{BASE}/{path}", local)
     return pd.read_parquet(local)
 
 

@@ -41,7 +41,7 @@ def norm(n):
 def _snaps(season, fresh=False):
     os.makedirs(CACHE, exist_ok=True); f = os.path.join(CACHE, f"snap_counts_{season}.parquet")
     if fresh or not os.path.exists(f):
-        urllib.request.urlretrieve(f"{BASE}/snap_counts/snap_counts_{season}.parquet", f)
+        _season.download(f"{BASE}/snap_counts/snap_counts_{season}.parquet", f)
     s = pd.read_parquet(f)
     return s[s.game_type.isin(["REG", "POST", "WC", "DIV", "CON", "SB"])]   # starters stay current through the playoffs (9/30)
 
@@ -88,11 +88,11 @@ def _qb_values(season=None):
     for y in (season - 1, season):
         f = os.path.join(CACHE, f"pbp_{y}.parquet")
         try:
-            if not os.path.exists(f): urllib.request.urlretrieve(f"{BASE}/pbp/play_by_play_{y}.parquet", f)
+            if not os.path.exists(f): _season.download(f"{BASE}/pbp/play_by_play_{y}.parquet", f)
             p = pd.read_parquet(f, columns=["season_type", "qb_dropback", "epa", "passer_player_id"])
             frames.append(p[(p.season_type == "REG") & (p.qb_dropback == 1) & p.epa.notna() & p.passer_player_id.notna()])
             r = os.path.join(CACHE, f"ros_{y}.parquet")
-            if not os.path.exists(r): urllib.request.urlretrieve(f"{BASE}/weekly_rosters/roster_weekly_{y}.parquet", r)
+            if not os.path.exists(r): _season.download(f"{BASE}/weekly_rosters/roster_weekly_{y}.parquet", r)
             ro = pd.read_parquet(r, columns=["gsis_id", "full_name"]).dropna().drop_duplicates("gsis_id")
             names.update({g: norm(n) for g, n in zip(ro.gsis_id, ro.full_name)})
         except Exception: pass

@@ -69,7 +69,7 @@ def fetch(season, fresh=None):
     f = os.path.join(CACHE, f"pbp_{season}.parquet")
     if fresh is None: fresh = season >= _season.data_season()   # current season re-downloaded; past seasons cached
     if fresh or not os.path.exists(f):
-        urllib.request.urlretrieve(f"{BASE}/pbp/play_by_play_{season}.parquet", f)
+        _season.download(f"{BASE}/pbp/play_by_play_{season}.parquet", f)
     return pd.read_parquet(f)
 
 def team_games(p, keep_reg=False):

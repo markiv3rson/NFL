@@ -24,7 +24,7 @@ import os, urllib.request, argparse
 BASE="https://github.com/nflverse/nflverse-data/releases/download"; CACHE=os.path.expanduser("~/.nfl_cache")
 def _get(path, local, fresh):
     os.makedirs(CACHE,exist_ok=True); f=os.path.join(CACHE,local)
-    if fresh or not os.path.exists(f): urllib.request.urlretrieve(f"{BASE}/{path}", f)
+    if fresh or not os.path.exists(f): _season.download(f"{BASE}/{path}", f)
     return pd.read_parquet(f)
 import season as _season
 CUR=_season.data_season()   # auto (was hard-coded 2026): current season once its play-by-play exists, else last season
@@ -246,6 +246,7 @@ def save_active(obj):
 
 _active = load_active()
 ACTIVE_TRAINED = list(_active.get("trained", [])) if _active else [CUR - 3, CUR - 2, CUR - 1]
+ACTIVE_THROUGH = tuple(_active.get("through", (0, 0))) if _active else (0, 0)   # (season, last week) the live model trained on
 m = _active["model"] if _active else fit_model([CUR - 3, CUR - 2, CUR - 1])   # 3 seasons (tested 9/28: better in 10 of 13)
 def shrink(p): return np.where(p>0.35, 0.35+0.75*(p-0.35), p)
 
@@ -473,7 +474,7 @@ def retrain(season=None):
     """Weekly TD retrain, shared by the scheduler (Tuesday 7:15) and POST /retrain-td so the two can't drift apart
     again: fresh data, 3 past seasons (+ this season's earlier weeks), the last 4 completed weeks held OUT of training,
     and the candidate goes live only if it beats the active model by more than 2 standard errors on those weeks."""
-    global m, ACTIVE_TRAINED
+    global m, ACTIVE_TRAINED, ACTIVE_THROUGH
     import datetime as _dt
     refresh_live(0)                  # first: this also rolls the season over when a new one has started
     season = season or CURRENT
@@ -487,7 +488,12 @@ def retrain(season=None):
     train_seasons = [season - 3, season - 2, season - 1] + ([season] if len(cur_weeks) > 4 else [])
     candidate = fit_model(train_seasons, exclude=(season, holdout) if holdout else None)
     ec = holdout_sqerr(candidate, season, holdout) if holdout else None
-    ea = holdout_sqerr(m, season, holdout) if holdout else None
+    # If the live model was itself trained on some of these held-out weeks (it's refit on everything when it goes live),
+    # scoring it on them would be in-sample and rig the test for it (9/30). Refit its recipe without them first.
+    incumbent = m
+    if holdout and ACTIVE_THROUGH[0] == season and ACTIVE_THROUGH[1] >= min(holdout):
+        incumbent = fit_model(ACTIVE_TRAINED, exclude=(season, holdout))
+    ea = holdout_sqerr(incumbent, season, holdout) if holdout else None
     cand_brier = float(ec.mean()) if ec is not None else None
     active_brier = float(ea.mean()) if ea is not None else None
     went_live = False
@@ -502,8 +508,9 @@ def retrain(season=None):
     if went_live:
         # It won the fair test; the live copy is refit WITH the held-out weeks (the most recent games shouldn't be left out).
         candidate = fit_model(train_seasons)
-        m = candidate; ACTIVE_TRAINED = list(train_seasons)   # single assignment: run() reads m once per prediction, so readers see old or new, never a mix
-        saved = save_active({"model": candidate, "trained": train_seasons, "holdout_weeks": holdout, "brier": cand_brier,
+        m = candidate; ACTIVE_TRAINED = list(train_seasons)
+        ACTIVE_THROUGH = (season, int(max(cur_weeks))) if season in train_seasons and cur_weeks else (0, 0)   # single assignment: run() reads m once per prediction, so readers see old or new, never a mix
+        saved = save_active({"model": candidate, "trained": train_seasons, "through": list(ACTIVE_THROUGH), "holdout_weeks": holdout, "brier": cand_brier,
                              "t": _dt.datetime.now(_dt.timezone.utc).isoformat()})
     return {"went_live": went_live, "reason": reason, "candidate_brier": cand_brier, "active_brier": active_brier,
             "holdout_weeks": holdout, "trained_on": train_seasons, "saved": bool(saved)}

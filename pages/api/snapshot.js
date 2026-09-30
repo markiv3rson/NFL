@@ -61,7 +61,8 @@ export default async function handler(req, res) {
         if (prev.ml && poly.ml && Math.abs(prev.ml.home - poly.ml.home) >= 0.25) why.push("moneyline jumped 25+ cents");
         if (why.length) snap.suspect = `Data check failed: ${why.join(", ")}. Bet held until next refresh.`;
       }
-      if (poly && booksNow && booksNow.games) { const n = await logEdges(season, week, g, poly, booksNow.games[g.key], booksNow.t, t).catch(() => 0); edges += n; }   // add AFTER the await: "edges += await" lost updates across parallel games
+      if (poly && !snap.suspect && booksNow && booksNow.games) { const n =   // not when this snapshot failed the data check (9/30)
+         await logEdges(season, week, g, poly, booksNow.games[g.key], booksNow.t, t).catch(() => 0); edges += n; }   // add AFTER the await: "edges += await" lost updates across parallel games
       if (poly || snap.books) { await redis.rpush(K.snaps(season, week, g.key), JSON.stringify(snap)); await redis.ltrim(K.snaps(season, week, g.key), -200, -1); lines += poly ? 1 : 0; }
       const px = await tdProps(events, g.away, g.home).catch(() => null);
       if (px) {

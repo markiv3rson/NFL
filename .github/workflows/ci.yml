@@ -1,0 +1,18 @@
+# Runs on every push and pull request: the site must build, and every check in tests/ must pass (odds math, key numbers,
+# TD math vs the Python model, name matching, edge tracker, on-screen wording, model-service season logic).
+name: Build and test
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: npm install --no-audit --no-fund
+      - run: pip install -r railway-model-service/requirements.txt
+      - run: npm run build
+      - run: python -m py_compile railway-model-service/*.py
+      - run: npm test

@@ -135,8 +135,13 @@ def _loop():
             # numbers came from the OLD model and stayed up all week), Thu 7:05 (Wednesday's first practice report is in
             # the injury feed by then) and Sat 7:05 (Friday's final report). Before, Thu-Sat showed Tuesday's numbers.
             rerun_now = ((now_pt.weekday() in (1, 3, 5) and now_pt.hour == 7 and 5 <= now_pt.minute < 10) or
-                         (now_pt.weekday() == 1 and now_pt.hour == 7 and 30 <= now_pt.minute < 35) or
                          (now_pt.weekday() == 6 and now_pt.hour == 9 and 5 <= now_pt.minute < 10))
+            # Tuesday "after the retrain" rerun (9/30): waits until the 7:15 retrain has finished (it runs in its own thread
+            # now), any time 7:30-8:29, so the new model is actually used.
+            if now_pt.weekday() == 1 and ((now_pt.hour == 7 and now_pt.minute >= 30) or now_pt.hour == 8):
+                tag = f"r:after-retrain:{now_pt:%Y-%m-%d}"
+                with _running_lock: busy = "retrain" in _running
+                if tag not in fired and not busy and _bg("rerun", _call, "/api/rerun?src=auto"): fired[tag] = time.time()
             if rerun_now:
                 tag = f"r:{now_pt:%Y-%m-%d-%H}-{now_pt.minute // 30}"
                 # marked done only once it actually started: a rerun still busy from an earlier wave is retried next loop (9/30)

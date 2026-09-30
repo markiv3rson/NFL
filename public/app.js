@@ -150,10 +150,10 @@ let LAST_SEEN = null;
 try { LAST_SEEN = localStorage.getItem("lastSeen"); } catch {}
 function changedBox() {
   if (!LAST_SEEN) return "";
-  const since = new Date(LAST_SEEN), out = [];
+  const since = new Date(LAST_SEEN), out = []; let newWeek = 0;
   for (const g of S.games.filter((x) => !x.started)) {
     const before = [...(g.history || [])].filter((h) => h.poly && new Date(h.t) <= since).pop(), now = g.poly;
-    if (!before || !now) continue;
+    if (!before || !now) { if (now) newWeek++; continue; }
     const a = before.poly, bits = [];
     if (a.spread && now.spread && a.spread.homeSpread !== now.spread.homeSpread) bits.push(`spread ${g.home} ${sgn(a.spread.homeSpread)} → ${sgn(now.spread.homeSpread)}`);
     if (a.total && now.total && a.total.line !== now.total.line) bits.push(`total ${a.total.line} → ${now.total.line}`);
@@ -161,7 +161,7 @@ function changedBox() {
     if (bits.length) out.push(`<div class="row"><span>${esc(g.key)}</span><span>${bits.join(" · ")}</span></div>`);
   }
   return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">What changed since your last visit (${hm(LAST_SEEN)})</div>` +
-    (out.join("") || '<div class="s">No Polymarket line moves.</div>') + `<div class="s dim" style="margin-top:4px">TD price moves are on the Anytime TD tab.</div></div></div>`;
+    (out.join("") || (newWeek ? `<div class="s">New lines since your last visit (${newWeek} game${newWeek === 1 ? "" : "s"} opened after it) — see each card's History.</div>` : '<div class="s">No Polymarket line moves.</div>')) + `<div class="s dim" style="margin-top:4px">TD price moves are on the Anytime TD tab.</div></div></div>`;
 }
 function renderLines() {
   $("lines").innerHTML = rightNowBox() + changedBox() + [...S.games].sort(order).map((g, i) => {
@@ -327,7 +327,8 @@ function renderModel() {
   const priced = tdAllAny.filter((p) => p.ask > 0 && p.ask < 1);
   // Model chance as the TD tab showed it: the model's % assumes he plays, so a player listed Questionable/Out that week
   // is scaled by his chance to play (same rule as the tab, 9/30). The market's price already includes that risk.
-  const avail = (p) => (/^(out|doubtful)$/i.test(p.rep || "") ? 0.01 : /^questionable$/i.test(p.rep || "") ? 0.669 : 1);
+  const avail = (p) => (!p.rep ? 1 : p.played === true ? 1 : p.played === false ? 0.01 :   // closing prices come after inactives
+    /^(out|doubtful)$/i.test(p.rep) ? 0.01 : /^questionable$/i.test(p.rep) ? 0.669 : 1);
   const mp = (p) => (p.fair / 100) * avail(p);
   const isThin = (p) => !(p.bid > 0) || p.ask - p.bid > Math.min(0.05, 0.4 * p.ask);   // same rule as lib/odds.js isThinMarket
   const tdPx = priced.filter((p) => !isThin(p)), thinN = priced.length - tdPx.length;
