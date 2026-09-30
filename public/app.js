@@ -230,7 +230,7 @@ function tdCard(g, id) {
   const p = g.poly || {}, hs = p.spread ? p.spread.homeSpread : null, tot = p.total ? p.total.line : null;
   const lines = hs != null && tot != null ? ` · ${g.home} ${sgn(hs)} · O/U ${tot}` : "";
   const implied = (team) => (hs == null || tot == null ? "" : `implied ${(team === g.home ? tot / 2 - hs / 2 : tot / 2 + hs / 2).toFixed(1)} pts`);
-  const n = tdSort === "game2" ? 2 : tdSort === "game1" ? 1 : 99;
+  const n = { game1: 1, game2: 2, game3: 3 }[tdSort] || 99;
   const side = (team) => { const rows = (g.td || []).filter((r) => r.team === team && r.fair != null && usable(r)).sort((a, b) => b.fair - a.fair).slice(0, n);
     const gp = g.tdGroups && g.tdGroups[team], groups = gp ? ["RB", "WR", "TE"].filter((k) => gp[k] != null).map((k) => `${k} ${Math.round(gp[k])}%`).join(" · ") : "";
     return `<div><div class="sh" style="color:#c9c9cf">${tlogo(team)}${team} <span class="s" style="font-weight:400">${implied(team)}</span></div>${groups ? `<div class="s" style="margin-bottom:2px">Chance any one of them scores: ${groups}</div>` : ""}${rows.map((r) => prow(r, g, false)).join("") || '<div class="s">No players yet — tap ▶ Rerun model.</div>'}</div>`; };
@@ -251,7 +251,10 @@ function renderTd() {
     if ($("td-all")) $("td-all").onclick = () => { tdShowAll = !tdShowAll; renderTd(); };
     return;
   }
-  $("td").innerHTML = [...S.games].sort(order).map((g, i) => tdCard(g, "d" + i)).join("");
+  // What moves a player up or down vs a given opponent (tested 2023-25): the team's implied points from the betting line
+  // (a lead RB ~39% at 17 implied points vs ~50% at 27). Opponent "TDs allowed" stats barely matter once the line is known.
+  $("td").innerHTML = `<div class="s dim" style="margin-top:8px">Top ${{ game1: 1, game2: 2, game3: 3 }[tdSort] || ""} per team. Order comes from each player's own usage (targets, red-zone and goal-line work, snaps) times his team's implied points against this opponent — the betting line already prices how good the defense is.</div>` +
+    [...S.games].sort(order).map((g, i) => tdCard(g, "d" + i)).join("");
 }
 // ---------- Record: Mine ----------
 const RESMARK = { W: '<span class="g">✓</span>', L: '<span class="r">✗</span>', P: '<span class="dim">=</span>', pending: '<span class="dim">•</span>' };

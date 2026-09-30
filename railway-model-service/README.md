@@ -431,3 +431,12 @@ Found from the live site and the Week 3 export (nfl-bettors-results.json). Site 
   moves, per device). TD tab shows the top 40 with "Show all". Page cached 60 s in Redis (cleared by every snapshot
   and rerun); injury file cached 10 min; the Refresh button skips grading and the account sync. Plain-language labels
   replace CLV / Brier / no-vig / tilt; header times say "(your time)".
+- TD tab + grading audit (9/30):
+  - Views in order Likely · Top 1 · Top 2 · Top 3 (per team), with a one-line note on what drives the order.
+  - When a starter is out (2016-25): his position group's TDs fall (RB 0.87 -> 0.73/game, WR 0.97 -> 0.85, TE 0.39 ->
+    0.29) while the team still scores ~its implied points -- the TDs spread across the roster, not to one backup. The
+    teammate note now says so; the model already handles it (own usage + team TD total).
+  - Opponent effect: the team's implied points drive the order (lead RB ~39% at 17 pts -> ~50% at 27); opponent
+    "TDs allowed" moves a player ~1 pt at most (dropping those inputs tested neutral, 5/7 seasons, -0.00002 -- kept).
+  - Grading audit, all of 2025 incl. playoffs vs nflverse official player stats: every rushing, receiving, return and
+    offensive fumble-recovery TD matched (1,410); the only differences were 18 defensive TDs, correctly excluded.
