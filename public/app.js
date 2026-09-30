@@ -61,8 +61,7 @@ function spreadReason(g) {
     s += ` after injuries (${Math.abs(m.rawMargin) < 0.05 ? "a toss-up" : `${favOf(g, m.rawMargin)} by ${Math.abs(m.rawMargin).toFixed(1)}`} before)`;
   s += ".";
   if (m.fix && m.fix.neutral) s += " Neutral-site game, so no home-field edge is counted.";
-  if (m.fix && m.fix.div) s += " Division game (these play closer than the ratings say).";
-  if (m.fix && m.fix.awayBye) s += ` ${g.away} is off a bye.`;
+  // (division-game and road-bye notes removed 9/30: those margin terms were dropped after testing worse out of sample)
   if (m.fix && m.fix.awayElim) s += ` ${g.away} is all but out of the playoff race.`;
   if (m.fix && m.fix.homeQbFirstStart) s += ` ${g.home}'s backup QB is making his first start.`;
   if (m.fix && m.fix.awayQbFirstStart) s += ` ${g.away}'s backup QB is making his first start.`;

@@ -374,6 +374,22 @@ Found from the live site and the Week 3 export (nfl-bettors-results.json). Site 
   (was the whole week, ~1 MB per page load).
 - ESPN game-day status (lib/espn.js, 9/30): ESPN's league injury feed keeps updating through game day. Players ESPN
   lists Out/Doubtful/Suspended (dated within 8 days) come off the TD list ("Removed — ESPN lists them out"), are passed
-  as outs to the TD rerun (teammates get the red-zone share) and to the game-line injury adjustment. Other ESPN
+  as outs to the TD rerun (removed from the list; the red-zone hand-off to teammates was dropped 9/30) and to the game-line injury adjustment. Other ESPN
   statuses show on the row. Feed down/unreadable -> Watchdog. Tier 4 source; parser tested on the documented shape,
   live feed not reachable from the build environment.
+- Model upgrades (9/30), each backtested before going in (walk-forward, only data before each game):
+  - TD team total: every player's expected TDs scaled halfway toward the team's expected RB/WR/TE TDs from implied
+    points (top 8 players sum). Better in 7 of 7 seasons 2019-25 (Brier -0.00037); 50%+ players stay calibrated.
+  - Removed from TD: the Out-player red-zone hand-off (worse 7 of 7) and the by-position defense split (neutral).
+  - QB out: -1.90 + 10.86 x backup-quality gap (pass-play EPA, shrunk) instead of a flat -3.96, and first-start terms
+    refit jointly (-3.33 / +2.49). The old stacking double-counted (margin MAE 10.299); new 10.211 out of sample,
+    better in 10 of 13 seasons 2013-25.
+  - Removed from the margin: divisional, road-bye and turnover-margin terms (each worse out of sample). Divisional
+    stays on the total.
+  - Weekly TD retrain: 4 held-out weeks, switch only if better by 2+ standard errors (the old 2-week / 0.0001 rule
+    picked the worse model 28% of the time); the winner is refit with the held-out weeks before going live.
+  - Site: spread chances moved between lines use key numbers (3, 7, 10...) -- better 8 of 10 seasons; Questionable
+    players ESPN hasn't ruled out count as active inside 80 min of kickoff; player-name matching is whole-word.
+  - Tested and NOT added (no gain): wind floor (calm games really do score more), garbage-time filter, fading prior
+    weight, returning starters, gradient boosting, game script, QB goal-line sneaks, rest difference, body clock,
+    referee tendency, ATS / over-under streaks, cold temperature, model+market blend.

@@ -55,7 +55,10 @@ DIV_MARGIN, DIV_TOTAL, TURF_TOTAL = -0.905, -1.9, 0.9
 # away-off-bye -2.189 (divisional unchanged at -0.904). Joint LOSO 2006-25 margin MAE 10.620 -> 10.606, 12 of 20 seasons.
 ST_DIFF_COEF, SR_EDGE_COEF, BYE_AWAY_COEF = 4.212, 30.394, -2.189
 TO_EDGE_COEF, ELIM_AWAY_COEF = 0.439, 3.167   # turnover-margin edge (per game, prior games) / road team effectively eliminated
-HOME_QB_FIRST_START, AWAY_QB_FIRST_START = -6.29, 4.46   # margin effect; home team's own backup vs. away team's own backup, first career start with that team this season.
+# Refit 9/30 JOINTLY with injury_adj's QB penalty (backtest 2013-25): the old -6.29/+4.46 stacked on top of the -3.96
+# injury penalty double-counted -- live stacking scored 10.299 margin MAE vs 10.234 for the injury penalty alone. Joint
+# refit (flat -1.90 + 10.86 x backup-quality gap in injury_adj, and these): 10.211, better in 10 of 13 seasons.
+HOME_QB_FIRST_START, AWAY_QB_FIRST_START = -3.33, 2.49   # margin effect; home team's own backup vs. away team's own backup, first career start with that team this season.
 # Corrected DOWN from the solo-fit values (-7.69 / +5.71): about 44% of first-starts also trip injury_adj.py's QB1-out
 # penalty (-3.96), and testing both together showed real overlap -- these are the values that remain significant once
 # the injury-report QB1 flag is controlled for, so stacking this with injury_adj no longer double-counts the same signal.
@@ -97,7 +100,9 @@ def predict(M, away, home, adj=None, neutral=False, rest_away_days=None, home_qb
     if neutral: ph -= M["pts"][0] * M["hfa"]        # neutral site: no home edge at all
     else: ph += HFA_FIX / 2; pa -= HFA_FIX / 2       # home-field fix (model underrates home teams ~2.2 pts)
     margin_extra = 0.0
-    if is_division_game(away, home): margin_extra += DIV_MARGIN
+    # Removed 9/30 (leave-one-season-out 2013-25, each tested by dropping it with everything else refit): the divisional
+    # margin term, the road-team-off-a-bye term and the turnover-margin term each made the margin slightly WORSE out of
+    # sample. Divisional stays on the TOTAL (extra_total), where it still helps.
     st = M.get("st_epa") or {}
     if away in st and home in st: margin_extra += ST_DIFF_COEF * (st[home] - st[away])
     sr = M.get("success_rate") or {}
@@ -108,12 +113,8 @@ def predict(M, away, home, adj=None, neutral=False, rest_away_days=None, home_qb
         # already in the ridge ratings), and offense-only beats the old mix out-of-sample (joint MAE 10.620 -> 10.606).
         sr_edge = sr[home]["off"] - sr[away]["off"]
         margin_extra += SR_EDGE_COEF * sr_edge
-    if not neutral and rest_away_days is not None and rest_away_days >= 13:
-        margin_extra += BYE_AWAY_COEF
     if home_qb_first_start: margin_extra += HOME_QB_FIRST_START
     if away_qb_first_start: margin_extra += AWAY_QB_FIRST_START
-    to = M.get("to_margin") or {}
-    if away in to and home in to: margin_extra += TO_EDGE_COEF * (to[home] - to[away])
     if away_eliminated(M, away, week): margin_extra += ELIM_AWAY_COEF
     ph += margin_extra / 2; pa -= margin_extra / 2
     return ph, pa

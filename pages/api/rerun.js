@@ -65,8 +65,13 @@ export default async function handler(req, res) {
     // Injury adjustment only uses THIS week's official report (a stale list from last week must never move a lean).
     const injFor = (t, gk) => { const off = (injuries[t] || []).filter((x) => Number(x.week) === Number(week)).map((x) => ({ name: x.name, pos: x.pos, status: x.status }));
       // ESPN game-day Out overrides a Questionable (or missing) official status, so a starter ruled inactive Sunday
-      // morning moves the game-line injury adjustment too (QB1 -3.96 etc.).
+      // morning moves the game-line injury adjustment too (QB1 etc.).
       for (const e of ((espn && espn.teams[t]) || [])) if (espnOutFor(e, t, gk, seasonRows)) { const i = off.findIndex((x) => sameName(x.name, e.name)); if (i >= 0) off[i].status = "Out"; else off.push({ name: e.name, pos: e.pos, status: "Out" }); }
+      // Inactives are posted ~90 min before kickoff. Inside 80 min (the kickoff-wave rerun), a Questionable player ESPN
+      // hasn't ruled Out is playing, so he no longer costs 28% of his value (added 9/30; backtest 2013-25: small gain,
+      // 10.208 -> 10.201). Needs the ESPN feed: without it nothing changes.
+      const mins = gk ? (new Date(gk) - Date.now()) / 60000 : null;
+      if (espn && mins != null && mins >= 0 && mins <= 80) return off.filter((x) => !/^questionable$/i.test(x.status || ""));
       return off; };
     const lines = await post(base, "/rerun-game-lines", { games: payload.map((x) => ({ away: x.away, home: x.home, wind: x.wind, outdoor: x.outdoor,
       spread: x.spread, total: x.total, dome: x.dome, neutral: x.neutral, turf: x.turf, restAwayDays: x.restAwayDays, week,

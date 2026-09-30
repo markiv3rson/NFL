@@ -7,7 +7,7 @@ Out / Doubtful / Questionable on the official injury report, moves that team's s
 
 Point values were fit on 2013-2025 (2,561 games, weeks 4+): margin error of the plain model vs. actual result, per
 missing starter. Kept only where the effect was clearly not zero (|t| > 2):
-    starting QB -3.96 | WR1 -1.78 | each starting LB -1.25 | each starting OL -0.87 | each starting DB -0.76
+    starting QB -1.90 + 10.86 x backup-quality gap (was a flat -3.96 until 9/30) | WR1 -1.78 | each starting LB -1.25 | each starting OL -0.87 | each starting DB -0.76
     total: only a missing QB moves it (-2.84 points on the game total)
 Not used (error bars include zero): RB1, TE1, WR2/WR3, defensive line (edge and interior).
 Out-of-sample (leave-one-season-out) this trimmed model error from 10.54 to 10.41 points (market 9.94) and did NOT
@@ -21,6 +21,10 @@ CACHE = os.path.expanduser("~/.nfl_cache")
 CURRENT = 2026
 
 SPREAD_PTS = {"QB1": -3.96, "WR1": -1.78, "LB": -1.25, "OL": -0.87, "DB": -0.76}
+# QB1 out (9/30): no longer a flat -3.96. Refit jointly with fair_line's first-start terms (2013-25 backtest):
+# -1.90 + 10.86 x (backup's pass-play EPA - starter's), each shrunk 150 dropbacks toward -0.05. A capable veteran
+# backup costs little, a raw rookie a lot. Unknown backup: the average gap when a QB change happens (-0.04).
+QB_FLAT, QB_GAP, QB_GAP_DEFAULT, QB_PRIOR_N, QB_PRIOR = -1.90, 10.86, -0.04, 150, -0.05
 TOTAL_PTS = {"QB1": -2.84}
 # share of listed starters who actually sit, by report status (measured on 2016-2025 injury reports)
 STATUS_W = {"out": 1.0, "doubtful": 0.99, "questionable": 0.28}
@@ -74,11 +78,44 @@ def starters(team_snaps, before=None, n_games=4):
         out[g] = [(names[i], float(v)) for i, v in r.items()]
     return out
 
+_qbv = {"t": 0.0, "v": None, "names": None}
+def _qb_values(season=CURRENT):
+    """{normalized QB name: shrunk dropback EPA} from this season + last season's play-by-play (cached copies)."""
+    if _qbv["v"] is not None and time.time() - _qbv["t"] < 3600: return _qbv["v"]
+    frames, names = [], {}
+    for y in (season - 1, season):
+        f = os.path.join(CACHE, f"pbp_{y}.parquet")
+        try:
+            if not os.path.exists(f): urllib.request.urlretrieve(f"{BASE}/pbp/play_by_play_{y}.parquet", f)
+            p = pd.read_parquet(f, columns=["season_type", "qb_dropback", "epa", "passer_player_id"])
+            frames.append(p[(p.season_type == "REG") & (p.qb_dropback == 1) & p.epa.notna() & p.passer_player_id.notna()])
+            r = os.path.join(CACHE, f"ros_{y}.parquet")
+            if not os.path.exists(r): urllib.request.urlretrieve(f"{BASE}/weekly_rosters/roster_weekly_{y}.parquet", r)
+            ro = pd.read_parquet(r, columns=["gsis_id", "full_name"]).dropna().drop_duplicates("gsis_id")
+            names.update({g: norm(n) for g, n in zip(ro.gsis_id, ro.full_name)})
+        except Exception: pass
+    if not frames: return {}
+    q = pd.concat(frames).groupby("passer_player_id").epa.agg(["sum", "count"])
+    v = {}
+    for pid, row in q.iterrows():
+        if pid in names: v[names[pid]] = (row["sum"] + QB_PRIOR_N * QB_PRIOR) / (row["count"] + QB_PRIOR_N)
+    _qbv.update(t=time.time(), v=v); return v
+
+def qb_gap(team_snaps, starter, listed):
+    """Backup's value minus the starter's. Backup = the team's next QB by recent snaps who isn't listed Out/Doubtful."""
+    vals = _qb_values()
+    T = team_snaps[team_snaps.position == "QB"]
+    order = T.groupby("player").offense_snaps.sum().sort_values(ascending=False) if "offense_snaps" in T else pd.Series(dtype=float)
+    backup = next((n for n in order.index if norm(n) != norm(starter) and not (norm(n) in listed and listed[norm(n)][1] in ("out", "doubtful"))), None)
+    if backup is None or norm(backup) not in vals or norm(starter) not in vals: return QB_GAP_DEFAULT, backup
+    return float(vals[norm(backup)] - vals[norm(starter)]), backup
+
 def team_effect(team, inj_list, snaps=None, st=None):
     """Points this team loses to injuries (<= 0) on the margin, and on the game total. `inj_list`: [{name, status}, ...]."""
+    team_snaps = None
     if st is None:
         snaps = load_snaps() if snaps is None else snaps
-        st = starters(snaps[snaps.team == team])
+        team_snaps = snaps[snaps.team == team]; st = starters(team_snaps)
     listed = {}
     for x in inj_list or []:
         s = (x.get("status") or "").strip().lower()
@@ -90,7 +127,13 @@ def team_effect(team, inj_list, snaps=None, st=None):
         if not h: return
         p = SPREAD_PTS[key] * h[0]; t = TOTAL_PTS.get(key, 0.0) * h[0]
         players.append(dict(name=name, group=key, status=h[1], pts=round(p, 2), total=round(t, 2))); pts += p; tot += t
-    if st.get("QB"): take("QB", "QB1", st["QB"][0][0])
+    if st.get("QB"):
+        qb = st["QB"][0][0]; h = listed.get(norm(qb))
+        if h:
+            gap, backup = qb_gap(team_snaps, qb, listed) if team_snaps is not None else (QB_GAP_DEFAULT, None)
+            p = (QB_FLAT + QB_GAP * gap) * h[0]; t = TOTAL_PTS["QB1"] * h[0]
+            players.append(dict(name=qb, group="QB1", status=h[1], pts=round(p, 2), total=round(t, 2), backup=backup, gap=round(gap, 3)))
+            pts += p; tot += t
     if st.get("WR"): take("WR", "WR1", st["WR"][0][0])
     for g in ("OL", "LB", "DB"):
         for nm, _ in st.get(g, []): take(g, g, nm)

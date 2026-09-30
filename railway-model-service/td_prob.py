@@ -12,7 +12,7 @@ opponent TDs allowed by rush/rec; team implied points). Out-of-sample 2025: Brie
 baseline; calibrated below 35%, overconfident above 40% -> shrunk (p>0.35: 0.35+0.75*(p-0.35)).
 Replicated: train 2024->test 2025 Brier 0.158 vs 0.172; train 2023->test 2024 0.159 vs 0.174.
 NOT tested against historical prop prices. Label outputs "Model estimate"; quarter Kelly.
-Position adjustment (default ON, --no-posadj to disable): opponent receiving TDs allowed are split by
+Position adjustment (default OFF since 9/30 -- neutral in testing, 2019-25; --posadj flag kept below): opponent receiving TDs allowed are split by
 position (WR/TE/RB, shrunk 4 games toward league avg 0.55/0.20/0.10 per game). Added 9/24; it moves
 players ~1 pt and acts oddly on low-usage players -- trust the direction for main targets only.
 Blind spots (call out manually): snap-share/role shifts, QB changes, new-team players' prior usage.
@@ -220,6 +220,12 @@ def eval_holdout(model, season, weeks):
     f = f[f.week.isin(weeks)] if "week" in f.columns else f
     return brier(model, f) if len(f) else None
 
+def holdout_sqerr(model, season, weeks):
+    """Per-player squared errors on held-out weeks (same rows for any model, so two models can be compared pairwise)."""
+    f = features(season, pos)
+    f = f[f.week.isin(weeks)] if "week" in f.columns else f
+    return (shrink(model.predict_proba(design(f))[:, 1]) - f.scored.values) ** 2 if len(f) else None
+
 def load_active():
     p = os.path.join(MODEL_DIR, "td_model.pkl")
     if os.path.exists(p):
@@ -342,7 +348,7 @@ def pos_rec(defteam):
     ps=t.receiver_player_id.map(lambda i:{'FB':'RB','HB':'RB'}.get(pos.position.get(i),pos.position.get(i)))
     g=len(games[(games.home_team==defteam)|(games.away_team==defteam)])
     return {k:0.85*((ps==k).sum()+4*v)/(g+4)/v for k,v in AVG.items()}
-def run(team,opp,imp,outs=(),posadj=True):
+def run(team,opp,imp,outs=(),posadj=False):
     o_rush,o_rec=dstats(opp); rows=[]
     for _,r in cur[cur.team==team].iterrows():
         if unavailable(r.pid, team): continue
@@ -389,25 +395,25 @@ def run(team,opp,imp,outs=(),posadj=True):
     outmask = full.name.apply(_is_out)
     df = full[~outmask].copy()
     if posadj: df['o_rec']=df.pos.map(pos_rec(opp))
-    # Vacated-usage boost: an Out player's red-zone/inside-10/inside-5 share gets redistributed to the
-    # remaining players at his position, proportional to their own current share (the model can't see this on its own).
-    boost = {}
-    for p_, grp in full.groupby('pos'):
-        gone = grp[outmask.loc[grp.index]]
-        stay = grp[~outmask.loc[grp.index]]
-        if not len(gone) or not len(stay): continue
-        for col in ['r_rzt','r_i10','r_rzc','r_i5']:
-            pool = gone[col].sum()
-            if pool <= 0: continue
-            wsum = stay[col].sum()
-            for pid, row in stay.iterrows():
-                share = (row[col] / wsum) if wsum > 0 else (1 / len(stay))
-                df.loc[pid, col] = df.loc[pid, col] + pool * share
-                boost[pid] = True
-    df['p']=shrink(m.predict_proba(design(df))[:,1])
-    df['boosted'] = df.index.map(lambda i: bool(boost.get(i)))
+    # (Vacated-usage boost removed 9/30: handing an Out player's red-zone share to teammates tested WORSE in 7 of 7
+    # seasons, 2019-25 -- the teammates' own usage already carries most of it, and the bump overshot.)
+    df['p']=team_budget(shrink(m.predict_proba(design(df))[:,1]), imp)
+    df['boosted'] = False
     df['depth_note']=[DEPTH_NOTE.get(pid) for pid in df.pid]
     return df.sort_values('p',ascending=False)[['name','pos','p','boosted','depth_note']]
+
+# Team TD total (added 9/30): each player's chance is computed on its own, so a team's list can add up to more (or fewer)
+# TDs than its implied points support. Scale every player's expected TDs halfway toward the team's expected RB/WR/TE
+# TDs (-0.746 + 0.1297 x implied points, fit on 5,278 team-games 2016-25). Tested train-3/test-next 2019-25: better in
+# 7 of 7 seasons (Brier -0.00037). Halfway (a=0.5) beat a=0.25 and a=1.0. The team sum uses the top 8 players only
+# (training has ~8 players per team-game; the live list also holds everyone who touched the ball this season, which
+# would inflate the sum and pull every number down). Top-8 tested the same as the full sum: 7 of 7.
+BUDGET_A, BUDGET_K, BUDGET_N = 0.5, (-0.7459, 0.1297), 8
+def team_budget(p, imp):
+    p = np.clip(np.asarray(p, dtype=float), 0, 0.95); lam = -np.log(1 - p); tot = np.sort(lam)[::-1][:BUDGET_N].sum()
+    if tot <= 0: return p
+    target = max(0.3, BUDGET_K[0] + BUDGET_K[1] * float(imp))
+    return 1 - np.exp(-lam * (target / tot) ** BUDGET_A)
 
 import time as _time
 _LIVE_T = _time.time()
@@ -436,12 +442,12 @@ def refresh_live(max_age=1800):
 if __name__=="__main__":
     ap=argparse.ArgumentParser(); ap.add_argument("--away",required=True); ap.add_argument("--home",required=True)
     ap.add_argument("--spread",type=float,required=True); ap.add_argument("--total",type=float,required=True)
-    ap.add_argument("--out",default=""); ap.add_argument("--no-posadj",action="store_true"); ap.add_argument("--prices",default="")
+    ap.add_argument("--out",default=""); ap.add_argument("--posadj",action="store_true"); ap.add_argument("--prices",default="")
     a=ap.parse_args(); outs=[o.strip() for o in a.out.split(",") if o.strip()]
     px={k.strip():float(v) for k,v in (x.split("=") for x in a.prices.split(",") if x.strip())}
     hi=a.total/2+a.spread/2; ai=a.total/2-a.spread/2
     for team,opp,imp in [(a.away,a.home,ai),(a.home,a.away,hi)]:
-        df=run(team,opp,imp,outs,not a.no_posadj).head(10)
+        df=run(team,opp,imp,outs,a.posadj).head(10)
         print(f"\n{team} vs {opp} (implied {imp:.1f} pts) — Model estimate")
         for _,r in df.iterrows():
             line=f"  {r['name']:<12} {r.pos:<3} fair {r.p*100:5.1f}%"
@@ -451,22 +457,33 @@ if __name__=="__main__":
 
 def retrain(season=None):
     """Weekly TD retrain, shared by the scheduler (Tuesday 7:15) and POST /retrain-td so the two can't drift apart
-    again: fresh data, 3 past seasons (+ current once 3+ weeks are done), the last 2 completed weeks held OUT of
-    training, and the candidate goes live only if its held-out Brier beats the active model's."""
+    again: fresh data, 3 past seasons (+ this season's earlier weeks), the last 4 completed weeks held OUT of training,
+    and the candidate goes live only if it beats the active model by more than 2 standard errors on those weeks."""
     global m
     import datetime as _dt
     season = season or CURRENT
     refresh_live(0)
     season_pg, _, _, _ = player_games(season)
     cur_weeks = sorted(season_pg.week.unique().tolist())
-    holdout = cur_weeks[-2:] if len(cur_weeks) >= 4 else []
-    train_seasons = [season - 3, season - 2, season - 1] + ([season] if len(cur_weeks) > 2 else [])
+    # Stricter switch rule (9/30): with 2 held-out weeks the noise (SD ~0.0003 Brier) is bigger than the typical real gap
+    # between two decent models (~0.00017), so the old "better by 0.0001" rule picked the WORSE model 28% of the time
+    # (tested 2019-25). Now: last 4 completed weeks held out, and the candidate must win by more than 2 standard errors
+    # of the paired per-player difference. Otherwise the current model stays.
+    holdout = cur_weeks[-4:] if len(cur_weeks) >= 6 else []
+    train_seasons = [season - 3, season - 2, season - 1] + ([season] if len(cur_weeks) > 4 else [])
     candidate = fit_model(train_seasons, exclude=(season, holdout) if holdout else None)
-    cand_brier = eval_holdout(candidate, season, holdout) if holdout else None
-    active_brier = eval_holdout(m, season, holdout) if holdout else None
-    went_live = cand_brier is not None and active_brier is not None and cand_brier < active_brier - 1e-4
+    ec = holdout_sqerr(candidate, season, holdout) if holdout else None
+    ea = holdout_sqerr(m, season, holdout) if holdout else None
+    cand_brier = float(ec.mean()) if ec is not None else None
+    active_brier = float(ea.mean()) if ea is not None else None
+    went_live = False
+    if ec is not None and ea is not None and len(ec) > 50:
+        d = ec - ea; se = float(d.std(ddof=1) / np.sqrt(len(d)))
+        went_live = float(d.mean()) < -2 * se
     saved = None
     if went_live:
+        # It won the fair test; the live copy is refit WITH the held-out weeks (the most recent games shouldn't be left out).
+        candidate = fit_model(train_seasons)
         m = candidate   # single assignment: run() reads m once per prediction, so readers see old or new, never a mix
         saved = save_active({"model": candidate, "trained": train_seasons, "holdout_weeks": holdout, "brier": cand_brier,
                              "t": _dt.datetime.now(_dt.timezone.utc).isoformat()})
