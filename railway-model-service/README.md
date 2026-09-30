@@ -356,3 +356,24 @@ Found from the live site and the Week 3 export (nfl-bettors-results.json). Site 
 - Calibration re-checked on the new 21-feature TD model (held-out 2024+2025, 9,036 player-games): the existing
   shrink (above 35%: 0.35 + 0.75x) still beats refits out-of-sample (2025: 0.15681 vs 0.15699). 20-40% players score
   2-3 pts more than predicted -- the live weekly self-correction absorbs that. No change.
+
+## 9/29: automation + monitoring
+- Last automatic run (auto:last, set by scheduled snapshots/reruns) on System status; Watchdog warns if none in 9 h.
+  Cause found 9/29: every scheduler call got 401 (SITE_LOGIN vs SITE_USERNAME/SITE_PASSWORD). Both sides now trim.
+- Self-check /api/selfcheck (Thu 12:05 PM, Fri 5:05 PM, Sun 7:35 AM PT): same Watchdog (lib/watchdog.js, one copy),
+  saved to selfcheck:last and logged to System status.
+- Automatic pre-log at kickoff: prelog:{season}:{week}:{game} = model numbers, closing lines, top 8 TD chances vs price.
+- Tuesday recap on Record: finished week's TD scored vs expected, TD vs Polymarket (real markets), your bets.
+- TD model CLV: opening price (first TD price-history entry) vs closing mid for players the model had above the open.
+- Price-move alerts: 5¢+ over ~24 h on real markets (row badge + "Price moves" box on the TD tab).
+- [Railway] Depth-chart change flags: latest chart vs the one before each team's last game ("moved up to starter" /
+  "dropped from starter"), display only. Sportsbook failures logged; manual refresh pulls books if missing/6 h old.
+- Gap fixes (9/30): Questionable players' TD rows remind you to check the inactive list ~90 min before kickoff (the
+  injury feed has no inactives; inactive = TD market settles No). The late-closing safety net also writes the
+  pre-log, so a missed kickoff snapshot still gets one. TD price history reads only the first entry + last 40
+  (was the whole week, ~1 MB per page load).
+- ESPN game-day status (lib/espn.js, 9/30): ESPN's league injury feed keeps updating through game day. Players ESPN
+  lists Out/Doubtful/Suspended (dated within 8 days) come off the TD list ("Removed — ESPN lists them out"), are passed
+  as outs to the TD rerun (teammates get the red-zone share) and to the game-line injury adjustment. Other ESPN
+  statuses show on the row. Feed down/unreadable -> Watchdog. Tier 4 source; parser tested on the documented shape,
+  live feed not reachable from the build environment.

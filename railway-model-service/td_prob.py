@@ -289,6 +289,31 @@ def _live_flags():
     except Exception: pass
     return prev_team, shift, starters, known
 PREV_TEAM, RZ_SHIFT, DEPTH_STARTERS, DEPTH_KNOWN = _live_flags()
+def _depth_changes():
+    """Depth-chart change flags (added 9/29): compare each team's LATEST depth chart with the one in place before its
+    last game. {pid: "moved up to starter"} / {pid: "dropped from starter"}. Display only -- the model already uses
+    the current chart through depth1; this tells you WHY a number moved."""
+    out = {}
+    try:
+        d = fetch_depth(CUR); d = d[d.pos_abb.isin(["QB", "RB", "WR", "TE", "FB"])].copy(); d["t"] = pd.to_datetime(d.dt).dt.tz_localize(None)
+        gd = p.drop_duplicates("game_id")[["game_date", "home_team", "away_team"]]
+        last = pd.concat([gd.rename(columns={"home_team": "team"})[["team", "game_date"]], gd.rename(columns={"away_team": "team"})[["team", "game_date"]]]).groupby("team").game_date.max()
+        top = lambda x: set(x.sort_values("pos_rank").groupby("pos_slot").gsis_id.first().values)
+        for team, g in d.groupby("team"):
+            now = g[g.t == g.t.max()]
+            if team not in last.index: continue
+            before = g[g.t < pd.to_datetime(last[team])]
+            if not len(before): continue
+            before = before[before.t == before.t.max()]
+            a, b = top(now), top(before)
+            for pid in a - b:
+                if pid in set(before.gsis_id): out[pid] = "moved up to starter on the depth chart"
+                else: out[pid] = "new on the depth chart as a starter"
+            for pid in b - a:
+                if pid in set(now.gsis_id): out[pid] = "dropped from starter on the depth chart"
+    except Exception: pass
+    return out
+DEPTH_NOTE = _depth_changes()
 # Latest official weekly roster status. Players on IR/PUP ("RES"), the exempt list ("EXE"), released ("CUT"), retired,
 # or now on ANOTHER team are dropped from the TD list. Before 9/28 the list came only from this season's play-by-play,
 # so injured-reserve players kept showing a TD chance from their early-season usage (Week 3: A.J. Brown 26.5%,
@@ -381,7 +406,8 @@ def run(team,opp,imp,outs=(),posadj=True):
                 boost[pid] = True
     df['p']=shrink(m.predict_proba(design(df))[:,1])
     df['boosted'] = df.index.map(lambda i: bool(boost.get(i)))
-    return df.sort_values('p',ascending=False)[['name','pos','p','boosted']]
+    df['depth_note']=[DEPTH_NOTE.get(pid) for pid in df.pid]
+    return df.sort_values('p',ascending=False)[['name','pos','p','boosted','depth_note']]
 
 import time as _time
 _LIVE_T = _time.time()
@@ -391,7 +417,7 @@ def refresh_live(max_age=1800):
     for days, until the next deploy -- so new games, snap counts, IR moves and depth changes never reached the TD
     numbers even though reruns kept running. Called at the start of every TD rerun and weekly retrain."""
     global pos, pg, dal, games, p, prior, pr, cur, names, SNAP_NOW, _ros_nn, ROS_STATUS, ROS_TEAM
-    global PREV_TEAM, RZ_SHIFT, DEPTH_STARTERS, DEPTH_KNOWN, _LIVE_T
+    global PREV_TEAM, RZ_SHIFT, DEPTH_STARTERS, DEPTH_KNOWN, DEPTH_NOTE, _LIVE_T
     if _time.time() - _LIVE_T < max_age: return False
     pos = load_pos()
     pg, dal, games, p = player_games(CUR); prior, _, _, _ = player_games(CUR - 1)
@@ -403,6 +429,7 @@ def refresh_live(max_age=1800):
     except Exception: _ros_nn = pd.Series(dtype=object)
     ROS_STATUS, ROS_TEAM = _latest_roster()
     PREV_TEAM, RZ_SHIFT, DEPTH_STARTERS, DEPTH_KNOWN = _live_flags()
+    DEPTH_NOTE = _depth_changes()
     _LIVE_T = _time.time()
     return True
 

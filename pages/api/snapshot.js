@@ -13,6 +13,18 @@ import { isThinMarket } from "../../lib/odds";
 import { nameMatches } from "../../lib/picks";
 export const config = { maxDuration: 120 };
 
+// Automatic pre-log (protocol 3.3): model vs Polymarket frozen at kickoff for every game. Used by the kickoff snapshot
+// AND the late-closing safety net below (added 9/29), so a missed kickoff (e.g. the scheduler down) still gets one.
+async function writePrelog(season, week, g, t, poly, bk, model) {
+  const mdl = model || (await loadModel(season, week).catch(() => null)) || { games: {}, td: {} };
+  const mg = mdl.games[g.key] || null, mt = mdl.td[g.key] || {}, tdp = (await getJSON(K.tdpx(season, week, g.key))) || {};
+  const topTd = [...(mt.away || []).map((p) => ({ ...p, team: g.away })), ...(mt.home || []).map((p) => ({ ...p, team: g.home }))]
+    .sort((a, b) => b.fair - a.fair).slice(0, 8).map((p) => { const q = Object.keys(tdp).find((k) => nameMatches(p.name, k) && /(^|\D)1\+|anytime/i.test(k)); const v = q ? (typeof tdp[q] === "number" ? { ask: tdp[q] } : tdp[q]) : null;
+      return { player: p.name, team: p.team, fair: p.fair, ask: v ? v.ask : null, bid: v ? v.bid ?? null : null }; });
+  await setJSON(`prelog:${season}:${week}:${g.key}`, { t, game: g.key, poly, books: bk,
+    model: mg ? { homeMargin: mg.homeMargin, total: mg.total, homeWinPct: mg.homeWinPct, calHomeCover: mg.calHomeCover, calUnder: mg.calUnder, mktHomeSpread: mg.mktHomeSpread, mktTotal: mg.mktTotal, runAt: mdl.runAt || null } : null, topTd });
+}
+
 export default async function handler(req, res) {
   try {
     const src = req.query.src || "manual";
@@ -20,11 +32,14 @@ export default async function handler(req, res) {
     const games = await loadGames(season, week);
     const redis = getRedis(), t = new Date().toISOString();
     let books = null, booksNote = null;
+    // Manual "Lines + injuries" refresh pulls sportsbooks too when this week has none or they're 6+ hours old
+    // (before, only the scheduler's 2-a-day pulls ever fetched them, so a missed pull left "Books —" for hours).
+    if (req.query.books !== "1" && src === "manual") { const bk = await getJSON(K.books(season, week)); if (!bk || Date.now() - new Date(bk.t) > 6 * 3600e3) req.query.books = "1"; }
     if (req.query.books === "1") {
-      if (!process.env.ODDS_API_KEY) booksNote = "ODDS_API_KEY not set";
+      if (!process.env.ODDS_API_KEY) { booksNote = "ODDS_API_KEY not set"; await logError("books", "ODDS_API_KEY not set in Vercel"); }
       else {
         try { const b = await fetchBooks(process.env.ODDS_API_KEY); books = b.games; await setJSON(K.books(season, week), { t, games: books, remaining: b.remaining }); booksNote = `credits left ${b.remaining}`; }
-        catch (e) { booksNote = String(e); }
+        catch (e) { booksNote = String(e); await logError("books", `Sportsbook pull failed: ${String(e).slice(0, 160)}`); }   // was silent: only the scheduler's log saw it
       }
     }
     const open = games.filter((g) => !started(g));
@@ -81,6 +96,7 @@ export default async function handler(req, res) {
       if (String(req.query.kickoff || "").split(",").includes(g.key)) {
         const bk = books ? books[g.key] : ((await getJSON(K.books(season, week))) || { games: {} }).games[g.key];
         await setJSON(K.close(season, week, g.key), { t, poly: poly || null, books: bk || null });
+        await writePrelog(season, week, g, t, poly || null, bk || null, model);
       }
     }));
     // Safety net: any started game without a closing line gets its last pre-kickoff snapshot.
@@ -90,11 +106,13 @@ export default async function handler(req, res) {
       const raw = await redis.lrange(K.snaps(season, week, g.key), 0, -1);
       const pre = raw.map((x) => JSON.parse(x)).filter((s) => new Date(s.t) < new Date(g.kickoff)).pop();
       if (pre) { const bk = ((await getJSON(K.books(season, week))) || { games: {} }).games[g.key];
-        await setJSON(K.close(season, week, g.key), { t: pre.t, poly: pre.poly, books: pre.books || bk || null }); closedLate++; }
+        await setJSON(K.close(season, week, g.key), { t: pre.t, poly: pre.poly, books: pre.books || bk || null }); closedLate++;
+        if (!(await redis.exists(`prelog:${season}:${week}:${g.key}`))) await writePrelog(season, week, g, pre.t, pre.poly, pre.books || bk || null, null); }
     }
     const meta = (await getJSON(K.meta(season, week))) || {};
     meta.lastSnapshot = t; meta.lastSrc = src; if (books) { meta.lastBooks = t; meta.credits = (await getJSON(K.books(season, week)) || {}).remaining; }
     await setJSON(K.meta(season, week), meta);
+    if (src !== "manual") await setJSON("auto:last", { t, what: `snapshot (${src})` });   // "Last automatic run" + Watchdog
     const graded = await gradeRecent(season).catch(() => 0);
     const acct = await syncAccount().catch((e) => ({ ok: false, note: String(e) }));  // auto-sync My Bets
     res.status(200).json({ ok: true, week, upcoming: open.length, locked: games.length - open.length, lines, props, books: booksNote, closedLate, graded, account: acct.ok ? `synced ${acct.positions} positions` : acct.note });

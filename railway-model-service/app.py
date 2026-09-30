@@ -174,7 +174,7 @@ def rerun_td_probs():
             fa = dict(zip(top_a.index, f_a)); fh = dict(zip(top_h.index, f_h))
             def rows(df, first):
                 two = td_prob.two_plus(df.p.values)
-                return [{"name": r["name"], "pos": r.pos, "fair": round(r.p * 100, 1), "boosted": bool(r.boosted),
+                return [{"name": r["name"], "pos": r.pos, "fair": round(r.p * 100, 1), "boosted": bool(r.boosted), "depthNote": r.get("depth_note") if isinstance(r.get("depth_note"), str) else None,
                          "two": round(float(two[i]) * 100, 1), "first": round(float(first[idx]) * 100, 1) if idx in first else None}
                         for i, (idx, r) in enumerate(df.iterrows())]
             out.append({

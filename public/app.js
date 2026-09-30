@@ -29,11 +29,25 @@ function headButtons(g, id, extra = "") {
     `<div class="btns" style="margin-top:0;flex-shrink:0">${n ? `<button class="tag" data-drop="inj-${id}">Injuries ${n} ▾</button>` : ""}<button class="tag" data-drop="his-${id}">History ▾</button></div></div>` +
     `<div class="drop" id="inj-${id}"><div class="s" style="margin-bottom:4px">Official report${(() => { const w = [...new Set((g.injuries || []).map((x) => x.week))]; return w.length ? ` · Week ${w.join("/")}` + (w.every((x) => Number(x) !== Number(S.week)) ? " (last week's — this week's first report comes out Wednesday)" : "") : ""; })()} · updated ${S.injuriesUpdated ? hm(S.injuriesUpdated) : "—"}</div>` +
     (g.injuries || []).map((x) => `<div class="drow"><span>${esc(x.name)} <span class="dim">${esc(x.pos || "")} · ${x.team}</span></span><span class="${/out/i.test(x.status) ? "r" : /doubt/i.test(x.status) ? "r" : "y"}">${esc(x.status)}</span></div>`).join("") + `</div>` +
-    `<div class="drop" id="his-${id}"><div class="s" style="margin-bottom:4px">How the line moved this week (Polymarket)</div>` +
-    `<div class="drow dim"><span>When</span><span>Spread</span><span>Total</span></div>` +
-    ((g.history || []).filter((h) => h.poly).slice().reverse().map((h) => { const p = h.poly;
-      return `<div class="drow"><span>${hm(h.t)}${h.src === "kickoff" ? " 🔒" : ""}</span><span>${p.spread ? `${g.home} ${sgn(p.spread.homeSpread)}` : "—"}</span><span>${p.total ? p.total.line : "—"}</span></div>`; }).join("") ||
-      '<div class="s">No snapshots yet this week.</div>') + `</div>`;
+    `<div class="drop" id="his-${id}">${historyRows(g)}</div>`;
+}
+// History dropdown (reworked 9/29): it already resets each week (stored per week), but it listed EVERY snapshot, so a
+// quiet week showed a dozen identical rows. Now: the opening line, then only real moves (spread or total line changed,
+// or a price moved 3¢+), then the latest -- with a count of how many checks were quiet.
+function historyRows(g) {
+  const hs = (g.history || []).filter((h) => h.poly);
+  if (!hs.length) return '<div class="s">No snapshots yet this week.</div>';
+  // One row per set of numbers: a new row only when the spread/total line changes or a price moves 3¢+. While the
+  // numbers stay the same, the row keeps its start time and just updates "last checked".
+  const key = (p) => ({ sl: p.spread ? p.spread.homeSpread : null, sp: p.spread ? p.spread.home : null, tl: p.total ? p.total.line : null, tp: p.total ? p.total.over : null, ml: p.ml ? p.ml.home : null });
+  const moved = (a, b) => a.sl !== b.sl || a.tl !== b.tl || ["sp", "tp", "ml"].some((x) => a[x] != null && b[x] != null && Math.abs(a[x] - b[x]) >= 0.03);
+  const rows = [{ from: hs[0], last: hs[0] }];
+  for (const h of hs.slice(1)) { const cur = rows[rows.length - 1]; if (moved(key(h.poly), key(cur.from.poly))) rows.push({ from: h, last: h }); else cur.last = h; }
+  const cell = (p) => `<span>${p.spread ? `${g.home} ${sgn(p.spread.homeSpread)} ${odds(toAmerican(p.spread.home))}` : "—"}</span><span>${p.total ? `${p.total.line} (O ${odds(toAmerican(p.total.over))})` : "—"}</span><span>${p.ml ? `${g.home} ${odds(toAmerican(p.ml.home))}` : "—"}</span>`;
+  return `<div class="s" style="margin-bottom:4px">How the line moved this week (Polymarket) · resets every week · ${rows.length === 1 ? "no change yet" : `${rows.length - 1} move${rows.length === 2 ? "" : "s"}`}</div>` +
+    `<div class="drow dim"><span>Since</span><span>Spread</span><span>Total</span><span>Moneyline</span></div>` +
+    rows.slice().reverse().map((r, i) => `<div class="drow"><span>${hm(r.from.t)}${r.from.src === "kickoff" ? " 🔒" : ""}` +
+      `${r.last !== r.from ? `<br><span class="dim">last checked ${hm(r.last.t)}</span>` : ""}${i === rows.length - 1 ? '<br><span class="dim">opening line</span>' : ""}</span>${cell(r.from.poly)}</div>`).join("");
 }
 const HDR = `<div class="hd">MARKET · what you can bet</div><div class="hd hm">MODEL · our math</div>`;
 const qbAdjusted = (g) => !!(g.model && g.model.inj && [g.model.inj.home, g.model.inj.away].some((t) => t && (t.players || []).some((q) => q.group === "QB1")));
@@ -170,7 +184,13 @@ function prow(r, g, showGame) {
   // team code dropped from the subtitle when the logo is shown (showGame) — the logo already carries it
   const sub = `${showGame ? `${r.game} · ` : ""}#${r.teamRank} on team${snap}`;
   const more = r.fair != null && (r.two != null || r.first != null) ? `2+ TDs ${r.two != null ? Math.round(r.two) + "%" : "—"} · first TD of the game ${r.first != null ? Math.round(r.first) + "%" : "—"}` : "";
-  const flags = (r.flags || []).map((f) => `<div class="y" style="font-size:11.5px">⚠ ${esc(f)}</div>`).join("");
+  const flags = (r.flags || []).map((f) => `<div class="y" style="font-size:11.5px">⚠ ${esc(f)}</div>`).join("") +
+    // Game-day inactives come out ~90 min before kickoff and are NOT in the injury feed; an inactive player's TD market
+    // settles No. Reminder on every Questionable player until kickoff.
+    (r.espn ? `<div style="font-size:11.5px" class="dim">ESPN: ${esc(r.espn)}</div>` : "") +
+    (/^questionable$/i.test(r.injury || "") && !g.started ? `<div class="y" style="font-size:11.5px">⚠ Questionable — check the inactive list ~90 min before kickoff (inactive = TD market settles No)</div>` : "") +
+    (r.depthNote ? `<div style="font-size:11.5px" class="${/up|new/.test(r.depthNote) ? "g" : "r"}">${/up|new/.test(r.depthNote) ? "▲" : "▼"} ${esc(r.depthNote)}</div>` : "") +
+    (r.move ? `<div style="font-size:11.5px" class="${r.move > 0 ? "g" : "r"}">Price ${r.move > 0 ? "▲ +" : "▼ "}${r.move}¢ ${r.moveSince || "in the last day"}</div>` : "");
   const logo = r.team ? `<img class="logo" src="${logoUrl(r.team)}" alt="${r.team}">` : "";
   return `<div class="prow"><div>${logo}<b style="font-weight:600">${r.player}</b><span class="pos">${r.pos}</span>${inj}<div class="s">${sub}</div></div>` +
     `<div class="n"><span class="big">${chance}</span><span class="lbl">model's<br>chance</span></div>` +
@@ -186,7 +206,7 @@ function tdCard(g, id) {
   const side = (team) => { const rows = (g.td || []).filter((r) => r.team === team && r.fair != null && usable(r)).sort((a, b) => b.fair - a.fair).slice(0, n);
     const gp = g.tdGroups && g.tdGroups[team], groups = gp ? ["RB", "WR", "TE"].filter((k) => gp[k] != null).map((k) => `${k} ${Math.round(gp[k])}%`).join(" · ") : "";
     return `<div><div class="sh" style="color:#c9c9cf">${tlogo(team)}${team} <span class="s" style="font-weight:400">${implied(team)}</span></div>${groups ? `<div class="s" style="margin-bottom:2px">Chance any one of them scores: ${groups}</div>` : ""}${rows.map((r) => prow(r, g, false)).join("") || '<div class="s">No players yet — tap ▶ Rerun model.</div>'}</div>`; };
-  return `<div class="card${g.final ? " fin" : ""}" style="margin-top:10px"><div class="inner">${headButtons(g, id, lines)}<div class="teams">${side(g.away)}${side(g.home)}</div>${(g.tdUnmodeled || []).length ? `<div class="s" style="margin-top:6px">Also on Polymarket with a real market, <b>not in the model</b> (QBs, returners, new or dropped players — check before buying): ${g.tdUnmodeled.map((u) => `${esc(u.player)} ${Math.round(u.price * 100)}¢${u.thin ? " (thin)" : ""}`).join(" · ")}</div>` : ""}</div>${cover(g, null)}</div>`;
+  return `<div class="card${g.final ? " fin" : ""}" style="margin-top:10px"><div class="inner">${headButtons(g, id, lines)}<div class="teams">${side(g.away)}${side(g.home)}</div>${(g.espnRemoved || []).length ? `<div class="s r" style="margin-top:6px">Removed — ESPN lists them out for this game: ${esc(g.espnRemoved.join(", "))}</div>` : ""}${(g.tdUnmodeled || []).length ? `<div class="s" style="margin-top:6px">Also on Polymarket with a real market, <b>not in the model</b> (QBs, returners, new or dropped players — check before buying): ${g.tdUnmodeled.map((u) => `${esc(u.player)} ${Math.round(u.price * 100)}¢${u.thin ? " (thin)" : ""}`).join(" · ")}</div>` : ""}</div>${cover(g, null)}</div>`;
 }
 function renderTd() {
   const wk = S.week ? ` — Week ${S.week}` : "";
@@ -194,7 +214,9 @@ function renderTd() {
   if (tdSort === "likely") {
     const rows = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).map((r) => ({ r, g })))
       .filter((x) => x.r.fair != null && usable(x.r)).sort((a, b) => b.r.fair - a.r.fair);
-    $("td").innerHTML = rows.map((x) => `<div class="card" style="margin-top:10px">${prow(x.r, x.g, true)}</div>`).join("") ||
+    const moves = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).filter((r) => r.move).map((r) => r)).sort((a, b) => Math.abs(b.move) - Math.abs(a.move)).slice(0, 10);
+    const moveBox = moves.length ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Price moves (5¢+, real markets)</div>${moves.map((r) => `<div class="row"><span>${esc(r.player)} <span class="dim">${esc(r.game)}</span></span><span class="${r.move > 0 ? "g" : "r"}">${r.move > 0 ? "+" : ""}${r.move}¢ → ${Math.round(r.price * 100)}¢</span></div>`).join("")}</div></div>` : "";
+    $("td").innerHTML = moveBox + rows.map((x) => `<div class="card" style="margin-top:10px">${prow(x.r, x.g, true)}</div>`).join("") ||
       '<div class="card" style="margin-top:10px"><div class="s">No players yet — tap ▶ Rerun model.</div></div>';
     return;
   }
@@ -285,12 +307,20 @@ function renderModel() {
         const plNo = no.reduce((a, p) => a + (!p.scored ? 1 / (1 - p.bid) - 1 : -1), 0);
         return `<div class="row"><span class="dim">$1 on No when model &lt; price</span><span>${no.filter((p) => !p.scored).length} of ${no.length} won · ${cMoney(plNo)} ${no.length ? `(${cPct(plNo / no.length)})` : ""}</span></div>`; })() +
       `<div class="row"><span class="dim">Scored vs priced</span><span>${(tdPx.filter((p) => p.scored).length / tdPx.length * 100).toFixed(0)}% scored · Polymarket priced ${(tdPx.reduce((a, p) => a + mk(p), 0) / tdPx.length * 100).toFixed(0)}% · model ${(tdPx.reduce((a, p) => a + p.fair, 0) / tdPx.length).toFixed(0)}%</span></div>` +
+      // TD model CLV (added 9/29): for players where the model was above the OPENING price (first snapshot of the week),
+      // did the closing price move toward the model? The fastest signal of real edge, long before win/loss means anything.
+      (() => { const c = tdPx.filter((p) => p.openAsk > 0 && p.openBid > 0 && p.openAsk - p.openBid <= Math.min(0.05, 0.4 * p.openAsk) && p.fair / 100 > p.openAsk)   /* opening price must be a real market too */
+          .map((p) => (p.bid + p.ask) / 2 / p.openAsk - 1);
+        return `<div class="row"><span class="dim">TD model CLV (model above opening price)</span><span>${c.length ? `${cPct(c.reduce((a, x) => a + x, 0) / c.length)} avg · ${c.length} players` : "starts Week 4 (needs opening prices)"}</span></div>`; })() +
       '<div class="s dim">Closing prices, before fees, real markets only. The test of whether the TD model beats Polymarket.</div>';
   }
   const st = S.status, wc = S.weekCheck;
   const stOk = st && st.ok && !st.creditWarning;
   const stRows = st ? [
-    ["Last snapshot", st.lastSnapshot ? hm(st.lastSnapshot) : "—"], ["Last model run", st.modelRunAt ? hm(st.modelRunAt) : "—"],
+    ["Last automatic run", st.auto ? `${hm(st.auto.t)} · ${esc(st.auto.what)}` + (Date.now() - new Date(st.auto.t) > 9 * 3600e3 ? ' <span class="y">(stale — scheduler not reaching the site)</span>' : "") : '<span class="y">none recorded — scheduler not reaching the site</span>'],
+    ["Last snapshot", st.lastSnapshot ? hm(st.lastSnapshot) + (S.meta && S.meta.lastSrc === "manual" ? " · you" : "") : "—"], ["Last model run", st.modelRunAt ? hm(st.modelRunAt) : "—"],
+    ["Last self-check", st.selfcheck ? `${hm(st.selfcheck.t)} · ${st.selfcheck.items.length ? `<span class="y">${st.selfcheck.items.length} issue(s) — see Watchdog</span>` : '<span class="g">all clear</span>'}` : "— (Thu 12:05 PM, Fri 5:05 PM, Sun 7:35 AM)"],
+    ["Pre-logged at kickoff", `${st.prelogged || 0} of ${(S.games || []).length} games this week`],
     ["Last backup", st.backup ? `${hm(st.backup.t)} · ${st.backup.where === "volume" ? "saved" : '<span class="y">temporary — add a Railway volume</span>'}` : '<span class="y">none yet</span>'],
     ["Last TD retrain", st.retrain ? `${hm(st.retrain.t)} · ${esc(st.retrain.summary)}` : '<span class="dim">not run yet — runs every Tuesday</span>'],
     ["Database used", st.usedMb != null ? `${st.usedMb.toFixed(1)} of ${st.capMb} MB` : "—"],
@@ -307,6 +337,15 @@ function renderModel() {
     `<div class="row"><span class="dim">Open this week</span><span>${money(s.openCost)} of $200</span></div></div>` +
     `<div class="sec"><div class="sh">Week ${lw ?? S.week} recap</div>` +
     (wk.length ? `<div class="row"><span class="dim">Tilts: spreads · totals · moneyline</span><span>${rec(pick("spread", wk))} · ${rec(pick("total", wk))} · ${rec(pick("ml", wk))}</span></div>` : '<div class="s">No finished games graded yet.</div>') +
+    // Tuesday recap (added 9/29): the finished week's TD results and your bets, next to the line tilts.
+    (() => { const td = wk.flatMap((r) => r.td || []); if (!td.length) return "";
+      const exp = td.reduce((a, p) => a + p.fair, 0) / 100, hit = td.filter((p) => p.scored).length;
+      const real = td.filter((p) => p.ask > 0 && p.bid > 0 && p.ask - p.bid <= Math.min(0.05, 0.4 * p.ask)), y = (p) => (p.scored ? 1 : 0);
+      const bm = real.length ? real.reduce((a, p) => a + (p.fair / 100 - y(p)) ** 2, 0) / real.length : null, bp = real.length ? real.reduce((a, p) => a + ((p.ask + p.bid) / 2 - y(p)) ** 2, 0) / real.length : null;
+      const mine = (MB.bets || []).filter((b) => b.week === lw && b.result !== "pending"), mpl = mine.reduce((a, b) => a + (b.pl || 0), 0);
+      return `<div class="row"><span class="dim">TD model</span><span>${hit} scored · model expected ${exp.toFixed(1)} (${td.length} players)</span></div>` +
+        (bm != null ? `<div class="row"><span class="dim">TD vs Polymarket (real markets)</span><span>${real.length} players · model ${bm.toFixed(3)} · Polymarket ${bp.toFixed(3)}</span></div>` : "") +
+        `<div class="row"><span class="dim">Your bets</span><span>${mine.length ? `${mine.filter((b) => b.result === "W").length}–${mine.filter((b) => b.result === "L").length} · ${cMoney(mpl)}` : "none settled"}</span></div>`; })() +
     `<div class="row"><span class="dim">Week ${S.week} loaded</span><span>${wc.games} games · lines ${wc.withLines}/${wc.games} · model ${wc.modelRun ? '<span class="g">✓</span>' : '<span class="y">not run yet</span>'}</span></div>` +
     ((wc.watch || []).length ? `<div class="s" style="margin-top:6px"><b class="y">Watchdog</b>${wc.watch.map((w) => `<div class="warn">⚠ ${esc(w)}</div>`).join("")}</div>` : '<div class="s dim" style="margin-top:6px">Watchdog: nothing missing or stale.</div>') + `</div>` +
     `<div class="sec"><div class="sh">Season record</div>${seasonRec || '<div class="s">No graded picks yet.</div>'}` +

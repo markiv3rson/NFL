@@ -7,7 +7,8 @@ import { logError } from "../../lib/status";
 import { history } from "../../lib/week";
 import { loadInjuries } from "../../lib/injuries";
 import { windAtKickoff, venue, isNeutral } from "../../lib/wind";
-import { loadSnaps, qbFirstStart } from "../../lib/snaps";
+import { loadSnaps, qbFirstStart, sameName } from "../../lib/snaps";
+import { loadEspnInjuries, espnOutFor } from "../../lib/espn";
 export const config = { maxDuration: 300 };
 
 async function post(base, path, body) {
@@ -23,6 +24,7 @@ export default async function handler(req, res) {
     const all = await loadGames(season, week), games = all.filter((g) => !started(g));
     if (!games.length) return res.status(200).json({ ok: true, week, rerun: 0, note: "every game has started — nothing to rerun" });
     const injuries = await loadInjuries().catch(() => ({}));
+    const espn = await loadEspnInjuries().catch(() => null);
     const snaps = await loadSnaps().catch(() => ({}));
     // Rest days: days since a team's last game before THIS kickoff (across the full season, not just this week).
     const seasonRows = await loadSeason(season);
@@ -50,7 +52,9 @@ export default async function handler(req, res) {
       const hs = p.spread ? p.spread.homeSpread : b.spread ? b.spread.homeSpread : null;
       const total = p.total ? p.total.line : b.total ? b.total.line : null;
       const w = await windAtKickoff(g), vn = venue(g);
-      const outs = [...(injuries[g.away] || []), ...(injuries[g.home] || [])].filter((x) => Number(x.week) === Number(week) && /^(out|doubtful)$/i.test(x.status)).map((x) => x.name);   // Doubtful too: 99% sit, and their red-zone share goes to teammates
+      const outs = [...(injuries[g.away] || []), ...(injuries[g.home] || [])].filter((x) => Number(x.week) === Number(week) && /^(out|doubtful)$/i.test(x.status)).map((x) => x.name);
+      // + ESPN game-day Out (inactives etc., dated this week) so the kickoff-wave rerun hands their share to teammates
+      for (const t of [g.away, g.home]) for (const e of ((espn && espn.teams[t]) || [])) if (espnOutFor(e, t, g.kickoff, seasonRows) && !outs.includes(e.name)) outs.push(e.name);   // Doubtful too: 99% sit, and their red-zone share goes to teammates
       // (THIS week's report only — before 9/28 a Tuesday rerun dropped last week's Out players from the new week's TD list)
       return { away: g.away, home: g.home, key: g.key, wind: w.wind, outdoor: w.outdoor && w.wind != null,
         dome: vn ? !vn.outdoor : null, neutral: isNeutral(g), turf: isTurf(g),
@@ -58,7 +62,12 @@ export default async function handler(req, res) {
         spread: hs == null ? null : -hs, total, outs };
     }));
     // Injury adjustment only uses THIS week's official report (a stale list from last week must never move a lean).
-    const injFor = (t) => (injuries[t] || []).filter((x) => Number(x.week) === Number(week)).map((x) => ({ name: x.name, pos: x.pos, status: x.status }));
+    const injFor = (t) => { const off = (injuries[t] || []).filter((x) => Number(x.week) === Number(week)).map((x) => ({ name: x.name, pos: x.pos, status: x.status }));
+      // ESPN game-day Out overrides a Questionable (or missing) official status, so a starter ruled inactive Sunday
+      // morning moves the game-line injury adjustment too (QB1 -3.96 etc.).
+      const gk = (games.find((gg) => gg.away === t || gg.home === t) || {}).kickoff;
+      for (const e of ((espn && espn.teams[t]) || [])) if (espnOutFor(e, t, gk, seasonRows)) { const i = off.findIndex((x) => sameName(x.name, e.name)); if (i >= 0) off[i].status = "Out"; else off.push({ name: e.name, pos: e.pos, status: "Out" }); }
+      return off; };
     const lines = await post(base, "/rerun-game-lines", { games: payload.map((x) => ({ away: x.away, home: x.home, wind: x.wind, outdoor: x.outdoor,
       spread: x.spread, total: x.total, dome: x.dome, neutral: x.neutral, turf: x.turf, restAwayDays: x.restAwayDays, week,
       // Backup QB making his first start this week (tested 2016-25, margin effect): homeQbFirstStart -6.29 pts,
@@ -96,6 +105,7 @@ export default async function handler(req, res) {
     store.runAt = runAt;
     await setJSON(K.model(season, week), store);
     // Rerun history: every run with its inputs and outputs (logged only; included in Export)
+    if ((req.query.src || "manual") !== "manual") await setJSON("auto:last", { t: runAt, what: `model rerun (${req.query.src})` });
     await getRedis().lpush(`rerunlog:${season}:${week}`, JSON.stringify({ t: runAt, src: req.query.src || "manual",
       games: payload.map((x) => ({ key: x.key, inputs: { homeSpread: x.spread == null ? null : -x.spread, total: x.total, wind: x.wind, outs: x.outs.length },
         model: store.games[x.key] || null, td: (store.td[x.key] ? [...store.td[x.key].away, ...store.td[x.key].home].map((p) => [p.name, p.fair]) : null) })) }));

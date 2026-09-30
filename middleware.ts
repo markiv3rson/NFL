@@ -6,14 +6,15 @@ import { NextRequest, NextResponse } from "next/server";
 
 export function middleware(req: NextRequest) {
   const auth = req.headers.get("authorization");
-  const validUser = process.env.SITE_USERNAME || "";
-  const validPass = process.env.SITE_PASSWORD || "";
+  // .trim(): a stray space or line break pasted into the Vercel variable would otherwise lock out the scheduler (401)
+  const validUser = (process.env.SITE_USERNAME || "").trim();
+  const validPass = (process.env.SITE_PASSWORD || "").trim();
 
   if (auth) {
     const [scheme, encoded] = auth.split(" ");
     if (scheme === "Basic" && encoded) {
       const decoded = atob(encoded);
-      const [user, pass] = decoded.split(":");
+      const i = decoded.indexOf(":"), user = decoded.slice(0, i).trim(), pass = decoded.slice(i + 1).trim();   // passwords may contain ":"
       if (user === validUser && pass === validPass && validUser && validPass) {
         return NextResponse.next();
       }

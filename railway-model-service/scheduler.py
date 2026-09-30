@@ -21,7 +21,7 @@ _started = False
 
 def _call(path, tries=3, timeout=280):
     """GET the site; retry (60s apart) if the reply isn't data, e.g. the site was mid-redeploy."""
-    site, login = os.environ.get("SITE_URL", "").rstrip("/"), os.environ.get("SITE_LOGIN", "")
+    site, login = os.environ.get("SITE_URL", "").strip().rstrip("/"), os.environ.get("SITE_LOGIN", "").strip()   # strip: a stray space/newline in the Railway variable = 401 on every call
     if not site: print("[scheduler] SITE_URL not set", flush=True); return None
     for attempt in range(1, tries + 1):
         req = urllib.request.Request(site + path, headers={"Accept": "application/json", "User-Agent": "nfl-slatezzz-scheduler/1.0"})
@@ -149,6 +149,12 @@ def _loop():
             if now_pt.hour == 0 and 5 <= now_pt.minute < 10:
                 tag = f"b:{now_pt:%Y-%m-%d}"
                 if tag not in fired: fired.add(tag); _backup()
+            # Self-check (added 9/29): Thu 12:05 PM (before TNF), Fri 5:05 PM, Sun 7:35 AM -- the site checks every game
+            # for lines, model numbers, TD prices and this week's injury report, and records anything missing.
+            if ((now_pt.weekday() == 3 and now_pt.hour == 12) or (now_pt.weekday() == 4 and now_pt.hour == 17) or
+                    (now_pt.weekday() == 6 and now_pt.hour == 7 and now_pt.minute >= 30)) and 5 <= now_pt.minute % 30 < 10:
+                tag = f"sc:{now_pt:%Y-%m-%d-%H}"
+                if tag not in fired: fired.add(tag); _call("/api/selfcheck", tries=2)
             if now_pt.hour == 23 and now_pt.minute >= 45:
                 tag = f"g:{now_pt:%Y-%m-%d}"
                 if tag not in fired: fired.add(tag); _call("/api/results/grade")
