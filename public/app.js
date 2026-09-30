@@ -1,4 +1,5 @@
 // NFL SLATEZZZ — everything comes from /api/slate (lines, TD, flags) and /api/mybets + /api/results/list (Record).
+let tdShowAll = false;
 let S = null, RES = null, EDGES = null, MB = null, tdSort = "likely", recView = "mine";
 const $ = (id) => document.getElementById(id);
 const dash = '<span class="dim">—</span>';
@@ -115,7 +116,7 @@ function leanCell(g, kind) {
   // the >50% side as the pick (e.g. "GB -1.5 · 52.1%") even when "Model sees TB by 4.6" sat right under it, because the
   // calibration slightly fades the model. Within 2.5 pts of 50% it now says so; the tilt stays visible in small text.
   const coin = Math.abs(p.pct - 50) < 2.5;
-  return wrap((coin ? `<span>No lean · about 50/50</span><div class="s">tilt: ${p.label} ${p.pct.toFixed(1)}%</div>` :
+  return wrap((coin ? `<span>No lean · about 50/50</span><div class="s">slight side: ${p.label} ${p.pct.toFixed(1)}%</div>` :
     `<span>${p.label}</span><div class="s">${p.pct.toFixed(1)}% model chance</div>`) +
     // Win chance (calibrated cal_win). Its accuracy comes from the MARKET spread; the model's own disagreement enters
     // with a small NEGATIVE weight (tested 2006-25: when the model likes a team more than the market does, that team
@@ -134,8 +135,36 @@ function cover(g, pick) {
 const order = (a, b) => (a.final - b.final) || (a.started - b.started) || (new Date(a.kickoff) - new Date(b.kickoff));
 
 // ---------- Game Lines ----------
+// "Right now" (9/30): Polymarket prices 3%+ better than fresh sportsbook fair prices -- the one realistic edge source.
+function rightNowBox() {
+  const E = S.edgesNow || [], R = S.edgeRule || {};
+  const why = R.booksAgeH == null ? "no sportsbook odds yet this week" : R.booksAgeH > R.booksMaxAgeH ? `sportsbook odds are ${Math.round(R.booksAgeH)} h old — the next scheduled pull refreshes them` : "none right now";
+  const fee = R.feePct ? `after a ${R.feePct}% fee` : "before fees";
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Right now · Polymarket cheaper than the sportsbooks</div>` +
+    (E.length ? E.map((b) => `<div class="row"><span>${esc(b.label)} <span class="dim">${esc(b.game)}</span>${b.held ? ` <span class="y">(${esc(b.held)} — hold)</span>` : ""}</span>` +
+      `<span>${Math.round(b.price * 100)}¢ vs fair ${Math.round(b.fair * 100)}¢ · <span class="g">+${(b.evNet * 100).toFixed(1)}%</span></span></div>`).join("") : `<div class="s">No gap of 3%+ (${why}).</div>`) +
+    `<div class="s dim" style="margin-top:4px">Gap = sportsbook fair chance ÷ Polymarket price − 1, ${fee}. Sportsbook odds must be under ${R.booksMaxAgeH || 3} h old. Results are tracked on Record → Model.</div></div></div>`;
+}
+// "What changed" (9/30): Polymarket line moves since your last visit on this device.
+let LAST_SEEN = null;
+try { LAST_SEEN = localStorage.getItem("lastSeen"); } catch {}
+function changedBox() {
+  if (!LAST_SEEN) return "";
+  const since = new Date(LAST_SEEN), out = [];
+  for (const g of S.games.filter((x) => !x.started)) {
+    const before = [...(g.history || [])].filter((h) => h.poly && new Date(h.t) <= since).pop(), now = g.poly;
+    if (!before || !now) continue;
+    const a = before.poly, bits = [];
+    if (a.spread && now.spread && a.spread.homeSpread !== now.spread.homeSpread) bits.push(`spread ${g.home} ${sgn(a.spread.homeSpread)} → ${sgn(now.spread.homeSpread)}`);
+    if (a.total && now.total && a.total.line !== now.total.line) bits.push(`total ${a.total.line} → ${now.total.line}`);
+    if (a.ml && now.ml && Math.abs(a.ml.home - now.ml.home) >= 0.05) bits.push(`${g.home} moneyline ${Math.round(a.ml.home * 100)}¢ → ${Math.round(now.ml.home * 100)}¢`);
+    if (bits.length) out.push(`<div class="row"><span>${esc(g.key)}</span><span>${bits.join(" · ")}</span></div>`);
+  }
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">What changed since your last visit (${hm(LAST_SEEN)})</div>` +
+    (out.join("") || '<div class="s">No Polymarket line moves.</div>') + `<div class="s dim" style="margin-top:4px">TD price moves are on the Anytime TD tab.</div></div></div>`;
+}
 function renderLines() {
-  $("lines").innerHTML = [...S.games].sort(order).map((g, i) => {
+  $("lines").innerHTML = rightNowBox() + changedBox() + [...S.games].sort(order).map((g, i) => {
     const p = g.poly || {}, b = g.books || {};
     const live = !g.started && p.spread ? '<span class="live"></span>' : "";
     const row = (k, v, mt) => `<div class="prl${mt ? " mt" : ""}"><span class="s">${k}</span><span>${v}</span></div>`;
@@ -143,7 +172,7 @@ function renderLines() {
       (p.spread ? row("Spread", `${g.home} ${sgn(p.spread.homeSpread)} ${odds(toAmerican(p.spread.home))}`) + row("", `${g.away} ${sgn(-p.spread.homeSpread)} ${odds(toAmerican(p.spread.away))}`) : "") +
       (p.ml ? row("Moneyline", `${g.home} ${odds(toAmerican(p.ml.home))}`, !!p.spread) + row("", `${g.away} ${odds(toAmerican(p.ml.away))}`) : "") : dash;
     return `<div class="card${g.final ? " fin" : ""}"><div class="inner">${headButtons(g, "l" + i)}<div class="f">${HDR}` +
-      `<div><div class="k">Sportsbooks (reference only)</div>${b.spread ? `${g.home} ${sgn(b.spread.homeSpread)} ${odds(b.spread.home.odds)}<div class="s">no-vig ${g.home} ${odds(toAmerican(b.spread.home.fair))} / ${g.away} ${odds(toAmerican(b.spread.away.fair))}</div>` : dash}</div>` +
+      `<div><div class="k">Sportsbooks (reference only)</div>${b.spread ? `${g.home} ${sgn(b.spread.homeSpread)} ${odds(b.spread.home.odds)}<div class="s">fair (vig removed) ${g.home} ${odds(toAmerican(b.spread.home.fair))} / ${g.away} ${odds(toAmerican(b.spread.away.fair))}</div>` : dash}</div>` +
       leanCell(g, "spread") +
       `<div><div class="k">Polymarket (where you bet)</div>${poly}</div>` +
       `</div></div>${cover(g, g.spreadPick)}</div>`;
@@ -193,7 +222,7 @@ function prow(r, g, showGame) {
   const logo = r.team ? `<img class="logo" src="${logoUrl(r.team)}" alt="${r.team}">` : "";
   return `<div class="prow"><div>${logo}<b style="font-weight:600">${esc(r.player)}</b><span class="pos">${esc(r.pos)}</span>${inj}<div class="s">${sub}</div></div>` +
     `<div class="n"><span class="big">${chance}</span><span class="lbl">model's<br>chance</span></div>` +
-    `<div class="n"><span class="px">${cents}</span><span class="lbl">Polymarket<br>price${r.stale ? " (old)" : r.thin ? '<br><span class="warn-t">thin market</span>' : ""}${r.open != null && r.price != null && Math.round(r.open * 100) !== Math.round(r.price * 100) ? `<br><span class="dim">opened ${Math.round(r.open * 100)}¢</span>` : ""}</span></div>` +
+    `<div class="n"><span class="px">${cents}</span><span class="lbl">Polymarket<br>price${r.stale ? " (old)" : r.thin ? '<br><span class="warn-t">thin market (no real bidder)</span>' : ""}${r.open != null && r.price != null && Math.round(r.open * 100) !== Math.round(r.price * 100) ? `<br><span class="dim">opened ${Math.round(r.open * 100)}¢</span>` : ""}</span></div>` +
     `<div class="why">${more}${flags}</div></div>`;
 }
 const usable = (r) => !(r.odds != null && r.odds <= -600 && !r.thin);   // a real -600 price is broken data; never hide a player over a thin placeholder
@@ -215,8 +244,11 @@ function renderTd() {
       .filter((x) => x.r.fair != null && usable(x.r)).sort((a, b) => b.r.fair - a.r.fair);
     const moves = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).filter((r) => r.move).map((r) => r)).sort((a, b) => Math.abs(b.move) - Math.abs(a.move)).slice(0, 10);
     const moveBox = moves.length ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Price moves (5¢+, real markets)</div>${moves.map((r) => `<div class="row"><span>${esc(r.player)} <span class="dim">${esc(r.game)}</span></span><span class="${r.move > 0 ? "g" : "r"}">${r.move > 0 ? "+" : ""}${r.move}¢ → ${Math.round(r.price * 100)}¢</span></div>`).join("")}</div></div>` : "";
-    $("td").innerHTML = moveBox + rows.map((x) => `<div class="card" style="margin-top:10px">${prow(x.r, x.g, true)}</div>`).join("") ||
+    const shown = tdShowAll ? rows : rows.slice(0, 40);   // top 40 by default (9/30): 300+ rows was hard to use on a phone
+    $("td").innerHTML = moveBox + shown.map((x) => `<div class="card" style="margin-top:10px">${prow(x.r, x.g, true)}</div>`).join("") +
+      (rows.length > 40 ? `<div class="center"><button class="btn" id="td-all">${tdShowAll ? "Show top 40 only" : `Show all ${rows.length} players`}</button></div>` : "") ||
       '<div class="card" style="margin-top:10px"><div class="s">No players yet — tap ▶ Rerun model.</div></div>';
+    if ($("td-all")) $("td-all").onclick = () => { tdShowAll = !tdShowAll; renderTd(); };
     return;
   }
   $("td").innerHTML = [...S.games].sort(order).map((g, i) => tdCard(g, "d" + i)).join("");
@@ -269,7 +301,7 @@ function renderModel() {
   // Tier labels (Weak/Moderate/Strong) were removed from the cards: calibrated spread/total chances sit ~50%, so every
   // pick would land in one bucket. Season record is shown plain instead.
   const seasonRec = pick("spread", res).length || pick("total", res).length
-    ? `<div class="row"><span class="dim">Spread · total tilts (~50/50)</span><span>${rec(pick("spread", res))} · ${rec(pick("total", res))}</span></div>` +
+    ? `<div class="row"><span class="dim">Spread · total leans (~50/50 by design)</span><span>${rec(pick("spread", res))} · ${rec(pick("total", res))}</span></div>` +
       '<div class="s dim">Spread/total picks sit near 50% by design (the model has no measured edge there), so expect about .500. Picks before 9/28 used the old uncalibrated numbers.</div>' : "";
   // Model accuracy (TD model check, Top picks, recap) uses players who PLAYED; the model's % assumes he plays. The
   // Polymarket comparison below uses everyone, because an inactive player's market really does settle No.
@@ -307,7 +339,7 @@ function renderModel() {
     const small = tdPx.length < 200 ? ' <span class="dim">· small sample (needs ~200+)</span>' : "";
     vsMkt = `<div class="row"><span class="dim">Players checked (real markets)</span><span>${tdPx.length}${small}</span></div>` +
       (thinN ? `<div class="row"><span class="dim">Thin markets skipped</span><span>${thinN} <span class="dim">· no real bid</span></span></div>` : "") +
-      `<div class="row"><span class="dim">Accuracy (lower wins)</span><span>Model ${bM.toFixed(3)} · Polymarket ${bP.toFixed(3)} ` +
+      `<div class="row"><span class="dim">Accuracy score (lower is better)</span><span>Model ${bM.toFixed(3)} · Polymarket ${bP.toFixed(3)} ` +
       (bM < bP ? '<span class="g">model ahead</span>' : '<span class="r">market ahead</span>') + `</span></div>` +
       `<div class="row"><span class="dim">$1 on Yes when model &gt; price</span><span>${hits} of ${buys.length} scored · ${cMoney(pl)} ${buys.length ? `(${cPct(pl / buys.length)})` : ""}</span></div>` +
       // The other side of the same markets: most of the model's disagreements are "less likely than the price says"
@@ -321,7 +353,7 @@ function renderModel() {
       // did the closing price move toward the model? The fastest signal of real edge, long before win/loss means anything.
       (() => { const c = tdPx.filter((p) => p.openAsk > 0 && p.openBid > 0 && p.openAsk - p.openBid <= Math.min(0.05, 0.4 * p.openAsk) && mp(p) > p.openAsk)   /* opening price must be a real market too */
           .map((p) => (p.bid + p.ask) / 2 / p.openAsk - 1);
-        return `<div class="row"><span class="dim">TD model CLV (model above opening price)</span><span>${c.length ? `${cPct(c.reduce((a, x) => a + x, 0) / c.length)} avg · ${c.length} players` : "starts Week 4 (needs opening prices)"}</span></div>`; })() +
+        return `<div class="row"><span class="dim">Did prices move toward the model? (model above the opening price)</span><span>${c.length ? `${cPct(c.reduce((a, x) => a + x, 0) / c.length)} avg · ${c.length} players` : "starts Week 4 (needs opening prices)"}</span></div>`; })() +
       '<div class="s dim">Closing prices, before fees, real markets only. The test of whether the TD model beats Polymarket.</div>';
   }
   const st = S.status, wc = S.weekCheck || { games: 0, withLines: 0, modelRun: false, watch: [] };
@@ -343,7 +375,7 @@ function renderModel() {
   $("record-model").innerHTML = `<div class="card" style="margin-top:10px">` +
     `<div class="sec"><div class="sh">Summary</div>` +
     `<div class="row"><span class="dim">Your record · P/L</span><span>${s.wins}–${s.losses}${s.pushes ? "–" + s.pushes : ""} · ${cMoney(s.pl)}</span></div>` +
-    `<div class="row"><span class="dim">ROI · Avg CLV</span><span>${cPct(s.roi)} · ${cPct(s.avgClv)}${s.clvCount != null ? ` <span class="dim">(${s.clvCount} bet${s.clvCount === 1 ? "" : "s"} with closing prices)</span>` : ""}</span></div>` +
+    `<div class="row"><span class="dim">Return · avg price move your way</span><span>${cPct(s.roi)} · ${cPct(s.avgClv)}${s.clvCount != null ? ` <span class="dim">(${s.clvCount} bet${s.clvCount === 1 ? "" : "s"} with closing prices)</span>` : ""}</span></div>` +
     `<div class="row"><span class="dim">Open this week</span><span>${money(s.openCost)} of $200</span></div></div>` +
     `<div class="sec"><div class="sh">Week ${lw ?? S.week} recap</div>` +
     (wk.length ? `<div class="row"><span class="dim">Tilts: spreads · totals · moneyline</span><span>${rec(pick("spread", wk))} · ${rec(pick("total", wk))} · ${rec(pick("ml", wk))}</span></div>` +
@@ -379,10 +411,10 @@ function renderModel() {
     (() => { const e = EDGES; const pct = (x) => (x == null ? "—" : cPct(x));
       const body = !e || !e.logged ? '<div class="s">Logs itself from the next snapshots (needs fresh sportsbook odds); grades as games go final.</div>' :
         `<div class="row"><span class="dim">Spots logged · graded</span><span>${e.logged} · ${e.graded}</span></div>` +
-        (e.graded ? `<div class="row"><span class="dim">Record · ROI per $1 (before fees)</span><span>${e.w}–${e.l}${e.p ? "–" + e.p : ""} · ${pct(e.roi)} <span class="dim">(claimed edge ${pct(e.avgEv)})</span></span></div>` +
-          `<div class="row"><span class="dim">Beat the closing price (CLV)</span><span>${pct(e.avgClv)} <span class="dim">(${e.clvN} with a same-line close)</span></span></div>` +
+        (e.graded ? `<div class="row"><span class="dim">Record · return per $1</span><span>${e.w}–${e.l}${e.p ? "–" + e.p : ""} · ${pct(e.roi)} <span class="dim">(claimed edge ${pct(e.avgEv)})</span></span></div>` +
+          `<div class="row"><span class="dim">Beat the closing price (price moved your way)</span><span>${pct(e.avgClv)} <span class="dim">(${e.clvN} with a same-line close)</span></span></div>` +
           e.byMarket.filter((m) => m.n).map((m) => `<div class="row"><span class="dim">${{ spread: "Spreads", ml: "Moneylines", total: "Totals" }[m.market]}</span><span>${m.w} of ${m.n} won · ${pct(m.roi)}</span></div>`).join("") +
-          `<div class="s dim">Real edge shows up as positive CLV first; win/loss needs ~200+ graded spots before it means much.</div>` : "");
+          `<div class="s dim">Real edge shows up first as prices moving your way after you'd have bet; win/loss needs ~200+ graded spots before it means much.</div>` : "");
       return `<div class="sec"><div class="sh">Polymarket vs sportsbooks (edge tracker)</div>${body}</div>`; })() +
     `<div class="sec"><div class="sh">TD model vs Polymarket</div>${vsMkt || '<div class="s">Fills in as games go final (needs closing TD prices).</div>'}</div>` +
     `<div class="fold" data-drop="miss"><span>Miss finder</span><span>▾</span></div>` +
@@ -413,10 +445,11 @@ function weekline() {
   const range = ks.length ? (a.getMonth() === z.getMonth() ? `${f(a)}–${z.getDate()}` : `${f(a)} – ${f(z)}`) : "";
   const m = S.meta || {};
   const round = { 19: "Wild Card", 20: "Divisional round", 21: "Conference Championships", 22: "Super Bowl" }[S.week];
-  $("weekline").innerHTML = `${round || `Week ${S.week}`} · ${range} · ↻ Poly ${clock(m.lastSnapshot)} · Books ${clock(S.booksAt)} · Model ${clock(S.modelRunAt)}`;
+  $("weekline").innerHTML = `${round || `Week ${S.week}`} · ${range} · updated: Polymarket ${clock(m.lastSnapshot)} · sportsbooks ${clock(S.booksAt)} · model ${clock(S.modelRunAt)} <span class="dim">(your time)</span>`;
 }
 function renderAll() { weekline(); renderLines(); renderTotals(); renderTd(); if (MB) renderRecord(); }
-async function loadSlate() { const d = await (await fetch("/api/slate")).json(); if (!d.ok) throw new Error(d.error); S = d; renderAll(); }
+async function loadSlate() { const d = await (await fetch("/api/slate")).json(); if (!d.ok) throw new Error(d.error); S = d; renderAll();
+  try { localStorage.setItem("lastSeen", new Date().toISOString()); } catch {} }   // next visit's "What changed" starts from now
 $("refresh-btn").onclick = async () => {
   const b = $("refresh-btn"); b.disabled = true; toast("Pulling current Polymarket lines…", 0);
   try { const d = await (await fetch("/api/snapshot?src=manual")).json(); if (!d.ok) throw new Error(d.error); await loadSlate();

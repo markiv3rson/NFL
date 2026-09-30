@@ -426,3 +426,8 @@ Found from the live site and the Week 3 export (nfl-bettors-results.json). Site 
     the build environment can't reach): Questionable availability also uses ESPN before the official report is out;
     nickname / suffix TD market matching (e.g. "Bam Knight" = Z.Knight, "Tyrone Tracy Jr." = C.Tracy) with a
     unique-last-name rule; matched markets no longer also listed as "not in the model"; snapshot edge counter race.
+- Usability (9/30): Game Lines opens with "Right now" (Polymarket prices 3%+ better than fresh sportsbook fair prices,
+  optional POLY_FEE_PCT fee setting on Vercel, also used by the tracker) and "What changed since your last visit" (line
+  moves, per device). TD tab shows the top 40 with "Show all". Page cached 60 s in Redis (cleared by every snapshot
+  and rerun); injury file cached 10 min; the Refresh button skips grading and the account sync. Plain-language labels
+  replace CLV / Brier / no-vig / tilt; header times say "(your time)".
