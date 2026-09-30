@@ -187,7 +187,7 @@ function prow(r, g, showGame) {
     // Game-day inactives come out ~90 min before kickoff and are NOT in the injury feed; an inactive player's TD market
     // settles No. Reminder on every Questionable player until kickoff.
     (r.espn ? `<div style="font-size:11.5px" class="dim">ESPN: ${esc(r.espn)}</div>` : "") +
-    (/^questionable$/i.test(r.injury || "") && !g.started ? `<div class="y" style="font-size:11.5px">⚠ Questionable — check the inactive list ~90 min before kickoff (inactive = TD market settles No)</div>` : "") +
+    (/^questionable$/i.test(r.injury || "") && !g.started ? `<div class="y" style="font-size:11.5px">⚠ Questionable — ${r.fairIfPlays != null ? `chance includes the 1-in-3 risk he sits (${Math.round(r.fairIfPlays)}% if he plays). ` : ""}Check the inactive list ~90 min before kickoff (inactive = TD market settles No)</div>` : "") +
     (r.depthNote ? `<div style="font-size:11.5px" class="${/up|new/.test(r.depthNote) ? "g" : "r"}">${/up|new/.test(r.depthNote) ? "▲" : "▼"} ${esc(r.depthNote)}</div>` : "") +
     (r.move ? `<div style="font-size:11.5px" class="${r.move > 0 ? "g" : "r"}">Price ${r.move > 0 ? "▲ +" : "▼ "}${r.move}¢ ${r.moveSince || "in the last day"}</div>` : "");
   const logo = r.team ? `<img class="logo" src="${logoUrl(r.team)}" alt="${r.team}">` : "";
@@ -231,7 +231,7 @@ function betRow(b) {
       `<div class="s" style="padding:0 0 6px 8px">${money(b.cost)}${b.price != null ? ` at ${Math.round(b.price * 100)}¢` : ""} · pays ${money(b.toWin)} if it wins · auto-recorded from your account</div>`;
   }
   const hit = b.legs.filter((l) => l.result === "W").length;
-  const state = b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Push" : `<span class="dim">${hit} of ${b.legs.length} hit</span>`;
+  const state = b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? (b.pushUnconfirmed ? '<span class="y">Push leg — check how Polymarket settled it</span>' : "Push") : `<span class="dim">${hit} of ${b.legs.length} hit</span>`;
   return `<div class="row"><span>${b.legs.length > 1 ? "Combo" : "Single"} · ${money(b.cost)} → ${money(b.toWin)}</span><span>${state}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
     `<div class="s" style="padding:0 0 6px 8px">${b.legs.map((l) => `${RESMARK[l.result]} ${legName(l)}${l.clv != null ? ` <span class="${signCls(l.clv)}">(${(l.clv * 100).toFixed(0)}%)</span>` : ""}`).join(" · ")}</div>`;
 }

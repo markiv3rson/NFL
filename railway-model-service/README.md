@@ -393,3 +393,14 @@ Found from the live site and the Week 3 export (nfl-bettors-results.json). Site 
   - Tested and NOT added (no gain): wind floor (calm games really do score more), garbage-time filter, fading prior
     weight, returning starters, gradient boosting, game script, QB goal-line sneaks, rest difference, body clock,
     referee tendency, ATS / over-under streaks, cold temperature, model+market blend.
+- Calibration recheck (9/30), every constant against 2006-25 / 2013-25 results:
+  - Win chance: model-gap weight 0.0324 -> 0 (it was fit on the old model; market-only scored better, 0.6016 vs
+    0.6026); market part refit on 5,247 games: -0.0452 + 0.1464 x spread. Cover: flat 48.85% (gap term was worse).
+  - Team points: old fit ran 2-3 pts high on overs; now market-implied points + real 2006-25 error quantiles.
+  - 2+ TDs: x1.09 -> x1.035 (with the team TD total, x1.09 read 3.77% vs 3.58% actual).
+  - Confirmed correct, unchanged: SD 13 / 13.3, Under calibration, Questionable 0.28 (starters sat 27.1%), Doubtful
+    0.99, TD chances by bucket (no extra correction helps), 2+/first-TD formulas.
+  - TD tab: a Questionable RB/WR/TE's chance is x0.669 until inactives are known (33.1% sat, 2016-25; an inactive
+    player's TD bet settles No). The row shows the if-he-plays number too.
+  - Combos with a pushed leg: no P/L is invented (Polymarket's combo rules don't state how a push settles).
+  - Tested, not added: key numbers for totals (4/10 seasons), totals SD by line level (0/10).

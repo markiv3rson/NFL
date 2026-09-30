@@ -155,12 +155,15 @@ def is_division_game(away, home): return DIVISIONS.get(away) is not None and DIV
 # ---- Calibrated chances (fit 2006-2025, checked out-of-sample by season; see BACKTEST notes in README) ----
 # Win: market spread is the main input; the model's gap adds nothing measurable. Cover / Under: the model's gap vs the market carries
 # no measurable signal, so the calibrated chance stays ~50%. Team points: market-implied points work best (model weight ~0).
-CAL_WIN = (-0.0268, 0.1372, -0.0324)          # intercept, market home-favored margin, (model margin - market margin)
+# Rechecked 9/30 against the rebuilt model (2013-25) and all games 2006-25: the model-gap term is now ~0 (+0.005 refit; it
+# was fit on the OLD model) and market-only scored better (log loss 0.6016 vs 0.6026), so the gap weight is 0. Market part
+# refit on 5,247 games 2006-25 (ties out): -0.0452 + 0.1464 x market margin.
+CAL_WIN = (-0.0452, 0.1464, 0.0)          # intercept, market home-favored margin, (model margin - market margin)
 CAL_WIN_MODEL_ONLY = (-0.0756, 0.1588)   # intercept, model margin (used when no market spread yet)
-CAL_COVER = (-0.0433, -0.0066)      # intercept, (model margin - market margin)
+CAL_COVER = (-0.0462, 0.0)      # intercept, (model margin - market margin). 9/30: flat home-cover rate 48.85% (2006-25); the gap term scored worse than flat
 CAL_UNDER = (0.0206, 0.0169)      # intercept, (market total - model total)
-TEAM_W = (-0.0964, 1.0201, 0.0073)             # intercept, market-implied points, (model - market implied points)
-TEAM_RESID_Q = [-20.14, -18.05, -16.87, -15.85, -14.83, -14.11, -13.48, -12.8, -12.26, -11.71, -11.18, -10.78, -10.41, -10.04, -9.61, -9.33, -8.95, -8.62, -8.29, -7.92, -7.59, -7.34, -7.07, -6.71, -6.4, -6.14, -5.93, -5.69, -5.41, -5.15, -4.87, -4.64, -4.36, -4.12, -3.87, -3.62, -3.38, -3.2, -2.91, -2.69, -2.46, -2.21, -2.0, -1.82, -1.59, -1.36, -1.15, -0.91, -0.68, -0.45, -0.2, 0.05, 0.22, 0.5, 0.73, 0.92, 1.17, 1.41, 1.67, 1.91, 2.19, 2.44, 2.72, 2.92, 3.17, 3.42, 3.66, 3.91, 4.21, 4.51, 4.79, 5.09, 5.44, 5.7, 6.02, 6.34, 6.64, 6.95, 7.27, 7.61, 7.97, 8.42, 8.83, 9.29, 9.75, 10.32, 10.82, 11.45, 12.02, 12.58, 13.29, 14.0, 14.67, 15.41, 16.35, 17.4, 18.66, 20.39, 23.09]          # 99 quantiles of team-points error (out-of-sample)
+TEAM_W = (0.0, 1.0, 0.0)             # intercept, market-implied points, (model - ...). 9/30: old fit ran 2-3 pts high on overs; now market-implied + real 2006-25 errors
+TEAM_RESID_Q = [-19.75, -17.75, -16.5, -15.5, -14.5, -13.75, -13.25, -12.5, -12.0, -11.5, -11.0, -10.5, -10.0, -9.75, -9.25, -9.0, -8.75, -8.25, -8.0, -7.5, -7.25, -7.0, -6.75, -6.42, -6.0, -5.75, -5.5, -5.25, -5.0, -4.75, -4.5, -4.25, -4.0, -3.75, -3.5, -3.25, -3.0, -2.91, -2.5, -2.5, -2.25, -2.0, -1.75, -1.5, -1.25, -1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 0.81, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 4.25, 4.5, 5.0, 5.25, 5.5, 5.75, 6.0, 6.5, 6.75, 7.0, 7.25, 7.5, 8.0, 8.25, 8.75, 9.0, 9.5, 10.0, 10.5, 11.0, 11.75, 12.25, 12.75, 13.5, 14.0, 14.75, 15.5, 16.5, 17.5, 18.8, 20.53, 23.5]          # 99 quantiles of team-points error (out-of-sample)
 def _sig(x): return 1 / (1 + math.exp(-x))
 def cal_win(margin, mkt_margin=None):
     """Calibrated chance the home team wins. margin = model home margin; mkt_margin = market home-favored margin."""

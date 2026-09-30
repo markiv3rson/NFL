@@ -251,7 +251,7 @@ def shrink(p): return np.where(p>0.35, 0.35+0.75*(p-0.35), p)
 def two_plus(p):
     """Chance of 2+ TDs: Poisson from the anytime chance, x1.09 (out-of-sample the plain Poisson ran ~9% low). Brier 0.0333 vs 0.0349 for no-info."""
     p = np.clip(np.asarray(p, dtype=float), 0, 0.95); lam = -np.log(1 - p)
-    return np.minimum(0.6, 1.09 * (1 - np.exp(-lam) * (1 + lam)))
+    return np.minimum(0.6, 1.035 * (1 - np.exp(-lam) * (1 + lam)))   # 9/30: 1.09 -> 1.035 (with the team TD total, x1.09 ran 3.77% vs 3.58% actual)
 FIRST_OTHER = 0.4   # expected first-TD arrivals from non-listed scorers (QB runs, defense, special teams); best fit 2016-25
 def first_td(p_lists):
     """Chance each player scores the game's FIRST touchdown. p_lists = one array of anytime chances per team (both teams together).
