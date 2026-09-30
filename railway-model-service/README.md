@@ -417,3 +417,12 @@ Found from the live site and the Week 3 export (nfl-bettors-results.json). Site 
   - Wording: teammate notes no longer say "Role boost" (their chance is not raised); model docs updated for removed terms.
   - Checked end to end on live 2026 data: TD service load + run, Week-1 fallback, weekly retrain decision, QB penalty,
     game line; 20 math checks + 11 on-screen sentence checks pass.
+- Edge search + full-system test (9/30):
+  - Known market biases vs closing lines 2006-25 (wind/primetime/divisional unders, home/road dogs, big favorites,
+    moneyline favorite-longshot): none reliable. Best was Under at 15+ mph wind, 55.3% of 434 -- not significant.
+  - Edge tracker (lib/edges.js): every time Polymarket is 3%+ better than FRESH (<=3 h) no-vig sportsbook prices it
+    is logged once, graded at the result and against the closing Polymarket price; Record tab shows record, ROI, CLV.
+  - Fixes from the full local run (real site build + real model service on live 2026 data, stand-ins only for hosts
+    the build environment can't reach): Questionable availability also uses ESPN before the official report is out;
+    nickname / suffix TD market matching (e.g. "Bam Knight" = Z.Knight, "Tyrone Tracy Jr." = C.Tracy) with a
+    unique-last-name rule; matched markets no longer also listed as "not in the model"; snapshot edge counter race.
