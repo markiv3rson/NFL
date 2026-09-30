@@ -11,6 +11,7 @@ import { logError } from "../../lib/status";
 import { loadModel } from "../../lib/week";
 import { isThinMarket } from "../../lib/odds";
 import { nameMatches } from "../../lib/picks";
+import { logEdges } from "../../lib/edges";
 export const config = { maxDuration: 120 };
 
 // Automatic pre-log (protocol 3.3): model vs Polymarket frozen at kickoff for every game. Used by the kickoff snapshot
@@ -43,6 +44,8 @@ export default async function handler(req, res) {
       }
     }
     const open = games.filter((g) => !started(g));
+    const booksNow = books ? { t, games: books } : await getJSON(K.books(season, week));   // for the edge tracker (age-checked there)
+    let edges = 0;
     const events = open.length ? await fetchEvents() : [];
     const model = open.length ? await loadModel(season, week).catch(() => null) : null;
     let lines = 0, props = 0;
@@ -58,6 +61,7 @@ export default async function handler(req, res) {
         if (prev.ml && poly.ml && Math.abs(prev.ml.home - poly.ml.home) >= 0.25) why.push("moneyline jumped 25+ cents");
         if (why.length) snap.suspect = `Data check failed: ${why.join(", ")}. Bet held until next refresh.`;
       }
+      if (poly && booksNow && booksNow.games) { const n = await logEdges(season, week, g, poly, booksNow.games[g.key], booksNow.t, t).catch(() => 0); edges += n; }   // add AFTER the await: "edges += await" lost updates across parallel games
       if (poly || snap.books) { await redis.rpush(K.snaps(season, week, g.key), JSON.stringify(snap)); await redis.ltrim(K.snaps(season, week, g.key), -200, -1); lines += poly ? 1 : 0; }
       const px = await tdProps(events, g.away, g.home).catch(() => null);
       if (px) {
@@ -115,6 +119,6 @@ export default async function handler(req, res) {
     if (src !== "manual") await setJSON("auto:last", { t, what: `snapshot (${src})` });   // "Last automatic run" + Watchdog
     const graded = await gradeRecent(season).catch(() => 0);
     const acct = await syncAccount().catch((e) => ({ ok: false, note: String(e) }));  // auto-sync My Bets
-    res.status(200).json({ ok: true, week, upcoming: open.length, locked: games.length - open.length, lines, props, books: booksNote, closedLate, graded, account: acct.ok ? `synced ${acct.positions} positions` : acct.note });
+    res.status(200).json({ ok: true, week, upcoming: open.length, locked: games.length - open.length, lines, props, books: booksNote, closedLate, graded, edges, account: acct.ok ? `synced ${acct.positions} positions` : acct.note });
   } catch (err) { await logError("snapshot", err).catch(() => {}); res.status(500).json({ ok: false, error: String(err) }); }
 }

@@ -1,5 +1,5 @@
 // NFL SLATEZZZ — everything comes from /api/slate (lines, TD, flags) and /api/mybets + /api/results/list (Record).
-let S = null, RES = null, MB = null, tdSort = "likely", recView = "mine";
+let S = null, RES = null, EDGES = null, MB = null, tdSort = "likely", recView = "mine";
 const $ = (id) => document.getElementById(id);
 const dash = '<span class="dim">—</span>';
 const esc = (t) => String(t == null ? "" : t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -375,6 +375,15 @@ function renderModel() {
       const extra = (two.length ? `<div class="row"><span class="dim">2+ TDs</span><span>${two.filter((p) => p.twoHit).length} players did it · model expected ${(two.reduce((a, p) => a + p.two, 0) / 100).toFixed(1)}</span></div>` : "") +
         (ftd.length ? `<div class="row"><span class="dim">First TD of the game</span><span>${ftd.filter((p) => p.ftdHit).length} listed players scored first · model expected ${(ftd.reduce((a, p) => a + p.ftd, 0) / 100).toFixed(1)}</span></div>` : "");
       return t1.length ? `<div class="sec"><div class="sh">Top TD picks</div>${line("#1 per team", t1)}${line("Top 2 per team", t2)}${extra}</div>` : ""; })() +
+    // Polymarket-vs-sportsbooks tracker (9/30): spots where Polymarket was 3%+ better than fresh no-vig sportsbook prices.
+    (() => { const e = EDGES; const pct = (x) => (x == null ? "—" : cPct(x));
+      const body = !e || !e.logged ? '<div class="s">Logs itself from the next snapshots (needs fresh sportsbook odds); grades as games go final.</div>' :
+        `<div class="row"><span class="dim">Spots logged · graded</span><span>${e.logged} · ${e.graded}</span></div>` +
+        (e.graded ? `<div class="row"><span class="dim">Record · ROI per $1 (before fees)</span><span>${e.w}–${e.l}${e.p ? "–" + e.p : ""} · ${pct(e.roi)} <span class="dim">(claimed edge ${pct(e.avgEv)})</span></span></div>` +
+          `<div class="row"><span class="dim">Beat the closing price (CLV)</span><span>${pct(e.avgClv)} <span class="dim">(${e.clvN} with a same-line close)</span></span></div>` +
+          e.byMarket.filter((m) => m.n).map((m) => `<div class="row"><span class="dim">${{ spread: "Spreads", ml: "Moneylines", total: "Totals" }[m.market]}</span><span>${m.w} of ${m.n} won · ${pct(m.roi)}</span></div>`).join("") +
+          `<div class="s dim">Real edge shows up as positive CLV first; win/loss needs ~200+ graded spots before it means much.</div>` : "");
+      return `<div class="sec"><div class="sh">Polymarket vs sportsbooks (edge tracker)</div>${body}</div>`; })() +
     `<div class="sec"><div class="sh">TD model vs Polymarket</div>${vsMkt || '<div class="s">Fills in as games go final (needs closing TD prices).</div>'}</div>` +
     `<div class="fold" data-drop="miss"><span>Miss finder</span><span>▾</span></div>` +
     `<div class="drop" id="miss">${(S.missFinder && S.missFinder.misses && S.missFinder.misses.length) ?
@@ -391,7 +400,7 @@ async function loadRecord(sync = false) {
   if (sync) toast("Syncing your Polymarket account…", 0);
   try {
     const [mb, rl] = await Promise.all([fetch(`/api/mybets${sync ? "?sync=1" : ""}`).then((r) => r.json()), fetch("/api/results/list").then((r) => r.json())]);
-    if (!mb.ok) throw new Error(mb.error); MB = mb; RES = rl.ok ? rl.results : [];
+    if (!mb.ok) throw new Error(mb.error); MB = mb; RES = rl.ok ? rl.results : []; EDGES = rl.ok ? rl.edges : null;
     renderRecord();
     if (sync && mb.sync) toast(mb.sync.ok ? `Synced ${mb.sync.positions} positions.` : `Sync: ${mb.sync.note}`);
   } catch (e) { toast("Record failed: " + e.message, 10000); }
