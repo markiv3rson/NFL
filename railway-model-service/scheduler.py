@@ -98,7 +98,7 @@ def _bg(kind, fn, *args, **kw):
     with retries) or a multi-page backup blocked the loop past the 3-minute kickoff-close window and the 5-minute
     snapshot/rerun windows, silently skipping them. kind = one job of each kind at a time (e.g. no two reruns overlap)."""
     with _running_lock:
-        if kind in _running: print(f"[scheduler] {kind} still running — skipped", flush=True); return
+        if kind in _running: print(f"[scheduler] {kind} still running — will retry", flush=True); return False
         _running.add(kind)
     def run():
         try: fn(*args, **kw)
@@ -106,6 +106,7 @@ def _bg(kind, fn, *args, **kw):
         finally:
             with _running_lock: _running.discard(kind)
     threading.Thread(target=run, daemon=True).start()
+    return True
 
 def _loop():
     fired, kicks, kicks_at = {}, [], None
@@ -138,14 +139,15 @@ def _loop():
                          (now_pt.weekday() == 6 and now_pt.hour == 9 and 5 <= now_pt.minute < 10))
             if rerun_now:
                 tag = f"r:{now_pt:%Y-%m-%d-%H}-{now_pt.minute // 30}"
-                if tag not in fired: fired[tag] = time.time(); _bg("rerun", _call, "/api/rerun?src=auto")
+                # marked done only once it actually started: a rerun still busy from an earlier wave is retried next loop (9/30)
+                if tag not in fired and _bg("rerun", _call, "/api/rerun?src=auto"): fired[tag] = time.time()
             # Kickoff-wave reruns: one rerun per distinct kickoff time (10 AM, 1:05, 1:25, 5:20, TNF, SNF, MNF...),
             # fired ~60 min before that wave kicks off -- after teams must confirm active/inactive (~90 min before
             # kickoff) but with enough buffer that the news has settled. Catches every wave, not just the 9:05 AM
             # Sunday rerun, which only lines up with the 10 AM games.
             for k in {k for k, _ in kicks if k - timedelta(minutes=65) <= nowu < k - timedelta(minutes=55)}:
                 tag = f"rw:{k:%Y%m%d%H%M}"
-                if tag not in fired: fired[tag] = time.time(); _bg("rerun", _call, "/api/rerun?src=wave")
+                if tag not in fired and _bg("rerun", _call, "/api/rerun?src=wave"): fired[tag] = time.time()
             # Weekly TD retrain: Tuesday 7:15 AM, after the rerun above has the new week's data loaded.
             if now_pt.weekday() == 1 and now_pt.hour == 7 and 15 <= now_pt.minute < 20:
                 tag = f"rt:{now_pt:%Y-%m-%d}"

@@ -355,7 +355,7 @@ function renderModel() {
       // TD model CLV (added 9/29): for players where the model was above the OPENING price (first snapshot of the week),
       // did the closing price move toward the model? The fastest signal of real edge, long before win/loss means anything.
       (() => { const c = tdPx.filter((p) => p.openAsk > 0 && p.openBid > 0 && p.openAsk - p.openBid <= Math.min(0.05, 0.4 * p.openAsk) && mp(p) > p.openAsk)   /* opening price must be a real market too */
-          .map((p) => (p.bid + p.ask) / 2 / p.openAsk - 1);
+          .map((p) => (p.bid + p.ask) / 2 / ((p.openAsk + p.openBid) / 2) - 1);   // mid vs mid (was closing mid vs opening ASK: read negative with no move)
         return `<div class="row"><span class="dim">Did prices move toward the model? (model above the opening price)</span><span>${c.length ? `${cPct(c.reduce((a, x) => a + x, 0) / c.length)} avg · ${c.length} players` : "starts Week 4 (needs opening prices)"}</span></div>`; })() +
       '<div class="s dim">Closing prices, before fees, real markets only. The test of whether the TD model beats Polymarket.</div>';
   }
@@ -434,7 +434,7 @@ function renderRecord() { renderMine(); renderModel(); $("record-mine").style.di
 async function loadRecord(sync = false) {
   if (sync) toast("Syncing your Polymarket account…", 0);
   try {
-    const [mb, rl] = await Promise.all([fetch(`/api/mybets${sync ? "?sync=1" : ""}`).then((r) => r.json()), fetch("/api/results/list").then((r) => r.json())]);
+    const [mb, rl] = await Promise.all([fetch(`/api/mybets${sync ? "?sync=1" : ""}`, { cache: "no-store" }).then((r) => r.json()), fetch("/api/results/list", { cache: "no-store" }).then((r) => r.json())]);
     if (!mb.ok) throw new Error(mb.error); MB = mb; RES = rl.ok ? rl.results : []; EDGES = rl.ok ? rl.edges : null;
     renderRecord();
     if (sync && mb.sync) toast(mb.sync.ok ? `Synced ${mb.sync.positions} positions.` : `Sync: ${mb.sync.note}`);
@@ -451,7 +451,17 @@ function weekline() {
   $("weekline").innerHTML = `${round || `Week ${S.week}`} · ${range} · updated: Polymarket ${clock(m.lastSnapshot)} · sportsbooks ${clock(S.booksAt)} · model ${clock(S.modelRunAt)} <span class="dim">(your time)</span>`;
 }
 function renderAll() { weekline(); renderLines(); renderTotals(); renderTd(); if (MB) renderRecord(); }
-async function loadSlate() { const d = await (await fetch("/api/slate")).json(); if (!d.ok) throw new Error(d.error); S = d; renderAll();
+// Newest version all the time (9/30): if a new deploy went live while this page was open (or sat in a phone tab),
+// reload once to pick it up; data refreshes on its own when you come back to the tab after 2+ minutes.
+let BUILD = null, LOADED_AT = 0, LOAD_SEQ = 0;
+async function loadSlate() {
+  const seq = ++LOAD_SEQ, r = await fetch("/api/slate", { cache: "no-store" }), build = r.headers.get("x-build"), d = await r.json();
+  if (!d.ok) throw new Error(d.error);
+  if (seq !== LOAD_SEQ) return;                                         // a newer request already answered: never show older data
+  if (BUILD && build && build !== BUILD) { location.reload(); return; }  // a new version went live while this page was open
+  BUILD = BUILD || build; LOADED_AT = Date.now(); S = d;
+  const open = [...document.querySelectorAll(".drop.open")].map((e) => e.id).filter(Boolean);   // keep your open dropdowns
+  renderAll(); for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
   try { localStorage.setItem("lastSeen", new Date().toISOString()); } catch {} }   // next visit's "What changed" starts from now
 $("refresh-btn").onclick = async () => {
   const b = $("refresh-btn"); b.disabled = true; toast("Pulling current Polymarket lines…", 0);
@@ -483,3 +493,4 @@ document.addEventListener("click", (e) => {
   const p = e.target.closest(".price-link"); if (p) toast(p.dataset.market ? "Polymarket market: " + p.dataset.market : "No market recorded for this price.", 8000);
 });
 loadSlate().catch((e) => ($("weekline").textContent = "Couldn't load this week: " + e.message));
+document.addEventListener("visibilitychange", () => { if (!document.hidden && Date.now() - LOADED_AT > 120e3) loadSlate().catch(() => {}); });

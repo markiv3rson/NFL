@@ -440,3 +440,11 @@ Found from the live site and the Week 3 export (nfl-bettors-results.json). Site 
     "TDs allowed" moves a player ~1 pt at most (dropping those inputs tested neutral, 5/7 seasons, -0.00002 -- kept).
   - Grading audit, all of 2025 incl. playoffs vs nflverse official player stats: every rushing, receiving, return and
     offensive fumble-recovery TD matched (1,410); the only differences were 18 defensive TDs, correctly excluded.
+- Always newest + review fixes (9/30):
+  - Page, script and API replies are sent no-store; the page reloads itself once when a new deployment answers
+    (x-build header) and refreshes data when you return to the tab after 2+ min, keeping open dropdowns.
+  - Backup now saves hash keys (edge tracker) -- it crashed on them before. Page cache is per deployment.
+  - Scheduler: a rerun that can't start because another is still running is retried inside its window (was dropped).
+  - Model-only fair prices use the current Polymarket line (fake edges when the line moved); TD "prices moved toward
+    the model" compares mid with mid (was mid vs ask); My Bets TD closing price uses whole-word names; QB backup chosen
+    from this season's QBs; price-move label only says "since the first price" when it is.
