@@ -462,3 +462,16 @@ Found from the live site and the Week 3 export (nfl-bettors-results.json). Site 
   - tests/: npm test runs 35 site checks + model-service checks; .github/workflows/ci.yml runs build + tests on every push.
   - All-in market test (every feature, boosted trees and logistic, walk-forward 2016-25): spreads 49-51% (52.8% on the
     top fifth, 4/10 seasons), totals 48-51% -- no edge vs closing lines. Edge work is Polymarket-vs-books and TD props.
+- Angle testing + Parlay Lab (9/30):
+  - Game lines: 104k paper parlays (2007-25 closing prices) lost at every size and style; 1,638 situational angles and
+    ~12k parlay strategies searched on 2007-18 and checked once on locked 2019-25 -- the only consistent one: home
+    favorites of 9.5+ on the moneyline (+2.2% then +3.5%, ~88% won). Game Lines cards now mark those games.
+  - Totals: no angle held up; long-run unders lost less than overs (-1.8% vs -3.8%). Shown as a note, not a pick.
+  - TD: out of sample the model was too cautious on each team's top options (#1 +2.2 pts) and too generous to depth
+    players (#4+ -1.2), in both halves of the data. Fix: lam^1.1 within team, team total unchanged (tuned 2019-21, checked
+    2022-25: Brier 0.15241 -> 0.15225, #1 gap +2.4 -> +0.6).
+  - Parlay Lab tab (lib/paper.js): paper-only parlays recorded ~a day before Sunday, graded automatically, scoreboard by
+    strategy (home favorites 9.5+ singles/2/3-leg, top-3 home favorites 75%+, TD edge 3-leg, Right-now 3-leg). Fixed
+    strategies, no re-tuning; TD/Right-now legs capped at a 30% edge (bigger = likely bad data).
+  - Right now: sportsbook odds up to 8 h old more than a day before kickoff (3 h on game day); TD "opened" price only
+    shown when the opening market was real.

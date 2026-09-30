@@ -420,12 +420,19 @@ def run(team,opp,imp,outs=(),posadj=False):
 # 7 of 7 seasons (Brier -0.00037). Halfway (a=0.5) beat a=0.25 and a=1.0. The team sum uses the top 8 players only
 # (training has ~8 players per team-game; the live list also holds everyone who touched the ball this season, which
 # would inflate the sum and pull every number down). Top-8 tested the same as the full sum: 7 of 7.
-BUDGET_A, BUDGET_K, BUDGET_N = 0.5, (-0.7459, 0.1297), 8
+BUDGET_A, BUDGET_K, BUDGET_N, BUDGET_CONC = 0.5, (-0.7459, 0.1297), 8, 1.1
 def team_budget(p, imp):
     p = np.clip(np.asarray(p, dtype=float), 0, 0.95); lam = -np.log(1 - p); tot = np.sort(lam)[::-1][:BUDGET_N].sum()
     if tot <= 0: return p
     target = max(0.3, BUDGET_K[0] + BUDGET_K[1] * float(imp))
-    return 1 - np.exp(-lam * (target / tot) ** BUDGET_A)
+    lam = lam * (target / tot) ** BUDGET_A
+    # Concentration (9/30): out of sample the model was too cautious on a team's top options (#1 on team +2.2 pts scored
+    # vs said, #2-3 +1.4) and too generous to depth players (#4+ -1.2), in both 2019-21 and 2022-25. lam^1.1, rescaled to
+    # keep the team's expected TDs unchanged, fixes it: tuned on 2019-21 only, checked on 2022-25 (Brier 0.15241 ->
+    # 0.15225; #1-on-team gap +2.4 -> +0.6, #4+ -1.4 -> -0.7).
+    if lam.sum() > 0:
+        l2 = lam ** BUDGET_CONC; lam = l2 * lam.sum() / l2.sum()
+    return 1 - np.exp(-lam)
 
 import time as _time
 _LIVE_T = _time.time()

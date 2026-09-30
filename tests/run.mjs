@@ -82,5 +82,27 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(/spread PHI -3 → -4/.test(T.changedBox()) && /moneyline 60¢ → 66¢/.test(T.changedBox()), "what changed");
   ok(/5 h old/.test(T.rightNowBox()) && /after a 2% fee/.test(T.rightNowBox()), "right now box"); }
 
+// ---------- Parlay Lab (paper parlays)
+{ const { buildPaper, gradePaper } = await import("../lib/paper.js");
+  const { booksMaxAgeH } = await import("../lib/edges.js");
+  const game = (k, hs, ml, win, extra = {}) => ({ key: k, away: k.split(" @ ")[0], home: k.split(" @ ")[1], started: false, final: false, poly: { spread: { homeSpread: hs }, ml: { home: ml, away: 1 - ml } }, winPct: win, td: [], ...extra });
+  const data = { games: [game("A @ B", -10.5, 0.86, 86), game("C @ D", -12, 0.9, 90), game("E @ F", -3, 0.6, 60), game("G @ H", -7, 0.8, 79),
+      game("I @ J", -1, 0.5, 50, { td: [{ player: "X.Back", team: "J", price: 0.30, bid: 0.29, fair: 36, market: "X Back 1+" }, { player: "Y.Thin", team: "J", price: 0.30, bid: 0.01, thin: true, fair: 50 }] }),
+      game("K @ L", -2, 0.55, 55, { td: [{ player: "Z.Wr", team: "L", price: 0.20, bid: 0.19, fair: 25 }] }), game("M @ N", 1, 0.45, 45, { td: [{ player: "Q.Te", team: "M", price: 0.10, bid: 0.09, fair: 12 }] })],
+    edgesNow: [{ game: "E @ F", market: "ml", label: "F ML", price: 0.5, fair: 0.6, evNet: 0.2 }] };
+  const P = buildPaper(data), by = (k) => P.filter((p) => p.strategy === k);
+  ok(by("home_fav_95_single").length === 2 && by("home_fav_95_2").length === 1 && by("home_fav_95_3").length === 0, "home favorites 9.5+: singles + 2-leg, no 3-leg with only two qualifying", P.map((p) => p.strategy));
+  ok(by("top3_home_75").length === 1 && by("top3_home_75")[0].legs.map((l) => l.team).join() === "D,B,H", "top-3 home favorites 75%+ in order");
+  ok(by("td_edge_3").length === 1 && !by("td_edge_3")[0].legs.some((l) => l.player === "Y.Thin"), "TD edge parlay uses real markets only");
+  ok(by("right_now_3").length === 0, "Right-now parlay needs 3 games");
+  ok(Math.abs(by("home_fav_95_2")[0].pay - 1 / (0.9 * 0.86)) < 1e-9, "payout = legs multiplied");
+  await setJSON("paper:2026:9", { parlays: [{ strategy: "x", legs: [{ game: "A @ B", kind: "ml", team: "B", price: 0.8 }, { game: "C @ D", kind: "ml", team: "D", price: 0.5 }] },
+    { strategy: "y", legs: [{ game: "A @ B", kind: "ml", team: "B", price: 0.8 }, { game: "I @ J", kind: "td", team: "J", player: "X.Back", price: 0.3 }] }] });
+  await gradePaper(2026, 9, [{ key: "A @ B", homeScore: 24, awayScore: 20 }, { key: "C @ D", homeScore: 17, awayScore: 17 }, { key: "I @ J", homeScore: 10, awayScore: 3 }],
+    async () => Object.assign(["X.Back"], { teams: { "X.Back": ["J"] } }));
+  const { getJSON } = await import("../lib/redis.js"); const g = await getJSON("paper:2026:9");
+  ok(g.parlays[0].result === "W" && Math.abs(g.parlays[0].ret - (1 / 0.8 - 1)) < 1e-9, "pushed leg drops out, parlay pays the rest");
+  ok(g.parlays[1].result === "W" && Math.abs(g.parlays[1].ret - (1 / (0.8 * 0.3) - 1)) < 1e-9, "TD leg graded from scorers");
+  ok(booksMaxAgeH(new Date(Date.now() + 48 * 3600e3).toISOString()) === 8 && booksMaxAgeH(new Date(Date.now() + 5 * 3600e3).toISOString()) === 3, "sportsbook-odds age: 8 h early week, 3 h on game day"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);
