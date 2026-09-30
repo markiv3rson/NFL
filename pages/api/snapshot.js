@@ -117,8 +117,11 @@ export default async function handler(req, res) {
     meta.lastSnapshot = t; meta.lastSrc = src; if (books) { meta.lastBooks = t; meta.credits = (await getJSON(K.books(season, week)) || {}).remaining; }
     await setJSON(K.meta(season, week), meta);
     if (src !== "manual") await setJSON("auto:last", { t, what: `snapshot (${src})` });   // "Last automatic run" + Watchdog
-    const graded = await gradeRecent(season).catch(() => 0);
-    const acct = await syncAccount().catch((e) => ({ ok: false, note: String(e) }));  // auto-sync My Bets
+    await redis.del("slate:cache").catch(() => {});   // the page shows the new prices immediately
+    // Your Refresh button (src=manual) skips grading and the account sync (the scheduler does both several times a day,
+    // and the Record tab has its own Sync button) so the button comes back fast.
+    const graded = src === "manual" ? 0 : await gradeRecent(season).catch(() => 0);
+    const acct = src === "manual" ? { ok: false, note: "skipped on manual refresh" } : await syncAccount().catch((e) => ({ ok: false, note: String(e) }));  // auto-sync My Bets
     res.status(200).json({ ok: true, week, upcoming: open.length, locked: games.length - open.length, lines, props, books: booksNote, closedLate, graded, edges, account: acct.ok ? `synced ${acct.positions} positions` : acct.note });
   } catch (err) { await logError("snapshot", err).catch(() => {}); res.status(500).json({ ok: false, error: String(err) }); }
 }
