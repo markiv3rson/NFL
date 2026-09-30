@@ -43,7 +43,7 @@ def _snaps(season, fresh=False):
     if fresh or not os.path.exists(f):
         urllib.request.urlretrieve(f"{BASE}/snap_counts/snap_counts_{season}.parquet", f)
     s = pd.read_parquet(f)
-    return s[s.game_type == "REG"]
+    return s[s.game_type.isin(["REG", "POST", "WC", "DIV", "CON", "SB"])]   # starters stay current through the playoffs (9/30)
 
 def load_snaps(season=None):
     season = season or _season.data_season()

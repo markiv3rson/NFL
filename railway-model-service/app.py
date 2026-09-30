@@ -45,7 +45,7 @@ def td_scorers():
     try:
         season = int(request.args.get("season") or _season.data_season()); week = int(request.args.get("week"))
         p = td_prob.fetch_pbp(season)
-        p = p[(p.season_type == "REG") & (p.week == week)]
+        p = p[p.season_type.isin(["REG", "POST"]) & (p.week == week)]   # playoff weeks (19-22) grade too (9/30)
         out, counts, first, teams = {}, {}, {}, {}
         for gid, g in p.groupby("game_id"):
             key = f"{nv(g.away_team.iloc[0])} @ {nv(g.home_team.iloc[0])}"

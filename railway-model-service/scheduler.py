@@ -86,7 +86,7 @@ def _kickoffs():
         print(f"[scheduler] schedule load failed: {e}", flush=True); return []
     now, out = datetime.now(timezone.utc), []
     for x in rows:
-        if x.get("game_type") != "REG" or not x.get("gameday") or not x.get("gametime"): continue
+        if x.get("game_type") not in ("REG", "WC", "DIV", "CON", "SB") or not x.get("gameday") or not x.get("gametime"): continue   # + playoffs (9/30)
         try: k = datetime.strptime(f"{x['gameday']} {x['gametime']}", "%Y-%m-%d %H:%M").replace(tzinfo=ET).astimezone(timezone.utc)
         except ValueError: continue
         if now - timedelta(minutes=5) < k < now + timedelta(days=8): out.append((k, f"{x['away_team']} @ {x['home_team']}"))
