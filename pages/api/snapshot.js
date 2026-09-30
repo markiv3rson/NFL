@@ -2,7 +2,7 @@
 // plus sportsbook consensus when books=1. Called by the Railway scheduler (7/12/3/7 PT, Sunday
 // 6/7/8/9/10/12/3 PT, and just before each kickoff with kickoff=<game>) and by the Refresh button.
 import { SEASON, currentWeek, loadGames, started } from "../../lib/games";
-import { getRedis, getJSON, setJSON, K } from "../../lib/redis";
+import { getRedis, getJSON, setJSON, K, SLATE_CACHE } from "../../lib/redis";
 import { fetchEvents, gameLines, tdProps } from "../../lib/poly";
 import { fetchBooks } from "../../lib/books";
 import { gradeRecent } from "../../lib/grade";
@@ -117,7 +117,7 @@ export default async function handler(req, res) {
     meta.lastSnapshot = t; meta.lastSrc = src; if (books) { meta.lastBooks = t; meta.credits = (await getJSON(K.books(season, week)) || {}).remaining; }
     await setJSON(K.meta(season, week), meta);
     if (src !== "manual") await setJSON("auto:last", { t, what: `snapshot (${src})` });   // "Last automatic run" + Watchdog
-    await redis.del("slate:cache").catch(() => {});   // the page shows the new prices immediately
+    await redis.del(SLATE_CACHE).catch(() => {});   // the page shows the new prices immediately
     // Your Refresh button (src=manual) skips grading and the account sync (the scheduler does both several times a day,
     // and the Record tab has its own Sync button) so the button comes back fast.
     const graded = src === "manual" ? 0 : await gradeRecent(season).catch(() => 0);

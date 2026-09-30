@@ -16,12 +16,12 @@ export default async function handler(req, res) {
         const types = await r.pipeline(keys.map((k) => ["type", k])).exec();
         const reads = await r.pipeline(keys.map((k, i) => {
           const t = types[i][1];
-          return t === "list" ? ["lrange", k, 0, -1] : t === "set" ? ["smembers", k] : ["get", k];
+          return t === "list" ? ["lrange", k, 0, -1] : t === "set" ? ["smembers", k] : t === "hash" ? ["hgetall", k] : ["get", k];   // hash = edge tracker (9/30)
         })).exec();
         keys.forEach((k, i) => {
           const t = types[i][1], v = reads[i][1];
-          out[k] = t === "list" || t === "set" ? { type: t, v } : { type: "string", v };
-          size += k.length + JSON.stringify(v).length;
+          out[k] = t === "list" || t === "set" || t === "hash" ? { type: t, v } : { type: "string", v };
+          size += k.length + (JSON.stringify(v ?? null) || "").length;
         });
       }
     } while (cursor !== "0" && size < BUDGET);

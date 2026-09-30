@@ -107,6 +107,8 @@ def qb_gap(team_snaps, starter, listed):
     """Backup's value minus the starter's. Backup = the team's next QB by recent snaps who isn't listed Out/Doubtful."""
     vals = _qb_values()
     T = team_snaps[team_snaps.position == "QB"]
+    # This season's QBs first (9/30): snaps summed over two seasons could pick last year's QB who has since left.
+    if "season" in T and len(T): cur = T[T.season == T.season.max()]; T = cur if len(cur) else T
     order = T.groupby("player").offense_snaps.sum().sort_values(ascending=False) if "offense_snaps" in T else pd.Series(dtype=float)
     backup = next((n for n in order.index if norm(n) != norm(starter) and not (norm(n) in listed and listed[norm(n)][1] in ("out", "doubtful"))), None)
     if backup is None or norm(backup) not in vals or norm(starter) not in vals: return QB_GAP_DEFAULT, backup

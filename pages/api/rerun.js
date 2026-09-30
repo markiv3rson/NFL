@@ -3,7 +3,7 @@
 // players listed OUT on the official injury report, and the kickoff wind forecast (outdoor only).
 import { modelBase, modelHeaders } from "../../lib/model";
 import { SEASON, currentWeek, loadGames, loadSeason, started } from "../../lib/games";
-import { getRedis, getJSON, setJSON, K } from "../../lib/redis";
+import { getRedis, getJSON, setJSON, K, SLATE_CACHE } from "../../lib/redis";
 import { logError } from "../../lib/status";
 import { history } from "../../lib/week";
 import { loadInjuries } from "../../lib/injuries";
@@ -120,7 +120,7 @@ export default async function handler(req, res) {
       games: payload.map((x) => ({ key: x.key, inputs: { homeSpread: x.spread == null ? null : -x.spread, total: x.total, wind: x.wind, outs: x.outs.length },
         model: store.games[x.key] || null, td: (store.td[x.key] ? [...store.td[x.key].away, ...store.td[x.key].home].map((p) => [p.name, p.fair]) : null) })) }));
     await getRedis().ltrim(`rerunlog:${season}:${week}`, 0, 60);
-    await getRedis().del("slate:cache").catch(() => {});   // new model numbers show immediately
+    await getRedis().del(SLATE_CACHE).catch(() => {});   // new model numbers show immediately
     res.status(200).json({ ok: true, week, rerun: nLines, td: nTd, skippedTd: payload.length - tdIn.length, locked: all.length - games.length, errors });
   } catch (err) { await logError("rerun", err).catch(() => {}); res.status(500).json({ ok: false, error: String(err) }); }
 }
