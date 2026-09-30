@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     const r = getRedis(), out = {};
     let cursor = String(req.query.cursor || "0"), size = 0, first = true;
     do {
-      const [next, keys] = await r.scan(cursor, "COUNT", 200); cursor = next; first = false;
+      const [next, keys] = await r.scan(cursor, "COUNT", 50); cursor = next; first = false;
       if (keys.length) {
         const types = await r.pipeline(keys.map((k) => ["type", k])).exec();
         const reads = await r.pipeline(keys.map((k, i) => {

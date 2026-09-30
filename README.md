@@ -15,11 +15,14 @@ Redis (Upstash) for all stored data. nflverse for schedule, scores, play-by-play
 Polymarket prices use the actual buy price (best ask).
 
 ## Environment variables (Vercel)
-UPSTASH_REDIS_REST_URL_REDIS_URL, SITE_USERNAME, SITE_PASSWORD, MODEL_SERVICE_URL, ODDS_API_KEY,
+UPSTASH_REDIS_REST_URL_REDIS_URL, SITE_USERNAME, SITE_PASSWORD, MODEL_SERVICE_URL, MODEL_SERVICE_TOKEN, ODDS_API_KEY,
 POLYMARKET_KEY_ID, POLYMARKET_SECRET_KEY.
 
+MODEL_SERVICE_TOKEN: any long random string, set to the SAME value on Vercel and Railway. When set, the Railway model
+service rejects every call without it (except /health). Leave it unset on both to keep the old open behavior.
+
 ## What the numbers mean
-- Moneyline win chance: calibrated and market-based (its accuracy is the market spread's; the model's disagreement weighs slightly against). Not an edge signal.
+- Moneyline win chance: calibrated and market-based (rechecked 9/30: the model's disagreement adds nothing, so it's the market spread only). Not an edge signal.
 - Spread / total picks: calibrated; sit near 50% because the model-vs-market gap has no measured signal. Background only.
 - Anytime TD chance: td_prob.py, calibrated on two held-out seasons. Record tab grades it against its own stated
   chances and against Polymarket's closing prices (real markets only; thin markets with no bid near the ask are skipped).

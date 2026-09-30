@@ -14,14 +14,24 @@ Endpoints:
                            (inj is optional; when present the numbers include the injury adjustment, and "raw" holds the plain model)
   POST /rerun-td-probs     body: {"games": [{"away":"ATL","home":"GB","spread":-2.8,"total":41.2,"outs":["D.Goedert"]}, ...]}
 """
+import os, hmac
 from flask import Flask, request, jsonify
-from flask_cors import CORS
 import fair_line
 import td_prob
 import injury_adj
+import season as _season
 
 app = Flask(__name__)
-CORS(app)
+
+# Shared secret: when MODEL_SERVICE_TOKEN is set (Railway AND Vercel), every endpoint except /health needs the
+# X-Model-Token header. Without it, anyone who found the Railway URL could trigger retrains and heavy reruns.
+# (CORS removed: only the site's server calls this service, never a browser.)
+TOKEN = os.environ.get("MODEL_SERVICE_TOKEN", "").strip()
+@app.before_request
+def _auth():
+    if request.path == "/health" or not TOKEN: return None
+    if not hmac.compare_digest(request.headers.get("X-Model-Token", "").strip(), TOKEN):
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
 
 # ESPN (schedule tab) uses LAR / WSH; nflverse (the models) uses LA / WAS.
 ALIASES = {"LAR": "LA", "WSH": "WAS", "JAC": "JAX"}
@@ -33,9 +43,9 @@ def td_scorers():
     """Anytime-TD scorers per game from nflverse play-by-play: rushing, receiving and special-teams return TDs by the
     player who scored; defensive TDs excluded (Polymarket anytime rules). Used to grade TD bets and the TD model."""
     try:
-        season = int(request.args.get("season", 2026)); week = int(request.args.get("week"))
+        season = int(request.args.get("season") or _season.data_season()); week = int(request.args.get("week"))
         p = td_prob.fetch_pbp(season)
-        p = p[(p.season_type == "REG") & (p.week == week)]
+        p = p[p.season_type.isin(["REG", "POST"]) & (p.week == week)]   # playoff weeks (19-22) grade too (9/30)
         out, counts, first, teams = {}, {}, {}, {}
         for gid, g in p.groupby("game_id"):
             key = f"{nv(g.away_team.iloc[0])} @ {nv(g.home_team.iloc[0])}"
@@ -56,31 +66,12 @@ def td_scorers():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
-@app.route("/retrain-td", methods=["POST", "GET"])
+@app.route("/retrain-td", methods=["POST"])
 def retrain_td():
-    """Weekly TD retrain: train a candidate on all completed data (current season included),
-    test both the candidate and the currently-active model on the same recent held-out weeks they
-    didn't train on, and only switch if the candidate is measurably more accurate. Every attempt is logged."""
+    """Weekly TD retrain (same logic the scheduler runs, see td_prob.retrain): only switches if the candidate is
+    measurably more accurate on held-out weeks. POST only: it can replace the live model."""
     try:
-        season = int(request.args.get("season", td_prob.CURRENT))
-        td_prob.refresh_live(0)
-        season_pg, _, _, _ = td_prob.player_games(season)
-        cur_weeks = sorted(season_pg.week.unique().tolist())
-        holdout = cur_weeks[-2:] if len(cur_weeks) >= 4 else []           # last 2 completed weeks, held out
-        train_weeks_seasons = [2023, 2024, 2025] + ([season] if len(cur_weeks) > 2 else [])
-        candidate = td_prob.fit_model(train_weeks_seasons, exclude=(season, holdout) if holdout else None)
-        cand_brier = td_prob.eval_holdout(candidate, season, holdout) if holdout else None
-        active_brier = td_prob.eval_holdout(td_prob.m, season, holdout) if holdout else None
-        went_live = False
-        if cand_brier is not None and active_brier is not None and cand_brier < active_brier - 1e-4:
-            td_prob.m = candidate
-            saved = td_prob.save_active({"model": candidate, "trained": train_weeks_seasons, "holdout_weeks": holdout,
-                                          "brier": cand_brier, "t": __import__("datetime").datetime.utcnow().isoformat()})
-            went_live = True
-        else:
-            saved = None
-        return jsonify({"ok": True, "went_live": went_live, "candidate_brier": cand_brier, "active_brier": active_brier,
-                         "holdout_weeks": holdout, "trained_on": train_weeks_seasons, "saved": bool(saved)})
+        return jsonify({"ok": True, **td_prob.retrain(int(request.args.get("season") or _season.data_season()))})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
@@ -100,7 +91,7 @@ def rerun_game_lines():
     for g in games:
         try:
             if M is None:
-                M, cur = fair_line.build(g.get("season", 2026))
+                M, cur = fair_line.build(g.get("season") or _season.data_season())
             adj = {k: float(v) for k, v in (g.get("adj") or {}).items()}
             neutral = bool(g.get("neutral"))
             rest_away = g.get("restAwayDays")
@@ -168,7 +159,6 @@ def rerun_td_probs():
             away_df = td_prob.run(nv(g["away"]), nv(g["home"]), g["total"] / 2 - g["spread"] / 2, outs, True)
             home_df = td_prob.run(nv(g["home"]), nv(g["away"]), g["total"] / 2 + g["spread"] / 2, outs, True)
             # Extra markets from the same calibrated chances: 2+ TDs, first TD of the game, and any RB/WR/TE per team.
-            import numpy as np
             top_a, top_h = away_df.head(14), home_df.head(14)
             f_a, f_h = td_prob.first_td([top_a.p.values, top_h.p.values])
             fa = dict(zip(top_a.index, f_a)); fh = dict(zip(top_h.index, f_h))
@@ -189,5 +179,4 @@ def rerun_td_probs():
     return jsonify({"ok": True, "results": out})
 
 if __name__ == "__main__":
-    import os
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))

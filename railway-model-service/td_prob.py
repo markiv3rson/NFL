@@ -6,13 +6,13 @@ td_prob.py — Anytime TD PROBABILITIES (calibrated), + EV vs Polymarket.
       --prices "C.Watson=38,M.Lloyd=30,T.Kraft=31,Bi.Robinson=57"
 
 --spread = home team's favored margin (GB -5.5 -> 5.5). Implied team points come from the
-consensus spread/total (public market data). Model: logistic regression trained on 2024-25
-player-games (RZ targets/carries, inside-10/5 usage, volume, TD rate, blended with last season;
+consensus spread/total (public market data). Model: logistic regression trained on the 3 latest seasons (retrained
+weekly, see retrain()) of player-games (RZ targets/carries, inside-10/5 usage, volume, TD rate, blended with last season;
 opponent TDs allowed by rush/rec; team implied points). Out-of-sample 2025: Brier 0.158 vs 0.172
 baseline; calibrated below 35%, overconfident above 40% -> shrunk (p>0.35: 0.35+0.75*(p-0.35)).
 Replicated: train 2024->test 2025 Brier 0.158 vs 0.172; train 2023->test 2024 0.159 vs 0.174.
 NOT tested against historical prop prices. Label outputs "Model estimate"; quarter Kelly.
-Position adjustment (default ON, --no-posadj to disable): opponent receiving TDs allowed are split by
+Position adjustment (default OFF since 9/30 -- neutral in testing, 2019-25; --posadj flag kept below): opponent receiving TDs allowed are split by
 position (WR/TE/RB, shrunk 4 games toward league avg 0.55/0.20/0.10 per game). Added 9/24; it moves
 players ~1 pt and acts oddly on low-usage players -- trust the direction for main targets only.
 Blind spots (call out manually): snap-share/role shifts, QB changes, new-team players' prior usage.
@@ -26,7 +26,8 @@ def _get(path, local, fresh):
     os.makedirs(CACHE,exist_ok=True); f=os.path.join(CACHE,local)
     if fresh or not os.path.exists(f): urllib.request.urlretrieve(f"{BASE}/{path}", f)
     return pd.read_parquet(f)
-CUR=2026
+import season as _season
+CUR=_season.data_season()   # auto (was hard-coded 2026): current season once its play-by-play exists, else last season
 def fetch_pbp(s): return _get(f"pbp/play_by_play_{s}.parquet", f"pbp_{s}.parquet", s==CUR)
 def fetch_ros(s): return _get(f"weekly_rosters/roster_weekly_{s}.parquet", f"ros_{s}.parquet", s==CUR)
 def fetch_snap(s): return _get(f"snap_counts/snap_counts_{s}.parquet", f"snap_counts_{s}.parquet", s==CUR)
@@ -173,7 +174,7 @@ def design(df):
 
 def load_pos():
     frames=[]
-    for s in [2023,2024,2025,2026]:
+    for s in range(CUR-3, CUR+1):
         try:
             r=fetch_ros(s); frames.append(r[['gsis_id','position','week']].assign(s=s))
         except Exception: pass
@@ -182,7 +183,7 @@ def load_pos():
 
 pos=load_pos()
 MODEL_DIR = os.environ.get("MODEL_DIR", "/data")
-CURRENT = 2026
+CURRENT = CUR
 
 def recency_weight(df):
     """Recent-games weighting: within a season, a player's last 3 games count more than early ones,
@@ -220,6 +221,12 @@ def eval_holdout(model, season, weeks):
     f = f[f.week.isin(weeks)] if "week" in f.columns else f
     return brier(model, f) if len(f) else None
 
+def holdout_sqerr(model, season, weeks):
+    """Per-player squared errors on held-out weeks (same rows for any model, so two models can be compared pairwise)."""
+    f = features(season, pos)
+    f = f[f.week.isin(weeks)] if "week" in f.columns else f
+    return (shrink(model.predict_proba(design(f))[:, 1]) - f.scored.values) ** 2 if len(f) else None
+
 def load_active():
     p = os.path.join(MODEL_DIR, "td_model.pkl")
     if os.path.exists(p):
@@ -238,14 +245,15 @@ def save_active(obj):
     except Exception: return False
 
 _active = load_active()
-m = _active["model"] if _active else fit_model([2023, 2024, 2025])   # 3 seasons (tested 9/28: better in 10 of 13)
+ACTIVE_TRAINED = list(_active.get("trained", [])) if _active else [CUR - 3, CUR - 2, CUR - 1]
+m = _active["model"] if _active else fit_model([CUR - 3, CUR - 2, CUR - 1])   # 3 seasons (tested 9/28: better in 10 of 13)
 def shrink(p): return np.where(p>0.35, 0.35+0.75*(p-0.35), p)
 
 # ---- More TD markets, all derived from the calibrated anytime chance p (tested 2016-2025, out-of-sample) ----
 def two_plus(p):
     """Chance of 2+ TDs: Poisson from the anytime chance, x1.09 (out-of-sample the plain Poisson ran ~9% low). Brier 0.0333 vs 0.0349 for no-info."""
     p = np.clip(np.asarray(p, dtype=float), 0, 0.95); lam = -np.log(1 - p)
-    return np.minimum(0.6, 1.09 * (1 - np.exp(-lam) * (1 + lam)))
+    return np.minimum(0.6, 1.035 * (1 - np.exp(-lam) * (1 + lam)))   # 9/30: 1.09 -> 1.035 (with the team TD total, x1.09 ran 3.77% vs 3.58% actual)
 FIRST_OTHER = 0.4   # expected first-TD arrivals from non-listed scorers (QB runs, defense, special teams); best fit 2016-25
 def first_td(p_lists):
     """Chance each player scores the game's FIRST touchdown. p_lists = one array of anytime chances per team (both teams together).
@@ -259,11 +267,12 @@ def group_any(df, n=8):
     for pos_, g in df.groupby('pos'):
         x = g.p.sort_values(ascending=False).head(n).values; out[pos_] = float(1 - np.prod(1 - x))
     return out
-pg,dal,games,p=player_games(2026); prior,_,_,_=player_games(2025)
+pg,dal,games,p=player_games(CUR); prior,_,_,p_prev=player_games(CUR-1)
 K=3.0
 pr=prior.groupby('pid').agg(g=('game_id','nunique'),rz=('rz_tgt','sum'),i10=('i10_tgt','sum'),rzc=('rz_car','sum'),i5=('i5_car','sum'),t=('tgt','sum'),c=('car','sum'),td=('td','sum'))
 cur=pg.groupby(['pid','team']).agg(g=('game_id','nunique'),rz=('rz_tgt','sum'),i10=('i10_tgt','sum'),rzc=('rz_car','sum'),i5=('i5_car','sum'),t=('tgt','sum'),c=('car','sum'),td=('td','sum')).reset_index()
-names=pd.concat([p[['receiver_player_id','receiver_player_name']].dropna().set_axis(['pid','name'],axis=1),p[['rusher_player_id','rusher_player_name']].dropna().set_axis(['pid','name'],axis=1)]).drop_duplicates('pid').set_index('pid').name
+def _names(*pbps): return pd.concat([x[[a,b]].dropna().set_axis(['pid','name'],axis=1) for x in pbps for a,b in (('receiver_player_id','receiver_player_name'),('rusher_player_id','rusher_player_name'))]).drop_duplicates('pid').set_index('pid').name
+names=_names(p, p_prev)   # this season first, then last season's names (for players who haven't touched the ball yet)
 def _live_snap():
     try:
         sn = fetch_snap(CUR); sn = sn[sn.game_type == "REG"].copy(); sn["nn"] = sn.player.map(_nn)
@@ -342,9 +351,16 @@ def pos_rec(defteam):
     ps=t.receiver_player_id.map(lambda i:{'FB':'RB','HB':'RB'}.get(pos.position.get(i),pos.position.get(i)))
     g=len(games[(games.home_team==defteam)|(games.away_team==defteam)])
     return {k:0.85*((ps==k).sum()+4*v)/(g+4)/v for k,v in AVG.items()}
-def run(team,opp,imp,outs=(),posadj=True):
+def run(team,opp,imp,outs=(),posadj=False):
     o_rush,o_rec=dstats(opp); rows=[]
-    for _,r in cur[cur.team==team].iterrows():
+    mine = cur[cur.team==team]
+    if not len(mine) and len(ROS_TEAM):
+        # Team hasn't played this season yet (Week 1, or before its first game): list its CURRENT roster players with
+        # last season's usage (zero games this season, so the blend below is just their per-game rates from last year).
+        # Before 9/30 the TD tab was empty for a team until it had played a game.
+        ids = [pid for pid, tm in ROS_TEAM.items() if tm == team and pid in pr.index]
+        mine = pd.DataFrame([{"pid": pid, "team": team, "g": 0, "rz": 0, "i10": 0, "rzc": 0, "i5": 0, "t": 0, "c": 0, "td": 0} for pid in ids])
+    for _,r in mine.iterrows():
         if unavailable(r.pid, team): continue
         q=pr.loc[r.pid] if r.pid in pr.index else None
         def bl(a,b):
@@ -352,6 +368,7 @@ def run(team,opp,imp,outs=(),posadj=True):
             return (r[a]+K*q[b]/q.g)/(r.g+K)
         rows.append(dict(pid=r.pid,name=names.get(r.pid,r.pid),r_rzt=bl('rz','rz'),r_i10=bl('i10','i10'),r_rzc=bl('rzc','rzc'),r_i5=bl('i5','i5'),
              r_t=bl('t','t'),r_c=bl('c','c'),r_td=bl('td','td'),imp=imp,o_rush=o_rush,o_rec=o_rec))
+    if not rows: return pd.DataFrame(columns=['name','pos','p','boosted','depth_note'])   # no usable players (no data yet)
     df=pd.DataFrame(rows).join(pos,on='pid'); df['pos']=df.position.map(lambda v:{'FB':'RB','HB':'RB'}.get(v,v))
     df['nn']=df.pid.map(_ros_nn); df['team']=team
     df=df.merge(SNAP_NOW,on=['team','nn'],how='left').set_index(df.index)
@@ -389,25 +406,25 @@ def run(team,opp,imp,outs=(),posadj=True):
     outmask = full.name.apply(_is_out)
     df = full[~outmask].copy()
     if posadj: df['o_rec']=df.pos.map(pos_rec(opp))
-    # Vacated-usage boost: an Out player's red-zone/inside-10/inside-5 share gets redistributed to the
-    # remaining players at his position, proportional to their own current share (the model can't see this on its own).
-    boost = {}
-    for p_, grp in full.groupby('pos'):
-        gone = grp[outmask.loc[grp.index]]
-        stay = grp[~outmask.loc[grp.index]]
-        if not len(gone) or not len(stay): continue
-        for col in ['r_rzt','r_i10','r_rzc','r_i5']:
-            pool = gone[col].sum()
-            if pool <= 0: continue
-            wsum = stay[col].sum()
-            for pid, row in stay.iterrows():
-                share = (row[col] / wsum) if wsum > 0 else (1 / len(stay))
-                df.loc[pid, col] = df.loc[pid, col] + pool * share
-                boost[pid] = True
-    df['p']=shrink(m.predict_proba(design(df))[:,1])
-    df['boosted'] = df.index.map(lambda i: bool(boost.get(i)))
+    # (Vacated-usage boost removed 9/30: handing an Out player's red-zone share to teammates tested WORSE in 7 of 7
+    # seasons, 2019-25 -- the teammates' own usage already carries most of it, and the bump overshot.)
+    df['p']=team_budget(shrink(m.predict_proba(design(df))[:,1]), imp)
+    df['boosted'] = False
     df['depth_note']=[DEPTH_NOTE.get(pid) for pid in df.pid]
     return df.sort_values('p',ascending=False)[['name','pos','p','boosted','depth_note']]
+
+# Team TD total (added 9/30): each player's chance is computed on its own, so a team's list can add up to more (or fewer)
+# TDs than its implied points support. Scale every player's expected TDs halfway toward the team's expected RB/WR/TE
+# TDs (-0.746 + 0.1297 x implied points, fit on 5,278 team-games 2016-25). Tested train-3/test-next 2019-25: better in
+# 7 of 7 seasons (Brier -0.00037). Halfway (a=0.5) beat a=0.25 and a=1.0. The team sum uses the top 8 players only
+# (training has ~8 players per team-game; the live list also holds everyone who touched the ball this season, which
+# would inflate the sum and pull every number down). Top-8 tested the same as the full sum: 7 of 7.
+BUDGET_A, BUDGET_K, BUDGET_N = 0.5, (-0.7459, 0.1297), 8
+def team_budget(p, imp):
+    p = np.clip(np.asarray(p, dtype=float), 0, 0.95); lam = -np.log(1 - p); tot = np.sort(lam)[::-1][:BUDGET_N].sum()
+    if tot <= 0: return p
+    target = max(0.3, BUDGET_K[0] + BUDGET_K[1] * float(imp))
+    return 1 - np.exp(-lam * (target / tot) ** BUDGET_A)
 
 import time as _time
 _LIVE_T = _time.time()
@@ -416,14 +433,17 @@ def refresh_live(max_age=1800):
     max_age seconds. Before 9/28 all of it loaded ONCE when the Railway server started and every rerun reused it --
     for days, until the next deploy -- so new games, snap counts, IR moves and depth changes never reached the TD
     numbers even though reruns kept running. Called at the start of every TD rerun and weekly retrain."""
-    global pos, pg, dal, games, p, prior, pr, cur, names, SNAP_NOW, _ros_nn, ROS_STATUS, ROS_TEAM
-    global PREV_TEAM, RZ_SHIFT, DEPTH_STARTERS, DEPTH_KNOWN, DEPTH_NOTE, _LIVE_T
+    global pos, pg, dal, games, p, p_prev, prior, pr, cur, names, SNAP_NOW, _ros_nn, ROS_STATUS, ROS_TEAM
+    global PREV_TEAM, RZ_SHIFT, DEPTH_STARTERS, DEPTH_KNOWN, DEPTH_NOTE, _LIVE_T, CUR, CURRENT
+    # Season rollover (9/30): the server runs for months, so the season is re-worked-out here, not only at start-up.
+    new_season = _season.data_season()
+    if new_season != CUR: CUR = CURRENT = new_season; max_age = 0
     if _time.time() - _LIVE_T < max_age: return False
     pos = load_pos()
-    pg, dal, games, p = player_games(CUR); prior, _, _, _ = player_games(CUR - 1)
+    pg, dal, games, p = player_games(CUR); prior, _, _, p_prev = player_games(CUR - 1)
     pr = prior.groupby('pid').agg(g=('game_id','nunique'),rz=('rz_tgt','sum'),i10=('i10_tgt','sum'),rzc=('rz_car','sum'),i5=('i5_car','sum'),t=('tgt','sum'),c=('car','sum'),td=('td','sum'))
     cur = pg.groupby(['pid','team']).agg(g=('game_id','nunique'),rz=('rz_tgt','sum'),i10=('i10_tgt','sum'),rzc=('rz_car','sum'),i5=('i5_car','sum'),t=('tgt','sum'),c=('car','sum'),td=('td','sum')).reset_index()
-    names = pd.concat([p[['receiver_player_id','receiver_player_name']].dropna().set_axis(['pid','name'],axis=1),p[['rusher_player_id','rusher_player_name']].dropna().set_axis(['pid','name'],axis=1)]).drop_duplicates('pid').set_index('pid').name
+    names = _names(p, p_prev)
     SNAP_NOW = _live_snap()
     try: _ros_nn = fetch_ros(CUR).sort_values("week").drop_duplicates("gsis_id", keep="last").set_index("gsis_id")["full_name"].map(_nn)
     except Exception: _ros_nn = pd.Series(dtype=object)
@@ -436,15 +456,54 @@ def refresh_live(max_age=1800):
 if __name__=="__main__":
     ap=argparse.ArgumentParser(); ap.add_argument("--away",required=True); ap.add_argument("--home",required=True)
     ap.add_argument("--spread",type=float,required=True); ap.add_argument("--total",type=float,required=True)
-    ap.add_argument("--out",default=""); ap.add_argument("--no-posadj",action="store_true"); ap.add_argument("--prices",default="")
+    ap.add_argument("--out",default=""); ap.add_argument("--posadj",action="store_true"); ap.add_argument("--prices",default="")
     a=ap.parse_args(); outs=[o.strip() for o in a.out.split(",") if o.strip()]
     px={k.strip():float(v) for k,v in (x.split("=") for x in a.prices.split(",") if x.strip())}
     hi=a.total/2+a.spread/2; ai=a.total/2-a.spread/2
     for team,opp,imp in [(a.away,a.home,ai),(a.home,a.away,hi)]:
-        df=run(team,opp,imp,outs,not a.no_posadj).head(10)
+        df=run(team,opp,imp,outs,a.posadj).head(10)
         print(f"\n{team} vs {opp} (implied {imp:.1f} pts) — Model estimate")
         for _,r in df.iterrows():
             line=f"  {r['name']:<12} {r.pos:<3} fair {r.p*100:5.1f}%"
             if r['name'] in px:
                 ev=r.p/(px[r['name']]/100)-1; line+=f" | Poly {px[r['name']]:.0f}c | EV at limit {ev*100:+.1f}%" + ("  <- recheck (>30%)" if ev>0.3 else "")
             print(line)
+
+def retrain(season=None):
+    """Weekly TD retrain, shared by the scheduler (Tuesday 7:15) and POST /retrain-td so the two can't drift apart
+    again: fresh data, 3 past seasons (+ this season's earlier weeks), the last 4 completed weeks held OUT of training,
+    and the candidate goes live only if it beats the active model by more than 2 standard errors on those weeks."""
+    global m, ACTIVE_TRAINED
+    import datetime as _dt
+    refresh_live(0)                  # first: this also rolls the season over when a new one has started
+    season = season or CURRENT
+    season_pg, _, _, _ = player_games(season)
+    cur_weeks = sorted(season_pg.week.unique().tolist())
+    # Stricter switch rule (9/30): with 2 held-out weeks the noise (SD ~0.0003 Brier) is bigger than the typical real gap
+    # between two decent models (~0.00017), so the old "better by 0.0001" rule picked the WORSE model 28% of the time
+    # (tested 2019-25). Now: last 4 completed weeks held out, and the candidate must win by more than 2 standard errors
+    # of the paired per-player difference. Otherwise the current model stays.
+    holdout = cur_weeks[-4:] if len(cur_weeks) >= 6 else []
+    train_seasons = [season - 3, season - 2, season - 1] + ([season] if len(cur_weeks) > 4 else [])
+    candidate = fit_model(train_seasons, exclude=(season, holdout) if holdout else None)
+    ec = holdout_sqerr(candidate, season, holdout) if holdout else None
+    ea = holdout_sqerr(m, season, holdout) if holdout else None
+    cand_brier = float(ec.mean()) if ec is not None else None
+    active_brier = float(ea.mean()) if ea is not None else None
+    went_live = False
+    if ec is not None and ea is not None and len(ec) > 50:
+        d = ec - ea; se = float(d.std(ddof=1) / np.sqrt(len(d)))
+        went_live = float(d.mean()) < -2 * se
+    saved, reason = None, None
+    # New season (9/30): until 6 weeks are played there's nothing to hold out, but a model that never saw LAST season is
+    # simply out of date -- refit on the 3 most recent complete seasons and use it (no test needed: same method, newer data).
+    if not holdout and (season - 1) not in ACTIVE_TRAINED:
+        train_seasons, went_live, reason = [season - 3, season - 2, season - 1], True, "new season: refit on the 3 latest complete seasons"
+    if went_live:
+        # It won the fair test; the live copy is refit WITH the held-out weeks (the most recent games shouldn't be left out).
+        candidate = fit_model(train_seasons)
+        m = candidate; ACTIVE_TRAINED = list(train_seasons)   # single assignment: run() reads m once per prediction, so readers see old or new, never a mix
+        saved = save_active({"model": candidate, "trained": train_seasons, "holdout_weeks": holdout, "brier": cand_brier,
+                             "t": _dt.datetime.now(_dt.timezone.utc).isoformat()})
+    return {"went_live": went_live, "reason": reason, "candidate_brier": cand_brier, "active_brier": active_brier,
+            "holdout_weeks": holdout, "trained_on": train_seasons, "saved": bool(saved)}

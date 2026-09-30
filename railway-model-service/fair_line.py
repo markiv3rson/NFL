@@ -11,12 +11,12 @@ Method (public nflverse play-by-play):
   2. Ridge: EPA/play = offense + opponent defense + home edge. Current season weight 1.0, last season 0.2.
   3. EPA/play -> points via a linear fit on the same games.
   4. Margin ~ Normal(mean, 13), total ~ Normal(mean, 13.3) (was 10: measured spread of totals error over 2006-2025 is ~13.3).
-  4b. Divisional games -0.9 margin / -1.9 total (familiarity -> lower-scoring, closer games).
+  4b. Divisional games -1.9 total (lower-scoring). The -0.9 MARGIN part was removed 9/30 (worse out of sample).
   4c. Turf (current-season home surface) +0.9 pts on total (weaker evidence, kept -- still net positive combined with the rest).
   4d. Special teams EPA differential (FG/punt/kickoff, season-to-date): +3.77 margin per 1.0 EPA/play edge (t=3.42).
   4e. Success rate edge (offense only, 9/28 fix): +30.39 margin per 1.0 edge in season-to-date offensive success rate.
       power ratings): +14.99 margin per 1.0 edge (t=6.23) -- the strongest single finding in the whole project.
-  4f. Road team on a bye (13+ days rest): flat -2.06 margin (t=-2.61). Replaces an earlier bye+travel-distance version --
+  4f. [REMOVED 9/30 -- worse out of sample 2013-25] Road team on a bye (13+ days rest): flat -2.06 margin (t=-2.61). Replaces an earlier bye+travel-distance version --
       that one and a plain bye flag turned out to measure the same thing (they lose significance combined), and the
       plain flag has far more supporting games with a similar accuracy gain.
   5. Wind (outdoor/open roof only): total += -0.267 * (wind_mph - 7.5). Fit 2021-23, applied forward;
@@ -26,7 +26,7 @@ Method (public nflverse play-by-play):
   5c. Totals: dome/closed-roof games +2.59 pts (t=5.5) and pace (+0.12 pt per combined play above that season's league average, t=2.8).
   6. --adj "ATL=+1.5" manually shifts a team's points (QB change etc.). Not validated -- label it.
 
-  4g. Turnover-margin edge (per game, completed games this season): +0.44 margin per 1.0 edge (t=2.2).
+  4g. [REMOVED 9/30 -- worse out of sample 2013-25] Turnover-margin edge: +0.44 margin per 1.0 edge (t=2.2).
   4h. Road team effectively eliminated (week 13+, 10+ games played, under .250): +3.17 home margin (t=3.0).
       Home-team-eliminated tested as noise (t=-1.3) and is NOT included.
       4g+4h together: margin MAE 10.567 -> 10.553 out-of-sample (better in 13/20 seasons) -- small but real.
@@ -43,6 +43,7 @@ break-even). Used for weekly forward-testing in Line Room and as a sanity check.
 """
 import argparse, os, math, urllib.request
 import numpy as np, pandas as pd
+import season as _season
 from sklearn.linear_model import Ridge
 
 BASE = "https://github.com/nflverse/nflverse-data/releases/download"
@@ -55,7 +56,10 @@ DIV_MARGIN, DIV_TOTAL, TURF_TOTAL = -0.905, -1.9, 0.9
 # away-off-bye -2.189 (divisional unchanged at -0.904). Joint LOSO 2006-25 margin MAE 10.620 -> 10.606, 12 of 20 seasons.
 ST_DIFF_COEF, SR_EDGE_COEF, BYE_AWAY_COEF = 4.212, 30.394, -2.189
 TO_EDGE_COEF, ELIM_AWAY_COEF = 0.439, 3.167   # turnover-margin edge (per game, prior games) / road team effectively eliminated
-HOME_QB_FIRST_START, AWAY_QB_FIRST_START = -6.29, 4.46   # margin effect; home team's own backup vs. away team's own backup, first career start with that team this season.
+# Refit 9/30 JOINTLY with injury_adj's QB penalty (backtest 2013-25): the old -6.29/+4.46 stacked on top of the -3.96
+# injury penalty double-counted -- live stacking scored 10.299 margin MAE vs 10.234 for the injury penalty alone. Joint
+# refit (flat -1.90 + 10.86 x backup-quality gap in injury_adj, and these): 10.211, better in 10 of 13 seasons.
+HOME_QB_FIRST_START, AWAY_QB_FIRST_START = -3.33, 2.49   # margin effect; home team's own backup vs. away team's own backup, first career start with that team this season.
 # Corrected DOWN from the solo-fit values (-7.69 / +5.71): about 44% of first-starts also trip injury_adj.py's QB1-out
 # penalty (-3.96), and testing both together showed real overlap -- these are the values that remain significant once
 # the injury-report QB1 flag is controlled for, so stacking this with injury_adj no longer double-counts the same signal.
@@ -63,7 +67,7 @@ HOME_QB_FIRST_START, AWAY_QB_FIRST_START = -6.29, 4.46   # margin effect; home t
 def fetch(season, fresh=None):
     os.makedirs(CACHE, exist_ok=True)
     f = os.path.join(CACHE, f"pbp_{season}.parquet")
-    if fresh is None: fresh = season >= 2026
+    if fresh is None: fresh = season >= _season.data_season()   # current season re-downloaded; past seasons cached
     if fresh or not os.path.exists(f):
         urllib.request.urlretrieve(f"{BASE}/pbp/play_by_play_{season}.parquet", f)
     return pd.read_parquet(f)
@@ -97,7 +101,9 @@ def predict(M, away, home, adj=None, neutral=False, rest_away_days=None, home_qb
     if neutral: ph -= M["pts"][0] * M["hfa"]        # neutral site: no home edge at all
     else: ph += HFA_FIX / 2; pa -= HFA_FIX / 2       # home-field fix (model underrates home teams ~2.2 pts)
     margin_extra = 0.0
-    if is_division_game(away, home): margin_extra += DIV_MARGIN
+    # Removed 9/30 (leave-one-season-out 2013-25, each tested by dropping it with everything else refit): the divisional
+    # margin term, the road-team-off-a-bye term and the turnover-margin term each made the margin slightly WORSE out of
+    # sample. Divisional stays on the TOTAL (extra_total), where it still helps.
     st = M.get("st_epa") or {}
     if away in st and home in st: margin_extra += ST_DIFF_COEF * (st[home] - st[away])
     sr = M.get("success_rate") or {}
@@ -108,12 +114,8 @@ def predict(M, away, home, adj=None, neutral=False, rest_away_days=None, home_qb
         # already in the ridge ratings), and offense-only beats the old mix out-of-sample (joint MAE 10.620 -> 10.606).
         sr_edge = sr[home]["off"] - sr[away]["off"]
         margin_extra += SR_EDGE_COEF * sr_edge
-    if not neutral and rest_away_days is not None and rest_away_days >= 13:
-        margin_extra += BYE_AWAY_COEF
     if home_qb_first_start: margin_extra += HOME_QB_FIRST_START
     if away_qb_first_start: margin_extra += AWAY_QB_FIRST_START
-    to = M.get("to_margin") or {}
-    if away in to and home in to: margin_extra += TO_EDGE_COEF * (to[home] - to[away])
     if away_eliminated(M, away, week): margin_extra += ELIM_AWAY_COEF
     ph += margin_extra / 2; pa -= margin_extra / 2
     return ph, pa
@@ -154,12 +156,15 @@ def is_division_game(away, home): return DIVISIONS.get(away) is not None and DIV
 # ---- Calibrated chances (fit 2006-2025, checked out-of-sample by season; see BACKTEST notes in README) ----
 # Win: market spread is the main input; the model's gap adds nothing measurable. Cover / Under: the model's gap vs the market carries
 # no measurable signal, so the calibrated chance stays ~50%. Team points: market-implied points work best (model weight ~0).
-CAL_WIN = (-0.0268, 0.1372, -0.0324)          # intercept, market home-favored margin, (model margin - market margin)
+# Rechecked 9/30 against the rebuilt model (2013-25) and all games 2006-25: the model-gap term is now ~0 (+0.005 refit; it
+# was fit on the OLD model) and market-only scored better (log loss 0.6016 vs 0.6026), so the gap weight is 0. Market part
+# refit on 5,247 games 2006-25 (ties out): -0.0452 + 0.1464 x market margin.
+CAL_WIN = (-0.0452, 0.1464, 0.0)          # intercept, market home-favored margin, (model margin - market margin)
 CAL_WIN_MODEL_ONLY = (-0.0756, 0.1588)   # intercept, model margin (used when no market spread yet)
-CAL_COVER = (-0.0433, -0.0066)      # intercept, (model margin - market margin)
+CAL_COVER = (-0.0462, 0.0)      # intercept, (model margin - market margin). 9/30: flat home-cover rate 48.85% (2006-25); the gap term scored worse than flat
 CAL_UNDER = (0.0206, 0.0169)      # intercept, (market total - model total)
-TEAM_W = (-0.0964, 1.0201, 0.0073)             # intercept, market-implied points, (model - market implied points)
-TEAM_RESID_Q = [-20.14, -18.05, -16.87, -15.85, -14.83, -14.11, -13.48, -12.8, -12.26, -11.71, -11.18, -10.78, -10.41, -10.04, -9.61, -9.33, -8.95, -8.62, -8.29, -7.92, -7.59, -7.34, -7.07, -6.71, -6.4, -6.14, -5.93, -5.69, -5.41, -5.15, -4.87, -4.64, -4.36, -4.12, -3.87, -3.62, -3.38, -3.2, -2.91, -2.69, -2.46, -2.21, -2.0, -1.82, -1.59, -1.36, -1.15, -0.91, -0.68, -0.45, -0.2, 0.05, 0.22, 0.5, 0.73, 0.92, 1.17, 1.41, 1.67, 1.91, 2.19, 2.44, 2.72, 2.92, 3.17, 3.42, 3.66, 3.91, 4.21, 4.51, 4.79, 5.09, 5.44, 5.7, 6.02, 6.34, 6.64, 6.95, 7.27, 7.61, 7.97, 8.42, 8.83, 9.29, 9.75, 10.32, 10.82, 11.45, 12.02, 12.58, 13.29, 14.0, 14.67, 15.41, 16.35, 17.4, 18.66, 20.39, 23.09]          # 99 quantiles of team-points error (out-of-sample)
+TEAM_W = (0.0, 1.0, 0.0)             # intercept, market-implied points, (model - ...). 9/30: old fit ran 2-3 pts high on overs; now market-implied + real 2006-25 errors
+TEAM_RESID_Q = [-19.75, -17.75, -16.5, -15.5, -14.5, -13.75, -13.25, -12.5, -12.0, -11.5, -11.0, -10.5, -10.0, -9.75, -9.25, -9.0, -8.75, -8.25, -8.0, -7.5, -7.25, -7.0, -6.75, -6.42, -6.0, -5.75, -5.5, -5.25, -5.0, -4.75, -4.5, -4.25, -4.0, -3.75, -3.5, -3.25, -3.0, -2.91, -2.5, -2.5, -2.25, -2.0, -1.75, -1.5, -1.25, -1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 0.81, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 4.25, 4.5, 5.0, 5.25, 5.5, 5.75, 6.0, 6.5, 6.75, 7.0, 7.25, 7.5, 8.0, 8.25, 8.75, 9.0, 9.5, 10.0, 10.5, 11.0, 11.75, 12.25, 12.75, 13.5, 14.0, 14.75, 15.5, 16.5, 17.5, 18.8, 20.53, 23.5]          # 99 quantiles of team-points error (out-of-sample)
 def _sig(x): return 1 / (1 + math.exp(-x))
 def cal_win(margin, mkt_margin=None):
     """Calibrated chance the home team wins. margin = model home margin; mkt_margin = market home-favored margin."""
@@ -273,13 +278,14 @@ def backtest(season):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--away"); ap.add_argument("--home"); ap.add_argument("--season", type=int, default=2026)
+    ap.add_argument("--away"); ap.add_argument("--home"); ap.add_argument("--season", type=int, default=None)
     ap.add_argument("--adj", default=""); ap.add_argument("--wind", type=float); ap.add_argument("--outdoor", action="store_true")
     ap.add_argument("--spread", type=float, help="market home favored margin, e.g. 5.5"); ap.add_argument("--total", type=float)
     ap.add_argument("--backtest", type=int)
     ap.add_argument("--dome", action="store_true", help="indoor / closed roof: +2.59 on the total")
     ap.add_argument("--neutral", action="store_true", help="neutral site (London, Paris...): no home-field edge")
     a = ap.parse_args()
+    a.season = a.season or _season.data_season()
     if a.backtest: backtest(a.backtest); return
     adj = {k: float(v) for k, v in (x.split("=") for x in a.adj.split(",") if x)}
     M, cur = build(a.season)

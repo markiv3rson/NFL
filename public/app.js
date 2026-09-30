@@ -2,7 +2,7 @@
 let S = null, RES = null, MB = null, tdSort = "likely", recView = "mine";
 const $ = (id) => document.getElementById(id);
 const dash = '<span class="dim">—</span>';
-const esc = (t) => String(t == null ? "" : t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+const esc = (t) => String(t == null ? "" : t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 const sgn = (n) => (n > 0 ? "+" : "") + n;
 const odds = (o) => (o == null ? "—" : (o > 0 ? "+" : "") + o);
 function toAmerican(p) { if (!(p > 0 && p < 1)) return null; return Math.round(p >= 0.5 ? (-100 * p) / (1 - p) : (100 * (1 - p)) / p); }
@@ -23,7 +23,7 @@ function status(g) {
 }
 function headButtons(g, id, extra = "") {
   const n = (g.injuries || []).length;
-  return `<div class="top"><div><div class="gh">${matchup(g)}${g.badge ? `<span class="badge">${g.badge}</span>` : ""}</div><div class="sub">${tm(g.kickoff)} · ${status(g)}${extra}</div>` +
+  return `<div class="top"><div><div class="gh">${matchup(g)}${g.badge ? `<span class="badge">${esc(g.badge)}</span>` : ""}</div><div class="sub">${tm(g.kickoff)} · ${status(g)}${extra}</div>` +
     (g.qb && g.qb.length && !g.final ? `<div class="warn">⚠ ${esc(g.qb.join(" · "))} · ${qbAdjusted(g) ? "model adjusted (estimate)" : "not in the model yet — it adjusts once this week's injury report lists the starter Out/Doubtful (Wed–Fri report, then the Thu/Sat reruns)"}</div>` : "") +
     (g.dataCheck ? `<div class="warn">⚠ ${esc(g.dataCheck)}</div>` : "") + `</div>` +
     `<div class="btns" style="margin-top:0;flex-shrink:0">${n ? `<button class="tag" data-drop="inj-${id}">Injuries ${n} ▾</button>` : ""}<button class="tag" data-drop="his-${id}">History ▾</button></div></div>` +
@@ -61,8 +61,7 @@ function spreadReason(g) {
     s += ` after injuries (${Math.abs(m.rawMargin) < 0.05 ? "a toss-up" : `${favOf(g, m.rawMargin)} by ${Math.abs(m.rawMargin).toFixed(1)}`} before)`;
   s += ".";
   if (m.fix && m.fix.neutral) s += " Neutral-site game, so no home-field edge is counted.";
-  if (m.fix && m.fix.div) s += " Division game (these play closer than the ratings say).";
-  if (m.fix && m.fix.awayBye) s += ` ${g.away} is off a bye.`;
+  // (division-game and road-bye notes removed 9/30: those margin terms were dropped after testing worse out of sample)
   if (m.fix && m.fix.awayElim) s += ` ${g.away} is all but out of the playoff race.`;
   if (m.fix && m.fix.homeQbFirstStart) s += ` ${g.home}'s backup QB is making his first start.`;
   if (m.fix && m.fix.awayQbFirstStart) s += ` ${g.away}'s backup QB is making his first start.`;
@@ -182,17 +181,17 @@ function prow(r, g, showGame) {
   const cents = r.price != null ? `<span class="price-link" data-market="${esc(r.market || (r.stale ? "Old screenshot price — not live" : ""))}">${Math.round(r.price * 100)}¢</span>` : dash;
   const snap = r.snap ? ` · ${r.snap.pct}% snaps${r.snap.missed ? ` <span class="warn-t">⚠ didn't play last game (last played week ${r.snap.lastWeek})${r.lastWeekOut ? ` · ${esc(r.lastWeekOut)}` : ""} — check status</span>` : r.snap.early ? ` <span class="warn-t">⚠ left last game early? (usually ${r.snap.avg}%) — check injury news</span>` : r.snap.trend === "up" ? ' <span class="g">↑</span>' : r.snap.trend === "down" ? ' <span class="r">↓ role shrinking</span>' : ""}` : "";
   // team code dropped from the subtitle when the logo is shown (showGame) — the logo already carries it
-  const sub = `${showGame ? `${r.game} · ` : ""}#${r.teamRank} on team${snap}`;
+  const sub = `${showGame ? `${esc(r.game)} · ` : ""}#${r.teamRank} on team${snap}`;
   const more = r.fair != null && (r.two != null || r.first != null) ? `2+ TDs ${r.two != null ? Math.round(r.two) + "%" : "—"} · first TD of the game ${r.first != null ? Math.round(r.first) + "%" : "—"}` : "";
   const flags = (r.flags || []).map((f) => `<div class="y" style="font-size:11.5px">⚠ ${esc(f)}</div>`).join("") +
     // Game-day inactives come out ~90 min before kickoff and are NOT in the injury feed; an inactive player's TD market
     // settles No. Reminder on every Questionable player until kickoff.
     (r.espn ? `<div style="font-size:11.5px" class="dim">ESPN: ${esc(r.espn)}</div>` : "") +
-    (/^questionable$/i.test(r.injury || "") && !g.started ? `<div class="y" style="font-size:11.5px">⚠ Questionable — check the inactive list ~90 min before kickoff (inactive = TD market settles No)</div>` : "") +
+    (/^questionable$/i.test(r.injury || "") && !g.started ? `<div class="y" style="font-size:11.5px">⚠ Questionable — ${r.fairIfPlays != null ? `chance includes the 1-in-3 risk he sits (${Math.round(r.fairIfPlays)}% if he plays). ` : ""}Check the inactive list ~90 min before kickoff (inactive = TD market settles No)</div>` : "") +
     (r.depthNote ? `<div style="font-size:11.5px" class="${/up|new/.test(r.depthNote) ? "g" : "r"}">${/up|new/.test(r.depthNote) ? "▲" : "▼"} ${esc(r.depthNote)}</div>` : "") +
     (r.move ? `<div style="font-size:11.5px" class="${r.move > 0 ? "g" : "r"}">Price ${r.move > 0 ? "▲ +" : "▼ "}${r.move}¢ ${r.moveSince || "in the last day"}</div>` : "");
   const logo = r.team ? `<img class="logo" src="${logoUrl(r.team)}" alt="${r.team}">` : "";
-  return `<div class="prow"><div>${logo}<b style="font-weight:600">${r.player}</b><span class="pos">${r.pos}</span>${inj}<div class="s">${sub}</div></div>` +
+  return `<div class="prow"><div>${logo}<b style="font-weight:600">${esc(r.player)}</b><span class="pos">${esc(r.pos)}</span>${inj}<div class="s">${sub}</div></div>` +
     `<div class="n"><span class="big">${chance}</span><span class="lbl">model's<br>chance</span></div>` +
     `<div class="n"><span class="px">${cents}</span><span class="lbl">Polymarket<br>price${r.stale ? " (old)" : r.thin ? '<br><span class="warn-t">thin market</span>' : ""}${r.open != null && r.price != null && Math.round(r.open * 100) !== Math.round(r.price * 100) ? `<br><span class="dim">opened ${Math.round(r.open * 100)}¢</span>` : ""}</span></div>` +
     `<div class="why">${more}${flags}</div></div>`;
@@ -224,7 +223,7 @@ function renderTd() {
 }
 // ---------- Record: Mine ----------
 const RESMARK = { W: '<span class="g">✓</span>', L: '<span class="r">✗</span>', P: '<span class="dim">=</span>', pending: '<span class="dim">•</span>' };
-function legName(l) { return l.kind === "td" ? `${l.player} TD` : l.kind === "spread" ? `${l.team} ${sgn(l.line)}` : `${l.side === "over" ? "Over" : "Under"} ${l.line}`; }
+function legName(l) { return esc(l.kind === "td" ? `${l.player} TD` : l.kind === "spread" ? `${l.team} ${sgn(l.line)}` : `${l.side === "over" ? "Over" : "Under"} ${l.line}`); }
 function betRow(b) {
   if (b.source === "account") {   // bet recorded automatically from your Polymarket account
     const st = b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Even" : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : '<span class="dim">open</span>';
@@ -232,7 +231,7 @@ function betRow(b) {
       `<div class="s" style="padding:0 0 6px 8px">${money(b.cost)}${b.price != null ? ` at ${Math.round(b.price * 100)}¢` : ""} · pays ${money(b.toWin)} if it wins · auto-recorded from your account</div>`;
   }
   const hit = b.legs.filter((l) => l.result === "W").length;
-  const state = b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Push" : `<span class="dim">${hit} of ${b.legs.length} hit</span>`;
+  const state = b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? (b.pushUnconfirmed ? '<span class="y">Push leg — check how Polymarket settled it</span>' : "Push") : `<span class="dim">${hit} of ${b.legs.length} hit</span>`;
   return `<div class="row"><span>${b.legs.length > 1 ? "Combo" : "Single"} · ${money(b.cost)} → ${money(b.toWin)}</span><span>${state}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
     `<div class="s" style="padding:0 0 6px 8px">${b.legs.map((l) => `${RESMARK[l.result]} ${legName(l)}${l.clv != null ? ` <span class="${signCls(l.clv)}">(${(l.clv * 100).toFixed(0)}%)</span>` : ""}`).join(" · ")}</div>`;
 }
@@ -291,14 +290,18 @@ function renderModel() {
   // real price, and averaging its bid/ask invented a fake "market chance" that made Polymarket look worse (Week 3:
   // 170 of 258 players were thin; on real markets model and market were ~tied).
   const priced = tdAllAny.filter((p) => p.ask > 0 && p.ask < 1);
+  // Model chance as the TD tab showed it: the model's % assumes he plays, so a player listed Questionable/Out that week
+  // is scaled by his chance to play (same rule as the tab, 9/30). The market's price already includes that risk.
+  const avail = (p) => (/^(out|doubtful)$/i.test(p.rep || "") ? 0.01 : /^questionable$/i.test(p.rep || "") ? 0.669 : 1);
+  const mp = (p) => (p.fair / 100) * avail(p);
   const isThin = (p) => !(p.bid > 0) || p.ask - p.bid > Math.min(0.05, 0.4 * p.ask);   // same rule as lib/odds.js isThinMarket
   const tdPx = priced.filter((p) => !isThin(p)), thinN = priced.length - tdPx.length;
   let vsMkt = "";
   if (tdPx.length) {
     const y = (p) => (p.scored ? 1 : 0), mk = (p) => (p.bid ? (p.bid + p.ask) / 2 : p.ask);
-    const bM = tdPx.reduce((a, p) => a + (p.fair / 100 - y(p)) ** 2, 0) / tdPx.length;
+    const bM = tdPx.reduce((a, p) => a + (mp(p) - y(p)) ** 2, 0) / tdPx.length;
     const bP = tdPx.reduce((a, p) => a + (mk(p) - y(p)) ** 2, 0) / tdPx.length;
-    const buys = tdPx.filter((p) => p.fair / 100 > p.ask);
+    const buys = tdPx.filter((p) => mp(p) > p.ask);
     const pl = buys.reduce((a, p) => a + (p.scored ? 1 / p.ask - 1 : -1), 0);
     const hits = buys.filter((p) => p.scored).length;
     const small = tdPx.length < 200 ? ' <span class="dim">· small sample (needs ~200+)</span>' : "";
@@ -310,33 +313,33 @@ function renderModel() {
       // The other side of the same markets: most of the model's disagreements are "less likely than the price says"
       // (Week 3: model below market on 67 of 83 real markets), and a Yes-only check ignored all of them. Buying No
       // costs 1 − bid. Tracked here, not recommended, until it has a real sample.
-      (() => { const no = tdPx.filter((p) => 1 - p.fair / 100 > 1 - p.bid);
+      (() => { const no = tdPx.filter((p) => 1 - mp(p) > 1 - p.bid);
         const plNo = no.reduce((a, p) => a + (!p.scored ? 1 / (1 - p.bid) - 1 : -1), 0);
         return `<div class="row"><span class="dim">$1 on No when model &lt; price</span><span>${no.filter((p) => !p.scored).length} of ${no.length} won · ${cMoney(plNo)} ${no.length ? `(${cPct(plNo / no.length)})` : ""}</span></div>`; })() +
-      `<div class="row"><span class="dim">Scored vs priced</span><span>${(tdPx.filter((p) => p.scored).length / tdPx.length * 100).toFixed(0)}% scored · Polymarket priced ${(tdPx.reduce((a, p) => a + mk(p), 0) / tdPx.length * 100).toFixed(0)}% · model ${(tdPx.reduce((a, p) => a + p.fair, 0) / tdPx.length).toFixed(0)}%</span></div>` +
+      `<div class="row"><span class="dim">Scored vs priced</span><span>${(tdPx.filter((p) => p.scored).length / tdPx.length * 100).toFixed(0)}% scored · Polymarket priced ${(tdPx.reduce((a, p) => a + mk(p), 0) / tdPx.length * 100).toFixed(0)}% · model ${(tdPx.reduce((a, p) => a + mp(p) * 100, 0) / tdPx.length).toFixed(0)}%</span></div>` +
       // TD model CLV (added 9/29): for players where the model was above the OPENING price (first snapshot of the week),
       // did the closing price move toward the model? The fastest signal of real edge, long before win/loss means anything.
-      (() => { const c = tdPx.filter((p) => p.openAsk > 0 && p.openBid > 0 && p.openAsk - p.openBid <= Math.min(0.05, 0.4 * p.openAsk) && p.fair / 100 > p.openAsk)   /* opening price must be a real market too */
+      (() => { const c = tdPx.filter((p) => p.openAsk > 0 && p.openBid > 0 && p.openAsk - p.openBid <= Math.min(0.05, 0.4 * p.openAsk) && mp(p) > p.openAsk)   /* opening price must be a real market too */
           .map((p) => (p.bid + p.ask) / 2 / p.openAsk - 1);
         return `<div class="row"><span class="dim">TD model CLV (model above opening price)</span><span>${c.length ? `${cPct(c.reduce((a, x) => a + x, 0) / c.length)} avg · ${c.length} players` : "starts Week 4 (needs opening prices)"}</span></div>`; })() +
       '<div class="s dim">Closing prices, before fees, real markets only. The test of whether the TD model beats Polymarket.</div>';
   }
-  const st = S.status, wc = S.weekCheck;
+  const st = S.status, wc = S.weekCheck || { games: 0, withLines: 0, modelRun: false, watch: [] };
   const stOk = st && st.ok && !st.creditWarning;
   const stRows = st ? [
     ["Last automatic run", st.auto ? `${hm(st.auto.t)} · ${esc(st.auto.what)}` + (Date.now() - new Date(st.auto.t) > 9 * 3600e3 ? ' <span class="y">(stale — scheduler not reaching the site)</span>' : "") : '<span class="y">none recorded — scheduler not reaching the site</span>'],
     ["Last snapshot", st.lastSnapshot ? hm(st.lastSnapshot) + (S.meta && S.meta.lastSrc === "manual" ? " · you" : "") : "—"], ["Last model run", st.modelRunAt ? hm(st.modelRunAt) : "—"],
     ["Last self-check", st.selfcheck ? `${hm(st.selfcheck.t)} · ${st.selfcheck.items.length ? `<span class="y">${st.selfcheck.items.length} issue(s) — see Watchdog</span>` : '<span class="g">all clear</span>'}` : "— (Thu 12:05 PM, Fri 5:05 PM, Sun 7:35 AM)"],
     ["Pre-logged at kickoff", `${st.prelogged || 0} of ${(S.games || []).length} games this week`],
-    ["Last backup", st.backup ? `${hm(st.backup.t)} · ${st.backup.where === "volume" ? "saved" : '<span class="y">temporary — add a Railway volume</span>'}` : '<span class="y">none yet</span>'],
+    ["Last backup", st.backup ? `${hm(st.backup.t)} · ${st.backup.where === "volume" ? "saved" : st.backup.where === "failed" ? '<span class="r">failed — check Railway logs</span>' : '<span class="y">temporary — add a Railway volume</span>'}` : '<span class="y">none yet</span>'],
     ["Last TD retrain", st.retrain ? `${hm(st.retrain.t)} · ${esc(st.retrain.summary)}` : '<span class="dim">not run yet — runs every Tuesday</span>'],
     ["Database used", st.usedMb != null ? `${st.usedMb.toFixed(1)} of ${st.capMb} MB` : "—"],
     ["Sportsbook credits left", st.creditWarning ? `<span class="y">${st.credits ?? "—"}</span>` : (st.credits ?? "—")],
   ].map(([a, b]) => `<div class="row"><span class="dim">${a}</span><span>${b}</span></div>`).join("") +
     (st.creditWarning ? `<div class="s y">⚠ ${esc(st.creditWarning)}</div>` : "") +
-    (st.errors.length ? st.errors.map((e) => `<div class="s y">⚠ ${hm(e.t)} · ${esc(e.where)}: ${esc(e.msg)}</div>`).join("") : '<div class="s g">No errors this week.</div>') : "";
-  const games = res.map((r) => `<div class="row"><span>${r.game} <span class="dim">wk ${r.week} · ${r.awayScore}–${r.homeScore}</span></span><span>` +
-    [r.spread, r.total, r.ml].filter(Boolean).map((x) => `${x.label} ${x.result === "W" ? '<span class="g">W</span>' : x.result === "L" ? '<span class="r">L</span>' : "P"}`).join(" · ") + `</span></div>`).join("");
+    ((st.errors || []).length ? st.errors.map((e) => `<div class="s y">⚠ ${hm(e.t)} · ${esc(e.where)}: ${esc(e.msg)}</div>`).join("") : '<div class="s g">No errors this week.</div>') : "";
+  const games = res.map((r) => `<div class="row"><span>${esc(r.game)} <span class="dim">wk ${r.week} · ${r.awayScore}–${r.homeScore}</span></span><span>` +
+    [r.spread, r.total, r.ml].filter(Boolean).map((x) => `${esc(x.label)} ${x.result === "W" ? '<span class="g">W</span>' : x.result === "L" ? '<span class="r">L</span>' : "P"}`).join(" · ") + `</span></div>`).join("");
   $("record-model").innerHTML = `<div class="card" style="margin-top:10px">` +
     `<div class="sec"><div class="sh">Summary</div>` +
     `<div class="row"><span class="dim">Your record · P/L</span><span>${s.wins}–${s.losses}${s.pushes ? "–" + s.pushes : ""} · ${cMoney(s.pl)}</span></div>` +
@@ -349,7 +352,7 @@ function renderModel() {
     (() => { const tdW = wk.flatMap((r) => r.td || []), td = tdW.filter((p) => p.played !== false); if (!tdW.length) return "";
       const exp = td.reduce((a, p) => a + p.fair, 0) / 100, hit = td.filter((p) => p.scored).length;
       const real = tdW.filter((p) => p.ask > 0 && p.bid > 0 && p.ask - p.bid <= Math.min(0.05, 0.4 * p.ask)), y = (p) => (p.scored ? 1 : 0);
-      const bm = real.length ? real.reduce((a, p) => a + (p.fair / 100 - y(p)) ** 2, 0) / real.length : null, bp = real.length ? real.reduce((a, p) => a + ((p.ask + p.bid) / 2 - y(p)) ** 2, 0) / real.length : null;
+      const bm = real.length ? real.reduce((a, p) => a + (mp(p) - y(p)) ** 2, 0) / real.length : null, bp = real.length ? real.reduce((a, p) => a + ((p.ask + p.bid) / 2 - y(p)) ** 2, 0) / real.length : null;
       const mine = (MB.bets || []).filter((b) => b.week === lw && b.result !== "pending"), mpl = mine.reduce((a, b) => a + (b.pl || 0), 0);
       return `<div class="row"><span class="dim">TD model</span><span>${hit} scored · model expected ${exp.toFixed(1)} (${td.length} players who played${tdW.length > td.length ? `; ${tdW.length - td.length} inactive left out` : ""})</span></div>` +
         (bm != null ? `<div class="row"><span class="dim">TD vs Polymarket (real markets)</span><span>${real.length} players · model ${bm.toFixed(3)} · Polymarket ${bp.toFixed(3)}</span></div>` : "") +
@@ -396,9 +399,12 @@ async function loadRecord(sync = false) {
 // ---------- header / load / buttons ----------
 function weekline() {
   const ks = S.games.map((g) => new Date(g.kickoff)).sort((a, b) => a - b), f = (d) => d.toLocaleString(undefined, { month: "short", day: "numeric" });
-  const range = ks.length ? `${f(ks[0])}–${ks[ks.length - 1].getDate()}` : "";
+  // Week spanning two months (e.g. Sep 28 – Oct 2): repeat the month; before, it read "Sep 28–2".
+  const a = ks[0], z = ks[ks.length - 1];
+  const range = ks.length ? (a.getMonth() === z.getMonth() ? `${f(a)}–${z.getDate()}` : `${f(a)} – ${f(z)}`) : "";
   const m = S.meta || {};
-  $("weekline").innerHTML = `Week ${S.week} · ${range} · ↻ Poly ${clock(m.lastSnapshot)} · Books ${clock(S.booksAt)} · Model ${clock(S.modelRunAt)}`;
+  const round = { 19: "Wild Card", 20: "Divisional round", 21: "Conference Championships", 22: "Super Bowl" }[S.week];
+  $("weekline").innerHTML = `${round || `Week ${S.week}`} · ${range} · ↻ Poly ${clock(m.lastSnapshot)} · Books ${clock(S.booksAt)} · Model ${clock(S.modelRunAt)}`;
 }
 function renderAll() { weekline(); renderLines(); renderTotals(); renderTd(); if (MB) renderRecord(); }
 async function loadSlate() { const d = await (await fetch("/api/slate")).json(); if (!d.ok) throw new Error(d.error); S = d; renderAll(); }

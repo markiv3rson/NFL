@@ -374,6 +374,46 @@ Found from the live site and the Week 3 export (nfl-bettors-results.json). Site 
   (was the whole week, ~1 MB per page load).
 - ESPN game-day status (lib/espn.js, 9/30): ESPN's league injury feed keeps updating through game day. Players ESPN
   lists Out/Doubtful/Suspended (dated within 8 days) come off the TD list ("Removed — ESPN lists them out"), are passed
-  as outs to the TD rerun (teammates get the red-zone share) and to the game-line injury adjustment. Other ESPN
+  as outs to the TD rerun (removed from the list; the red-zone hand-off to teammates was dropped 9/30) and to the game-line injury adjustment. Other ESPN
   statuses show on the row. Feed down/unreadable -> Watchdog. Tier 4 source; parser tested on the documented shape,
   live feed not reachable from the build environment.
+- Model upgrades (9/30), each backtested before going in (walk-forward, only data before each game):
+  - TD team total: every player's expected TDs scaled halfway toward the team's expected RB/WR/TE TDs from implied
+    points (top 8 players sum). Better in 7 of 7 seasons 2019-25 (Brier -0.00037); 50%+ players stay calibrated.
+  - Removed from TD: the Out-player red-zone hand-off (worse 7 of 7) and the by-position defense split (neutral).
+  - QB out: -1.90 + 10.86 x backup-quality gap (pass-play EPA, shrunk) instead of a flat -3.96, and first-start terms
+    refit jointly (-3.33 / +2.49). The old stacking double-counted (margin MAE 10.299); new 10.211 out of sample,
+    better in 10 of 13 seasons 2013-25.
+  - Removed from the margin: divisional, road-bye and turnover-margin terms (each worse out of sample). Divisional
+    stays on the total.
+  - Weekly TD retrain: 4 held-out weeks, switch only if better by 2+ standard errors (the old 2-week / 0.0001 rule
+    picked the worse model 28% of the time); the winner is refit with the held-out weeks before going live.
+  - Site: spread chances moved between lines use key numbers (3, 7, 10...) -- better 8 of 10 seasons; Questionable
+    players ESPN hasn't ruled out count as active inside 80 min of kickoff; player-name matching is whole-word.
+  - Tested and NOT added (no gain): wind floor (calm games really do score more), garbage-time filter, fading prior
+    weight, returning starters, gradient boosting, game script, QB goal-line sneaks, rest difference, body clock,
+    referee tendency, ATS / over-under streaks, cold temperature, model+market blend.
+- Calibration recheck (9/30), every constant against 2006-25 / 2013-25 results:
+  - Win chance: model-gap weight 0.0324 -> 0 (it was fit on the old model; market-only scored better, 0.6016 vs
+    0.6026); market part refit on 5,247 games: -0.0452 + 0.1464 x spread. Cover: flat 48.85% (gap term was worse).
+  - Team points: old fit ran 2-3 pts high on overs; now market-implied points + real 2006-25 error quantiles.
+  - 2+ TDs: x1.09 -> x1.035 (with the team TD total, x1.09 read 3.77% vs 3.58% actual).
+  - Confirmed correct, unchanged: SD 13 / 13.3, Under calibration, Questionable 0.28 (starters sat 27.1%), Doubtful
+    0.99, TD chances by bucket (no extra correction helps), 2+/first-TD formulas.
+  - TD tab: a Questionable RB/WR/TE's chance is x0.669 until inactives are known (33.1% sat, 2016-25; an inactive
+    player's TD bet settles No). The row shows the if-he-plays number too.
+  - Combos with a pushed leg: no P/L is invented (Polymarket's combo rules don't state how a push settles).
+  - Tested, not added: key numbers for totals (4/10 seasons), totals SD by line level (0/10).
+- Hands-off operation (9/30):
+  - Season is worked out automatically (season.py / lib/games.js SEASON): Aug-Dec = that year, Jan-Jul = the season
+    before; the model service falls back to last season until the new season's play-by-play is published and rolls over
+    by itself (refresh_live) with no restart. No year is typed in anywhere any more.
+  - New season: the TD model refits on the 3 latest complete seasons automatically (no test needed); from Week 6 on the
+    weekly 4-week test decides. Teams that haven't played yet are listed from their current roster + last season's usage
+    (before, the TD tab was empty for a team until its first game).
+  - $200 weekly cap now counts bets synced from the Polymarket account, not only hand-entered ones.
+  - My Bets "expected (your model)" and the Record tab's model-vs-Polymarket use the same availability-adjusted TD
+    chance the TD tab shows (official status saved at grading; weeks graded after the feed moved on have no status).
+  - Wording: teammate notes no longer say "Role boost" (their chance is not raised); model docs updated for removed terms.
+  - Checked end to end on live 2026 data: TD service load + run, Week-1 fallback, weekly retrain decision, QB penalty,
+    game line; 20 math checks + 11 on-screen sentence checks pass.
