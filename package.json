@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --import ./tests/register.mjs tests/run.mjs && python3 tests/test_service.py",
+    "test": "node --import ./tests/register.mjs tests/run.mjs && node --import ./tests/register.mjs tests/grading_audit.mjs && python3 tests/test_service.py",
     "test:site": "node --import ./tests/register.mjs tests/run.mjs"
   },
   "dependencies": {
