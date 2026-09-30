@@ -448,3 +448,17 @@ Found from the live site and the Week 3 export (nfl-bettors-results.json). Site 
   - Model-only fair prices use the current Polymarket line (fake edges when the line moved); TD "prices moved toward
     the model" compares mid with mid (was mid vs ask); My Bets TD closing price uses whole-word names; QB backup chosen
     from this season's QBs; price-move label only says "since the first price" when it is.
+- Second full review (9/30), 15 fixes + automated tests:
+  - Names: full names with "Jr."/"St." now match; nickname fallback never takes a market of a roster player at another
+    position (a WR was getting QB Daniel Jones's). posadj was still ON live (app.py passed True) -- now really off.
+  - Questionable discount re-ranks the team (#N on team / Top 1-3 agree with shown %); Record uses played/inactive at close.
+  - Bets and the account ledger carry a season (preloaded = 2026), so next season never re-grades them; Record shows
+    this season only; edge stats computed live; feed-glitch snapshots are never logged as edges; edge log graded once
+    per week.
+  - Super Bowl at a US stadium uses that stadium's location/roof (was "unknown international venue") and is labeled.
+  - season.py: only a real 404 means "not published" (a network error no longer switches seasons for 6 h).
+  - Retrain: if the live model already trained on the held-out weeks, its recipe is refit without them before comparing.
+  - Downloads are atomic (temp file + swap); Tuesday's post-retrain rerun waits for the retrain (7:30-8:29).
+  - tests/: npm test runs 35 site checks + model-service checks; .github/workflows/ci.yml runs build + tests on every push.
+  - All-in market test (every feature, boosted trees and logistic, walk-forward 2016-25): spreads 49-51% (52.8% on the
+    top fifth, 4/10 seasons), totals 48-51% -- no edge vs closing lines. Edge work is Polymarket-vs-books and TD props.

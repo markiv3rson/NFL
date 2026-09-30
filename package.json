@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "node --import ./tests/register.mjs tests/run.mjs && python3 tests/test_service.py",
+    "test:site": "node --import ./tests/register.mjs tests/run.mjs"
   },
   "dependencies": {
     "ioredis": "^5.4.1",
@@ -18,6 +20,7 @@
     "@types/node": "^20.14.15",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "ioredis-mock": "^8.9.0"
   }
 }

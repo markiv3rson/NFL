@@ -156,8 +156,9 @@ def rerun_td_probs():
     for g in games:
         try:
             outs = g.get("outs", [])
-            away_df = td_prob.run(nv(g["away"]), nv(g["home"]), g["total"] / 2 - g["spread"] / 2, outs, True)
-            home_df = td_prob.run(nv(g["home"]), nv(g["away"]), g["total"] / 2 + g["spread"] / 2, outs, True)
+            # posadj off (9/30 test: neutral) -- the old call passed True here, so the "default off" change never took effect
+            away_df = td_prob.run(nv(g["away"]), nv(g["home"]), g["total"] / 2 - g["spread"] / 2, outs)
+            home_df = td_prob.run(nv(g["home"]), nv(g["away"]), g["total"] / 2 + g["spread"] / 2, outs)
             # Extra markets from the same calibrated chances: 2+ TDs, first TD of the game, and any RB/WR/TE per team.
             top_a, top_h = away_df.head(14), home_df.head(14)
             f_a, f_h = td_prob.first_td([top_a.p.values, top_h.p.values])

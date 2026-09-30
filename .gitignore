@@ -1,0 +1,7 @@
+node_modules/
+.next/
+__pycache__/
+*.pyc
+next-env.d.ts
+tsconfig.json
+package-lock.json
