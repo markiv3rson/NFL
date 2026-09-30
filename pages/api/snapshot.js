@@ -12,6 +12,9 @@ import { loadModel } from "../../lib/week";
 import { isThinMarket } from "../../lib/odds";
 import { nameMatches } from "../../lib/picks";
 import { logEdges } from "../../lib/edges";
+import { recordPaper } from "../../lib/paper";
+import { buildWeek } from "../../lib/week";
+import { loadInjuriesMeta } from "../../lib/injuries";
 export const config = { maxDuration: 120 };
 
 // Automatic pre-log (protocol 3.3): model vs Polymarket frozen at kickoff for every game. Used by the kickoff snapshot
@@ -121,8 +124,18 @@ export default async function handler(req, res) {
     await redis.del(SLATE_CACHE).catch(() => {});   // the page shows the new prices immediately
     // Your Refresh button (src=manual) skips grading and the account sync (the scheduler does both several times a day,
     // and the Record tab has its own Sync button) so the button comes back fast.
+    // Parlay Lab: record this week's PAPER parlays once, on the scheduled snapshot within ~26 h of the first Sunday kickoff
+    let paper = 0;
+    if (src !== "manual" && !(await redis.exists(`paper:${season}:${week}`))) {
+      const sun = games.filter((g) => g.kickoff && new Date(g.kickoff).getUTCDay() === 0 && !started(g)).map((g) => new Date(g.kickoff).getTime());
+      const hrs = sun.length ? (Math.min(...sun) - Date.now()) / 3600e3 : -1;
+      if (hrs >= 0 && hrs <= 26) {
+        const inj = await loadInjuriesMeta().catch(() => null);
+        paper = await recordPaper(season, week, await buildWeek({ season, week, injuries: inj ? inj.teams : null })).catch((e) => { logError("paper", e); return 0; });
+      }
+    }
     const graded = src === "manual" ? 0 : await gradeRecent(season).catch(() => 0);
     const acct = src === "manual" ? { ok: false, note: "skipped on manual refresh" } : await syncAccount().catch((e) => ({ ok: false, note: String(e) }));  // auto-sync My Bets
-    res.status(200).json({ ok: true, week, upcoming: open.length, locked: games.length - open.length, lines, props, books: booksNote, closedLate, graded, edges, account: acct.ok ? `synced ${acct.positions} positions` : acct.note });
+    res.status(200).json({ ok: true, week, upcoming: open.length, locked: games.length - open.length, lines, props, books: booksNote, closedLate, graded, edges, paper, account: acct.ok ? `synced ${acct.positions} positions` : acct.note });
   } catch (err) { await logError("snapshot", err).catch(() => {}); res.status(500).json({ ok: false, error: String(err) }); }
 }

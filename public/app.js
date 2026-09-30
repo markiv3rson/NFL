@@ -1,5 +1,6 @@
 // NFL SLATEZZZ — everything comes from /api/slate (lines, TD, flags) and /api/mybets + /api/results/list (Record).
 let tdShowAll = false;
+let PAPER = null;
 let S = null, RES = null, EDGES = null, MB = null, tdSort = "likely", recView = "mine";
 const $ = (id) => document.getElementById(id);
 const dash = '<span class="dim">—</span>';
@@ -138,12 +139,13 @@ const order = (a, b) => (a.final - b.final) || (a.started - b.started) || (new D
 // "Right now" (9/30): Polymarket prices 3%+ better than fresh sportsbook fair prices -- the one realistic edge source.
 function rightNowBox() {
   const E = S.edgesNow || [], R = S.edgeRule || {};
-  const why = R.booksAgeH == null ? "no sportsbook odds yet this week" : R.booksAgeH > R.booksMaxAgeH ? `sportsbook odds are ${Math.round(R.booksAgeH)} h old — the next scheduled pull refreshes them` : "none right now";
+  const lim = R.booksMaxAgeEarlyH || R.booksMaxAgeH;
+  const why = R.booksAgeH == null ? "no sportsbook odds yet this week" : R.booksAgeH > lim ? `sportsbook odds are ${Math.round(R.booksAgeH)} h old — the next scheduled pull refreshes them` : "none right now";
   const fee = R.feePct ? `after a ${R.feePct}% fee` : "before fees";
   return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Right now · Polymarket cheaper than the sportsbooks</div>` +
     (E.length ? E.map((b) => `<div class="row"><span>${esc(b.label)} <span class="dim">${esc(b.game)}</span>${b.held ? ` <span class="y">(${esc(b.held)} — hold)</span>` : ""}</span>` +
       `<span>${Math.round(b.price * 100)}¢ vs fair ${Math.round(b.fair * 100)}¢ · <span class="g">+${(b.evNet * 100).toFixed(1)}%</span></span></div>`).join("") : `<div class="s">No gap of 3%+ (${why}).</div>`) +
-    `<div class="s dim" style="margin-top:4px">Gap = sportsbook fair chance ÷ Polymarket price − 1, ${fee}. Sportsbook odds must be under ${R.booksMaxAgeH || 3} h old. Results are tracked on Record → Model.</div></div></div>`;
+    `<div class="s dim" style="margin-top:4px">Gap = sportsbook fair chance ÷ Polymarket price − 1, ${fee}. Sportsbook odds must be under ${R.booksMaxAgeEarlyH || 8} h old (${R.booksMaxAgeH || 3} h on game day). Results are tracked on Record → Model.</div></div></div>`;
 }
 // "What changed" (9/30): Polymarket line moves since your last visit on this device.
 let LAST_SEEN = null;
@@ -171,7 +173,10 @@ function renderLines() {
     const poly = p.spread || p.ml ? `${live}` +
       (p.spread ? row("Spread", `${g.home} ${sgn(p.spread.homeSpread)} ${odds(toAmerican(p.spread.home))}`) + row("", `${g.away} ${sgn(-p.spread.homeSpread)} ${odds(toAmerican(p.spread.away))}`) : "") +
       (p.ml ? row("Moneyline", `${g.home} ${odds(toAmerican(p.ml.home))}`, !!p.spread) + row("", `${g.away} ${odds(toAmerican(p.ml.away))}`) : "") : dash;
-    return `<div class="card${g.final ? " fin" : ""}"><div class="inner">${headButtons(g, "l" + i)}<div class="f">${HDR}` +
+    // Tested angle (9/30): home favorites of 9.5+ on the moneyline, the one game-line angle that held up on unseen years
+    const hsNow = p.spread ? p.spread.homeSpread : b.spread ? b.spread.homeSpread : null;
+    const angle = !g.final && hsNow != null && hsNow <= -9.5 ? `<div class="s g" style="margin:6px 0 0">★ Tested angle: ${g.home} moneyline (home favorite 9.5+). 2007–25: won ~88%, about +2–3% per bet at sportsbook prices — small edge, check Polymarket's price.</div>` : "";
+    return `<div class="card${g.final ? " fin" : ""}"><div class="inner">${headButtons(g, "l" + i)}${angle}<div class="f">${HDR}` +
       `<div><div class="k">Sportsbooks (reference only)</div>${b.spread ? `${g.home} ${sgn(b.spread.homeSpread)} ${odds(b.spread.home.odds)}<div class="s">fair (vig removed) ${g.home} ${odds(toAmerican(b.spread.home.fair))} / ${g.away} ${odds(toAmerican(b.spread.away.fair))}</div>` : dash}</div>` +
       leanCell(g, "spread") +
       `<div><div class="k">Polymarket (where you bet)</div>${poly}</div>` +
@@ -180,7 +185,8 @@ function renderLines() {
 }
 // ---------- Totals ----------
 function renderTotals() {
-  $("totals").innerHTML = [...S.games].sort(order).map((g, i) => {
+  // Long-run fact (2007-25, closing prices): unders lost less than overs (-1.8% vs -3.8% per bet). No over/under angle held up on unseen years.
+  $("totals").innerHTML = `<div class="s dim" style="grid-column:1/-1;margin-top:8px">Tested 2007–25: no over/under angle held up on unseen years. Long run, unders lost less than overs (−1.8% vs −3.8% per bet at sportsbook prices); the model's leans here sit near 50/50 by design.</div>` + [...S.games].sort(order).map((g, i) => {
     const p = g.poly || {}, b = g.books || {};
     const live = !g.started && p.total ? '<span class="live"></span>' : "";
     const row = (k, v) => `<div class="prl"><span class="s">${k}</span><span>${v}</span></div>`;
@@ -436,7 +442,7 @@ async function loadRecord(sync = false) {
   if (sync) toast("Syncing your Polymarket account…", 0);
   try {
     const [mb, rl] = await Promise.all([fetch(`/api/mybets${sync ? "?sync=1" : ""}`, { cache: "no-store" }).then((r) => r.json()), fetch("/api/results/list", { cache: "no-store" }).then((r) => r.json())]);
-    if (!mb.ok) throw new Error(mb.error); MB = mb; RES = rl.ok ? rl.results : []; EDGES = rl.ok ? rl.edges : null;
+    if (!mb.ok) throw new Error(mb.error); MB = mb; RES = rl.ok ? rl.results : []; EDGES = rl.ok ? rl.edges : null; PAPER = rl.ok ? rl.paper : null; renderLab();
     renderRecord();
     if (sync && mb.sync) toast(mb.sync.ok ? `Synced ${mb.sync.positions} positions.` : `Sync: ${mb.sync.note}`);
   } catch (e) { toast("Record failed: " + e.message, 10000); }
@@ -450,6 +456,25 @@ function weekline() {
   const m = S.meta || {};
   const round = { 19: "Wild Card", 20: "Divisional round", 21: "Conference Championships", 22: "Super Bowl" }[S.week];
   $("weekline").innerHTML = `${round || `Week ${S.week}`} · ${range} · updated: Polymarket ${clock(m.lastSnapshot)} · sportsbooks ${clock(S.booksAt)} · model ${clock(S.modelRunAt)} <span class="dim">(your time)</span>`;
+}
+// ---------- Parlay Lab (paper only) ----------
+function renderLab() {
+  if (!$("lab")) return;
+  if (!PAPER) { $("lab").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }
+  const names = PAPER.names || {}, wk = PAPER.week, board = PAPER.board || {};
+  const pct = (x) => (x == null ? "—" : `${(x * 100).toFixed(0)}%`);
+  const intro = `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Parlay Lab · paper only, nothing is bet</div>` +
+    `<div class="s">Each week the app records these fixed strategies at Polymarket's prices (Saturday evening / Sunday morning), grades them when the games finish, and keeps score. A strategy has to prove itself here, on games it has never seen, before any money goes on it.</div>` +
+    `<div class="s dim" style="margin-top:4px">Tested 2007–25: parlays of spreads/totals lost at every size; the one game-line angle that held up on unseen years was home favorites of 9.5+ on the moneyline (about +2–3%, ~88% won). Payouts here = each leg's Polymarket price multiplied; Polymarket's own combo quote can pay less.</div></div></div>`;
+  const legLine = (l) => `${esc(l.label)} <span class="dim">${esc(l.game)}</span> · ${Math.round(l.price * 100)}¢${l.result ? ` <span class="${l.result === "W" ? "g" : l.result === "L" ? "r" : "dim"}">${l.result}</span>` : ""}`;
+  const thisWeek = !wk ? '<div class="s">This week\'s paper parlays are recorded on the scheduled snapshot about a day before the Sunday games.</div>' :
+    Object.keys(names).map((k) => { const ps = wk.parlays.filter((p) => p.strategy === k);
+      return `<div class="sec"><div class="sh">${esc(names[k])}</div>` + (ps.length ? ps.map((p) =>
+        `<div class="row" style="display:block"><div>${p.legs.map(legLine).join("<br>")}</div><div class="s">pays ${p.pay.toFixed(2)}x${p.prob != null ? ` · market chance ${pct(p.prob)}` : ""}${p.result ? ` · <b class="${p.result === "W" ? "g" : p.result === "L" ? "r" : ""}">${p.result === "W" ? "HIT" : p.result === "L" ? "missed" : "push"}</b>` : ""}</div></div>`).join("") :
+        '<div class="s">No qualifying legs this week.</div>') + `</div>`; }).join("");
+  const rows = Object.keys(names).map((k) => { const b = board[k]; return `<div class="row"><span class="dim">${esc(names[k])}</span><span>${b ? `${b.hits} of ${b.graded} hit${b.graded ? ` (${pct(b.hitRate)}, market said ${pct(b.expRate)})` : ""} · return ${b.roi == null ? "—" : cPct(b.roi)}` : "—"}</span></div>`; }).join("");
+  $("lab").innerHTML = intro + `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Week ${wk ? wk.week : S ? S.week : ""} paper parlays</div>${thisWeek}</div></div>` +
+    `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Scoreboard · this season</div>${rows}<div class="s dim" style="margin-top:4px">Return per $1, before fees. Parlays are streaky: judge after 100+ graded, not a few weeks.</div></div></div>`;
 }
 function renderAll() { weekline(); renderLines(); renderTotals(); renderTd(); if (MB) renderRecord(); }
 // Newest version all the time (9/30): if a new deploy went live while this page was open (or sat in a phone tab),
@@ -481,7 +506,7 @@ $("rerun-btn").onclick = async () => {
 document.querySelectorAll(".tabs button").forEach((btn) => btn.addEventListener("click", () => {
   document.querySelectorAll(".tabs button").forEach((x) => x.classList.remove("on")); btn.classList.add("on");
   document.querySelectorAll(".panel").forEach((p) => p.classList.remove("on")); $("panel-" + btn.dataset.tab).classList.add("on");
-  if (btn.dataset.tab === "record") loadRecord();
+  if (btn.dataset.tab === "record" || btn.dataset.tab === "lab") loadRecord();
 }));
 document.querySelectorAll("#panel-td .controls button").forEach((btn) => btn.addEventListener("click", () => {
   document.querySelectorAll("#panel-td .controls button").forEach((x) => x.classList.remove("on")); btn.classList.add("on"); tdSort = btn.dataset.sort; renderTd();
