@@ -1,6 +1,6 @@
 // NFL SLATEZZZ — everything comes from /api/slate (lines, TD, flags) and /api/mybets + /api/results/list (Record).
 let tdShowAll = false;
-let PAPER = null;
+let PAPER = null, PICKS = null;
 let S = null, RES = null, EDGES = null, MB = null, tdSort = "likely", recView = "mine";
 const $ = (id) => document.getElementById(id);
 const dash = '<span class="dim">—</span>';
@@ -442,7 +442,7 @@ async function loadRecord(sync = false) {
   if (sync) toast("Syncing your Polymarket account…", 0);
   try {
     const [mb, rl] = await Promise.all([fetch(`/api/mybets${sync ? "?sync=1" : ""}`, { cache: "no-store" }).then((r) => r.json()), fetch("/api/results/list", { cache: "no-store" }).then((r) => r.json())]);
-    if (!mb.ok) throw new Error(mb.error); MB = mb; RES = rl.ok ? rl.results : []; EDGES = rl.ok ? rl.edges : null; PAPER = rl.ok ? rl.paper : null; renderLab();
+    if (!mb.ok) throw new Error(mb.error); MB = mb; RES = rl.ok ? rl.results : []; EDGES = rl.ok ? rl.edges : null; PAPER = rl.ok ? rl.paper : null; PICKS = rl.ok ? rl.picks : null; renderLab();
     renderRecord();
     if (sync && mb.sync) toast(mb.sync.ok ? `Synced ${mb.sync.positions} positions.` : `Sync: ${mb.sync.note}`);
   } catch (e) { toast("Record failed: " + e.message, 10000); }
@@ -457,7 +457,28 @@ function weekline() {
   const round = { 19: "Wild Card", 20: "Divisional round", 21: "Conference Championships", 22: "Super Bowl" }[S.week];
   $("weekline").innerHTML = `${round || `Week ${S.week}`} · ${range} · updated: Polymarket ${clock(m.lastSnapshot)} · sportsbooks ${clock(S.booksAt)} · model ${clock(S.modelRunAt)} <span class="dim">(your time)</span>`;
 }
-// ---------- Parlay Lab (paper only) ----------
+// ---------- Pick Lab: the model's side on every game (paper singles) + Parlay Lab ----------
+function modelSide(g) {   // same rule as lib/paper.js picksFor (the server records it at kickoff)
+  const p = g.poly, m = g.model, out = []; if (!p || !m) return out;
+  if (p.spread && m.homeMargin != null) { const hs = p.spread.homeSpread, gap = m.homeMargin + hs;
+    if (Math.abs(gap) >= 0.05) out.push({ game: g.key, market: "Spread", label: gap > 0 ? `${g.home} ${sgn(hs)}` : `${g.away} ${sgn(-hs)}`, price: gap > 0 ? p.spread.home : p.spread.away, gap: Math.abs(gap) }); }
+  if (p.total && m.total != null) { const gap = m.total - p.total.line;
+    if (Math.abs(gap) >= 0.05) out.push({ game: g.key, market: "Total", label: `${gap > 0 ? "Over" : "Under"} ${p.total.line}`, price: gap > 0 ? p.total.over : p.total.under, gap: Math.abs(gap) }); }
+  return out;
+}
+function pickLabBox() {
+  const pc = (x) => (x == null ? "—" : `${(x * 100).toFixed(1)}%`), P = PICKS || {};
+  const live = (S ? S.games.filter((g) => !g.started).sort(order).flatMap(modelSide) : []).map((p) =>
+    `<div class="row"><span>${esc(p.label)} <span class="dim">${esc(p.market)} · ${esc(p.game)}</span></span><span>${Math.round((p.price || 0) * 100)}¢ · model differs by ${p.gap.toFixed(1)}</span></div>`).join("");
+  const rec = (m, name) => { const x = P[m]; if (!x || !x.recorded) return `<div class="row"><span class="dim">${name}</span><span class="dim">none recorded yet</span></div>`;
+    return `<div class="row"><span class="dim">${name}</span><span>${x.w}–${x.l} · covered ${pc(x.hit)} · return ${x.roi == null ? "—" : cPct(x.roi)} <span class="dim">(need ${pc(x.need)} to break even)</span></span></div>` +
+      x.bands.filter((b) => b.graded).map((b) => `<div class="row"><span class="dim" style="padding-left:10px">when the model differs by ${b.label}</span><span>${b.w}–${b.l} · ${pc(b.hit)}</span></div>`).join(""); };
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Pick Lab · the model's side on every game (paper, nothing is bet)</div>` +
+    `<div class="s">The model's pick on each spread and total, recorded at kickoff at Polymarket's price and graded after the game. Tested 2013–25 against closing lines it covered about 51% (break-even is ~52.4%); the best "model or market?" picker reached 53.1% in its best setting but only 51.9% typically, and on totals nothing worked. This measures it on games it has never seen.</div></div></div>` +
+    `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Scoreboard · this season</div>${rec("spread", "Spreads")}${rec("total", "Totals")}` +
+    `<div class="s dim" style="margin-top:4px">Return per $1 at the kickoff price. Judge after 100+ graded picks, not a few weeks.</div></div></div>` +
+    `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Right now · the model's side on upcoming games</div>${live || '<div class="s">No model numbers or lines yet.</div>'}</div></div>`;
+}
 function renderLab() {
   if (!$("lab")) return;
   if (!PAPER) { $("lab").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }
@@ -473,7 +494,7 @@ function renderLab() {
         `<div class="row" style="display:block"><div>${p.legs.map(legLine).join("<br>")}</div><div class="s">pays ${p.pay.toFixed(2)}x${p.prob != null ? ` · market chance ${pct(p.prob)}` : ""}${p.result ? ` · <b class="${p.result === "W" ? "g" : p.result === "L" ? "r" : ""}">${p.result === "W" ? "HIT" : p.result === "L" ? "missed" : "push"}</b>` : ""}</div></div>`).join("") :
         '<div class="s">No qualifying legs this week.</div>') + `</div>`; }).join("");
   const rows = Object.keys(names).map((k) => { const b = board[k]; return `<div class="row"><span class="dim">${esc(names[k])}</span><span>${b ? `${b.hits} of ${b.graded} hit${b.graded ? ` (${pct(b.hitRate)}, market said ${pct(b.expRate)})` : ""} · return ${b.roi == null ? "—" : cPct(b.roi)}` : "—"}</span></div>`; }).join("");
-  $("lab").innerHTML = intro + `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Week ${wk ? wk.week : S ? S.week : ""} paper parlays</div>${thisWeek}</div></div>` +
+  $("lab").innerHTML = pickLabBox() + intro + `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Week ${wk ? wk.week : S ? S.week : ""} paper parlays</div>${thisWeek}</div></div>` +
     `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Scoreboard · this season</div>${rows}<div class="s dim" style="margin-top:4px">Return per $1, before fees. Parlays are streaky: judge after 100+ graded, not a few weeks.</div></div></div>`;
 }
 function renderAll() { weekline(); renderLines(); renderTotals(); renderTd(); if (MB) renderRecord(); }

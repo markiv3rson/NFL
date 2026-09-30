@@ -1,7 +1,7 @@
 import { getRedis, getJSON, K } from "../../../lib/redis";
 import { SEASON } from "../../../lib/games";
 import { edgeSummary } from "../../../lib/edges";
-import { paperSummary } from "../../../lib/paper";
+import { paperSummary, picksSummary } from "../../../lib/paper";
 import { currentWeek } from "../../../lib/games";
 export default async function handler(req, res) {
   try {
@@ -11,6 +11,7 @@ export default async function handler(req, res) {
     const results = raw.filter(Boolean).map((r) => JSON.parse(r)).sort((a, b) => b.week - a.week || a.game.localeCompare(b.game));
     // This season only (9/30: after a rollover the Record tab mixed seasons); edge stats computed live, not from the last grading
     res.status(200).json({ ok: true, results: results.filter((r) => Number(r.season) === SEASON), edges: await edgeSummary(SEASON).catch(() => null),
-      paper: await paperSummary(SEASON, await currentWeek(SEASON).catch(() => null)).catch(() => null) });
+      paper: await paperSummary(SEASON, await currentWeek(SEASON).catch(() => null)).catch(() => null),
+      picks: await picksSummary(SEASON).catch(() => null) });
   } catch (err) { res.status(500).json({ ok: false, error: String(err) }); }
 }
