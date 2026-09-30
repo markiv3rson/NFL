@@ -70,7 +70,8 @@ def _retrain():
     try:
         import td_prob
         r = td_prob.retrain()
-        summary = ("went live: " if r["went_live"] else "kept current model: ") + f"candidate {r['candidate_brier']} vs active {r['active_brier']} on weeks {r['holdout_weeks']}"
+        summary = (f"went live ({r['reason']})" if r.get("reason") else ("went live: " if r["went_live"] else "kept current model: ") +
+                   f"candidate {r['candidate_brier']} vs active {r['active_brier']} on weeks {r['holdout_weeks']}")
         print(f"[scheduler] retrain-td (in-process) -> {summary}", flush=True)
         _call(f"/api/status?retrain={urllib.parse.quote(summary)}", tries=1)
     except Exception as e:

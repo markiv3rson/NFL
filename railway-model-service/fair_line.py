@@ -11,12 +11,12 @@ Method (public nflverse play-by-play):
   2. Ridge: EPA/play = offense + opponent defense + home edge. Current season weight 1.0, last season 0.2.
   3. EPA/play -> points via a linear fit on the same games.
   4. Margin ~ Normal(mean, 13), total ~ Normal(mean, 13.3) (was 10: measured spread of totals error over 2006-2025 is ~13.3).
-  4b. Divisional games -0.9 margin / -1.9 total (familiarity -> lower-scoring, closer games).
+  4b. Divisional games -1.9 total (lower-scoring). The -0.9 MARGIN part was removed 9/30 (worse out of sample).
   4c. Turf (current-season home surface) +0.9 pts on total (weaker evidence, kept -- still net positive combined with the rest).
   4d. Special teams EPA differential (FG/punt/kickoff, season-to-date): +3.77 margin per 1.0 EPA/play edge (t=3.42).
   4e. Success rate edge (offense only, 9/28 fix): +30.39 margin per 1.0 edge in season-to-date offensive success rate.
       power ratings): +14.99 margin per 1.0 edge (t=6.23) -- the strongest single finding in the whole project.
-  4f. Road team on a bye (13+ days rest): flat -2.06 margin (t=-2.61). Replaces an earlier bye+travel-distance version --
+  4f. [REMOVED 9/30 -- worse out of sample 2013-25] Road team on a bye (13+ days rest): flat -2.06 margin (t=-2.61). Replaces an earlier bye+travel-distance version --
       that one and a plain bye flag turned out to measure the same thing (they lose significance combined), and the
       plain flag has far more supporting games with a similar accuracy gain.
   5. Wind (outdoor/open roof only): total += -0.267 * (wind_mph - 7.5). Fit 2021-23, applied forward;
@@ -26,7 +26,7 @@ Method (public nflverse play-by-play):
   5c. Totals: dome/closed-roof games +2.59 pts (t=5.5) and pace (+0.12 pt per combined play above that season's league average, t=2.8).
   6. --adj "ATL=+1.5" manually shifts a team's points (QB change etc.). Not validated -- label it.
 
-  4g. Turnover-margin edge (per game, completed games this season): +0.44 margin per 1.0 edge (t=2.2).
+  4g. [REMOVED 9/30 -- worse out of sample 2013-25] Turnover-margin edge: +0.44 margin per 1.0 edge (t=2.2).
   4h. Road team effectively eliminated (week 13+, 10+ games played, under .250): +3.17 home margin (t=3.0).
       Home-team-eliminated tested as noise (t=-1.3) and is NOT included.
       4g+4h together: margin MAE 10.567 -> 10.553 out-of-sample (better in 13/20 seasons) -- small but real.
@@ -43,6 +43,7 @@ break-even). Used for weekly forward-testing in Line Room and as a sanity check.
 """
 import argparse, os, math, urllib.request
 import numpy as np, pandas as pd
+import season as _season
 from sklearn.linear_model import Ridge
 
 BASE = "https://github.com/nflverse/nflverse-data/releases/download"
@@ -66,7 +67,7 @@ HOME_QB_FIRST_START, AWAY_QB_FIRST_START = -3.33, 2.49   # margin effect; home t
 def fetch(season, fresh=None):
     os.makedirs(CACHE, exist_ok=True)
     f = os.path.join(CACHE, f"pbp_{season}.parquet")
-    if fresh is None: fresh = season >= 2026
+    if fresh is None: fresh = season >= _season.data_season()   # current season re-downloaded; past seasons cached
     if fresh or not os.path.exists(f):
         urllib.request.urlretrieve(f"{BASE}/pbp/play_by_play_{season}.parquet", f)
     return pd.read_parquet(f)
@@ -277,13 +278,14 @@ def backtest(season):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--away"); ap.add_argument("--home"); ap.add_argument("--season", type=int, default=2026)
+    ap.add_argument("--away"); ap.add_argument("--home"); ap.add_argument("--season", type=int, default=None)
     ap.add_argument("--adj", default=""); ap.add_argument("--wind", type=float); ap.add_argument("--outdoor", action="store_true")
     ap.add_argument("--spread", type=float, help="market home favored margin, e.g. 5.5"); ap.add_argument("--total", type=float)
     ap.add_argument("--backtest", type=int)
     ap.add_argument("--dome", action="store_true", help="indoor / closed roof: +2.59 on the total")
     ap.add_argument("--neutral", action="store_true", help="neutral site (London, Paris...): no home-field edge")
     a = ap.parse_args()
+    a.season = a.season or _season.data_season()
     if a.backtest: backtest(a.backtest); return
     adj = {k: float(v) for k, v in (x.split("=") for x in a.adj.split(",") if x)}
     M, cur = build(a.season)

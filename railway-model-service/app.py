@@ -19,6 +19,7 @@ from flask import Flask, request, jsonify
 import fair_line
 import td_prob
 import injury_adj
+import season as _season
 
 app = Flask(__name__)
 
@@ -42,7 +43,7 @@ def td_scorers():
     """Anytime-TD scorers per game from nflverse play-by-play: rushing, receiving and special-teams return TDs by the
     player who scored; defensive TDs excluded (Polymarket anytime rules). Used to grade TD bets and the TD model."""
     try:
-        season = int(request.args.get("season", td_prob.CURRENT)); week = int(request.args.get("week"))
+        season = int(request.args.get("season") or _season.data_season()); week = int(request.args.get("week"))
         p = td_prob.fetch_pbp(season)
         p = p[(p.season_type == "REG") & (p.week == week)]
         out, counts, first, teams = {}, {}, {}, {}
@@ -70,7 +71,7 @@ def retrain_td():
     """Weekly TD retrain (same logic the scheduler runs, see td_prob.retrain): only switches if the candidate is
     measurably more accurate on held-out weeks. POST only: it can replace the live model."""
     try:
-        return jsonify({"ok": True, **td_prob.retrain(int(request.args.get("season", td_prob.CURRENT)))})
+        return jsonify({"ok": True, **td_prob.retrain(int(request.args.get("season") or _season.data_season()))})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
@@ -90,7 +91,7 @@ def rerun_game_lines():
     for g in games:
         try:
             if M is None:
-                M, cur = fair_line.build(g.get("season", td_prob.CURRENT))
+                M, cur = fair_line.build(g.get("season") or _season.data_season())
             adj = {k: float(v) for k, v in (g.get("adj") or {}).items()}
             neutral = bool(g.get("neutral"))
             rest_away = g.get("restAwayDays")

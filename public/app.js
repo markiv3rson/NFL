@@ -290,14 +290,18 @@ function renderModel() {
   // real price, and averaging its bid/ask invented a fake "market chance" that made Polymarket look worse (Week 3:
   // 170 of 258 players were thin; on real markets model and market were ~tied).
   const priced = tdAllAny.filter((p) => p.ask > 0 && p.ask < 1);
+  // Model chance as the TD tab showed it: the model's % assumes he plays, so a player listed Questionable/Out that week
+  // is scaled by his chance to play (same rule as the tab, 9/30). The market's price already includes that risk.
+  const avail = (p) => (/^(out|doubtful)$/i.test(p.rep || "") ? 0.01 : /^questionable$/i.test(p.rep || "") ? 0.669 : 1);
+  const mp = (p) => (p.fair / 100) * avail(p);
   const isThin = (p) => !(p.bid > 0) || p.ask - p.bid > Math.min(0.05, 0.4 * p.ask);   // same rule as lib/odds.js isThinMarket
   const tdPx = priced.filter((p) => !isThin(p)), thinN = priced.length - tdPx.length;
   let vsMkt = "";
   if (tdPx.length) {
     const y = (p) => (p.scored ? 1 : 0), mk = (p) => (p.bid ? (p.bid + p.ask) / 2 : p.ask);
-    const bM = tdPx.reduce((a, p) => a + (p.fair / 100 - y(p)) ** 2, 0) / tdPx.length;
+    const bM = tdPx.reduce((a, p) => a + (mp(p) - y(p)) ** 2, 0) / tdPx.length;
     const bP = tdPx.reduce((a, p) => a + (mk(p) - y(p)) ** 2, 0) / tdPx.length;
-    const buys = tdPx.filter((p) => p.fair / 100 > p.ask);
+    const buys = tdPx.filter((p) => mp(p) > p.ask);
     const pl = buys.reduce((a, p) => a + (p.scored ? 1 / p.ask - 1 : -1), 0);
     const hits = buys.filter((p) => p.scored).length;
     const small = tdPx.length < 200 ? ' <span class="dim">· small sample (needs ~200+)</span>' : "";
@@ -309,13 +313,13 @@ function renderModel() {
       // The other side of the same markets: most of the model's disagreements are "less likely than the price says"
       // (Week 3: model below market on 67 of 83 real markets), and a Yes-only check ignored all of them. Buying No
       // costs 1 − bid. Tracked here, not recommended, until it has a real sample.
-      (() => { const no = tdPx.filter((p) => 1 - p.fair / 100 > 1 - p.bid);
+      (() => { const no = tdPx.filter((p) => 1 - mp(p) > 1 - p.bid);
         const plNo = no.reduce((a, p) => a + (!p.scored ? 1 / (1 - p.bid) - 1 : -1), 0);
         return `<div class="row"><span class="dim">$1 on No when model &lt; price</span><span>${no.filter((p) => !p.scored).length} of ${no.length} won · ${cMoney(plNo)} ${no.length ? `(${cPct(plNo / no.length)})` : ""}</span></div>`; })() +
-      `<div class="row"><span class="dim">Scored vs priced</span><span>${(tdPx.filter((p) => p.scored).length / tdPx.length * 100).toFixed(0)}% scored · Polymarket priced ${(tdPx.reduce((a, p) => a + mk(p), 0) / tdPx.length * 100).toFixed(0)}% · model ${(tdPx.reduce((a, p) => a + p.fair, 0) / tdPx.length).toFixed(0)}%</span></div>` +
+      `<div class="row"><span class="dim">Scored vs priced</span><span>${(tdPx.filter((p) => p.scored).length / tdPx.length * 100).toFixed(0)}% scored · Polymarket priced ${(tdPx.reduce((a, p) => a + mk(p), 0) / tdPx.length * 100).toFixed(0)}% · model ${(tdPx.reduce((a, p) => a + mp(p) * 100, 0) / tdPx.length).toFixed(0)}%</span></div>` +
       // TD model CLV (added 9/29): for players where the model was above the OPENING price (first snapshot of the week),
       // did the closing price move toward the model? The fastest signal of real edge, long before win/loss means anything.
-      (() => { const c = tdPx.filter((p) => p.openAsk > 0 && p.openBid > 0 && p.openAsk - p.openBid <= Math.min(0.05, 0.4 * p.openAsk) && p.fair / 100 > p.openAsk)   /* opening price must be a real market too */
+      (() => { const c = tdPx.filter((p) => p.openAsk > 0 && p.openBid > 0 && p.openAsk - p.openBid <= Math.min(0.05, 0.4 * p.openAsk) && mp(p) > p.openAsk)   /* opening price must be a real market too */
           .map((p) => (p.bid + p.ask) / 2 / p.openAsk - 1);
         return `<div class="row"><span class="dim">TD model CLV (model above opening price)</span><span>${c.length ? `${cPct(c.reduce((a, x) => a + x, 0) / c.length)} avg · ${c.length} players` : "starts Week 4 (needs opening prices)"}</span></div>`; })() +
       '<div class="s dim">Closing prices, before fees, real markets only. The test of whether the TD model beats Polymarket.</div>';
@@ -348,7 +352,7 @@ function renderModel() {
     (() => { const tdW = wk.flatMap((r) => r.td || []), td = tdW.filter((p) => p.played !== false); if (!tdW.length) return "";
       const exp = td.reduce((a, p) => a + p.fair, 0) / 100, hit = td.filter((p) => p.scored).length;
       const real = tdW.filter((p) => p.ask > 0 && p.bid > 0 && p.ask - p.bid <= Math.min(0.05, 0.4 * p.ask)), y = (p) => (p.scored ? 1 : 0);
-      const bm = real.length ? real.reduce((a, p) => a + (p.fair / 100 - y(p)) ** 2, 0) / real.length : null, bp = real.length ? real.reduce((a, p) => a + ((p.ask + p.bid) / 2 - y(p)) ** 2, 0) / real.length : null;
+      const bm = real.length ? real.reduce((a, p) => a + (mp(p) - y(p)) ** 2, 0) / real.length : null, bp = real.length ? real.reduce((a, p) => a + ((p.ask + p.bid) / 2 - y(p)) ** 2, 0) / real.length : null;
       const mine = (MB.bets || []).filter((b) => b.week === lw && b.result !== "pending"), mpl = mine.reduce((a, b) => a + (b.pl || 0), 0);
       return `<div class="row"><span class="dim">TD model</span><span>${hit} scored · model expected ${exp.toFixed(1)} (${td.length} players who played${tdW.length > td.length ? `; ${tdW.length - td.length} inactive left out` : ""})</span></div>` +
         (bm != null ? `<div class="row"><span class="dim">TD vs Polymarket (real markets)</span><span>${real.length} players · model ${bm.toFixed(3)} · Polymarket ${bp.toFixed(3)}</span></div>` : "") +

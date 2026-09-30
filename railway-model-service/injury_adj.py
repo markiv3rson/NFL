@@ -18,7 +18,7 @@ import numpy as np, pandas as pd
 
 BASE = "https://github.com/nflverse/nflverse-data/releases/download"
 CACHE = os.path.expanduser("~/.nfl_cache")
-CURRENT = 2026
+import season as _season
 
 SPREAD_PTS = {"QB1": -3.96, "WR1": -1.78, "LB": -1.25, "OL": -0.87, "DB": -0.76}
 # QB1 out (9/30): no longer a flat -3.96. Refit jointly with fair_line's first-start terms (2013-25 backtest):
@@ -45,7 +45,8 @@ def _snaps(season, fresh=False):
     s = pd.read_parquet(f)
     return s[s.game_type == "REG"]
 
-def load_snaps(season=CURRENT):
+def load_snaps(season=None):
+    season = season or _season.data_season()
     """Last season + this season (this season re-downloaded at most every 10 minutes)."""
     if _cache["df"] is not None and _cache["season"] == season and time.time() - _cache["t"] < 600:
         return _cache["df"]
@@ -79,9 +80,10 @@ def starters(team_snaps, before=None, n_games=4):
     return out
 
 _qbv = {"t": 0.0, "v": None, "names": None}
-def _qb_values(season=CURRENT):
+def _qb_values(season=None):
+    season = season or _season.data_season()
     """{normalized QB name: shrunk dropback EPA} from this season + last season's play-by-play (cached copies)."""
-    if _qbv["v"] is not None and time.time() - _qbv["t"] < 3600: return _qbv["v"]
+    if _qbv["v"] is not None and _qbv.get("season") == season and time.time() - _qbv["t"] < 3600: return _qbv["v"]
     frames, names = [], {}
     for y in (season - 1, season):
         f = os.path.join(CACHE, f"pbp_{y}.parquet")
@@ -99,7 +101,7 @@ def _qb_values(season=CURRENT):
     v = {}
     for pid, row in q.iterrows():
         if pid in names: v[names[pid]] = (row["sum"] + QB_PRIOR_N * QB_PRIOR) / (row["count"] + QB_PRIOR_N)
-    _qbv.update(t=time.time(), v=v); return v
+    _qbv.update(t=time.time(), v=v, season=season); return v
 
 def qb_gap(team_snaps, starter, listed):
     """Backup's value minus the starter's. Backup = the team's next QB by recent snaps who isn't listed Out/Doubtful."""

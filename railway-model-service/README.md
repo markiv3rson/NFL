@@ -404,3 +404,16 @@ Found from the live site and the Week 3 export (nfl-bettors-results.json). Site 
     player's TD bet settles No). The row shows the if-he-plays number too.
   - Combos with a pushed leg: no P/L is invented (Polymarket's combo rules don't state how a push settles).
   - Tested, not added: key numbers for totals (4/10 seasons), totals SD by line level (0/10).
+- Hands-off operation (9/30):
+  - Season is worked out automatically (season.py / lib/games.js SEASON): Aug-Dec = that year, Jan-Jul = the season
+    before; the model service falls back to last season until the new season's play-by-play is published and rolls over
+    by itself (refresh_live) with no restart. No year is typed in anywhere any more.
+  - New season: the TD model refits on the 3 latest complete seasons automatically (no test needed); from Week 6 on the
+    weekly 4-week test decides. Teams that haven't played yet are listed from their current roster + last season's usage
+    (before, the TD tab was empty for a team until its first game).
+  - $200 weekly cap now counts bets synced from the Polymarket account, not only hand-entered ones.
+  - My Bets "expected (your model)" and the Record tab's model-vs-Polymarket use the same availability-adjusted TD
+    chance the TD tab shows (official status saved at grading; weeks graded after the feed moved on have no status).
+  - Wording: teammate notes no longer say "Role boost" (their chance is not raised); model docs updated for removed terms.
+  - Checked end to end on live 2026 data: TD service load + run, Week-1 fallback, weekly retrain decision, QB penalty,
+    game line; 20 math checks + 11 on-screen sentence checks pass.
