@@ -117,7 +117,7 @@ function leanCell(g, kind) {
   // the >50% side as the pick (e.g. "GB -1.5 · 52.1%") even when "Model sees TB by 4.6" sat right under it, because the
   // calibration slightly fades the model. Within 2.5 pts of 50% it now says so; the tilt stays visible in small text.
   const coin = Math.abs(p.pct - 50) < 2.5;
-  return wrap((coin ? `<span>No lean · about 50/50</span><div class="s">slight side: ${p.label} ${p.pct.toFixed(1)}%</div>` :
+  return wrap((coin ? `<span>No lean · about 50/50</span><div class="s">Model's side: <b>${esc(p.label)}</b> — it differs from the line by ${p.gap != null ? p.gap.toFixed(1) : "?"} pts. Model sides have covered about ${Math.round(p.pct)}% (2013–25).</div>` :
     `<span>${p.label}</span><div class="s">${p.pct.toFixed(1)}% model chance</div>`) +
     // Win chance (calibrated cal_win). Its accuracy comes from the MARKET spread; the model's own disagreement enters
     // with a small NEGATIVE weight (tested 2006-25: when the model likes a team more than the market does, that team
@@ -136,6 +136,30 @@ function cover(g, pick) {
 const order = (a, b) => (a.final - b.final) || (a.started - b.started) || (new Date(a.kickoff) - new Date(b.kickoff));
 
 // ---------- Game Lines ----------
+// "Most likely winners" (9/30): the favorite in every upcoming game, ranked by chance to WIN the game (straight up, not the spread).
+// Chance = the app's market-based win chance (g.winPct = home chance); moneyline prices are the fallback. The server records
+// each game's favorite at kickoff and grades it, so the record below is real, not a backtest.
+function winnerOf(g) {
+  let ph = g.winPct != null ? g.winPct / 100 : null;
+  if (ph == null && g.poly && g.poly.ml && g.poly.ml.home > 0 && g.poly.ml.away > 0) ph = g.poly.ml.home / (g.poly.ml.home + g.poly.ml.away);
+  if (ph == null || ph === 0.5) return null;
+  const home = ph > 0.5, price = g.poly && g.poly.ml ? (home ? g.poly.ml.home : g.poly.ml.away) : null;
+  return { game: g.key, team: home ? g.home : g.away, opp: home ? g.away : g.home, where: home ? "home" : "away", p: home ? ph : 1 - ph, price };
+}
+function winnersBox() {
+  const P = S.picks || {}, pcx = (x) => (x == null ? "—" : `${Math.round(x * 100)}%`);
+  const pickRec = (m, name) => { const x = P[m]; return x && x.graded ? `<div class="row"><span class="dim">${name} (model's side)</span><span>${x.w}–${x.l} · ${m === "spread" ? "covered" : "right"} ${pcx(x.hit)}</span></div>` : `<div class="row"><span class="dim">${name} (model's side)</span><span class="dim">none graded yet</span></div>`; };
+  const list = S.games.filter((g) => !g.started).map(winnerOf).filter(Boolean).sort((a, b) => b.p - a.p);
+  const W = S.winners, pc = (x) => (x == null ? "—" : `${Math.round(x * 100)}%`);
+  const rec = W && W.all && W.all.n ? `<div class="row"><span class="dim">This season, all picks</span><span>${W.all.w}–${W.all.l} · right ${pc(W.all.hit)} <span class="dim">(said ${pc(W.all.said)})</span></span></div>` +
+    (W.top4 && W.top4.n ? `<div class="row"><span class="dim">Each week's top 4</span><span>${W.top4.w}–${W.top4.l} · right ${pc(W.top4.hit)} <span class="dim">(said ${pc(W.top4.said)})</span></span></div>` : "") : '<div class="s dim">The record starts after this week\'s games: each pick is saved at kickoff and graded when the game ends.</div>';
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Most likely winners · who wins the game (not the spread)</div>` +
+    (list.map((x, i) => { const g = S.games.find((y) => y.key === x.game), sides = g ? modelSide(g) : [], sp = sides.find((s) => s.market === "Spread"), tt = sides.find((s) => s.market === "Total");
+      return `<div class="row" style="display:block"><div style="display:flex;justify-content:space-between"><span>${i + 1}. <b>${esc(x.team)}</b> over ${esc(x.opp)} <span class="dim">${x.where}</span></span><span>${Math.round(x.p * 100)}%${x.price ? ` <span class="dim">· Polymarket ${Math.round(x.price * 100)}¢</span>` : ""}</span></div>` +
+        `<div class="s">${sp ? `Spread: <b>${esc(sp.label)}</b>` : "Spread: —"} · ${tt ? `Total: <b>${esc(tt.label)}</b>` : "Total: —"}</div></div>`; }).join("") || '<div class="s">No lines yet.</div>') +
+    `<div class="sec">${rec}${pickRec("spread", "Spreads")}${pickRec("total", "Totals")}</div>` +
+    `<div class="s dim">What to expect, from 2007–25 tests: the favorite won 55% at 50–60% confidence, 63% at 60–70%, 76% at 70–80% and 85% at 80–90%. Spread and total sides covered only about 51% and 50% (nobody is reliably better than that), so the winner column is where you can be right most often. Spread and total sides are the model's; the record below each game's pick is saved at kickoff and graded after the game.</div></div></div>`;
+}
 // "Right now" (9/30): Polymarket prices 3%+ better than fresh sportsbook fair prices -- the one realistic edge source.
 function rightNowBox() {
   const E = S.edgesNow || [], R = S.edgeRule || {};
@@ -166,7 +190,7 @@ function changedBox() {
     (out.join("") || (newWeek ? `<div class="s">New lines since your last visit (${newWeek} game${newWeek === 1 ? "" : "s"} opened after it) — see each card's History.</div>` : '<div class="s">No Polymarket line moves.</div>')) + `<div class="s dim" style="margin-top:4px">TD price moves are on the Anytime TD tab.</div></div></div>`;
 }
 function renderLines() {
-  $("lines").innerHTML = rightNowBox() + changedBox() + [...S.games].sort(order).map((g, i) => {
+  $("lines").innerHTML = winnersBox() + rightNowBox() + changedBox() + [...S.games].sort(order).map((g, i) => {
     const p = g.poly || {}, b = g.books || {};
     const live = !g.started && p.spread ? '<span class="live"></span>' : "";
     const row = (k, v, mt) => `<div class="prl${mt ? " mt" : ""}"><span class="s">${k}</span><span>${v}</span></div>`;
@@ -306,12 +330,13 @@ function renderModel() {
   const s = MB.summary, res = RES;
   const weeks = [...new Set(res.map((r) => r.week))].sort((a, b) => b - a), lw = weeks[0];
   const wk = res.filter((r) => r.week === lw);
-  const pick = (k, list) => list.filter((r) => r[k]).map((r) => r[k]);
+  // Spread/total picks before 9/30 used a different rule (the "side" was always the away team), so only model-side records count.
+  const pick = (k, list) => list.filter((r) => r[k] && ((k !== "spread" && k !== "total") || r[k].basis === "model")).map((r) => r[k]);
   // Tier labels (Weak/Moderate/Strong) were removed from the cards: calibrated spread/total chances sit ~50%, so every
   // pick would land in one bucket. Season record is shown plain instead.
   const seasonRec = pick("spread", res).length || pick("total", res).length
     ? `<div class="row"><span class="dim">Spread · total leans (~50/50 by design)</span><span>${rec(pick("spread", res))} · ${rec(pick("total", res))}</span></div>` +
-      '<div class="s dim">Spread/total picks sit near 50% by design (the model has no measured edge there), so expect about .500. Picks before 9/28 used the old uncalibrated numbers.</div>' : "";
+      '<div class="s dim">Spread/total picks sit near 50% by design (the model has no measured edge there), so expect about .500. Picks before 9/30 used a different rule and are not counted here.</div>' : "";
   // Model accuracy (TD model check, Top picks, recap) uses players who PLAYED; the model's % assumes he plays. The
   // Polymarket comparison below uses everyone, because an inactive player's market really does settle No.
   const tdAllAny = res.flatMap((r) => r.td || []), tdAll = tdAllAny.filter((p) => p.played !== false);
