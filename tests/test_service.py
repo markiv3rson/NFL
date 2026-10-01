@@ -37,4 +37,11 @@ ok((-np.log(1 - q2))[0] / (-np.log(1 - q2)).sum() > lam[0] / lam.sum(), "concent
 a = ns["availability"](p); fac = a / p
 ok(bool(np.all(a <= p + 1e-12)) and bool(np.all(np.diff(a) <= 0)) and abs(fac[0] - 0.918) < 1e-9 and bool(np.all(np.diff(fac) <= 1e-12)), "availability: scales down, keeps order, #1 least")
 sh = np.random.RandomState(0).permutation(len(p)); ash = ns["availability"](p[sh]); ok(bool(np.allclose(ash, a[sh])), "availability depends on the rank, not the list order")
+# touch chance (td_prob.touch_prob): a regular who played last game beats a depth player who missed it; always a real probability
+F = ns["TOUCH_FEATS"]; ok(len(F) == len(ns["TOUCH_MEAN"]) == len(ns["TOUCH_SCALE"]) == len(ns["TOUCH_COEF"]), "touch model: constants line up")
+def row(**k):
+    base = dict(lrank=np.log(3), pb=0.2, s1f=0.7, s3f=0.7, s_miss=0, missed_last=0, lgap=0.0, depth1=1, depth_known=1, r_t=4.0, r_c=2.0); base.update(k); return [base[f] for f in F]
+reg, bad_ = ns["touch_prob"](row()), ns["touch_prob"](row(s1f=0.1, s3f=0.2, missed_last=1, lgap=np.log1p(6), depth1=0, r_t=0.5, r_c=0.2))
+ok(0 < bad_ < reg < 1 and reg > 0.7 and bad_ < 0.45, "touch model: regular who played last game >> depth player who missed it %s" % ((round(float(reg), 3), round(float(bad_), 3)),))
+ok(ns["touch_prob"](row(missed_last=1)) < reg and ns["touch_prob"](row(lgap=np.log1p(5))) < reg and ns["touch_prob"](row(s1f=0.9)) > reg, "touch model: missed last game / long gap lower it, more snaps raise it")
 print(f"service checks: {'FAILED ' + str(bad) if bad else 'all passed'}"); sys.exit(1 if bad else 0)

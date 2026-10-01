@@ -278,11 +278,21 @@ def _live_snap():
     try:
         sn = fetch_snap(CUR); sn = sn[sn.game_type == "REG"].copy(); sn["nn"] = sn.player.map(_nn)
         sn = sn.sort_values(["team", "nn", "week"]); g = sn.groupby(["team", "nn"]).offense_pct
-        out = pd.DataFrame({"snap3": g.apply(lambda x: x.tail(3).mean()), "snap1": g.apply(lambda x: x.iloc[-1])}).reset_index()
+        out = pd.DataFrame({"snap3": g.apply(lambda x: x.tail(3).mean()), "snap1": g.apply(lambda x: x.iloc[-1]), "last_wk": sn.groupby(["team", "nn"]).week.max()}).reset_index()
         return out
     except Exception:
-        return pd.DataFrame(columns=["team", "nn", "snap3", "snap1"])
+        return pd.DataFrame(columns=["team", "nn", "snap3", "snap1", "last_wk"])
+def _live_touch_ctx():
+    """Team game weeks, each player's last touch week, and each team's latest snap-count week (inputs of touch_adjusted)."""
+    try:
+        tw = {t: sorted(set(int(w) for w in g.week)) for t, g in pg.groupby("team")}
+        lt = pg.groupby("pid").week.max().astype(int).to_dict()
+        sn = fetch_snap(CUR); sn = sn[(sn.game_type == "REG") & (sn.offense_snaps > 0)]
+        tl = {t: int(w) for t, w in sn.groupby("team").week.max().items()}
+        return tw, lt, tl
+    except Exception: return {}, {}, {}
 SNAP_NOW = _live_snap()
+TEAM_WEEKS, PID_LAST_TOUCH, SNAP_TEAM_LAST = _live_touch_ctx()
 def _live_flags():
     """Live versions of the three research flags, for the NEXT game (same definitions as training)."""
     try: prev_team = prior.groupby("pid").team.agg(lambda x: x.mode().iloc[0])
@@ -379,7 +389,7 @@ def run(team,opp,imp,outs=(),posadj=False):
         uniq = sn.groupby('last').filter(lambda g: len(g) == 1).set_index('last')
         for i in df.index[df.snap3.isna()]:
             last = str(df.at[i, 'nn']).split()[-1:] or ['']
-            if last[0] in uniq.index: df.at[i, 'snap3'] = uniq.at[last[0], 'snap3']; df.at[i, 'snap1'] = uniq.at[last[0], 'snap1']
+            if last[0] in uniq.index: df.at[i, 'snap3'] = uniq.at[last[0], 'snap3']; df.at[i, 'snap1'] = uniq.at[last[0], 'snap1']; df.at[i, 'last_wk'] = uniq.at[last[0], 'last_wk']
     df['snap_miss']=df.snap3.isna().astype(int); df['snap3']=df.snap3.fillna(SNAP_FILL); df['snap1']=df.snap1.fillna(df.snap3)
     df['new_team']=[int(pid in PREV_TEAM.index and PREV_TEAM[pid]!=team) for pid in df.pid]
     df['rz_shift']=[float(RZ_SHIFT.get(pid,0.0)) for pid in df.pid]
@@ -409,7 +419,8 @@ def run(team,opp,imp,outs=(),posadj=False):
     if posadj: df['o_rec']=df.pos.map(pos_rec(opp))
     # (Vacated-usage boost removed 9/30: handing an Out player's red-zone share to teammates tested WORSE in 7 of 7
     # seasons, 2019-25 -- the teammates' own usage already carries most of it, and the bump overshot.)
-    df['p']=availability(team_budget(shrink(m.predict_proba(design(df))[:,1]), imp))   # 10/1: then the availability tilt
+    pb_=team_budget(shrink(m.predict_proba(design(df))[:,1]), imp)
+    df['p']=touch_adjusted(df, pb_, team)   # 10/1: x the chance he plays AND touches the ball (falls back to the rank tilt)
     df['boosted'] = False
     df['depth_note']=[DEPTH_NOTE.get(pid) for pid in df.pid]
     return df.sort_values('p',ascending=False)[['name','pos','p','boosted','depth_note']]
@@ -445,6 +456,38 @@ def availability(p):
     p = np.asarray(p, dtype=float); order = np.argsort(-p, kind="stable"); rank = np.empty(len(p)); rank[order] = np.arange(1, len(p) + 1)
     return np.clip(p * np.minimum(1.0, AVAIL_C * rank ** -AVAIL_G), 0, 0.97)
 
+# Touch chance (10/1): replaces the plain rank tilt above as the main step (the tilt stays as the fallback). The model gives the chance
+# a player scores IF he touches the ball; his chance to play and touch it at all is estimated from information known before kickoff:
+# his rank on the team, last game's and last-3-games' snap share, whether he missed the team's last game, how many team games since
+# his last touch, depth-chart status and his usage. Logistic fit on the 2019-25 live-style list (35,660 players: everyone with an
+# earlier touch this season, Out/Doubtful removed). Walk-forward 2021-25 (each season judged on a model fit on earlier seasons only):
+# better than the rank tilt in 5 of 5 seasons, Brier -0.0034 (t = -21), and 12.3/19.5/31.2/49.5% said vs 13.0/21.1/34.5/46.7% actual
+# for 10-15/15-25/25-40/40+%. Injury and practice status added nothing beyond these, so none is used.
+TOUCH_FEATS = ['lrank', 'pb', 's1f', 's3f', 's_miss', 'missed_last', 'lgap', 'depth1', 'depth_known', 'r_t', 'r_c']
+TOUCH_MEAN = [1.569396, 0.204976, 0.460706, 0.468006, 0.013825, 0.200869, 0.388849, 0.477594, 0.944251, 3.507601, 2.387435]
+TOUCH_SCALE = [0.746154, 0.127576, 0.289202, 0.267211, 0.116764, 0.400651, 0.674365, 0.485346, 0.229436, 2.374554, 4.536742]
+TOUCH_COEF = [-0.017068, -0.116241, 0.582569, 0.216033, 0.125243, -0.622508, -0.656877, -0.092541, 0.022239, 0.352244, 0.480237]
+TOUCH_INTERCEPT = 1.135998
+def touch_prob(X):
+    """X: rows in TOUCH_FEATS order -> chance he plays and touches the ball."""
+    z = TOUCH_INTERCEPT + ((np.asarray(X, dtype=float) - np.array(TOUCH_MEAN)) / np.array(TOUCH_SCALE)) @ np.array(TOUCH_COEF)
+    return 1 / (1 + np.exp(-z))
+def touch_adjusted(df, pb, team):
+    """pb = chances after the team-total step (one team's list). Returns pb x touch chance; any problem -> the rank tilt."""
+    try:
+        pb = np.asarray(pb, dtype=float); order = np.argsort(-pb, kind="stable"); rank = np.empty(len(pb)); rank[order] = np.arange(1, len(pb) + 1)
+        tw, tl = TEAM_WEEKS.get(team) or [], SNAP_TEAM_LAST.get(team)
+        if not tw or tl is None: return availability(pb)
+        miss = df.snap_miss.values.astype(float)
+        s1 = np.where(miss == 1, 0.4, df.snap1.values.astype(float)); s3 = np.where(miss == 1, 0.4, df.snap3.values.astype(float))
+        lw = pd.to_numeric(df["last_wk"], errors="coerce").values
+        missed = np.array([1.0 if (np.isnan(w) or w < tl) else 0.0 for w in lw])
+        gap = np.array([sum(1 for w in tw if w > PID_LAST_TOUCH[pid]) if pid in PID_LAST_TOUCH else 99 for pid in df.pid.values], dtype=float)
+        X = np.column_stack([np.log(rank), pb, s1, s3, miss, missed, np.log1p(np.minimum(gap, 20)), df.depth1.values.astype(float), df.depth_known.values.astype(float), df.r_t.values.astype(float), df.r_c.values.astype(float)])
+        out = np.clip(pb * touch_prob(X), 0, 0.97)
+        return out if np.all(np.isfinite(out)) else availability(pb)
+    except Exception: return availability(pb)
+
 import time as _time
 _LIVE_T = _time.time()
 def refresh_live(max_age=1800):
@@ -452,7 +495,7 @@ def refresh_live(max_age=1800):
     max_age seconds. Before 9/28 all of it loaded ONCE when the Railway server started and every rerun reused it --
     for days, until the next deploy -- so new games, snap counts, IR moves and depth changes never reached the TD
     numbers even though reruns kept running. Called at the start of every TD rerun and weekly retrain."""
-    global pos, pg, dal, games, p, p_prev, prior, pr, cur, names, SNAP_NOW, _ros_nn, ROS_STATUS, ROS_TEAM
+    global pos, pg, dal, games, p, p_prev, prior, pr, cur, names, SNAP_NOW, _ros_nn, ROS_STATUS, ROS_TEAM, TEAM_WEEKS, PID_LAST_TOUCH, SNAP_TEAM_LAST
     global PREV_TEAM, RZ_SHIFT, DEPTH_STARTERS, DEPTH_KNOWN, DEPTH_NOTE, _LIVE_T, CUR, CURRENT
     # Season rollover (9/30): the server runs for months, so the season is re-worked-out here, not only at start-up.
     new_season = _season.data_season()
@@ -463,7 +506,7 @@ def refresh_live(max_age=1800):
     pr = prior.groupby('pid').agg(g=('game_id','nunique'),rz=('rz_tgt','sum'),i10=('i10_tgt','sum'),rzc=('rz_car','sum'),i5=('i5_car','sum'),t=('tgt','sum'),c=('car','sum'),td=('td','sum'))
     cur = pg.groupby(['pid','team']).agg(g=('game_id','nunique'),rz=('rz_tgt','sum'),i10=('i10_tgt','sum'),rzc=('rz_car','sum'),i5=('i5_car','sum'),t=('tgt','sum'),c=('car','sum'),td=('td','sum')).reset_index()
     names = _names(p, p_prev)
-    SNAP_NOW = _live_snap()
+    SNAP_NOW = _live_snap(); TEAM_WEEKS, PID_LAST_TOUCH, SNAP_TEAM_LAST = _live_touch_ctx()
     try: _ros_nn = fetch_ros(CUR).sort_values("week").drop_duplicates("gsis_id", keep="last").set_index("gsis_id")["full_name"].map(_nn)
     except Exception: _ros_nn = pd.Series(dtype=object)
     ROS_STATUS, ROS_TEAM = _latest_roster()
