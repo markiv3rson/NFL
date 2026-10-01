@@ -626,16 +626,27 @@ function detailTop(g) {
   const hp = g.winPct != null ? Number(g.winPct) : null, ap = hp == null ? null : Math.round(100 - hp), hr = ap == null ? null : 100 - ap;
   const st = g.final ? `Final ${g.awayScore != null ? `${g.awayScore}–${g.homeScore}` : ""}` : g.started ? '<span class="r">Live · locked</span>' : startsIn(g);
   const ca = TEAM_COLOR[g.away] || "#444", ch = TEAM_COLOR[g.home] || "#444";
-  return `<div class="card dtop" style="background:linear-gradient(90deg,${ca}40 0%,${ca}14 50%,${ch}14 50%,${ch}40 100%),var(--card)"><img class="dwm l" src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img class="dwm r" src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'"><div class="inner"><div class="nm"><span class="t">${g.away}</span><div class="mid">${g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : ""}<div class="s2">${tm(g.kickoff)}</div><div class="s3">${st}</div></div><span class="t">${g.home}</span></div>` +
+  return `<div class="card dtop" style="background:linear-gradient(90deg,${ca}40 0%,${ca}14 50%,${ch}14 50%,${ch}40 100%),var(--card)"><img class="dwm l" src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img class="dwm r" src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'"><div class="inner"><div class="nm"><span class="t">${tlogo(g.away)}${g.away}</span><div class="mid">${g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : ""}<div class="s2">${tm(g.kickoff)}</div><div class="s3">${st}</div></div><span class="t">${g.home}${tlogo(g.home)}</span></div>` +
     (hp == null || g.final ? "" : `<div class="wc"><div class="wl"><b class="mkt">${ap}%</b><span class="mkt">WIN CHANCE · MARKET</span><span class="dim">${hr}%</span></div><div class="bar"><i style="width:${ap}%"></i></div></div>`) + `</div></div>`;
+}
+// page background on a game page only: team colors in halves with the split logos (away left, home right)
+function setBg(g) {
+  const el = document.getElementById("bgwm"); if (!el) return;
+  if (!g) { el.style.background = ""; el.innerHTML = ""; el.dataset.k = ""; return; }
+  const k = g.away + g.home; if (el.dataset.k === k) return; el.dataset.k = k;
+  const ca = TEAM_COLOR[g.away] || "#444", ch = TEAM_COLOR[g.home] || "#444";
+  el.style.background = `linear-gradient(90deg, ${ca}3d 0%, ${ca}1f 50%, ${ch}1f 50%, ${ch}3d 100%)`;
+  el.innerHTML = `<img src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'">`;
 }
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = "";
   $("detail").innerHTML = `<button class="back" id="back-btn">← All games</button>${detailTop(g)}<div class="grid">${gameCard(g, "x")}</div><div class="sh" style="margin:16px 2px 0">Total</div><div class="grid">${totalCard(g, "x")}</div>${tdTop3(g)}`;
   $("back-btn").onclick = closeGame;
+  setBg(g);
 }
 function renderLines() {
   if (DETAIL) { const g = S.games.find((x) => x.key === DETAIL); if (g) return renderDetail(g); DETAIL = null; }
+  setBg(null);
   $("detail").style.display = "none"; $("lines").style.display = "";
   $("lines").innerHTML = gapStrip() + changedBox() + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
     '<div class="s dim" style="text-align:center;margin-top:10px">Tap a game for everything on it. Percent = market-based win chance (away · home).</div>';

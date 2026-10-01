@@ -171,6 +171,10 @@
   .toast { position:fixed; right:max(12px,env(safe-area-inset-right)); bottom:calc(max(14px,env(safe-area-inset-bottom)) + 62px); max-width:300px; font-size:12px; line-height:1.45; padding:9px 12px; border-radius:12px; background:rgba(20,22,26,.95); border:1px solid var(--line); display:none; z-index:60; }
   .toast.show { display:block; }
   .card .inner { position:relative; }
+  .pagewm { position:fixed; inset:0; z-index:-1; pointer-events:none; display:flex; align-items:center; overflow:hidden; }
+  .pagewm img { width:50%; height:100%; object-fit:contain; transform:scale(1.25); opacity:.2; }
+  .pagewm::after { content:""; position:absolute; inset:0; background:rgba(0,0,0,.4); }
+  .dtop .t .tlogo { width:30px; height:30px; vertical-align:-6px; margin:0 8px 0 0; } .dtop .t:last-child .tlogo { margin:0 0 0 8px; }
   .prl > .s { text-transform:uppercase; letter-spacing:.04em; font-size:13px; font-weight:700; color:#eef0f4; }
   /* game page: the two team logos split the whole page in half behind the cards (away left, home right) */
   .sc { border:1px solid var(--line); }
@@ -193,6 +197,7 @@
 </style>
 </head>
 <body>
+<div class="pagewm" id="bgwm"></div>
 <div class="wrap">
   <div class="hero">
     <div class="hbg" id="hero-bg"></div>
