@@ -168,6 +168,8 @@
   .toast { position:fixed; right:max(12px,env(safe-area-inset-right)); bottom:calc(max(14px,env(safe-area-inset-bottom)) + 62px); max-width:300px; font-size:12px; line-height:1.45; padding:9px 12px; border-radius:12px; background:rgba(20,22,26,.95); border:1px solid var(--line); display:none; z-index:60; }
   .toast.show { display:block; }
   .card .inner { position:relative; }
+  .card .cwm { position:absolute; top:50%; width:50%; height:130px; margin-top:-65px; object-fit:contain; opacity:.13; pointer-events:none; }
+  .card .cwm.l { left:0; } .card .cwm.r { right:0; }
   /* game page: the two team logos split the whole page in half behind the cards (away left, home right) */
   .pagewm { position:fixed; inset:0; z-index:-1; pointer-events:none; display:flex; align-items:center; }
   .pagewm img { width:50%; height:64vh; object-fit:contain; opacity:.14; }
