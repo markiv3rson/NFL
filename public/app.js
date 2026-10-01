@@ -682,7 +682,9 @@ async function loadSlate() {
   if (BUILD && build && build !== BUILD) { location.reload(); return; }  // a new version went live while this page was open
   BUILD = BUILD || build; LOADED_AT = Date.now(); S = d;
   const open = [...document.querySelectorAll(".drop.open")].map((e) => e.id).filter(Boolean);   // keep your open dropdowns
+  const openTd = [...document.querySelectorAll(".tdr")].map((e, i) => (e.classList.contains("open") ? i : -1)).filter((i) => i >= 0);   // and open player rows
   renderAll(); for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
+  if (openTd.length) { const rows = document.querySelectorAll(".tdr"); for (const i of openTd) if (rows[i]) rows[i].classList.add("open"); }
   try { localStorage.setItem("lastSeen", new Date().toISOString()); } catch {} }   // next visit's "What changed" starts from now
 $("refresh-btn").onclick = async () => {
   const b = $("refresh-btn"); b.disabled = true; toast("Pulling current Polymarket lines…", 0);
@@ -722,5 +724,9 @@ document.addEventListener("click", (e) => {
   const tr = e.target.closest(".tdr"); if (tr && !e.target.closest(".price-link") && !e.target.closest(".more")) { tr.classList.toggle("open"); return; }
   const p = e.target.closest(".price-link"); if (p) toast(p.dataset.market ? "Polymarket market: " + p.dataset.market : "No market recorded for this price.", 8000);
 });
-loadSlate().then(loadAlerts).catch((e) => ($("hero-upd").textContent = "Couldn't load this week: " + e.message));
-document.addEventListener("visibilitychange", () => { if (!document.hidden && Date.now() - LOADED_AT > 120e3) loadSlate().catch(() => {}); });
+// Everything refreshes by itself while the page is open and visible: lines, model, injuries, alerts, and the Pick Lab / Record data.
+const onRecordTab = () => ["panel-record", "panel-lab"].some((id) => $(id) && $(id).classList.contains("on"));
+async function refreshAll() { try { await loadSlate(); await loadAlerts(); if (onRecordTab()) await loadRecord(); } catch {} }
+function autoRefresh() { setTimeout(async () => { if (!document.hidden) await refreshAll(); autoRefresh(); }, 120e3); }
+loadSlate().then(loadAlerts).then(autoRefresh).catch((e) => ($("hero-upd").textContent = "Couldn't load this week: " + e.message));
+document.addEventListener("visibilitychange", () => { if (!document.hidden && Date.now() - LOADED_AT > 60e3) refreshAll(); });
