@@ -640,7 +640,7 @@ function setBg(g) {
 }
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = "";
-  $("detail").innerHTML = `<button class="back" id="back-btn">← All games</button>${detailTop(g)}<div class="grid">${gameCard(g, "x")}</div><div class="sh" style="margin:16px 2px 0">Total</div><div class="grid">${totalCard(g, "x")}</div>${tdTop3(g)}`;
+  $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}<div class="grid">${gameCard(g, "x")}</div><div class="sh" style="margin:16px 2px 0">Total</div><div class="grid">${totalCard(g, "x")}</div>${tdTop3(g)}`;
   $("back-btn").onclick = closeGame;
   setBg(g);
 }
