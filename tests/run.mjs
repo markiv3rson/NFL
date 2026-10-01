@@ -90,6 +90,17 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(lm === 1 && (await listAlerts(2026))[0].title === "PIT @ CLE spread: CLE +3 → +2.5", "alerts: a half-point spread move, but not a 1-cent price move");
   await alertResult(2026, { key: "TEN @ BAL", away: "TEN", home: "BAL", awayScore: 13, homeScore: 27 }, { ml: { label: "BAL ML", result: "W" }, spread: { label: "BAL -10.5", result: "W" } });
   ok((await listAlerts(2026))[0].title === "Final: TEN 13 @ BAL 27" && /Moneyline pick BAL won/.test((await listAlerts(2026))[0].sub), "alerts: a final result", (await listAlerts(2026))[0]); }
+// ---------- returning-from-injury label: last week's Out/Doubtful list comes from the same injury file
+{ const { parseInjuryText } = await import("../lib/injuries.js");
+  const csv = ["season,season_type,team,week,full_name,position,report_primary_injury,report_status,practice_primary_injury,practice_status",
+    "2026,REG,LV,3,Brock Bowers,TE,Knee,Out,Knee,Did Not Participate",
+    "2026,REG,LV,3,Jakobi Meyers,WR,Ankle,Questionable,Ankle,Limited Participation",
+    "2026,REG,LV,4,Brock Bowers,TE,,,Knee,Full Participation",
+    "2026,REG,LV,4,Jakobi Meyers,WR,Ankle,Doubtful,Ankle,Limited Participation",
+    "2026,REG,SEA,2,Old Out,WR,Back,Out,Back,Did Not Participate", "2026,REG,SEA,3,Cooper Kupp,WR,Hamstring,Doubtful,Hamstring,Limited Participation"].join("\n");
+  const v = parseInjuryText(csv);
+  ok(v.prev.LV.length === 1 && v.prev.LV[0].name === "Brock Bowers" && v.prev.LV[0].status === "Out" && v.prev.SEA.length === 1 && v.prev.SEA[0].name === "Old Out", "returning label data: last week's Out/Doubtful list (the week before each team's latest report)", v.prev);
+  ok(v.teams.LV.some((x) => x.name === "Jakobi Meyers" && x.status === "Doubtful") && !v.teams.LV.some((x) => x.name === "Brock Bowers" && /out/i.test(x.status)), "latest report is still each team's newest week", v.teams.LV); }
 // ---------- replay (history table): the verdict rule, the maths on a tiny schedule, the card
 { const { verdict, computeReplay } = await import("../lib/replay.js");
   const per = (...v) => v.map((x) => ({ n: 60, value: x }));
@@ -225,6 +236,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { const rb = ctx.T.replayBox();
     ok(/Road dogs \+3 to \+6\.5/.test(rb) && /53\.5%/.test(rb) && /UNSTABLE/.test(rb) && /<b>YES<\/b>/.test(rb) && /3–1/.test(rb) && /2 saved/.test(rb) && /7–3/.test(rb) && /2007–25/.test(rb), "replay card: history, live record, verdict, season range", rb.slice(0, 400));
     vm.runInContext(`REPLAY = null`, ctx); ok(ctx.T.replayBox() === "", "replay card: leaves itself out when the history is not loaded"); }
+  { const base = { player: "B.Bowers", pos: "TE", team: "LV", game: "LV @ KC", fair: 34, two: 8, first: 9, teamRank: 1, price: 0.3, flags: [] };
+    const yes = ctx.T.prow({ ...base, returning: "out" }, { started: false }, true), no = ctx.T.prow(base, { started: false }, true);
+    ok(/RETURNING/.test(yes) && /was out on last week/.test(yes) && /chance is unchanged/.test(yes) && /34%/.test(yes) && !/RETURNING/.test(no), "returning label: shown with the chance untouched, absent otherwise"); }
   { const w = (m) => ctx.T.totalCard({ ...tg, poly: { total: { line: 38.5, over: 0.5, under: 0.52 } }, model: { total: 37, ...m } }, "x");
     ok(/Tested angle: Under 38\.5 \(wind forecast 14 mph\)/.test(w({ outdoor: true, wind: 14 })) && !/Tested angle: Under/.test(w({ outdoor: true, wind: 8 })) && !/Tested angle: Under/.test(w({ outdoor: false, wind: 20 })) && !/Tested angle: Under/.test(ctx.T.totalCard({ ...tg, final: true, poly: { total: { line: 38.5 } }, model: { total: 37, outdoor: true, wind: 20 } }, "x")), "windy-under note: only for an outdoor game with 12+ mph forecast, not finished"); }
   vm.runInContext(`S = { week: 4, games: [], edgesNow: [{ game: "PIT @ CLE", label: "CLE ML", price: 0.37, fair: 0.42, evNet: 0.134 }] }; LIVE = {}; LIVE_T = null`, ctx);
