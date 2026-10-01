@@ -218,8 +218,6 @@ function totalCard(g, i) {
   }
 }
 // ---------- Anytime TD ----------
-const PRICE_CLS = { Underpriced: "g", Fair: "y", Overpriced: "r" };
-const PRICE_WORD = { Underpriced: "Good price", Fair: "Fair price", Overpriced: "Bad price" };
 const GAME_STATUS = /out|doubtful|questionable/i;
 // team logo, transparent PNG, keyed off the same team code the row already carries. WAS/KC have no
 // clean current mark on the ESPN CDN, so those two come from a community alt-logo set instead.
