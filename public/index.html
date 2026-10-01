@@ -172,6 +172,19 @@
   .cwm.l { left:-26px; } .cwm.r { right:-26px; }
   .sc { border:1px solid var(--line); }
   .mcard, #panel-lab .card { border-color:rgba(183,148,255,.6); box-shadow:0 0 14px rgba(150,100,255,.22); }
+  #detail .gh, #detail .sub { display:none; }
+  .dtop .nm { display:flex; align-items:center; justify-content:space-between; }
+  .dtop .t { font-size:28px; font-weight:800; font-style:italic; }
+  .dtop .mid { text-align:center; line-height:1.35; } .dtop .s2 { font-size:12px; color:#c9ced6; margin-top:4px; } .dtop .s3 { font-size:11px; color:var(--green); }
+  .dtop .wc { margin-top:12px; } .dtop .wl { display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; } .dtop .wl span:nth-child(2) { font-size:10px; letter-spacing:.06em; }
+  .dtop .bar { height:7px; border-radius:4px; background:rgba(255,255,255,.14); overflow:hidden; } .dtop .bar i { display:block; height:7px; background:var(--blue); }
+  .stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:10px; }
+  .stat { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:10px 8px; text-align:center; }
+  .stat .k { font-size:10px; font-weight:800; letter-spacing:.06em; color:var(--faint); text-transform:none; } .stat .v { font-size:19px; font-weight:800; margin-top:2px; } .stat .k2 { font-size:10px; color:var(--faint); }
+  #panel-lab .stat { border-color:rgba(183,148,255,.6); box-shadow:0 0 14px rgba(150,100,255,.22); }
+  .arow { display:flex; align-items:center; gap:8px; padding:9px 0; border-top:1px solid var(--line2); font-size:13px; } .arow .nm { flex:1; font-weight:600; } .arow .rc { font-size:11px; } .arow b { width:40px; text-align:right; }
+  .pbars { display:flex; gap:3px; align-items:flex-end; height:64px; margin-top:10px; } .pb { flex:1; display:flex; flex-direction:column; justify-content:flex-end; } .pb i { display:block; width:100%; border-radius:3px; }
+  .pyrs { display:flex; gap:3px; margin-top:4px; } .pyrs span { flex:1; text-align:center; font-size:8px; color:var(--faint); }
   .price-link { cursor:pointer; border-bottom:1px dotted var(--faint); }
 </style>
 </head>
