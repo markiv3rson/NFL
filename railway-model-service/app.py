@@ -158,8 +158,9 @@ def rerun_td_probs():
             outs = g.get("outs", [])
             # posadj off (9/30 test: neutral) -- the old call passed True here, so the "default off" change never took effect
             active = bool(g.get("active"))   # inactive list is out (inside 80 min of kickoff): everyone listed is playing
-            away_df = td_prob.run(nv(g["away"]), nv(g["home"]), g["total"] / 2 - g["spread"] / 2, outs, active=active)
-            home_df = td_prob.run(nv(g["home"]), nv(g["away"]), g["total"] / 2 + g["spread"] / 2, outs, active=active)
+            returning = g.get("returning", [])   # Out/Doubtful last week, not this week: treated as playing (the page labels them)
+            away_df = td_prob.run(nv(g["away"]), nv(g["home"]), g["total"] / 2 - g["spread"] / 2, outs, active=active, returning=returning)
+            home_df = td_prob.run(nv(g["home"]), nv(g["away"]), g["total"] / 2 + g["spread"] / 2, outs, active=active, returning=returning)
             # Extra markets from the same calibrated chances: 2+ TDs, first TD of the game, and any RB/WR/TE per team.
             top_a, top_h = away_df.head(14), home_df.head(14)
             f_a, f_h = td_prob.first_td([top_a.p.values, top_h.p.values])
