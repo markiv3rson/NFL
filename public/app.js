@@ -195,7 +195,7 @@ function gameCard(g, i) {
       (p.ml ? row("Moneyline", `${g.home} ${odds(toAmerican(p.ml.home))}`, !!p.spread, "mlc") + row("", `${g.away} ${odds(toAmerican(p.ml.away))}`, false, "mlc") : "") : dash) + liveTail(g, lv);
     // Tested angle (9/30): home favorites of 9.5+ on the moneyline, the one game-line angle that held up on unseen years
     const hsNow = p.spread ? p.spread.homeSpread : b.spread ? b.spread.homeSpread : null;
-    const angle = !g.final && hsNow != null && hsNow <= -9.5 ? `<div class="s g" style="margin:6px 0 0">★ Tested angle: ${g.home} moneyline (home favorite 9.5+). 2007–25: won ~88%, about +2–3% per bet at sportsbook prices — small edge, check Polymarket's price.</div>` : "";
+    const angle = !g.final && hsNow != null && hsNow <= -9.5 ? `<div class="s g" style="margin:6px 0 0">★ Tested angle: ${g.home} moneyline (home favorite 9.5+). 2007–25: won ~88%, +2.6% per bet at sportsbook prices overall, but not steady (2007–12 +5.4%, 2013–18 −2.3%, 2019–25 +3.5%). Small edge at best, check Polymarket's price.</div>` : "";
     return `<div class="card${g.final ? " fin" : ""}"><div class="inner">${headButtons(g, "l" + i)}${angle}<div class="f">${HDR}` +
       `<div><div class="k">SPORTSBOOK</div>${b.spread ? `${g.home} ${sgn(b.spread.homeSpread)} ${odds(b.spread.home.odds)}<div class="s">fair (vig removed) ${g.home} ${odds(toAmerican(b.spread.home.fair))} / ${g.away} ${odds(toAmerican(b.spread.away.fair))}</div>` : dash}</div>` +
       leanCell(g, "spread") +
@@ -484,7 +484,8 @@ function renderRecord() { renderMine(); renderModel(); }
 async function loadRecord(sync = false) {
   if (sync) toast("Syncing your Polymarket account…", 0);
   try {
-    const [mb, rl] = await Promise.all([fetch(`/api/mybets${sync ? "?sync=1" : ""}`, { cache: "no-store" }).then((r) => r.json()), fetch("/api/results/list", { cache: "no-store" }).then((r) => r.json())]);
+    const [mb, rl, rp] = await Promise.all([fetch(`/api/mybets${sync ? "?sync=1" : ""}`, { cache: "no-store" }).then((r) => r.json()), fetch("/api/results/list", { cache: "no-store" }).then((r) => r.json()), fetch("/api/replay", { cache: "no-store" }).then((r) => r.json()).catch(() => null)]);
+    if (rp && rp.ok) REPLAY = rp.replay;   // history table; a failed fetch just leaves the card out
     if (!mb.ok) throw new Error(mb.error); MB = mb; RES = rl.ok ? rl.results : []; EDGES = rl.ok ? rl.edges : null; PAPER = rl.ok ? rl.paper : null; PICKS = rl.ok ? rl.picks : null; renderLab();
     renderRecord();
     if (sync && mb.sync) toast(mb.sync.ok ? `Synced ${mb.sync.positions} positions.` : `Sync: ${mb.sync.note}`);
@@ -532,8 +533,26 @@ function pickLabBox() {
     (bands ? `<div class="fold" data-drop="labbands"><span>By how far the model differs from the line</span><span>▾</span></div><div class="drop" id="labbands">${bands}</div>` : "") + `</div></div>`;
 }
 // Results tab top: every record in one place (model side by market, tracked angles, parlay scoreboard)
-let LAB_SB = "";
-const labResultsTop = () => (S ? labStats() + winnersBox("records") + pickLabBox() : "") + LAB_SB;
+let LAB_SB = "", REPLAY = null;
+// Replay: every tracked pick rule on past seasons next to its live record; "YES" only when it beat break-even in all three periods.
+function replayBox() {
+  if (!REPLAY || !REPLAY.rows) return "";
+  const P = PICKS || {}, W = (S && S.winners && S.winners.all) || {}, hf = PAPER && PAPER.board && PAPER.board.home_fav_95_single;
+  const live = (r) => { let w, l, hit, saved;
+    if (r.id === "favorite") { w = W.w; l = W.l; hit = W.n ? W.hit : null; }
+    else if (r.id === "homefav") { if (hf && hf.graded) { w = hf.hits; l = hf.graded - hf.hits; hit = hf.hitRate; } }
+    else { const x = P[r.id === "spread_model" ? "spread" : r.id === "total_model" ? "total" : r.id]; if (x) { if (x.graded) { w = x.w; l = x.l; hit = x.hit; } else saved = x.recorded; } }
+    return hit != null ? `<span>${w}–${l}</span><span class="dim"> · ${Math.round(hit * 100)}%</span>` : saved ? `<span class="dim">${saved} saved</span>` : '<span class="dim">—</span>'; };
+  const cls = { YES: "g", UNSTABLE: "y", "NO EDGE": "r", "TOO FEW": "dim", INFO: "dim" };
+  const pc = (x) => (x == null ? "—" : (x * 100).toFixed(1) + "%");
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Replay · every pick on ${REPLAY.seasons[0]}–${String(REPLAY.seasons[1]).slice(2)}</div>
+    <div class="rp rph"><span>PICK</span><span>HISTORY</span><span>LIVE</span><span>HOLDS?</span></div>` +
+    REPLAY.rows.map((r) => `<div class="rp"><span>${esc(r.name)}${r.note ? `<span class="dim rn">${esc(r.note)}</span>` : ""}</span><span class="${r.kind === "win" ? "dim" : r.hit > 0.524 || (r.kind === "ml" && r.roi > 0) ? "g" : "r"}">${pc(r.hit)}<span class="dim rn"> n=${r.n}</span></span><span>${live(r)}</span><span class="${cls[r.verdict] || "dim"}"><b>${esc(r.verdict)}</b></span></div>`).join("") +
+    `<div class="fold" data-drop="replayper"><span>By period</span><span>▾</span></div><div class="drop" id="replayper">` +
+    REPLAY.rows.filter((r) => r.kind !== "win").map((r) => `<div class="row"><span>${esc(r.name)}</span><span class="dim">${r.periods.map((p) => `${esc(p.label)} ${pc(p.hit)}`).join(" · ")}</span></div>`).join("") + `</div>
+    <div class="s dim" style="margin-top:6px">Break-even is 52.4% on spreads and totals (positive return on moneylines). YES = beat it in all three periods; UNSTABLE = beat it overall but not in every period; TOO FEW = under 100 games. Closing lines from sportsbooks, not Polymarket prices. The two model rows are a fixed 2013–25 backtest of the core ratings.</div></div></div>`;
+}
+const labResultsTop = () => (S ? labStats() + winnersBox("records") + replayBox() + pickLabBox() : "") + LAB_SB;
 function renderLab() {
   if (!$("lab")) return;
   if (!PAPER) { $("lab").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }
