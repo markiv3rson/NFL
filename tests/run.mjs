@@ -119,6 +119,11 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(picksFor(g, poly, { homeMargin: 3.1 }).some((x) => x.market === "away3" && x.label === "PIT -2.5" && x.price === 0.53) && !picksFor(g, { spread: { homeSpread: -3.5, home: 0.5, away: 0.5 } }, { homeMargin: 1 }).some((x) => x.market === "away3"), "road team in a close game (spread 3 or less) is recorded, 3.5 is not");
   { const w = picksFor(g, poly, { homeMargin: 3.1, total: 37.1, outdoor: true, wind: 14 }).find((x) => x.market === "wind");
     ok(w && w.label === "Under 38.5" && w.price === 0.51 && !picksFor(g, poly, { homeMargin: 3.1, total: 37.1, outdoor: true, wind: 11 }).some((x) => x.market === "wind") && !picksFor(g, poly, { homeMargin: 3.1, total: 37.1, outdoor: false, wind: 20 }).some((x) => x.market === "wind"), "windy under: outdoor and 12+ mph only"); }
+  { const sit = { home: { prevPts: 20, prevLost: false, preBye: true }, away: { prevPts: 6, prevLost: true, preBye: false } };
+    const a = picksFor({ ...g, week: 9 }, poly, { homeMargin: 3.1 }, sit), b = picksFor({ ...g, week: 6 }, poly, { homeMargin: 3.1 }, sit);
+    const dog = picksFor({ ...g, week: 9 }, { spread: { homeSpread: -3.5, home: 0.5, away: 0.52 } }, { homeMargin: 1 }, sit);
+    ok(a.some((x) => x.market === "prebye" && x.label === "CLE +2.5") && !b.some((x) => x.market === "prebye"), "home team before its bye is recorded from week 8 on");
+    ok(dog.some((x) => x.market === "lowloss" && x.label === "PIT +3.5" && x.price === 0.52) && !a.some((x) => x.market === "lowloss"), "underdog off a loss scoring 10 or fewer is recorded (home dog here lost nothing, so no pick)"); }
   ok(picksFor(g, poly, { homeMargin: -2.5, total: 38.5 }).filter((x) => x.market !== "away3").length === 0, "model exactly on the line -> no pick");
   ok(picksFor(g, null, { homeMargin: 3 }).length === 0 && picksFor(g, poly, null).length === 0, "no lines or no model -> no pick");
   await recordPicks(2026, 4, g, poly, { homeMargin: 3.1, total: 37.1 }, "t");
