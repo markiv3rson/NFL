@@ -325,6 +325,16 @@ function renderMine() {
 }
 // ---------- Record: Model ----------
 function rec(list) { const c = { W: 0, L: 0, P: 0 }; list.forEach((x) => c[x.result]++); return `${c.W}–${c.L}${c.P ? "–" + c.P : ""}`; }
+// Past seasons (10/1, regular season, every game graded the same way the live record is): % right per year. [season, spread side, total side, market favorite wins, stats-only winner]
+const PAST = [[2013, 53.0, 56.8, 71.2, 69.4], [2014, 49.1, 59.6, 68.0, 67.4], [2015, 47.6, 56.8, 63.7, 64.9], [2016, 54.7, 52.7, 67.6, 65.9], [2017, 55.0, 48.0, 71.4, 64.8], [2018, 44.9, 49.2, 67.2, 65.6], [2019, 48.9, 52.1, 65.1, 65.1], [2020, 43.3, 50.2, 66.8, 65.9], [2021, 46.8, 47.1, 63.7, 63.7], [2022, 44.7, 52.9, 68.5, 61.7], [2023, 53.1, 50.5, 69.6, 65.6], [2024, 56.1, 48.9, 74.1, 69.6], [2025, 44.4, 53.6, 63.2, 59.2]];
+function pastBox() {
+  const f = (x) => x.toFixed(1) + "%", avg = (i) => PAST.reduce((a, r) => a + r[i], 0) / PAST.length;
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Past seasons · how often each pick was right</div>` +
+    `<div class="row"><span class="dim">Season</span><span class="dim">Winner (market) · Winner (stats) · Spread · Total</span></div>` +
+    PAST.slice().reverse().map((r) => `<div class="row"><span>${r[0]}</span><span>${f(r[3])} · ${f(r[4])} · ${f(r[1])} · ${f(r[2])}</span></div>`).join("") +
+    `<div class="row"><b>Average</b><b>${f(avg(3))} · ${f(avg(4))} · ${f(avg(1))} · ${f(avg(2))}</b></div>` +
+    `<div class="s dim" style="margin-top:4px">Winner = the team picked to win straight up. Spread and total = the model's side of the closing line. The model's settings were fit on these same years, so treat the older totals with caution; this season's live record above is the clean test.</div></div></div>`;
+}
 function renderModel() {
   if (!MB || !RES) { $("record-model").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }
   const s = MB.summary, res = RES;
@@ -407,7 +417,7 @@ function renderModel() {
     ((st.errors || []).length ? st.errors.map((e) => `<div class="s y">⚠ ${hm(e.t)} · ${esc(e.where)}: ${esc(e.msg)}</div>`).join("") : '<div class="s g">No errors this week.</div>') : "";
   const games = res.map((r) => `<div class="row"><span>${esc(r.game)} <span class="dim">wk ${r.week} · ${r.awayScore}–${r.homeScore}</span></span><span>` +
     [r.spread, r.total, r.ml].filter(Boolean).map((x) => `${esc(x.label)} ${x.result === "W" ? '<span class="g">W</span>' : x.result === "L" ? '<span class="r">L</span>' : "P"}`).join(" · ") + `</span></div>`).join("");
-  $("record-model").innerHTML = `<div class="card" style="margin-top:10px">` +
+  $("record-model").innerHTML = pastBox() + `<div class="card" style="margin-top:10px">` +
     `<div class="sec"><div class="sh">Summary</div>` +
     `<div class="row"><span class="dim">Your record · P/L</span><span>${s.wins}–${s.losses}${s.pushes ? "–" + s.pushes : ""} · ${cMoney(s.pl)}</span></div>` +
     `<div class="row"><span class="dim">Return · avg price move your way</span><span>${cPct(s.roi)} · ${cPct(s.avgClv)}${s.clvCount != null ? ` <span class="dim">(${s.clvCount} bet${s.clvCount === 1 ? "" : "s"} with closing prices)</span>` : ""}</span></div>` +
