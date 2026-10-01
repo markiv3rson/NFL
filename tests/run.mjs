@@ -144,8 +144,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     picks: { spread: { recorded: 11, graded: 11, w: 6, l: 5, hit: 6 / 11 }, total: { recorded: 11, graded: 10, w: 4, l: 6, hit: 0.4 } } }`, ctx);
   const box = ctx.T.winnersBox();
   ok(box.indexOf("BAL") < box.indexOf("KC") && /1\. <b>BAL<\/b> over TEN/.test(box) && /2\. <b>KC<\/b> over LV/.test(box) && !/X over Y/.test(box), "page: ranked by chance, started games left out");
-  ok(/84%/.test(box) && /Polymarket 82¢/.test(box) && /7–3 · right 70%/.test(box) && /top 4/i.test(box), "page: chance, price and the season record shown");
-  ok(/Spread: <b>BAL -10\.5<\/b>/.test(box) && /Total: <b>Under 41\.5<\/b>/.test(box), "page: each game also shows the model's spread side and total side");
+  ok(/84%/.test(box) && /82¢/.test(box) && /7–3 · right 70%/.test(box) && /top 4/i.test(box), "page: chance, price and the season record shown");
+  ok(/BAL -10\.5 · Under 41\.5/.test(box), "page: each game also shows the model's spread side and total side");
   ok(/Spreads[\s\S]*6–5 · covered 55%/.test(box) && /Totals[\s\S]*4–6 · right 40%/.test(box), "page: separate season records for winners, spreads and totals"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);

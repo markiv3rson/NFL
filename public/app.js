@@ -117,7 +117,7 @@ function leanCell(g, kind) {
   // the >50% side as the pick (e.g. "GB -1.5 · 52.1%") even when "Model sees TB by 4.6" sat right under it, because the
   // calibration slightly fades the model. Within 2.5 pts of 50% it now says so; the tilt stays visible in small text.
   const coin = Math.abs(p.pct - 50) < 2.5;
-  return wrap((coin ? `<span>No lean · about 50/50</span><div class="s">Model's side: <b>${esc(p.label)}</b> — it differs from the line by ${p.gap != null ? p.gap.toFixed(1) : "?"} pts. Model sides have covered about ${Math.round(p.pct)}% (2013–25).</div>` :
+  return wrap((coin ? `<span>No lean · about 50/50</span><div class="s">Model's side: <b>${esc(p.label)}</b> (${p.gap != null ? p.gap.toFixed(1) : "?"} pts off the line; ~${Math.round(p.pct)}% historically)</div>` :
     `<span>${p.label}</span><div class="s">${p.pct.toFixed(1)}% model chance</div>`) +
     // Win chance (calibrated cal_win). Its accuracy comes from the MARKET spread; the model's own disagreement enters
     // with a small NEGATIVE weight (tested 2006-25: when the model likes a team more than the market does, that team
@@ -153,12 +153,11 @@ function winnersBox() {
   const W = S.winners, pc = (x) => (x == null ? "—" : `${Math.round(x * 100)}%`);
   const rec = W && W.all && W.all.n ? `<div class="row"><span class="dim">This season, all picks</span><span>${W.all.w}–${W.all.l} · right ${pc(W.all.hit)} <span class="dim">(said ${pc(W.all.said)})</span></span></div>` +
     (W.top4 && W.top4.n ? `<div class="row"><span class="dim">Each week's top 4</span><span>${W.top4.w}–${W.top4.l} · right ${pc(W.top4.hit)} <span class="dim">(said ${pc(W.top4.said)})</span></span></div>` : "") : '<div class="s dim">The record starts after this week\'s games: each pick is saved at kickoff and graded when the game ends.</div>';
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Most likely winners · who wins the game (not the spread)</div>` +
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Most likely winners</div>` +
     (list.map((x, i) => { const g = S.games.find((y) => y.key === x.game), sides = g ? modelSide(g) : [], sp = sides.find((s) => s.market === "Spread"), tt = sides.find((s) => s.market === "Total");
-      return `<div class="row" style="display:block"><div style="display:flex;justify-content:space-between"><span>${i + 1}. <b>${esc(x.team)}</b> over ${esc(x.opp)} <span class="dim">${x.where}</span></span><span>${Math.round(x.p * 100)}%${x.price ? ` <span class="dim">· Polymarket ${Math.round(x.price * 100)}¢</span>` : ""}</span></div>` +
-        `<div class="s">${sp ? `Spread: <b>${esc(sp.label)}</b>` : "Spread: —"} · ${tt ? `Total: <b>${esc(tt.label)}</b>` : "Total: —"}</div></div>`; }).join("") || '<div class="s">No lines yet.</div>') +
+      return `<div class="row"><span>${i + 1}. <b>${esc(x.team)}</b> over ${esc(x.opp)} <span class="dim">· ${sp ? esc(sp.label) : "—"} · ${tt ? esc(tt.label) : "—"}</span></span><span>${Math.round(x.p * 100)}%${x.price ? ` <span class="dim">· ${Math.round(x.price * 100)}¢</span>` : ""}</span></div>`; }).join("") || '<div class="s">No lines yet.</div>') +
     `<div class="sec">${rec}${pickRec("spread", "Spreads")}${pickRec("total", "Totals")}</div>` +
-    `<div class="s dim">What to expect, from 2007–25 tests: the favorite won 55% at 50–60% confidence, 63% at 60–70%, 76% at 70–80% and 85% at 80–90%. Spread and total sides covered only about 51% and 50% (nobody is reliably better than that), so the winner column is where you can be right most often. Spread and total sides are the model's; the record below each game's pick is saved at kickoff and graded after the game.</div></div></div>`;
+    `<div class="s dim">Each line: winner and chance, Polymarket price, then the model's spread and total side. Tested 2007–25: favorites at 60–70% won 63%, at 70–80% 76%; spread and total sides covered only ~51% and 50%, so the winner is where you can be right most.</div></div></div>`;
 }
 // "Right now" (9/30): Polymarket prices 3%+ better than fresh sportsbook fair prices -- the one realistic edge source.
 function rightNowBox() {
@@ -169,7 +168,7 @@ function rightNowBox() {
   return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Right now · Polymarket cheaper than the sportsbooks</div>` +
     (E.length ? E.map((b) => `<div class="row"><span>${esc(b.label)} <span class="dim">${esc(b.game)}</span>${b.held ? ` <span class="y">(${esc(b.held)} — hold)</span>` : ""}</span>` +
       `<span>${Math.round(b.price * 100)}¢ vs fair ${Math.round(b.fair * 100)}¢ · <span class="g">+${(b.evNet * 100).toFixed(1)}%</span></span></div>`).join("") : `<div class="s">No gap of 3%+ (${why}).</div>`) +
-    `<div class="s dim" style="margin-top:4px">Gap = sportsbook fair chance ÷ Polymarket price − 1, ${fee}. Sportsbook odds must be under ${R.booksMaxAgeEarlyH || 8} h old (${R.booksMaxAgeH || 3} h on game day). Results are tracked on Record → Model.</div></div></div>`;
+    `<div class="s dim" style="margin-top:4px">Gap = fair chance ÷ price − 1, ${fee}; book odds under ${R.booksMaxAgeEarlyH || 8} h old. Tracked on Record → Model.</div></div></div>`;
 }
 // "What changed" (9/30): Polymarket line moves since your last visit on this device.
 let LAST_SEEN = null;
@@ -186,11 +185,12 @@ function changedBox() {
     if (a.ml && now.ml && Math.abs(a.ml.home - now.ml.home) >= 0.05) bits.push(`${g.home} moneyline ${Math.round(a.ml.home * 100)}¢ → ${Math.round(now.ml.home * 100)}¢`);
     if (bits.length) out.push(`<div class="row"><span>${esc(g.key)}</span><span>${bits.join(" · ")}</span></div>`);
   }
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">What changed since your last visit (${hm(LAST_SEEN)})</div>` +
-    (out.join("") || (newWeek ? `<div class="s">New lines since your last visit (${newWeek} game${newWeek === 1 ? "" : "s"} opened after it) — see each card's History.</div>` : '<div class="s">No Polymarket line moves.</div>')) + `<div class="s dim" style="margin-top:4px">TD price moves are on the Anytime TD tab.</div></div></div>`;
+  if (!out.length && !newWeek) return "";   // nothing to say: no card
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Changed since your last visit (${hm(LAST_SEEN)})</div>` +
+    (out.join("") || `<div class="s">${newWeek} new game line${newWeek === 1 ? "" : "s"} opened — see each card's History.</div>`) + `</div></div>`;
 }
 function renderLines() {
-  $("lines").innerHTML = winnersBox() + rightNowBox() + changedBox() + [...S.games].sort(order).map((g, i) => {
+  $("lines").innerHTML = rightNowBox() + changedBox() + [...S.games].sort(order).map((g, i) => {
     const p = g.poly || {}, b = g.books || {};
     const live = !g.started && p.spread ? '<span class="live"></span>' : "";
     const row = (k, v, mt) => `<div class="prl${mt ? " mt" : ""}"><span class="s">${k}</span><span>${v}</span></div>`;
@@ -519,7 +519,7 @@ function renderLab() {
         `<div class="row" style="display:block"><div>${p.legs.map(legLine).join("<br>")}</div><div class="s">pays ${p.pay.toFixed(2)}x${p.prob != null ? ` · market chance ${pct(p.prob)}` : ""}${p.result ? ` · <b class="${p.result === "W" ? "g" : p.result === "L" ? "r" : ""}">${p.result === "W" ? "HIT" : p.result === "L" ? "missed" : "push"}</b>` : ""}</div></div>`).join("") :
         '<div class="s">No qualifying legs this week.</div>') + `</div>`; }).join("");
   const rows = Object.keys(names).map((k) => { const b = board[k]; return `<div class="row"><span class="dim">${esc(names[k])}</span><span>${b ? `${b.hits} of ${b.graded} hit${b.graded ? ` (${pct(b.hitRate)}, market said ${pct(b.expRate)})` : ""} · return ${b.roi == null ? "—" : cPct(b.roi)}` : "—"}</span></div>`; }).join("");
-  $("lab").innerHTML = pickLabBox() + intro + `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Week ${wk ? wk.week : S ? S.week : ""} paper parlays</div>${thisWeek}</div></div>` +
+  $("lab").innerHTML = (S ? winnersBox() : "") + pickLabBox() + intro + `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Week ${wk ? wk.week : S ? S.week : ""} paper parlays</div>${thisWeek}</div></div>` +
     `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Scoreboard · this season</div>${rows}<div class="s dim" style="margin-top:4px">Return per $1, before fees. Parlays are streaky: judge after 100+ graded, not a few weeks.</div></div></div>`;
 }
 function renderAll() { weekline(); renderLines(); renderTotals(); renderTd(); if (MB) renderRecord(); }
