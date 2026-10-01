@@ -362,7 +362,7 @@ def pos_rec(defteam):
     ps=t.receiver_player_id.map(lambda i:{'FB':'RB','HB':'RB'}.get(pos.position.get(i),pos.position.get(i)))
     g=len(games[(games.home_team==defteam)|(games.away_team==defteam)])
     return {k:0.85*((ps==k).sum()+4*v)/(g+4)/v for k,v in AVG.items()}
-def run(team,opp,imp,outs=(),posadj=False):
+def run(team,opp,imp,outs=(),posadj=False,active=False):
     o_rush,o_rec=dstats(opp); rows=[]
     mine = cur[cur.team==team]
     if not len(mine) and len(ROS_TEAM):
@@ -420,7 +420,7 @@ def run(team,opp,imp,outs=(),posadj=False):
     # (Vacated-usage boost removed 9/30: handing an Out player's red-zone share to teammates tested WORSE in 7 of 7
     # seasons, 2019-25 -- the teammates' own usage already carries most of it, and the bump overshot.)
     pb_=team_budget(shrink(m.predict_proba(design(df))[:,1]), imp)
-    df['p']=touch_adjusted(df, pb_, team)   # 10/1: x the chance he plays AND touches the ball (falls back to the rank tilt)
+    df['p']=touch_adjusted(df, pb_, team, active)   # 10/1: x the chance he plays AND touches the ball (falls back to the rank tilt)
     df['boosted'] = False
     df['depth_note']=[DEPTH_NOTE.get(pid) for pid in df.pid]
     return df.sort_values('p',ascending=False)[['name','pos','p','boosted','depth_note']]
@@ -468,11 +468,21 @@ TOUCH_MEAN = [1.569396, 0.204976, 0.460706, 0.468006, 0.013825, 0.200869, 0.3888
 TOUCH_SCALE = [0.746154, 0.127576, 0.289202, 0.267211, 0.116764, 0.400651, 0.674365, 0.485346, 0.229436, 2.374554, 4.536742]
 TOUCH_COEF = [-0.017068, -0.116241, 0.582569, 0.216033, 0.125243, -0.622508, -0.656877, -0.092541, 0.022239, 0.352244, 0.480237]
 TOUCH_INTERCEPT = 1.135998
-def touch_prob(X):
-    """X: rows in TOUCH_FEATS order -> chance he plays and touches the ball."""
-    z = TOUCH_INTERCEPT + ((np.asarray(X, dtype=float) - np.array(TOUCH_MEAN)) / np.array(TOUCH_SCALE)) @ np.array(TOUCH_COEF)
+# Once the inactive list is out (inside 80 minutes of kickoff, ESPN feed up) everyone still listed is playing, so the question is only
+# whether he touches the ball. Returning stars show why this matters: 2021-25 regulars back after an Out/Doubtful week who PLAYED touched
+# the ball 100% of the time and scored 35-36% (healthy stars 37%); the lower average came from the 36-39% who sat again. Same inputs,
+# fit on the 28,528 played player-games only. Walk-forward 2021-25 on players who played: better than the all-in model in 5 of 5
+# seasons (Brier 0.13610 vs 0.13695) and closer to actual at 25-40% (said 31.3% vs 34.0% actual, was 36.1%).
+TOUCH2_MEAN = [1.514018, 0.213771, 0.506998, 0.503352, 0.0, 0.063832, 0.19218, 0.503873, 0.962949, 3.663268, 2.373353]
+TOUCH2_SCALE = [0.749196, 0.130815, 0.282059, 0.263309, 1.0, 0.244453, 0.454731, 0.490634, 0.188888, 2.395083, 4.617076]
+TOUCH2_COEF = [-0.171957, -0.071239, 0.421314, 0.330832, 0.0, 0.049755, -0.234643, -0.006197, 0.037847, 0.995609, 2.062878]
+TOUCH2_INTERCEPT = 3.17296
+def touch_prob(X, active=False):
+    """X: rows in TOUCH_FEATS order -> chance he plays and touches the ball (active=True: chance he touches it, given he plays)."""
+    m, s, c, b = (TOUCH2_MEAN, TOUCH2_SCALE, TOUCH2_COEF, TOUCH2_INTERCEPT) if active else (TOUCH_MEAN, TOUCH_SCALE, TOUCH_COEF, TOUCH_INTERCEPT)
+    z = b + ((np.asarray(X, dtype=float) - np.array(m)) / np.array(s)) @ np.array(c)
     return 1 / (1 + np.exp(-z))
-def touch_adjusted(df, pb, team):
+def touch_adjusted(df, pb, team, active=False):
     """pb = chances after the team-total step (one team's list). Returns pb x touch chance; any problem -> the rank tilt."""
     try:
         pb = np.asarray(pb, dtype=float); order = np.argsort(-pb, kind="stable"); rank = np.empty(len(pb)); rank[order] = np.arange(1, len(pb) + 1)
@@ -484,7 +494,7 @@ def touch_adjusted(df, pb, team):
         missed = np.array([1.0 if (np.isnan(w) or w < tl) else 0.0 for w in lw])
         gap = np.array([sum(1 for w in tw if w > PID_LAST_TOUCH[pid]) if pid in PID_LAST_TOUCH else 99 for pid in df.pid.values], dtype=float)
         X = np.column_stack([np.log(rank), pb, s1, s3, miss, missed, np.log1p(np.minimum(gap, 20)), df.depth1.values.astype(float), df.depth_known.values.astype(float), df.r_t.values.astype(float), df.r_c.values.astype(float)])
-        out = np.clip(pb * touch_prob(X), 0, 0.97)
+        out = np.clip(pb * touch_prob(X, active), 0, 0.97)
         return out if np.all(np.isfinite(out)) else availability(pb)
     except Exception: return availability(pb)
 

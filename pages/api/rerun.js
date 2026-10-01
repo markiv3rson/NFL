@@ -61,7 +61,9 @@ export default async function handler(req, res) {
       return { away: g.away, home: g.home, key: g.key, kickoff: g.kickoff, wind: w.wind, outdoor: w.outdoor && w.wind != null,
         dome: vn ? !vn.outdoor : null, neutral: isNeutral(g), turf: isTurf(g),
         restAwayDays: g.kickoff ? restDays(g.away, g.kickoff) : null,
-        spread: hs == null ? null : -hs, total, outs };
+        spread: hs == null ? null : -hs, total, outs,
+        // inactive list is out: inside 80 min of kickoff with the ESPN feed up, everyone still listed is playing (same rule as the page)
+        active: !!espn && !!g.kickoff && (new Date(g.kickoff) - Date.now()) / 60000 >= 0 && (new Date(g.kickoff) - Date.now()) / 60000 <= 80 };
     }));
     // Injury adjustment only uses THIS week's official report (a stale list from last week must never move a lean).
     const injFor = (t, gk) => { const off = (injuries[t] || []).filter((x) => Number(x.week) === Number(week)).map((x) => ({ name: x.name, pos: x.pos, status: x.status }));
@@ -83,7 +85,7 @@ export default async function handler(req, res) {
       inj: { away: injFor(x.away, x.kickoff), home: injFor(x.home, x.kickoff) } })) });
     if (!Array.isArray(lines.results)) throw new Error(`model service /rerun-game-lines gave no results: ${JSON.stringify(lines).slice(0, 200)}`);   // was silent: a service-side error object looked like "0 games"
     const tdIn = payload.filter((x) => x.spread != null && x.total != null);
-    const td = tdIn.length ? await post(base, "/rerun-td-probs", { games: tdIn.map((x) => ({ away: x.away, home: x.home, spread: x.spread, total: x.total, outs: x.outs })) }) : { results: [] };
+    const td = tdIn.length ? await post(base, "/rerun-td-probs", { games: tdIn.map((x) => ({ away: x.away, home: x.home, spread: x.spread, total: x.total, outs: x.outs, active: x.active })) }) : { results: [] };
     const store = (await getJSON(K.model(season, week))) || { games: {}, td: {} };
     const runAt = new Date().toISOString();
     let nLines = 0, nTd = 0; const errors = [], alertJobs = [];

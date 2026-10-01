@@ -44,4 +44,8 @@ def row(**k):
 reg, bad_ = ns["touch_prob"](row()), ns["touch_prob"](row(s1f=0.1, s3f=0.2, missed_last=1, lgap=np.log1p(6), depth1=0, r_t=0.5, r_c=0.2))
 ok(0 < bad_ < reg < 1 and reg > 0.7 and bad_ < 0.45, "touch model: regular who played last game >> depth player who missed it %s" % ((round(float(reg), 3), round(float(bad_), 3)),))
 ok(ns["touch_prob"](row(missed_last=1)) < reg and ns["touch_prob"](row(lgap=np.log1p(5))) < reg and ns["touch_prob"](row(s1f=0.9)) > reg, "touch model: missed last game / long gap lower it, more snaps raise it")
+# once the inactive list is out (active=True) a returning regular who missed the last game is NOT discounted for sitting: he plays
+ret_ = row(missed_last=1, lgap=np.log1p(1), s1f=0.8, s3f=0.8)
+ok(ns["touch_prob"](ret_, active=True) > 0.9 and ns["touch_prob"](ret_, active=True) > ns["touch_prob"](ret_, active=False) + 0.2, "touch model: confirmed-active returning regular keeps his touch chance")
+ok(ns["touch_prob"](row(lrank=np.log(12), r_t=0.3, r_c=0.1, s1f=0.2, s3f=0.2), active=True) < 0.8, "touch model: a confirmed-active deep reserve still touches it less")
 print(f"service checks: {'FAILED ' + str(bad) if bad else 'all passed'}"); sys.exit(1 if bad else 0)
