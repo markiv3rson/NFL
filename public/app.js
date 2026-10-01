@@ -705,6 +705,7 @@ function showPanel(name) {
   $("bell").classList.toggle("on", name === "alerts");
   document.querySelectorAll(".panel").forEach((p) => p.classList.remove("on")); $("panel-" + name).classList.add("on");
   if (name === "record" || name === "lab") loadRecord();
+  if (S && S.games) setBg(name === "lines" && DETAIL ? S.games.find((x) => x.key === DETAIL) : null);   // game background only on an open game page
 }
 document.querySelectorAll(".tabs button").forEach((btn) => btn.addEventListener("click", () => {
   if (btn.dataset.tab === "lines" && DETAIL && $("panel-lines").classList.contains("on")) closeGame();   // tapping the tab you are on goes back to the tiles
