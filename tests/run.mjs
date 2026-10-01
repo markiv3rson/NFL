@@ -110,13 +110,14 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const g = { key: "PIT @ CLE", away: "PIT", home: "CLE" };
   // CLE is a +2.5 underdog at home; the model has CLE winning by 3.1 -> model side is CLE +2.5; total 37.1 vs 38.5 -> Under
   const poly = { spread: { homeSpread: 2.5, home: 0.48, away: 0.53 }, total: { line: 38.5, over: 0.5, under: 0.51 } };
-  const p = picksFor(g, poly, { homeMargin: 3.1, total: 37.1 });
+  const p = picksFor(g, poly, { homeMargin: 3.1, total: 37.1 }).filter((x) => x.market === "spread" || x.market === "total");
   ok(p.length === 2 && p[0].label === "CLE +2.5" && Math.abs(p[0].gap - 5.6) < 1e-9 && p[0].price === 0.48, "spread: model side is CLE +2.5, differs by 5.6, priced at CLE's price", p[0]);
   ok(p[1].label === "Under 38.5" && Math.abs(p[1].gap - 1.4) < 1e-9 && p[1].price === 0.51, "total: model side is Under 38.5", p[1]);
   const q = picksFor(g, { spread: { homeSpread: -6.5, home: 0.5, away: 0.51 } }, { homeMargin: 3.0, total: 40 });
   ok(q.length === 2 && q[0].market === "spread" && q[0].label === "PIT +6.5" && q[0].price === 0.51, "home favorite the model likes less -> road team with the points", q);
   ok(q[1].market === "dog" && q[1].label === "PIT +6.5" && picksFor(g, { spread: { homeSpread: -7, home: 0.5, away: 0.51 } }, { homeMargin: 3.0 }).every((x) => x.market !== "dog") && picksFor(g, { spread: { homeSpread: -2.5, home: 0.5, away: 0.51 } }, { homeMargin: 3.0 }).every((x) => x.market !== "dog"), "road dog +3 to +6.5 is recorded, +7 and +2.5 are not");
-  ok(picksFor(g, poly, { homeMargin: -2.5, total: 38.5 }).length === 0, "model exactly on the line -> no pick");
+  ok(picksFor(g, poly, { homeMargin: 3.1 }).some((x) => x.market === "away3" && x.label === "PIT -2.5" && x.price === 0.53) && !picksFor(g, { spread: { homeSpread: -3.5, home: 0.5, away: 0.5 } }, { homeMargin: 1 }).some((x) => x.market === "away3"), "road team in a close game (spread 3 or less) is recorded, 3.5 is not");
+  ok(picksFor(g, poly, { homeMargin: -2.5, total: 38.5 }).filter((x) => x.market !== "away3").length === 0, "model exactly on the line -> no pick");
   ok(picksFor(g, null, { homeMargin: 3 }).length === 0 && picksFor(g, poly, null).length === 0, "no lines or no model -> no pick");
   await recordPicks(2026, 4, g, poly, { homeMargin: 3.1, total: 37.1 }, "t");
   await recordPicks(2026, 4, g, poly, { homeMargin: 3.4, total: 37.0 }, "t2");          // a later (closer to kickoff) write replaces the earlier one
@@ -132,11 +133,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(road.team === "KC" && road.where === "away" && Math.abs(road.p - (1 - 1 / (1 + Math.exp(-(-0.0452 - 0.1464 * 7))))) < 1e-9 && road.p > 0.7, "road favorite (home +7): KC", road);
   ok(winnerFor({ key: "A @ B", away: "A", home: "B" }, { ml: { home: 0.6, away: 0.45 } }).team === "B" && winnerFor({ key: "A @ B", away: "A", home: "B" }, null) === null, "moneyline fallback, and no lines -> no pick");
   const gm = (k, hs) => ({ key: k, away: k.split(" @ ")[0], home: k.split(" @ ")[1], hs });
-  for (const x of [["A @ B", -10.5], ["C @ D", -7], ["E @ F", -3], ["G @ H", -1], ["I @ J", 3], ["K @ L", -2]]) await recordWinner(2026, 7, gm(x[0]), { spread: { homeSpread: x[1] } }, "t");
+  for (const x of [["A @ B", -10.5], ["C @ D", -7], ["E @ F", -3], ["G @ H", -1], ["I @ J", 3], ["K @ L", -2]]) await recordWinner(2026, 7, gm(x[0]), { spread: { homeSpread: x[1] } }, "t", x[0] === "A @ B" ? { homeMargin: -4 } : x[0] === "C @ D" ? { homeMargin: -5 } : null);
   await gradeWinnersWeek(2026, 7, [{ key: "A @ B", homeScore: 30, awayScore: 10 }, { key: "C @ D", homeScore: 10, awayScore: 20 }, { key: "E @ F", homeScore: 20, awayScore: 17 },
     { key: "G @ H", homeScore: 14, awayScore: 14 }, { key: "I @ J", homeScore: 17, awayScore: 24 }, { key: "K @ L", homeScore: 6, awayScore: 9 }]);
   const w = await winnersSummary(2026);
   ok(w.recorded === 6 && w.all.n === 5 && w.all.w === 3 && w.all.l === 2, "record: 6 recorded, the tie is left out, 3 right and 2 wrong", w.all);
+  ok(w.stats.n === 2 && w.stats.w === 1 && w.stats.l === 1, "stats-only winner graded on its own: A (model said away, home won) wrong, C (model said away, away won) right; games with no model margin are left out", w.stats);
   ok(w.top4.n === 4 && w.top4.w === 3 && w.top4.l === 1, "each week's top 4 by chance (A, C, I, E): A, I, E right and C wrong", w.top4);
   ok(w.bands.find((x) => x.label === "80%+").n === 1 && w.bands.find((x) => x.label === "50-60%").n >= 1, "bands by confidence", w.bands.map((x) => `${x.label}:${x.n}`));
   vm.runInContext(`S = { games: [{ key: "TEN @ BAL", away: "TEN", home: "BAL", started: false, winPct: 84.4, model: { homeMargin: 12, total: 40 }, poly: { ml: { home: 0.82, away: 0.2 }, spread: { homeSpread: -10.5, home: 0.5, away: 0.51 }, total: { line: 41.5, over: 0.5, under: 0.51 } } },

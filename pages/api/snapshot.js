@@ -28,7 +28,7 @@ async function writePrelog(season, week, g, t, poly, bk, model) {
   await setJSON(`prelog:${season}:${week}:${g.key}`, { t, game: g.key, poly, books: bk,
     model: mg ? { homeMargin: mg.homeMargin, total: mg.total, homeWinPct: mg.homeWinPct, calHomeCover: mg.calHomeCover, calUnder: mg.calUnder, mktHomeSpread: mg.mktHomeSpread, mktTotal: mg.mktTotal, runAt: mdl.runAt || null } : null, topTd });
   await recordPicks(season, week, g, poly, mg, t).catch(() => 0);   // Pick Lab: the model's side at the kickoff-time price (9/30)
-  await recordWinner(season, week, g, poly, t).catch(() => 0);      // Most likely winners: the favorite at kickoff (9/30)
+  await recordWinner(season, week, g, poly, t, mg).catch(() => 0);      // Most likely winners: the favorite at kickoff (9/30)
 }
 
 export default async function handler(req, res) {
