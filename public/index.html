@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" href="/icon-192.png">
 <title>NFL SLATEZZZ</title>
 <style>
-  :root { --bg:#08090b; --card:rgba(255,255,255,.055); --card2:rgba(255,255,255,.04); --line:rgba(255,255,255,.1); --line2:rgba(255,255,255,.07);
+  :root { --bg:#08090b; --card:rgba(3,8,7,.68); --card2:rgba(255,255,255,.04); --line:rgba(255,255,255,.1); --line2:rgba(255,255,255,.07);
     --text:#ececef; --dim:#aab0bd; --faint:#8d95a3; --red:#ff6b6b; --green:#3ddc97; --yellow:#f2cf66; --blue:#7cb7ff; --gold:#f2cf66; --cyan:#4fe3d0;
     --violet:#b794ff; --vglow:0 0 10px rgba(183,148,255,.7); --rose:#ffa3b3; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -25,14 +25,14 @@
   html, body { margin:0; padding:0; background:#08090b; color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
     padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); }
   body { background:linear-gradient(160deg,#1e2025 0%,#121418 50%,#08090b 100%) fixed; min-height:100vh; }
-  .wrap { max-width:980px; margin:0 auto; padding:14px max(12px,env(safe-area-inset-right)) 120px max(12px,env(safe-area-inset-left)); }
+  .wrap { position:relative; z-index:0; max-width:980px; margin:0 auto; padding:14px max(12px,env(safe-area-inset-right)) 120px max(12px,env(safe-area-inset-left)); }
   /* header: translucent maroon panel, countdown on the right, tabs under it */
   .hero { position:relative; overflow:hidden; border-radius:20px; padding:16px; display:flex; justify-content:space-between; align-items:center; gap:10px;
     background:radial-gradient(120% 140% at 0% 0%,rgba(255,90,120,.5) 0%,rgba(0,0,0,0) 60%),linear-gradient(135deg,rgba(150,28,58,.55) 0%,rgba(105,16,44,.42) 55%,rgba(62,10,30,.34) 100%);
     border:1px solid rgba(255,150,170,.42); }
   .hero .wk { font-size:10.5px; font-weight:700; letter-spacing:.16em; color:var(--rose); }
-  .hero h1 { font-size:30px; font-weight:800; line-height:1.05; margin:4px 0 0; }
-  .hero .upd { font-size:11px; color:var(--faint); margin-top:6px; }
+  .hero h1 { font-size:28px; font-weight:800; line-height:1.05; margin:4px 0 0; white-space:nowrap; }
+  .hero .upd { font-size:11px; color:var(--faint); margin-top:6px; cursor:pointer; white-space:nowrap; }
   .hero .cd { text-align:right; }
   .hero .cdl { font-size:10px; font-weight:700; letter-spacing:.14em; color:var(--rose); margin-bottom:6px; }
   .cdn { display:flex; gap:5px; align-items:flex-start; justify-content:flex-end; }
@@ -48,8 +48,7 @@
   .bell.on { background:rgba(255,110,140,.3); }
   .bell .cnt { position:absolute; top:3px; right:3px; min-width:16px; height:16px; border-radius:8px; padding:0 4px; font-size:10px; font-weight:800; display:none; align-items:center; justify-content:center;
     background:rgba(255,93,93,.3); border:1px solid rgba(255,130,130,.75); color:#ffc2c2; }
-  @media (max-width:760px) { .wrap { padding-right:calc(62px + env(safe-area-inset-right)); } }
-  .panel { display:none; } .panel.on { display:block; }
+    .panel { display:none; } .panel.on { display:block; }
   .grid { display:grid; grid-template-columns:1fr; gap:10px; margin-top:10px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:12px 14px; position:relative; overflow:hidden; -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); }
   .card.fin { border-color:rgba(255,107,107,.6); }
@@ -103,12 +102,14 @@
   .tile { position:relative; overflow:hidden; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:12px; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.3); text-align:left; font:inherit; color:inherit; }
   .tile .wmk { position:absolute; top:50%; width:110px; height:110px; margin-top:-55px; opacity:.17; object-fit:contain; pointer-events:none; }
   .tile .wmk.l { left:-22px; } .tile .wmk.r { right:-22px; }
-  .tile .in { position:relative; display:flex; flex-direction:column; gap:9px; }
-  .tile .nm { display:flex; align-items:center; justify-content:space-between; }
-  .tile .t { font-size:20px; font-weight:800; font-style:italic; }
-  .tile .mid { font-size:15px; font-weight:800; }
+  .tile { display:flex; flex-direction:column; justify-content:flex-start; align-items:stretch; }
+  .tile .in { position:relative; display:flex; flex-direction:column; gap:9px; width:100%; }
+  .tile .nm { display:flex; align-items:center; justify-content:space-between; gap:6px; }
+  .tile .t { font-size:19px; font-weight:800; font-style:italic; }
+  .tile .mid { font-size:14px; font-weight:800; white-space:nowrap; }
   .tile .bar { height:4px; border-radius:2px; background:rgba(255,255,255,.14); overflow:hidden; } .tile .bar i { display:block; height:4px; background:var(--blue); }
-  .tile .ft { display:flex; justify-content:space-between; align-items:center; font-size:12px; color:#c9ced6; gap:6px; }
+  .tile .ft { display:flex; justify-content:space-between; align-items:center; font-size:12px; color:#c9ced6; gap:4px 6px; flex-wrap:wrap; }
+  .tile .ft > span:first-child { white-space:nowrap; }
   .chip { font-size:10px; font-weight:800; padding:2px 8px; border-radius:999px; white-space:nowrap; }
   .c-amb { color:var(--gold); background:rgba(242,207,102,.14); } .c-red { color:var(--red); background:rgba(255,107,107,.14); }
   .c-grn { color:var(--green); background:rgba(61,220,151,.14); } .c-cy { color:var(--cyan); background:rgba(79,227,208,.14); }
@@ -159,17 +160,17 @@
   .chips { display:flex; gap:8px; overflow:auto; margin-top:10px; padding-bottom:2px; }
   .chips button { flex-shrink:0; min-height:40px; font:inherit; font-size:12px; font-weight:700; padding:10px 14px; border-radius:999px; cursor:pointer; color:var(--faint); background:transparent; border:1px solid var(--line); }
   .chips button.on { color:var(--rose); background:rgba(255,110,140,.14); border-color:rgba(255,150,170,.42); }
-  /* side buttons: right edge, thumb height */
-  .fab { position:fixed; right:max(6px,env(safe-area-inset-right)); top:50%; margin-top:-62px; z-index:50; display:flex; flex-direction:column; align-items:center; gap:14px; }
-  .fab .fb { width:50px; display:flex; flex-direction:column; align-items:center; gap:3px; }
-  .fab button { width:48px; height:48px; border-radius:50%; padding:0; cursor:pointer; color:var(--rose); background:rgba(60,10,26,.5); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); border:1px solid rgba(255,150,170,.42); box-shadow:0 4px 14px rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; font:inherit; }
+  /* Lines / Model buttons: two small pills at the bottom right, over a faded strip so they never hide content */
+  .fab { position:fixed; right:max(12px,env(safe-area-inset-right)); bottom:max(14px,calc(env(safe-area-inset-bottom) + 6px)); z-index:50; display:flex; flex-direction:row; align-items:center; gap:8px; }
+  .fab .fb { display:flex; }
+  .fab button { height:44px; padding:0 14px 0 12px; border-radius:999px; cursor:pointer; color:var(--rose); background:rgba(60,10,26,.62); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,150,170,.45); box-shadow:0 4px 14px rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; gap:6px; font:inherit; font-size:12.5px; font-weight:700; }
   .fab button:disabled { opacity:.5; }
-  .fab span { font-size:9px; font-weight:700; letter-spacing:.04em; color:#c9ced6; }
-  .toast { position:fixed; right:calc(64px + env(safe-area-inset-right)); top:50%; max-width:260px; transform:translateY(-50%); font-size:12px; line-height:1.45; padding:9px 12px; border-radius:12px; background:rgba(20,22,26,.95); border:1px solid var(--line); display:none; z-index:60; }
+  .toast { position:fixed; right:max(12px,env(safe-area-inset-right)); bottom:calc(max(14px,env(safe-area-inset-bottom)) + 62px); max-width:300px; font-size:12px; line-height:1.45; padding:9px 12px; border-radius:12px; background:rgba(20,22,26,.95); border:1px solid var(--line); display:none; z-index:60; }
   .toast.show { display:block; }
   .card .inner { position:relative; }
-  .cwm { position:absolute; top:8px; width:130px; height:130px; opacity:.15; object-fit:contain; pointer-events:none; }
-  .cwm.l { left:-26px; } .cwm.r { right:-26px; }
+  /* game page: the two team logos split the whole page in half behind the cards (away left, home right) */
+  .pagewm { position:fixed; inset:0; z-index:-1; pointer-events:none; display:flex; overflow:hidden; align-items:center; }
+  .pagewm img { width:50%; height:100%; object-fit:contain; transform:scale(1.25); opacity:.3; }
   .sc { border:1px solid var(--line); }
   .mcard, #panel-lab .card { border-color:rgba(183,148,255,.6); box-shadow:0 0 14px rgba(150,100,255,.22); }
   #detail .gh, #detail .sub { display:none; }
@@ -189,6 +190,7 @@
 </style>
 </head>
 <body>
+<div class="pagewm" id="bgwm"></div>
 <div class="wrap">
   <div class="hero">
     <div><div class="wk" id="hero-wk">WEEK</div><h1>NFL Slate</h1><div class="upd" id="hero-upd">Loading…</div></div>
@@ -226,8 +228,8 @@
 </div>
 <div class="fab">
   <div id="toast" class="toast"></div>
-  <div class="fb"><button id="refresh-btn" aria-label="Refresh lines and injuries"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14-4M4 5v4h4M4 13a8 8 0 0 0 14 4M20 19v-4h-4"/></svg></button><span>Lines</span></div>
-  <div class="fb"><button id="rerun-btn" aria-label="Rerun model"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button><span>Model</span></div>
+  <div class="fb"><button id="refresh-btn" aria-label="Refresh lines and injuries"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14-4M4 5v4h4M4 13a8 8 0 0 0 14 4M20 19v-4h-4"/></svg>Lines</button></div>
+  <div class="fb"><button id="rerun-btn" aria-label="Rerun model"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Model</button></div>
 </div>
 <script src="/app.js"></script>
 </body>
