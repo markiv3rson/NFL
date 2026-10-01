@@ -270,7 +270,7 @@ function tdRow(x, i) {
   return `<div class="tdr"><img class="wmc" loading="lazy" decoding="async" src="${logoUrl(r.team)}" alt="" onerror="this.style.display='none'"><div class="in"><span class="rk">${i + 1}</span>` +
     `<div class="nmx"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos)}</span>${r.injury && GAME_STATUS.test(r.injury) ? ` <span class="pill ${/out|doubt/i.test(r.injury) ? "p-r" : "p-y"}" style="padding:0 6px;font-size:10px">${esc(r.injury)}</span>` : ""}<div class="g2">${esc(r.game)}</div></div>` +
     `<div class="mp"><em>${Math.round(r.fair)}%</em><div class="bar"><i style="width:${Math.min(100, r.fair)}%"></i></div></div><div class="pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}</div></div>` +
-    `<div class="more">${prow(r, g, true)}</div></div>`;
+    `<div class="more" style="--tc:${TEAM_COLOR[r.team] || "#444"}">${prow(r, g, true)}</div></div>`;
 }
 function renderTd() {
   const wk = S.week ? ` · Week ${S.week}` : "";
