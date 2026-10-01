@@ -42,4 +42,4 @@ Upload changed folders through GitHub "Upload files" → Commit. Vercel and Rail
 - Alerts (bell): injuries, backup-QB starts, line moves, new price gaps, model moves, wind 12+ mph and final results, saved by the snapshot / rerun / grading jobs (`lib/alerts.js`, `/api/alerts`). A rerun only alerts against an earlier run, so a new week never floods the feed.
 - Color code: blue = market, gold = moneyline, violet (glowing) = the model, amber = warnings, red = injuries/live/bad, cyan = price gaps, green = wins only.
 - Pick Lab is model-only (banner); the model's results moved there from Record. Record shows only your own bets.
-- Not built: live Polymarket lines during games (needs a check that Polymarket keeps its markets open in play).
+- Live lines: while a game is in progress its card shows Polymarket's current spread / moneyline / total (`/api/live`, 15 s cache, refreshed every 30 s while the game is open) with a LIVE tag. Display only: the model, picks, kickoff line, closing line and grades stay locked at kickoff. If Polymarket has no open lines for the game the card says so instead of showing an old number.
