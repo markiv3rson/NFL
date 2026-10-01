@@ -22,9 +22,10 @@
   html { -webkit-text-size-adjust:100%; text-size-adjust:100%; overscroll-behavior-y:none; }
   button, .tile, .tdr, .gapstrip, .al { touch-action:manipulation; -webkit-touch-callout:none; }
   button { -webkit-appearance:none; appearance:none; }
-  html, body { margin:0; padding:0; background:#08090b; color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  html, body { margin:0; padding:0; color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
     padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); }
-  body { background:linear-gradient(160deg,#1e2025 0%,#121418 50%,#08090b 100%) fixed; min-height:100vh; }
+  html { background:linear-gradient(160deg,#1e2025 0%,#121418 50%,#08090b 100%) fixed #08090b; }
+  body { background:transparent; min-height:100vh; }
   .wrap { position:relative; z-index:0; max-width:980px; margin:0 auto; padding:14px max(12px,env(safe-area-inset-right)) 120px max(12px,env(safe-area-inset-left)); }
   /* header: translucent maroon panel, countdown on the right, tabs under it */
   .hero { position:relative; overflow:hidden; border-radius:20px; padding:16px; display:flex; justify-content:space-between; align-items:center; gap:10px;
@@ -55,9 +56,9 @@
   .gh { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:16px; font-weight:700; }
   .badge { font-size:10.5px; font-weight:700; padding:1px 8px; border-radius:999px; background:rgba(242,207,102,.14); color:var(--gold); }
   .sub { font-size:12px; color:var(--faint); margin-top:2px; }
-  .k { font-size:10.5px; color:var(--faint); text-transform:uppercase; letter-spacing:.04em; }
+  .k { font-size:13px; color:var(--faint); text-transform:uppercase; letter-spacing:.04em; }
   .f { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 14px; margin-top:10px; font-size:14px; }
-  .hd { font-size:10.5px; font-weight:800; letter-spacing:.07em; color:var(--blue); border-bottom:1px solid rgba(124,183,255,.45); padding-bottom:3px; }
+  .hd { font-size:13px; font-weight:800; letter-spacing:.07em; color:var(--blue); border-bottom:1px solid rgba(124,183,255,.45); padding-bottom:3px; }
   .hd.hm { color:var(--violet); border-color:rgba(183,148,255,.6); text-shadow:var(--vglow); }
   .modelcell { border:1px solid rgba(183,148,255,.6); box-shadow:0 0 14px rgba(150,100,255,.22); border-radius:14px; padding:9px 10px; background:rgba(255,255,255,.04); }
   .mod { color:var(--violet); text-shadow:var(--vglow); }
@@ -168,9 +169,11 @@
   .toast { position:fixed; right:max(12px,env(safe-area-inset-right)); bottom:calc(max(14px,env(safe-area-inset-bottom)) + 62px); max-width:300px; font-size:12px; line-height:1.45; padding:9px 12px; border-radius:12px; background:rgba(20,22,26,.95); border:1px solid var(--line); display:none; z-index:60; }
   .toast.show { display:block; }
   .card .inner { position:relative; }
+  .prl > .s { text-transform:uppercase; letter-spacing:.04em; font-size:13px; }
   /* game page: the two team logos split the whole page in half behind the cards (away left, home right) */
   .pagewm { position:fixed; inset:0; z-index:-1; pointer-events:none; display:flex; overflow:hidden; align-items:center; }
-  .pagewm img { width:50%; height:100%; object-fit:contain; transform:scale(1.25); opacity:.3; }
+  .pagewm img { width:50%; height:100%; object-fit:contain; transform:scale(1.25); opacity:.2; }
+  .pagewm::after { content:""; position:absolute; inset:0; background:rgba(0,0,0,.4); }
   .sc { border:1px solid var(--line); }
   .mcard, #panel-lab .card { border-color:rgba(183,148,255,.6); box-shadow:0 0 14px rgba(150,100,255,.22); }
   #detail .gh, #detail .sub { display:none; }
