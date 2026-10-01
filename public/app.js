@@ -24,7 +24,7 @@ function status(g) {
   return "not started";
 }
 function headButtons(g, id, extra = "", noWarn = false) {
-  const n = (g.injuries || []).length;
+  const n = noWarn ? 0 : (g.injuries || []).length;
   return `<div class="top"><div><div class="gh">${matchup(g)}${g.badge ? `<span class="badge">${esc(g.badge)}</span>` : ""}</div><div class="sub">${tm(g.kickoff)} · ${status(g)}${extra}</div>` +
     (!noWarn && g.qb && g.qb.length && !g.final ? `<div class="warn">⚠ ${esc(g.qb.join(" · "))} · ${qbAdjusted(g) ? "model adjusted (estimate)" : "not in the model yet — it adjusts once this week's injury report lists the starter Out/Doubtful (Wed–Fri report, then the Thu/Sat reruns)"}</div>` : "") +
     (!noWarn && g.dataCheck ? `<div class="warn">⚠ ${esc(g.dataCheck)}</div>` : "") + `</div>` +
@@ -251,16 +251,6 @@ function prow(r, g, showGame) {
     `<div class="why">${more}${flags}</div></div>`;
 }
 const usable = (r) => !(r.odds != null && r.odds <= -600 && !r.thin);   // a real -600 price is broken data; never hide a player over a thin placeholder
-function tdCard(g, id) {
-  const p = g.poly || {}, hs = p.spread ? p.spread.homeSpread : null, tot = p.total ? p.total.line : null;
-  const lines = hs != null && tot != null ? ` · ${g.home} ${sgn(hs)} · O/U ${tot}` : "";
-  const implied = (team) => (hs == null || tot == null ? "" : `implied ${(team === g.home ? tot / 2 - hs / 2 : tot / 2 + hs / 2).toFixed(1)} pts`);
-  const n = { game1: 1, game2: 2, game3: 3 }[tdSort] || 99;
-  const side = (team) => { const rows = (g.td || []).filter((r) => r.team === team && r.fair != null && usable(r)).sort((a, b) => b.fair - a.fair).slice(0, n);
-    const gp = g.tdGroups && g.tdGroups[team], groups = gp ? ["RB", "WR", "TE"].filter((k) => gp[k] != null).map((k) => `${k} ${Math.round(gp[k])}%`).join(" · ") : "";
-    return `<div><div class="sh" style="color:#c9c9cf">${tlogo(team)}${team} <span class="s" style="font-weight:400">${implied(team)}</span></div>${groups ? `<div class="s" style="margin-bottom:2px">Chance any one of them scores: ${groups}</div>` : ""}${rows.map((r) => prow(r, g, false)).join("") || '<div class="s">No players yet — tap ▶ Rerun model.</div>'}</div>`; };
-  return `<div class="card${g.final ? " fin" : ""}" style="margin-top:10px"><div class="inner">${headButtons(g, id, lines)}<div class="teams">${side(g.away)}${side(g.home)}</div>${(g.espnRemoved || []).length ? `<div class="s r" style="margin-top:6px">Removed — ESPN lists them out for this game: ${esc(g.espnRemoved.join(", "))}</div>` : ""}${(g.tdUnmodeled || []).length ? `<div class="s" style="margin-top:6px">Also on Polymarket with a real market, <b>not in the model</b> (QBs, returners, new or dropped players — check before buying): ${g.tdUnmodeled.map((u) => `${esc(u.player)} ${Math.round(u.price * 100)}¢${u.thin ? " (thin)" : ""}`).join(" · ")}</div>` : ""}</div>${cover(g, null)}</div>`;
-}
 function tdRow(x, i) {
   const r = x.r, g = x.g;
   return `<div class="tdr"><img class="wmc" loading="lazy" decoding="async" src="${logoUrl(r.team)}" alt="" onerror="this.style.display='none'"><div class="in"><span class="rk">${i + 1}</span>` +
@@ -636,7 +626,7 @@ function setBg(g) {
 }
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = "";
-  $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}<div class="grid">${gameCard(g, "x")}</div><div class="sh" style="margin:16px 2px 0">Total</div><div class="grid">${totalCard(g, "x")}</div>${tdTop3(g)}`;
+  $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}<div class="sh" style="margin:16px 2px 0">SPREAD · MONEYLINE</div><div class="grid">${gameCard(g, "x")}</div><div class="sh" style="margin:16px 2px 0">TOTAL</div><div class="grid">${totalCard(g, "x")}</div>${tdTop3(g)}`;
   $("back-btn").onclick = closeGame;
   setBg(g);
 }
