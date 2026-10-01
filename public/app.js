@@ -495,8 +495,8 @@ function pickLabBox() {
   const pc = (x) => (x == null ? "—" : `${(x * 100).toFixed(1)}%`), P = PICKS || {};
   const rec = (m, name) => { const x = P[m]; if (!x || !x.recorded) return `<div class="row"><span class="dim">${name}</span><span class="dim">none recorded yet</span></div>`;
     return `<div class="row"><span class="dim">${name}</span><span>${x.w}–${x.l} · covered ${pc(x.hit)} · return ${x.roi == null ? "—" : cPct(x.roi)} <span class="dim">(need ${pc(x.need)} to break even)</span></span></div>` +
-      x.bands.filter((b) => b.graded).map((b) => `<div class="row"><span class="dim" style="padding-left:10px">when the model differs by ${b.label}</span><span>${b.w}–${b.l} · ${pc(b.hit)}</span></div>`).join(""); };
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Pick Lab · model's side, paper only</div>${rec("spread", "Spreads")}${rec("total", "Totals")}` +
+      (x.bands || []).filter((b) => b.graded).map((b) => `<div class="row"><span class="dim" style="padding-left:10px">when the model differs by ${b.label}</span><span>${b.w}–${b.l} · ${pc(b.hit)}</span></div>`).join(""); };
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Pick Lab · model's side, paper only</div>${rec("spread", "Spreads")}${rec("total", "Totals")}${rec("dog", "Road dogs +3 to +6.5")}` +
     `<div class="s dim" style="margin-top:4px">Saved at kickoff, graded after. Tested: ~51% on spreads (break-even 52.4%), ~50% on totals. Judge after 100+ picks.</div></div></div>`;
 }
 function renderLab() {

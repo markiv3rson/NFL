@@ -114,7 +114,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(p.length === 2 && p[0].label === "CLE +2.5" && Math.abs(p[0].gap - 5.6) < 1e-9 && p[0].price === 0.48, "spread: model side is CLE +2.5, differs by 5.6, priced at CLE's price", p[0]);
   ok(p[1].label === "Under 38.5" && Math.abs(p[1].gap - 1.4) < 1e-9 && p[1].price === 0.51, "total: model side is Under 38.5", p[1]);
   const q = picksFor(g, { spread: { homeSpread: -6.5, home: 0.5, away: 0.51 } }, { homeMargin: 3.0, total: 40 });
-  ok(q.length === 1 && q[0].label === "PIT +6.5" && q[0].price === 0.51, "home favorite the model likes less -> road team with the points", q);
+  ok(q.length === 2 && q[0].market === "spread" && q[0].label === "PIT +6.5" && q[0].price === 0.51, "home favorite the model likes less -> road team with the points", q);
+  ok(q[1].market === "dog" && q[1].label === "PIT +6.5" && picksFor(g, { spread: { homeSpread: -7, home: 0.5, away: 0.51 } }, { homeMargin: 3.0 }).every((x) => x.market !== "dog") && picksFor(g, { spread: { homeSpread: -2.5, home: 0.5, away: 0.51 } }, { homeMargin: 3.0 }).every((x) => x.market !== "dog"), "road dog +3 to +6.5 is recorded, +7 and +2.5 are not");
   ok(picksFor(g, poly, { homeMargin: -2.5, total: 38.5 }).length === 0, "model exactly on the line -> no pick");
   ok(picksFor(g, null, { homeMargin: 3 }).length === 0 && picksFor(g, poly, null).length === 0, "no lines or no model -> no pick");
   await recordPicks(2026, 4, g, poly, { homeMargin: 3.1, total: 37.1 }, "t");
