@@ -662,13 +662,8 @@ function tickCd() {
   if (!nxt) { ["d", "h", "m", "s"].forEach((k) => set("cd-" + k, "--")); set("cd-g", "No upcoming games this week"); tickCd._cur = null; return; }
   const ms = Math.max(0, new Date(nxt.kickoff) - Date.now());
   set("cd-d", p2(Math.floor(ms / 864e5))); set("cd-h", p2(Math.floor((ms % 864e5) / 36e5))); set("cd-m", p2(Math.floor((ms % 36e5) / 6e4))); set("cd-s", p2(Math.floor((ms % 6e4) / 1e3)));
-  set("cd-g", `${nxt.away} @ ${nxt.home} · ${tm(nxt.kickoff)}`);
+  $("cd-g").innerHTML = `${tlogo(nxt.away)}${nxt.away} @ ${tlogo(nxt.home)}${nxt.home} · ${tm(nxt.kickoff)}`;
   if (tickCd._cur && tickCd._cur !== nxt.key && Date.now() - (tickCd._last || 0) > 15000) { tickCd._last = Date.now(); setTimeout(() => loadSlate().catch(() => {}), 4000); }   // the game we were counting to just kicked off: refresh once
-  if (tickCd._bg !== nxt.key) {   // header shows the next game: team colors in halves with the split logos (away left, home right)
-    tickCd._bg = nxt.key;
-    const bg = document.getElementById("hero-bg"), ca = TEAM_COLOR[nxt.away] || "#444", ch = TEAM_COLOR[nxt.home] || "#444";
-    if (bg) { bg.style.background = `linear-gradient(90deg, ${ca}59 0%, ${ca}1f 50%, ${ch}1f 50%, ${ch}59 100%)`; bg.innerHTML = `<img src="${logoUrl(nxt.away)}" alt="" onerror="this.style.display='none'"><img src="${logoUrl(nxt.home)}" alt="" onerror="this.style.display='none'">`; }
-  }
   tickCd._cur = nxt.key;
   tickCd._h = setTimeout(tickCd, 1000);
 }
