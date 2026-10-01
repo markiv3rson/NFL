@@ -200,7 +200,7 @@ function gameCard(g, i) {
     // Tested angle (9/30): home favorites of 9.5+ on the moneyline, the one game-line angle that held up on unseen years
     const hsNow = p.spread ? p.spread.homeSpread : b.spread ? b.spread.homeSpread : null;
     const angle = !g.final && hsNow != null && hsNow <= -9.5 ? `<div class="s g" style="margin:6px 0 0">★ Tested angle: ${g.home} moneyline (home favorite 9.5+). 2007–25: won ~88%, about +2–3% per bet at sportsbook prices — small edge, check Polymarket's price.</div>` : "";
-    return `<div class="card${g.final ? " fin" : ""}">${wmPair(g)}<div class="inner">${headButtons(g, "l" + i)}${angle}<div class="f">${HDR}` +
+    return `<div class="card${g.final ? " fin" : ""}"><div class="inner">${headButtons(g, "l" + i)}${angle}<div class="f">${HDR}` +
       `<div><div class="k">Sportsbooks (reference only)</div>${b.spread ? `${g.home} ${sgn(b.spread.homeSpread)} ${odds(b.spread.home.odds)}<div class="s">fair (vig removed) ${g.home} ${odds(toAmerican(b.spread.home.fair))} / ${g.away} ${odds(toAmerican(b.spread.away.fair))}</div>` : dash}</div>` +
       leanCell(g, "spread") +
       `<div><div class="k">${pmLogo()}Polymarket (where you bet)</div>${poly}</div>` +
@@ -214,7 +214,7 @@ function totalCard(g, i) {
     const live = !g.started && p.total ? '<span class="live"></span>' : "";
     const row = (k, v) => `<div class="prl"><span class="s">${k}</span><span class="mkt">${v}</span></div>`;
     const poly = liveHead(g, lv, "total") + (p.total ? `${live}` + row(`Over ${p.total.line}`, odds(toAmerican(p.total.over))) + row(`Under ${p.total.line}`, odds(toAmerican(p.total.under))) : dash) + liveTail(g, lv, "total");
-    return `<div class="card${g.final ? " fin" : ""}">${wmPair(g)}<div class="inner">${headButtons(g, "t" + i)}<div class="f">${HDR}` +
+    return `<div class="card${g.final ? " fin" : ""}"><div class="inner">${headButtons(g, "t" + i)}<div class="f">${HDR}` +
       `<div><div class="k">Sportsbooks (reference only)</div>${b.total ? `${b.total.line}<div class="s">O ${odds(b.total.over.odds)} · U ${odds(b.total.under.odds)}</div>` : dash}</div>` +
       leanCell(g, "total") +
       `<div><div class="k">${pmLogo()}Polymarket (where you bet)</div>${poly}</div>` +
@@ -594,7 +594,6 @@ let DETAIL = null, LASTY = 0, ALERTS = [], ALFILTER = "all", ALPREV = null;
 const pmLogo = () => '<span class="pm"><img src="https://polymarket.com/favicon.ico" alt="" onerror="this.parentNode.textContent=\'P\'"></span>';
 const injBadge = (team) => `<span class="injb"><img src="${logoUrl(team)}" alt="" onerror="this.style.visibility='hidden'"><u>+</u></span>`;
 const injBadgeFor = (g) => { const inj = g.model && g.model.inj; if (!inj) return ""; const t = inj.home.players.length ? g.home : inj.away.players.length ? g.away : null; return t ? injBadge(t) : ""; };
-const wmPair = (g) => `<img class="cwm l" src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img class="cwm r" src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'">`;
 function tile(g) {
   const eg = (S.edgesNow || []).filter((b) => b.game === g.key);
   const hp = g.winPct != null ? Number(g.winPct) : null, ap = hp == null ? null : 100 - hp;
@@ -612,7 +611,7 @@ function gapStrip() {
 }
 function tdTop3(g) {
   const side = (team) => { const rows = (g.td || []).filter((r) => r.team === team && r.fair != null && usable(r)).sort((a, b) => b.fair - a.fair).slice(0, 3);
-    return `<div class="sc card mcard"><img class="wmc" src="${logoUrl(team)}" alt="" onerror="this.style.display='none'"><div class="in"><div class="hh">${team} top scorers</div>` +
+    return `<div class="sc card mcard"><div class="in"><div class="hh">${team} top scorers</div>` +
       (rows.map((r, i) => `<div class="p"><div class="a"><span class="dim" style="font-size:11px;width:16px">#${i + 1}</span><b>${esc(r.player)}<span class="pos">${esc(r.pos)}</span></b><em class="mod">${Math.round(r.fair)}%</em></div>` +
         `<div class="b">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${r.two != null ? ` · 2+ ${Math.round(r.two)}%` : ""}${r.first != null ? ` · 1st ${Math.round(r.first)}%` : ""}</div></div>`).join("") || '<div class="s">No players yet.</div>') + `</div></div>`; };
   return `<div class="scorers">${side(g.away)}${side(g.home)}</div>`;
@@ -625,12 +624,12 @@ function startsIn(g) {
 function detailTop(g) {
   const hp = g.winPct != null ? Number(g.winPct) : null, ap = hp == null ? null : Math.round(100 - hp), hr = ap == null ? null : 100 - ap;
   const st = g.final ? `Final ${g.awayScore != null ? `${g.awayScore}–${g.homeScore}` : ""}` : g.started ? '<span class="r">Live · locked</span>' : startsIn(g);
-  return `<div class="card dtop">${wmPair(g)}<div class="inner"><div class="nm"><span class="t">${g.away}</span><div class="mid">${g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : ""}<div class="s2">${tm(g.kickoff)}</div><div class="s3">${st}</div></div><span class="t">${g.home}</span></div>` +
+  return `<div class="card dtop"><div class="inner"><div class="nm"><span class="t">${g.away}</span><div class="mid">${g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : ""}<div class="s2">${tm(g.kickoff)}</div><div class="s3">${st}</div></div><span class="t">${g.home}</span></div>` +
     (hp == null || g.final ? "" : `<div class="wc"><div class="wl"><b class="mkt">${ap}%</b><span class="mkt">WIN CHANCE · MARKET</span><span class="dim">${hr}%</span></div><div class="bar"><i style="width:${ap}%"></i></div></div>`) + `</div></div>`;
 }
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = "";
-  $("detail").innerHTML = `<button class="back" id="back-btn">← All games</button>${detailTop(g)}<div class="grid">${gameCard(g, "x")}</div>${tdTop3(g)}<div class="sh" style="margin:16px 2px 0">Total</div><div class="grid">${totalCard(g, "x")}</div>`;
+  $("detail").innerHTML = `<div class="pagewm"><img src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'"></div><button class="back" id="back-btn">← All games</button>${detailTop(g)}<div class="grid">${gameCard(g, "x")}</div>${tdTop3(g)}<div class="sh" style="margin:16px 2px 0">Total</div><div class="grid">${totalCard(g, "x")}</div>`;
   $("back-btn").onclick = closeGame;
 }
 function renderLines() {

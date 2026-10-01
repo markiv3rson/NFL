@@ -25,7 +25,7 @@
   html, body { margin:0; padding:0; background:#08090b; color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
     padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); }
   body { background:linear-gradient(160deg,#1e2025 0%,#121418 50%,#08090b 100%) fixed; min-height:100vh; }
-  .wrap { max-width:980px; margin:0 auto; padding:14px max(12px,env(safe-area-inset-right)) 120px max(12px,env(safe-area-inset-left)); }
+  .wrap { position:relative; z-index:0; max-width:980px; margin:0 auto; padding:14px max(12px,env(safe-area-inset-right)) 120px max(12px,env(safe-area-inset-left)); }
   /* header: translucent maroon panel, countdown on the right, tabs under it */
   .hero { position:relative; overflow:hidden; border-radius:20px; padding:16px; display:flex; justify-content:space-between; align-items:center; gap:10px;
     background:radial-gradient(120% 140% at 0% 0%,rgba(255,90,120,.5) 0%,rgba(0,0,0,0) 60%),linear-gradient(135deg,rgba(150,28,58,.55) 0%,rgba(105,16,44,.42) 55%,rgba(62,10,30,.34) 100%);
@@ -168,8 +168,9 @@
   .toast { position:fixed; right:max(12px,env(safe-area-inset-right)); bottom:calc(max(14px,env(safe-area-inset-bottom)) + 62px); max-width:300px; font-size:12px; line-height:1.45; padding:9px 12px; border-radius:12px; background:rgba(20,22,26,.95); border:1px solid var(--line); display:none; z-index:60; }
   .toast.show { display:block; }
   .card .inner { position:relative; }
-  .cwm { position:absolute; top:8px; width:130px; height:130px; opacity:.15; object-fit:contain; pointer-events:none; }
-  .cwm.l { left:-26px; } .cwm.r { right:-26px; }
+  /* game page: the two team logos split the whole page in half behind the cards (away left, home right) */
+  .pagewm { position:fixed; inset:0; z-index:-1; pointer-events:none; display:flex; align-items:center; }
+  .pagewm img { width:50%; height:64vh; object-fit:contain; opacity:.14; }
   .sc { border:1px solid var(--line); }
   .mcard, #panel-lab .card { border-color:rgba(183,148,255,.6); box-shadow:0 0 14px rgba(150,100,255,.22); }
   #detail .gh, #detail .sub { display:none; }
