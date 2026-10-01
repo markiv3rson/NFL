@@ -119,10 +119,6 @@ function leanCell(g, kind) {
   const coin = Math.abs(p.pct - 50) < 2.5;
   return wrap((coin ? `<span>No lean · about 50/50</span><div class="s">Model's side: <b class="mod">${esc(p.label)}</b> (${p.gap != null ? p.gap.toFixed(1) : "?"} pts off the line; ~${Math.round(p.pct)}% historically)</div>` :
     `<span>${p.label}</span><div class="s">${p.pct.toFixed(1)}% model chance</div>`) +
-    // Win chance (calibrated cal_win). Its accuracy comes from the MARKET spread; the model's own disagreement enters
-    // with a small NEGATIVE weight (tested 2006-25: when the model likes a team more than the market does, that team
-    // wins slightly LESS often than the line says). So this number can point the other way from "Model sees..." above.
-    (kind !== "total" && g.winPct != null ? `<div class="s">Win chance (market-based): ${g.home} ${100 - Math.round(100 - g.winPct)}% · ${g.away} ${Math.round(100 - g.winPct)}%</div>` : "") +
     (reason ? `<div class="s" style="margin-top:6px">${esc(reason)}</div>` : "") +
     (wind ? `<div class="s">${wind}</div>` : "") +
     (adj ? `<div class="s r" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">${injBadgeFor(g)}${esc(adj)}</div>` : "") +

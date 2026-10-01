@@ -104,7 +104,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   g = { away: "A", home: "H", model: { total: 44.4, fix: { dome: 2.59, pace: 0.1, div: true } }, poly: { total: { line: 45.5 } } };
   ok(/about 44\.4 total/.test(T.totalReason(g)) && /indoor game \+2\.6/.test(T.totalReason(g)), "totals wording");
   g = { away: "A", home: "H", winPct: 61.2, model: { homeMargin: 3, fix: {} }, spreadPick: { label: "H -2.5", pct: 51.1 }, poly: {} };
-  ok(/No lean · about 50\/50/.test(T.leanCell(g, "spread")) && /H 61% · A 39%/.test(T.leanCell(g, "spread")), "lean wording");
+  ok(/No lean · about 50\/50/.test(T.leanCell(g, "spread")) && !/market-based/.test(T.leanCell(g, "spread")), "lean wording");
   const row = T.prow({ player: "O'Neil <b>", pos: "WR", team: "H", game: "A @ H", fair: 20.1, fairIfPlays: 30, injury: "Questionable", price: 0.25, teamRank: 2 }, { started: false }, false);
   ok(/30% if he plays/.test(row) && /O&#39;Neil &lt;b>/.test(row), "Questionable row + names escaped");
   ok(/check how Polymarket settled it/.test(T.betRow({ source: "preloaded", legs: [{ result: "W", kind: "total", side: "under", line: 43 }, { result: "P", kind: "total", side: "over", line: 44 }], result: "P", pushUnconfirmed: true, cost: 5, toWin: 20, pl: null })), "combo push wording");
