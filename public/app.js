@@ -51,7 +51,7 @@ function historyRows(g) {
     rows.slice().reverse().map((r, i) => `<div class="drow"><span>${hm(r.from.t)}${r.from.src === "kickoff" ? " 🔒" : ""}` +
       `${r.last !== r.from ? `<br><span class="dim">last checked ${hm(r.last.t)}</span>` : ""}${i === rows.length - 1 ? '<br><span class="dim">opening line</span>' : ""}</span>${cell(r.from.poly)}</div>`).join("");
 }
-const HDR = `<div class="hd">MARKET · what you can bet</div><div class="hd hm">MODEL · our math</div>`;
+const HDR = `<div class="hd">MARKET</div><div class="hd hm">MODEL</div>`;
 const qbAdjusted = (g) => !!(g.model && g.model.inj && [g.model.inj.home, g.model.inj.away].some((t) => t && (t.players || []).some((q) => q.group === "QB1")));
 const lastName = (n) => String(n || "").replace(/\s+(Jr\.?|Sr\.?|II|III|IV)$/i, "").split(" ").slice(-1)[0];
 const favOf = (g, mg) => (mg >= 0 ? g.home : g.away);
@@ -201,9 +201,9 @@ function gameCard(g, i) {
     const hsNow = p.spread ? p.spread.homeSpread : b.spread ? b.spread.homeSpread : null;
     const angle = !g.final && hsNow != null && hsNow <= -9.5 ? `<div class="s g" style="margin:6px 0 0">★ Tested angle: ${g.home} moneyline (home favorite 9.5+). 2007–25: won ~88%, about +2–3% per bet at sportsbook prices — small edge, check Polymarket's price.</div>` : "";
     return `<div class="card${g.final ? " fin" : ""}"><div class="inner">${headButtons(g, "l" + i)}${angle}<div class="f">${HDR}` +
-      `<div><div class="k">Sportsbooks (reference only)</div>${b.spread ? `${g.home} ${sgn(b.spread.homeSpread)} ${odds(b.spread.home.odds)}<div class="s">fair (vig removed) ${g.home} ${odds(toAmerican(b.spread.home.fair))} / ${g.away} ${odds(toAmerican(b.spread.away.fair))}</div>` : dash}</div>` +
+      `<div><div class="k">Sportsbook</div>${b.spread ? `${g.home} ${sgn(b.spread.homeSpread)} ${odds(b.spread.home.odds)}<div class="s">fair (vig removed) ${g.home} ${odds(toAmerican(b.spread.home.fair))} / ${g.away} ${odds(toAmerican(b.spread.away.fair))}</div>` : dash}</div>` +
       leanCell(g, "spread") +
-      `<div><div class="k">${pmLogo()}Polymarket (where you bet)</div>${poly}</div>` +
+      `<div><div class="k">${pmLogo()}Polymarket</div>${poly}</div>` +
       `</div></div>${cover(g, g.spreadPick)}</div>`;
   }
 }
@@ -215,9 +215,9 @@ function totalCard(g, i) {
     const row = (k, v) => `<div class="prl"><span class="s">${k}</span><span class="mkt">${v}</span></div>`;
     const poly = liveHead(g, lv, "total") + (p.total ? `${live}` + row(`Over ${p.total.line}`, odds(toAmerican(p.total.over))) + row(`Under ${p.total.line}`, odds(toAmerican(p.total.under))) : dash) + liveTail(g, lv, "total");
     return `<div class="card${g.final ? " fin" : ""}"><div class="inner">${headButtons(g, "t" + i, "", true)}<div class="f">${HDR}` +
-      `<div><div class="k">Sportsbooks (reference only)</div>${b.total ? `${b.total.line}<div class="s">O ${odds(b.total.over.odds)} · U ${odds(b.total.under.odds)}</div>` : dash}</div>` +
+      `<div><div class="k">Sportsbook</div>${b.total ? `${b.total.line}<div class="s">O ${odds(b.total.over.odds)} · U ${odds(b.total.under.odds)}</div>` : dash}</div>` +
       leanCell(g, "total") +
-      `<div><div class="k">${pmLogo()}Polymarket (where you bet)</div>${poly}</div>` +
+      `<div><div class="k">${pmLogo()}Polymarket</div>${poly}</div>` +
       `</div></div>${cover(g, g.totalPick)}</div>`;
   }
 }
