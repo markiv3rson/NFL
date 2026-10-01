@@ -171,7 +171,8 @@
   .card .inner { position:relative; }
   /* game page: the two team logos split the whole page in half behind the cards (away left, home right) */
   .pagewm { position:fixed; inset:0; z-index:-1; pointer-events:none; display:flex; overflow:hidden; align-items:center; }
-  .pagewm img { width:50%; height:100%; object-fit:contain; transform:scale(1.25); opacity:.3; }
+  .pagewm img { width:50%; height:100%; object-fit:contain; transform:scale(1.25); opacity:.2; }
+  .pagewm::after { content:""; position:absolute; inset:0; background:rgba(0,0,0,.4); }
   .sc { border:1px solid var(--line); }
   .mcard, #panel-lab .card { border-color:rgba(183,148,255,.6); box-shadow:0 0 14px rgba(150,100,255,.22); }
   #detail .gh, #detail .sub { display:none; }

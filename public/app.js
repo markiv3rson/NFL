@@ -636,7 +636,7 @@ function updateBg() {
   if (!g) return;
   const k = g.away + g.home; if (el.dataset.k === k) return; el.dataset.k = k;
   const ca = TEAM_COLOR[g.away] || "#444", ch = TEAM_COLOR[g.home] || "#444";
-  el.style.background = `linear-gradient(90deg, ${ca}66 0%, ${ca}33 50%, ${ch}33 50%, ${ch}66 100%)`;
+  el.style.background = `linear-gradient(90deg, ${ca}3d 0%, ${ca}1f 50%, ${ch}1f 50%, ${ch}3d 100%)`;
   el.innerHTML = `<img src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'">`;
 }
 function renderDetail(g) {
