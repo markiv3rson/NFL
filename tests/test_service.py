@@ -33,4 +33,8 @@ q2 = ns["team_budget"](p, 24); lam = -np.log(1 - np.clip(p, 0, .95)); tgt = max(
 exp_total = (lam * (tgt / np.sort(lam)[::-1][:8].sum()) ** 0.5).sum()
 ok(abs((-np.log(1 - q2)).sum() - exp_total) < 1e-9, "concentration tilt keeps the team's expected TDs unchanged")
 ok((-np.log(1 - q2))[0] / (-np.log(1 - q2)).sum() > lam[0] / lam.sum(), "concentration tilt gives the top player a bigger share")
+# availability tilt (td_prob.availability): the best option is scaled least, order never changes, nothing goes up
+a = ns["availability"](p); fac = a / p
+ok(bool(np.all(a <= p + 1e-12)) and bool(np.all(np.diff(a) <= 0)) and abs(fac[0] - 0.918) < 1e-9 and bool(np.all(np.diff(fac) <= 1e-12)), "availability: scales down, keeps order, #1 least")
+sh = np.random.RandomState(0).permutation(len(p)); ash = ns["availability"](p[sh]); ok(bool(np.allclose(ash, a[sh])), "availability depends on the rank, not the list order")
 print(f"service checks: {'FAILED ' + str(bad) if bad else 'all passed'}"); sys.exit(1 if bad else 0)

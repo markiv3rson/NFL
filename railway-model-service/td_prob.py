@@ -409,7 +409,7 @@ def run(team,opp,imp,outs=(),posadj=False):
     if posadj: df['o_rec']=df.pos.map(pos_rec(opp))
     # (Vacated-usage boost removed 9/30: handing an Out player's red-zone share to teammates tested WORSE in 7 of 7
     # seasons, 2019-25 -- the teammates' own usage already carries most of it, and the bump overshot.)
-    df['p']=team_budget(shrink(m.predict_proba(design(df))[:,1]), imp)
+    df['p']=availability(team_budget(shrink(m.predict_proba(design(df))[:,1]), imp))   # 10/1: then the availability tilt
     df['boosted'] = False
     df['depth_note']=[DEPTH_NOTE.get(pid) for pid in df.pid]
     return df.sort_values('p',ascending=False)[['name','pos','p','boosted','depth_note']]
@@ -433,6 +433,17 @@ def team_budget(p, imp):
     if lam.sum() > 0:
         l2 = lam ** BUDGET_CONC; lam = l2 * lam.sum() / l2.sum()
     return 1 - np.exp(-lam)
+
+# Availability (10/1): the model learns from player-games where the player TOUCHED the ball, but the list holds every player
+# who has touched it this season, including ones who sit, are inactive, or play without a touch. Replayed on the live-style list
+# (2019-25, 38,513 listed players; injury-report Out/Doubtful removed, Questionable x0.669, after the team total step) the shown
+# chances ran 18% too high overall: #1-#4 on a team 5-13% high, #7-#8 32% high, #9+ 44% high (said 19.7% vs 16.1% actual).
+# A smooth multiplier by rank on the team, 0.918 x rank^-0.084 (#1 x0.92 ... #20 x0.71), fit on all seven seasons; fitted on the
+# other six each time it beat the unadjusted numbers in 6 of 7 held-out seasons (Brier -0.0018 on average).
+AVAIL_C, AVAIL_G = 0.918, 0.084
+def availability(p):
+    p = np.asarray(p, dtype=float); order = np.argsort(-p, kind="stable"); rank = np.empty(len(p)); rank[order] = np.arange(1, len(p) + 1)
+    return np.clip(p * np.minimum(1.0, AVAIL_C * rank ** -AVAIL_G), 0, 0.97)
 
 import time as _time
 _LIVE_T = _time.time()
