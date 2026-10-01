@@ -628,12 +628,15 @@ function detailTop(g) {
     (hp == null || g.final ? "" : `<div class="wc"><div class="wl"><b class="mkt">${ap}%</b><span class="mkt">WIN CHANCE · MARKET</span><span class="dim">${hr}%</span></div><div class="bar"><i style="width:${ap}%"></i></div></div>`) + `</div></div>`;
 }
 // page-wide team logos: the open game, otherwise the next game to kick off (away left half, home right half)
+const TEAM_COLOR = { ARI: "#97233f", ATL: "#a71930", BAL: "#5c2d91", BUF: "#00338d", CAR: "#0085ca", CHI: "#e64100", CIN: "#fb4f14", CLE: "#ff3c00", DAL: "#2a5db0", DEN: "#fb4f14", DET: "#0076b6", GB: "#2f7d4f", HOU: "#c8102e", IND: "#2a6ebb", JAX: "#00a3b5", KC: "#e31837", LV: "#a5acaf", LAC: "#0080c6", LA: "#2a6ebb", LAR: "#2a6ebb", MIA: "#00a6a6", MIN: "#6a3fb0", NE: "#2a5db0", NO: "#d3bc8d", NYG: "#2a5db0", NYJ: "#2f7d4f", PHI: "#00898a", PIT: "#ffb612", SF: "#c8102e", SEA: "#4a8f2a", TB: "#d50a0a", TEN: "#4b92db", WAS: "#7a2236" };
 function updateBg() {
   const el = document.getElementById("bgwm"); if (!el || !S || !S.games) return;
   let g = DETAIL ? S.games.find((x) => x.key === DETAIL) : null;
   if (!g) { const up = S.games.filter((x) => !x.final).sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff)); g = up[0] || S.games[0]; }
   if (!g) return;
   const k = g.away + g.home; if (el.dataset.k === k) return; el.dataset.k = k;
+  const ca = TEAM_COLOR[g.away] || "#444", ch = TEAM_COLOR[g.home] || "#444";
+  el.style.background = `linear-gradient(90deg, ${ca}66 0%, ${ca}33 50%, ${ch}33 50%, ${ch}66 100%)`;
   el.innerHTML = `<img src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'">`;
 }
 function renderDetail(g) {
