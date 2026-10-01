@@ -117,6 +117,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(q.length === 2 && q[0].market === "spread" && q[0].label === "PIT +6.5" && q[0].price === 0.51, "home favorite the model likes less -> road team with the points", q);
   ok(q[1].market === "dog" && q[1].label === "PIT +6.5" && picksFor(g, { spread: { homeSpread: -7, home: 0.5, away: 0.51 } }, { homeMargin: 3.0 }).every((x) => x.market !== "dog") && picksFor(g, { spread: { homeSpread: -2.5, home: 0.5, away: 0.51 } }, { homeMargin: 3.0 }).every((x) => x.market !== "dog"), "road dog +3 to +6.5 is recorded, +7 and +2.5 are not");
   ok(picksFor(g, poly, { homeMargin: 3.1 }).some((x) => x.market === "away3" && x.label === "PIT -2.5" && x.price === 0.53) && !picksFor(g, { spread: { homeSpread: -3.5, home: 0.5, away: 0.5 } }, { homeMargin: 1 }).some((x) => x.market === "away3"), "road team in a close game (spread 3 or less) is recorded, 3.5 is not");
+  { const w = picksFor(g, poly, { homeMargin: 3.1, total: 37.1, outdoor: true, wind: 14 }).find((x) => x.market === "wind");
+    ok(w && w.label === "Under 38.5" && w.price === 0.51 && !picksFor(g, poly, { homeMargin: 3.1, total: 37.1, outdoor: true, wind: 11 }).some((x) => x.market === "wind") && !picksFor(g, poly, { homeMargin: 3.1, total: 37.1, outdoor: false, wind: 20 }).some((x) => x.market === "wind"), "windy under: outdoor and 12+ mph only"); }
   ok(picksFor(g, poly, { homeMargin: -2.5, total: 38.5 }).filter((x) => x.market !== "away3").length === 0, "model exactly on the line -> no pick");
   ok(picksFor(g, null, { homeMargin: 3 }).length === 0 && picksFor(g, poly, null).length === 0, "no lines or no model -> no pick");
   await recordPicks(2026, 4, g, poly, { homeMargin: 3.1, total: 37.1 }, "t");
