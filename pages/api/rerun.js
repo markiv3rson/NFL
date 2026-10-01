@@ -7,6 +7,7 @@ import { getRedis, getJSON, setJSON, K, SLATE_CACHE } from "../../lib/redis";
 import { logError } from "../../lib/status";
 import { history } from "../../lib/week";
 import { loadInjuries } from "../../lib/injuries";
+import { alertsFromRerun } from "../../lib/alerts";
 import { windAtKickoff, venue, isNeutral } from "../../lib/wind";
 import { loadSnaps, qbFirstStart, sameName } from "../../lib/snaps";
 import { loadEspnInjuries, espnOutFor } from "../../lib/espn";
@@ -84,7 +85,7 @@ export default async function handler(req, res) {
     const td = tdIn.length ? await post(base, "/rerun-td-probs", { games: tdIn.map((x) => ({ away: x.away, home: x.home, spread: x.spread, total: x.total, outs: x.outs })) }) : { results: [] };
     const store = (await getJSON(K.model(season, week))) || { games: {}, td: {} };
     const runAt = new Date().toISOString();
-    let nLines = 0, nTd = 0; const errors = [];
+    let nLines = 0, nTd = 0; const errors = [], alertJobs = [];
     // Match results to games by name, not list position: a short or reordered reply must never file one game's
     // numbers under another game.
     const byGame = (list, r) => list.find((x) => x.key === r.game);
@@ -94,6 +95,7 @@ export default async function handler(req, res) {
       if (r.error) return errors.push(`${x.key}: ${r.error}`);
       // homeMargin / total / homeWinPct now include the injury adjustment (Estimate); rawMargin / rawTotal / rawWinPct are the plain
       // model, kept so both can be graded against each other. inj = who caused the shift.
+      const oldRun = store.games[x.key] || null;
       store.games[x.key] = { homeMargin: -r.homeSpread, total: r.total, homeWinPct: r.homeWinPct,
         rawMargin: r.raw ? -r.raw.homeSpread : null, rawTotal: r.raw ? r.raw.total : null, rawWinPct: r.raw ? r.raw.homeWinPct : null,
         // New: calibrated chances (win uses the market spread; cover/under stay ~50% because the model's gap has no measured signal),
@@ -104,6 +106,7 @@ export default async function handler(req, res) {
         mktHomeSpread: x.spread != null ? -x.spread : null, mktTotal: x.total ?? null, teamPts: r.teamPts || null, fix: r.fix || null,
         inj: r.inj || null, wind: x.wind, outdoor: x.outdoor, runAt, source: "rerun" };
       nLines++;
+      alertJobs.push(alertsFromRerun(SEASON, x, oldRun, store.games[x.key]).catch(() => 0));   // injuries, QB, model moves, wind -> alerts (10/1)
     });
     (td.results || []).forEach((r) => {
       const x = byGame(tdIn, r);
@@ -113,6 +116,7 @@ export default async function handler(req, res) {
       nTd++;
     });
     store.runAt = runAt;
+    await Promise.all(alertJobs);
     await setJSON(K.model(season, week), store);
     // Rerun history: every run with its inputs and outputs (logged only; included in Export)
     if ((req.query.src || "manual") !== "manual") await setJSON("auto:last", { t: runAt, what: `model rerun (${req.query.src})` });

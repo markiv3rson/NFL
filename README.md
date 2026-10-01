@@ -4,7 +4,7 @@ Password-gated Next.js site (Vercel) plus a Python model service (Railway, `rail
 Betting venue is Polymarket US only; sportsbook odds (The Odds API) are reference data.
 
 ## Layout
-- `public/` — the page (index.html + app.js): Game Lines, Totals, Anytime TD, Record tabs
+- `public/` — the page (index.html + app.js): Game Lines (tiles; tap a game for everything on it), Anytime TD (Likely, top 20), Pick Lab (MODEL ONLY: Picks + Results), Record (your bets only), and the Alerts bell
 - `pages/api/` — snapshots (Polymarket lines + TD prices, sportsbooks), model rerun proxy, grading, My Bets, status, backup
 - `lib/` — shared logic: picks, grading, calibration, My Bets sync, injuries, snap counts, wind
 - `middleware.ts` — password gate
@@ -35,3 +35,11 @@ Sat 7:05, Sun 9:05, and ~60 min before every kickoff wave. TD retrain Tue 7:15. 
 
 ## Updating
 Upload changed folders through GitHub "Upload files" → Commit. Vercel and Railway redeploy automatically.
+
+## 10/1 redesign
+- Game Lines is a grid of tiles (away name left, home name right, market win chance in the middle, faint team logos behind). Tap a tile for the full game: Market vs Model side by side, the totals card, and each team's top 3 TD scorers.
+- Header: countdown to the next game that has not started. Side buttons (Lines / Model) sit at thumb height on the right edge.
+- Alerts (bell): injuries, backup-QB starts, line moves, new price gaps, model moves, wind 12+ mph and final results, saved by the snapshot / rerun / grading jobs (`lib/alerts.js`, `/api/alerts`). A rerun only alerts against an earlier run, so a new week never floods the feed.
+- Color code: blue = market, gold = moneyline, violet (glowing) = the model, amber = warnings, red = injuries/live/bad, cyan = price gaps, green = wins only.
+- Pick Lab is model-only (banner); the model's results moved there from Record. Record shows only your own bets.
+- Not built: live Polymarket lines during games (needs a check that Polymarket keeps its markets open in play).
