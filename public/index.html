@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" href="/icon-192.png">
 <title>NFL SLATEZZZ</title>
 <style>
-  :root { --bg:#08090b; --card:rgba(255,255,255,.055); --card2:rgba(255,255,255,.04); --line:rgba(255,255,255,.1); --line2:rgba(255,255,255,.07);
+  :root { --bg:#08090b; --card:rgba(3,8,7,.68); --card2:rgba(255,255,255,.04); --line:rgba(255,255,255,.1); --line2:rgba(255,255,255,.07);
     --text:#ececef; --dim:#aab0bd; --faint:#8d95a3; --red:#ff6b6b; --green:#3ddc97; --yellow:#f2cf66; --blue:#7cb7ff; --gold:#f2cf66; --cyan:#4fe3d0;
     --violet:#b794ff; --vglow:0 0 10px rgba(183,148,255,.7); --rose:#ffa3b3; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -168,11 +168,9 @@
   .toast { position:fixed; right:max(12px,env(safe-area-inset-right)); bottom:calc(max(14px,env(safe-area-inset-bottom)) + 62px); max-width:300px; font-size:12px; line-height:1.45; padding:9px 12px; border-radius:12px; background:rgba(20,22,26,.95); border:1px solid var(--line); display:none; z-index:60; }
   .toast.show { display:block; }
   .card .inner { position:relative; }
-  .card .cwm { position:absolute; top:50%; width:46%; height:120px; margin-top:-60px; object-fit:contain; opacity:.07; pointer-events:none; }
-  .card .cwm.l { left:-14px; } .card .cwm.r { right:-14px; }
   /* game page: the two team logos split the whole page in half behind the cards (away left, home right) */
   .pagewm { position:fixed; inset:0; z-index:-1; pointer-events:none; display:flex; align-items:center; }
-  .pagewm img { width:50%; height:64vh; object-fit:contain; opacity:.07; }
+  .pagewm img { width:50%; height:64vh; object-fit:contain; opacity:.13; }
   .sc { border:1px solid var(--line); }
   .mcard, #panel-lab .card { border-color:rgba(183,148,255,.6); box-shadow:0 0 14px rgba(150,100,255,.22); }
   #detail .gh, #detail .sub { display:none; }
