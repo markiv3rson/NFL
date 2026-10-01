@@ -122,7 +122,7 @@ function leanCell(g, kind) {
     // Win chance (calibrated cal_win). Its accuracy comes from the MARKET spread; the model's own disagreement enters
     // with a small NEGATIVE weight (tested 2006-25: when the model likes a team more than the market does, that team
     // wins slightly LESS often than the line says). So this number can point the other way from "Model sees..." above.
-    (kind !== "total" && g.winPct != null ? `<div class="s">Win chance (market-based): ${g.home} ${Number(g.winPct).toFixed(0)}% · ${g.away} ${(100 - g.winPct).toFixed(0)}%</div>` : "") +
+    (kind !== "total" && g.winPct != null ? `<div class="s">Win chance (market-based): ${g.home} ${100 - Math.round(100 - g.winPct)}% · ${g.away} ${Math.round(100 - g.winPct)}%</div>` : "") +
     (reason ? `<div class="s" style="margin-top:6px">${esc(reason)}</div>` : "") +
     (wind ? `<div class="s">${wind}</div>` : "") +
     (adj ? `<div class="s r" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">${injBadgeFor(g)}${esc(adj)}</div>` : "") +
@@ -267,7 +267,7 @@ function tdCard(g, id) {
 }
 function tdRow(x, i) {
   const r = x.r, g = x.g;
-  return `<div class="tdr"><img class="wmc" src="${logoUrl(r.team)}" alt="" onerror="this.style.display='none'"><div class="in"><span class="rk">${i + 1}</span>` +
+  return `<div class="tdr"><img class="wmc" loading="lazy" decoding="async" src="${logoUrl(r.team)}" alt="" onerror="this.style.display='none'"><div class="in"><span class="rk">${i + 1}</span>` +
     `<div class="nmx"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos)}</span>${r.injury && GAME_STATUS.test(r.injury) ? ` <span class="pill ${/out|doubt/i.test(r.injury) ? "p-r" : "p-y"}" style="padding:0 6px;font-size:10px">${esc(r.injury)}</span>` : ""}<div class="g2">${esc(r.game)}</div></div>` +
     `<div class="mp"><em>${Math.round(r.fair)}%</em><div class="bar"><i style="width:${Math.min(100, r.fair)}%"></i></div></div><div class="pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}</div></div>` +
     `<div class="more">${prow(r, g, true)}</div></div>`;
@@ -540,9 +540,9 @@ function tile(g) {
   const lead = (v, o) => (v >= o ? "mkt" : "dim");
   const chips = [g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : "", eg.length ? `<span class="chip c-cy">GAP +${(Math.max(...eg.map((b) => b.evNet)) * 100).toFixed(1)}%</span>` : "", g.started && !g.final ? '<span class="chip c-red">LIVE</span>' : ""].join("");
   const mid = g.final && g.awayScore != null ? `<span class="mid"><span class="${g.awayScore > g.homeScore ? "g" : "dim"}">${g.awayScore}</span><span class="dim"> – </span><span class="${g.homeScore > g.awayScore ? "g" : "dim"}">${g.homeScore}</span></span>`
-    : hp == null ? '<span class="mid dim">—</span>' : `<span class="mid"><span class="${lead(ap, hp)}">${Math.round(ap)}</span><span class="dim"> · </span><span class="${lead(hp, ap)}">${Math.round(hp)}</span><span class="dim" style="font-size:11px">%</span></span>`;
+    : hp == null ? '<span class="mid dim">—</span>' : `<span class="mid"><span class="${lead(ap, hp)}">${Math.round(ap)}</span><span class="dim"> · </span><span class="${lead(hp, ap)}">${100 - Math.round(ap)}</span><span class="dim" style="font-size:11px">%</span></span>`;
   const foot = g.final ? "Final" : g.started ? "In progress" : tm(g.kickoff);
-  return `<button class="tile" data-game="${esc(g.key)}"><img class="wmk l" src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img class="wmk r" src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'">` +
+  return `<button class="tile" data-game="${esc(g.key)}"><img class="wmk l" loading="lazy" decoding="async" src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img class="wmk r" loading="lazy" decoding="async" src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'">` +
     `<div class="in"><div class="nm"><span class="t">${g.away}</span>${mid}<span class="t">${g.home}</span></div>${g.final || hp == null ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}<div class="ft"><span>${foot}</span><span>${chips}</span></div></div></button>`;
 }
 function gapStrip() {
@@ -574,12 +574,13 @@ function tickCd() {
   clearTimeout(tickCd._h);
   if (!S) return;
   const set = (id, v) => { $(id).textContent = v; }, p2 = (n) => String(n).padStart(2, "0");
-  const nxt = S.games.filter((g) => !g.started && g.kickoff).sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff))[0];
-  if (!nxt) { ["d", "h", "m", "s"].forEach((k) => set("cd-" + k, "--")); set("cd-g", "No upcoming games this week"); return; }
+  const nxt = S.games.filter((g) => !g.started && g.kickoff && new Date(g.kickoff) > Date.now()).sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff))[0];   // by the clock, so it moves on at kickoff even before the next data load
+  if (!nxt) { ["d", "h", "m", "s"].forEach((k) => set("cd-" + k, "--")); set("cd-g", "No upcoming games this week"); tickCd._cur = null; return; }
   const ms = Math.max(0, new Date(nxt.kickoff) - Date.now());
   set("cd-d", p2(Math.floor(ms / 864e5))); set("cd-h", p2(Math.floor((ms % 864e5) / 36e5))); set("cd-m", p2(Math.floor((ms % 36e5) / 6e4))); set("cd-s", p2(Math.floor((ms % 6e4) / 1e3)));
   set("cd-g", `${nxt.away} @ ${nxt.home} · ${tm(nxt.kickoff)}`);
-  if (ms === 0 && !tickCd._rl) { tickCd._rl = 1; setTimeout(() => { tickCd._rl = 0; loadSlate().catch(() => {}); }, 4000); }
+  if (tickCd._cur && tickCd._cur !== nxt.key && Date.now() - (tickCd._last || 0) > 15000) { tickCd._last = Date.now(); setTimeout(() => loadSlate().catch(() => {}), 4000); }   // the game we were counting to just kicked off: refresh once
+  tickCd._cur = nxt.key;
   tickCd._h = setTimeout(tickCd, 1000);
 }
 // alerts: built on the server from changes it already sees between pulls (injuries, lines, price gaps, model moves, results)
@@ -634,7 +635,7 @@ function showPanel(name) {
   if (name === "record" || name === "lab") loadRecord();
 }
 document.querySelectorAll(".tabs button").forEach((btn) => btn.addEventListener("click", () => {
-  if (btn.dataset.tab === "lines" && DETAIL) closeGame();
+  if (btn.dataset.tab === "lines" && DETAIL && $("panel-lines").classList.contains("on")) closeGame();   // tapping the tab you are on goes back to the tiles
   showPanel(btn.dataset.tab);
 }));
 $("bell").onclick = () => { ALPREV = alSeen(); if (ALERTS.length) { try { localStorage.setItem("alSeen", ALERTS[0].t); } catch {} } showPanel("alerts"); renderAlerts(); };
@@ -648,7 +649,7 @@ document.addEventListener("click", (e) => {
   const gt = e.target.closest("[data-game]"); if (gt) { openGame(gt.dataset.game); return; }
   const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k) { showPanel("lines"); openGame(k); } return; }
   const ch = e.target.closest("[data-alk]"); if (ch) { ALFILTER = ch.dataset.alk; renderAlerts(); return; }
-  const tr = e.target.closest(".tdr"); if (tr && !e.target.closest(".price-link")) { tr.classList.toggle("open"); return; }
+  const tr = e.target.closest(".tdr"); if (tr && !e.target.closest(".price-link") && !e.target.closest(".more")) { tr.classList.toggle("open"); return; }
   const p = e.target.closest(".price-link"); if (p) toast(p.dataset.market ? "Polymarket market: " + p.dataset.market : "No market recorded for this price.", 8000);
 });
 loadSlate().then(loadAlerts).catch((e) => ($("hero-upd").textContent = "Couldn't load this week: " + e.message));

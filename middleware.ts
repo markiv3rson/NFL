@@ -44,5 +44,6 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: "/((?!_next/static|_next/image|favicon.ico).*)",
+  // Public static files: the home-screen icon and app manifest (iOS fetches them without your login). Nothing private is in them.
+  matcher: "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|apple-touch-icon.png|icon-192.png|icon-512.png).*)",
 };

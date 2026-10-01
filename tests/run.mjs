@@ -59,6 +59,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   await gradeEdges(2026, 9, g); const s = await edgeSummary(2026);
   ok(s.graded === 3 && s.w === 2 && s.l === 1, "edge results", s);
   ok(near(s.roi, ((1 / 0.55 - 1) + (1 / 0.45 - 1) - 1) / 3, 1e-9) && s.clvN === 2, "edge ROI + CLV only on same line", s); }
+// ---------- phone setup (home-screen app)
+{ const fs = await import("node:fs"); const root = new URL("../public/", import.meta.url);
+  const man = JSON.parse(fs.readFileSync(new URL("manifest.webmanifest", root), "utf8")), html = fs.readFileSync(new URL("index.html", root), "utf8"), mw = fs.readFileSync(new URL("../middleware.ts", import.meta.url), "utf8");
+  ok(man.display === "standalone" && man.icons.length >= 2 && man.icons.every((i) => fs.existsSync(new URL("." + i.src, root))), "phone: manifest is standalone and every icon file exists");
+  ok(/apple-touch-icon/.test(html) && /apple-mobile-web-app-capable/.test(html) && /viewport-fit=cover/.test(html) && /rel="manifest"/.test(html) && /safe-area-inset-top/.test(html), "phone: home-screen meta tags, full-screen viewport and safe areas");
+  ok(["manifest.webmanifest", "apple-touch-icon.png", "icon-192.png", "icon-512.png"].every((f) => mw.includes(f)), "phone: icon and manifest are reachable before login"); }
 // ---------- alerts feed
 { const { addAlert, listAlerts, alertsFromRerun, alertsFromLines, alertResult } = await import("../lib/alerts.js");
   const g = { key: "PIT @ CLE", away: "PIT", home: "CLE" };
@@ -168,6 +174,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const tg = { key: "PIT @ CLE", away: "PIT", home: "CLE", kickoff: "2026-10-02T00:15:00Z", started: false, final: false, winPct: 40, badge: "TNF", td: [] };
   const tl = ctx.T.tile(tg);
   ok(tl.indexOf(">PIT<") < tl.indexOf(">CLE<") && /<span class="mkt">60<\/span><span class="dim"> · <\/span><span class="dim">40<\/span>/.test(tl) && /TNF/.test(tl) && /GAP \+13\.4%/.test(tl), "tile: away name left, home name right, away 60 · home 40, TNF and price-gap chips", tl);
+  { const half = ctx.T.tile({ ...tg, winPct: 39.5 }), nums = (half.match(/<span class="(?:mkt|dim)">(\d+)<\/span><span class="dim"> · /) || [])[1], nums2 = (half.match(/ · <\/span><span class="(?:mkt|dim)">(\d+)<\/span>/) || [])[1];
+    ok(Number(nums) + Number(nums2) === 100, "tile: the two percentages always add to 100 (60.5 and 39.5 do not both round up)", half); }
   ok(/LIVE/.test(ctx.T.tile({ ...tg, started: true })) && />13<\/span>/.test(ctx.T.tile({ ...tg, started: true, final: true, awayScore: 13, homeScore: 27 })) && /Final/.test(ctx.T.tile({ ...tg, started: true, final: true, awayScore: 13, homeScore: 27 })), "tile: live tag, final score");
   const sc = ctx.T.tdTop3({ away: "PIT", home: "CLE", td: ["A", "B", "C", "D"].map((n, i) => ({ team: "PIT", player: "P." + n, pos: "RB", fair: 40 - i * 5, price: 0.3 })).concat([{ team: "CLE", player: "Q.X", pos: "WR", fair: 22, price: 0.2, two: 5, first: 4 }]) });
   ok((sc.match(/class="p"/g) || []).length === 4 && /P\.A/.test(sc) && !/P\.D/.test(sc) && /2\+ 5% · 1st 4%/.test(sc), "scorers: top 3 per team side by side, best first", sc);
