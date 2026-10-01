@@ -139,6 +139,11 @@
   .tdr .pxc { width:60px; text-align:right; font-size:13px; font-weight:700; color:var(--blue); }
   .tdr .more .prow { background:color-mix(in srgb, var(--tc,#444) 58%, #0a0b0d); border:1px solid color-mix(in srgb, var(--tc,#444) 70%, #fff 0%); }
   .tdr.open { background:rgba(0,0,0,.55); }
+  .tdr.open .wmc { display:none; }
+  .tdr .more .prow, .tdr .more .prow .s, .tdr .more .prow .dim, .tdr .more .prow .why, .tdr .more .prow .lbl { color:#fff; }
+  .tdr .more .prow { font-size:15px; font-weight:600; padding:11px 12px; }
+  .tdr .more .prow .lbl { font-size:13px; font-weight:600; } .tdr .more .prow .why, .tdr .more .prow .s { font-size:13.5px; }
+  .tdr .more .prow .big { color:#e6d6ff; font-size:26px; font-weight:800; } .tdr .more .prow .px { color:#cfe3ff; font-size:22px; font-weight:800; }
   .tdr .more { display:none; padding:8px 0 2px 28px; } .tdr.open .more { display:block; }
   .tdh { display:flex; padding:8px 12px; font-size:10px; font-weight:800; letter-spacing:.08em; color:var(--faint); }
   .prow { display:grid; grid-template-columns:1fr auto auto; gap:2px 14px; align-items:center; padding:8px 9px; border-radius:12px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.3); margin-top:6px; }
