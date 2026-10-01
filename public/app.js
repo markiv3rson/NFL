@@ -621,34 +621,22 @@ function startsIn(g) {
   const d = Math.floor(ms / 864e5), h = Math.floor((ms % 864e5) / 36e5), m = Math.floor((ms % 36e5) / 6e4);
   return d ? `starts in ${d}d ${h}h` : h ? `starts in ${h}h ${m}m` : `starts in ${m}m`;
 }
+const TEAM_COLOR = { ARI: "#97233f", ATL: "#a71930", BAL: "#5c2d91", BUF: "#00338d", CAR: "#0085ca", CHI: "#e64100", CIN: "#fb4f14", CLE: "#ff3c00", DAL: "#2a5db0", DEN: "#fb4f14", DET: "#0076b6", GB: "#2f7d4f", HOU: "#c8102e", IND: "#2a6ebb", JAX: "#00a3b5", KC: "#e31837", LV: "#a5acaf", LAC: "#0080c6", LA: "#2a6ebb", LAR: "#2a6ebb", MIA: "#00a6a6", MIN: "#6a3fb0", NE: "#2a5db0", NO: "#d3bc8d", NYG: "#2a5db0", NYJ: "#2f7d4f", PHI: "#00898a", PIT: "#ffb612", SF: "#c8102e", SEA: "#4a8f2a", TB: "#d50a0a", TEN: "#4b92db", WAS: "#7a2236" };
 function detailTop(g) {
   const hp = g.winPct != null ? Number(g.winPct) : null, ap = hp == null ? null : Math.round(100 - hp), hr = ap == null ? null : 100 - ap;
   const st = g.final ? `Final ${g.awayScore != null ? `${g.awayScore}–${g.homeScore}` : ""}` : g.started ? '<span class="r">Live · locked</span>' : startsIn(g);
-  return `<div class="card dtop"><div class="inner"><div class="nm"><span class="t">${g.away}</span><div class="mid">${g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : ""}<div class="s2">${tm(g.kickoff)}</div><div class="s3">${st}</div></div><span class="t">${g.home}</span></div>` +
-    (hp == null || g.final ? "" : `<div class="wc"><div class="wl"><b class="mkt">${ap}%</b><span class="mkt">WIN CHANCE · MARKET</span><span class="dim">${hr}%</span></div><div class="bar"><i style="width:${ap}%"></i></div></div>`) + `</div></div>`;
-}
-// page-wide team logos: the open game, otherwise the next game to kick off (away left half, home right half)
-const TEAM_COLOR = { ARI: "#97233f", ATL: "#a71930", BAL: "#5c2d91", BUF: "#00338d", CAR: "#0085ca", CHI: "#e64100", CIN: "#fb4f14", CLE: "#ff3c00", DAL: "#2a5db0", DEN: "#fb4f14", DET: "#0076b6", GB: "#2f7d4f", HOU: "#c8102e", IND: "#2a6ebb", JAX: "#00a3b5", KC: "#e31837", LV: "#a5acaf", LAC: "#0080c6", LA: "#2a6ebb", LAR: "#2a6ebb", MIA: "#00a6a6", MIN: "#6a3fb0", NE: "#2a5db0", NO: "#d3bc8d", NYG: "#2a5db0", NYJ: "#2f7d4f", PHI: "#00898a", PIT: "#ffb612", SF: "#c8102e", SEA: "#4a8f2a", TB: "#d50a0a", TEN: "#4b92db", WAS: "#7a2236" };
-function updateBg() {
-  const el = document.getElementById("bgwm"); if (!el || !S || !S.games) return;
-  let g = DETAIL ? S.games.find((x) => x.key === DETAIL) : null;
-  if (!g) { const up = S.games.filter((x) => !x.final).sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff)); g = up[0] || S.games[0]; }
-  if (!g) return;
-  const k = g.away + g.home; if (el.dataset.k === k) return; el.dataset.k = k;
   const ca = TEAM_COLOR[g.away] || "#444", ch = TEAM_COLOR[g.home] || "#444";
-  el.style.background = `linear-gradient(90deg, ${ca}3d 0%, ${ca}1f 50%, ${ch}1f 50%, ${ch}3d 100%)`;
-  el.innerHTML = `<img src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'">`;
+  return `<div class="card dtop" style="background:linear-gradient(90deg,${ca}40 0%,${ca}14 50%,${ch}14 50%,${ch}40 100%),var(--card)"><img class="dwm l" src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img class="dwm r" src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'"><div class="inner"><div class="nm"><span class="t">${g.away}</span><div class="mid">${g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : ""}<div class="s2">${tm(g.kickoff)}</div><div class="s3">${st}</div></div><span class="t">${g.home}</span></div>` +
+    (hp == null || g.final ? "" : `<div class="wc"><div class="wl"><b class="mkt">${ap}%</b><span class="mkt">WIN CHANCE · MARKET</span><span class="dim">${hr}%</span></div><div class="bar"><i style="width:${ap}%"></i></div></div>`) + `</div></div>`;
 }
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = "";
   $("detail").innerHTML = `<button class="back" id="back-btn">← All games</button>${detailTop(g)}<div class="grid">${gameCard(g, "x")}</div><div class="sh" style="margin:16px 2px 0">Total</div><div class="grid">${totalCard(g, "x")}</div>${tdTop3(g)}`;
   $("back-btn").onclick = closeGame;
-  updateBg();
 }
 function renderLines() {
   if (DETAIL) { const g = S.games.find((x) => x.key === DETAIL); if (g) return renderDetail(g); DETAIL = null; }
   $("detail").style.display = "none"; $("lines").style.display = "";
-  updateBg();
   $("lines").innerHTML = gapStrip() + changedBox() + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
     '<div class="s dim" style="text-align:center;margin-top:10px">Tap a game for everything on it. Percent = market-based win chance (away · home).</div>';
 }

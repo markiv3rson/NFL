@@ -171,12 +171,10 @@
   .card .inner { position:relative; }
   .prl > .s { text-transform:uppercase; letter-spacing:.04em; font-size:13px; font-weight:700; color:#eef0f4; }
   /* game page: the two team logos split the whole page in half behind the cards (away left, home right) */
-  .pagewm { position:fixed; inset:0; z-index:-1; pointer-events:none; display:flex; overflow:hidden; align-items:center; }
-  .pagewm img { width:50%; height:100%; object-fit:contain; transform:scale(1.25); opacity:.2; }
-  .pagewm::after { content:""; position:absolute; inset:0; background:rgba(0,0,0,.4); }
   .sc { border:1px solid var(--line); }
   .mcard, #panel-lab .card { border-color:rgba(183,148,255,.6); box-shadow:0 0 14px rgba(150,100,255,.22); }
   #detail .gh, #detail .sub { display:none; }
+  .dtop .dwm { position:absolute; top:50%; width:46%; height:150px; margin-top:-75px; object-fit:contain; opacity:.2; pointer-events:none; } .dtop .dwm.l { left:-10px; } .dtop .dwm.r { right:-10px; }
   .dtop .nm { display:flex; align-items:center; justify-content:space-between; }
   .dtop .t { font-size:28px; font-weight:800; font-style:italic; }
   .dtop .mid { text-align:center; line-height:1.35; } .dtop .s2 { font-size:12px; color:#c9ced6; margin-top:4px; } .dtop .s3 { font-size:11px; color:var(--green); }
@@ -193,7 +191,6 @@
 </style>
 </head>
 <body>
-<div class="pagewm" id="bgwm"></div>
 <div class="wrap">
   <div class="hero">
     <div><div class="wk" id="hero-wk">WEEK</div><h1>NFL Slate</h1><div class="upd" id="hero-upd">Loading…</div></div>
