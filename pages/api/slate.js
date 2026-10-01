@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     res.setHeader("x-build", BUILD);   // which deployment answered (the page reloads itself when this changes)
     if (cacheable) { const c = await getRedis().get(SLATE_CACHE).catch(() => null); if (c) { res.setHeader("Content-Type", "application/json"); return res.status(200).send(c); } }
     const inj = await loadInjuriesMeta().catch(() => null), injuries = inj ? inj.teams : null;
-    const data = await buildWeek({ week: Number(req.query.week) || undefined, injuries });
+    const data = await buildWeek({ week: Number(req.query.week) || undefined, injuries, injuriesPrev: inj ? inj.prev : null });
     const status = await getStatus(data.season, data.week, data.meta || {}, data.modelRunAt).catch(() => null);
     const missFinder = await getJSON(`missfinder:${data.season}`).catch(() => null);
     const weekCheck = { games: data.games.length, withLines: data.games.filter((g) => g.poly).length, modelRun: !!data.modelRunAt };

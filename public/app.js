@@ -229,8 +229,9 @@ const logoUrl = (team) => (team ? LOGO_OVERRIDES[team] || `https://a.espncdn.com
 // Team logo next to team names on every card (game header + TD team headers). Same logo source as the TD rows.
 function tlogo(team) { return team ? `<img class="tlogo" src="${logoUrl(team)}" alt="" onerror="this.style.display='none'">` : ""; }
 function matchup(g) { return `${g.away} @ ${g.home}`; }
+const retPill = (r) => (r.returning ? ' <span class="pill p-g" style="padding:0 6px;font-size:10px">↩ RETURNING</span>' : "");
 function prow(r, g, showGame) {
-  const inj = r.injury && GAME_STATUS.test(r.injury) ? ` <span class="pill ${/out|doubt/i.test(r.injury) ? "p-r" : "p-y"}" style="padding:0 6px;font-size:10px">${esc(r.injury)}</span>` : "";
+  const inj = (r.injury && GAME_STATUS.test(r.injury) ? ` <span class="pill ${/out|doubt/i.test(r.injury) ? "p-r" : "p-y"}" style="padding:0 6px;font-size:10px">${esc(r.injury)}</span>` : "") + retPill(r);
   // Model's chance (big, left) and Polymarket's price (right), each with its plain label directly underneath. No verdict, no edge, no stake.
   const chance = r.fair != null ? `${Math.round(r.fair)}%` : dash;
   const cents = r.price != null ? `<span class="price-link" data-market="${esc(r.market || (r.stale ? "Old screenshot price — not live" : ""))}">${Math.round(r.price * 100)}¢</span>` : dash;
@@ -241,6 +242,7 @@ function prow(r, g, showGame) {
   const flags = (r.flags || []).map((f) => `<div class="y" style="font-size:11.5px">⚠ ${esc(f)}</div>`).join("") +
     // Game-day inactives come out ~90 min before kickoff and are NOT in the injury feed; an inactive player's TD market
     // settles No. Reminder on every Questionable player until kickoff.
+    (r.returning ? `<div class="g" style="font-size:11.5px">↩ Returning from injury: was ${esc(r.returning)} on last week's report. His chance is unchanged. Returning regulars who played scored like healthy starters (about 35%), but about 4 in 10 sat again, so check the inactive list.</div>` : "") +
     (r.espn ? `<div style="font-size:11.5px" class="dim">ESPN: ${esc(r.espn)}</div>` : "") +
     (/^questionable$/i.test(r.injury || "") && !g.started ? `<div class="y" style="font-size:11.5px">⚠ Questionable — ${r.fairIfPlays != null ? `chance includes the 1-in-3 risk he sits (${Math.round(r.fairIfPlays)}% if he plays). ` : ""}Check the inactive list ~90 min before kickoff (inactive = TD market settles No)</div>` : "") +
     (r.depthNote ? `<div style="font-size:11.5px" class="${/up|new/.test(r.depthNote) ? "g" : "r"}">${/up|new/.test(r.depthNote) ? "▲" : "▼"} ${esc(r.depthNote)}</div>` : "") +
@@ -255,7 +257,7 @@ const usable = (r) => !(r.odds != null && r.odds <= -600 && !r.thin);   // a rea
 function tdRow(x, i) {
   const r = x.r, g = x.g;
   return `<div class="tdr"><img class="wmc" loading="lazy" decoding="async" src="${logoUrl(r.team)}" alt="" onerror="this.style.display='none'"><div class="in"><span class="rk">${i + 1}</span>` +
-    `<div class="nmx"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos)}</span>${r.injury && GAME_STATUS.test(r.injury) ? ` <span class="pill ${/out|doubt/i.test(r.injury) ? "p-r" : "p-y"}" style="padding:0 6px;font-size:10px">${esc(r.injury)}</span>` : ""}<div class="g2">${esc(r.game)}</div></div>` +
+    `<div class="nmx"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos)}</span>${r.injury && GAME_STATUS.test(r.injury) ? ` <span class="pill ${/out|doubt/i.test(r.injury) ? "p-r" : "p-y"}" style="padding:0 6px;font-size:10px">${esc(r.injury)}</span>` : ""}${retPill(r)}<div class="g2">${esc(r.game)}</div></div>` +
     `<div class="mp"><em>${Math.round(r.fair)}%</em><div class="bar"><i style="width:${Math.min(100, r.fair)}%"></i></div></div><div class="pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}</div></div>` +
     `<div class="more" style="--tc:${TEAM_COLOR[r.team] || "#444"};--logo:url(${logoUrl(r.team)})">${prow(r, g, true)}</div></div>`;
 }
