@@ -81,6 +81,7 @@ export default async function handler(req, res) {
       homeQbFirstStart: !!qbFirstStart(snaps[x.home], injFor(x.home, x.kickoff), week),
       awayQbFirstStart: !!qbFirstStart(snaps[x.away], injFor(x.away, x.kickoff), week),
       inj: { away: injFor(x.away, x.kickoff), home: injFor(x.home, x.kickoff) } })) });
+    if (!Array.isArray(lines.results)) throw new Error(`model service /rerun-game-lines gave no results: ${JSON.stringify(lines).slice(0, 200)}`);   // was silent: a service-side error object looked like "0 games"
     const tdIn = payload.filter((x) => x.spread != null && x.total != null);
     const td = tdIn.length ? await post(base, "/rerun-td-probs", { games: tdIn.map((x) => ({ away: x.away, home: x.home, spread: x.spread, total: x.total, outs: x.outs })) }) : { results: [] };
     const store = (await getJSON(K.model(season, week))) || { games: {}, td: {} };
@@ -115,6 +116,8 @@ export default async function handler(req, res) {
       store.td[x.key] = { away: r.away, home: r.home, awayGroups: r.awayGroups || null, homeGroups: r.homeGroups || null, outs: r.excluded, linesUsed: { homeSpread: -x.spread, total: x.total }, runAt };
       nTd++;
     });
+    if (td && td.error) errors.push(`TD: ${String(td.error).slice(0, 120)}`);
+    if (!nLines && !errors.length) errors.push(`model service returned 0 results for ${payload.length} game(s)`);
     store.runAt = runAt;
     await Promise.all(alertJobs);
     await setJSON(K.model(season, week), store);
