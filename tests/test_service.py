@@ -48,4 +48,7 @@ ok(ns["touch_prob"](row(missed_last=1)) < reg and ns["touch_prob"](row(lgap=np.l
 ret_ = row(missed_last=1, lgap=np.log1p(1), s1f=0.8, s3f=0.8)
 ok(ns["touch_prob"](ret_, active=True) > 0.9 and ns["touch_prob"](ret_, active=True) > ns["touch_prob"](ret_, active=False) + 0.2, "touch model: confirmed-active returning regular keeps his touch chance")
 ok(ns["touch_prob"](row(lrank=np.log(12), r_t=0.3, r_c=0.1, s1f=0.2, s3f=0.2), active=True) < 0.8, "touch model: a confirmed-active deep reserve still touches it less")
+# returners are matched by name from the injury file (full names) to play-by-play short names
+ok(ns["match_any"]("N.Collins", ["Nico Collins", "Jaylen Waddle"]) and ns["match_any"]("P.Nacua", ["Puka Nacua"]) and ns["match_any"]("Bi.Robinson", ["Bijan Robinson"]), "returning match: full names find the short names")
+ok(not ns["match_any"]("Bi.Robinson", ["Brian Robinson Jr."]) and not ns["match_any"]("D.Metcalf", ["Terrance Metcalf"]) and ns["match_any"]("Puka Nacua", ["Puka Nacua"]), "returning match: another player with the same last name does not match")
 print(f"service checks: {'FAILED ' + str(bad) if bad else 'all passed'}"); sys.exit(1 if bad else 0)

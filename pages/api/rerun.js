@@ -6,7 +6,7 @@ import { SEASON, currentWeek, loadGames, loadSeason, started } from "../../lib/g
 import { getRedis, getJSON, setJSON, K, SLATE_CACHE } from "../../lib/redis";
 import { logError } from "../../lib/status";
 import { history } from "../../lib/week";
-import { loadInjuries } from "../../lib/injuries";
+import { loadInjuriesMeta } from "../../lib/injuries";
 import { alertsFromRerun } from "../../lib/alerts";
 import { windAtKickoff, venue, isNeutral } from "../../lib/wind";
 import { loadSnaps, qbFirstStart, sameName } from "../../lib/snaps";
@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     const season = SEASON, week = await currentWeek(season);
     const all = await loadGames(season, week), games = all.filter((g) => !started(g));
     if (!games.length) return res.status(200).json({ ok: true, week, rerun: 0, note: "every game has started — nothing to rerun" });
-    const injuries = await loadInjuries().catch(() => ({}));
+    const injMeta = await loadInjuriesMeta().catch(() => null), injuries = injMeta ? injMeta.teams : {}, injPrev = injMeta ? injMeta.prev || {} : {};
     const espn = await loadEspnInjuries().catch(() => null);
     const snaps = await loadSnaps().catch(() => ({}));
     // Rest days: days since a team's last game before THIS kickoff (across the full season, not just this week).
@@ -58,7 +58,11 @@ export default async function handler(req, res) {
       // + ESPN game-day Out (inactives etc., dated this week) so the kickoff-wave rerun hands their share to teammates
       for (const t of [g.away, g.home]) for (const e of ((espn && espn.teams[t]) || [])) if (espnOutFor(e, t, g.kickoff, seasonRows) && !outs.includes(e.name)) outs.push(e.name);   // Doubtful too: 99% sit, and their red-zone share goes to teammates
       // (THIS week's report only — before 9/28 a Tuesday rerun dropped last week's Out players from the new week's TD list)
-      return { away: g.away, home: g.home, key: g.key, kickoff: g.kickoff, wind: w.wind, outdoor: w.outdoor && w.wind != null,
+      // Returning from injury: Out/Doubtful on last week's report, not Out/Doubtful now. The service treats them as playing (the page labels them).
+      // Only players practicing this week (full 87% played, limited 61%); did-not-participate (17%) and no entry (6%) are NOT treated as playing.
+      const returning = [g.away, g.home].flatMap((t) => { const cur = injuries[t] || [];
+        return (cur.some((x) => Number(x.week) === Number(week)) ? injPrev[t] || [] : []).map((x) => x.name).filter((n) => cur.some((x) => Number(x.week) === Number(week) && sameName(x.name, n) && /^(full|limited)/i.test(x.status || ""))); }).filter((n) => !outs.some((o) => sameName(o, n)));
+      return { away: g.away, home: g.home, key: g.key, kickoff: g.kickoff, returning, wind: w.wind, outdoor: w.outdoor && w.wind != null,
         dome: vn ? !vn.outdoor : null, neutral: isNeutral(g), turf: isTurf(g),
         restAwayDays: g.kickoff ? restDays(g.away, g.kickoff) : null,
         spread: hs == null ? null : -hs, total, outs,
@@ -85,7 +89,7 @@ export default async function handler(req, res) {
       inj: { away: injFor(x.away, x.kickoff), home: injFor(x.home, x.kickoff) } })) });
     if (!Array.isArray(lines.results)) throw new Error(`model service /rerun-game-lines gave no results: ${JSON.stringify(lines).slice(0, 200)}`);   // was silent: a service-side error object looked like "0 games"
     const tdIn = payload.filter((x) => x.spread != null && x.total != null);
-    const td = tdIn.length ? await post(base, "/rerun-td-probs", { games: tdIn.map((x) => ({ away: x.away, home: x.home, spread: x.spread, total: x.total, outs: x.outs, active: x.active })) }) : { results: [] };
+    const td = tdIn.length ? await post(base, "/rerun-td-probs", { games: tdIn.map((x) => ({ away: x.away, home: x.home, spread: x.spread, total: x.total, outs: x.outs, active: x.active, returning: x.returning })) }) : { results: [] };
     const store = (await getJSON(K.model(season, week))) || { games: {}, td: {} };
     const runAt = new Date().toISOString();
     let nLines = 0, nTd = 0; const errors = [], alertJobs = [];

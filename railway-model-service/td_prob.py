@@ -362,7 +362,7 @@ def pos_rec(defteam):
     ps=t.receiver_player_id.map(lambda i:{'FB':'RB','HB':'RB'}.get(pos.position.get(i),pos.position.get(i)))
     g=len(games[(games.home_team==defteam)|(games.away_team==defteam)])
     return {k:0.85*((ps==k).sum()+4*v)/(g+4)/v for k,v in AVG.items()}
-def run(team,opp,imp,outs=(),posadj=False,active=False):
+def run(team,opp,imp,outs=(),posadj=False,active=False,returning=()):
     o_rush,o_rec=dstats(opp); rows=[]
     mine = cur[cur.team==team]
     if not len(mine) and len(ROS_TEAM):
@@ -420,7 +420,8 @@ def run(team,opp,imp,outs=(),posadj=False,active=False):
     # (Vacated-usage boost removed 9/30: handing an Out player's red-zone share to teammates tested WORSE in 7 of 7
     # seasons, 2019-25 -- the teammates' own usage already carries most of it, and the bump overshot.)
     pb_=team_budget(shrink(m.predict_proba(design(df))[:,1]), imp)
-    df['p']=touch_adjusted(df, pb_, team, active)   # 10/1: x the chance he plays AND touches the ball (falls back to the rank tilt)
+    playing_ = df.name.apply(lambda s: match_any(s, list(returning))).values if returning else None
+    df['p']=touch_adjusted(df, pb_, team, active, playing_)   # 10/1: x the chance he plays AND touches the ball (falls back to the rank tilt)
     df['boosted'] = False
     df['depth_note']=[DEPTH_NOTE.get(pid) for pid in df.pid]
     return df.sort_values('p',ascending=False)[['name','pos','p','boosted','depth_note']]
@@ -482,7 +483,23 @@ def touch_prob(X, active=False):
     m, s, c, b = (TOUCH2_MEAN, TOUCH2_SCALE, TOUCH2_COEF, TOUCH2_INTERCEPT) if active else (TOUCH_MEAN, TOUCH_SCALE, TOUCH_COEF, TOUCH_INTERCEPT)
     z = b + ((np.asarray(X, dtype=float) - np.array(m)) / np.array(s)) @ np.array(c)
     return 1 / (1 + np.exp(-z))
-def touch_adjusted(df, pb, team, active=False):
+def match_any(short, names):
+    """True when a play-by-play short name ('Bi.Robinson', 'A.St.Brown') or a full name is one of `names` (full names from the injury file).
+    Same rule as run()'s Out matching: same last name AND the first-name prefix starts the full first name."""
+    def norm(t): return "".join(ch for ch in str(t).lower() if ch.isalpha() or ch == " ")
+    if short in names: return True
+    if "." not in short: return any(norm(short).split() == norm(o.replace("-", " ").replace(".", " ")).split() for o in names)
+    pre, rest = short.split(".", 1); pre, rest = pre.lower(), norm(rest).replace(" ", "")
+    for o in names:
+        w = norm(o.replace("-", " ").replace(".", " ")).split()
+        for a in range(1, len(w)):
+            acc = ""
+            for b in range(a, len(w)):
+                acc += w[b]
+                if acc == rest and (w[a - 1].startswith(pre) or (a > 1 and w[a - 2].startswith(pre))): return True
+                if len(acc) >= len(rest): break
+    return False
+def touch_adjusted(df, pb, team, active=False, playing=None):
     """pb = chances after the team-total step (one team's list). Returns pb x touch chance; any problem -> the rank tilt."""
     try:
         pb = np.asarray(pb, dtype=float); order = np.argsort(-pb, kind="stable"); rank = np.empty(len(pb)); rank[order] = np.arange(1, len(pb) + 1)
@@ -494,7 +511,9 @@ def touch_adjusted(df, pb, team, active=False):
         missed = np.array([1.0 if (np.isnan(w) or w < tl) else 0.0 for w in lw])
         gap = np.array([sum(1 for w in tw if w > PID_LAST_TOUCH[pid]) if pid in PID_LAST_TOUCH else 99 for pid in df.pid.values], dtype=float)
         X = np.column_stack([np.log(rank), pb, s1, s3, miss, missed, np.log1p(np.minimum(gap, 20)), df.depth1.values.astype(float), df.depth_known.values.astype(float), df.r_t.values.astype(float), df.r_c.values.astype(float)])
-        out = np.clip(pb * touch_prob(X, active), 0, 0.97)
+        pt = touch_prob(X, active)
+        if playing is not None and np.any(playing): pt = np.where(np.asarray(playing, dtype=bool), touch_prob(X, True), pt)   # returners: treated as playing
+        out = np.clip(pb * pt, 0, 0.97)
         return out if np.all(np.isfinite(out)) else availability(pb)
     except Exception: return availability(pb)
 

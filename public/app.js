@@ -229,7 +229,7 @@ const logoUrl = (team) => (team ? LOGO_OVERRIDES[team] || `https://a.espncdn.com
 // Team logo next to team names on every card (game header + TD team headers). Same logo source as the TD rows.
 function tlogo(team) { return team ? `<img class="tlogo" src="${logoUrl(team)}" alt="" onerror="this.style.display='none'">` : ""; }
 function matchup(g) { return `${g.away} @ ${g.home}`; }
-const retPill = (r) => (r.returning ? ' <span class="pill p-g" style="padding:0 6px;font-size:10px">↩ RETURNING</span>' : "");
+const retPill = (r) => (r.returning ? (r.returningState === "practicing" ? ' <span class="pill p-g" style="padding:0 6px;font-size:10px">↩ RETURNING</span>' : ' <span class="pill p-y" style="padding:0 6px;font-size:10px">↩ WAS OUT · NOT PRACTICING</span>') : "");
 function prow(r, g, showGame) {
   const inj = (r.injury && GAME_STATUS.test(r.injury) ? ` <span class="pill ${/out|doubt/i.test(r.injury) ? "p-r" : "p-y"}" style="padding:0 6px;font-size:10px">${esc(r.injury)}</span>` : "") + retPill(r);
   // Model's chance (big, left) and Polymarket's price (right), each with its plain label directly underneath. No verdict, no edge, no stake.
@@ -242,7 +242,7 @@ function prow(r, g, showGame) {
   const flags = (r.flags || []).map((f) => `<div class="y" style="font-size:11.5px">⚠ ${esc(f)}</div>`).join("") +
     // Game-day inactives come out ~90 min before kickoff and are NOT in the injury feed; an inactive player's TD market
     // settles No. Reminder on every Questionable player until kickoff.
-    (r.returning ? `<div class="g" style="font-size:11.5px">↩ Returning from injury: was ${esc(r.returning)} on last week's report. His chance is unchanged. Returning regulars who played scored like healthy starters (about 35%), but about 4 in 10 sat again, so check the inactive list.</div>` : "") +
+    (r.returning ? (r.returningState === "practicing" ? `<div class="g" style="font-size:11.5px">↩ Returning from injury: was ${esc(r.returning)} on last week's report and is practicing this week. The chance assumes he plays: returning regulars who played scored like healthy starters (about 35%). Of returners, 87% who practiced fully played and 61% who practiced in a limited way, so check the inactive list.</div>` : `<div class="y" style="font-size:11.5px">↩ Was ${esc(r.returning)} on last week's report and is not practicing this week, so he is NOT treated as playing. Only 1 in 6 returners in that spot played.</div>`) : "") +
     (r.espn ? `<div style="font-size:11.5px" class="dim">ESPN: ${esc(r.espn)}</div>` : "") +
     (/^questionable$/i.test(r.injury || "") && !g.started ? `<div class="y" style="font-size:11.5px">⚠ Questionable — ${r.fairIfPlays != null ? `chance includes the 1-in-3 risk he sits (${Math.round(r.fairIfPlays)}% if he plays). ` : ""}Check the inactive list ~90 min before kickoff (inactive = TD market settles No)</div>` : "") +
     (r.depthNote ? `<div style="font-size:11.5px" class="${/up|new/.test(r.depthNote) ? "g" : "r"}">${/up|new/.test(r.depthNote) ? "▲" : "▼"} ${esc(r.depthNote)}</div>` : "") +
