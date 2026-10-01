@@ -603,7 +603,7 @@ function tile(g) {
     : hp == null ? '<span class="mid dim">—</span>' : `<span class="mid"><span class="${lead(ap, hp)}">${Math.round(ap)}</span><span class="dim"> · </span><span class="${lead(hp, ap)}">${100 - Math.round(ap)}</span><span class="dim" style="font-size:11px">%</span></span>`;
   const foot = g.final ? "Final" : g.started ? "In progress" : tm(g.kickoff);
   return `<button class="tile" data-game="${esc(g.key)}"><img class="wmk l" loading="lazy" decoding="async" src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img class="wmk r" loading="lazy" decoding="async" src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'">` +
-    `<div class="in"><div class="nm"><span class="t">${tlogo(g.away)}${g.away}</span>${mid}<span class="t">${g.home}${tlogo(g.home)}</span></div>${g.final || hp == null ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}<div class="ft"><span>${foot}</span><span>${chips}</span></div></div></button>`;
+    `<div class="in"><div class="nm"><span class="t">${g.away}</span>${mid}<span class="t">${g.home}</span></div>${g.final || hp == null ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}<div class="ft"><span>${foot}</span><span>${chips}</span></div></div></button>`;
 }
 function gapStrip() {
   const E = S.edgesNow || [];
@@ -611,7 +611,7 @@ function gapStrip() {
 }
 function tdTop3(g) {
   const side = (team) => { const rows = (g.td || []).filter((r) => r.team === team && r.fair != null && usable(r)).sort((a, b) => b.fair - a.fair).slice(0, 3);
-    return `<div class="sc card mcard"><div class="in"><div class="hh">${tlogo(team)}${team} top scorers</div>` +
+    return `<div class="sc card mcard"><div class="in"><div class="hh">${team} top scorers</div>` +
       (rows.map((r, i) => `<div class="p"><div class="a"><span class="dim" style="font-size:11px;width:16px">#${i + 1}</span><b>${esc(r.player)}<span class="pos">${esc(r.pos)}</span></b><em class="mod">${Math.round(r.fair)}%</em></div>` +
         `<div class="b">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${r.two != null ? ` · 2+ ${Math.round(r.two)}%` : ""}${r.first != null ? ` · 1st ${Math.round(r.first)}%` : ""}</div></div>`).join("") || '<div class="s">No players yet.</div>') + `</div></div>`; };
   return `<div class="scorers">${side(g.away)}${side(g.home)}</div>`;
@@ -624,7 +624,7 @@ function startsIn(g) {
 function detailTop(g) {
   const hp = g.winPct != null ? Number(g.winPct) : null, ap = hp == null ? null : Math.round(100 - hp), hr = ap == null ? null : 100 - ap;
   const st = g.final ? `Final ${g.awayScore != null ? `${g.awayScore}–${g.homeScore}` : ""}` : g.started ? '<span class="r">Live · locked</span>' : startsIn(g);
-  return `<div class="card dtop"><div class="inner"><div class="nm"><span class="t">${tlogo(g.away)}${g.away}</span><div class="mid">${g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : ""}<div class="s2">${tm(g.kickoff)}</div><div class="s3">${st}</div></div><span class="t">${g.home}${tlogo(g.home)}</span></div>` +
+  return `<div class="card dtop"><div class="inner"><div class="nm"><span class="t">${g.away}</span><div class="mid">${g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : ""}<div class="s2">${tm(g.kickoff)}</div><div class="s3">${st}</div></div><span class="t">${g.home}</span></div>` +
     (hp == null || g.final ? "" : `<div class="wc"><div class="wl"><b class="mkt">${ap}%</b><span class="mkt">WIN CHANCE · MARKET</span><span class="dim">${hr}%</span></div><div class="bar"><i style="width:${ap}%"></i></div></div>`) + `</div></div>`;
 }
 function renderDetail(g) {
