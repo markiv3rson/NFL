@@ -248,13 +248,13 @@ _active = load_active()
 ACTIVE_TRAINED = list(_active.get("trained", [])) if _active else [CUR - 3, CUR - 2, CUR - 1]
 ACTIVE_THROUGH = tuple(_active.get("through", (0, 0))) if _active else (0, 0)   # (season, last week) the live model trained on
 m = _active["model"] if _active else fit_model([CUR - 3, CUR - 2, CUR - 1])   # 3 seasons (tested 9/28: better in 10 of 13)
-def shrink(p): return np.where(p>0.35, 0.35+0.75*(p-0.35), p)
+def shrink(p): return np.asarray(p, dtype=float)   # 10/1: was 0.75x above 35%; out-of-sample 2019-25 it understated stars by 2.5 pts (z>3) and scored no better. Now identity (kept so callers stay put).
 
 # ---- More TD markets, all derived from the calibrated anytime chance p (tested 2016-2025, out-of-sample) ----
 def two_plus(p):
     """Chance of 2+ TDs: Poisson from the anytime chance, x1.09 (out-of-sample the plain Poisson ran ~9% low). Brier 0.0333 vs 0.0349 for no-info."""
     p = np.clip(np.asarray(p, dtype=float), 0, 0.95); lam = -np.log(1 - p)
-    return np.minimum(0.6, 1.035 * (1 - np.exp(-lam) * (1 + lam)))   # 9/30: 1.09 -> 1.035 (with the team TD total, x1.09 ran 3.77% vs 3.58% actual)
+    return np.minimum(0.6, 1.044 * (1 - np.exp(-lam) * (1 + lam)))   # 10/1: 1.035 -> 1.044 once the 35% shrink was removed (plain Poisson 3.50% vs 3.66% actual 2019-25); 9/30: 1.09 -> 1.035 (with the team TD total, x1.09 ran 3.77% vs 3.58% actual)
 FIRST_OTHER = 0.4   # expected first-TD arrivals from non-listed scorers (QB runs, defense, special teams); best fit 2016-25
 def first_td(p_lists):
     """Chance each player scores the game's FIRST touchdown. p_lists = one array of anytime chances per team (both teams together).
