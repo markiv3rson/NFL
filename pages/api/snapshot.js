@@ -15,6 +15,7 @@ import { logEdges } from "../../lib/edges";
 import { recordPaper, recordPicks, recordWinner } from "../../lib/paper";
 import { buildWeek } from "../../lib/week";
 import { loadInjuriesMeta } from "../../lib/injuries";
+import { alertsFromLines, alertPriceGap } from "../../lib/alerts";
 export const config = { maxDuration: 120 };
 
 // Automatic pre-log (protocol 3.3): model vs Polymarket frozen at kickoff for every game. Used by the kickoff snapshot
@@ -67,7 +68,8 @@ export default async function handler(req, res) {
         if (why.length) snap.suspect = `Data check failed: ${why.join(", ")}. Bet held until next refresh.`;
       }
       if (poly && !snap.suspect && booksNow && booksNow.games) { const n =   // not when this snapshot failed the data check (9/30)
-         await logEdges(season, week, g, poly, booksNow.games[g.key], booksNow.t, t).catch(() => 0); edges += n; }   // add AFTER the await: "edges += await" lost updates across parallel games
+         await logEdges(season, week, g, poly, booksNow.games[g.key], booksNow.t, t, (e) => alertPriceGap(season, g, e)).catch(() => 0); edges += n; }   // add AFTER the await: "edges += await" lost updates across parallel games
+      if (prev && poly && !snap.suspect) await alertsFromLines(season, g, prev, poly).catch(() => 0);   // line-move alerts (10/1)
       if (poly || snap.books) { await redis.rpush(K.snaps(season, week, g.key), JSON.stringify(snap)); await redis.ltrim(K.snaps(season, week, g.key), -200, -1); lines += poly ? 1 : 0; }
       const px = await tdProps(events, g.away, g.home).catch(() => null);
       if (px) {

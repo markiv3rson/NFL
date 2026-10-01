@@ -1,5 +1,5 @@
 // NFL SLATEZZZ — everything comes from /api/slate (lines, TD, flags) and /api/mybets + /api/results/list (Record).
-let tdShowAll = false;
+let tdShowAll = false, WINALL = false;
 let PAPER = null, PICKS = null;
 let S = null, RES = null, EDGES = null, MB = null, tdSort = "likely", recView = "mine";
 const $ = (id) => document.getElementById(id);
@@ -30,7 +30,7 @@ function headButtons(g, id, extra = "") {
     (g.dataCheck ? `<div class="warn">⚠ ${esc(g.dataCheck)}</div>` : "") + `</div>` +
     `<div class="btns" style="margin-top:0;flex-shrink:0">${n ? `<button class="tag" data-drop="inj-${id}">Injuries ${n} ▾</button>` : ""}<button class="tag" data-drop="his-${id}">History ▾</button></div></div>` +
     `<div class="drop" id="inj-${id}"><div class="s" style="margin-bottom:4px">Official report${(() => { const w = [...new Set((g.injuries || []).map((x) => x.week))]; return w.length ? ` · Week ${w.join("/")}` + (w.every((x) => Number(x) !== Number(S.week)) ? " (last week's — this week's first report comes out Wednesday)" : "") : ""; })()} · updated ${S.injuriesUpdated ? hm(S.injuriesUpdated) : "—"}</div>` +
-    (g.injuries || []).map((x) => `<div class="drow"><span>${esc(x.name)} <span class="dim">${esc(x.pos || "")} · ${x.team}</span></span><span class="${/out/i.test(x.status) ? "r" : /doubt/i.test(x.status) ? "r" : "y"}">${esc(x.status)}</span></div>`).join("") + `</div>` +
+    (g.injuries || []).map((x) => `<div class="drow"><span>${injBadge(x.team)}${esc(x.name)} <span class="dim">${esc(x.pos || "")} · ${x.team}</span></span><span class="${/out/i.test(x.status) ? "r" : /doubt/i.test(x.status) ? "r" : "y"}">${esc(x.status)}</span></div>`).join("") + `</div>` +
     `<div class="drop" id="his-${id}">${historyRows(g)}</div>`;
 }
 // History dropdown (reworked 9/29): it already resets each week (stored per week), but it listed EVERY snapshot, so a
@@ -107,7 +107,7 @@ const injApplied = (g, kind) => !!(g.model && g.model.inj && (kind === "total" ?
 function leanCell(g, kind) {
   let p = kind === "total" ? g.totalPick : g.spreadPick;
   const head = `<div class="k">Model leans${injApplied(g, kind) ? ' <span class="pill p-y" style="padding:0 6px;font-size:10px">Estimate</span>' : ""}</div>`;
-  const wrap = (inner) => `<div style="grid-row:span 2">${head}${inner}</div>`;
+  const wrap = (inner) => `<div class="modelcell" style="grid-row:span 2">${head}${inner}</div>`;
   if (!p) return wrap(dash);
   // finished games hide warnings under the cover
   if (p.warn && g.final) p = { ...p, warn: null };
@@ -117,15 +117,15 @@ function leanCell(g, kind) {
   // the >50% side as the pick (e.g. "GB -1.5 · 52.1%") even when "Model sees TB by 4.6" sat right under it, because the
   // calibration slightly fades the model. Within 2.5 pts of 50% it now says so; the tilt stays visible in small text.
   const coin = Math.abs(p.pct - 50) < 2.5;
-  return wrap((coin ? `<span>No lean · about 50/50</span><div class="s">Model's side: <b>${esc(p.label)}</b> (${p.gap != null ? p.gap.toFixed(1) : "?"} pts off the line; ~${Math.round(p.pct)}% historically)</div>` :
+  return wrap((coin ? `<span>No lean · about 50/50</span><div class="s">Model's side: <b class="mod">${esc(p.label)}</b> (${p.gap != null ? p.gap.toFixed(1) : "?"} pts off the line; ~${Math.round(p.pct)}% historically)</div>` :
     `<span>${p.label}</span><div class="s">${p.pct.toFixed(1)}% model chance</div>`) +
     // Win chance (calibrated cal_win). Its accuracy comes from the MARKET spread; the model's own disagreement enters
     // with a small NEGATIVE weight (tested 2006-25: when the model likes a team more than the market does, that team
     // wins slightly LESS often than the line says). So this number can point the other way from "Model sees..." above.
-    (kind !== "total" && g.winPct != null ? `<div class="s">Win chance (market-based): ${g.home} ${Number(g.winPct).toFixed(0)}% · ${g.away} ${(100 - g.winPct).toFixed(0)}%</div>` : "") +
+    (kind !== "total" && g.winPct != null ? `<div class="s">Win chance (market-based): ${g.home} ${100 - Math.round(100 - g.winPct)}% · ${g.away} ${Math.round(100 - g.winPct)}%</div>` : "") +
     (reason ? `<div class="s" style="margin-top:6px">${esc(reason)}</div>` : "") +
     (wind ? `<div class="s">${wind}</div>` : "") +
-    (adj ? `<div class="s" style="margin-top:6px;border-top:0.5px solid var(--border);padding-top:6px">${esc(adj)}</div>` : "") +
+    (adj ? `<div class="s r" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">${injBadgeFor(g)}${esc(adj)}</div>` : "") +
     (p.warn ? `<div class="s y">${esc(p.warn)}</div>` : ""));
 }
 function cover(g, pick) {
@@ -154,9 +154,9 @@ function winnersBox() {
   const rec = W && W.all && W.all.n ? `<div class="row"><span class="dim">Moneyline · all picks</span><span>${W.all.w}–${W.all.l} · right ${pc(W.all.hit)} <span class="dim">(said ${pc(W.all.said)})</span></span></div>` +
     (W.top4 && W.top4.n ? `<div class="row"><span class="dim">Moneyline · each week's top 4</span><span>${W.top4.w}–${W.top4.l} · right ${pc(W.top4.hit)} <span class="dim">(said ${pc(W.top4.said)})</span></span></div>` : "") : '<div class="s dim">The record starts after this week\'s games: each pick is saved at kickoff and graded when the game ends.</div>';
   return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Moneyline side · who wins the game</div>` +
-    (list.map((x, i) => { const g = S.games.find((y) => y.key === x.game), sides = g ? modelSide(g) : [], sp = sides.find((s) => s.market === "Spread"), tt = sides.find((s) => s.market === "Total");
+    (list.slice(0, WINALL ? 99 : 8).map((x, i) => { const g = S.games.find((y) => y.key === x.game), sides = g ? modelSide(g) : [], sp = sides.find((s) => s.market === "Spread"), tt = sides.find((s) => s.market === "Total");
       return `<div class="row"><span>${i + 1}. <b>${esc(x.team)}</b> over ${esc(x.opp)} <span class="dim">· ${sp ? esc(sp.label) : "—"} · ${tt ? esc(tt.label) : "—"}</span></span><span>${Math.round(x.p * 100)}%${x.price ? ` <span class="dim">· ${Math.round(x.price * 100)}¢</span>` : ""}</span></div>`; }).join("") || '<div class="s">No lines yet.</div>') +
-    `<div class="sec">${rec}${W && W.stats && W.stats.n ? `<div class="row"><span class="dim">Moneyline · stats-only model (no market)</span><span>${W.stats.w}–${W.stats.l} · right ${pc(W.stats.hit)}</span></div>` : ""}${pickRec("spread", "Spreads")}${pickRec("total", "Totals")}</div>` +
+    (list.length > 8 ? `<div class="center" style="margin-top:6px"><button class="btn" id="win-all">${WINALL ? "Show top 8 only" : `Show all ${list.length} games`}</button></div>` : "") + `<div class="fold" data-drop="winrec"><span>Records</span><span>▾</span></div><div class="drop" id="winrec">${rec}${W && W.stats && W.stats.n ? `<div class="row"><span class="dim">Moneyline · stats-only model (no market)</span><span>${W.stats.w}–${W.stats.l} · right ${pc(W.stats.hit)}</span></div>` : ""}${pickRec("spread", "Spreads")}${pickRec("total", "Totals")}</div>` +
     `<div class="s dim">Each line: moneyline pick and chance, its Polymarket price, then the spread and total side. Tested 2007–25: favorites at 60–70% won 63%, at 70–80% 76%; spread and total sides covered only ~51% and 50%, so the winner is where you can be right most.</div></div></div>`;
 }
 // "Right now" (9/30): Polymarket prices 3%+ better than fresh sportsbook fair prices -- the one realistic edge source.
@@ -189,38 +189,37 @@ function changedBox() {
   return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Changed since your last visit (${hm(LAST_SEEN)})</div>` +
     (out.join("") || `<div class="s">${newWeek} new game line${newWeek === 1 ? "" : "s"} opened — see each card's History.</div>`) + `</div></div>`;
 }
-function renderLines() {
-  $("lines").innerHTML = rightNowBox() + changedBox() + [...S.games].sort(order).map((g, i) => {
-    const p = g.poly || {}, b = g.books || {};
+function gameCard(g, i) {
+  {
+    const lv = liveFor(g), p = (lv && lv.poly) || g.poly || {}, b = g.books || {};   // live numbers for a game in progress; model and kickoff line stay locked
     const live = !g.started && p.spread ? '<span class="live"></span>' : "";
-    const row = (k, v, mt) => `<div class="prl${mt ? " mt" : ""}"><span class="s">${k}</span><span>${v}</span></div>`;
-    const poly = p.spread || p.ml ? `${live}` +
-      (p.spread ? row("Spread", `${g.home} ${sgn(p.spread.homeSpread)} ${odds(toAmerican(p.spread.home))}`) + row("", `${g.away} ${sgn(-p.spread.homeSpread)} ${odds(toAmerican(p.spread.away))}`) : "") +
-      (p.ml ? row("Moneyline", `${g.home} ${odds(toAmerican(p.ml.home))}`, !!p.spread) + row("", `${g.away} ${odds(toAmerican(p.ml.away))}`) : "") : dash;
+    const row = (k, v, mt, c) => `<div class="prl${mt ? " mt" : ""}"><span class="s">${k}</span><span class="${c || ""}">${v}</span></div>`;
+    const poly = liveHead(g, lv) + (p.spread || p.ml ? `${live}` +
+      (p.spread ? row("Spread", `${g.home} ${sgn(p.spread.homeSpread)} ${odds(toAmerican(p.spread.home))}`, false, "mkt") + row("", `${g.away} ${sgn(-p.spread.homeSpread)} ${odds(toAmerican(p.spread.away))}`, false, "mkt") : "") +
+      (p.ml ? row("Moneyline", `${g.home} ${odds(toAmerican(p.ml.home))}`, !!p.spread, "mlc") + row("", `${g.away} ${odds(toAmerican(p.ml.away))}`, false, "mlc") : "") : dash) + liveTail(g, lv);
     // Tested angle (9/30): home favorites of 9.5+ on the moneyline, the one game-line angle that held up on unseen years
     const hsNow = p.spread ? p.spread.homeSpread : b.spread ? b.spread.homeSpread : null;
     const angle = !g.final && hsNow != null && hsNow <= -9.5 ? `<div class="s g" style="margin:6px 0 0">★ Tested angle: ${g.home} moneyline (home favorite 9.5+). 2007–25: won ~88%, about +2–3% per bet at sportsbook prices — small edge, check Polymarket's price.</div>` : "";
-    return `<div class="card${g.final ? " fin" : ""}"><div class="inner">${headButtons(g, "l" + i)}${angle}<div class="f">${HDR}` +
+    return `<div class="card${g.final ? " fin" : ""}">${wmPair(g)}<div class="inner">${headButtons(g, "l" + i)}${angle}<div class="f">${HDR}` +
       `<div><div class="k">Sportsbooks (reference only)</div>${b.spread ? `${g.home} ${sgn(b.spread.homeSpread)} ${odds(b.spread.home.odds)}<div class="s">fair (vig removed) ${g.home} ${odds(toAmerican(b.spread.home.fair))} / ${g.away} ${odds(toAmerican(b.spread.away.fair))}</div>` : dash}</div>` +
       leanCell(g, "spread") +
-      `<div><div class="k">Polymarket (where you bet)</div>${poly}</div>` +
+      `<div><div class="k">${pmLogo()}Polymarket (where you bet)</div>${poly}</div>` +
       `</div></div>${cover(g, g.spreadPick)}</div>`;
-  }).join("");
+  }
 }
 // ---------- Totals ----------
-function renderTotals() {
-  // Long-run fact (2007-25, closing prices): unders lost less than overs (-1.8% vs -3.8% per bet). No over/under angle held up on unseen years.
-  $("totals").innerHTML = `<div class="s dim" style="grid-column:1/-1;margin-top:8px">Tested 2007–25: no over/under angle held up on unseen years. Long run, unders lost less than overs (−1.8% vs −3.8% per bet at sportsbook prices); the model's leans here sit near 50/50 by design.</div>` + [...S.games].sort(order).map((g, i) => {
-    const p = g.poly || {}, b = g.books || {};
+function totalCard(g, i) {
+  {
+    const lv = liveFor(g), p = (lv && lv.poly) || g.poly || {}, b = g.books || {};
     const live = !g.started && p.total ? '<span class="live"></span>' : "";
-    const row = (k, v) => `<div class="prl"><span class="s">${k}</span><span>${v}</span></div>`;
-    const poly = p.total ? `${live}` + row(`Over ${p.total.line}`, odds(toAmerican(p.total.over))) + row(`Under ${p.total.line}`, odds(toAmerican(p.total.under))) : dash;
-    return `<div class="card${g.final ? " fin" : ""}"><div class="inner">${headButtons(g, "t" + i)}<div class="f">${HDR}` +
+    const row = (k, v) => `<div class="prl"><span class="s">${k}</span><span class="mkt">${v}</span></div>`;
+    const poly = liveHead(g, lv, "total") + (p.total ? `${live}` + row(`Over ${p.total.line}`, odds(toAmerican(p.total.over))) + row(`Under ${p.total.line}`, odds(toAmerican(p.total.under))) : dash) + liveTail(g, lv, "total");
+    return `<div class="card${g.final ? " fin" : ""}">${wmPair(g)}<div class="inner">${headButtons(g, "t" + i)}<div class="f">${HDR}` +
       `<div><div class="k">Sportsbooks (reference only)</div>${b.total ? `${b.total.line}<div class="s">O ${odds(b.total.over.odds)} · U ${odds(b.total.under.odds)}</div>` : dash}</div>` +
       leanCell(g, "total") +
-      `<div><div class="k">Polymarket (where you bet)</div>${poly}</div>` +
+      `<div><div class="k">${pmLogo()}Polymarket (where you bet)</div>${poly}</div>` +
       `</div></div>${cover(g, g.totalPick)}</div>`;
-  }).join("");
+  }
 }
 // ---------- Anytime TD ----------
 const PRICE_CLS = { Underpriced: "g", Fair: "y", Overpriced: "r" };
@@ -232,7 +231,7 @@ const LOGO_OVERRIDES = { WAS: "https://raw.githubusercontent.com/ajreinhard/data
 const logoUrl = (team) => (team ? LOGO_OVERRIDES[team] || `https://a.espncdn.com/i/teamlogos/nfl/500/${team}.png` : "");
 // Team logo next to team names on every card (game header + TD team headers). Same logo source as the TD rows.
 function tlogo(team) { return team ? `<img class="tlogo" src="${logoUrl(team)}" alt="" onerror="this.style.display='none'">` : ""; }
-function matchup(g) { return `${tlogo(g.away)}${g.away} @ ${tlogo(g.home)}${g.home}`; }
+function matchup(g) { return `${g.away} @ ${g.home}`; }
 function prow(r, g, showGame) {
   const inj = r.injury && GAME_STATUS.test(r.injury) ? ` <span class="pill ${/out|doubt/i.test(r.injury) ? "p-r" : "p-y"}" style="padding:0 6px;font-size:10px">${esc(r.injury)}</span>` : "";
   // Model's chance (big, left) and Polymarket's price (right), each with its plain label directly underneath. No verdict, no edge, no stake.
@@ -266,25 +265,26 @@ function tdCard(g, id) {
     return `<div><div class="sh" style="color:#c9c9cf">${tlogo(team)}${team} <span class="s" style="font-weight:400">${implied(team)}</span></div>${groups ? `<div class="s" style="margin-bottom:2px">Chance any one of them scores: ${groups}</div>` : ""}${rows.map((r) => prow(r, g, false)).join("") || '<div class="s">No players yet — tap ▶ Rerun model.</div>'}</div>`; };
   return `<div class="card${g.final ? " fin" : ""}" style="margin-top:10px"><div class="inner">${headButtons(g, id, lines)}<div class="teams">${side(g.away)}${side(g.home)}</div>${(g.espnRemoved || []).length ? `<div class="s r" style="margin-top:6px">Removed — ESPN lists them out for this game: ${esc(g.espnRemoved.join(", "))}</div>` : ""}${(g.tdUnmodeled || []).length ? `<div class="s" style="margin-top:6px">Also on Polymarket with a real market, <b>not in the model</b> (QBs, returners, new or dropped players — check before buying): ${g.tdUnmodeled.map((u) => `${esc(u.player)} ${Math.round(u.price * 100)}¢${u.thin ? " (thin)" : ""}`).join(" · ")}</div>` : ""}</div>${cover(g, null)}</div>`;
 }
+function tdRow(x, i) {
+  const r = x.r, g = x.g;
+  return `<div class="tdr"><img class="wmc" loading="lazy" decoding="async" src="${logoUrl(r.team)}" alt="" onerror="this.style.display='none'"><div class="in"><span class="rk">${i + 1}</span>` +
+    `<div class="nmx"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos)}</span>${r.injury && GAME_STATUS.test(r.injury) ? ` <span class="pill ${/out|doubt/i.test(r.injury) ? "p-r" : "p-y"}" style="padding:0 6px;font-size:10px">${esc(r.injury)}</span>` : ""}<div class="g2">${esc(r.game)}</div></div>` +
+    `<div class="mp"><em>${Math.round(r.fair)}%</em><div class="bar"><i style="width:${Math.min(100, r.fair)}%"></i></div></div><div class="pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}</div></div>` +
+    `<div class="more">${prow(r, g, true)}</div></div>`;
+}
 function renderTd() {
-  const wk = S.week ? ` — Week ${S.week}` : "";
-  $("td-header").textContent = `Anytime TD${wk}`;
-  if (tdSort === "likely") {
-    const rows = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).map((r) => ({ r, g })))
-      .filter((x) => x.r.fair != null && usable(x.r)).sort((a, b) => b.r.fair - a.r.fair);
-    const moves = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).filter((r) => r.move).map((r) => r)).sort((a, b) => Math.abs(b.move) - Math.abs(a.move)).slice(0, 10);
-    const moveBox = moves.length ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Price moves (5¢+, real markets)</div>${moves.map((r) => `<div class="row"><span>${esc(r.player)} <span class="dim">${esc(r.game)}</span></span><span class="${r.move > 0 ? "g" : "r"}">${r.move > 0 ? "+" : ""}${r.move}¢ → ${Math.round(r.price * 100)}¢</span></div>`).join("")}</div></div>` : "";
-    const shown = tdShowAll ? rows : rows.slice(0, 40);   // top 40 by default (9/30): 300+ rows was hard to use on a phone
-    $("td").innerHTML = moveBox + shown.map((x) => `<div class="card" style="margin-top:10px">${prow(x.r, x.g, true)}</div>`).join("") +
-      (rows.length > 40 ? `<div class="center"><button class="btn" id="td-all">${tdShowAll ? "Show top 40 only" : `Show all ${rows.length} players`}</button></div>` : "") ||
-      '<div class="card" style="margin-top:10px"><div class="s">No players yet — tap ▶ Rerun model.</div></div>';
-    if ($("td-all")) $("td-all").onclick = () => { tdShowAll = !tdShowAll; renderTd(); };
-    return;
-  }
-  // What moves a player up or down vs a given opponent (tested 2023-25): the team's implied points from the betting line
-  // (a lead RB ~39% at 17 implied points vs ~50% at 27). Opponent "TDs allowed" stats barely matter once the line is known.
-  $("td").innerHTML = `<div class="s dim" style="margin-top:8px">Top ${{ game1: 1, game2: 2, game3: 3 }[tdSort] || ""} per team. Order comes from each player's own usage (targets, red-zone and goal-line work, snaps) times his team's implied points against this opponent — the betting line already prices how good the defense is.</div>` +
-    [...S.games].sort(order).map((g, i) => tdCard(g, "d" + i)).join("");
+  const wk = S.week ? ` · Week ${S.week}` : "";
+  $("td-header").innerHTML = `<b style="color:#d3d8e0">Anytime TD${wk}</b> · top 20 · most likely first`;
+  const rows = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).map((r) => ({ r, g })))
+    .filter((x) => x.r.fair != null && usable(x.r)).sort((a, b) => b.r.fair - a.r.fair);
+  const moves = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).filter((r) => r.move).map((r) => r)).sort((a, b) => Math.abs(b.move) - Math.abs(a.move)).slice(0, 10);
+  const moveBox = moves.length ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Price moves (5¢+, real markets)</div>${moves.map((r) => `<div class="row"><span>${esc(r.player)} <span class="dim">${esc(r.game)}</span></span><span class="${r.move > 0 ? "g" : "r"}">${r.move > 0 ? "▲ +" : "▼ "}${r.move}¢</span></div>`).join("")}</div></div>` : "";
+  const shown = tdShowAll ? rows : rows.slice(0, 20);
+  if (!rows.length) { $("td").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">No players yet — tap Model (the ▶ button on the right).</div></div>'; return; }
+  $("td").innerHTML = moveBox + `<div class="card tdl"><div class="tdh"><span style="flex:1;padding-left:28px">PLAYER</span><span style="width:74px;text-align:right">MODEL</span><span style="width:60px;text-align:right;white-space:nowrap">${pmLogo()}PRICE</span></div>${shown.map(tdRow).join("")}</div>` +
+    (rows.length > 20 ? `<div class="center"><button class="btn" id="td-all">${tdShowAll ? "Show top 20 only" : `Show all ${rows.length} players`}</button></div>` : "") +
+    '<div class="s dim" style="text-align:center;margin-top:8px">Tap a row for snaps, 2+ TDs and first TD.</div>';
+  if ($("td-all")) $("td-all").onclick = () => { tdShowAll = !tdShowAll; renderTd(); };
 }
 // ---------- Record: Mine ----------
 const RESMARK = { W: '<span class="g">✓</span>', L: '<span class="r">✗</span>', P: '<span class="dim">=</span>', pending: '<span class="dim">•</span>' };
@@ -310,7 +310,15 @@ function renderMine() {
     return `<div class="row"><span>${esc(p.title)}${p.outcome ? ` — ${esc(p.outcome)}` : ""}${p.expired ? " (settled)" : ""}</span>` +
       `<span>${p.shares} sh · ${money(p.cost || 0)}${p.value != null ? ` → ${money(p.value)}` : ""}${pl != null ? ` ${cMoney(pl)}` : ""}</span></div>`;
   }).join("");
-  $("record-mine").innerHTML = `<div class="card" style="margin-top:10px">` +
+  const nOpen = open.length, tot = s.wins + s.losses;
+  const tiles = `<div class="stats">` + `<div class="stat"><div class="k">OPEN BETS</div><div class="v mkt">${nOpen}</div><div class="k2">${money(s.openCost)} staked</div></div>` +
+    `<div class="stat"><div class="k">RECORD</div><div class="v ${tot ? (s.wins / tot >= 0.5 ? "g" : "r") : "dim"}">${tot ? `${s.wins}–${s.losses}` : "—"}</div><div class="k2">settled</div></div>` +
+    `<div class="stat"><div class="k">PROFIT</div><div class="v">${cMoney(s.pl)}</div><div class="k2">this season</div></div></div>`;
+  $("record-mine").innerHTML = tiles + `<div class="card" style="margin-top:10px">` +
+    `<div class="sec"><div class="sh">Summary</div>` +
+    `<div class="row"><span class="dim">Your record · P/L</span><span>${MB.summary.wins}–${MB.summary.losses}${MB.summary.pushes ? "–" + MB.summary.pushes : ""} · ${cMoney(MB.summary.pl)}</span></div>` +
+    `<div class="row"><span class="dim">Return · avg price move your way</span><span>${cPct(MB.summary.roi)} · ${cPct(MB.summary.avgClv)}</span></div>` +
+    `<div class="row"><span class="dim">Open this week</span><span>${money(MB.summary.openCost)} of $200</span></div></div>` +
     `<div class="sec"><div class="sh">Open bets</div>${open.map(betRow).join("") || '<div class="s">No open bets.</div>'}</div>` +
     `<div class="sec"><div class="sh">Expected returns</div>` +
     `<div class="row"><span class="dim">If everything hits</span><span>${money(s.maxPayout)} (${cMoney(s.maxPayout - s.openCost)})</span></div>` +
@@ -329,14 +337,19 @@ function rec(list) { const c = { W: 0, L: 0, P: 0 }; list.forEach((x) => c[x.res
 const PAST = [[2013, 53.0, 56.8, 71.2, 69.4], [2014, 49.1, 59.6, 68.0, 67.4], [2015, 47.6, 56.8, 63.7, 64.9], [2016, 54.7, 52.7, 67.6, 65.9], [2017, 55.0, 48.0, 71.4, 64.8], [2018, 44.9, 49.2, 67.2, 65.6], [2019, 48.9, 52.1, 65.1, 65.1], [2020, 43.3, 50.2, 66.8, 65.9], [2021, 46.8, 47.1, 63.7, 63.7], [2022, 44.7, 52.9, 68.5, 61.7], [2023, 53.1, 50.5, 69.6, 65.6], [2024, 56.1, 48.9, 74.1, 69.6], [2025, 44.4, 53.6, 63.2, 59.2]];
 function pastBox() {
   const f = (x) => x.toFixed(1) + "%", avg = (i) => PAST.reduce((a, r) => a + r[i], 0) / PAST.length;
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Past seasons · how often each pick was right</div>` +
+  const col = (v) => (v >= 65 ? "var(--green)" : v >= 62 ? "var(--yellow)" : "var(--red)");
+  const bars = PAST.map((r) => `<div class="pb"><i style="height:${Math.round(((r[3] - 40) / 35) * 52) + 6}px;background:${col(r[3])}"></i></div>`).join("");
+  const yrs = PAST.map((r) => `<span>${String(r[0]).slice(2)}</span>`).join("");
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Past seasons · favorite won %</div><div class="pbars">${bars}</div><div class="pyrs">${yrs}</div>` +
+    `<div class="s dim" style="margin-top:6px">Green 65%+, amber 62–65%, red below. Average: winners ${f(avg(3))} · spreads ${f(avg(1))} · totals ${f(avg(2))}.</div>` +
+    `<div class="fold" data-drop="pasttbl"><span>Full table by season</span><span>▾</span></div><div class="drop" id="pasttbl">` +
     `<div class="row"><span class="dim">Season</span><span class="dim">Winner (market) · Winner (stats) · Spread · Total</span></div>` +
     PAST.slice().reverse().map((r) => `<div class="row"><span>${r[0]}</span><span>${f(r[3])} · ${f(r[4])} · ${f(r[1])} · ${f(r[2])}</span></div>`).join("") +
     `<div class="row"><b>Average</b><b>${f(avg(3))} · ${f(avg(4))} · ${f(avg(1))} · ${f(avg(2))}</b></div>` +
-    `<div class="s dim" style="margin-top:4px">Winner = the team picked to win straight up. Spread and total = the model's side of the closing line. The model's settings were fit on these same years, so treat the older totals with caution; this season's live record above is the clean test.</div></div></div>`;
+    `<div class="s dim" style="margin-top:4px">Winner = the team picked to win straight up. Spread and total = the model's side of the closing line. The model's settings were fit on these same years, so treat the older totals with caution; this season's live record is the clean test.</div></div></div></div>`;
 }
 function renderModel() {
-  if (!MB || !RES) { $("record-model").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }
+  if (!MB || !RES) { $("lab-results").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }
   const s = MB.summary, res = RES;
   const weeks = [...new Set(res.map((r) => r.week))].sort((a, b) => b - a), lw = weeks[0];
   const wk = res.filter((r) => r.week === lw);
@@ -417,11 +430,7 @@ function renderModel() {
     ((st.errors || []).length ? st.errors.map((e) => `<div class="s y">⚠ ${hm(e.t)} · ${esc(e.where)}: ${esc(e.msg)}</div>`).join("") : '<div class="s g">No errors this week.</div>') : "";
   const games = res.map((r) => `<div class="row"><span>${esc(r.game)} <span class="dim">wk ${r.week} · ${r.awayScore}–${r.homeScore}</span></span><span>` +
     [r.spread, r.total, r.ml].filter(Boolean).map((x) => `${esc(x.label)} ${x.result === "W" ? '<span class="g">W</span>' : x.result === "L" ? '<span class="r">L</span>' : "P"}`).join(" · ") + `</span></div>`).join("");
-  $("record-model").innerHTML = pastBox() + `<div class="card" style="margin-top:10px">` +
-    `<div class="sec"><div class="sh">Summary</div>` +
-    `<div class="row"><span class="dim">Your record · P/L</span><span>${s.wins}–${s.losses}${s.pushes ? "–" + s.pushes : ""} · ${cMoney(s.pl)}</span></div>` +
-    `<div class="row"><span class="dim">Return · avg price move your way</span><span>${cPct(s.roi)} · ${cPct(s.avgClv)}${s.clvCount != null ? ` <span class="dim">(${s.clvCount} bet${s.clvCount === 1 ? "" : "s"} with closing prices)</span>` : ""}</span></div>` +
-    `<div class="row"><span class="dim">Open this week</span><span>${money(s.openCost)} of $200</span></div></div>` +
+  $("lab-results").innerHTML = pastBox() + `<div class="card" style="margin-top:10px">` +
     `<div class="sec"><div class="sh">Week ${lw ?? S.week} recap</div>` +
     (wk.length ? `<div class="row"><span class="dim">Tilts: spreads · totals · moneyline</span><span>${rec(pick("spread", wk))} · ${rec(pick("total", wk))} · ${rec(pick("ml", wk))}</span></div>` +
     (pick("mlModel", wk).length ? `<div class="row"><span class="dim">Moneyline (stats-only model)</span><span>${rec(pick("mlModel", wk))}</span></div>` : "") + `` : '<div class="s">No finished games graded yet.</div>') +
@@ -433,7 +442,7 @@ function renderModel() {
       const mine = (MB.bets || []).filter((b) => b.week === lw && b.result !== "pending"), mpl = mine.reduce((a, b) => a + (b.pl || 0), 0);
       return `<div class="row"><span class="dim">TD model</span><span>${hit} scored · model expected ${exp.toFixed(1)} (${td.length} players who played${tdW.length > td.length ? `; ${tdW.length - td.length} inactive left out` : ""})</span></div>` +
         (bm != null ? `<div class="row"><span class="dim">TD vs Polymarket (real markets)</span><span>${real.length} players · model ${bm.toFixed(3)} · Polymarket ${bp.toFixed(3)}</span></div>` : "") +
-        `<div class="row"><span class="dim">Your bets</span><span>${mine.length ? `${mine.filter((b) => b.result === "W").length}–${mine.filter((b) => b.result === "L").length} · ${cMoney(mpl)}` : "none settled"}</span></div>`; })() +
+        ""; })() +
     `<div class="row"><span class="dim">Week ${S.week} loaded</span><span>${wc.games} games · lines ${wc.withLines}/${wc.games} · model ${wc.modelRun ? '<span class="g">✓</span>' : '<span class="y">not run yet</span>'}</span></div>` +
     ((wc.watch || []).length ? `<div class="s" style="margin-top:6px"><b class="y">Watchdog</b>${wc.watch.map((w) => `<div class="warn">⚠ ${esc(w)}</div>`).join("")}</div>` : '<div class="s dim" style="margin-top:6px">Watchdog: nothing missing or stale.</div>') + `</div>` +
     `<div class="sec"><div class="sh">Season record</div>${seasonRec || '<div class="s">No graded picks yet.</div>'}` +
@@ -472,7 +481,7 @@ function renderModel() {
     `<div class="center"><button class="btn" id="export-btn">Export data</button></div>`;
   $("export-btn").onclick = () => (window.location.href = "/api/results/export");
 }
-function renderRecord() { renderMine(); renderModel(); $("record-mine").style.display = recView === "mine" ? "" : "none"; $("record-model").style.display = recView === "model" ? "" : "none"; }
+function renderRecord() { renderMine(); renderModel(); }
 async function loadRecord(sync = false) {
   if (sync) toast("Syncing your Polymarket account…", 0);
   try {
@@ -490,7 +499,8 @@ function weekline() {
   const range = ks.length ? (a.getMonth() === z.getMonth() ? `${f(a)}–${z.getDate()}` : `${f(a)} – ${f(z)}`) : "";
   const m = S.meta || {};
   const round = { 19: "Wild Card", 20: "Divisional round", 21: "Conference Championships", 22: "Super Bowl" }[S.week];
-  $("weekline").innerHTML = `${round || `Week ${S.week}`} · ${range} · updated: Polymarket ${clock(m.lastSnapshot)} · sportsbooks ${clock(S.booksAt)} · model ${clock(S.modelRunAt)} <span class="dim">(your time)</span>`;
+  $("hero-wk").textContent = `${round || `Week ${S.week}`} · ${range}`.toUpperCase();
+  $("hero-upd").textContent = `updated: Polymarket ${clock(m.lastSnapshot)} · sportsbooks ${clock(S.booksAt)} · model ${clock(S.modelRunAt)} (your time)`;
 }
 // ---------- Pick Lab: the model's side on every game (paper singles) + Parlay Lab ----------
 function modelSide(g) {   // same rule as lib/paper.js picksFor (the server records it at kickoff)
@@ -501,13 +511,25 @@ function modelSide(g) {   // same rule as lib/paper.js picksFor (the server reco
     if (Math.abs(gap) >= 0.05) out.push({ game: g.key, market: "Total", label: `${gap > 0 ? "Over" : "Under"} ${p.total.line}`, price: gap > 0 ? p.total.over : p.total.under, gap: Math.abs(gap) }); }
   return out;
 }
+const hitCls = (h) => (h == null ? "dim" : h >= 0.55 ? "g" : h >= 0.5 ? "y" : "r");   // green 55%+, amber 50-55%, red under 50%
+function statTile(label, w, l, hit, sub) {
+  return `<div class="stat"><div class="k">${label}</div><div class="v ${hitCls(hit)}">${hit == null ? "—" : `${w}–${l}`}</div><div class="k2">${hit == null ? "none graded yet" : `${Math.round(hit * 100)}% ${sub}`}</div></div>`;
+}
+function labStats() {
+  const P = PICKS || {}, W = (S && S.winners && S.winners.all) || {};
+  const g = (m) => { const x = P[m] || {}; return [x.w, x.l, x.graded ? x.hit : null]; };
+  const sp = g("spread"), tt = g("total");
+  return `<div class="stats">${statTile("MONEYLINE", W.w, W.l, W.n ? W.hit : null, "right")}${statTile("SPREAD SIDE", sp[0], sp[1], sp[2], "covered")}${statTile("TOTAL SIDE", tt[0], tt[1], tt[2], "right")}</div>`;
+}
 function pickLabBox() {
   const pc = (x) => (x == null ? "—" : `${(x * 100).toFixed(1)}%`), P = PICKS || {};
-  const rec = (m, name) => { const x = P[m]; if (!x || !x.recorded) return `<div class="row"><span class="dim">${name}</span><span class="dim">none recorded yet</span></div>`;
-    return `<div class="row"><span class="dim">${name}</span><span>${x.w}–${x.l} · covered ${pc(x.hit)} · return ${x.roi == null ? "—" : cPct(x.roi)} <span class="dim">(need ${pc(x.need)} to break even)</span></span></div>` +
-      (x.bands || []).filter((b) => b.graded).map((b) => `<div class="row"><span class="dim" style="padding-left:10px">when the model differs by ${b.label}</span><span>${b.w}–${b.l} · ${pc(b.hit)}</span></div>`).join(""); };
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Pick Lab · model's side, paper only</div>${rec("spread", "Spreads")}${rec("total", "Totals")}${rec("dog", "Road dogs +3 to +6.5")}${rec("away3", "Road team, spread 3 or less")}${rec("wind", "Under, wind 12+ mph")}${rec("lowloss", "Underdog off a loss scoring 10 or fewer")}${rec("prebye", "Home team before its bye (wk 8+)")}` +
-    `<div class="s dim" style="margin-top:4px">Saved at kickoff, graded after. Tested: ~51% on spreads (break-even 52.4%), ~50% on totals. Judge after 100+ picks.</div></div></div>`;
+  const arow = (m, name) => { const x = P[m];
+    return `<div class="arow"><span class="nm">${name}</span><span class="dim rc">${x && x.graded ? `${x.w}–${x.l}` : x && x.recorded ? `${x.recorded} saved` : "none yet"}</span><b class="${hitCls(x && x.graded ? x.hit : null)}">${x && x.graded ? Math.round(x.hit * 100) + "%" : "—"}</b></div>`; };
+  const bands = ["spread", "total"].map((m) => (P[m] && P[m].bands || []).filter((b) => b.graded).map((b) => `<div class="row"><span class="dim">${m === "spread" ? "Spread" : "Total"} · model differs by ${b.label}</span><span>${b.w}–${b.l} · ${pc(b.hit)}</span></div>`).join("")).join("");
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Tracked angles · paper only</div>` +
+    arow("spread", "Spreads · model side") + arow("total", "Totals · model side") + arow("dog", "Road dogs +3 to +6.5") + arow("away3", "Road team, spread 3 or less") + arow("wind", "Under, wind 12+ mph") + arow("lowloss", "Underdog off a loss scoring 10 or fewer") + arow("prebye", "Home team before its bye (wk 8+)") +
+    `<div class="s dim" style="margin-top:6px">Saved at kickoff, graded after. Green 55%+, amber 50–55%, red under 50%. Tested: ~51% on spreads (break-even 52.4%), ~50% on totals. Judge after 100+ picks.</div>` +
+    (bands ? `<div class="fold" data-drop="labbands"><span>By how far the model differs from the line</span><span>▾</span></div><div class="drop" id="labbands">${bands}</div>` : "") + `</div></div>`;
 }
 function renderLab() {
   if (!$("lab")) return;
@@ -522,10 +544,120 @@ function renderLab() {
         `<div class="row" style="display:block"><div>${p.legs.map(legLine).join("<br>")}</div><div class="s">pays ${p.pay.toFixed(2)}x${p.prob != null ? ` · market chance ${pct(p.prob)}` : ""}${p.result ? ` · <b class="${p.result === "W" ? "g" : p.result === "L" ? "r" : ""}">${p.result === "W" ? "HIT" : p.result === "L" ? "missed" : "push"}</b>` : ""}</div></div>`).join("") :
         '<div class="s">No qualifying legs this week.</div>') + `</div>`; }).join("");
   const rows = !Object.keys(names).some((k) => board[k] && board[k].graded) ? '<div class="s dim">No graded parlays yet.</div>' : Object.keys(names).map((k) => { const b = board[k]; return `<div class="row"><span class="dim">${esc(names[k])}</span><span>${b ? `${b.hits} of ${b.graded} hit${b.graded ? ` (${pct(b.hitRate)}, market said ${pct(b.expRate)})` : ""} · return ${b.roi == null ? "—" : cPct(b.roi)}` : "—"}</span></div>`; }).join("");
-  $("lab").innerHTML = (S ? winnersBox() : "") + pickLabBox() + intro + `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Parlay Lab · week ${wk ? wk.week : S ? S.week : ""} (paper only)</div>${thisWeek}</div></div>` +
+  $("lab").innerHTML = (S ? labStats() + winnersBox() : "") + pickLabBox() + intro + `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Parlay Lab · week ${wk ? wk.week : S ? S.week : ""} (paper only)</div>${thisWeek}</div></div>` +
     `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Scoreboard · this season</div>${rows}<div class="s dim" style="margin-top:4px">Return per $1, before fees. Parlays are streaky.</div></div></div>`;
+  if ($("win-all")) $("win-all").onclick = () => { WINALL = !WINALL; renderLab(); };
 }
-function renderAll() { weekline(); renderLines(); renderTotals(); renderTd(); if (MB) renderRecord(); }
+
+// ---------- v2: tiles, tap-a-game view, countdown, alerts ----------
+// Live Polymarket lines for a game in progress (10/1). Display only: the model, picks, kickoff line and grades stay locked.
+let LIVE = {}, LIVE_T = null;
+const ago = (iso) => { const sec = Math.max(0, Math.round((Date.now() - new Date(iso)) / 1000)); return sec < 60 ? sec + "s ago" : Math.round(sec / 60) + " min ago"; };
+const liveFor = (g) => (g.started && !g.final && Object.prototype.hasOwnProperty.call(LIVE, g.key) ? { poly: LIVE[g.key] } : null);
+function lockedLine(g, kind) {
+  const p = g.poly || {};
+  if (kind === "total") return p.total ? `${p.total.line} (O ${odds(toAmerican(p.total.over))} · U ${odds(toAmerican(p.total.under))})` : "—";
+  return `${p.spread ? `${g.home} ${sgn(p.spread.homeSpread)} ${odds(toAmerican(p.spread.home))}` : "—"}${p.ml ? ` · ML ${g.home} ${odds(toAmerican(p.ml.home))}` : ""}`;
+}
+const liveHas = (lv, kind) => !!(lv && lv.poly && (kind === "total" ? lv.poly.total : lv.poly.spread || lv.poly.ml));
+const lockedNote = (g, kind) => `<div class="s dim" style="margin-top:6px">Kickoff line (locked): ${lockedLine(g, kind)}</div>`;
+function liveHead(g, lv, kind) {
+  if (!lv) return "";
+  return liveHas(lv, kind) ? `<div class="s"><span class="chip c-red">LIVE</span> <span class="dim">updated ${LIVE_T ? ago(LIVE_T) : "just now"}</span></div>`
+    : `<div class="s y"><span class="chip c-red">LIVE</span> Polymarket has no open ${kind === "total" ? "total" : "lines"} for this game right now (paused).</div>${lockedNote(g, kind)}`;
+}
+const liveTail = (g, lv, kind) => (liveHas(lv, kind) ? lockedNote(g, kind) : "");
+function refreshDetail() { const open = [...document.querySelectorAll(".drop.open")].map((e) => e.id).filter(Boolean); renderLines(); for (const id of open) { const e = $(id); if (e) e.classList.add("open"); } }
+async function loadLive() {
+  const g = DETAIL && S ? S.games.find((x) => x.key === DETAIL) : null;
+  if (!g || !g.started || g.final || document.hidden || !$("panel-lines").classList.contains("on")) return;
+  try { const d = await (await fetch("/api/live", { cache: "no-store" })).json(); if (d.ok && DETAIL === g.key) { LIVE = d.games || {}; LIVE_T = d.t; refreshDetail(); } } catch {}
+}
+function liveLoop() { clearTimeout(liveLoop._h); loadLive().finally(() => { liveLoop._h = setTimeout(liveLoop, 30000); }); }
+let DETAIL = null, LASTY = 0, ALERTS = [], ALFILTER = "all", ALPREV = null;
+const pmLogo = () => '<span class="pm"><img src="https://polymarket.com/favicon.ico" alt="" onerror="this.parentNode.textContent=\'P\'"></span>';
+const injBadge = (team) => `<span class="injb"><img src="${logoUrl(team)}" alt="" onerror="this.style.visibility='hidden'"><u>+</u></span>`;
+const injBadgeFor = (g) => { const inj = g.model && g.model.inj; if (!inj) return ""; const t = inj.home.players.length ? g.home : inj.away.players.length ? g.away : null; return t ? injBadge(t) : ""; };
+const wmPair = (g) => `<img class="cwm l" src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img class="cwm r" src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'">`;
+function tile(g) {
+  const eg = (S.edgesNow || []).filter((b) => b.game === g.key);
+  const hp = g.winPct != null ? Number(g.winPct) : null, ap = hp == null ? null : 100 - hp;
+  const lead = (v, o) => (v >= o ? "mkt" : "dim");
+  const chips = [g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : "", eg.length ? `<span class="chip c-cy">GAP +${(Math.max(...eg.map((b) => b.evNet)) * 100).toFixed(1)}%</span>` : "", g.started && !g.final ? '<span class="chip c-red">LIVE</span>' : ""].join("");
+  const mid = g.final && g.awayScore != null ? `<span class="mid"><span class="${g.awayScore > g.homeScore ? "g" : "dim"}">${g.awayScore}</span><span class="dim"> – </span><span class="${g.homeScore > g.awayScore ? "g" : "dim"}">${g.homeScore}</span></span>`
+    : hp == null ? '<span class="mid dim">—</span>' : `<span class="mid"><span class="${lead(ap, hp)}">${Math.round(ap)}</span><span class="dim"> · </span><span class="${lead(hp, ap)}">${100 - Math.round(ap)}</span><span class="dim" style="font-size:11px">%</span></span>`;
+  const foot = g.final ? "Final" : g.started ? "In progress" : tm(g.kickoff);
+  return `<button class="tile" data-game="${esc(g.key)}"><img class="wmk l" loading="lazy" decoding="async" src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img class="wmk r" loading="lazy" decoding="async" src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'">` +
+    `<div class="in"><div class="nm"><span class="t">${g.away}</span>${mid}<span class="t">${g.home}</span></div>${g.final || hp == null ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}<div class="ft"><span>${foot}</span><span>${chips}</span></div></div></button>`;
+}
+function gapStrip() {
+  const E = S.edgesNow || [];
+  return `<div class="gapstrip" data-drop="gaplist"><div class="t">${pmLogo()}Price gaps · ${E.length ? E.length + " right now" : "none right now"} ›</div></div><div class="drop" id="gaplist">${rightNowBox()}</div>`;
+}
+function tdTop3(g) {
+  const side = (team) => { const rows = (g.td || []).filter((r) => r.team === team && r.fair != null && usable(r)).sort((a, b) => b.fair - a.fair).slice(0, 3);
+    return `<div class="sc card mcard"><img class="wmc" src="${logoUrl(team)}" alt="" onerror="this.style.display='none'"><div class="in"><div class="hh">${team} top scorers</div>` +
+      (rows.map((r, i) => `<div class="p"><div class="a"><span class="dim" style="font-size:11px;width:16px">#${i + 1}</span><b>${esc(r.player)}<span class="pos">${esc(r.pos)}</span></b><em class="mod">${Math.round(r.fair)}%</em></div>` +
+        `<div class="b">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${r.two != null ? ` · 2+ ${Math.round(r.two)}%` : ""}${r.first != null ? ` · 1st ${Math.round(r.first)}%` : ""}</div></div>`).join("") || '<div class="s">No players yet.</div>') + `</div></div>`; };
+  return `<div class="scorers">${side(g.away)}${side(g.home)}</div>`;
+}
+function startsIn(g) {
+  const ms = new Date(g.kickoff) - Date.now(); if (!(ms > 0)) return "";
+  const d = Math.floor(ms / 864e5), h = Math.floor((ms % 864e5) / 36e5), m = Math.floor((ms % 36e5) / 6e4);
+  return d ? `starts in ${d}d ${h}h` : h ? `starts in ${h}h ${m}m` : `starts in ${m}m`;
+}
+function detailTop(g) {
+  const hp = g.winPct != null ? Number(g.winPct) : null, ap = hp == null ? null : Math.round(100 - hp), hr = ap == null ? null : 100 - ap;
+  const st = g.final ? `Final ${g.awayScore != null ? `${g.awayScore}–${g.homeScore}` : ""}` : g.started ? '<span class="r">Live · locked</span>' : startsIn(g);
+  return `<div class="card dtop">${wmPair(g)}<div class="inner"><div class="nm"><span class="t">${g.away}</span><div class="mid">${g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : ""}<div class="s2">${tm(g.kickoff)}</div><div class="s3">${st}</div></div><span class="t">${g.home}</span></div>` +
+    (hp == null || g.final ? "" : `<div class="wc"><div class="wl"><b class="mkt">${ap}%</b><span class="mkt">WIN CHANCE · MARKET</span><span class="dim">${hr}%</span></div><div class="bar"><i style="width:${ap}%"></i></div></div>`) + `</div></div>`;
+}
+function renderDetail(g) {
+  $("lines").style.display = "none"; $("detail").style.display = "";
+  $("detail").innerHTML = `<button class="back" id="back-btn">← All games</button>${detailTop(g)}<div class="grid">${gameCard(g, "x")}</div>${tdTop3(g)}<div class="sh" style="margin:16px 2px 0">Total</div><div class="grid">${totalCard(g, "x")}</div>`;
+  $("back-btn").onclick = closeGame;
+}
+function renderLines() {
+  if (DETAIL) { const g = S.games.find((x) => x.key === DETAIL); if (g) return renderDetail(g); DETAIL = null; }
+  $("detail").style.display = "none"; $("lines").style.display = "";
+  $("lines").innerHTML = gapStrip() + changedBox() + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
+    '<div class="s dim" style="text-align:center;margin-top:10px">Tap a game for everything on it. Percent = market-based win chance (away · home).</div>';
+}
+function openGame(key) { LASTY = (typeof window !== "undefined" && window.scrollY) || 0; DETAIL = key; renderLines(); if (window.scrollTo) window.scrollTo(0, 0); const g = S.games.find((x) => x.key === key); if (g && g.started && !g.final) liveLoop(); }
+function closeGame() { DETAIL = null; clearTimeout(liveLoop._h); renderLines(); if (window.scrollTo) window.scrollTo(0, LASTY); }
+// countdown to the next game that has not started
+function tickCd() {
+  clearTimeout(tickCd._h);
+  if (!S) return;
+  const set = (id, v) => { $(id).textContent = v; }, p2 = (n) => String(n).padStart(2, "0");
+  const nxt = S.games.filter((g) => !g.started && g.kickoff && new Date(g.kickoff) > Date.now()).sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff))[0];   // by the clock, so it moves on at kickoff even before the next data load
+  if (!nxt) { ["d", "h", "m", "s"].forEach((k) => set("cd-" + k, "--")); set("cd-g", "No upcoming games this week"); tickCd._cur = null; return; }
+  const ms = Math.max(0, new Date(nxt.kickoff) - Date.now());
+  set("cd-d", p2(Math.floor(ms / 864e5))); set("cd-h", p2(Math.floor((ms % 864e5) / 36e5))); set("cd-m", p2(Math.floor((ms % 36e5) / 6e4))); set("cd-s", p2(Math.floor((ms % 6e4) / 1e3)));
+  set("cd-g", `${nxt.away} @ ${nxt.home} · ${tm(nxt.kickoff)}`);
+  if (tickCd._cur && tickCd._cur !== nxt.key && Date.now() - (tickCd._last || 0) > 15000) { tickCd._last = Date.now(); setTimeout(() => loadSlate().catch(() => {}), 4000); }   // the game we were counting to just kicked off: refresh once
+  tickCd._cur = nxt.key;
+  tickCd._h = setTimeout(tickCd, 1000);
+}
+// alerts: built on the server from changes it already sees between pulls (injuries, lines, price gaps, model moves, results)
+const ALK = { INJURY: ["Injury", "var(--red)"], "PRICE GAP": ["Price gap", "var(--cyan)"], "QB CHANGE": ["QB change", "var(--gold)"], "LINE MOVE": ["Line move", "var(--blue)"], WEATHER: ["Weather", "#7fd1ff"], MODEL: ["Model", "var(--violet)"], RESULT: ["Result", "var(--green)"] };
+const alSeen = () => { try { return localStorage.getItem("alSeen") || ""; } catch { return ""; } };
+async function loadAlerts() {
+  try { const d = await (await fetch("/api/alerts", { cache: "no-store" })).json(); if (d.ok) { ALERTS = d.alerts || []; renderAlerts(); } } catch {}
+}
+function renderAlerts() {
+  const dots = ALPREV != null ? ALPREV : alSeen(), unread = ALERTS.filter((a) => a.t > alSeen()).length;
+  $("bell-cnt").textContent = unread > 9 ? "9+" : String(unread); $("bell-cnt").style.display = unread ? "flex" : "none";
+  const kinds = ["all", ...Object.keys(ALK).filter((k) => ALERTS.some((a) => a.kind === k))];
+  $("al-chips").innerHTML = kinds.map((k) => `<button data-alk="${k}" class="${ALFILTER === k ? "on" : ""}">${k === "all" ? "All" : ALK[k][0]}</button>`).join("");
+  const list = ALERTS.filter((a) => ALFILTER === "all" || a.kind === ALFILTER);
+  $("alerts").innerHTML = list.map((a) => { const [lab, col] = ALK[a.kind] || [a.kind, "var(--dim)"];
+    const ic = a.kind === "INJURY" && a.team ? injBadge(a.team) : a.kind === "PRICE GAP" || a.kind === "LINE MOVE" ? pmLogo() : "";
+    return `<div class="card al${a.t > dots ? " un" : ""}" data-algame="${esc(a.game || "")}"><span class="dot"></span><div style="flex:1"><div class="kd" style="color:${col}"><span>${ic}${lab.toUpperCase()}</span><span class="dim" style="font-weight:600;letter-spacing:0">${hm(a.t)}</span></div>` +
+      `<div class="ti">${esc(a.title)}</div>${a.sub ? `<div class="su">${esc(a.sub)}</div>` : ""}${a.game ? `<div style="font-size:11px;font-weight:700;margin-top:6px;color:var(--blue)">${esc(a.game)} ›</div>` : ""}</div></div>`; }).join("") ||
+    '<div class="card" style="margin-top:10px"><div class="s">Nothing yet. Alerts appear as injuries, line moves, price gaps and results come in.</div></div>';
+}
+function renderAll() { weekline(); renderLines(); renderTd(); if (MB) renderRecord(); tickCd(); renderAlerts(); }
 // Newest version all the time (9/30): if a new deploy went live while this page was open (or sat in a phone tab),
 // reload once to pick it up; data refreshes on its own when you come back to the tab after 2+ minutes.
 let BUILD = null, LOADED_AT = 0, LOAD_SEQ = 0;
@@ -552,20 +684,29 @@ $("rerun-btn").onclick = async () => {
   } catch (e) { toast("Rerun failed: " + e.message, 12000); }
   b.disabled = false;
 };
+function showPanel(name) {
+  document.querySelectorAll(".tabs button").forEach((x) => x.classList.toggle("on", x.dataset.tab === name));
+  $("bell").classList.toggle("on", name === "alerts");
+  document.querySelectorAll(".panel").forEach((p) => p.classList.remove("on")); $("panel-" + name).classList.add("on");
+  if (name === "record" || name === "lab") loadRecord();
+}
 document.querySelectorAll(".tabs button").forEach((btn) => btn.addEventListener("click", () => {
-  document.querySelectorAll(".tabs button").forEach((x) => x.classList.remove("on")); btn.classList.add("on");
-  document.querySelectorAll(".panel").forEach((p) => p.classList.remove("on")); $("panel-" + btn.dataset.tab).classList.add("on");
-  if (btn.dataset.tab === "record" || btn.dataset.tab === "lab") loadRecord();
+  if (btn.dataset.tab === "lines" && DETAIL && $("panel-lines").classList.contains("on")) closeGame();   // tapping the tab you are on goes back to the tiles
+  showPanel(btn.dataset.tab);
 }));
-document.querySelectorAll("#panel-td .controls button").forEach((btn) => btn.addEventListener("click", () => {
-  document.querySelectorAll("#panel-td .controls button").forEach((x) => x.classList.remove("on")); btn.classList.add("on"); tdSort = btn.dataset.sort; renderTd();
-}));
-document.querySelectorAll(".sw button").forEach((btn) => btn.addEventListener("click", () => {
-  document.querySelectorAll(".sw button").forEach((x) => x.classList.remove("on")); btn.classList.add("on"); recView = btn.dataset.view; renderRecord();
+$("bell").onclick = () => { ALPREV = alSeen(); if (ALERTS.length) { try { localStorage.setItem("alSeen", ALERTS[0].t); } catch {} } showPanel("alerts"); renderAlerts(); };
+$("al-read").onclick = () => { ALPREV = ALERTS.length ? ALERTS[0].t : ""; renderAlerts(); };
+document.querySelectorAll("#labsw button").forEach((btn) => btn.addEventListener("click", () => {
+  document.querySelectorAll("#labsw button").forEach((x) => x.classList.remove("on")); btn.classList.add("on");
+  const r = btn.dataset.lv === "results"; $("lab").style.display = r ? "none" : ""; $("lab-results").style.display = r ? "" : "none";
 }));
 document.addEventListener("click", (e) => {
   const d = e.target.closest("[data-drop]"); if (d) { const el = $(d.dataset.drop); if (el) el.classList.toggle("open"); return; }
+  const gt = e.target.closest("[data-game]"); if (gt) { openGame(gt.dataset.game); return; }
+  const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k) { showPanel("lines"); openGame(k); } return; }
+  const ch = e.target.closest("[data-alk]"); if (ch) { ALFILTER = ch.dataset.alk; renderAlerts(); return; }
+  const tr = e.target.closest(".tdr"); if (tr && !e.target.closest(".price-link") && !e.target.closest(".more")) { tr.classList.toggle("open"); return; }
   const p = e.target.closest(".price-link"); if (p) toast(p.dataset.market ? "Polymarket market: " + p.dataset.market : "No market recorded for this price.", 8000);
 });
-loadSlate().catch((e) => ($("weekline").textContent = "Couldn't load this week: " + e.message));
+loadSlate().then(loadAlerts).catch((e) => ($("hero-upd").textContent = "Couldn't load this week: " + e.message));
 document.addEventListener("visibilitychange", () => { if (!document.hidden && Date.now() - LOADED_AT > 120e3) loadSlate().catch(() => {}); });
