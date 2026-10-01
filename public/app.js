@@ -156,7 +156,7 @@ function winnersBox() {
   return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Moneyline side · who wins the game</div>` +
     (list.map((x, i) => { const g = S.games.find((y) => y.key === x.game), sides = g ? modelSide(g) : [], sp = sides.find((s) => s.market === "Spread"), tt = sides.find((s) => s.market === "Total");
       return `<div class="row"><span>${i + 1}. <b>${esc(x.team)}</b> over ${esc(x.opp)} <span class="dim">· ${sp ? esc(sp.label) : "—"} · ${tt ? esc(tt.label) : "—"}</span></span><span>${Math.round(x.p * 100)}%${x.price ? ` <span class="dim">· ${Math.round(x.price * 100)}¢</span>` : ""}</span></div>`; }).join("") || '<div class="s">No lines yet.</div>') +
-    `<div class="sec">${rec}${pickRec("spread", "Spreads")}${pickRec("total", "Totals")}</div>` +
+    `<div class="sec">${rec}${W && W.stats && W.stats.n ? `<div class="row"><span class="dim">Moneyline · stats-only model (no market)</span><span>${W.stats.w}–${W.stats.l} · right ${pc(W.stats.hit)}</span></div>` : ""}${pickRec("spread", "Spreads")}${pickRec("total", "Totals")}</div>` +
     `<div class="s dim">Each line: moneyline pick and chance, its Polymarket price, then the spread and total side. Tested 2007–25: favorites at 60–70% won 63%, at 70–80% 76%; spread and total sides covered only ~51% and 50%, so the winner is where you can be right most.</div></div></div>`;
 }
 // "Right now" (9/30): Polymarket prices 3%+ better than fresh sportsbook fair prices -- the one realistic edge source.
@@ -495,8 +495,8 @@ function pickLabBox() {
   const pc = (x) => (x == null ? "—" : `${(x * 100).toFixed(1)}%`), P = PICKS || {};
   const rec = (m, name) => { const x = P[m]; if (!x || !x.recorded) return `<div class="row"><span class="dim">${name}</span><span class="dim">none recorded yet</span></div>`;
     return `<div class="row"><span class="dim">${name}</span><span>${x.w}–${x.l} · covered ${pc(x.hit)} · return ${x.roi == null ? "—" : cPct(x.roi)} <span class="dim">(need ${pc(x.need)} to break even)</span></span></div>` +
-      x.bands.filter((b) => b.graded).map((b) => `<div class="row"><span class="dim" style="padding-left:10px">when the model differs by ${b.label}</span><span>${b.w}–${b.l} · ${pc(b.hit)}</span></div>`).join(""); };
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Pick Lab · model's side, paper only</div>${rec("spread", "Spreads")}${rec("total", "Totals")}` +
+      (x.bands || []).filter((b) => b.graded).map((b) => `<div class="row"><span class="dim" style="padding-left:10px">when the model differs by ${b.label}</span><span>${b.w}–${b.l} · ${pc(b.hit)}</span></div>`).join(""); };
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Pick Lab · model's side, paper only</div>${rec("spread", "Spreads")}${rec("total", "Totals")}${rec("dog", "Road dogs +3 to +6.5")}${rec("away3", "Road team, spread 3 or less")}` +
     `<div class="s dim" style="margin-top:4px">Saved at kickoff, graded after. Tested: ~51% on spreads (break-even 52.4%), ~50% on totals. Judge after 100+ picks.</div></div></div>`;
 }
 function renderLab() {
