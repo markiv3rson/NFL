@@ -483,3 +483,9 @@ Found from the live site and the Week 3 export (nfl-bettors-results.json). Site 
   every game at the kickoff-time Polymarket price (lib/paper.js picksFor/recordPicks/gradePicksWeek/picksSummary, hash
   picks:<season>:<week>), grades it, and shows hit rate, return per $1 and the break-even price, sliced by how far the
   model differs from the line. About 270 picks a season per market: a 53% edge needs ~3 seasons to confirm.
+
+### 10/1 calibration audit
+- Win chance (market-based): matches results in every bucket (log loss 0.6009; refit no better) — unchanged.
+- Cover/under: flat ~49–50% is right; model gap adds nothing — unchanged. SDs 13.0/13.3 vs actual 12.6–12.8/13.1–13.3 — fine.
+- Team points over lines: within 2 pts everywhere — unchanged.
+- Anytime TD: the old 0.75x shrink above 35% understated stars (said 34.6% hit 37.0%; 54.9% vs 57.8%). Removed (2019–25 walk-forward Brier 0.15657 vs 0.15661, bias at top −0.6 pts vs −2.5). 2+ TD factor refit 1.035 → 1.044.
