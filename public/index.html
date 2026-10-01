@@ -102,6 +102,8 @@
   .tiles { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:10px; }
   @media (min-width:760px) { .tiles { grid-template-columns:repeat(3,minmax(0,1fr)); } }
   .tile { position:relative; overflow:hidden; background:var(--card); border:1px solid rgba(255,255,255,.28); border-radius:16px; padding:12px; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.3); text-align:left; font:inherit; color:inherit; }
+  .tile .mid.lvmid { display:inline-flex; flex-direction:column; align-items:center; line-height:1.15; } .tile .sr { white-space:nowrap; } .tile .lv { font-size:10.5px; font-weight:800; letter-spacing:.04em; margin-top:2px; } .tile .lv.r { color:var(--red); }
+  .dtop .s3.r { color:var(--red); }
   .tile .wmk { position:absolute; top:50%; width:110px; height:110px; margin-top:-55px; opacity:.17; object-fit:contain; pointer-events:none; }
   .tile .wmk.l { left:-22px; } .tile .wmk.r { right:-22px; }
   .tile { display:flex; flex-direction:column; justify-content:flex-start; align-items:stretch; }

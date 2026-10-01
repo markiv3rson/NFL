@@ -2,7 +2,7 @@
 // plus sportsbook consensus when books=1. Called by the Railway scheduler (7/12/3/7 PT, Sunday
 // 6/7/8/9/10/12/3 PT, and just before each kickoff with kickoff=<game>) and by the Refresh button.
 import { SEASON, currentWeek, loadGames, started } from "../../lib/games";
-import { getRedis, getJSON, setJSON, K, SLATE_CACHE } from "../../lib/redis";
+import { getRedis, jparse, getJSON, setJSON, K, SLATE_CACHE } from "../../lib/redis";
 import { fetchEvents, gameLines, tdProps } from "../../lib/poly";
 import { fetchBooks } from "../../lib/books";
 import { gradeRecent } from "../../lib/grade";
@@ -59,7 +59,7 @@ export default async function handler(req, res) {
       const poly = await gameLines(events, g.away, g.home).catch(() => null);
       const snap = { t, src, poly: poly || null, books: books ? books[g.key] || null : undefined };
       // Bad-data guard: a line jumping this far between snapshots is almost always a feed glitch, not a real move
-      const prevRaw = await redis.lindex(K.snaps(season, week, g.key), -1), prev = prevRaw ? JSON.parse(prevRaw).poly : null;
+      const prevRaw = await redis.lindex(K.snaps(season, week, g.key), -1), prev = prevRaw ? (jparse(prevRaw) || {}).poly || null : null;
       if (prev && poly) {
         const why = [];
         if (prev.spread && poly.spread && Math.abs(prev.spread.homeSpread - poly.spread.homeSpread) >= 3) why.push(`spread jumped ${prev.spread.homeSpread} → ${poly.spread.homeSpread}`);
@@ -116,7 +116,7 @@ export default async function handler(req, res) {
     for (const g of games.filter((g) => started(g))) {
       if (await redis.exists(K.close(season, week, g.key))) continue;
       const raw = await redis.lrange(K.snaps(season, week, g.key), 0, -1);
-      const pre = raw.map((x) => JSON.parse(x)).filter((s) => new Date(s.t) < new Date(g.kickoff)).pop();
+      const pre = raw.map((x) => jparse(x)).filter((s) => s && new Date(s.t) < new Date(g.kickoff)).pop();
       if (pre) { const bk = ((await getJSON(K.books(season, week))) || { games: {} }).games[g.key];
         await setJSON(K.close(season, week, g.key), { t: pre.t, poly: pre.poly, books: pre.books || bk || null }); closedLate++;
         if (!(await redis.exists(`prelog:${season}:${week}:${g.key}`))) await writePrelog(season, week, g, pre.t, pre.poly, pre.books || bk || null, null); }
