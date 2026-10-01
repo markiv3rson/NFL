@@ -500,7 +500,8 @@ function weekline() {
   const m = S.meta || {};
   const round = { 19: "Wild Card", 20: "Divisional round", 21: "Conference Championships", 22: "Super Bowl" }[S.week];
   $("hero-wk").textContent = `${round || `Week ${S.week}`} · ${range}`.toUpperCase();
-  $("hero-upd").textContent = `updated: Polymarket ${clock(m.lastSnapshot)} · sportsbooks ${clock(S.booksAt)} · model ${clock(S.modelRunAt)} (your time)`;
+  const hu = $("hero-upd"), detail = `Updated (your time): Polymarket ${clock(m.lastSnapshot)} · sportsbooks ${clock(S.booksAt)} · model ${clock(S.modelRunAt)}`;
+  hu.textContent = `Updated ${clock(m.lastSnapshot)} ›`; hu.onclick = () => toast(detail, 8000);   // short line; tap for the three times
 }
 // ---------- Pick Lab: the model's side on every game (paper singles) + Parlay Lab ----------
 function modelSide(g) {   // same rule as lib/paper.js picksFor (the server records it at kickoff)
