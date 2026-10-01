@@ -348,6 +348,20 @@ function pastBox() {
     `<div class="row"><b>Average</b><b>${f(avg(3))} · ${f(avg(4))} · ${f(avg(1))} · ${f(avg(2))}</b></div>` +
     `<div class="s dim" style="margin-top:4px">Winner = the team picked to win straight up. Spread and total = the model's side of the closing line. The model's settings were fit on these same years, so treat the older totals with caution; this season's live record is the clean test.</div></div></div></div>`;
 }
+// Results page: every section collapses to one tappable heading, so the page is a short list instead of a wall of rows.
+// Watchdog warnings stay visible above the list. All sections start closed; a ⚠ count shows next to a heading that has warnings.
+function foldSections(root) {
+  if (!root || !root.querySelectorAll) return;
+  root.querySelectorAll(".card > .sec").forEach((sec, i) => {
+    const sh = sec.querySelector(":scope > .sh"); if (!sh) return;
+    const warns = [...sec.querySelectorAll(".warn, .y")].filter((e) => /⚠/.test(e.textContent)).length;
+    const title = sh.textContent, drop = document.createElement("div"); drop.className = "drop"; drop.id = "rsec" + i;
+    [...sec.childNodes].forEach((n) => { if (n !== sh) drop.appendChild(n); });
+    const head = document.createElement("div"); head.className = "fold"; head.setAttribute("data-drop", drop.id);
+    head.innerHTML = `<span><b>${esc(title)}</b>${warns ? ` <span class="y">⚠ ${warns}</span>` : ""}</span><span>▾</span>`;
+    sec.replaceWith(head, drop);
+  });
+}
 function renderModel() {
   if (!MB || !RES) { $("lab-results").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }
   const s = MB.summary, res = RES;
@@ -480,6 +494,7 @@ function renderModel() {
     `<div class="drop${!stOk ? " open" : ""}" id="sys">${stRows}</div></div>` +
     `<div class="center"><button class="btn" id="export-btn">Export data</button></div>`;
   $("export-btn").onclick = () => (window.location.href = "/api/results/export");
+  foldSections($("lab-results"));
 }
 function renderRecord() { renderMine(); renderModel(); }
 async function loadRecord(sync = false) {
