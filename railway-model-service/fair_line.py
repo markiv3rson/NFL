@@ -15,7 +15,7 @@ Method (public nflverse play-by-play):
   4c. Turf (current-season home surface) +0.9 pts on total (weaker evidence, kept -- still net positive combined with the rest).
   4d. Special teams EPA differential (FG/punt/kickoff, season-to-date): +3.77 margin per 1.0 EPA/play edge (t=3.42).
   4e. Success rate edge (offense only, 9/28 fix): +30.39 margin per 1.0 edge in season-to-date offensive success rate.
-      power ratings): +14.99 margin per 1.0 edge (t=6.23) -- the strongest single finding in the whole project.
+      (Refit 9/28: 30.39 margin per 1.0 edge -- the strongest single finding in the whole project.)
   4f. [REMOVED 9/30 -- worse out of sample 2013-25] Road team on a bye (13+ days rest): flat -2.06 margin (t=-2.61). Replaces an earlier bye+travel-distance version --
       that one and a plain bye flag turned out to measure the same thing (they lose significance combined), and the
       plain flag has far more supporting games with a similar accuracy gain.

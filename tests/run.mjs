@@ -90,13 +90,24 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(lm === 1 && (await listAlerts(2026))[0].title === "PIT @ CLE spread: CLE +3 → +2.5", "alerts: a half-point spread move, but not a 1-cent price move");
   await alertResult(2026, { key: "TEN @ BAL", away: "TEN", home: "BAL", awayScore: 13, homeScore: 27 }, { ml: { label: "BAL ML", result: "W" }, spread: { label: "BAL -10.5", result: "W" } });
   ok((await listAlerts(2026))[0].title === "Final: TEN 13 @ BAL 27" && /Moneyline pick BAL won/.test((await listAlerts(2026))[0].sub), "alerts: a final result", (await listAlerts(2026))[0]); }
+// ---------- live scores (ESPN scoreboard -> per-game score + clock)
+{ const { parseScoreboard } = await import("../lib/live.js");
+  const ev = (away, home, as, hs, state, period, clock, detail, completed = false) => ({ competitions: [{ competitors: [{ homeAway: "home", score: String(hs), team: { displayName: home } }, { homeAway: "away", score: String(as), team: { displayName: away } }] }],
+    status: { period, displayClock: clock, type: { state, shortDetail: detail, completed } } });
+  const j = { events: [ev("Pittsburgh Steelers", "Cleveland Browns", 14, 10, "in", 3, "4:12", "4:12 - 3rd"), ev("Los Angeles Rams", "Philadelphia Eagles", 7, 7, "in", 2, "0:00", "Halftime"),
+    ev("Denver Broncos", "San Francisco 49ers", 20, 17, "in", 5, "2:10", "2:10 - OT"), ev("Detroit Lions", "Carolina Panthers", 30, 10, "post", 4, "0:00", "Final", true), ev("Atlanta Falcons", "New Orleans Saints", 0, 0, "pre", 0, "15:00", "Sun 1:00 PM"), ev("Buffalo Bills", "Miami Dolphins", 3, 0, "in", 1, "9:00", "9:00 - 1st")] };
+  const r = parseScoreboard(j, ["PIT @ CLE", "LA @ PHI", "DEN @ SF", "DET @ CAR", "ATL @ NO"]);
+  ok(r["PIT @ CLE"] && r["PIT @ CLE"].a === 14 && r["PIT @ CLE"].h === 10 && r["PIT @ CLE"].lbl === "Q3 4:12" && r["PIT @ CLE"].st === "in", "live score: quarter and clock", r["PIT @ CLE"]);
+  ok(r["LA @ PHI"].lbl === "HALFTIME" && r["DEN @ SF"].lbl === "OT 2:10" && r["DET @ CAR"].lbl === "FINAL", "live score: halftime, overtime, final", [r["LA @ PHI"], r["DEN @ SF"], r["DET @ CAR"]]);
+  ok(!r["ATL @ NO"] && !r["BUF @ MIA"], "live score: not-started games and games we did not ask for are left out", r);
+  ok(Object.keys(parseScoreboard({ events: [{ competitions: [] }, {}] }, ["A @ B"])).length === 0 && Object.keys(parseScoreboard(null, ["A @ B"])).length === 0 && Object.keys(parseScoreboard({ injuries: [] }, ["A @ B"])).length === 0, "live score: unreadable feeds give nothing"); }
 // ---------- what the page says (runs the real public/app.js)
 { const el = () => ({ classList: { add() {}, remove() {}, toggle() {} }, style: {}, set innerHTML(v) {}, set textContent(v) {}, addEventListener() {} });
   const store = { lastSeen: "2026-10-01T12:00:00Z" };
   const ctx = { document: { getElementById: () => el(), querySelectorAll: () => [], addEventListener() {}, hidden: false }, fetch: () => Promise.reject(new Error("offline")),
     localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) }, location: { reload() {} }, window: {}, setTimeout, clearTimeout, console, Date, Math, Number, String, JSON, Promise, Set, Object, Array };
   vm.createContext(ctx);
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   ok(/PHI winning by about 4\.2/.test(T.spreadReason(g)) && /needs PHI to win by 4\+/.test(T.spreadReason(g)), "spread wording");
@@ -187,6 +198,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { const half = ctx.T.tile({ ...tg, winPct: 39.5 }), nums = (half.match(/<span class="(?:mkt|dim)">(\d+)<\/span><span class="dim"> · /) || [])[1], nums2 = (half.match(/ · <\/span><span class="(?:mkt|dim)">(\d+)<\/span>/) || [])[1];
     ok(Number(nums) + Number(nums2) === 100, "tile: the two percentages always add to 100 (60.5 and 39.5 do not both round up)", half); }
   ok(/LIVE/.test(ctx.T.tile({ ...tg, started: true })) && />13<\/span>/.test(ctx.T.tile({ ...tg, started: true, final: true, awayScore: 13, homeScore: 27 })) && /Final/.test(ctx.T.tile({ ...tg, started: true, final: true, awayScore: 13, homeScore: 27 })), "tile: live tag, final score");
+  vm.runInContext(`LIVE_SC = { "PIT @ CLE": { a: 14, h: 10, st: "in", lbl: "Q3 4:12" } }`, ctx);
+  { const lt = ctx.T.tile({ ...tg, started: true }), dt = ctx.T.detailTop({ ...tg, started: true });
+    ok(/>14<\/span>/.test(lt) && />10<\/span>/.test(lt) && /LIVE · Q3 4:12/.test(lt) && lt.indexOf('class="ft"') < lt.indexOf('class="bar"') && !/chip c-red">LIVE/.test(lt), "live tile: score, LIVE · Q3 under it, bar at the bottom", lt);
+    ok(/14 – 10/.test(dt) && /LIVE · Q3 4:12/.test(dt) && !/Live · locked/.test(dt), "live game page: score and quarter in the matchup card"); }
+  vm.runInContext(`LIVE_SC = {}`, ctx);
+  ok(!/LIVE · Q/.test(ctx.T.tile({ ...tg, started: true })) && /class="chip c-red">LIVE/.test(ctx.T.tile({ ...tg, started: true })), "live tile: no score yet -> still just the LIVE tag, never a made-up score");
   vm.runInContext(`S = { week: 4, games: [], edgesNow: [{ game: "PIT @ CLE", label: "CLE ML", price: 0.37, fair: 0.42, evNet: 0.134 }] }; LIVE = {}; LIVE_T = null`, ctx);
   const lg = { key: "PIT @ CLE", away: "PIT", home: "CLE", kickoff: "2026-10-02T00:15:00Z", started: true, final: false, injuries: [], history: [], poly: { spread: { homeSpread: 2.5, home: 0.5, away: 0.5 }, ml: { home: 0.4, away: 0.62 }, total: { line: 38.5, over: 0.5, under: 0.5 } } };
   ok(!/LIVE/.test(ctx.T.gameCard(lg, "x")), "live view: nothing live until live lines are loaded (the card shows the locked kickoff line)");

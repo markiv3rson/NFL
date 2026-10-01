@@ -1,6 +1,6 @@
 import { SEASON, currentWeek, loadGames, started } from "../../lib/games";
 import { fetchEvents } from "../../lib/poly";
-import { liveLines } from "../../lib/live";
+import { liveLines, liveScores } from "../../lib/live";
 import { getRedis, BUILD } from "../../lib/redis";
 // Current Polymarket lines for games in progress. Read-only: writes nothing but a 15-second cache (so a few open tabs
 // share one Polymarket request). Polymarket is only called while some game is actually in progress.
@@ -13,10 +13,11 @@ export default async function handler(req, res) {
     const games = (await loadGames(season, week)).filter((g) => started(g) && !g.final);
     const t = new Date().toISOString();
     let body;
-    if (!games.length) body = JSON.stringify({ ok: true, t, games: {} });
+    if (!games.length) body = JSON.stringify({ ok: true, t, games: {}, scores: {} });
     else {
-      const events = await fetchEvents();
-      body = JSON.stringify({ ok: true, t, games: await liveLines(games, events) });
+      const events = await fetchEvents().catch(() => []);   // Polymarket down: scores still work, lines say "paused"
+      const [lines, scores] = await Promise.all([liveLines(games, events), liveScores(games)]);
+      body = JSON.stringify({ ok: true, t, games: lines, scores });
     }
     await r.set(ck, body, "EX", 15).catch(() => {});
     res.status(200).send(body);
