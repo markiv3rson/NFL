@@ -22,9 +22,10 @@
   html { -webkit-text-size-adjust:100%; text-size-adjust:100%; overscroll-behavior-y:none; }
   button, .tile, .tdr, .gapstrip, .al { touch-action:manipulation; -webkit-touch-callout:none; }
   button { -webkit-appearance:none; appearance:none; }
-  html, body { margin:0; padding:0; background:#08090b; color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  html, body { margin:0; padding:0; color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
     padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); }
-  body { background:linear-gradient(160deg,#1e2025 0%,#121418 50%,#08090b 100%) fixed; min-height:100vh; }
+  html { background:linear-gradient(160deg,#1e2025 0%,#121418 50%,#08090b 100%) fixed #08090b; }
+  body { background:transparent; min-height:100vh; }
   .wrap { position:relative; z-index:0; max-width:980px; margin:0 auto; padding:14px max(12px,env(safe-area-inset-right)) 120px max(12px,env(safe-area-inset-left)); }
   /* header: translucent maroon panel, countdown on the right, tabs under it */
   .hero { position:relative; overflow:hidden; border-radius:20px; padding:16px; display:flex; justify-content:space-between; align-items:center; gap:10px;
