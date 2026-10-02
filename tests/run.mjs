@@ -291,8 +291,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     picks: { spread: { recorded: 11, graded: 11, w: 6, l: 5, hit: 6 / 11 }, total: { recorded: 11, graded: 10, w: 4, l: 6, hit: 0.4 } } }`, ctx);
   const box = ctx.T.winnersBox(), recs = ctx.T.winnersBox("records");   // Picks tab = the picks; Results tab = the records
   ok(box.indexOf("BAL") < box.indexOf("KC") && /1\. <b>BAL<\/b> over TEN/.test(box) && /2\. <b>KC<\/b> over LV/.test(box) && !/X over Y/.test(box), "page: ranked by chance, started games left out");
+  vm.runInContext(`S.games[0].td = [{ player: "D.Henry", fair: 58, injury: "" }, { player: "Out.Guy", fair: 90, injury: "Out" }, { player: "L.Jackson", fair: 41 }]`, ctx);
+  ok(/TD <b>D\.Henry 58%<\/b>/.test(ctx.T.winnersBox()), "page: touchdown side is the most likely scorer who is not out");
   ok(/84%/.test(box) && /82¢/.test(box) && !/7–3/.test(box) && /7–3 · right 70%/.test(recs) && /top 4/i.test(recs), "page: picks show chance and price; the season record is on the Results tab");
-  ok(/BAL -10\.5 · Under 41\.5/.test(box), "page: each game also shows the model's spread side and total side");
+  ok(/Spread <b>BAL -10\.5<\/b> · Total <b>Under 41\.5<\/b> · TD <b>/.test(box), "page: each game shows labeled spread side, total side and touchdown side");
   ok(/Spreads[\s\S]*6–5 · covered 55%/.test(recs) && /Totals[\s\S]*4–6 · right 40%/.test(recs), "page: separate season records for winners, spreads and totals"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);
