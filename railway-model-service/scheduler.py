@@ -221,3 +221,10 @@ def start():
     _started = True
     threading.Thread(target=_loop, daemon=True).start()
     print("[scheduler] started", flush=True)
+    # Connection test at every start (10/2): one quick call so the log says right away whether the site accepts the scheduler
+    # (before, nothing was called until the next scheduled window, up to an hour later), then a catch-up grade + account sync.
+    def _hello():
+        ok = _call("/api/status", tries=1, timeout=60)
+        print("[scheduler] startup check: " + ("the site accepted the scheduler (login OK)" if ok else "the site REFUSED the scheduler — see the line above for who"), flush=True)
+        if ok: _call("/api/results/grade", tries=1)
+    threading.Thread(target=_hello, daemon=True).start()
