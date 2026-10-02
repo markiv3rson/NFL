@@ -63,3 +63,5 @@ Record tab (10/2): week chips (default = this week, "Season" = all); account bet
 System status now lists, for each game that has kicked off, whether its closing line, the model picks and the favorite were saved ("Recorded this week") (10/2).
 
 After every game (10/2): the scheduler checks nflverse every 15 minutes and reruns the model as soon as a new final score appears (src=postgame). The TD retrain now also runs Wednesday 7:15 AM as a catch-up if Monday night posted late; a retrain on unchanged data keeps the live model (clear-win rule). Calibration already updates on every grade run.
+
+Scheduler 401s now log who refused (the site login vs Vercel Deployment Protection). Optional Railway variable VERCEL_BYPASS = the "Protection Bypass for Automation" secret from Vercel (10/2).

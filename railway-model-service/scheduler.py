@@ -10,7 +10,7 @@ Calls the site's /api/snapshot on Mark's schedule, Pacific time:
 Env: SITE_URL (https://nfl-nfl9.vercel.app), SITE_LOGIN ("user:password" for the site's login).
      (app.py also reads MODEL_SERVICE_TOKEN; the scheduler itself doesn't call app.py over HTTP.)
 """
-import json, os, threading, time, base64, csv, io, urllib.request, urllib.parse
+import json, os, threading, time, base64, csv, io, urllib.request, urllib.parse, urllib.error
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -28,12 +28,22 @@ def _call(path, tries=3, timeout=280):
     for attempt in range(1, tries + 1):
         req = urllib.request.Request(site + path, headers={"Accept": "application/json", "User-Agent": "nfl-slatezzz-scheduler/1.0"})
         if login: req.add_header("Authorization", "Basic " + base64.b64encode(login.encode()).decode())
+        bypass = os.environ.get("VERCEL_BYPASS", "").strip()   # Vercel "Protection Bypass for Automation" secret, only needed if Deployment Protection is on
+        if bypass: req.add_header("x-vercel-protection-bypass", bypass)
         try:
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 body = r.read()
                 if body.lstrip()[:1] in (b"{", b"["):
                     print(f"[scheduler] {path} -> ok ({r.status}) {body[:160]!r}", flush=True); return body
                 print(f"[scheduler] {path} attempt {attempt}: got a web page, not data (status {r.status}) — retrying", flush=True)
+        except urllib.error.HTTPError as e:
+            # Say WHO refused (added 10/2): the app's own login answers 401 "Authentication required" with a WWW-Authenticate
+            # header; Vercel's Deployment Protection answers with an HTML sign-in page and an x-vercel-* header.
+            try: why = e.read()[:200].decode("utf-8", "replace").replace("\n", " ")
+            except Exception: why = ""
+            h = e.headers or {}
+            who = "the site's own login (SITE_LOGIN doesn't match SITE_USERNAME/SITE_PASSWORD)" if h.get("WWW-Authenticate") else ("Vercel's Deployment Protection (turn it off for Production, or set VERCEL_BYPASS)" if any(k.lower().startswith("x-vercel") for k in h.keys()) and "text/html" in (h.get("Content-Type") or "") else "unknown")
+            print(f"[scheduler] {path} attempt {attempt} failed: HTTP {e.code} — refused by: {who}; server={h.get('Server')}; www-authenticate={h.get('WWW-Authenticate')}; body={why!r}", flush=True)
         except Exception as e:
             print(f"[scheduler] {path} attempt {attempt} failed: {e}", flush=True)
         if attempt < tries: time.sleep(60)
