@@ -245,6 +245,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const a = ctx.T.gbgHtml(); ok(/PIT @ CLE/.test(a) && !/A @ B/.test(a) && /Week 4 \(1\)/.test(a) && /Week 3 \(2\)/.test(a), "game-by-game: opens on the newest week with counts");
     vm.runInContext(`GBGWEEK = "all"`, ctx); const b = ctx.T.gbgHtml(); ok(/PIT @ CLE/.test(b) && /A @ B/.test(b) && /C @ D/.test(b), "game-by-game: All shows every week");
     vm.runInContext(`GBGWEEK = null; GBG_RES = []`, ctx); ok(ctx.T.gbgHtml() === "", "game-by-game: empty when nothing is graded"); }
+  { // model_best_4: the 4 most likely legs, one per game, mixing winners and scorers, real combined chance kept
+    const { buildPaper } = await import("../lib/paper.js");
+    const gm = (key, home, win, td) => ({ key, home, away: "X", started: false, final: false, winPct: win, poly: { spread: { homeSpread: -3 }, ml: { home: 0.8 } }, td: td ? [{ player: td.n, team: home, market: "m", price: 0.5, bid: 0.48, fair: td.p }] : [] });
+    const P = buildPaper({ games: [gm("A1 @ H1", "H1", 90, { n: "P1", p: 40 }), gm("A2 @ H2", "H2", 80, { n: "P2", p: 70 }), gm("A3 @ H3", "H3", 78, null), gm("A4 @ H4", "H4", 76, null), gm("A5 @ H5", "H5", 60, { n: "P5", p: 30 })], edgesNow: [] });
+    const mb = P.find((p) => p.strategy === "model_best_4");
+    ok(mb && mb.legs.length === 4 && new Set(mb.legs.map((l) => l.game)).size === 4 && mb.legs.map((l) => l.label).join("|") === "H1 ML|H2 ML|H3 ML|H4 ML" && Math.abs(mb.prob - 0.9 * 0.8 * 0.78 * 0.76) < 1e-9 && Math.abs(mb.prob - mb.legs.reduce((a, l) => a * l.prob, 1)) < 1e-9, "model_best_4: top legs, one per game, product chance"); }
   { const rb = ctx.T.replayBox();
     ok(/Road dogs \+3 to \+6\.5/.test(rb) && /53\.5%/.test(rb) && /UNSTABLE/.test(rb) && /<b>YES<\/b>/.test(rb) && /3–1/.test(rb) && /2 saved/.test(rb) && /7–3/.test(rb) && /2007–25/.test(rb), "replay card: history, live record, verdict, season range", rb.slice(0, 400));
     vm.runInContext(`REPLAY = null`, ctx); ok(ctx.T.replayBox() === "", "replay card: leaves itself out when the history is not loaded"); }
