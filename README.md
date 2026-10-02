@@ -73,3 +73,5 @@ Same-game paper parlay (10/2): for every game the scheduled snapshot records one
 Game-by-game results (10/2): week chips with counts (default = newest week with results; "All" shows everything), games in kickoff order.
 
 model_best_4 (10/2): the model's own parlay, not copied from any bettor: its 4 most likely legs across different games (home moneylines it gives 75%+ and the most likely scorers), real combined chance recorded; part of the weekly paper set.
+
+Old weeks clean up (10/2): an account bet from an earlier week that is not resolved is no longer "open", and a typed-in combo with a leg still unresolved 3 days after its last game shows as "settled" instead of open.
