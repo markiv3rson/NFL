@@ -5,7 +5,7 @@ Calls the site's /api/snapshot on Mark's schedule, Pacific time:
   Mon-Sat: 7 AM, 12 PM, 3 PM, 7 PM           (Polymarket + sportsbooks)
   Every kickoff: 3 minutes before -> closing-line snapshot (Polymarket; books reused)
   Every distinct kickoff wave: ~60 min before -> model rerun (catches that wave's active/inactive news)
-  Nightly 11:45 PM: grade finished games
+  Nightly 11:45 PM + hourly at :20 (6 AM-11 PM): grade finished games and sync the Polymarket account
 Env: SITE_URL (https://nfl-nfl9.vercel.app), SITE_LOGIN ("user:password" for the site's login).
      (app.py also reads MODEL_SERVICE_TOKEN; the scheduler itself doesn't call app.py over HTTP.)
 """
@@ -169,6 +169,12 @@ def _loop():
                 if tag not in fired: fired[tag] = time.time(); _bg("selfcheck", _call, "/api/selfcheck", tries=2)
             if now_pt.hour == 23 and now_pt.minute >= 45:
                 tag = f"g:{now_pt:%Y-%m-%d}"
+                if tag not in fired: fired[tag] = time.time(); _bg("grade", _call, "/api/results/grade")
+            # Hourly at :20 from 6 AM to 11 PM (added 10/2): nflverse posts final scores and play-by-play hours after a game
+            # ends, so a once-a-night grade missed them (Thursday's game sat ungraded). The call grades whatever is final and
+            # also syncs the Polymarket account; with nothing new it does almost no work.
+            if 6 <= now_pt.hour <= 22 and 20 <= now_pt.minute < 30:
+                tag = f"gh:{now_pt:%Y-%m-%d-%H}"
                 if tag not in fired: fired[tag] = time.time(); _bg("grade", _call, "/api/results/grade")
             for t in [t for t, at in fired.items() if time.time() - at > 86400]: del fired[t]   # tags only matter inside their window; cap growth
         except Exception as e:

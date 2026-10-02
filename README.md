@@ -53,3 +53,5 @@ Upload changed folders through GitHub "Upload files" → Commit. Vercel and Rail
 ### My Bets settlement (10/2)
 Polymarket drops a position from the list once it settles, so a settled bet used to show "P/L not reported" and never reached the record.
 The sync now also reads Polymarket's own settlement activity (`POSITION_RESOLUTION`) and records won/lost and P/L for every bet, even one that settled between two syncs. A preloaded combo (same week and cost) takes that result at once instead of waiting for nflverse's final score and is never listed twice. The Week 4 PIT @ CLE combo is preloaded with estimated leg prices (they affect only expected/CLV).
+
+Grading + account sync now also run hourly at :20 (6 AM-11 PM PT) from the scheduler, not just at 11:45 PM (10/2).
