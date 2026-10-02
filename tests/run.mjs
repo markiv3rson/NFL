@@ -359,6 +359,21 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     }
     ok(bad === 0 && checked === 180, "budget vs Bets tab: the same dollars in every week (60 random ledgers x 3 weeks)", bad);
     globalThis.fetch = realFetch; resetGamesCache(); await R.del("mybets:ledger"); }
+  { // settlement cross-check: scores decide two all-line combos; Polymarket agrees on one, disagrees on the other
+    const { loadMyBets } = await import("../lib/mybets.js"); const { SEASON, resetGamesCache } = await import("../lib/games.js"); const R = globalThis.__TEST_REDIS__; const realFetch = globalThis.fetch;
+    const H = "season,game_type,week,gameday,gametime,away_team,away_score,home_team,home_score,roof,stadium,location,surface\n", g = (a, as, h, hs) => `${SEASON},REG,3,2026-09-27,13:00,${a},${as},${h},${hs},o,s,Home,g\n`;
+    resetGamesCache(); globalThis.fetch = async (u) => (String(u).includes("games.csv") ? { ok: true, text: async () => H + g("CAR", 18, "CLE", 21) + g("LAC", 16, "BUF", 24) + g("NE", 6, "JAX", 35) + g("NYJ", 24, "DET", 31) } : { ok: false, status: 404, json: async () => ({}), text: async () => "" });
+    await R.set("mybets:ledger", JSON.stringify({ a: { id: "caoc-spreads", season: SEASON, week: 3, cost: 10, shares: 121.86, closedAt: "t", resolved: { win: true, pl: 111.86, t: "2026-09-28T04:00:00Z" } }, b: { id: "caoc-totals", season: SEASON, week: 3, cost: 10, shares: 132.89, closedAt: "t", resolved: { win: false, pl: -10, t: "2026-09-28T04:00:00Z" } } }));
+    const mb = await loadMyBets(SEASON), c4 = mb.bets.find((b) => b.id === "w3-c4"), c5 = mb.bets.find((b) => b.id === "w3-c5");
+    ok(c4.result === "L" && c4.settleCheck === "disagree" && c5.result === "L" && c5.settleCheck === "agree" && mb.summary.settleCheck.agree === 1 && mb.summary.settleCheck.disagree === 1, "settlement check: scores decide the combo, Polymarket's verdict is compared and a disagreement is flagged");
+    globalThis.fetch = realFetch; resetGamesCache(); await R.del("mybets:ledger"); }
+  { // weekly recap text, hand-worked
+    const { weekRecap } = await import("../lib/grade.js");
+    const recs = [ { ml: { result: "W" }, spread: { basis: "model", result: "L" }, total: { basis: "model", result: "W" }, td: [ { fair: 40, scored: true }, { fair: 20, scored: false }, { fair: 90, scored: true, played: false } ] },
+      { ml: { result: "L" }, spread: { basis: "model", result: "W" }, total: { basis: "stats", result: "L" }, td: [] }, { ml: { result: "W" }, spread: null, total: { basis: "model", result: "P" }, td: [{ fair: 10, scored: false }] } ];
+    const r = weekRecap(4, recs);
+    ok(r.title === "Week 4 recap: moneyline 2–1 · spread side 1–1 · total side 1–0" && r.sub === "Touchdowns: 1 scored of 3 players who played (the model expected 0.7)", "weekly recap: records by model, touchdowns vs expected (players who did not play left out)");
+    ok(weekRecap(4, []) === null && weekRecap(4, null) === null, "weekly recap: nothing graded gives no recap"); }
   { const rb = ctx.T.replayBox();
     ok(/Road dogs \+3 to \+6\.5/.test(rb) && /53\.5%/.test(rb) && /UNSTABLE/.test(rb) && /<b>YES<\/b>/.test(rb) && /3–1/.test(rb) && /2 saved/.test(rb) && /7–3/.test(rb) && /2007–25/.test(rb), "replay card: history, live record, verdict, season range", rb.slice(0, 400));
     vm.runInContext(`REPLAY = null`, ctx); ok(ctx.T.replayBox() === "", "replay card: leaves itself out when the history is not loaded"); }

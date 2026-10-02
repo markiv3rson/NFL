@@ -362,6 +362,9 @@ function renderMineNow() {
     `<div class="sec"><div class="sh">Summary</div>` +
     `<div class="row"><span class="dim">Your record · P/L</span><span>${s.wins}–${s.losses}${s.pushes ? "–" + s.pushes : ""} · ${cMoney(s.pl)}</span></div>` +
     `<div class="row"><span class="dim">Return · avg price move your way</span><span>${cPct(s.roi)} · ${cPct(s.avgClv)}</span></div>` +
+    (() => { const sc = MB.summary && MB.summary.settleCheck; if (!sc || !(sc.agree + sc.disagree)) return "";
+      return sc.disagree ? `<div class="s y">⚠ Polymarket's settlement and the final scores disagree on ${sc.disagree} of ${sc.agree + sc.disagree} combos. The score-based result is shown. Check those bets.</div>`
+        : `<div class="s dim">Polymarket's settlements matched the final scores on ${sc.agree} of ${sc.agree} combos.</div>`; })() +
     (past ? "" : `<div class="row"><span class="dim">Open this week</span><span>${money(s.openCost)} of $200</span></div>`) + `</div>` +
     (past ? "" : `<div class="sec"><div class="sh">Open bets</div>${open.map(betRow).join("") || '<div class="s">No open bets.</div>'}</div>` +
     `<div class="sec"><div class="sh">Expected returns</div>` +
