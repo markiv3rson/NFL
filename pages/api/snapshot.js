@@ -12,7 +12,7 @@ import { loadModel } from "../../lib/week";
 import { isThinMarket } from "../../lib/odds";
 import { nameMatches } from "../../lib/picks";
 import { logEdges } from "../../lib/edges";
-import { recordPaper, recordPicks, recordWinner } from "../../lib/paper";
+import { recordPaper, recordSameGame, recordPicks, recordWinner } from "../../lib/paper";
 import { buildWeek } from "../../lib/week";
 import { loadInjuriesMeta } from "../../lib/injuries";
 import { alertsFromLines, alertPriceGap } from "../../lib/alerts";
@@ -137,6 +137,11 @@ export default async function handler(req, res) {
         const inj = await loadInjuriesMeta().catch(() => null);
         paper = await recordPaper(season, week, await buildWeek({ season, week, injuries: inj ? inj.teams : null })).catch((e) => { logError("paper", e); return 0; });
       }
+    }
+    // Same-game paper parlay for any game outside the Sunday slate (Thu/Fri/Sat/Mon), once per game, ~26 h before kickoff.
+    if (src !== "manual") {
+      const soon = games.some((g) => g.kickoff && !started(g) && (new Date(g.kickoff).getTime() - Date.now()) / 3600e3 <= 26);
+      if (soon) { const inj = await loadInjuriesMeta().catch(() => null); await recordSameGame(season, week, await buildWeek({ season, week, injuries: inj ? inj.teams : null })).catch((e) => { logError("paper-sg", e); return 0; }); }
     }
     const graded = src === "manual" ? 0 : await gradeRecent(season).catch(() => 0);
     const acct = src === "manual" ? { ok: false, note: "skipped on manual refresh" } : await syncAccount().catch((e) => ({ ok: false, note: String(e) }));  // auto-sync My Bets
