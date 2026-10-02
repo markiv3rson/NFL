@@ -55,3 +55,5 @@ Polymarket drops a position from the list once it settles, so a settled bet used
 The sync now also reads Polymarket's own settlement activity (`POSITION_RESOLUTION`) and records won/lost and P/L for every bet, even one that settled between two syncs. A preloaded combo (same week and cost) takes that result at once instead of waiting for nflverse's final score and is never listed twice. The Week 4 PIT @ CLE combo is preloaded with estimated leg prices (they affect only expected/CLV).
 
 Grading + account sync now also run hourly at :20 (6 AM-11 PM PT) from the scheduler, not just at 11:45 PM (10/2).
+
+While the page is open it also calls /api/results/grade?lock=1 on load and every refresh (server lock: one run per 5 minutes across all tabs), which grades finished games, syncs the Polymarket account, and reloads the Record data if it ran (10/2).
