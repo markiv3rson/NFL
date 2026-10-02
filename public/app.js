@@ -282,7 +282,7 @@ const RESMARK = { W: '<span class="g">✓</span>', L: '<span class="r">✗</span
 function legName(l) { return esc(l.kind === "td" ? `${l.player} TD` : l.kind === "spread" ? `${l.team} ${sgn(l.line)}` : `${l.side === "over" ? "Over" : "Under"} ${l.line}`); }
 function betRow(b) {
   if (b.source === "account") {   // bet recorded automatically from your Polymarket account
-    const st = b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Even" : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : '<span class="dim">open</span>';
+    const st = b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Even" : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : (b.waiting ? '<span class="y">final · waiting for touchdown results</span>' : '<span class="dim">open</span>');
     return `<div class="row"><span>${esc(b.title)}${b.outcome ? ` — ${esc(b.outcome)}` : ""} <span class="dim">wk ${b.week ?? "?"}</span></span><span>${st}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
       `<div class="s" style="padding:0 0 6px 8px">${money(b.cost)}${b.price != null ? ` at ${Math.round(b.price * 100)}¢` : ""} · pays ${money(b.toWin)} if it wins · auto-recorded from your account</div>`;
   }
@@ -489,7 +489,7 @@ function renderModel() {
     ["Sportsbook credits left", st.creditWarning ? `<span class="y">${st.credits ?? "—"}</span>` : (st.credits ?? "—")],
   ].map(([a, b]) => `<div class="row"><span class="dim">${a}</span><span>${b}</span></div>`).join("") +
     (st.creditWarning ? `<div class="s y">⚠ ${esc(st.creditWarning)}</div>` : "") +
-    ((st.errors || []).length ? st.errors.map((e) => `<div class="s y">⚠ ${hm(e.t)} · ${esc(e.where)}: ${esc(e.msg)}</div>`).join("") : '<div class="s g">No errors this week.</div>') : "";
+    ((st.errors || []).length ? st.errors.map((e) => `<div class="s y">⚠ ${hm(e.t)} · ${esc(e.where)}: ${esc(e.msg)}</div>`).join("") : '<div class="s g">No errors in the last 2 days.</div>') : "";
   GBG_RES = res; const games = gbgHtml();
   const recapTd = (() => { const tdW = wk.flatMap((r) => r.td || []), td = tdW.filter((p) => p.played !== false); if (!tdW.length) return "";
       const exp = td.reduce((a, p) => a + p.fair, 0) / 100, hit = td.filter((p) => p.scored).length;

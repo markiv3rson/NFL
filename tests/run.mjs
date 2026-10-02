@@ -260,7 +260,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { // My Bets end to end on a mock Redis: settlement overrides, combo legs ignored, earlier weeks never open, twins listed once
     const realFetch = globalThis.fetch; const H = "season,game_type,week,gameday,gametime,away_team,away_score,home_team,home_score,roof,stadium,location,surface\n";
     globalThis.fetch = async (u) => (String(u).includes("games.csv") ? { ok: true, text: async () => H + "2026,REG,4,2099-10-01,20:15,PIT,,CLE,,outdoors,Huntington,Home,grass\n2026,REG,5,2099-10-08,20:15,AAA,,BBB,,outdoors,X,Home,grass\n" } : { ok: false, status: 404, json: async () => ({}), text: async () => "" });
-    const R = globalThis.__TEST_REDIS__, { loadMyBets } = await import("../lib/mybets.js"), { SEASON } = await import("../lib/games.js");
+    const R = globalThis.__TEST_REDIS__, { loadMyBets } = await import("../lib/mybets.js"), { SEASON, resetGamesCache } = await import("../lib/games.js"); resetGamesCache();   // use the mock schedule, not a cached real one
     await R.set("mybets:ledger", JSON.stringify({
       "caoc-twin": { id: "caoc-twin", season: SEASON, week: 4, cost: 20, shares: 130.32, closedAt: "t", resolved: { win: true, pl: 110.32, t: "2026-10-02T05:00:00Z" } },
       "astatc-leg": { id: "astatc-leg", season: SEASON, week: 4, cost: 5, shares: 9, closedAt: "t" },
@@ -271,7 +271,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(!byId["astatc-leg"], "my bets: combo legs are never bets");
     ok(byId["caoc-old"] && byId["caoc-old"].result === "settled", "my bets: an unresolved bet from an earlier week is not open");
     ok(byId["caoc-loss"] && byId["caoc-loss"].result === "L" && byId["caoc-loss"].pl === -10, "my bets: a settled loss counts with its P/L");
-    globalThis.fetch = realFetch; await R.del("mybets:ledger"); }
+    ok(byId["w4-c1"] && byId["w4-c1"].waiting === false, "my bets: a bet whose games are not all final is not marked waiting");
+    // every game final (nflverse or ESPN) but the touchdown data is not posted: pending and marked waiting, with the line legs already graded
+    resetGamesCache(); globalThis.fetch = async (u) => (String(u).includes("games.csv") ? { ok: true, text: async () => H + "2026,REG,4,2026-10-01,20:15,PIT,24,CLE,27,outdoors,Huntington,Home,grass\n" } : { ok: false, status: 404, json: async () => ({}), text: async () => "" });
+    await R.del("mybets:ledger"); const mb2 = await loadMyBets(SEASON), w4 = mb2.bets.find((b) => b.id === "w4-c1");
+    ok(w4 && w4.result === "pending" && w4.waiting === true && w4.legs[0].result === "W" && w4.legs[2].result === "W" && w4.legs[1].result === "pending", "my bets: all games final but touchdown data missing -> waiting, line legs already graded");
+    globalThis.fetch = realFetch; resetGamesCache(); await R.del("mybets:ledger"); }
   { // same-game record: built lazily, once per game, never overwritten, graded and shown in the week's list
     const { recordSameGame, gradePaper, paperSummary } = await import("../lib/paper.js"); const R = globalThis.__TEST_REDIS__;
     const kick = new Date(Date.now() + 10 * 3600e3).toISOString(), later = new Date(Date.now() + 200 * 3600e3).toISOString();
@@ -284,6 +289,19 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const sm = await paperSummary(2099, 4); const ps = sm.week.parlays;
     ok(ps.length === 1 && ps[0].strategy === "same_game_3" && ps[0].result === "W" && sm.board.same_game_3.graded === 1 && sm.board.same_game_3.review.verdict === "TOO FEW", "same-game record: graded, listed in the week, reviewed");
     for (const k of await R.keys("paper:2099:*")) await R.del(k); }
+  { // ESPN final scores for games nflverse has not posted; waiting label on bets; only recent errors listed
+    const { finalsFromScoreboard, overlayEspnFinals } = await import("../lib/espnFinals.js");
+    const ev = (away, home, a, h, done) => ({ status: { type: { state: done ? "post" : "in", completed: done } }, competitions: [{ competitors: [ { homeAway: "away", score: String(a), team: { displayName: away } }, { homeAway: "home", score: String(h), team: { displayName: home } } ] }] });
+    const f = finalsFromScoreboard({ events: [ev("Pittsburgh Steelers", "Cleveland Browns", 24, 27, true), ev("Indianapolis Colts", "Washington Commanders", 3, 0, false), { status: {}, competitions: [] }] });
+    ok(Object.keys(f).join() === "PIT @ CLE" && f["PIT @ CLE"].a === 24 && f["PIT @ CLE"].h === 27, "espn finals: only completed games, with their scores");
+    const now = Date.now(), rows = [ { key: "PIT @ CLE", kickoff: new Date(now - 5 * 3600e3).toISOString(), final: false }, { key: "IND @ WAS", kickoff: new Date(now - 1 * 3600e3).toISOString(), final: false }, { key: "OLD @ GAME", kickoff: new Date(now - 9 * 86400e3).toISOString(), final: false }, { key: "PIT @ CLE", kickoff: new Date(now - 5 * 3600e3).toISOString(), final: true, awayScore: 1, homeScore: 2 } ];
+    const fetcher = async () => ({ ok: true, json: async () => ({ events: [ev("Pittsburgh Steelers", "Cleveland Browns", 24, 27, true), ev("Indianapolis Colts", "Washington Commanders", 3, 0, true)] }) });
+    const n = await overlayEspnFinals(rows, now, fetcher);
+    ok(n === 1 && rows[0].final && rows[0].awayScore === 24 && rows[0].espnFinal && !rows[1].final && !rows[2].final && rows[3].awayScore === 1, "espn finals: only games that kicked off 3h15+ ago and nflverse lacks; nflverse rows untouched");
+    ok((await overlayEspnFinals(rows.map((r) => ({ ...r, final: false })), now, async () => { throw new Error("down"); })) === 0, "espn finals: a failed fetch changes nothing");
+    const { getStatus } = await import("../lib/status.js"); const R = globalThis.__TEST_REDIS__; await R.del("errors");
+    await R.lpush("errors", JSON.stringify({ t: new Date(now - 4 * 86400e3).toISOString(), where: "old", msg: "x" })); await R.lpush("errors", JSON.stringify({ t: new Date(now - 3600e3).toISOString(), where: "new", msg: "y" }));
+    const stt = await getStatus(2026, 4, {}, null); ok(stt.errors.length === 1 && stt.errors[0].where === "new" && stt.ok === false, "status: only errors from the last 48 hours are listed"); await R.del("errors"); }
   { const rb = ctx.T.replayBox();
     ok(/Road dogs \+3 to \+6\.5/.test(rb) && /53\.5%/.test(rb) && /UNSTABLE/.test(rb) && /<b>YES<\/b>/.test(rb) && /3–1/.test(rb) && /2 saved/.test(rb) && /7–3/.test(rb) && /2007–25/.test(rb), "replay card: history, live record, verdict, season range", rb.slice(0, 400));
     vm.runInContext(`REPLAY = null`, ctx); ok(ctx.T.replayBox() === "", "replay card: leaves itself out when the history is not loaded"); }
