@@ -758,7 +758,10 @@ document.addEventListener("click", (e) => {
 });
 // Everything refreshes by itself while the page is open and visible: lines, model, injuries, alerts, and the Pick Lab / Record data.
 const onRecordTab = () => ["panel-record", "panel-lab"].some((id) => $(id) && $(id).classList.contains("on"));
-async function refreshAll() { try { await loadSlate(); await loadAlerts(); if (onRecordTab()) await loadRecord(); } catch {} }
+// Grades finished games and syncs the Polymarket account while the page is open (the server allows one run per 5 minutes),
+// then reloads the Record data if a run happened, so results and bets show up without waiting for the scheduler.
+function catchUp() { fetch("/api/results/grade?lock=1", { cache: "no-store" }).then((r) => r.json()).then((d) => { if (d && d.ran && onRecordTab()) loadRecord(); }).catch(() => {}); }
+async function refreshAll() { try { catchUp(); await loadSlate(); await loadAlerts(); if (onRecordTab()) await loadRecord(); } catch {} }
 function autoRefresh() { setTimeout(async () => { if (!document.hidden) await refreshAll(); autoRefresh(); }, 120e3); }
-loadSlate().then(loadAlerts).then(autoRefresh).catch((e) => ($("hero-upd").textContent = "Couldn't load this week: " + e.message));
+loadSlate().then(loadAlerts).then(() => { catchUp(); autoRefresh(); }).catch((e) => ($("hero-upd").textContent = "Couldn't load this week: " + e.message));
 document.addEventListener("visibilitychange", () => { if (!document.hidden && Date.now() - LOADED_AT > 60e3) refreshAll(); });
