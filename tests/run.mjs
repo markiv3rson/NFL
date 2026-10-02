@@ -129,7 +129,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const ctx = { document: { getElementById: () => el(), querySelectorAll: () => [], addEventListener() {}, hidden: false }, fetch: () => Promise.reject(new Error("offline")),
     localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) }, location: { reload() {} }, window: {}, setTimeout, clearTimeout, console, Date, Math, Number, String, JSON, Promise, Set, Object, Array };
   vm.createContext(ctx);
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   ok(/PHI winning by about 4\.2/.test(T.spreadReason(g)) && /needs PHI to win by 4\+/.test(T.spreadReason(g)), "spread wording");
@@ -305,6 +305,26 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { const rb = ctx.T.replayBox();
     ok(/Road dogs \+3 to \+6\.5/.test(rb) && /53\.5%/.test(rb) && /UNSTABLE/.test(rb) && /<b>YES<\/b>/.test(rb) && /3–1/.test(rb) && /2 saved/.test(rb) && /7–3/.test(rb) && /2007–25/.test(rb), "replay card: history, live record, verdict, season range", rb.slice(0, 400));
     vm.runInContext(`REPLAY = null`, ctx); ok(ctx.T.replayBox() === "", "replay card: leaves itself out when the history is not loaded"); }
+  { // earlier week: a bet that is final but waiting for touchdown data stays visible; no slate yet must not break Bets; sections keep their state
+    const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "record-mine" ? box : old(id));
+    vm.runInContext(`S = { week: 5, games: [] }; MBWEEK = 4; MB = { summary: {}, synced: null, bets: [ { id: "a", week: 4, source: "account", title: "Waiting combo", cost: 10, toWin: 100, result: "pending", waiting: true, legs: [] }, { id: "b", week: 4, source: "account", title: "Lost combo", cost: 5, toWin: 50, result: "L", pl: -5, legs: [] }, { id: "c", week: 4, cost: 8, toWin: 80, result: "pending", waiting: true, legs: [ { kind: "td", player: "Q", game: "A @ B", team: "B", result: "pending", price: 0.5 } ] } ] }`, ctx);
+    ctx.T.renderMine(); ok(/Waiting combo/.test(box.innerHTML) && /waiting for touchdown results/.test(box.innerHTML) && /Lost combo/.test(box.innerHTML) && /BETS[\s\S]*>3</.test(box.innerHTML) && (box.innerHTML.match(/waiting for touchdown results/g) || []).length === 2, "record tab: an earlier week still shows bets (typed-in and account) that are waiting for touchdown data");
+    vm.runInContext(`S = null; MBWEEK = null`, ctx); let threw = false; try { ctx.T.renderMine(); } catch { threw = true; } ok(!threw && /data-mbw="all"/.test(box.innerHTML), "record tab: opens fine before the slate has loaded");
+    const els = { s1: { id: "s1", classList: new Set(["open"]) }, s2: { id: "s2", classList: new Set() } }; for (const e of Object.values(els)) { const c = e.classList; e.classList = { contains: (k) => c.has(k), toggle: (k, on) => (on ? c.add(k) : c.delete(k)) }; }
+    const root = { querySelectorAll: () => Object.values(els) }; const g2 = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "rootX" ? root : els[id] || g2(id));
+    ctx.T.keepOpenState("rootX", () => { els.s1.classList.toggle("open", false); els.s2.classList.toggle("open", true); });
+    ok(els.s1.classList.contains("open") && !els.s2.classList.contains("open"), "refresh: sections keep the open/closed state you left them in");
+    ctx.document.getElementById = old; vm.runInContext(`MBWEEK = null`, ctx); }
+  { // weekly budget: each bet once, never combo legs, week from when it settled
+    const { placedThisWeek } = await import("../lib/placed.js"); const { SEASON, resetGamesCache } = await import("../lib/games.js"); const R = globalThis.__TEST_REDIS__; const realFetch = globalThis.fetch;
+    resetGamesCache(); const H = "season,game_type,week,gameday,gametime,away_team,away_score,home_team,home_score,roof,stadium,location,surface\n";
+    globalThis.fetch = async (u) => (String(u).includes("games.csv") ? { ok: true, text: async () => H + `${SEASON},REG,3,2026-09-27,13:00,X,10,Y,20,o,s,Home,g\n${SEASON},REG,4,2026-10-01,20:15,PIT,24,CLE,27,o,s,Home,g\n${SEASON},REG,5,2026-10-08,20:15,AAA,,BBB,,o,s,Home,g\n` } : { ok: false, status: 404, json: async () => ({}), text: async () => "" });
+    await R.set("mybets:ledger", JSON.stringify({ twin: { id: "caoc-twin", season: SEASON, week: 4, cost: 20, shares: 130.32 }, leg: { id: "astatc-x", season: SEASON, week: 4, cost: 7, shares: 9 },
+      oldBet: { id: "caoc-old", season: SEASON, week: 4, cost: 11, shares: 99, resolved: { win: false, pl: -11, t: "2026-09-27T20:00:00Z" } }, fresh: { id: "caoc-new", season: SEASON, week: 5, cost: 13, shares: 80 } }));
+    const w4 = await placedThisWeek(SEASON, 4), w5 = await placedThisWeek(SEASON, 5);
+    ok(Math.abs(w4 - 20) < 1e-9, "budget: the typed-in combo counts once (not again as its account copy), no combo legs, a bet settled in an earlier week is not this week's");
+    ok(Math.abs(w5 - 13) < 1e-9, "budget: a new account bet counts in its own week");
+    globalThis.fetch = realFetch; resetGamesCache(); await R.del("mybets:ledger"); }
   { // Pick Lab: the model's parlays only (no single-game winners list), each type says how it was chosen
     const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "lab" ? box : old(id));
     vm.runInContext(`S = { week: 4, games: [], winners: { all: { n: 1, w: 1, l: 0, hit: 1 } } }; MB = null; RES = null; PAPER = { names: { model_best_4: "Model's 4 most likely legs", same_game_3: "Same game" }, board: {}, week: { week: 4, parlays: [ { strategy: "model_best_4", legs: [ { label: "H1 ML", game: "A @ H1", price: 0.8 }, { label: "H2 ML", game: "A @ H2", price: 0.8 } ], pay: 1.56, prob: 0.6 } ] } }`, ctx);
@@ -336,7 +356,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ctx.T.renderMine(); ok(/1–0/.test(box.innerHTML) && /\+\$110/.test(box.innerHTML) && /data-mbw="3"/.test(box.innerHTML) && /data-mbw="all"/.test(box.innerHTML), "record tab: defaults to this week's bets only");
     vm.runInContext(`MBWEEK = "all"`, ctx); ctx.T.renderMine(); ok(/1–2/.test(box.innerHTML), "record tab: Season chip shows every week");
     vm.runInContext(`MBWEEK = 3`, ctx); ctx.T.renderMine();
-    ok(/BETS/.test(box.innerHTML) && /RECORD/.test(box.innerHTML) && !/OPEN BETS/.test(box.innerHTML) && !/Expected returns/.test(box.innerHTML) && !/Open bets/.test(box.innerHTML) && !/Live account view/.test(box.innerHTML) && /Settled bets/.test(box.innerHTML), "record tab: an earlier week shows results only");
+    ok(/BETS/.test(box.innerHTML) && /RECORD/.test(box.innerHTML) && !/OPEN BETS/.test(box.innerHTML) && !/Expected returns/.test(box.innerHTML) && !/Open bets/.test(box.innerHTML) && !/Live account view/.test(box.innerHTML) && /Results/.test(box.innerHTML), "record tab: an earlier week shows results only");
     vm.runInContext(`MBWEEK = null`, ctx); ctx.T.renderMine(); ok(/OPEN BETS/.test(box.innerHTML) && /Expected returns/.test(box.innerHTML), "record tab: this week keeps open bets and expected returns");
     vm.runInContext(`MBWEEK = null`, ctx); ctx.document.getElementById = old; }
   { const base = { player: "B.Bowers", pos: "TE", team: "LV", game: "LV @ KC", fair: 34, two: 8, first: 9, teamRank: 1, price: 0.3, flags: [] };
