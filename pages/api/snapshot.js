@@ -138,7 +138,7 @@ export default async function handler(req, res) {
         paper = await recordPaper(season, week, await buildWeek({ season, week, injuries: inj ? inj.teams : null })).catch((e) => { logError("paper", e); return 0; });
       }
     }
-    // Same-game paper parlay for any game outside the Sunday slate (Thu/Fri/Sat/Mon), once per game, ~26 h before kickoff.
+    // Same-game paper parlay for every game, once per game, ~26 h before its kickoff.
     if (src !== "manual") {
       const soon = games.some((g) => g.kickoff && !started(g) && (new Date(g.kickoff).getTime() - Date.now()) / 3600e3 <= 26);
       if (soon) { const inj = await loadInjuriesMeta().catch(() => null); await recordSameGame(season, week, await buildWeek({ season, week, injuries: inj ? inj.teams : null })).catch((e) => { logError("paper-sg", e); return 0; }); }
