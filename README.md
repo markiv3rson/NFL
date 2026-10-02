@@ -67,3 +67,5 @@ After every game (10/2): the scheduler checks nflverse every 15 minutes and reru
 Scheduler 401s now log who refused (the site login vs Vercel Deployment Protection). Optional Railway variable VERCEL_BYPASS = the "Protection Bypass for Automation" secret from Vercel (10/2).
 
 The scheduler tests its connection to the site at every start and logs the result, then runs a catch-up grade (10/2).
+
+Same-game paper parlay (10/2): for any game outside the Sunday slate (Thu/Fri/Sat/Mon) the scheduled snapshot records one parlay ~26 h before kickoff: the biggest edge from spread/total/ML (max 2) plus its best TD edge. Legs are linked so no hit rate is claimed (prob null); only the real result is kept. Graded with the other paper parlays and shown in Pick Lab.
