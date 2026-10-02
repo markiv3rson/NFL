@@ -13,7 +13,7 @@ const { SEASON } = await import("../lib/games.js");
 if (SEASON !== 2025) throw new Error(`audit clock wrong: SEASON is ${SEASON}`);
 const { recordPicks, recordWinner } = await import("../lib/paper.js");
 const { gradeWeek } = await import("../lib/grade.js");
-const { legResult, comboResult } = await import("../lib/mybets.js");
+const { legResult, comboResult, resolvedFrom } = await import("../lib/mybets.js");
 const bad = {}, total = {}; const miss = (k, msg) => { bad[k] = (bad[k] || 0) + 1; if (bad[k] <= 3) console.log(`MISMATCH [${k}]`, msg); };
 const chk = (k, ok, msg) => { total[k] = (total[k] || 0) + 1; if (!ok) miss(k, msg); };
 const near = (a, b) => Math.abs(a - b) < 1e-9;
@@ -58,6 +58,11 @@ for (const e of F.edges) { const all = await redis.hgetall(`edgelog:2025:${e.wee
   const r = f ? JSON.parse(all[f]) : null; chk("edge tracker", !!r && r.result === e.expected.result && near(r.pl, e.expected.pl) && r.clv != null && near(r.clv, e.expected.clv), `${e.game} ${JSON.stringify(r)} vs ${JSON.stringify(e.expected)}`); }
 // ---- combo rule for My Bets (W + P mix = unconfirmed push, any L = lost, all W = won)
 chk("my bets: combo rule", comboResult([{ result: "W" }, { result: "L" }]) === "L" && comboResult([{ result: "W" }, { result: "W" }]) === "W" && comboResult([{ result: "W" }, { result: "P" }]) === "P" && comboResult([{ result: "W" }, { result: "pending" }]) === "pending", "comboResult");
+// ---- Polymarket settlement activity -> result (win raises "realized", loss never does)
+const act = (before, after) => ({ positionResolution: { marketSlug: "caoc-x", updateTime: "t", beforePosition: { netPosition: "130", cost: { value: "20" }, realized: { value: before } }, afterPosition: { netPosition: "0", realized: { value: after } } } });
+const rw = resolvedFrom(act("0", "130")), rw2 = resolvedFrom(act("0", "110")), rl = resolvedFrom(act("0", "0")), rl2 = resolvedFrom(act("0", "-20"));
+chk("settlement", rw.win && near(rw.pl, 110) && rw2.win && near(rw2.pl, 110) && !rl.win && near(rl.pl, -20) && !rl2.win && near(rl2.pl, -20), "resolvedFrom");
+chk("settlement", resolvedFrom({}) === null && resolvedFrom({ positionResolution: { marketSlug: "x" } }) === null, "bad input");
 let n = 0, nb = 0; for (const k of Object.keys(total)) { n += total[k]; nb += bad[k] || 0; console.log(`${(bad[k] ? "FAIL" : "ok  ")} ${k.padEnd(26)} ${total[k] - (bad[k] || 0)} / ${total[k]}`); }
 console.log(nb ? `grading audit: ${nb} of ${n} checks FAILED` : `grading audit: all ${n} checks passed`);
 process.exit(nb ? 1 : 0);
