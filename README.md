@@ -77,3 +77,5 @@ model_best_4 (10/2): the model's own parlay, not copied from any bettor: its 4 m
 Old weeks clean up (10/2): an account bet from an earlier week that is not resolved is no longer "open", and a typed-in combo with a leg still unresolved 3 days after its last game shows as "settled" instead of open.
 
 Record tab, earlier weeks (10/2): results only. The open bets, expected returns and live account sections are hidden; the Settled bets list opens by default.
+
+Pick Lab winners list (10/2): each game shows labeled "Spread / Total / TD" lines (TD = the game's most likely scorer who is not out) under the moneyline pick.
