@@ -553,12 +553,14 @@ function renderModelNow() {
 function renderMine() { keepOpenState("record-mine", renderMineNow); }
 function renderModel() { keepOpenState("models", renderModelNow); }
 function renderRecord() { renderMine(); renderModel(); }
+// "Updated" line at the top of Models and Bets, so you can tell the numbers are fresh (they reload every 2 minutes while you are on the tab).
+function stampUpdated() { const t = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }); for (const id of ["upd-record", "upd-models"]) { const e = $(id); if (e) e.textContent = `Updated ${t} · reloads every 2 minutes`; } }
 async function loadRecord(sync = false) {
   if (sync) toast("Syncing your Polymarket account…", 0);
   try {
     const [mb, rl, rp] = await Promise.all([fetch(`/api/mybets${sync ? "?sync=1" : ""}`, { cache: "no-store" }).then((r) => r.json()), fetch("/api/results/list", { cache: "no-store" }).then((r) => r.json()), fetch("/api/replay", { cache: "no-store" }).then((r) => r.json()).catch(() => null)]);
     if (rp && rp.ok) REPLAY = rp.replay;   // history table; a failed fetch just leaves the card out
-    if (!mb.ok) throw new Error(mb.error); MB = mb; RES = rl.ok ? rl.results : []; EDGES = rl.ok ? rl.edges : null; PAPER = rl.ok ? rl.paper : null; PICKS = rl.ok ? rl.picks : null; renderLab();
+    if (!mb.ok) throw new Error(mb.error); stampUpdated(); MB = mb; RES = rl.ok ? rl.results : []; EDGES = rl.ok ? rl.edges : null; PAPER = rl.ok ? rl.paper : null; PICKS = rl.ok ? rl.picks : null; renderLab();
     renderRecord();
     if (sync && mb.sync) toast(mb.sync.ok ? `Synced ${mb.sync.positions} positions.` : `Sync: ${mb.sync.note}`);
   } catch (e) { toast("Record failed: " + e.message, 10000); }
@@ -579,9 +581,11 @@ function weekline() {
 function modelSide(g) {   // same rule as lib/paper.js picksFor (the server records it at kickoff)
   const p = g.poly, m = g.model, out = []; if (!p || !m) return out;
   if (p.spread && m.homeMargin != null) { const hs = p.spread.homeSpread, gap = m.homeMargin + hs;
-    if (Math.abs(gap) >= 0.05) out.push({ game: g.key, market: "Spread", label: gap > 0 ? `${g.home} ${sgn(hs)}` : `${g.away} ${sgn(-hs)}`, price: gap > 0 ? p.spread.home : p.spread.away, gap: Math.abs(gap) }); }
+    const tie = Math.abs(gap) < 0.05 && m.calHomeCover != null && m.calHomeCover !== 50;   // dead toss-up: lean the calibrated side (same rule as the server)
+    if (Math.abs(gap) >= 0.05 || tie) { const home = tie ? m.calHomeCover > 50 : gap > 0; out.push({ game: g.key, market: "Spread", label: home ? `${g.home} ${sgn(hs)}` : `${g.away} ${sgn(-hs)}`, price: home ? p.spread.home : p.spread.away, gap: tie ? 0 : Math.abs(gap) }); } }
   if (p.total && m.total != null) { const gap = m.total - p.total.line;
-    if (Math.abs(gap) >= 0.05) out.push({ game: g.key, market: "Total", label: `${gap > 0 ? "Over" : "Under"} ${p.total.line}`, price: gap > 0 ? p.total.over : p.total.under, gap: Math.abs(gap) }); }
+    const tie = Math.abs(gap) < 0.05 && m.calUnder != null && m.calUnder !== 50;
+    if (Math.abs(gap) >= 0.05 || tie) { const over = tie ? m.calUnder < 50 : gap > 0; out.push({ game: g.key, market: "Total", label: `${over ? "Over" : "Under"} ${p.total.line}`, price: over ? p.total.over : p.total.under, gap: tie ? 0 : Math.abs(gap) }); } }
   return out;
 }
 const hitCls = (h) => (h == null ? "dim" : h >= 0.55 ? "g" : h >= 0.5 ? "y" : "r");   // green 55%+, amber 50-55%, red under 50%
