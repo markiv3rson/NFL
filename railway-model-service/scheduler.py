@@ -5,6 +5,7 @@ Calls the site's /api/snapshot on Mark's schedule, Pacific time:
   Mon-Sat: 7 AM, 12 PM, 3 PM, 7 PM           (Polymarket + sportsbooks)
   Every kickoff: 3 minutes before -> closing-line snapshot (Polymarket; books reused)
   Every distinct kickoff wave: ~60 min before -> model rerun (catches that wave's active/inactive news)
+  Every 15 min: a new nflverse final -> model rerun (src=postgame)
   Nightly 11:45 PM + hourly at :20 (6 AM-11 PM): grade finished games and sync the Polymarket account
 Env: SITE_URL (https://nfl-nfl9.vercel.app), SITE_LOGIN ("user:password" for the site's login).
      (app.py also reads MODEL_SERVICE_TOKEN; the scheduler itself doesn't call app.py over HTTP.)
@@ -92,6 +93,16 @@ def _kickoffs():
         if now - timedelta(minutes=5) < k < now + timedelta(days=8): out.append((k, f"{x['away_team']} @ {x['home_team']}"))
     return out
 
+def _finals():
+    """Games nflverse has posted a final score for (this season, recent weeks). None if the schedule can't be read."""
+    try:
+        with urllib.request.urlopen(SCHED_URL, timeout=60) as r: rows = list(csv.DictReader(io.StringIO(r.read().decode())))
+    except Exception as e:
+        print(f"[scheduler] finals load failed: {e}", flush=True); return None
+    yr = max((int(x["season"]) for x in rows if x.get("season", "").isdigit()), default=0)
+    return {f"{x['season']}:{x['week']}:{x['away_team']} @ {x['home_team']}" for x in rows
+            if x.get("season") == str(yr) and x.get("away_score") not in (None, "") and x.get("home_score") not in (None, "")}
+
 _running, _running_lock = set(), threading.Lock()
 def _bg(kind, fn, *args, **kw):
     """Run a job in its own thread. Before 9/30 every call ran inline in the loop, so one slow rerun (up to ~15 min
@@ -110,11 +121,22 @@ def _bg(kind, fn, *args, **kw):
 
 def _loop():
     fired, kicks, kicks_at = {}, [], None
+    seen_finals, finals_at = None, None   # games nflverse had already finished when we last looked (None until the first look)
     while True:
         try:
             now_pt = datetime.now(PT)
             if kicks_at is None or (datetime.now(timezone.utc) - kicks_at) > timedelta(hours=1):
                 kicks, kicks_at = _kickoffs(), datetime.now(timezone.utc)
+            # After every game (added 10/2): when nflverse posts a new final score, rerun the model right away so the next
+            # games' numbers use that game's plays, snaps and injuries. Checked every 15 minutes; the first look after a
+            # restart only records what is already final (no rerun).
+            if finals_at is None or (datetime.now(timezone.utc) - finals_at) > timedelta(minutes=15):
+                finals_at = datetime.now(timezone.utc); fin = _finals()
+                if fin is not None:
+                    new_games = sorted(fin - seen_finals) if seen_finals is not None else []
+                    if new_games and _bg("rerun", _call, "/api/rerun?src=postgame"): print(f"[scheduler] new final(s) {new_games} -> postgame rerun", flush=True)
+                    elif new_games: fin = seen_finals   # a rerun was already busy: look again next time
+                    seen_finals = fin
             hours = SUNDAY if now_pt.weekday() == 6 else WEEKDAY
             if now_pt.hour in hours and now_pt.minute < 5:
                 tag = f"s:{now_pt:%Y-%m-%d-%H}"
@@ -138,7 +160,7 @@ def _loop():
                          (now_pt.weekday() == 6 and now_pt.hour == 9 and 5 <= now_pt.minute < 10))
             # Tuesday "after the retrain" rerun (9/30): waits until the 7:15 retrain has finished (it runs in its own thread
             # now), any time 7:30-8:29, so the new model is actually used.
-            if now_pt.weekday() == 1 and ((now_pt.hour == 7 and now_pt.minute >= 30) or now_pt.hour == 8):
+            if now_pt.weekday() in (1, 2) and ((now_pt.hour == 7 and now_pt.minute >= 30) or now_pt.hour == 8):
                 tag = f"r:after-retrain:{now_pt:%Y-%m-%d}"
                 with _running_lock: busy = "retrain" in _running
                 if tag not in fired and not busy and _bg("rerun", _call, "/api/rerun?src=auto"): fired[tag] = time.time()
@@ -154,7 +176,9 @@ def _loop():
                 tag = f"rw:{k:%Y%m%d%H%M}"
                 if tag not in fired and _bg("rerun", _call, "/api/rerun?src=wave"): fired[tag] = time.time()
             # Weekly TD retrain: Tuesday 7:15 AM, after the rerun above has the new week's data loaded.
-            if now_pt.weekday() == 1 and now_pt.hour == 7 and 15 <= now_pt.minute < 20:
+            # Wednesday too (10/2): if nflverse posted Monday night's game after Tuesday's retrain, this one picks it up. The
+            # clear-win rule means a retrain on unchanged data keeps the live model.
+            if now_pt.weekday() in (1, 2) and now_pt.hour == 7 and 15 <= now_pt.minute < 20:
                 tag = f"rt:{now_pt:%Y-%m-%d}"
                 if tag not in fired: fired[tag] = time.time(); _bg("retrain", _retrain)
             # Nightly backup at 12:05 AM
