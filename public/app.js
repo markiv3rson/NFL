@@ -166,7 +166,7 @@ function rightNowBox() {
   return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Right now · Polymarket cheaper than the sportsbooks</div>` +
     (E.length ? E.map((b) => `<div class="row"><span>${esc(b.label)} <span class="dim">${esc(b.game)}</span>${b.held ? ` <span class="y">(${esc(b.held)} — hold)</span>` : ""}</span>` +
       `<span>${Math.round(b.price * 100)}¢ vs fair ${Math.round(b.fair * 100)}¢ · <span class="g">+${(b.evNet * 100).toFixed(1)}%</span></span></div>`).join("") : `<div class="s">No gap of 3%+ (${why}).</div>`) +
-    `<div class="s dim" style="margin-top:4px">Gap = fair chance ÷ price − 1, ${fee}; book odds under ${R.booksMaxAgeEarlyH || 8} h old. Tracked on Record → Model.</div></div></div>`;
+    `<div class="s dim" style="margin-top:4px">Gap = fair chance ÷ price − 1, ${fee}; book odds under ${R.booksMaxAgeEarlyH || 8} h old. Tracked in Models → Price gaps.</div></div></div>`;
 }
 // "What changed" (9/30): Polymarket line moves since your last visit on this device.
 let LAST_SEEN = null;
@@ -287,9 +287,17 @@ function betRow(b) {
       `<div class="s" style="padding:0 0 6px 8px">${money(b.cost)}${b.price != null ? ` at ${Math.round(b.price * 100)}¢` : ""} · pays ${money(b.toWin)} if it wins · auto-recorded from your account</div>`;
   }
   const hit = b.legs.filter((l) => l.result === "W").length;
-  const state = b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? (b.pushUnconfirmed ? '<span class="y">Push leg — check how Polymarket settled it</span>' : "Push") : `<span class="dim">${hit} of ${b.legs.length} hit</span>`;
+  const state = b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? (b.pushUnconfirmed ? '<span class="y">Push leg — check how Polymarket settled it</span>' : "Push") : (b.waiting ? '<span class="y">final · waiting for touchdown results</span>' : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : `<span class="dim">${hit} of ${b.legs.length} hit</span>`);
   return `<div class="row"><span>${b.legs.length > 1 ? "Combo" : "Single"} · ${money(b.cost)} → ${money(b.toWin)}</span><span>${state}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
     `<div class="s" style="padding:0 0 6px 8px">${b.legs.map((l) => `${RESMARK[l.result]} ${legName(l)}${l.clv != null ? ` <span class="${signCls(l.clv)}">(${(l.clv * 100).toFixed(0)}%)</span>` : ""}`).join(" · ")}</div>`;
+}
+// Re-rendering a tab must not close what you opened (auto-refresh every 2 min, "Show all games", Sync): remember each section's state
+// by id, run the render, put the state back.
+function keepOpenState(rootId, render) {
+  const root = $(rootId), st = {};
+  if (root && root.querySelectorAll) root.querySelectorAll(".drop[id]").forEach((d) => { st[d.id] = d.classList.contains("open"); });
+  render();
+  for (const id of Object.keys(st)) { const e = $(id); if (e && e.classList) e.classList.toggle("open", st[id]); }
 }
 let MBWEEK = null;   // Record tab week filter: null = this week, "all" = whole season
 // Game-by-game results: week chips (default = newest week with results, "All" = every week), games in kickoff order.
@@ -302,10 +310,10 @@ function gbgHtml() {
     [r.spread, r.total, r.ml].filter(Boolean).map((x) => `${esc(x.label)} ${x.result === "W" ? '<span class="g">W</span>' : x.result === "L" ? '<span class="r">L</span>' : "P"}`).join(" · ") + `</span></div>`;
   return `<div class="chips" id="gbg-chips">${wks.map((w) => `<button data-gbw="${w}" class="${String(sel) === String(w) ? "on" : ""}">Week ${w} (${GBG_RES.filter((r) => r.week === w).length})</button>`).join("")}<button data-gbw="all" class="${sel === "all" ? "on" : ""}">All</button></div>` + list.map(row).join("");
 }
-function renderMine() {
+function renderMineNow() {
   if (!MB) { $("record-mine").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }
   // Week filter: default is this week; "All" is the season. The summary is recomputed from the bets shown.
-  const wks = [...new Set(MB.bets.map((b) => b.week).filter((w) => w != null).concat(S.week))].sort((a, b) => a - b), sel = MBWEEK || S.week;
+  const SW = S && S.week, wks = [...new Set(MB.bets.map((b) => b.week).filter((w) => w != null).concat(SW == null ? [] : [SW]))].sort((a, b) => a - b), sel = MBWEEK || SW || "all";
   const shown = MB.bets.filter((b) => sel === "all" || Number(b.week) === Number(sel));
   const open = shown.filter((b) => b.result === "pending"), done = shown.filter((b) => b.result !== "pending");   // includes auto-recorded account bets
   const gr = shown.filter((b) => b.pl != null), stk = gr.reduce((a, b) => a + b.cost, 0), cl = shown.filter((b) => b.clv != null).map((b) => b.clv);
@@ -322,9 +330,9 @@ function renderMine() {
     return `<div class="row"><span>${esc(p.title)}${p.outcome ? ` — ${esc(p.outcome)}` : ""}${p.expired ? " (settled)" : ""}</span>` +
       `<span>${p.shares} sh · ${money(p.cost || 0)}${p.value != null ? ` → ${money(p.value)}` : ""}${pl != null ? ` ${cMoney(pl)}` : ""}</span></div>`;
   }).join("");
-  const past = sel !== "all" && Number(sel) < Number(S.week);   // an earlier week: results only (no open bets / expected returns / live account)
+  const past = sel !== "all" && SW != null && Number(sel) < Number(SW);   // an earlier week: results only (no open bets / expected returns / live account)
   const nOpen = open.length, tot = s.wins + s.losses;
-  const tiles = wkChips + `<div class="stats" style="margin-top:10px">` + (past ? `<div class="stat"><div class="k">BETS</div><div class="v mkt">${done.length}</div><div class="k2">Week ${sel}</div></div>` : `<div class="stat"><div class="k">OPEN BETS</div><div class="v mkt">${nOpen}</div><div class="k2">${money(s.openCost)} staked</div></div>`) +
+  const tiles = wkChips + `<div class="stats" style="margin-top:10px">` + (past ? `<div class="stat"><div class="k">BETS</div><div class="v mkt">${shown.length}</div><div class="k2">Week ${sel}</div></div>` : `<div class="stat"><div class="k">OPEN BETS</div><div class="v mkt">${nOpen}</div><div class="k2">${money(s.openCost)} staked</div></div>`) +
     `<div class="stat"><div class="k">RECORD</div><div class="v ${tot ? (s.wins / tot >= 0.5 ? "g" : "r") : "dim"}">${tot ? `${s.wins}–${s.losses}` : "—"}</div><div class="k2">settled</div></div>` +
     `<div class="stat"><div class="k">PROFIT</div><div class="v">${cMoney(s.pl)}</div><div class="k2">${sel === "all" ? "this season" : "Week " + sel}</div></div></div>`;
   $("record-mine").innerHTML = tiles + `<div class="card" style="margin-top:10px">` +
@@ -337,8 +345,8 @@ function renderMine() {
     `<div class="row"><span class="dim">If everything hits</span><span>${money(s.maxPayout)} (${cMoney(s.maxPayout - s.openCost)})</span></div>` +
     `<div class="row"><span class="dim">Expected · market</span><span>${money(s.expMarket)} (${cMoney(s.expMarket - s.openCost)})</span></div>` +
     `<div class="row"><span class="dim">Expected · your model</span><span>${s.modelCovered ? `${money(s.expModel)} (${cMoney(s.expModel - s.expModelCost)})` : "—"}</span></div></div>`) +
-    `<div class="fold" data-drop="settled"><span>Settled bets${done.length ? ` · ${cMoney(settledPl)}` : ""}</span><span>▾</span></div>` +
-    `<div class="drop${past ? " open" : ""}" id="settled">${done.map(betRow).join("") || '<div class="s">Nothing settled yet — bets grade automatically when games go final.</div>'}</div>` +
+    `<div class="fold" data-drop="settled"><span>${past ? "Results" : "Settled bets"}${done.length ? ` · ${cMoney(settledPl)}` : ""}</span><span>▾</span></div>` +
+    `<div class="drop${past ? " open" : ""}" id="settled">${(past ? shown : done).map(betRow).join("") || '<div class="s">Nothing settled yet — bets grade automatically when games go final.</div>'}</div>` +
     (past ? "" : `<div class="fold" data-drop="synced"><span>Live account view${synced.length ? ` · ${synced.length}` : ""} <span class="dim">(already counted in your bets above)</span></span><span>▾</span></div>` +
     `<div class="drop open" id="synced">${syncedRows || '<div class="s">No synced positions yet — tap ↻ Sync account.</div>'}</div>`) + `</div>` +
     `<div class="center"><button class="btn" id="sync-btn">↻ Sync account</button></div>`;
@@ -409,7 +417,7 @@ function mSec(id, title, meaning, body, warn = 0, open = false) {
   return `<div class="fold" data-drop="${id}"><span><b>${esc(title)}</b>${warn ? ` <span class="y">⚠ ${warn}</span>` : ""}</span><span>▾</span></div>` +
     `<div class="drop${open ? " open" : ""}" id="${id}"><div class="s dim" style="margin:2px 0 6px">${esc(meaning)}</div>${body}</div>`;
 }
-function renderModel() {
+function renderModelNow() {
   if (!MB || !RES) { $("models").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }
   const s = MB.summary, res = RES;
   const weeks = [...new Set(res.map((r) => r.week))].sort((a, b) => b - a), lw = weeks[0];
@@ -524,7 +532,7 @@ function renderModel() {
     `<div class="row"><span class="dim">MONEYLINE (stats-only model)</span><span>${pick("mlModel", res).length ? rec(pick("mlModel", res)) : "—"}</span></div>`;
   const card = (html) => `<div class="card" style="margin-top:6px"><div class="inner">${html}</div></div>`;
   $("models").innerHTML = labStats() +
-    mSec("m-score", "1 · Scoreboard · this week", "How every model did on the latest finished week, and whether this week's data is loaded.", recapRows + wcRows, (wc.watch || []).length, true) +
+    mSec("m-score", `1 · Scoreboard · Week ${lw ?? S.week}`, "How every model did on the latest week with graded games, and whether this week's data is loaded.", recapRows + wcRows, (wc.watch || []).length, true) +
     mSec("m-win", "2 · Winners · moneyline", "Who wins each game: the model's pick on every game, saved at kickoff and graded after, with its season record.", winnersBox("picks") + winnersBox("records") + card(mlRows)) +
     mSec("m-line", "3 · Spreads and totals", "Which side of the line to take. The model has no measured edge here, so about 50% is expected. Past seasons are shown for comparison.", (seasonRec || '<div class="s">No graded picks yet.</div>') + replayBox() + pastBox()) +
     mSec("m-td", "4 · Touchdowns", "Players' chances to score. The check shows whether the chances match reality; the picks show how the top scorers per team did.", `<div class="s"><b>Do the chances match reality?</b></div>` + (buckets || '<div class="s">Fills in as games go final.</div>') + `<div class="s" style="margin-top:8px"><b>Top picks per team</b></div>` + topTd + `<div class="s" style="margin-top:8px"><b>Against Polymarket's price</b></div>` + (vsMkt || '<div class="s">Fills in as games go final (needs closing TD prices).</div>')) +
@@ -542,6 +550,8 @@ function renderModel() {
   $("export-btn").onclick = () => (window.location.href = "/api/results/export");
   if ($("win-all")) $("win-all").onclick = () => { WINALL = !WINALL; renderModel(); };
 }
+function renderMine() { keepOpenState("record-mine", renderMineNow); }
+function renderModel() { keepOpenState("models", renderModelNow); }
 function renderRecord() { renderMine(); renderModel(); }
 async function loadRecord(sync = false) {
   if (sync) toast("Syncing your Polymarket account…", 0);
