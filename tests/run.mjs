@@ -129,7 +129,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const ctx = { document: { getElementById: () => el(), querySelectorAll: () => [], addEventListener() {}, hidden: false }, fetch: () => Promise.reject(new Error("offline")),
     localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) }, location: { reload() {} }, window: {}, setTimeout, clearTimeout, console, Date, Math, Number, String, JSON, Promise, Set, Object, Array };
   vm.createContext(ctx);
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   ok(/PHI winning by about 4\.2/.test(T.spreadReason(g)) && /needs PHI to win by 4\+/.test(T.spreadReason(g)), "spread wording");
@@ -236,6 +236,14 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { const rb = ctx.T.replayBox();
     ok(/Road dogs \+3 to \+6\.5/.test(rb) && /53\.5%/.test(rb) && /UNSTABLE/.test(rb) && /<b>YES<\/b>/.test(rb) && /3–1/.test(rb) && /2 saved/.test(rb) && /7–3/.test(rb) && /2007–25/.test(rb), "replay card: history, live record, verdict, season range", rb.slice(0, 400));
     vm.runInContext(`REPLAY = null`, ctx); ok(ctx.T.replayBox() === "", "replay card: leaves itself out when the history is not loaded"); }
+  { // Record tab week filter: this week by default, Season shows everything, tiles recomputed from the bets shown
+    const box = { innerHTML: "", onclick: null }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "record-mine" ? box : old(id));
+    vm.runInContext(`S = { week: 4, games: [] }; MBWEEK = null; MB = { summary: { wins: 9, losses: 9, pushes: 0, pl: 0, openCost: 0 }, synced: null, bets: [
+      { id: "a", week: 3, cost: 10, toWin: 100, result: "L", pl: -10, legs: [] }, { id: "b", week: 3, cost: 10, toWin: 100, result: "L", pl: -10, legs: [] },
+      { id: "c", week: 4, cost: 20, toWin: 130, result: "W", pl: 110, legs: [] } ] }`, ctx);
+    ctx.T.renderMine(); ok(/1–0/.test(box.innerHTML) && /\+\$110/.test(box.innerHTML) && /data-mbw="3"/.test(box.innerHTML) && /data-mbw="all"/.test(box.innerHTML), "record tab: defaults to this week's bets only");
+    vm.runInContext(`MBWEEK = "all"`, ctx); ctx.T.renderMine(); ok(/1–2/.test(box.innerHTML), "record tab: Season chip shows every week");
+    vm.runInContext(`MBWEEK = null`, ctx); ctx.document.getElementById = old; }
   { const base = { player: "B.Bowers", pos: "TE", team: "LV", game: "LV @ KC", fair: 34, two: 8, first: 9, teamRank: 1, price: 0.3, flags: [] };
     const yes = ctx.T.prow({ ...base, returning: "out", returningState: "practicing" }, { started: false }, true), dnp = ctx.T.prow({ ...base, returning: "out", returningState: "not practicing" }, { started: false }, true), no = ctx.T.prow(base, { started: false }, true);
     ok(/RETURNING/.test(yes) && /was out on last week/.test(yes) && /assumes he plays/.test(yes) && /34%/.test(yes) && !/RETURNING/.test(no), "returning label: practicing returner is labelled, plain players are not");
