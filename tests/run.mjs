@@ -129,7 +129,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const ctx = { document: { getElementById: () => el(), querySelectorAll: () => [], addEventListener() {}, hidden: false }, fetch: () => Promise.reject(new Error("offline")),
     localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) }, location: { reload() {} }, window: {}, setTimeout, clearTimeout, console, Date, Math, Number, String, JSON, Promise, Set, Object, Array };
   vm.createContext(ctx);
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   ok(/PHI winning by about 4\.2/.test(T.spreadReason(g)) && /needs PHI to win by 4\+/.test(T.spreadReason(g)), "spread wording");
@@ -296,12 +296,69 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(Object.keys(f).join() === "PIT @ CLE" && f["PIT @ CLE"].a === 24 && f["PIT @ CLE"].h === 27, "espn finals: only completed games, with their scores");
     const now = Date.now(), rows = [ { key: "PIT @ CLE", kickoff: new Date(now - 5 * 3600e3).toISOString(), final: false }, { key: "IND @ WAS", kickoff: new Date(now - 1 * 3600e3).toISOString(), final: false }, { key: "OLD @ GAME", kickoff: new Date(now - 9 * 86400e3).toISOString(), final: false }, { key: "PIT @ CLE", kickoff: new Date(now - 5 * 3600e3).toISOString(), final: true, awayScore: 1, homeScore: 2 } ];
     const fetcher = async () => ({ ok: true, json: async () => ({ events: [ev("Pittsburgh Steelers", "Cleveland Browns", 24, 27, true), ev("Indianapolis Colts", "Washington Commanders", 3, 0, true)] }) });
-    const n = await overlayEspnFinals(rows, now, fetcher);
+    const { resetEspnFailure } = await import("../lib/espnFinals.js"); resetEspnFailure(); const n = await overlayEspnFinals(rows, now, fetcher);
     ok(n === 1 && rows[0].final && rows[0].awayScore === 24 && rows[0].espnFinal && !rows[1].final && !rows[2].final && rows[3].awayScore === 1, "espn finals: only games that kicked off 3h15+ ago and nflverse lacks; nflverse rows untouched");
     ok((await overlayEspnFinals(rows.map((r) => ({ ...r, final: false })), now, async () => { throw new Error("down"); })) === 0, "espn finals: a failed fetch changes nothing");
+    let calls = 0; ok((await overlayEspnFinals(rows.map((r) => ({ ...r, final: false })), now, async () => { calls++; return { ok: true, json: async () => ({ events: [] }) }; })) === 0 && calls === 0, "espn finals: after a failure ESPN is left alone for a minute"); resetEspnFailure();
     const { getStatus } = await import("../lib/status.js"); const R = globalThis.__TEST_REDIS__; await R.del("errors");
     await R.lpush("errors", JSON.stringify({ t: new Date(now - 4 * 86400e3).toISOString(), where: "old", msg: "x" })); await R.lpush("errors", JSON.stringify({ t: new Date(now - 3600e3).toISOString(), where: "new", msg: "y" }));
     const stt = await getStatus(2026, 4, {}, null); ok(stt.errors.length === 1 && stt.errors[0].where === "new" && stt.ok === false, "status: only errors from the last 48 hours are listed"); await R.del("errors"); }
+  { // parlay history: hand-worked week of three home favorites (A -400 wins, B -500 wins, C -300 loses)
+    const { parlayHistory } = await import("../lib/replay.js");
+    const gm = (home, spread, hml, aml, hs, as) => ({ season: 2010, week: 1, home, away: "Z", spread, hml, aml, hs, as });
+    const rows = [gm("A", 10, -400, 300, 30, 10), gm("B", 12, -500, 350, 28, 3), gm("C", 9.5, -300, 240, 7, 17), { season: 2010, week: 1, home: "T", away: "Z", spread: 10, hml: -400, aml: 300, hs: 20, as: 20 }];
+    const by = (id) => parlayHistory(rows).find((p) => p.id === id);
+    const s1 = by("home_fav_95_single"), s2 = by("home_fav_95_2"), s3 = by("home_fav_95_3"), t3 = by("top3_home_75");
+    ok(s1.n === 3 && Math.abs(s1.hit - 2 / 3) < 1e-9 && Math.abs(s1.roi - ((0.25 + 0.2 - 1) / 3)) < 1e-9, "parlay history: singles (tie dropped, win pays 1/price - 1)");
+    ok(s2.n === 1 && s2.hit === 1 && Math.abs(s2.roi - (1.2 * 1.25 - 1)) < 1e-9, "parlay history: 2-leg takes the best-priced two, pays the product");
+    ok(s3.n === 1 && s3.hit === 0 && s3.roi === -1 && t3.n === 0 && t3.hit === null, "parlay history: a lost leg loses the parlay; top-3 needs three games at 75%+ no-vig");
+    ok(s1.periods.length === 3 && s1.periods[0].n === 3 && s1.periods[1].n === 0 && s1.periods[2].n === 0, "parlay history: split into the three periods");
+    ok(parlayHistory([]).every((p) => p.n === 0), "parlay history: empty schedule gives empty rows"); }
+  { // bets analysis: hand-worked numbers
+    const L = (kind, result, price) => ({ kind, result, price });
+    const bets = [ { source: "preloaded", cost: 10, result: "L", pl: -10, legs: [L("td", "W", 0.4), L("td", "L", 0.4), L("spread", "W", 0.5)] },
+      { source: "preloaded", cost: 5, result: "L", pl: -5, legs: [L("td", "L", 0.5), L("total", "W", 0.5)] },
+      { source: "preloaded", cost: 8, result: "pending", legs: [L("td", "pending", 0.3), L("spread", "L", 0.5)] },
+      { source: "account", cost: 99, result: "L", pl: -99, legs: [] } ];
+    const h = ctx.T.betsAnalysis(bets);
+    ok(/Touchdowns <span class="dim">· 3 legs<\/span>[\s\S]*hit <b>33%<\/b> · paid 43¢ · <b class="r">−10 pts/.test(h), "bets analysis: touchdown legs hit 1 of 3 against an average 43¢ price = −10 points");
+    ok(/Spreads <span class="dim">· 2 legs/.test(h) && /Totals <span class="dim">· 1 legs/.test(h) && !/99/.test(h), "bets analysis: legs of unfinished combos count once graded; account bets are left out");
+    ok(/3-leg combos <span class="dim">· 1<\/span>/.test(h) && /2-leg combos <span class="dim">· 1<\/span>/.test(h) && /From 6 settled legs/.test(h), "bets analysis: by combo size, and the leg total matches (3 + 2 + 1 graded legs)");
+    ok(/Fills in as your combos settle/.test(ctx.T.betsAnalysis([])) && /Fills in as your combos settle/.test(ctx.T.betsAnalysis([{ source: "preloaded", legs: [L("td", "pending", 0.4)], result: "pending" }])), "bets analysis: says so when nothing has settled"); }
+  { // closing-line value: hand-worked, and the grading helper
+    const mk = (k, c) => ({ [k]: { basis: "model", clvPts: c } });
+    const h = ctx.T.clvSummary([mk("spread", 0.5), mk("spread", -0.5), mk("spread", 1), mk("spread", 0), mk("total", -1), { spread: { basis: "stats", clvPts: 9 } }, { spread: { basis: "model", clvPts: null } }]);
+    ok(/SPREAD side[\s\S]*\+0\.25 pts<\/b> avg · 2 better, 1 worse, 1 same/.test(h) && /TOTAL side[\s\S]*−1\.00 pts<\/b> avg · 0 better, 1 worse, 0 same/.test(h), "closing line: average points and better/worse/same counts, ignoring non-model and missing values");
+    ok(ctx.T.clvSummary([]) === "", "closing line: nothing to show with no data");
+    const { clvPtsFor } = await import("../lib/grade.js");
+    const op = { spread: { homeSpread: -3 }, total: { line: 44 } };
+    ok(clvPtsFor("spread", "CLE +2.5", "CLE", { spread: { homeSpread: 3 } }) === 0.5 && clvPtsFor("spread", "PIT -3", "CLE", { spread: { homeSpread: 2.5 } }) === 0.5 && clvPtsFor("spread", "CLE -3.5", "CLE", op) === 0.5 && clvPtsFor("spread", "CLE -3.5", "CLE", { spread: { homeSpread: -4 } }) === -0.5, "closing line: spread points from the open (underdog +3 open, +2.5 close = +0.5; favorite −3 open, −3.5 close = +0.5; favorite −4 open, −3.5 close = −0.5)");
+    ok(clvPtsFor("total", "Over 45.5", "CLE", op) === 1.5 && clvPtsFor("total", "Under 42.5", "CLE", op) === 1.5 && clvPtsFor("total", "Under 45.5", "CLE", op) === -1.5 && clvPtsFor("total", "Over 44", "CLE", null) === null && clvPtsFor("spread", "garbage", "CLE", op) === null, "closing line: total points (over wants a higher close, under a lower one), null when unknown"); }
+  { // the numbers add up: every week's record and profit sum to the season's, for 200 random bet sets
+    let seed = 12345; const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648; let bad = 0;
+    for (let i = 0; i < 200; i++) {
+      const bets = Array.from({ length: 1 + Math.floor(rnd() * 25) }, () => { const r = rnd(), cost = 1 + Math.floor(rnd() * 30), toWin = cost * (2 + rnd() * 20), week = 1 + Math.floor(rnd() * 6);
+        const result = r < 0.1 ? "P" : r < 0.2 ? "pending" : r < 0.3 ? "W" : "L"; return { week, cost, toWin, result, pl: result === "W" ? toWin - cost : result === "L" ? -cost : result === "P" ? 0 : null, clv: rnd() < 0.3 ? rnd() - 0.5 : null, expMarket: cost * rnd(), expModel: rnd() < 0.5 ? cost * rnd() : null }; });
+      const all = ctx.T.betsSummary(bets), parts = [1, 2, 3, 4, 5, 6].map((w) => ctx.T.betsSummary(bets.filter((b) => b.week === w)));
+      const sum = (k) => parts.reduce((a, p) => a + p[k], 0);
+      if (all.wins !== sum("wins") || all.losses !== sum("losses") || all.pushes !== sum("pushes") || Math.abs(all.pl - sum("pl")) > 1e-6 || Math.abs(all.openCost - sum("openCost")) > 1e-6 || Math.abs(all.maxPayout - sum("maxPayout")) > 1e-6) bad++;
+      if (all.wins + all.losses + all.pushes + bets.filter((b) => b.result === "pending").length !== bets.length) bad++;
+    }
+    ok(bad === 0, "bets numbers: each week's record, profit and open money add up to the season's (200 random sets)", bad); }
+  { // the weekly budget and the Bets tab count the same dollars: 60 random ledgers, every week
+    const { placedThisWeek } = await import("../lib/placed.js"); const { loadMyBets } = await import("../lib/mybets.js"); const { SEASON, resetGamesCache } = await import("../lib/games.js"); const R = globalThis.__TEST_REDIS__; const realFetch = globalThis.fetch;
+    const H = "season,game_type,week,gameday,gametime,away_team,away_score,home_team,home_score,roof,stadium,location,surface\n";
+    globalThis.fetch = async (u) => (String(u).includes("games.csv") ? { ok: true, text: async () => H + `${SEASON},REG,3,2026-09-27,13:00,X,10,Y,20,o,s,Home,g\n${SEASON},REG,4,2026-10-01,20:15,PIT,24,CLE,27,o,s,Home,g\n${SEASON},REG,5,2099-10-08,20:15,AAA,,BBB,,o,s,Home,g\n` } : { ok: false, status: 404, json: async () => ({}), text: async () => "" });
+    let seed = 777; const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648; let bad = 0, checked = 0;
+    for (let i = 0; i < 60; i++) {
+      resetGamesCache(); const led = {};
+      for (let j = 0; j < 1 + Math.floor(rnd() * 12); j++) { const kind = rnd(), id = (kind < 0.2 ? "astatc-" : "caoc-") + i + "-" + j, twin = rnd() < 0.15, cost = twin ? 20 : 1 + Math.floor(rnd() * 25);
+        led[id] = { id, season: SEASON, week: [3, 4, 5, null][Math.floor(rnd() * 4)], cost, shares: twin ? 130.32 : cost * (3 + rnd() * 30), ...(rnd() < 0.4 ? { closedAt: "t" } : {}), ...(rnd() < 0.4 ? { resolved: { win: rnd() < 0.3, pl: -cost, t: ["2026-09-28T04:00:00Z", "2026-10-02T05:00:00Z", "2026-10-09T05:00:00Z"][Math.floor(rnd() * 3)] } } : {}) }; }
+      await R.set("mybets:ledger", JSON.stringify(led)); const mb = await loadMyBets(SEASON);
+      for (const w of [3, 4, 5]) { const tab = mb.bets.filter((b) => Number(b.week) === w).reduce((a, b) => a + b.cost, 0), budget = await placedThisWeek(SEASON, w); checked++; if (Math.abs(tab - budget) > 1e-6) { bad++; if (bad < 3) console.log("MISMATCH", i, w, tab, budget); } }
+    }
+    ok(bad === 0 && checked === 180, "budget vs Bets tab: the same dollars in every week (60 random ledgers x 3 weeks)", bad);
+    globalThis.fetch = realFetch; resetGamesCache(); await R.del("mybets:ledger"); }
   { const rb = ctx.T.replayBox();
     ok(/Road dogs \+3 to \+6\.5/.test(rb) && /53\.5%/.test(rb) && /UNSTABLE/.test(rb) && /<b>YES<\/b>/.test(rb) && /3–1/.test(rb) && /2 saved/.test(rb) && /7–3/.test(rb) && /2007–25/.test(rb), "replay card: history, live record, verdict, season range", rb.slice(0, 400));
     vm.runInContext(`REPLAY = null`, ctx); ok(ctx.T.replayBox() === "", "replay card: leaves itself out when the history is not loaded"); }
