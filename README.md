@@ -80,4 +80,4 @@ Record tab, earlier weeks (10/2): results only. The open bets, expected returns 
 
 Pick Lab winners list (10/2): each game shows labeled "Spread / Total / TD" lines (TD = the game's most likely scorer who is not out) under the moneyline pick.
 
-Pick Lab (10/2): the Picks view is the model's parlays only (the single-game winners list was removed, Game Lines already shows those picks); each parlay type has a one-line rule saying how its legs are chosen.
+Pick Lab (10/2): the Picks view keeps the model's pick on every game (saved at kickoff, graded after) and the parlays; each parlay type has a one-line rule saying how its legs are chosen.
