@@ -150,7 +150,7 @@ function winnersBox(mode = "picks") {
   const rec = W && W.all && W.all.n ? `<div class="row"><span class="dim">MONEYLINE · all picks</span><span>${W.all.w}–${W.all.l} · right ${pc(W.all.hit)} <span class="dim">(said ${pc(W.all.said)})</span></span></div>` +
     (W.top4 && W.top4.n ? `<div class="row"><span class="dim">MONEYLINE · each week's top 4</span><span>${W.top4.w}–${W.top4.l} · right ${pc(W.top4.hit)} <span class="dim">(said ${pc(W.top4.said)})</span></span></div>` : "") : '<div class="s dim">The record starts after this week\'s games: each pick is saved at kickoff and graded when the game ends.</div>';
   if (mode === "records") return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Records · model's side</div>${rec}${W && W.stats && W.stats.n ? `<div class="row"><span class="dim">Moneyline · stats-only model (no market)</span><span>${W.stats.w}–${W.stats.l} · right ${pc(W.stats.hit)}</span></div>` : ""}${pickRec("spread", "Spreads")}${pickRec("total", "Totals")}</div></div>`;
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Moneyline side · who wins the game</div>` +
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Model's pick on every game</div><div class="s dim">Saved at kickoff and graded after the game. This is how the model is tracked, not a bet.</div>` +
     (list.slice(0, WINALL ? 99 : 8).map((x, i) => { const g = S.games.find((y) => y.key === x.game), sides = g ? modelSide(g) : [], sp = sides.find((s) => s.market === "Spread"), tt = sides.find((s) => s.market === "Total");
       const tdp = g ? (g.td || []).filter((r) => r.fair != null && !/^(out|doubtful)$/i.test(r.injury || "")).sort((a, b) => b.fair - a.fair)[0] : null;   // the game's most likely scorer
       return `<div class="row" style="display:block"><div style="display:flex;justify-content:space-between;gap:8px"><span>${i + 1}. <b>${esc(x.team)}</b> over ${esc(x.opp)}</span><span>${Math.round(x.p * 100)}%${x.price ? ` <span class="dim">· ${Math.round(x.price * 100)}¢</span>` : ""}</span></div>` +
@@ -589,14 +589,20 @@ function renderLab() {
   const names = PAPER.names || {}, wk = PAPER.week, board = PAPER.board || {};
   const pct = (x) => (x == null ? "—" : `${(x * 100).toFixed(0)}%`);
   const intro = "";
+  // One plain line per parlay type: who chose the legs. Every one is a fixed rule applied to the model's numbers (nobody hand-picks).
+  const HOW = { home_fav_95_single: "Rule: home teams favored by 9.5+ on the moneyline.", home_fav_95_2: "Rule: home teams favored by 9.5+, 2 different games.", home_fav_95_3: "Rule: home teams favored by 9.5+, 3 different games.",
+    top3_home_75: "Rule: the 3 home teams the market gives 75%+, biggest first.", td_edge_3: "Rule: 3 scorers (different games) whose model chance beats Polymarket's price by 3%+.",
+    td_likely_2: "Rule: the 2 players the model rates most likely to score, different games.", td_likely_3: "Rule: the 3 players the model rates most likely to score, different games.",
+    right_now_3: "Rule: 3 legs where Polymarket is 3%+ cheaper than the sportsbooks.", model_best_4: "Rule: the 4 legs the model rates most likely to hit, different games.",
+    same_game_3: "Rule: the biggest spread/total/moneyline edge plus the best touchdown edge, all from one game. Legs move together, so no win chance is claimed." };
   const legLine = (l) => `${esc(l.label)} <span class="dim">${esc(l.game)}</span> · ${Math.round(l.price * 100)}¢${l.result ? ` <span class="${l.result === "W" ? "g" : l.result === "L" ? "r" : "dim"}">${l.result}</span>` : ""}`;
   const thisWeek = !wk ? '<div class="s dim">Recorded about a day before Sunday.</div>' :
     Object.keys(names).map((k) => { const ps = wk.parlays.filter((p) => p.strategy === k);
-      return `<div class="sec"><div class="sh">${esc(names[k])}</div>` + (ps.length ? ps.map((p) =>
+      return `<div class="sec"><div class="sh">${esc(names[k])}</div>${HOW[k] ? `<div class="s dim">${esc(HOW[k])}</div>` : ""}` + (ps.length ? ps.map((p) =>
         `<div class="row" style="display:block"><div>${p.legs.map(legLine).join("<br>")}</div><div class="s">pays ${p.pay.toFixed(2)}x${p.prob != null ? ` · market chance ${pct(p.prob)}` : ""}${p.result ? ` · <b class="${p.result === "W" ? "g" : p.result === "L" ? "r" : ""}">${p.result === "W" ? "HIT" : p.result === "L" ? "missed" : "push"}</b>` : ""}</div></div>`).join("") :
         '<div class="s">No qualifying legs this week.</div>') + `</div>`; }).join("");
   const rows = !Object.keys(names).some((k) => board[k] && board[k].graded) ? '<div class="s dim">No graded parlays yet.</div>' : Object.keys(names).map((k) => { const b = board[k]; return `<div class="row"><span class="dim">${esc(names[k])}</span><span>${b ? `${b.hits} of ${b.graded} hit${b.graded ? ` (${pct(b.hitRate)}, market said ${pct(b.expRate)})` : ""} · return ${b.roi == null ? "—" : cPct(b.roi)}` : "—"}</span></div>`; }).join("");
-  $("lab").innerHTML = (S ? winnersBox("picks") : "") + intro + `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Parlay Lab · week ${wk ? wk.week : S ? S.week : ""} (paper only)</div>${thisWeek}</div></div>`;
+  $("lab").innerHTML = (S ? winnersBox("picks") : "") + intro + `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Your model's parlays · week ${wk ? wk.week : S ? S.week : ""} (paper only, nothing is bet)</div>${thisWeek}</div></div>`;
   LAB_SB = `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Parlay scoreboard · this season</div>${rows}<div class="s dim" style="margin-top:4px">Return per $1, before fees. Parlays are streaky.</div></div></div>`;
   if (MB && RES) renderModel();   // the Results tab shows the scoreboard
   if ($("win-all")) $("win-all").onclick = () => { WINALL = !WINALL; renderLab(); };
