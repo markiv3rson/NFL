@@ -140,8 +140,7 @@ export default async function handler(req, res) {
     }
     // Same-game paper parlay for every game, once per game, ~26 h before its kickoff.
     if (src !== "manual") {
-      const soon = games.some((g) => g.kickoff && !started(g) && (new Date(g.kickoff).getTime() - Date.now()) / 3600e3 <= 26);
-      if (soon) { const inj = await loadInjuriesMeta().catch(() => null); await recordSameGame(season, week, await buildWeek({ season, week, injuries: inj ? inj.teams : null })).catch((e) => { logError("paper-sg", e); return 0; }); }
+      await recordSameGame(season, week, games, async () => { const inj = await loadInjuriesMeta().catch(() => null); return buildWeek({ season, week, injuries: inj ? inj.teams : null }); }).catch((e) => { logError("paper-sg", e); return 0; });
     }
     const graded = src === "manual" ? 0 : await gradeRecent(season).catch(() => 0);
     const acct = src === "manual" ? { ok: false, note: "skipped on manual refresh" } : await syncAccount().catch((e) => ({ ok: false, note: String(e) }));  // auto-sync My Bets

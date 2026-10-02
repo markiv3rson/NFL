@@ -251,6 +251,39 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const P = buildPaper({ games: [gm("A1 @ H1", "H1", 90, { n: "P1", p: 40 }), gm("A2 @ H2", "H2", 80, { n: "P2", p: 70 }), gm("A3 @ H3", "H3", 78, null), gm("A4 @ H4", "H4", 76, null), gm("A5 @ H5", "H5", 60, { n: "P5", p: 30 })], edgesNow: [] });
     const mb = P.find((p) => p.strategy === "model_best_4");
     ok(mb && mb.legs.length === 4 && new Set(mb.legs.map((l) => l.game)).size === 4 && mb.legs.map((l) => l.label).join("|") === "H1 ML|H2 ML|H3 ML|H4 ML" && Math.abs(mb.prob - 0.9 * 0.8 * 0.78 * 0.76) < 1e-9 && Math.abs(mb.prob - mb.legs.reduce((a, l) => a * l.prob, 1)) < 1e-9, "model_best_4: top legs, one per game, product chance"); }
+  { // Lab review: the fixed rule that judges each parlay type from its own graded results
+    const { labReview } = await import("../lib/paper.js");
+    const mk = (graded, hits, said, ret = 0) => ({ graded, hits, hitRate: graded ? hits / graded : null, expRate: said, expN: graded, roi: ret });
+    ok(labReview(mk(0, 0, null)).verdict === "WAITING" && labReview(mk(12, 6, 0.5)).verdict === "TOO FEW", "lab review: nothing judged before 30 graded");
+    ok(labReview(mk(100, 50, 0.5)).verdict === "HOLDS" && labReview(mk(100, 30, 0.5)).verdict === "OVERSTATED" && labReview(mk(100, 70, 0.5)).verdict === "UNDERSTATED", "lab review: HOLDS / OVERSTATED / UNDERSTATED from the hit rate vs what the model said");
+    ok(labReview({ graded: 40, hits: 5, hitRate: 0.125, expRate: null, expN: 0, roi: -0.2 }).verdict === "LOSING" && labReview({ graded: 40, hits: 9, hitRate: 0.225, expRate: null, expN: 0, roi: 0.3 }).verdict === "PAYING", "lab review: linked-leg parlays are judged by return only"); }
+  { // My Bets end to end on a mock Redis: settlement overrides, combo legs ignored, earlier weeks never open, twins listed once
+    const realFetch = globalThis.fetch; const H = "season,game_type,week,gameday,gametime,away_team,away_score,home_team,home_score,roof,stadium,location,surface\n";
+    globalThis.fetch = async (u) => (String(u).includes("games.csv") ? { ok: true, text: async () => H + "2026,REG,4,2099-10-01,20:15,PIT,,CLE,,outdoors,Huntington,Home,grass\n2026,REG,5,2099-10-08,20:15,AAA,,BBB,,outdoors,X,Home,grass\n" } : { ok: false, status: 404, json: async () => ({}), text: async () => "" });
+    const R = globalThis.__TEST_REDIS__, { loadMyBets } = await import("../lib/mybets.js"), { SEASON } = await import("../lib/games.js");
+    await R.set("mybets:ledger", JSON.stringify({
+      "caoc-twin": { id: "caoc-twin", season: SEASON, week: 4, cost: 20, shares: 130.32, closedAt: "t", resolved: { win: true, pl: 110.32, t: "2026-10-02T05:00:00Z" } },
+      "astatc-leg": { id: "astatc-leg", season: SEASON, week: 4, cost: 5, shares: 9, closedAt: "t" },
+      "caoc-old": { id: "caoc-old", season: SEASON, week: 2, cost: 7, shares: 70 },
+      "caoc-loss": { id: "caoc-loss", season: SEASON, week: 4, cost: 10, shares: 100, closedAt: "t", resolved: { win: false, pl: -10, t: "2026-10-02T05:00:00Z" } } }));
+    const mb = await loadMyBets(SEASON), byId = Object.fromEntries(mb.bets.map((b) => [b.id, b]));
+    ok(byId["w4-c1"] && byId["w4-c1"].result === "W" && Math.abs(byId["w4-c1"].pl - 110.32) < 1e-9 && !byId["caoc-twin"], "my bets: Polymarket's settlement decides a typed-in combo, listed once");
+    ok(!byId["astatc-leg"], "my bets: combo legs are never bets");
+    ok(byId["caoc-old"] && byId["caoc-old"].result === "settled", "my bets: an unresolved bet from an earlier week is not open");
+    ok(byId["caoc-loss"] && byId["caoc-loss"].result === "L" && byId["caoc-loss"].pl === -10, "my bets: a settled loss counts with its P/L");
+    globalThis.fetch = realFetch; await R.del("mybets:ledger"); }
+  { // same-game record: built lazily, once per game, never overwritten, graded and shown in the week's list
+    const { recordSameGame, gradePaper, paperSummary } = await import("../lib/paper.js"); const R = globalThis.__TEST_REDIS__;
+    const kick = new Date(Date.now() + 10 * 3600e3).toISOString(), later = new Date(Date.now() + 200 * 3600e3).toISOString();
+    const gs = [{ key: "PIT @ CLE", kickoff: kick }, { key: "FAR @ AWAY", kickoff: later }];
+    let built = 0; const data = { games: [{ key: "PIT @ CLE", started: false, final: false, td: [] }], edgesNow: [{ game: "PIT @ CLE", market: "spread", label: "CLE +2.5", price: 0.5, evNet: 0.06 }, { game: "PIT @ CLE", market: "total", label: "Over 37.5", price: 0.5, evNet: 0.04 }] };
+    const get = async () => { built++; return data; };
+    const n1 = await recordSameGame(2099, 4, gs, get), n2 = await recordSameGame(2099, 4, gs, get);
+    ok(n1 === 1 && n2 === 0 && built === 1, "same-game record: once per game, only the game inside 26 h, week built only when needed");
+    await gradePaper(2099, 4, [{ key: "PIT @ CLE", homeScore: 27, awayScore: 24 }], async () => null);
+    const sm = await paperSummary(2099, 4); const ps = sm.week.parlays;
+    ok(ps.length === 1 && ps[0].strategy === "same_game_3" && ps[0].result === "W" && sm.board.same_game_3.graded === 1 && sm.board.same_game_3.review.verdict === "TOO FEW", "same-game record: graded, listed in the week, reviewed");
+    for (const k of await R.keys("paper:2099:*")) await R.del(k); }
   { const rb = ctx.T.replayBox();
     ok(/Road dogs \+3 to \+6\.5/.test(rb) && /53\.5%/.test(rb) && /UNSTABLE/.test(rb) && /<b>YES<\/b>/.test(rb) && /3–1/.test(rb) && /2 saved/.test(rb) && /7–3/.test(rb) && /2007–25/.test(rb), "replay card: history, live record, verdict, season range", rb.slice(0, 400));
     vm.runInContext(`REPLAY = null`, ctx); ok(ctx.T.replayBox() === "", "replay card: leaves itself out when the history is not loaded"); }
