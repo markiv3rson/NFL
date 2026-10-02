@@ -81,3 +81,7 @@ Record tab, earlier weeks (10/2): results only. The open bets, expected returns 
 Pick Lab winners list (10/2): each game shows labeled "Spread / Total / TD" lines (TD = the game's most likely scorer who is not out) under the moneyline pick.
 
 Pick Lab (10/2): the Picks view keeps the model's pick on every game (saved at kickoff, graded after) and the parlays; each parlay type has a one-line rule saying how its legs are chosen.
+
+Pick Lab review (10/2): every parlay type is judged after 30 graded parlays by a rule set in advance, from its own results: HOLDS (it hit about as often as the model said), OVERSTATED (its chances run too high: fix the model, not the picker), UNDERSTATED, or PAYING / LOSING for same-game parlays whose legs move together. Nothing is retuned from a few weeks of luck.
+The same-game parlay record is built only for games that need one (not on every snapshot).
+My Bets now has an end-to-end test on a mock Redis covering Polymarket settlements, combo legs, earlier weeks and typed-in combos listed once.
