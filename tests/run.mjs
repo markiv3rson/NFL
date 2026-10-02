@@ -129,7 +129,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const ctx = { document: { getElementById: () => el(), querySelectorAll: () => [], addEventListener() {}, hidden: false }, fetch: () => Promise.reject(new Error("offline")),
     localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) }, location: { reload() {} }, window: {}, setTimeout, clearTimeout, console, Date, Math, Number, String, JSON, Promise, Set, Object, Array };
   vm.createContext(ctx);
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   ok(/PHI winning by about 4\.2/.test(T.spreadReason(g)) && /needs PHI to win by 4\+/.test(T.spreadReason(g)), "spread wording");
@@ -290,7 +290,25 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { // Pick Lab: the model's parlays only (no single-game winners list), each type says how it was chosen
     const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "lab" ? box : old(id));
     vm.runInContext(`S = { week: 4, games: [], winners: { all: { n: 1, w: 1, l: 0, hit: 1 } } }; MB = null; RES = null; PAPER = { names: { model_best_4: "Model's 4 most likely legs", same_game_3: "Same game" }, board: {}, week: { week: 4, parlays: [ { strategy: "model_best_4", legs: [ { label: "H1 ML", game: "A @ H1", price: 0.8 }, { label: "H2 ML", game: "A @ H2", price: 0.8 } ], pay: 1.56, prob: 0.6 } ] } }`, ctx);
-    ctx.T.renderLab(); ok(/Model's pick on every game/.test(box.innerHTML) && /Your model's parlays/.test(box.innerHTML) && /Rule: the 4 legs the model rates most likely/.test(box.innerHTML) && /H1 ML/.test(box.innerHTML), "pick lab: parlays only, with how each was chosen");
+    ctx.T.renderLab(); ok(!/Model's pick on every game/.test(box.innerHTML) && /Your model's parlays/.test(box.innerHTML) && /Rule: the 4 legs the model rates most likely/.test(box.innerHTML) && /H1 ML/.test(box.innerHTML) && /Parlay scoreboard/.test(box.innerHTML), "pick lab: parlays and their scoreboard only, with how each parlay was chosen");
+    ctx.document.getElementById = old; }
+  { // Models tab: nine sections in order, each with a one-line meaning; the analysis helpers on real-shaped data
+    const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "models" ? box : id === "export-btn" ? { onclick: null } : old(id));
+    const res = [ { game: "A @ B", week: 3, ml: { pct: 82, result: "W" }, mlModel: { result: "W" }, spread: { basis: "model", result: "L" }, total: { basis: "model", result: "W" }, td: [ { team: "B", player: "P1", fair: 40, scored: true, played: true }, { team: "A", player: "P2", fair: 22, scored: false, played: true } ] },
+      { game: "C @ D", week: 3, ml: { pct: 64, result: "L" }, mlModel: { result: "L" }, spread: { basis: "model", result: "W" }, total: { basis: "model", result: "W" }, td: [] },
+      { game: "PIT @ CLE", week: 4, ml: { pct: 71, result: "W" }, spread: { basis: "model", result: "W" }, total: { basis: "model", result: "W" }, td: [] } ];
+    vm.runInContext(`S = { week: 4, games: [], status: { ok: true, errors: [] }, weekCheck: { games: 16, withLines: 16, modelRun: true, watch: [] }, missFinder: null, winners: { all: { n: 3, w: 2, l: 1, hit: 0.67 } } }; MB = { summary: { wins: 0, losses: 0, pushes: 0, pl: 0 }, bets: [] }; PAPER = { names: {}, board: {}, week: null }; PICKS = null; EDGES = null; REPLAY = null; WINALL = false`, ctx);
+    vm.runInContext(`RES = ${JSON.stringify(res)}`, ctx);
+    ctx.T.renderModel(); const h = box.innerHTML;
+    const order = ["1 · Scoreboard", "2 · Winners", "3 · Spreads and totals", "4 · Touchdowns", "5 · Tracked angles", "6 · Price gaps", "7 · Trends and analysis", "8 · Misses and every game", "9 · System"].map((x) => h.indexOf(x));
+    ok(order.every((x, i) => x > 0 && (i === 0 || x > order[i - 1])), "models tab: nine sections, in order");
+    ok((h.match(/class="s dim" style="margin:2px 0 6px"/g) || []).length === 9, "models tab: every section opens with a one-line meaning");
+    ok(/Hit rate by week/.test(h) && /Week 3/.test(h) && /Week 4/.test(h) && /Touchdown chances vs what happened/.test(h) && /Game-by-game results|id="gbg"/.test(h) && !/Parlay scoreboard/.test(h), "models tab: trends and every-game list present, parlay scoreboard kept out");
+    const bw = ctx.T.modelsByWeek(res), bc = ctx.T.modelsByConfidence(res), tc = ctx.T.tdCalibration(res.flatMap((r) => r.td));
+    ok(/Moneyline[\s\S]*50%[\s\S]*Spread[\s\S]*Total/.test(bw) && /Week 3/.test(bw), "models tab: hit rate by week");
+    ok(/Said 80\+% · 1 picks/.test(bc) && /Said 60–70% · 1 picks/.test(bc) && /100%/.test(bc), "models tab: confidence buckets use the chance the model said");
+    ok(/Said 35–50% · 1 players/.test(tc) && /Said 15–25% · 1 players/.test(tc), "models tab: touchdown calibration bands");
+    ok(/Fills in as games go final/.test(ctx.T.modelsByConfidence([])) && /Fills in as games go final/.test(ctx.T.tdCalibration([])), "models tab: empty data says so");
     ctx.document.getElementById = old; }
   { // Record tab week filter: this week by default, Season shows everything, tiles recomputed from the bets shown
     const box = { innerHTML: "", onclick: null }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "record-mine" ? box : old(id));

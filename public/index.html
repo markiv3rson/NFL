@@ -44,7 +44,7 @@
   .cdg { font-size:11px; color:#c9ced6; margin-top:6px; }
   .tabrow { display:flex; gap:6px; align-items:center; margin-top:6px; }
   .tabs { display:flex; gap:6px; flex:1; }
-  .tabs button { flex:1; min-height:30px; font:inherit; font-size:12.5px; font-weight:700; padding:3px 2px; border-radius:12px; cursor:pointer; color:var(--faint); background:transparent; border:1px solid transparent; white-space:nowrap; }
+  .tabs button { flex:1; min-width:0; min-height:30px; font:inherit; font-size:10.5px; letter-spacing:-.1px; white-space:nowrap; font-weight:700; padding:3px 0; border-radius:12px; cursor:pointer; color:var(--faint); background:transparent; border:1px solid transparent; white-space:nowrap; }
   .tabs button.on { color:var(--rose); background:rgba(255,110,140,.14); border:1px solid rgba(255,150,170,.42); }
   .bell { position:relative; width:34px; height:30px; flex-shrink:0; border-radius:12px; cursor:pointer; color:var(--rose); background:rgba(255,110,140,.14); border:1px solid rgba(255,150,170,.42); display:flex; align-items:center; justify-content:center; padding:0; }
   .bell.on { background:rgba(255,110,140,.3); }
@@ -219,7 +219,8 @@
       <button data-tab="lines" class="on">Game Lines</button>
       <button data-tab="td">Anytime TD</button>
       <button data-tab="lab">Pick Lab</button>
-      <button data-tab="record">Record</button>
+      <button data-tab="record">Bets</button>
+      <button data-tab="models">Models</button>
     </div>
     <button class="bell" id="bell" aria-label="Alerts"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span class="cnt" id="bell-cnt"></span></button>
   </div>
@@ -228,13 +229,16 @@
   <div class="panel on" id="panel-lines"><div id="lines"></div><div id="detail" style="display:none"></div></div>
   <div class="panel" id="panel-td"><div id="td-header" class="sub" style="margin-top:12px">Anytime TD</div><div id="td"></div></div>
   <div class="panel" id="panel-lab">
-    <div class="banner"><b>MODEL ONLY</b><span>The model's own picks, tracked so it can learn. Not bets.</span></div>
-    <div class="sw" id="labsw"><button data-lv="picks" class="on">Picks</button><button data-lv="results">Results</button></div>
-    <div id="lab"></div><div id="lab-results" style="display:none"></div>
+    <div class="banner"><b>MODEL PARLAYS</b><span>The model's own parlays, tracked on paper so it can learn. Nothing is bet.</span></div>
+    <div id="lab"></div>
   </div>
   <div class="panel" id="panel-record">
     <div class="sub" style="margin-top:12px;font-weight:800;letter-spacing:.08em">YOUR BETS ONLY · REAL MONEY</div>
     <div id="record-mine"></div>
+  </div>
+  <div class="panel" id="panel-models">
+    <div class="banner"><b>MODELS</b><span>Every model's picks and results, grouped by what they mean. Not bets.</span></div>
+    <div id="models"></div>
   </div>
   <div class="panel" id="panel-alerts">
     <div class="center" style="text-align:left;margin-top:12px"><span style="font-size:24px;font-weight:800">Alerts</span> <button class="tag" id="al-read" style="float:right;margin-top:6px">Mark all read</button></div>
