@@ -767,12 +767,47 @@ function gapStrip() {
   const E = S.edgesNow || [];
   return `<div class="gapstrip" data-drop="gaplist"><div class="t">${pmLogo()}Price gaps · ${E.length ? E.length + " right now" : "none right now"} ›</div></div><div class="drop" id="gaplist">${rightNowBox()}</div>`;
 }
+// Graded touchdown results for a finished game (same records the Models tab uses). Loaded once, only when a finished game page opens.
+let GRADES = null, GRADES_AT = 0;
+async function ensureGrades() {
+  if (RES || (GRADES && Date.now() - GRADES_AT < 120000)) return;
+  try { const rl = await (await fetch("/api/results/list", { cache: "no-store" })).json(); if (rl && rl.ok) { GRADES = rl.results || []; GRADES_AT = Date.now(); if (DETAIL) { const g = S && S.games.find((x) => x.key === DETAIL); if (g && g.final) renderDetail(g); } } } catch {}
+}
+const tdKey = (team, name) => `${team}|${String(name || "").toLowerCase().replace(/[^a-z]/g, "")}`;
+// { map: Map(team|name -> {scored, played}), found } for this finished game, or null when its record isn't loaded.
+function tdGradeMap(g) {
+  const list = RES || GRADES; if (!list) return null;
+  const rec = list.find((r) => r.game === g.key && (r.week == null || S.week == null || Number(r.week) === Number(S.week)));
+  if (!rec || !rec.td) return { map: new Map(), found: false };
+  return { map: new Map(rec.td.map((p) => [tdKey(p.team, p.player), p])), found: true };
+}
+// One mark per player: scored / didn't / sat out / waiting for the snap counts.
+function tdMark(gr, r) {
+  if (!gr || !gr.found) return "";
+  const p = gr.map.get(tdKey(r.team, r.player));
+  if (!p) return '<span class="dim">not graded</span>';
+  if (p.scored) return '<b class="g">✓ scored</b>';
+  if (p.played === false) return '<span class="dim">inactive</span>';
+  if (p.played === undefined) return '<span class="y">waiting for snaps</span>';
+  return '<b class="r">✗ no TD</b>';
+}
+// "Model's top 6: 3 scored · expected 2.9" from the players shown, graded ones only (inactive and waiting are left out, as on the Models tab).
+function tdGameLine(gr, rows) {
+  if (!gr || !gr.found) return "";
+  const gp = rows.map((r) => ({ r, p: gr.map.get(tdKey(r.team, r.player)) })).filter((x) => x.p && (x.p.scored || x.p.played === true));
+  const waiting = rows.filter((r) => { const p = gr.map.get(tdKey(r.team, r.player)); return p && !p.scored && p.played === undefined; }).length;
+  if (!gp.length) return waiting ? `<div class="s y" style="margin:12px 2px 0">Touchdowns: waiting for snap counts (posted a few hours after the game).</div>` : "";
+  const hit = gp.filter((x) => x.p.scored).length, exp = gp.reduce((a, x) => a + x.r.fair, 0) / 100;
+  return `<div class="s" style="margin:12px 2px 0"><b>Touchdowns:</b> model's top ${gp.length} · ${hit} scored · expected ${exp.toFixed(1)}${waiting ? ` · <span class="y">${waiting} waiting for snap counts</span>` : ""}<div class="dim">Counted with every graded player in Models → Touchdowns. One game proves little; the total over many games checks the percentages.</div></div>`;
+}
 function tdTop3(g) {
-  const side = (team) => { const rows = (g.td || []).filter((r) => r.team === team && r.fair != null && usable(r)).sort((a, b) => b.fair - a.fair).slice(0, 3);
+  const gr = g.final ? tdGradeMap(g) : null, shown = [];
+  const side = (team) => { const rows = (g.td || []).filter((r) => r.team === team && r.fair != null && usable(r)).sort((a, b) => b.fair - a.fair).slice(0, 3); shown.push(...rows);
     return `<div class="sc card mcard"><div class="in"><div class="hh">${team} top scorers</div>` +
       (rows.map((r, i) => `<div class="p"><div class="a"><span class="dim" style="font-size:11px;width:16px">#${i + 1}</span><b>${esc(r.player)}<span class="pos">${esc(r.pos)}</span></b><em class="mod">${Math.round(r.fair)}%</em></div>` +
-        `<div class="b">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${r.two != null ? ` · 2+ ${Math.round(r.two)}%` : ""}${r.first != null ? ` · 1st ${Math.round(r.first)}%` : ""}</div></div>`).join("") || '<div class="s">No players yet.</div>') + `</div></div>`; };
-  return `<div class="scorers">${side(g.away)}${side(g.home)}</div>`;
+        `<div class="b">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${r.two != null ? ` · 2+ ${Math.round(r.two)}%` : ""}${r.first != null ? ` · 1st ${Math.round(r.first)}%` : ""}${gr && gr.found ? ` · ${tdMark(gr, r)}` : ""}</div></div>`).join("") || '<div class="s">No players yet.</div>') + `</div></div>`; };
+  const cards = `<div class="scorers">${side(g.away)}${side(g.home)}</div>`;
+  return (g.final ? tdGameLine(gr, shown) : "") + cards;
 }
 function startsIn(g) {
   const ms = new Date(g.kickoff) - Date.now(); if (!(ms > 0)) return "";
@@ -801,6 +836,7 @@ function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = "";
   $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>. Prices and market lines appear once Polymarket lists them; touchdown chances are re-run then.</div></div></div>` : ""}<div class="sh" style="margin:16px 2px 0">SPREAD &amp; ML</div><div class="grid">${gameCard(g, "x")}</div><div class="sh" style="margin:16px 2px 0">TOTALS</div><div class="grid">${totalCard(g, "x")}</div>${tdTop3(g)}`;
   $("back-btn").onclick = closeGame;
+  if (g.final) ensureGrades();
   setBg(g);
 }
 function renderLines() { withView(renderLinesNow); }
