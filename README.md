@@ -111,3 +111,5 @@ Label fix (10/5): parlay lines said "market chance" but the number is the app's 
 Parlay chance labels (10/5): each parlay line shows "market chance X%" (1 / payout, the price itself) and, where there is one, "model Y%"; the scoreboard says "model said".
 
 Agree-with-the-market (10/5): (1) each touchdown row shows a blended chance (half the model, half the market mid price) on real markets; Models also scores the blend next to the model and the market (Weeks 3-4, 123 players: blend 0.2154, model 0.2158, market 0.2174; weight fixed at 50/50 until about 500 graded players). (2) When the model and the market are within a point on the spread or total, the lean box says "Agrees with the market" and the pick list marks "(agrees)".
+
+Anytime TD tab (10/5): shows the four likeliest scorers per team (the old league-wide top 30 filled with 15 players per team when only one game was priced); "Show everyone" lists the rest.

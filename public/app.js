@@ -275,15 +275,17 @@ function tdRow(x, i) {
 }
 function renderTd() {
   const wk = S.week ? ` · Week ${S.week}` : "";
-  $("td-header").innerHTML = `<b style="color:#d3d8e0">Anytime TD${wk}</b> · top 30 · most likely first`;
+  $("td-header").innerHTML = `<b style="color:#d3d8e0">Anytime TD${wk}</b> · top 4 per team · most likely first`;
   const rows = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).map((r) => ({ r, g })))
     .filter((x) => x.r.fair != null && usable(x.r)).sort((a, b) => b.r.fair - a.r.fair);
   const moves = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).filter((r) => r.move).map((r) => r)).sort((a, b) => Math.abs(b.move) - Math.abs(a.move)).slice(0, 10);
   const moveBox = moves.length ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Price moves (5¢+, real markets)</div>${moves.map((r) => `<div class="row"><span>${esc(r.player)} <span class="dim">${esc(r.game)}</span></span><span class="${r.move > 0 ? "g" : "r"}">${r.move > 0 ? "▲ +" : "▼ "}${r.move}¢</span></div>`).join("")}</div></div>` : "";
-  const shown = tdShowAll ? rows : rows.slice(0, 30);
+  // Top 4 per team (10/5): beyond the four likeliest scorers the rest is noise. "Show everyone" is still one tap away.
+  const perTeam = {}, top4 = rows.filter((x) => { const k = x.r.team; perTeam[k] = (perTeam[k] || 0) + 1; return perTeam[k] <= 4; });
+  const shown = tdShowAll ? rows : top4;
   if (!rows.length) { $("td").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">No players yet — tap Model (the ▶ button on the right).</div></div>'; return; }
   $("td").innerHTML = moveBox + `<div class="card tdl"><div class="tdh"><span style="flex:1;padding-left:28px">PLAYER</span><span style="width:74px;text-align:right">MODEL</span><span style="width:60px;text-align:right;white-space:nowrap">${pmLogo()}PRICE</span></div>${shown.map(tdRow).join("")}</div>` +
-    (rows.length > 30 ? `<div class="center"><button class="btn" id="td-all">${tdShowAll ? "Show top 30 only" : `Show all ${rows.length} players`}</button></div>` : "") +
+    (rows.length > top4.length ? `<div class="center"><button class="btn" id="td-all">${tdShowAll ? "Show top 4 per team only" : `Show everyone (${rows.length} players)`}</button></div>` : "") +
     '<div class="s dim" style="text-align:center;margin-top:8px">Tap a row for snaps, 2+ TDs and first TD.</div>';
   if ($("td-all")) $("td-all").onclick = () => { tdShowAll = !tdShowAll; renderTd(); };
 }
