@@ -273,7 +273,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(byId["caoc-loss"] && byId["caoc-loss"].result === "L" && byId["caoc-loss"].pl === -10, "my bets: a settled loss counts with its P/L");
     ok(byId["w4-c1"] && byId["w4-c1"].waiting === false, "my bets: a bet whose games are not all final is not marked waiting");
     // every game final (nflverse or ESPN) but the touchdown data is not posted: pending and marked waiting, with the line legs already graded
-    resetGamesCache(); globalThis.fetch = async (u) => (String(u).includes("games.csv") ? { ok: true, text: async () => H + "2026,REG,4,2026-10-01,20:15,PIT,24,CLE,27,outdoors,Huntington,Home,grass\n" } : { ok: false, status: 404, json: async () => ({}), text: async () => "" });
+    resetGamesCache(); globalThis.fetch = async (u) => (String(u).includes("games.csv") ? { ok: true, text: async () => H + `2026,REG,4,${new Date(Date.now() - 86400e3).toISOString().slice(0, 10)},13:00,PIT,24,CLE,27,outdoors,Huntington,Home,grass\n` } : { ok: false, status: 404, json: async () => ({}), text: async () => "" });
     await R.del("mybets:ledger"); const mb2 = await loadMyBets(SEASON), w4 = mb2.bets.find((b) => b.id === "w4-c1");
     ok(w4 && w4.result === "pending" && w4.waiting === true && w4.legs[0].result === "W" && w4.legs[2].result === "W" && w4.legs[1].result === "pending", "my bets: all games final but touchdown data missing -> waiting, line legs already graded");
     globalThis.fetch = realFetch; resetGamesCache(); await R.del("mybets:ledger"); }
@@ -369,8 +369,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     globalThis.fetch = realFetch; resetGamesCache(); await R.del("mybets:ledger"); }
   { // weekly recap text, hand-worked
     const { weekRecap } = await import("../lib/grade.js");
-    const recs = [ { ml: { result: "W" }, spread: { basis: "model", result: "L" }, total: { basis: "model", result: "W" }, td: [ { fair: 40, scored: true }, { fair: 20, scored: false }, { fair: 90, scored: true, played: false } ] },
-      { ml: { result: "L" }, spread: { basis: "model", result: "W" }, total: { basis: "stats", result: "L" }, td: [] }, { ml: { result: "W" }, spread: null, total: { basis: "model", result: "P" }, td: [{ fair: 10, scored: false }] } ];
+    const recs = [ { ml: { result: "W" }, spread: { basis: "model", result: "L" }, total: { basis: "model", result: "W" }, td: [ { fair: 40, scored: true, played: true }, { fair: 20, scored: false, played: true }, { fair: 90, scored: true, played: false }, { fair: 50, scored: false } ] },
+      { ml: { result: "L" }, spread: { basis: "model", result: "W" }, total: { basis: "stats", result: "L" }, td: [] }, { ml: { result: "W" }, spread: null, total: { basis: "model", result: "P" }, td: [{ fair: 10, scored: false, played: true }] } ];
     const r = weekRecap(4, recs);
     ok(r.title === "Week 4 recap: moneyline 2–1 · spread side 1–1 · total side 1–0" && r.sub === "Touchdowns: 1 scored of 3 players who played (the model expected 0.7)", "weekly recap: records by model, touchdowns vs expected (players who did not play left out)");
     ok(weekRecap(4, []) === null && weekRecap(4, null) === null, "weekly recap: nothing graded gives no recap"); }
@@ -378,14 +378,26 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const { ungradedFinals } = await import("../lib/grade.js"); const { SEASON, resetGamesCache } = await import("../lib/games.js"); const R = globalThis.__TEST_REDIS__; const realFetch = globalThis.fetch;
     const H = "season,game_type,week,gameday,gametime,away_team,away_score,home_team,home_score,roof,stadium,location,surface\n", g = (a, as, h, hs, d) => `${SEASON},REG,4,${d},13:00,${a},${as},${h},${hs},o,s,Home,g\n`;
     const day = (n) => new Date(Date.now() - n * 86400e3).toISOString().slice(0, 10);
-    resetGamesCache(); globalThis.fetch = async (u) => (String(u).includes("games.csv") ? { ok: true, text: async () => H + g("AAA", 10, "BBB", 20, day(2)) + g("CCC", 10, "DDD", 20, day(2)) + g("EEE", 10, "FFF", 20, day(2)) + g("GGG", 10, "HHH", 20, day(2)) + g("III", 10, "JJJ", 20, day(0)) } : { ok: false, status: 404, json: async () => ({}), text: async () => "" });
+    resetGamesCache(); globalThis.fetch = async (u) => (String(u).includes("games.csv") ? { ok: true, text: async () => H + g("AAA", 10, "BBB", 20, day(2)) + g("CCC", 10, "DDD", 20, day(2)) + g("EEE", 10, "FFF", 20, day(2)) + g("GGG", 10, "HHH", 20, day(2)) + g("KKK", 10, "LLL", 20, day(2)) + g("III", 10, "JJJ", 20, day(0)) } : { ok: false, status: 404, json: async () => ({}), text: async () => "" });
     await R.set(`close:${SEASON}:4:CCC @ DDD`, JSON.stringify({ poly: {} })); await R.set(`close:${SEASON}:4:EEE @ FFF`, JSON.stringify({ poly: {} })); await R.set(`model:${SEASON}:4`, JSON.stringify({ games: { "EEE @ FFF": { homeMargin: 1 } }, td: {} }));
-    await R.set(`res:${SEASON}:4:GGG @ HHH`, JSON.stringify({ v: 2 })); const u = await ungradedFinals(SEASON); const by = Object.fromEntries(u.map((x) => [x.key, x.reason]));
-    ok(u.length === 3 && by["AAA @ BBB"] === "no closing line was saved" && by["CCC @ DDD"] === "no model numbers were saved" && by["EEE @ FFF"] === "waiting for the official touchdown data" && !by["GGG @ HHH"] && !by["III @ JJJ"], "ungraded finals: reason per game; graded games and games under 12 h old are left out");
+    await R.set(`res:${SEASON}:4:GGG @ HHH`, JSON.stringify({ v: 2, spread: { result: "W" }, td: [] })); await R.set(`res:${SEASON}:4:KKK @ LLL`, JSON.stringify({ v: 2, ml: { result: "W" } })); const u = await ungradedFinals(SEASON); const by = Object.fromEntries(u.map((x) => [x.key, x.reason]));
+    ok(u.length === 4 && /^graded without its spread and total picks \(no closing line was saved\) or its touchdown results$/.test(by["KKK @ LLL"]) && by["AAA @ BBB"] === "no closing line was saved" && by["CCC @ DDD"] === "no model numbers were saved" && by["EEE @ FFF"] === "waiting for the official touchdown data" && !by["GGG @ HHH"] && !by["III @ JJJ"], "ungraded finals: reason per game; graded games and games under 12 h old are left out");
     globalThis.fetch = realFetch; resetGamesCache(); for (const k of await R.keys(`*${SEASON}:4*`)) await R.del(k); }
   { const rb = ctx.T.replayBox();
     ok(/Road dogs \+3 to \+6\.5/.test(rb) && /53\.5%/.test(rb) && /UNSTABLE/.test(rb) && /<b>YES<\/b>/.test(rb) && /3–1/.test(rb) && /2 saved/.test(rb) && /7–3/.test(rb) && /2007–25/.test(rb), "replay card: history, live record, verdict, season range", rb.slice(0, 400));
     vm.runInContext(`REPLAY = null`, ctx); ok(ctx.T.replayBox() === "", "replay card: leaves itself out when the history is not loaded"); }
+  { // snap counts not posted yet (played unset): those players are left out of every accuracy number instead of counting as misses
+    const { buildCalibration } = await import("../lib/calibration.js"); const { findMisses } = await import("../lib/missfinder.js");
+    const many = (played) => ({ td: Array.from({ length: 60 }, (_, i) => ({ fair: 20, scored: i < 3, ...(played === undefined ? {} : { played }) })) });
+    const cu = buildCalibration([many(undefined)]), cp = buildCalibration([many(true)]), cf = buildCalibration([many(false)]);
+    const bucket = (c) => c.table.find((x) => x.lo === 15);
+    ok(bucket(cu).n === 0 && bucket(cu).mult === 1 && bucket(cf).n === 0 && bucket(cp).n === 60 && bucket(cp).mult < 1, "calibration: only players known to have played count (unset and inactive are left out)");
+    const hi = (played) => ({ td: Array.from({ length: 14 }, () => ({ fair: 60, scored: false, ...(played === undefined ? {} : { played }) })) });
+    ok(!findMisses([hi(undefined)]).some((m) => /High-confidence TD misses/.test(m.pattern)) && findMisses([hi(true)]).some((m) => /High-confidence TD misses/.test(m.pattern)), "miss finder: players with unknown played status are not model misses");
+    const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "models" ? box : id === "export-btn" ? { onclick: null } : old(id));
+    vm.runInContext(`S = { week: 4, games: [], status: { ok: true, errors: [] }, weekCheck: { games: 16, withLines: 16, modelRun: true, watch: [] }, missFinder: null, winners: null }; MB = { summary: {}, bets: [] }; PAPER = { names: {}, board: {}, week: null }; PICKS = null; EDGES = null; REPLAY = null; RES = [ { game: "A @ B", week: 4, td: [ { team: "A", player: "P1", fair: 40, scored: true, played: true }, { team: "A", player: "P2", fair: 30, scored: false }, { team: "B", player: "P3", fair: 30, scored: false } ] } ]`, ctx);
+    ctx.T.renderModel(); ok(/2 players are waiting for snap counts/.test(box.innerHTML) && /2 waiting for snap counts/.test(box.innerHTML), "models tab: says how many touchdown players are waiting for snap counts");
+    ctx.document.getElementById = old; }
   { // dead toss-up on the raw numbers still gets a side from the calibrated chance; same-game parlay filled from the model's own sides; result alerts
     const { spreadPick, totalPick } = await import("../lib/picks.js"); const { buildSameGame, picksFor, gradePaper } = await import("../lib/paper.js"); const { listAlerts } = await import("../lib/alerts.js"); const R = globalThis.__TEST_REDIS__;
     ok(spreadPick({ homeMargin: -3, calHomeCover: 52 }, 3, "AWY", "HOM").team === "HOM" && spreadPick({ homeMargin: -3, calHomeCover: 48 }, 3, "AWY", "HOM").team === "AWY" && spreadPick({ homeMargin: -3, calHomeCover: 50 }, 3, "AWY", "HOM") === null && spreadPick({ homeMargin: -3 }, 3, "AWY", "HOM") === null && spreadPick({ homeMargin: -5 }, 3, "AWY", "HOM").team === "AWY", "tie-break: spread side from the calibrated chance, none only with no lean at all, real gaps unchanged");
