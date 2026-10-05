@@ -465,6 +465,39 @@ function tdCalibration(tdAll) {
     return `<div class="row" style="display:block"><div class="dim">Said ${hi > 100 ? lo + "+" : lo + "–" + hi}% · ${xs.length} players · scored ${Math.round(hit)}% ±${Math.round(Math.sqrt(Math.max(hit * (100 - hit), 400) / xs.length / 100 * 100) * 1)}${xs.length < 30 ? " · too few to trust" : ""}</div><div class="s" style="display:grid;grid-template-columns:auto 1fr;gap:3px 8px;align-items:center"><span class="dim">said</span><span>${bar(said, "var(--cyan, #5ec8e5)", Math.round(said) + "%")}</span><span class="dim">scored</span><span>${bar(hit, hitColor(hit, said), Math.round(hit) + "%")}</span></div></div>`; }).join("");
   return rows || '<div class="s">Fills in as games go final.</div>';
 }
+// Touchdown chances split by position and by opponent defense (10/5). Same rule as the calibration rows: only players who played,
+// "said" vs "scored" with a margin of error, and "too few to trust" under 30. Opponent strength = the opponent's average points allowed in its OTHER
+// graded games (weak = 3+ above the league average, strong = 3+ below); it is descriptive, not a prediction.
+function tdGroupRow(label, xs) {
+  if (!xs.length) return "";
+  const said = xs.reduce((a, p) => a + p.fair, 0) / xs.length, hit = xs.filter((p) => p.scored).length / xs.length * 100, n = xs.length;
+  return `<div class="row" style="display:block"><div class="dim">${esc(label)} · ${n} players · scored ${Math.round(hit)}% ±${Math.round(Math.sqrt(Math.max(hit * (100 - hit), 400) / n))}${n < 30 ? " · too few to trust" : ""}</div><div class="s" style="display:grid;grid-template-columns:auto 1fr;gap:3px 8px;align-items:center"><span class="dim">said</span><span>${bar(said, "var(--cyan, #5ec8e5)", Math.round(said) + "%")}</span><span class="dim">scored</span><span>${bar(hit, hitColor(hit, said), Math.round(hit) + "%")}</span></div></div>`;
+}
+// Played players of every graded game, each with the opponent's strength attached.
+function tdPlayersWithDefense(res) {
+  // Each team's points allowed, game by game. A player's opponent is judged on its OTHER games only, so the game being graded can't make a
+  // defense look weak just because that game had a lot of scoring.
+  const allowed = {}; let tot = 0, cnt = 0;
+  for (const r of res || []) { const m = String(r.game || "").split(" @ "); if (m.length !== 2 || r.awayScore == null || r.homeScore == null) continue;
+    (allowed[m[0]] = allowed[m[0]] || []).push({ id: r.game + "|" + r.week, pts: r.homeScore }); (allowed[m[1]] = allowed[m[1]] || []).push({ id: r.game + "|" + r.week, pts: r.awayScore }); tot += r.homeScore + r.awayScore; cnt += 2; }
+  const lg = cnt ? tot / cnt : null;
+  const avgOther = (t, id) => { const xs = (allowed[t] || []).filter((x) => x.id !== id); return xs.length ? xs.reduce((a, x) => a + x.pts, 0) / xs.length : null; };
+  const out = [];
+  for (const r of res || []) { const m = String(r.game || "").split(" @ "); if (m.length !== 2) continue;
+    for (const p of r.td || []) { if (p.played !== true || p.fair == null) continue;
+      const opp = p.team === m[0] ? m[1] : m[0], oa = avgOther(opp, r.game + "|" + r.week), d = oa == null || lg == null ? null : oa - lg;
+      out.push({ ...p, opp, def: d == null ? null : d >= 3 ? "weak" : d <= -3 ? "strong" : "middle" }); } }
+  return out;
+}
+function tdByPosition(players) {
+  const rows = ["RB", "WR", "TE", "QB"].map((pos) => tdGroupRow(pos, players.filter((p) => p.pos === pos))).join("");
+  const none = players.filter((p) => !p.pos).length;
+  return (rows || '<div class="s">Fills in as games go final.</div>') + (none ? `<div class="s dim">${none} graded players have no position on record and are left out.</div>` : "");
+}
+function tdByDefense(players) {
+  const rows = [["weak", "Against defenses that allow a lot of points"], ["middle", "Against average defenses"], ["strong", "Against defenses that allow few points"]].map(([k, lab]) => tdGroupRow(lab, players.filter((p) => p.def === k))).join("");
+  return rows || '<div class="s">Fills in as games go final.</div>';
+}
 // One collapsible section: a heading, one plain line saying what it means, then the content. warn = a count shown next to the heading.
 function mSec(id, title, meaning, body, warn = 0, open = false) {
   return `<div class="fold" data-drop="${id}"><span><b>${esc(title)}</b>${warn ? ` <span class="y">⚠ ${warn}</span>` : ""}</span><span>▾</span></div>` +
@@ -600,7 +633,8 @@ function renderModelNow() {
     mSec("m-trend", "7 · Trends and analysis", "How the models are changing week to week, whether higher confidence really wins more, and where the touchdown chances run high or low.",
       `<div class="s"><b>Hit rate by week</b> <span class="dim">(bars: green beats break-even, amber near it, red below)</span></div>` + (modelsByWeek(res) || '<div class="s">Fills in as games go final.</div>') +
       `<div class="s" style="margin-top:8px"><b>Does more confidence win more? (moneyline)</b></div>` + modelsByConfidence(res) +
-      `<div class="s" style="margin-top:8px"><b>Touchdown chances vs what happened</b></div>` + tdCalibration(tdAll)) +
+      `<div class="s" style="margin-top:8px"><b>Touchdown chances vs what happened</b></div>` + tdCalibration(tdAll) +
+      (() => { const pl = tdPlayersWithDefense(res); return `<div class="s" style="margin-top:8px"><b>By position</b> <span class="dim">(does the model do better at RB, WR or TE?)</span></div>` + tdByPosition(pl) + `<div class="s" style="margin-top:8px"><b>By opponent defense</b> <span class="dim">(opponent's points allowed in its other games)</span></div>` + tdByDefense(pl); })()) +
     mSec("m-miss", "8 · Misses and every game", "Where the model keeps getting it wrong, and each graded game by week.", `<div class="s"><b>Miss finder</b></div>` + ((S.missFinder && S.missFinder.misses && S.missFinder.misses.length) ?
       S.missFinder.misses.map((m) => `<div class="row" style="display:block"><b>${esc(m.pattern)}</b><div class="s">${esc(m.note)}</div></div>`).join("") :
       '<div class="s">No consistent misses found yet this season.</div>') + `<div class="s" style="margin-top:8px"><b>Game-by-game results</b></div><div id="gbg">${games || '<div class="s">None yet.</div>'}</div>`) +

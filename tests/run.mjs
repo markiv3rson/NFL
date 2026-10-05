@@ -130,7 +130,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const ctx = { document: { getElementById: () => el(), querySelectorAll: () => [], addEventListener() {}, hidden: false }, fetch: () => Promise.reject(new Error("offline")),
     localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) }, location: { reload() {} }, window: {}, setTimeout, clearTimeout, console, Date, Math, Number, String, JSON, Promise, Set, Object, Array };
   vm.createContext(ctx);
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={tdGradeMap,tdMark,tdGameLine,weekToggle,earlyNote,withView,spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,weekToggle,earlyNote,withView,spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   ok(/PHI winning by about 4\.2/.test(T.spreadReason(g)) && /needs PHI to win by 4\+/.test(T.spreadReason(g)), "spread wording");
@@ -445,6 +445,21 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(!/✓|✗/.test(ctx.T.tdTop3({ ...g, final: false })), "unfinished game: no grades shown");
     vm.runInContext(`RES = null; GRADES = null`, ctx); ok(!/✓|✗/.test(ctx.T.tdTop3(g)), "finished game: no marks until the graded results are loaded");
     vm.runInContext(`RES = null`, ctx); }
+  { // touchdown model by position and by opponent defense
+    const P = (team, name, pos, fair, scored, played = true) => ({ team, player: name, pos, fair, scored, played });
+    const res = [
+      { game: "A @ B", awayScore: 10, homeScore: 40, td: [P("A", "A.RB", "RB", 40, false), P("B", "B.WR", "WR", 40, true), P("B", "B.RB", "RB", 30, true), P("B", "B.out", "WR", 30, false, false)] },
+      { game: "C @ A", awayScore: 17, homeScore: 20, td: [P("C", "C.TE", "TE", 20, false), P("A", "A.TE", "TE", 20, true), P("C", "C.nopos", null, 20, false)] },
+    ];
+    const pl = ctx.T.tdPlayersWithDefense(res);
+    ok(pl.length === 6 && !pl.some((p) => p.player === "B.out"), "by position/defense: inactive players are left out");
+    const by = Object.fromEntries(pl.map((p) => [p.player, p.def]));
+    ok(by["B.WR"] === "strong" && by["C.TE"] === "weak" && by["A.RB"] === null && by["A.TE"] === null, "by defense: the opponent is judged on its OTHER games (A allowed 17 elsewhere -> strong for B.WR, 40 elsewhere -> weak for C.TE; no other game -> no group)");
+    const lone = ctx.T.tdPlayersWithDefense([{ game: "A @ B", awayScore: 10, homeScore: 40, td: [P("A", "A.RB", "RB", 40, false)] }]);
+    ok(lone.length === 1 && lone[0].def === null, "by defense: an opponent with no OTHER graded game has no group (the game itself never counts)");
+    const pos = ctx.T.tdByPosition(pl);
+    ok(/RB · 2 players/.test(pos) && /WR · 1 players/.test(pos) && /TE · 2 players/.test(pos) && /1 graded players have no position/.test(pos) && /too few to trust/.test(pos), "by position: RB, WR and TE rows with sample size, margin and a no-position note");
+    ok(/too few to trust/.test(ctx.T.tdByDefense(pl)) && ctx.T.tdByDefense([]).includes("Fills in"), "by defense: rows flag small samples; empty says it fills in"); }
   { // next-week view: toggle only when next week's slate is loaded; the swap puts next week's games in S while drawing and restores S after
     const keepS = vm.runInContext("S", ctx);
     vm.runInContext(`NEXT = null; VIEW = "this"`, ctx); ok(ctx.T.weekToggle() === "", "next week: no toggle until next week's slate is loaded");
