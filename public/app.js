@@ -117,7 +117,8 @@ function leanCell(g, kind) {
   // the >50% side as the pick (e.g. "GB -1.5 · 52.1%") even when "Model sees TB by 4.6" sat right under it, because the
   // calibration slightly fades the model. Within 2.5 pts of 50% it now says so; the tilt stays visible in small text.
   const coin = Math.abs(p.pct - 50) < 2.5;
-  return wrap((coin ? `<span>No lean · about 50/50</span><div class="s">Model's side: <b class="mod">${esc(p.label)}</b> (${p.gap != null ? p.gap.toFixed(1) : "?"} pts off the line; ~${Math.round(p.pct)}% historically)</div>` :
+  const agrees = coin && p.gap != null && p.gap <= 1;   // the model and the market are within a point: it agrees with the market
+  return wrap((coin ? `<span>${agrees ? '<b class="g">Agrees with the market</b>' : "No lean · about 50/50"}</span><div class="s">Model's side: <b class="mod">${esc(p.label)}</b> (${p.gap != null ? p.gap.toFixed(1) : "?"} pts off the line; ~${Math.round(p.pct)}% historically)</div>` :
     `<span>${p.label}</span><div class="s">${p.pct.toFixed(1)}% model chance</div>`) +
     (reason ? `<div class="s" style="margin-top:6px">${esc(reason)}</div>` : "") +
     (wind ? `<div class="s">${wind}</div>` : "") +
@@ -154,7 +155,7 @@ function winnersBox(mode = "picks") {
     (list.slice(0, WINALL ? 99 : 8).map((x, i) => { const g = S.games.find((y) => y.key === x.game), sides = g ? modelSide(g) : [], sp = sides.find((s) => s.market === "Spread"), tt = sides.find((s) => s.market === "Total");
       const tdp = g ? (g.td || []).filter((r) => r.fair != null && !/^(out|doubtful)$/i.test(r.injury || "")).sort((a, b) => b.fair - a.fair)[0] : null;   // the game's most likely scorer
       return `<div class="row" style="display:block"><div style="display:flex;justify-content:space-between;gap:8px"><span>${i + 1}. <b>${esc(x.team)}</b> over ${esc(x.opp)}</span><span>${Math.round(x.p * 100)}%${x.price ? ` <span class="dim">· ${Math.round(x.price * 100)}¢</span>` : ""}</span></div>` +
-        `<div class="s">Spread <b>${sp ? esc(sp.label) : "—"}</b> · Total <b>${tt ? esc(tt.label) : "—"}</b> · TD <b>${tdp ? `${esc(tdp.player)} ${Math.round(tdp.fair)}%` : "—"}</b></div></div>`; }).join("") || '<div class="s">No lines yet.</div>') +
+        `<div class="s">Spread <b>${sp ? esc(sp.label) : "—"}</b>${sp && sp.gap <= 1 ? ' <span class="dim">(agrees)</span>' : ""} · Total <b>${tt ? esc(tt.label) : "—"}</b>${tt && tt.gap <= 1 ? ' <span class="dim">(agrees)</span>' : ""} · TD <b>${tdp ? `${esc(tdp.player)} ${Math.round(tdp.fair)}%` : "—"}</b></div></div>`; }).join("") || '<div class="s">No lines yet.</div>') +
     (list.length > 8 ? `<div class="center" style="margin-top:6px"><button class="btn" id="win-all">${WINALL ? "Show top 8 only" : `Show all ${list.length} games`}</button></div>` : "") + `</div></div>`;
 }
 // "Right now" (9/30): Polymarket prices 3%+ better than fresh sportsbook fair prices -- the one realistic edge source.
@@ -232,6 +233,15 @@ const logoUrl = (team) => (team ? LOGO_OVERRIDES[team] || `https://a.espncdn.com
 function tlogo(team) { return team ? `<img class="tlogo" src="${logoUrl(team)}" alt="" onerror="this.style.display='none'">` : ""; }
 function matchup(g) { return `${g.away} @ ${g.home}`; }
 const retPill = (r) => (r.returning ? (r.returningState === "practicing" ? ' <span class="pill p-g" style="padding:0 6px;font-size:10px">↩ RETURNING</span>' : ' <span class="pill p-y" style="padding:0 6px;font-size:10px">↩ WAS OUT · NOT PRACTICING</span>') : "");
+// Blended touchdown chance (10/5): half the model's number, half the market's mid price, only on a real market (a bidder within 5c of the ask).
+// On 123 real-market players (Weeks 3-4) the 50/50 mix scored slightly better than either alone (0.2154 vs model 0.2158, market 0.2174):
+// a small sample, so the weight is fixed at 50/50 until about 500 graded players.
+const TD_BLEND_W = 0.5;
+function tdBlend(r) {
+  if (!r || r.fair == null || r.price == null || r.stale || r.thin || !(r.bid > 0)) return null;
+  const mid = (r.price + r.bid) / 2 * 100;
+  return { blend: TD_BLEND_W * r.fair + (1 - TD_BLEND_W) * mid, mid, model: r.fair };
+}
 function prow(r, g, showGame) {
   const inj = (r.injury && GAME_STATUS.test(r.injury) ? ` <span class="pill ${/out|doubt/i.test(r.injury) ? "p-r" : "p-y"}" style="padding:0 6px;font-size:10px">${esc(r.injury)}</span>` : "") + retPill(r);
   // Model's chance (big, left) and Polymarket's price (right), each with its plain label directly underneath. No verdict, no edge, no stake.
@@ -253,7 +263,7 @@ function prow(r, g, showGame) {
   return `<div class="prow"><div>${logo}<b style="font-weight:600">${esc(r.player)}</b><span class="pos">${esc(r.pos)}</span>${inj}<div class="s">${sub}</div></div>` +
     `<div class="n"><span class="big">${chance}</span><span class="lbl">model's<br>chance</span></div>` +
     `<div class="n"><span class="px">${cents}</span><span class="lbl">Polymarket<br>price${r.stale ? " (old)" : r.thin ? '<br><span class="warn-t">thin market (no real bidder)</span>' : ""}${r.open != null && r.price != null && Math.round(r.open * 100) !== Math.round(r.price * 100) ? `<br><span class="dim">opened ${Math.round(r.open * 100)}¢</span>` : ""}</span></div>` +
-    `<div class="why">${more}${flags}</div></div>`;
+    `<div class="why">${(() => { const b = tdBlend(r); return b ? `<div style="font-size:11.5px">Blended chance <b>${Math.round(b.blend)}%</b> <span class="dim">(half model ${Math.round(b.model)}% · half market ${Math.round(b.mid)}%)</span></div>` : ""; })()}${more}${flags}</div></div>`;
 }
 const usable = (r) => !(r.odds != null && r.odds <= -600 && !r.thin);   // a real -600 price is broken data; never hide a player over a thin placeholder
 function tdRow(x, i) {
@@ -494,6 +504,7 @@ function renderModelNow() {
     const y = (p) => (p.scored ? 1 : 0), mk = (p) => (p.bid ? (p.bid + p.ask) / 2 : p.ask);
     const bM = tdPx.reduce((a, p) => a + (mp(p) - y(p)) ** 2, 0) / tdPx.length;
     const bP = tdPx.reduce((a, p) => a + (mk(p) - y(p)) ** 2, 0) / tdPx.length;
+    const bBl = tdPx.reduce((a, p) => a + (0.5 * mp(p) + 0.5 * mk(p) - y(p)) ** 2, 0) / tdPx.length;   // half model, half market
     const buys = tdPx.filter((p) => mp(p) > p.ask);
     const pl = buys.reduce((a, p) => a + (p.scored ? 1 / p.ask - 1 : -1), 0);
     const hits = buys.filter((p) => p.scored).length;
@@ -502,6 +513,7 @@ function renderModelNow() {
       (thinN ? `<div class="row"><span class="dim">Thin markets skipped</span><span>${thinN} <span class="dim">· no real bid</span></span></div>` : "") +
       `<div class="row"><span class="dim">Accuracy score (lower is better)</span><span>Model ${bM.toFixed(3)} · Polymarket ${bP.toFixed(3)} ` +
       (bM < bP ? '<span class="g">model ahead</span>' : '<span class="r">market ahead</span>') + `</span></div>` +
+      `<div class="row"><span class="dim">Blend: half model, half market</span><span>${bBl.toFixed(3)} ${bBl < Math.min(bM, bP) ? '<span class="g">better than either alone</span>' : '<span class="dim">not better than the best one</span>'}</span></div>` +
       `<div class="row"><span class="dim">$1 on Yes when model &gt; price</span><span>${hits} of ${buys.length} scored · ${cMoney(pl)} ${buys.length ? `(${cPct(pl / buys.length)})` : ""}</span></div>` +
       // The other side of the same markets: most of the model's disagreements are "less likely than the price says"
       // (Week 3: model below market on 67 of 83 real markets), and a Yes-only check ignored all of them. Buying No
