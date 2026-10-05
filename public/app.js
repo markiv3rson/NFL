@@ -270,7 +270,7 @@ function tdRow(x, i) {
   const r = x.r, g = x.g;
   return `<div class="tdr"><img class="wmc" loading="lazy" decoding="async" src="${logoUrl(r.team)}" alt="" onerror="this.style.display='none'"><div class="in"><span class="rk">${i + 1}</span>` +
     `<div class="nmx"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos)}</span>${r.injury && GAME_STATUS.test(r.injury) ? ` <span class="pill ${/out|doubt/i.test(r.injury) ? "p-r" : "p-y"}" style="padding:0 6px;font-size:10px">${esc(r.injury)}</span>` : ""}${retPill(r)}<div class="g2">${esc(r.game)}</div></div>` +
-    `<div class="mp"><em>${Math.round(r.fair)}%</em><div class="bar"><i style="width:${Math.min(100, r.fair)}%"></i></div></div><div class="pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}</div></div>` +
+    `<div class="mp"><em>${Math.round(r.fair)}%</em><div class="bar"><i style="width:${Math.min(100, r.fair)}%"></i></div></div><div class="pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${(() => { const b = tdBlend(r); return b && b.blend - r.price * 100 >= 5 ? `<div class="g" style="font-size:10px">+${Math.round(b.blend - r.price * 100)} vs price</div>` : ""; })()}</div></div>` +
     `<div class="more" style="--tc:${TEAM_COLOR[r.team] || "#444"};--logo:url(${logoUrl(r.team)})">${prow(r, g, true)}</div></div>`;
 }
 function renderTd() {
@@ -446,7 +446,7 @@ function modelsByConfidence(res) {
 function tdCalibration(tdAll) {
   const rows = [[5, 15], [15, 25], [25, 35], [35, 50], [50, 101]].map(([lo, hi]) => { const xs = (tdAll || []).filter((p) => p.fair >= lo && p.fair < hi); if (!xs.length) return "";
     const said = xs.reduce((a, p) => a + p.fair, 0) / xs.length, hit = xs.filter((p) => p.scored).length / xs.length * 100;
-    return `<div class="row" style="display:block"><div class="dim">Said ${hi > 100 ? lo + "+" : lo + "–" + hi}% · ${xs.length} players</div><div class="s" style="display:grid;grid-template-columns:auto 1fr;gap:3px 8px;align-items:center"><span class="dim">said</span><span>${bar(said, "var(--cyan, #5ec8e5)", Math.round(said) + "%")}</span><span class="dim">scored</span><span>${bar(hit, hitColor(hit, said), Math.round(hit) + "%")}</span></div></div>`; }).join("");
+    return `<div class="row" style="display:block"><div class="dim">Said ${hi > 100 ? lo + "+" : lo + "–" + hi}% · ${xs.length} players · scored ${Math.round(hit)}% ±${Math.round(Math.sqrt(Math.max(hit * (100 - hit), 400) / xs.length / 100 * 100) * 1)}${xs.length < 30 ? " · too few to trust" : ""}</div><div class="s" style="display:grid;grid-template-columns:auto 1fr;gap:3px 8px;align-items:center"><span class="dim">said</span><span>${bar(said, "var(--cyan, #5ec8e5)", Math.round(said) + "%")}</span><span class="dim">scored</span><span>${bar(hit, hitColor(hit, said), Math.round(hit) + "%")}</span></div></div>`; }).join("");
   return rows || '<div class="s">Fills in as games go final.</div>';
 }
 // One collapsible section: a heading, one plain line saying what it means, then the content. warn = a count shown next to the heading.
