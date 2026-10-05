@@ -129,7 +129,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const ctx = { document: { getElementById: () => el(), querySelectorAll: () => [], addEventListener() {}, hidden: false }, fetch: () => Promise.reject(new Error("offline")),
     localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) }, location: { reload() {} }, window: {}, setTimeout, clearTimeout, console, Date, Math, Number, String, JSON, Promise, Set, Object, Array };
   vm.createContext(ctx);
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   ok(/PHI winning by about 4\.2/.test(T.spreadReason(g)) && /needs PHI to win by 4\+/.test(T.spreadReason(g)), "spread wording");
@@ -417,6 +417,17 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { const rb = ctx.T.replayBox();
     ok(/Road dogs \+3 to \+6\.5/.test(rb) && /53\.5%/.test(rb) && /UNSTABLE/.test(rb) && /<b>YES<\/b>/.test(rb) && /3–1/.test(rb) && /2 saved/.test(rb) && /7–3/.test(rb) && /2007–25/.test(rb), "replay card: history, live record, verdict, season range", rb.slice(0, 400));
     vm.runInContext(`REPLAY = null`, ctx); ok(ctx.T.replayBox() === "", "replay card: leaves itself out when the history is not loaded"); }
+  { // blended touchdown chance and "agrees with the market"
+    const b1 = ctx.T.tdBlend({ fair: 40, price: 0.30, bid: 0.28 }), b2 = ctx.T.tdBlend({ fair: 40, price: 0.30, bid: 0.01, thin: true });
+    ok(b1 && Math.abs(b1.mid - 29) < 1e-9 && Math.abs(b1.blend - 34.5) < 1e-9 && b2 === null && ctx.T.tdBlend({ fair: 40, price: 0.3, bid: 0.28, stale: true }) === null && ctx.T.tdBlend({ fair: 40, price: null }) === null, "touchdown blend: half the model, half the market mid, only on a real market");
+    const g = (gap, pct) => ({ key: "A @ B", away: "A", home: "B", started: false, model: {}, spreadPick: { label: "A +3", gap, pct, side: "away" }, totalPick: { label: "Over 44", gap, pct, side: "over" } });
+    const a1 = ctx.T.leanCell(g(0.4, 50.8), "spread"), a2 = ctx.T.leanCell(g(2.2, 50.8), "spread"), a3 = ctx.T.leanCell(g(0.4, 50.8), "total");
+    ok(/Agrees with the market/.test(a1) && /Agrees with the market/.test(a3) && /No lean · about 50\/50/.test(a2) && !/Agrees with the market/.test(a2), "lean box: within a point of the line says it agrees with the market; a bigger gap keeps 'no lean'");
+    const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "models" ? box : id === "export-btn" ? { onclick: null } : old(id));
+    const px = (fair, scored, ask, bid) => ({ team: "A", player: "P", fair, scored, played: true, ask, bid });
+    vm.runInContext(`S = { week: 4, games: [], status: { ok: true, errors: [] }, weekCheck: { games: 16, withLines: 16, modelRun: true, watch: [] }, missFinder: null, winners: null }; MB = { summary: {}, bets: [] }; PAPER = { names: {}, board: {}, week: null }; PICKS = null; EDGES = null; REPLAY = null; RES = [ { game: "A @ B", week: 4, td: [ ${JSON.stringify(px(40, true, 0.30, 0.28))}, ${JSON.stringify(px(20, false, 0.25, 0.23))}, ${JSON.stringify(px(30, true, 0.33, 0.30))} ] } ]`, ctx);
+    ctx.T.renderModel(); ok(/Blend: half model, half market/.test(box.innerHTML), "models tab: the touchdown check scores the 50/50 blend next to the model and the market");
+    ctx.document.getElementById = old; }
   { // snap counts not posted yet (played unset): those players are left out of every accuracy number instead of counting as misses
     const { buildCalibration } = await import("../lib/calibration.js"); const { findMisses } = await import("../lib/missfinder.js");
     const many = (played) => ({ td: Array.from({ length: 60 }, (_, i) => ({ fair: 20, scored: i < 3, ...(played === undefined ? {} : { played }) })) });
@@ -448,7 +459,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     for (const k of await R.keys("paper:2099:*")) await R.del(k); await R.del("alerts:2099");
     // the Pick Lab list uses the tie rule too
     vm.runInContext(`S = { week: 4, games: [ { key: "LA @ PHI", away: "LA", home: "PHI", started: false, winPct: 38.1, model: { homeMargin: -3, total: 43.5, calHomeCover: 48.8, calUnder: 50.5 }, poly: { ml: { home: 0.42, away: 0.6 }, spread: { homeSpread: 3, home: 0.51, away: 0.51 }, total: { line: 43.5, over: 0.51, under: 0.51 } } } ], winners: null, picks: null }`, ctx);
-    ok(/Spread <b>LA -3<\/b> · Total <b>Under 43\.5<\/b>/.test(ctx.T.winnersBox()), "pick list: a toss-up game still shows its spread side and total side"); }
+    ok(/Spread <b>LA -3<\/b> <span class="dim">\(agrees\)<\/span> · Total <b>Under 43\.5<\/b> <span class="dim">\(agrees\)<\/span>/.test(ctx.T.winnersBox()), "pick list: a toss-up game still shows its spread and total side, marked as agreeing with the market"); }
   { // earlier week: a bet that is final but waiting for touchdown data stays visible; no slate yet must not break Bets; sections keep their state
     const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "record-mine" ? box : old(id));
     vm.runInContext(`S = { week: 5, games: [] }; MBWEEK = 4; MB = { summary: {}, synced: null, bets: [ { id: "a", week: 4, source: "account", title: "Waiting combo", cost: 10, toWin: 100, result: "pending", waiting: true, legs: [] }, { id: "b", week: 4, source: "account", title: "Lost combo", cost: 5, toWin: 50, result: "L", pl: -5, legs: [] }, { id: "c", week: 4, cost: 8, toWin: 80, result: "pending", waiting: true, legs: [ { kind: "td", player: "Q", game: "A @ B", team: "B", result: "pending", price: 0.5 } ] } ] }`, ctx);
