@@ -4,6 +4,7 @@
 import { SEASON, currentWeek, loadGames, started } from "../../lib/games";
 import { getRedis, jparse, getJSON, setJSON, K, SLATE_CACHE } from "../../lib/redis";
 import { fetchEvents, gameLines, tdProps } from "../../lib/poly";
+import { sanePoly } from "../../lib/sane";
 import { fetchBooks } from "../../lib/books";
 import { gradeRecent } from "../../lib/grade";
 import { syncAccount } from "../../lib/mybets";
@@ -56,7 +57,9 @@ export default async function handler(req, res) {
     const model = open.length ? await loadModel(season, week).catch(() => null) : null;
     let lines = 0, props = 0;
     await Promise.all(open.map(async (g) => {
-      const poly = await gameLines(events, g.away, g.home).catch(() => null);
+      let poly = await gameLines(events, g.away, g.home).catch(() => null);
+      { const sp = sanePoly(poly, g.nvSpread, g.nvTotal); poly = sp.poly;   // an alternate line read as the game line (10/4: "MIN +19.5") never gets saved
+        if (sp.dropped.length) await logError("snapshot", `${g.key}: dropped implausible Polymarket line (${sp.dropped.join("; ")})`).catch(() => {}); }
       const snap = { t, src, poly: poly || null, books: books ? books[g.key] || null : undefined };
       // Bad-data guard: a line jumping this far between snapshots is almost always a feed glitch, not a real move
       const prevRaw = await redis.lindex(K.snaps(season, week, g.key), -1), prev = prevRaw ? (jparse(prevRaw) || {}).poly || null : null;

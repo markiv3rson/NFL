@@ -383,6 +383,37 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     await R.set(`res:${SEASON}:4:GGG @ HHH`, JSON.stringify({ v: 2, spread: { result: "W" }, td: [] })); await R.set(`res:${SEASON}:4:KKK @ LLL`, JSON.stringify({ v: 2, ml: { result: "W" } })); const u = await ungradedFinals(SEASON); const by = Object.fromEntries(u.map((x) => [x.key, x.reason]));
     ok(u.length === 4 && /^graded without its spread and total picks \(no closing line was saved\) or its touchdown results$/.test(by["KKK @ LLL"]) && by["AAA @ BBB"] === "no closing line was saved" && by["CCC @ DDD"] === "no model numbers were saved" && by["EEE @ FFF"] === "waiting for the official touchdown data" && !by["GGG @ HHH"] && !by["III @ JJJ"], "ungraded finals: reason per game; graded games and games under 12 h old are left out");
     globalThis.fetch = realFetch; resetGamesCache(); for (const k of await R.keys(`*${SEASON}:4*`)) await R.del(k); }
+  { // absurd Polymarket lines (10/4: "MIN +19.5" when the real line was MIN -10, "SEA +20.5" vs SEA -7)
+    const { spreadOk, totalOk, sanePoly, pickHomeSpread } = await import("../lib/sane.js"); const { parseGame } = await import("../lib/poly.js");
+    ok(spreadOk(-10, 10) && spreadOk(2.5, -2.5) && spreadOk(-9, 10) && !spreadOk(19.5, 10) && !spreadOk(20.5, 7) && spreadOk(null, 10) && spreadOk(3, null) && totalOk(38.5, 38.5) && !totalOk(50.5, 38.5) && totalOk(40, null), "line sanity: a spread/total within 6 points of the sportsbook closing line passes; MIN +19.5 vs the real MIN -10 does not");
+    const sp = sanePoly({ spread: { homeSpread: 19.5, home: 0.5, away: 0.5 }, total: { line: 38.5, over: 0.5, under: 0.5 }, ml: { home: 0.7, away: 0.32 } }, 10, 38.5);
+    ok(!sp.poly.spread && sp.poly.total && sp.poly.ml && sp.dropped.length === 1 && pickHomeSpread("MIN +19.5", "MIN") === 19.5 && pickHomeSpread("IND -4.5", "WAS") === 4.5 && pickHomeSpread("junk", "WAS") === null, "line sanity: only the absurd part is dropped; pick labels map to the home spread");
+    const mk = (type, q, outcomes, prices, extra = {}) => ({ sportsMarketType: type, question: q, outcomes: JSON.stringify(outcomes), outcomePrices: JSON.stringify(prices), ...extra });
+    const mkts = [ mk("moneyline", "Dolphins vs Vikings", ["Miami Dolphins", "Minnesota Vikings"], ["0.30", "0.72"]),
+      mk("spreads", "Spread: Minnesota Vikings (-10)", ["Minnesota Vikings", "Miami Dolphins"], ["0.53", "0.49"], { bestBid: 0.52, bestAsk: 0.53 }),
+      mk("spreads", "Spread: Minnesota Vikings (+19.5)", ["Minnesota Vikings", "Miami Dolphins"], ["0.5", "0.5"]) ];
+    const g1 = parseGame(mkts, "MIA", "MIN"), g2 = parseGame([mkts[0], mkts[2]], "MIA", "MIN"), g3 = parseGame([mkts[1]], "MIA", "MIN");
+    ok(g1.spread && g1.spread.homeSpread === -10, "poly parse: the main spread wins over an unpriced alternate that sits at 50%");
+    ok(g2.spread === undefined && g3.spread && g3.spread.homeSpread === -10, "poly parse: an alternate that does not fit the moneyline is never taken as the game spread; with no moneyline the one real line is used");
+    // grading removes a bad stored pick but keeps the good one, in the result record and the Pick Lab picks
+    const { gradeWeek } = await import("../lib/grade.js"); const { SEASON, resetGamesCache } = await import("../lib/games.js"); const R = globalThis.__TEST_REDIS__; const realFetch = globalThis.fetch;
+    const H = "season,game_type,week,gameday,gametime,away_team,away_score,home_team,home_score,spread_line,total_line,roof,stadium,location,surface\n";
+    resetGamesCache(); globalThis.fetch = async (u) => (String(u).includes("games.csv") ? { ok: true, text: async () => H + `${SEASON},REG,4,2026-10-04,13:00,MIA,10,MIN,15,10,38.5,o,s,Home,g\n` } : { ok: false, status: 404, json: async () => ({}), text: async () => "" });
+    await R.set(`res:${SEASON}:4:MIA @ MIN`, JSON.stringify({ v: 2, game: "MIA @ MIN", spread: { basis: "model", label: "MIN +19.5", result: "W", clvPts: 0 }, total: { basis: "model", label: "Over 38.5", result: "L", clvPts: 0 }, ml: { label: "MIA ML", result: "L" }, td: [], tdPx: true, tdScorerV2: true, repChecked: true, mlModelChecked: true }));
+    await R.hset(`picks:${SEASON}:4`, "MIA @ MIN|spread", JSON.stringify({ game: "MIA @ MIN", market: "spread", label: "MIN +19.5", line: 19.5, price: 0.5 }));
+    await R.hset(`picks:${SEASON}:4`, "MIA @ MIN|total", JSON.stringify({ game: "MIA @ MIN", market: "total", label: "Over 38.5", line: 38.5, price: 0.5 }));
+    await gradeWeek(SEASON, 4);
+    const rec = JSON.parse(await R.get(`res:${SEASON}:4:MIA @ MIN`)), pk = await R.hgetall(`picks:${SEASON}:4`);
+    ok(!rec.spread && rec.total && rec.total.result === "L" && rec.ml && rec.lineDropped === true, "grading: a result saved with an absurd spread loses that part only (the total and moneyline stay)");
+    ok(!pk["MIA @ MIN|spread"] && pk["MIA @ MIN|total"] && JSON.parse(pk["MIA @ MIN|total"]).result === "L", "grading: the Pick Lab spread pick with an absurd line is removed; the good total pick is graded");
+    // the edge tracker: a spot logged at an absurd line is removed, a normal one is graded
+    const { gradeEdges } = await import("../lib/edges.js");
+    await R.hset(`edgelog:${SEASON}:4`, "MIA @ MIN|MIN +19.5", JSON.stringify({ game: "MIA @ MIN", market: "spread", label: "MIN +19.5", team: "MIN", line: 19.5, price: 0.5, fair: 0.98 }));
+    await R.hset(`edgelog:${SEASON}:4`, "MIA @ MIN|Over 38.5", JSON.stringify({ game: "MIA @ MIN", market: "total", label: "Over 38.5", side: "over", line: 38.5, price: 0.5, fair: 0.55 }));
+    await gradeEdges(SEASON, 4, { key: "MIA @ MIN", home: "MIN", away: "MIA", homeScore: 15, awayScore: 10, nvSpread: 10, nvTotal: 38.5 });
+    const el = await R.hgetall(`edgelog:${SEASON}:4`);
+    ok(!el["MIA @ MIN|MIN +19.5"] && el["MIA @ MIN|Over 38.5"] && JSON.parse(el["MIA @ MIN|Over 38.5"]).result === "L", "edge tracker: a spot logged at an absurd line is removed, the normal one is graded");
+    globalThis.fetch = realFetch; resetGamesCache(); for (const k of await R.keys(`*${SEASON}:4*`)) await R.del(k); }
   { const rb = ctx.T.replayBox();
     ok(/Road dogs \+3 to \+6\.5/.test(rb) && /53\.5%/.test(rb) && /UNSTABLE/.test(rb) && /<b>YES<\/b>/.test(rb) && /3–1/.test(rb) && /2 saved/.test(rb) && /7–3/.test(rb) && /2007–25/.test(rb), "replay card: history, live record, verdict, season range", rb.slice(0, 400));
     vm.runInContext(`REPLAY = null`, ctx); ok(ctx.T.replayBox() === "", "replay card: leaves itself out when the history is not loaded"); }
