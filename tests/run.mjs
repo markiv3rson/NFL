@@ -130,7 +130,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const ctx = { document: { getElementById: () => el(), querySelectorAll: () => [], addEventListener() {}, hidden: false }, fetch: () => Promise.reject(new Error("offline")),
     localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) }, location: { reload() {} }, window: {}, setTimeout, clearTimeout, console, Date, Math, Number, String, JSON, Promise, Set, Object, Array };
   vm.createContext(ctx);
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={weekToggle,earlyNote,withView,spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={tdGradeMap,tdMark,tdGameLine,weekToggle,earlyNote,withView,spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   ok(/PHI winning by about 4\.2/.test(T.spreadReason(g)) && /needs PHI to win by 4\+/.test(T.spreadReason(g)), "spread wording");
@@ -435,6 +435,16 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const sp = ctx.T.leanCell(ge, "spread"), tt = ctx.T.leanCell(ge, "total");
     ok(/B -5\.1/.test(sp) && /B wins 66%/.test(sp) && /Early estimate/.test(sp) && /Total 44\.9/.test(tt) && !/<em>—|class="dim">—/.test(sp), "early games: the Model leans boxes show the model's own spread, win chance and total, labeled");
     ok(!/B -5/.test(ctx.T.leanCell({ ...ge, early: false }, "spread")), "not early: the boxes stay blank without a market line"); }
+  { // finished game: touchdown cards are graded (scored / no TD / inactive / waiting), with a one-line summary
+    const mk = (n, team, fair) => ({ team, player: n, pos: "RB", fair, price: 0.3 });
+    const g = { key: "A @ B", away: "A", home: "B", final: true, td: [mk("P.One", "A", 60), mk("P.Two", "A", 40), mk("P.Three", "A", 30), mk("Q.One", "B", 50), mk("Q.Two", "B", 30), mk("Q.Three", "B", 20)] };
+    vm.runInContext(`S = { week: 4, games: [] }; RES = [{ game: "A @ B", week: 4, td: [{ player: "P.One", team: "A", fair: 60, scored: true, played: true }, { player: "P.Two", team: "A", fair: 40, scored: false, played: true }, { player: "P.Three", team: "A", fair: 30, scored: false, played: false }, { player: "Q.One", team: "B", fair: 50, scored: true, played: true }, { player: "Q.Two", team: "B", fair: 30, scored: false }] }]`, ctx);
+    const h = ctx.T.tdTop3(g);
+    ok(/✓ scored/.test(h) && /✗ no TD/.test(h) && /inactive/.test(h) && /waiting for snaps/.test(h) && /not graded/.test(h), "finished game: each top scorer is marked scored, no TD, inactive, waiting or not graded");
+    ok(/model's top 3 · 2 scored · expected 1\.5/.test(h), "finished game: the summary counts only graded players who played (inactive and waiting left out)");
+    ok(!/✓|✗/.test(ctx.T.tdTop3({ ...g, final: false })), "unfinished game: no grades shown");
+    vm.runInContext(`RES = null; GRADES = null`, ctx); ok(!/✓|✗/.test(ctx.T.tdTop3(g)), "finished game: no marks until the graded results are loaded");
+    vm.runInContext(`RES = null`, ctx); }
   { // next-week view: toggle only when next week's slate is loaded; the swap puts next week's games in S while drawing and restores S after
     const keepS = vm.runInContext("S", ctx);
     vm.runInContext(`NEXT = null; VIEW = "this"`, ctx); ok(ctx.T.weekToggle() === "", "next week: no toggle until next week's slate is loaded");
