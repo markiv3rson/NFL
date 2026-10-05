@@ -374,6 +374,15 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const r = weekRecap(4, recs);
     ok(r.title === "Week 4 recap: moneyline 2–1 · spread side 1–1 · total side 1–0" && r.sub === "Touchdowns: 1 scored of 3 players who played (the model expected 0.7)", "weekly recap: records by model, touchdowns vs expected (players who did not play left out)");
     ok(weekRecap(4, []) === null && weekRecap(4, null) === null, "weekly recap: nothing graded gives no recap"); }
+  { // final but ungraded games are reported with the reason
+    const { ungradedFinals } = await import("../lib/grade.js"); const { SEASON, resetGamesCache } = await import("../lib/games.js"); const R = globalThis.__TEST_REDIS__; const realFetch = globalThis.fetch;
+    const H = "season,game_type,week,gameday,gametime,away_team,away_score,home_team,home_score,roof,stadium,location,surface\n", g = (a, as, h, hs, d) => `${SEASON},REG,4,${d},13:00,${a},${as},${h},${hs},o,s,Home,g\n`;
+    const day = (n) => new Date(Date.now() - n * 86400e3).toISOString().slice(0, 10);
+    resetGamesCache(); globalThis.fetch = async (u) => (String(u).includes("games.csv") ? { ok: true, text: async () => H + g("AAA", 10, "BBB", 20, day(2)) + g("CCC", 10, "DDD", 20, day(2)) + g("EEE", 10, "FFF", 20, day(2)) + g("GGG", 10, "HHH", 20, day(2)) + g("III", 10, "JJJ", 20, day(0)) } : { ok: false, status: 404, json: async () => ({}), text: async () => "" });
+    await R.set(`close:${SEASON}:4:CCC @ DDD`, JSON.stringify({ poly: {} })); await R.set(`close:${SEASON}:4:EEE @ FFF`, JSON.stringify({ poly: {} })); await R.set(`model:${SEASON}:4`, JSON.stringify({ games: { "EEE @ FFF": { homeMargin: 1 } }, td: {} }));
+    await R.set(`res:${SEASON}:4:GGG @ HHH`, JSON.stringify({ v: 2 })); const u = await ungradedFinals(SEASON); const by = Object.fromEntries(u.map((x) => [x.key, x.reason]));
+    ok(u.length === 3 && by["AAA @ BBB"] === "no closing line was saved" && by["CCC @ DDD"] === "no model numbers were saved" && by["EEE @ FFF"] === "waiting for the official touchdown data" && !by["GGG @ HHH"] && !by["III @ JJJ"], "ungraded finals: reason per game; graded games and games under 12 h old are left out");
+    globalThis.fetch = realFetch; resetGamesCache(); for (const k of await R.keys(`*${SEASON}:4*`)) await R.del(k); }
   { const rb = ctx.T.replayBox();
     ok(/Road dogs \+3 to \+6\.5/.test(rb) && /53\.5%/.test(rb) && /UNSTABLE/.test(rb) && /<b>YES<\/b>/.test(rb) && /3–1/.test(rb) && /2 saved/.test(rb) && /7–3/.test(rb) && /2007–25/.test(rb), "replay card: history, live record, verdict, season range", rb.slice(0, 400));
     vm.runInContext(`REPLAY = null`, ctx); ok(ctx.T.replayBox() === "", "replay card: leaves itself out when the history is not loaded"); }
