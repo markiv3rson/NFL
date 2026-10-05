@@ -137,7 +137,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   g = { away: "A", home: "H", model: { total: 44.4, fix: { dome: 2.59, pace: 0.1, div: true } }, poly: { total: { line: 45.5 } } };
   ok(/about 44\.4 total/.test(T.totalReason(g)) && /indoor game \+2\.6/.test(T.totalReason(g)), "totals wording");
   g = { away: "A", home: "H", winPct: 61.2, model: { homeMargin: 3, fix: {} }, spreadPick: { label: "H -2.5", pct: 51.1 }, poly: {} };
-  ok(/No lean · about 50\/50/.test(T.leanCell(g, "spread")) && !/market-based/.test(T.leanCell(g, "spread")), "lean wording");
+  ok(/weak lean/.test(T.leanCell(g, "spread")) && !/about 50\/50/.test(T.leanCell(g, "spread")) && !/market-based/.test(T.leanCell(g, "spread")), "lean wording");
   const row = T.prow({ player: "O'Neil <b>", pos: "WR", team: "H", game: "A @ H", fair: 20.1, fairIfPlays: 30, injury: "Questionable", price: 0.25, teamRank: 2 }, { started: false }, false);
   ok(/30% if he plays/.test(row) && /O&#39;Neil &lt;b>/.test(row), "Questionable row + names escaped");
   ok(/check how Polymarket settled it/.test(T.betRow({ source: "preloaded", legs: [{ result: "W", kind: "total", side: "under", line: 43 }, { result: "P", kind: "total", side: "over", line: 44 }], result: "P", pushUnconfirmed: true, cost: 5, toWin: 20, pl: null })), "combo push wording");
@@ -422,14 +422,14 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const pl = (team, i) => ({ player: `${team}.P${i}`, team, pos: "RB", fair: 60 - i * 5, price: 0.5, bid: 0.48, teamRank: i + 1, game: "A @ B", flags: [] });
     vm.runInContext(`S = { week: 4, games: [ { key: "A @ B", away: "A", home: "B", started: false, td: [${[0,1,2,3,4,5].map((i) => JSON.stringify(pl("A", i))).join(",")}, ${[0,1,2,3,4,5].map((i) => JSON.stringify(pl("B", i))).join(",")}] } ] }`, ctx);
     ctx.T.renderTd(); const rows = (box.innerHTML.match(/class="tdr"/g) || []).length, ownA = (box.innerHTML.match(/A\.P\d/g) || []);
-    ok(rows === 8 && /top 4 per team/.test(hdr.innerHTML) && !/Show everyone/.test(box.innerHTML) && !/A\.P4/.test(box.innerHTML) && /A\.P3/.test(box.innerHTML), "touchdown tab: four players per team, no 'Show everyone' button");
+    ok(rows === 6 && /top 3 per team/.test(hdr.innerHTML) && !/Show everyone/.test(box.innerHTML) && !/A\.P3/.test(box.innerHTML) && /A\.P2/.test(box.innerHTML), "touchdown tab: three players per team, no 'Show everyone' button");
     ctx.document.getElementById = old; }
   { // blended touchdown chance and "agrees with the market"
     const b1 = ctx.T.tdBlend({ fair: 40, price: 0.30, bid: 0.28 }), b2 = ctx.T.tdBlend({ fair: 40, price: 0.30, bid: 0.01, thin: true });
     ok(b1 && Math.abs(b1.mid - 29) < 1e-9 && Math.abs(b1.blend - 34.5) < 1e-9 && b2 === null && ctx.T.tdBlend({ fair: 40, price: 0.3, bid: 0.28, stale: true }) === null && ctx.T.tdBlend({ fair: 40, price: null }) === null, "touchdown blend: half the model, half the market mid, only on a real market");
     const g = (gap, pct) => ({ key: "A @ B", away: "A", home: "B", started: false, model: {}, spreadPick: { label: "A +3", gap, pct, side: "away" }, totalPick: { label: "Over 44", gap, pct, side: "over" } });
     const a1 = ctx.T.leanCell(g(0.4, 50.8), "spread"), a2 = ctx.T.leanCell(g(2.2, 50.8), "spread"), a3 = ctx.T.leanCell(g(0.4, 50.8), "total");
-    ok(/Agrees with the market/.test(a1) && /Agrees with the market/.test(a3) && /No lean · about 50\/50/.test(a2) && !/Agrees with the market/.test(a2), "lean box: within a point of the line says it agrees with the market; a bigger gap keeps 'no lean'");
+    ok(/Agrees with the market/.test(a1) && /Agrees with the market/.test(a3) && /weak lean/.test(a2) && !/Agrees with the market/.test(a2), "lean box: within a point of the line says it agrees with the market; a bigger gap keeps 'no lean'");
     const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "models" ? box : id === "export-btn" ? { onclick: null } : old(id));
     const px = (fair, scored, ask, bid) => ({ team: "A", player: "P", fair, scored, played: true, ask, bid });
     vm.runInContext(`S = { week: 4, games: [], status: { ok: true, errors: [] }, weekCheck: { games: 16, withLines: 16, modelRun: true, watch: [] }, missFinder: null, winners: null }; MB = { summary: {}, bets: [] }; PAPER = { names: {}, board: {}, week: null }; PICKS = null; EDGES = null; REPLAY = null; RES = [ { game: "A @ B", week: 4, td: [ ${JSON.stringify(px(40, true, 0.30, 0.28))}, ${JSON.stringify(px(20, false, 0.25, 0.23))}, ${JSON.stringify(px(30, true, 0.33, 0.30))} ] } ]`, ctx);

@@ -118,7 +118,7 @@ function leanCell(g, kind) {
   // calibration slightly fades the model. Within 2.5 pts of 50% it now says so; the tilt stays visible in small text.
   const coin = Math.abs(p.pct - 50) < 2.5;
   const agrees = coin && p.gap != null && p.gap <= 1;   // the model and the market are within a point: it agrees with the market
-  return wrap((coin ? `<span>${agrees ? '<b class="g">Agrees with the market</b>' : "No lean · about 50/50"}</span><div class="s">Model's side: <b class="mod">${esc(p.label)}</b> (${p.gap != null ? p.gap.toFixed(1) : "?"} pts off the line; ~${Math.round(p.pct)}% historically)</div>` :
+  return wrap((coin ? `<span>${agrees ? '<b class="g">Agrees with the market</b>' : `<b class="mod">${esc(p.label)}</b> <span class="dim">· weak lean</span>`}</span><div class="s">${agrees ? `Model's side: <b class="mod">${esc(p.label)}</b> · ` : ""}${p.gap != null ? p.gap.toFixed(1) : "?"} pts off the line. Picks this close to the line have won about ${Math.round(p.pct)}% of the time (break-even is 52.4%)</div>` :
     `<span>${p.label}</span><div class="s">${p.pct.toFixed(1)}% model chance</div>`) +
     (reason ? `<div class="s" style="margin-top:6px">${esc(reason)}</div>` : "") +
     (wind ? `<div class="s">${wind}</div>` : "") +
@@ -275,13 +275,13 @@ function tdRow(x, i) {
 }
 function renderTd() {
   const wk = S.week ? ` · Week ${S.week}` : "";
-  $("td-header").innerHTML = `<b style="color:#d3d8e0">Anytime TD${wk}</b> · top 4 per team · most likely first`;
+  $("td-header").innerHTML = `<b style="color:#d3d8e0">Anytime TD${wk}</b> · top 3 per team · most likely first`;
   const rows = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).map((r) => ({ r, g })))
     .filter((x) => x.r.fair != null && usable(x.r)).sort((a, b) => b.r.fair - a.r.fair);
   const moves = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).filter((r) => r.move).map((r) => r)).sort((a, b) => Math.abs(b.move) - Math.abs(a.move)).slice(0, 10);
   const moveBox = moves.length ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Price moves (5¢+, real markets)</div>${moves.map((r) => `<div class="row"><span>${esc(r.player)} <span class="dim">${esc(r.game)}</span></span><span class="${r.move > 0 ? "g" : "r"}">${r.move > 0 ? "▲ +" : "▼ "}${r.move}¢</span></div>`).join("")}</div></div>` : "";
-  // Top 4 per team (10/5): beyond the four likeliest scorers the rest is noise.
-  const perTeam = {}, top4 = rows.filter((x) => { const k = x.r.team; perTeam[k] = (perTeam[k] || 0) + 1; return perTeam[k] <= 4; });
+  // Top 3 per team (10/5): beyond the three likeliest scorers the rest is noise.
+  const perTeam = {}, top4 = rows.filter((x) => { const k = x.r.team; perTeam[k] = (perTeam[k] || 0) + 1; return perTeam[k] <= 3; });
   const shown = top4;
   if (!rows.length) { $("td").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">No players yet — tap Model (the ▶ button on the right).</div></div>'; return; }
   $("td").innerHTML = moveBox + `<div class="card tdl"><div class="tdh"><span style="flex:1;padding-left:28px">PLAYER</span><span style="width:74px;text-align:right">MODEL</span><span style="width:60px;text-align:right;white-space:nowrap">${pmLogo()}PRICE</span></div>${shown.map(tdRow).join("")}</div>` +
