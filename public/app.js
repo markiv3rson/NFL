@@ -682,7 +682,7 @@ function renderLab() {
   const thisWeek = !wk ? '<div class="s dim">Recorded about a day before Sunday.</div>' :
     Object.keys(names).map((k) => { const ps = wk.parlays.filter((p) => p.strategy === k);
       return `<div class="sec"><div class="sh">${esc(names[k])}</div>${HOW[k] ? `<div class="s dim">${esc(HOW[k])}</div>` : ""}` + (ps.length ? ps.map((p) =>
-        `<div class="row" style="display:block"><div>${p.legs.map(legLine).join("<br>")}</div><div class="s">pays ${p.pay.toFixed(2)}x${p.prob != null ? ` · market chance ${pct(p.prob)}` : ""}${p.result ? ` · <b class="${p.result === "W" ? "g" : p.result === "L" ? "r" : ""}">${p.result === "W" ? "HIT" : p.result === "L" ? "missed" : "push"}</b>` : ""}</div></div>`).join("") :
+        `<div class="row" style="display:block"><div>${p.legs.map(legLine).join("<br>")}</div><div class="s">pays ${p.pay.toFixed(2)}x${p.prob != null ? ` · est. chance ${pct(p.prob)}` : ""}${p.result ? ` · <b class="${p.result === "W" ? "g" : p.result === "L" ? "r" : ""}">${p.result === "W" ? "HIT" : p.result === "L" ? "missed" : "push"}</b>` : ""}</div></div>`).join("") :
         '<div class="s">No qualifying legs this week.</div>') + `</div>`; }).join("");
   const rows = (!Object.keys(names).some((k) => board[k] && board[k].graded) ? '<div class="s dim">No graded parlays yet. History below is each rule replayed on past seasons.</div>' : "") + Object.keys(names).map((k) => { const b = board[k]; const rv = b && b.review, rc = rv ? ({ HOLDS: "g", UNDERSTATED: "g", PAYING: "g", OVERSTATED: "r", LOSING: "r" }[rv.verdict] || "dim") : "dim";
     const hist = parlayHistLine(k);
