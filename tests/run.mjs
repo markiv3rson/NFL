@@ -130,7 +130,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const ctx = { document: { getElementById: () => el(), querySelectorAll: () => [], addEventListener() {}, hidden: false }, fetch: () => Promise.reject(new Error("offline")),
     localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) }, location: { reload() {} }, window: {}, setTimeout, clearTimeout, console, Date, Math, Number, String, JSON, Promise, Set, Object, Array };
   vm.createContext(ctx);
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,weekToggle,earlyNote,withView,spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={renderLines,withData,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   ok(/PHI winning by about 4\.2/.test(T.spreadReason(g)) && /needs PHI to win by 4\+/.test(T.spreadReason(g)), "spread wording");
@@ -460,18 +460,33 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const pos = ctx.T.tdByPosition(pl);
     ok(/RB · 2 players/.test(pos) && /WR · 1 players/.test(pos) && /TE · 2 players/.test(pos) && /1 graded players have no position/.test(pos) && /too few to trust/.test(pos), "by position: RB, WR and TE rows with sample size, margin and a no-position note");
     ok(/too few to trust/.test(ctx.T.tdByDefense(pl)) && ctx.T.tdByDefense([]).includes("Fills in"), "by defense: rows flag small samples; empty says it fills in"); }
-  { // next-week view: toggle only when next week's slate is loaded; the swap puts next week's games in S while drawing and restores S after
+  { // next week sits under this week on the same page: no toggle, this week first, then next week's section; S is put back after drawing
     const keepS = vm.runInContext("S", ctx);
-    vm.runInContext(`NEXT = null; VIEW = "this"`, ctx); ok(ctx.T.weekToggle() === "", "next week: no toggle until next week's slate is loaded");
-    vm.runInContext(`NEXT = { week: 5, games: [{ key: "A @ B", away: "A", home: "B", early: true, td: [] }] }; VIEW = "next"`, ctx);
-    ok(/Next week \(Week 5\)/.test(ctx.T.weekToggle()) && /data-view="this"/.test(ctx.T.weekToggle()), "next week: the toggle offers this week and next week");
-    ok(vm.runInContext(`withView(() => S.week === 5 && S.games[0].key === "A @ B")`, ctx) && vm.runInContext("S", ctx) === keepS, "next week: drawing uses next week's slate, then S is put back");
+    ok(vm.runInContext(`withData({ week: 5, games: [{ key: "A @ B" }] }, () => S.week === 5)`, ctx) && vm.runInContext("S", ctx) === keepS, "next week: drawing uses next week's slate, then S is put back");
     ok(/Early estimate/.test(ctx.T.earlyNote({ early: true })) && ctx.T.earlyNote({ early: false }) === "", "next week: early estimates are labeled");
     const bx = { innerHTML: "" }, hx = { innerHTML: "" }, oldG = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "td" ? bx : id === "td-header" ? hx : oldG(id));
-    vm.runInContext(`NEXT = { week: 5, games: [{ key: "A @ B", away: "A", home: "B", td: [] }] }; VIEW = "next"`, ctx); ctx.T.renderTd();
-    ok(/early estimates aren't ready yet/.test(bx.innerHTML) && !/No players yet — tap Model/.test(bx.innerHTML), "next week: an empty list says the early estimates aren't ready, not the this-week message");
+    const pl = (team, tag, i) => ({ player: `${tag}.${team}${i}`, team, pos: "RB", fair: 60 - i * 5, price: 0.5, bid: 0.48, teamRank: i + 1, game: team === "A" || team === "B" ? "A @ B" : "C @ D", flags: [] });
+    const g = (a, h, tag, early) => ({ key: `${a} @ ${h}`, away: a, home: h, started: false, early, td: [0, 1, 2, 3].map((i) => pl(a, tag, i)).concat([0, 1, 2, 3].map((i) => pl(h, tag, i))) });
+    vm.runInContext(`S = { week: 4, games: [${JSON.stringify(g("A", "B", "T", false))}] }; NEXT = { week: 5, games: [${JSON.stringify(g("C", "D", "N", true))}] }`, ctx); ctx.T.renderTd();
+    const h = bx.innerHTML, iT = h.indexOf("T.A0"), iN = h.indexOf("N.C0"), iHead = h.indexOf("Next week · Week 5");
+    ok(iT > 0 && iHead > iT && iN > iHead && !/data-view/.test(h) && (h.match(/class="tdr"/g) || []).length === 12 && !/T\.A3|N\.C3/.test(h), "touchdown tab: this week's top 3 per team, then a 'Next week' heading and its top 3 per team, all on one page, no toggle");
+    ok(/Early estimate/.test(h), "touchdown tab: next week's early estimates are labeled");
+    vm.runInContext(`NEXT = { week: 5, games: [{ key: "C @ D", away: "C", home: "D", td: [] }] }`, ctx); ctx.T.renderTd();
+    ok(/early estimates aren't ready yet/.test(bx.innerHTML), "touchdown tab: an empty next week says the early estimates aren't ready");
+    vm.runInContext(`S = { week: 4, games: [{ key: "A @ B", started: true, td: [] }] }; NEXT = null`, ctx); ctx.T.renderTd();
+    ok(/No games left this week/.test(bx.innerHTML), "touchdown tab: when every game has started it says no games are left, not 'tap Model'");
     ctx.document.getElementById = oldG;
-    vm.runInContext(`NEXT = null; VIEW = "this"`, ctx); }
+    vm.runInContext(`NEXT = null`, ctx); }
+  { // Game Lines: this week's tiles, then a Next week heading and its tiles, on one page; tapping a next-week game opens its page
+    const ln = { innerHTML: "", style: {} }, dt = { innerHTML: "", style: {} }, oldG = ctx.document.getElementById;
+    ctx.document.getElementById = (id) => (id === "lines" ? ln : id === "detail" ? dt : id === "bgwm" ? { style: {}, dataset: {}, innerHTML: "" } : id === "back-btn" ? { onclick: null } : oldG(id));
+    const mkg = (a, h, early) => ({ key: `${a} @ ${h}`, away: a, home: h, started: false, final: false, kickoff: "2099-01-01T18:00:00Z", early, winPct: null, td: [], history: [], spreadPick: null, totalPick: null, model: early ? { homeMargin: 3, total: 44, homeWinPct: 60 } : null });
+    vm.runInContext(`S = { week: 4, games: [${JSON.stringify(mkg("A", "B", false))}], edgesNow: [], changed: [] }; NEXT = { week: 5, games: [${JSON.stringify(mkg("C", "D", true))}] }; DETAIL = null`, ctx);
+    ctx.T.renderLines(); const h = ln.innerHTML, iA = h.indexOf('data-game="A @ B"'), iHead = h.indexOf("Next week · Week 5"), iC = h.indexOf('data-game="C @ D"');
+    ok(iA > 0 && iHead > iA && iC > iHead && !/data-view/.test(h), "game lines: this week's tiles, then 'Next week' and its tiles on one page, no toggle");
+    vm.runInContext(`DETAIL = "C @ D"`, ctx); ctx.T.renderLines();
+    ok(/Early estimate/.test(dt.innerHTML) && /C @ D|\bC\b/.test(dt.innerHTML), "game lines: a next-week game opens its own page");
+    vm.runInContext(`DETAIL = null; NEXT = null`, ctx); ctx.document.getElementById = oldG; }
   { // blended touchdown chance and "agrees with the market"
     const b1 = ctx.T.tdBlend({ fair: 40, price: 0.30, bid: 0.28 }), b2 = ctx.T.tdBlend({ fair: 40, price: 0.30, bid: 0.01, thin: true });
     ok(b1 && Math.abs(b1.mid - 29) < 1e-9 && Math.abs(b1.blend - 34.5) < 1e-9 && b2 === null && ctx.T.tdBlend({ fair: 40, price: 0.3, bid: 0.28, stale: true }) === null && ctx.T.tdBlend({ fair: 40, price: null }) === null, "touchdown blend: half the model, half the market mid, only on a real market");

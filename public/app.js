@@ -1,7 +1,7 @@
 // NFL SLATEZZZ — everything comes from /api/slate (lines, TD, flags) and /api/mybets + /api/results/list (Record).
 let WINALL = false;
 let PAPER = null, PICKS = null;
-let NEXT = null, VIEW = "this";   // NEXT = next week's slate (early estimates), VIEW = which week Game Lines and Anytime TD show
+let NEXT = null;   // next week's slate (early estimates); Game Lines and Anytime TD show it under this week's, on the same page
 let S = null, RES = null, EDGES = null, MB = null, tdSort = "likely", recView = "mine";
 const $ = (id) => document.getElementById(id);
 const dash = '<span class="dim">—</span>';
@@ -279,29 +279,28 @@ function tdRow(x, i) {
     `<div class="mp"><em>${Math.round(r.fair)}%</em><div class="bar"><i style="width:${Math.min(100, r.fair)}%"></i></div></div><div class="pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${(() => { const b = tdBlend(r); return b && b.blend - r.price * 100 >= 5 ? `<div class="g" style="font-size:10px">+${Math.round(b.blend - r.price * 100)} vs price</div>` : ""; })()}</div></div>` +
     `<div class="more" style="--tc:${TEAM_COLOR[r.team] || "#444"};--logo:url(${logoUrl(r.team)})">${prow(r, g, true)}</div></div>`;
 }
-// Next-week view (10/5): the slate for next week has the same shape as this week's, so for Game Lines and Anytime TD the page just
-// swaps S for it while drawing. Everything else (Bets, Models, countdown) keeps this week's data.
-function withView(fn) { if (VIEW === "next" && NEXT && NEXT.games && NEXT.games.length) { const keep = S; S = NEXT; try { return fn(); } finally { S = keep; } } return fn(); }
-function weekToggle() {
-  if (!(NEXT && NEXT.games && NEXT.games.length)) return "";
-  const b = (v, label) => `<button class="btn" data-view="${v}" style="${VIEW === v ? "border-color:var(--cyan,#5ec8e5);color:#fff" : ""}">${label}</button>`;
-  return `<div class="center" style="display:flex;gap:8px;justify-content:center;margin:10px 0 4px">${b("this", "This week")}${b("next", `Next week (Week ${NEXT.week})`)}</div>`;
-}
+// Next week sits under this week on the same page (10/5). Its slate has the same shape as this week's, so while drawing it the page just
+// swaps S for it. Everything else (Bets, Models, countdown) keeps this week's data.
+function withData(data, fn) { const keep = S; S = data; try { return fn(); } finally { S = keep; } }
+const hasNext = () => !!(NEXT && NEXT.games && NEXT.games.length);
 const earlyNote = (g) => (g && g.early ? '<span class="pill p-y" style="padding:0 6px;font-size:10px">Early estimate · no market line yet</span>' : "");
-function renderTd() { withView(renderTdNow); }
-function renderTdNow() {
-  const wk = S.week ? ` · Week ${S.week}` : "";
-  $("td-header").innerHTML = `<b style="color:#d3d8e0">Anytime TD${wk}</b> · top 3 per team · most likely first` + (S.games.some((g) => g.early) ? ` · ${earlyNote({ early: true })}` : "") + weekToggle();
+// One Anytime TD section for the slate in S: price moves, then the top 3 per team, most likely first.
+function tdBody(isNext) {
   const rows = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).map((r) => ({ r, g })))
     .filter((x) => x.r.fair != null && usable(x.r)).sort((a, b) => b.r.fair - a.r.fair);
   const moves = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).filter((r) => r.move).map((r) => r)).sort((a, b) => Math.abs(b.move) - Math.abs(a.move)).slice(0, 10);
   const moveBox = moves.length ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Price moves (5¢+, real markets)</div>${moves.map((r) => `<div class="row"><span>${esc(r.player)} <span class="dim">${esc(r.game)}</span></span><span class="${r.move > 0 ? "g" : "r"}">${r.move > 0 ? "▲ +" : "▼ "}${r.move}¢</span></div>`).join("")}</div></div>` : "";
   // Top 3 per team (10/5): beyond the three likeliest scorers the rest is noise.
-  const perTeam = {}, top4 = rows.filter((x) => { const k = x.r.team; perTeam[k] = (perTeam[k] || 0) + 1; return perTeam[k] <= 3; });
-  const shown = top4;
-  if (!rows.length) { $("td").innerHTML = `<div class="card" style="margin-top:10px"><div class="s">${VIEW === "next" ? "Next week's early estimates aren't ready yet — tap Model (the ▶ button) to run them now." : "No players yet — tap Model (the ▶ button on the right)."}</div></div>`; return; }
-  $("td").innerHTML = moveBox + `<div class="card tdl"><div class="tdh"><span style="flex:1;padding-left:28px">PLAYER</span><span style="width:74px;text-align:right">MODEL</span><span style="width:60px;text-align:right;white-space:nowrap">${pmLogo()}PRICE</span></div>${shown.map(tdRow).join("")}</div>` +
-    '<div class="s dim" style="text-align:center;margin-top:8px">Tap a row for snaps, 2+ TDs and first TD.</div>';
+  const perTeam = {}, shown = rows.filter((x) => { const k = x.r.team; perTeam[k] = (perTeam[k] || 0) + 1; return perTeam[k] <= 3; });
+  if (!rows.length) return `<div class="card" style="margin-top:10px"><div class="s">${isNext ? "Next week's early estimates aren't ready yet — tap Model (the ▶ button) to run them now." : S.games.length && S.games.every((g) => g.started) ? "No games left this week." : "No players yet — tap Model (the ▶ button on the right)."}</div></div>`;
+  return moveBox + `<div class="card tdl"><div class="tdh"><span style="flex:1;padding-left:28px">PLAYER</span><span style="width:74px;text-align:right">MODEL</span><span style="width:60px;text-align:right;white-space:nowrap">${pmLogo()}PRICE</span></div>${shown.map(tdRow).join("")}</div>`;
+}
+function renderTd() {
+  const wk = S.week ? ` · Week ${S.week}` : "";
+  $("td-header").innerHTML = `<b style="color:#d3d8e0">Anytime TD${wk}</b> · top 3 per team · most likely first` + (S.games.some((g) => g.early) ? ` · ${earlyNote({ early: true })}` : "");
+  let html = tdBody(false);
+  if (hasNext()) html += `<div class="sh" style="margin:22px 2px 0"><b style="color:#d3d8e0">Next week · Week ${NEXT.week}</b> <span class="dim">· top 3 per team · most likely first</span> ${NEXT.games.some((g) => g.early) ? earlyNote({ early: true }) : ""}</div>` + withData(NEXT, () => tdBody(true));
+  $("td").innerHTML = html + '<div class="s dim" style="text-align:center;margin-top:8px">Tap a row for snaps, 2+ TDs and first TD.</div>';
 }
 // ---------- Record: Mine ----------
 const RESMARK = { W: '<span class="g">✓</span>', L: '<span class="r">✗</span>', P: '<span class="dim">=</span>', pending: '<span class="dim">•</span>' };
@@ -873,12 +872,13 @@ function renderDetail(g) {
   if (g.final) ensureGrades();
   setBg(g);
 }
-function renderLines() { withView(renderLinesNow); }
-function renderLinesNow() {
-  if (DETAIL) { const g = S.games.find((x) => x.key === DETAIL); if (g) return renderDetail(g); DETAIL = null; }
+function renderLines() {
+  if (DETAIL) { let g = S.games.find((x) => x.key === DETAIL), nx = false; if (!g && hasNext()) { g = NEXT.games.find((x) => x.key === DETAIL); nx = !!g; }
+    if (g) return nx ? withData(NEXT, () => renderDetail(g)) : renderDetail(g); DETAIL = null; }
   setBg(null);
   $("detail").style.display = "none"; $("lines").style.display = "";
-  $("lines").innerHTML = weekToggle() + (VIEW === "next" ? "" : gapStrip() + changedBox()) + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
+  $("lines").innerHTML = gapStrip() + changedBox() + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
+    (hasNext() ? `<div class="sh" style="margin:22px 2px 6px"><b style="color:#d3d8e0">Next week · Week ${NEXT.week}</b> ${NEXT.games.some((g) => g.early) ? earlyNote({ early: true }) : ""}</div><div class="tiles">${withData(NEXT, () => [...NEXT.games].sort(order).map(tile).join(""))}</div>` : "") +
     '<div class="s dim" style="text-align:center;margin-top:10px">Tap a game for everything on it. Percent = market-based win chance (away · home).</div>';
 }
 function openGame(key) { LASTY = (typeof window !== "undefined" && window.scrollY) || 0; DETAIL = key; renderLines(); if (window.scrollTo) window.scrollTo(0, 0); const g = S.games.find((x) => x.key === key); if (g && g.started && !g.final) liveLoop(); }
@@ -922,7 +922,7 @@ let BUILD = null, LOADED_AT = 0, LOAD_SEQ = 0;
 async function loadNext() {   // next week's slate (early estimates); a failure just hides the toggle
   const wk = S && S.week ? S.week + 1 : null; if (!wk) return;
   const d = await (await fetch(`/api/slate?week=${wk}`, { cache: "no-store" })).json();
-  NEXT = d && d.ok && d.games && d.games.length ? d : null; if (!NEXT) VIEW = "this";
+  NEXT = d && d.ok && d.games && d.games.length ? d : null;
   renderLines(); renderTd(); }
 async function loadSlate() {
   const seq = ++LOAD_SEQ, r = await fetch("/api/slate", { cache: "no-store" }), build = r.headers.get("x-build"), d = await r.json();
@@ -946,8 +946,11 @@ $("refresh-btn").onclick = async () => {
 };
 $("rerun-btn").onclick = async () => {
   const b = $("rerun-btn"); b.disabled = true; toast("Rerunning both models at current lines — up to a couple of minutes…", 0);
-  try { const nx = VIEW === "next", d = await (await fetch(nx ? "/api/rerun?week=next" : "/api/rerun", { method: "POST" })).json(); if (!d.ok) throw new Error(d.error); if (nx) await loadNext(); else await loadSlate();
-    toast(`${nx ? "Next week's early estimates" : "Model rerun"}: ${d.rerun} games, TD for ${d.td}.${d.errors && d.errors.length ? " Errors: " + d.errors.join("; ") : ""}`, 10000);
+  try { const d = await (await fetch("/api/rerun", { method: "POST" })).json(); if (!d.ok) throw new Error(d.error);
+    // Next week's early estimates are filled in too when they aren't there yet (it runs on the model's own lines, no prices needed).
+    let dn = null; if (hasNext() && !NEXT.games.some((g) => (g.td || []).length)) { toast("Running next week's early estimates…", 0); dn = await (await fetch("/api/rerun?week=next", { method: "POST" })).json(); }
+    await loadSlate();
+    toast(`Model rerun: ${d.rerun} games, TD for ${d.td}.${dn ? (dn.ok ? ` Next week: ${dn.rerun} games, TD for ${dn.td}.` : ` Next week failed: ${dn.error}`) : ""}${d.errors && d.errors.length ? " Errors: " + d.errors.join("; ") : ""}`, 10000);
   } catch (e) { toast("Rerun failed: " + e.message, 12000); }
   b.disabled = false;
 };
@@ -966,7 +969,6 @@ $("bell").onclick = () => { ALPREV = alSeen(); if (ALERTS.length) { try { localS
 $("al-read").onclick = () => { ALPREV = ALERTS.length ? ALERTS[0].t : ""; renderAlerts(); };
 document.addEventListener("click", (e) => {
   const d = e.target.closest("[data-drop]"); if (d) { const el = $(d.dataset.drop); if (el) el.classList.toggle("open"); return; }
-  const vw = e.target.closest("[data-view]"); if (vw) { VIEW = vw.dataset.view; DETAIL = null; renderLines(); renderTd(); return; }
   const gt = e.target.closest("[data-game]"); if (gt) { openGame(gt.dataset.game); return; }
   const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k) { showPanel("lines"); openGame(k); } return; }
   const gb = e.target.closest("[data-gbw]"); if (gb) { GBGWEEK = gb.dataset.gbw === "all" ? "all" : Number(gb.dataset.gbw); $("gbg").innerHTML = gbgHtml(); return; }
