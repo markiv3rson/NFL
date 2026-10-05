@@ -436,6 +436,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(/Next week \(Week 5\)/.test(ctx.T.weekToggle()) && /data-view="this"/.test(ctx.T.weekToggle()), "next week: the toggle offers this week and next week");
     ok(vm.runInContext(`withView(() => S.week === 5 && S.games[0].key === "A @ B")`, ctx) && vm.runInContext("S", ctx) === keepS, "next week: drawing uses next week's slate, then S is put back");
     ok(/Early estimate/.test(ctx.T.earlyNote({ early: true })) && ctx.T.earlyNote({ early: false }) === "", "next week: early estimates are labeled");
+    const bx = { innerHTML: "" }, hx = { innerHTML: "" }, oldG = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "td" ? bx : id === "td-header" ? hx : oldG(id));
+    vm.runInContext(`NEXT = { week: 5, games: [{ key: "A @ B", away: "A", home: "B", td: [] }] }; VIEW = "next"`, ctx); ctx.T.renderTd();
+    ok(/early estimates aren't ready yet/.test(bx.innerHTML) && !/No players yet — tap Model/.test(bx.innerHTML), "next week: an empty list says the early estimates aren't ready, not the this-week message");
+    ctx.document.getElementById = oldG;
     vm.runInContext(`NEXT = null; VIEW = "this"`, ctx); }
   { // blended touchdown chance and "agrees with the market"
     const b1 = ctx.T.tdBlend({ fair: 40, price: 0.30, bid: 0.28 }), b2 = ctx.T.tdBlend({ fair: 40, price: 0.30, bid: 0.01, thin: true });

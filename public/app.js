@@ -294,7 +294,7 @@ function renderTdNow() {
   // Top 3 per team (10/5): beyond the three likeliest scorers the rest is noise.
   const perTeam = {}, top4 = rows.filter((x) => { const k = x.r.team; perTeam[k] = (perTeam[k] || 0) + 1; return perTeam[k] <= 3; });
   const shown = top4;
-  if (!rows.length) { $("td").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">No players yet — tap Model (the ▶ button on the right).</div></div>'; return; }
+  if (!rows.length) { $("td").innerHTML = `<div class="card" style="margin-top:10px"><div class="s">${VIEW === "next" ? "Next week's early estimates aren't ready yet — tap Model (the ▶ button) to run them now." : "No players yet — tap Model (the ▶ button on the right)."}</div></div>`; return; }
   $("td").innerHTML = moveBox + `<div class="card tdl"><div class="tdh"><span style="flex:1;padding-left:28px">PLAYER</span><span style="width:74px;text-align:right">MODEL</span><span style="width:60px;text-align:right;white-space:nowrap">${pmLogo()}PRICE</span></div>${shown.map(tdRow).join("")}</div>` +
     '<div class="s dim" style="text-align:center;margin-top:8px">Tap a row for snaps, 2+ TDs and first TD.</div>';
 }
@@ -871,8 +871,8 @@ $("refresh-btn").onclick = async () => {
 };
 $("rerun-btn").onclick = async () => {
   const b = $("rerun-btn"); b.disabled = true; toast("Rerunning both models at current lines — up to a couple of minutes…", 0);
-  try { const d = await (await fetch("/api/rerun", { method: "POST" })).json(); if (!d.ok) throw new Error(d.error); await loadSlate();
-    toast(`Model rerun: ${d.rerun} games, TD for ${d.td}.${d.errors && d.errors.length ? " Errors: " + d.errors.join("; ") : ""}`, 10000);
+  try { const nx = VIEW === "next", d = await (await fetch(nx ? "/api/rerun?week=next" : "/api/rerun", { method: "POST" })).json(); if (!d.ok) throw new Error(d.error); if (nx) await loadNext(); else await loadSlate();
+    toast(`${nx ? "Next week's early estimates" : "Model rerun"}: ${d.rerun} games, TD for ${d.td}.${d.errors && d.errors.length ? " Errors: " + d.errors.join("; ") : ""}`, 10000);
   } catch (e) { toast("Rerun failed: " + e.message, 12000); }
   b.disabled = false;
 };
