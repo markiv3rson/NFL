@@ -424,6 +424,11 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ctx.T.renderTd(); const rows = (box.innerHTML.match(/class="tdr"/g) || []).length, ownA = (box.innerHTML.match(/A\.P\d/g) || []);
     ok(rows === 6 && /top 3 per team/.test(hdr.innerHTML) && !/Show everyone/.test(box.innerHTML) && !/A\.P3/.test(box.innerHTML) && /A\.P2/.test(box.innerHTML), "touchdown tab: three players per team, no 'Show everyone' button");
     ctx.document.getElementById = old; }
+  { // touchdown row: a "+N vs price" mark only when the blended chance beats the price by 5+; calibration rows show their noise
+    const mk = (fair, price) => ctx.T.tdRow({ r: { player: "X.Y", team: "A", pos: "WR", fair, price, bid: price - 0.02, game: "A @ B", flags: [] }, g: { key: "A @ B", away: "A", home: "B" } }, 0);
+    ok(/\+\d+ vs price/.test(mk(60, 0.40)) && !/vs price/.test(mk(40, 0.40)), "touchdown row: marks a player only when the blend beats the price by 5+");
+    const cal = ctx.T.tdCalibration([...Array(24)].map((_, i) => ({ fair: 40, scored: i < 7 })));
+    ok(/scored 29% ±9/.test(cal) && /too few to trust/.test(cal), "calibration rows: show the margin of error and flag small samples"); }
   { // blended touchdown chance and "agrees with the market"
     const b1 = ctx.T.tdBlend({ fair: 40, price: 0.30, bid: 0.28 }), b2 = ctx.T.tdBlend({ fair: 40, price: 0.30, bid: 0.01, thin: true });
     ok(b1 && Math.abs(b1.mid - 29) < 1e-9 && Math.abs(b1.blend - 34.5) < 1e-9 && b2 === null && ctx.T.tdBlend({ fair: 40, price: 0.3, bid: 0.28, stale: true }) === null && ctx.T.tdBlend({ fair: 40, price: null }) === null, "touchdown blend: half the model, half the market mid, only on a real market");
