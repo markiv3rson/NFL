@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import RedisMock from "ioredis-mock";
 globalThis.__TEST_REDIS__ = new RedisMock();
 const { toProb, toAmerican, ncdf, ninv, kellyStake, isThinMarket, SD_MARGIN, shiftCover } = await import("../lib/odds.js");
+const { playedLastGame } = await import("../lib/snaps.js");
 const { spreadPick, totalPick, winPctAt, gameBets, priceTd, nameMatches, tdRows, rosterPosFor } = await import("../lib/picks.js");
 const { twoPlus, firstTdShares, applyCalibration, buildCalibration } = await import("../lib/calibration.js");
 const { logEdges, gradeEdges, edgeSummary } = await import("../lib/edges.js");
@@ -429,6 +430,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(/\+\d+ vs price/.test(mk(60, 0.40)) && !/vs price/.test(mk(40, 0.40)), "touchdown row: marks a player only when the blend beats the price by 5+");
     const cal = ctx.T.tdCalibration([...Array(24)].map((_, i) => ({ fair: 40, scored: i < 7 })));
     ok(/scored 29% ±9/.test(cal) && /too few to trust/.test(cal), "calibration rows: show the margin of error and flag small samples"); }
+  ok(playedLastGame({ missed: false, pct: 88 }) && !playedLastGame({ missed: true, pct: 60 }) && !playedLastGame({ missed: false, pct: 0 }) && !playedLastGame(null), "was-out tag: a player who played his team's last game is never tagged as out");
   { // next-week view: toggle only when next week's slate is loaded; the swap puts next week's games in S while drawing and restores S after
     const keepS = vm.runInContext("S", ctx);
     vm.runInContext(`NEXT = null; VIEW = "this"`, ctx); ok(ctx.T.weekToggle() === "", "next week: no toggle until next week's slate is loaded");
