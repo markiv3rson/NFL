@@ -109,6 +109,11 @@ function leanCell(g, kind) {
   let p = kind === "total" ? g.totalPick : g.spreadPick;
   const head = `<div class="k">Model leans${injApplied(g, kind) ? ' <span class="pill p-y" style="padding:0 6px;font-size:10px">Estimate</span>' : ""}</div>`;
   const wrap = (inner) => `<div class="modelcell" style="grid-row:span 2">${head}${inner}</div>`;
+  if (!p && g.early && g.model && g.model.homeMargin != null) {   // next week before any market line: the model's own numbers, labeled
+    const m = g.model, side = m.homeMargin >= 0 ? `${g.home} -${m.homeMargin.toFixed(1)}` : `${g.away} -${(-m.homeMargin).toFixed(1)}`, wp = m.homeWinPct != null ? Math.round(m.homeWinPct >= 50 ? m.homeWinPct : 100 - m.homeWinPct) : null;
+    return wrap(`${earlyNote(g)}<div style="margin-top:6px"><b class="mod">${kind === "total" ? `Total ${m.total.toFixed(1)}` : side}</b></div>` +
+      `<div class="s">${kind === "total" ? "The model's own total, before any market line." : `The model's own line${wp != null ? ` · ${m.homeWinPct >= 50 ? g.home : g.away} wins ${wp}%` : ""}. No market line to compare yet.`}</div>`);
+  }
   if (!p) return wrap(dash);
   // finished games hide warnings under the cover
   if (p.warn && g.final) p = { ...p, warn: null };

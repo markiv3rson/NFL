@@ -431,6 +431,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const cal = ctx.T.tdCalibration([...Array(24)].map((_, i) => ({ fair: 40, scored: i < 7 })));
     ok(/scored 29% ±9/.test(cal) && /too few to trust/.test(cal), "calibration rows: show the margin of error and flag small samples"); }
   ok(playedLastGame({ missed: false, pct: 88 }) && !playedLastGame({ missed: true, pct: 60 }) && !playedLastGame({ missed: false, pct: 0 }) && !playedLastGame(null), "was-out tag: a player who played his team's last game is never tagged as out");
+  { const ge = { key: "A @ B", away: "A", home: "B", early: true, spreadPick: null, totalPick: null, model: { homeMargin: 5.1, total: 44.9, homeWinPct: 66.4 } };
+    const sp = ctx.T.leanCell(ge, "spread"), tt = ctx.T.leanCell(ge, "total");
+    ok(/B -5\.1/.test(sp) && /B wins 66%/.test(sp) && /Early estimate/.test(sp) && /Total 44\.9/.test(tt) && !/<em>—|class="dim">—/.test(sp), "early games: the Model leans boxes show the model's own spread, win chance and total, labeled");
+    ok(!/B -5/.test(ctx.T.leanCell({ ...ge, early: false }, "spread")), "not early: the boxes stay blank without a market line"); }
   { // next-week view: toggle only when next week's slate is loaded; the swap puts next week's games in S while drawing and restores S after
     const keepS = vm.runInContext("S", ctx);
     vm.runInContext(`NEXT = null; VIEW = "this"`, ctx); ok(ctx.T.weekToggle() === "", "next week: no toggle until next week's slate is loaded");
