@@ -1,5 +1,5 @@
 // NFL SLATEZZZ — everything comes from /api/slate (lines, TD, flags) and /api/mybets + /api/results/list (Record).
-let tdShowAll = false, WINALL = false;
+let WINALL = false;
 let PAPER = null, PICKS = null;
 let S = null, RES = null, EDGES = null, MB = null, tdSort = "likely", recView = "mine";
 const $ = (id) => document.getElementById(id);
@@ -280,14 +280,12 @@ function renderTd() {
     .filter((x) => x.r.fair != null && usable(x.r)).sort((a, b) => b.r.fair - a.r.fair);
   const moves = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).filter((r) => r.move).map((r) => r)).sort((a, b) => Math.abs(b.move) - Math.abs(a.move)).slice(0, 10);
   const moveBox = moves.length ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Price moves (5¢+, real markets)</div>${moves.map((r) => `<div class="row"><span>${esc(r.player)} <span class="dim">${esc(r.game)}</span></span><span class="${r.move > 0 ? "g" : "r"}">${r.move > 0 ? "▲ +" : "▼ "}${r.move}¢</span></div>`).join("")}</div></div>` : "";
-  // Top 4 per team (10/5): beyond the four likeliest scorers the rest is noise. "Show everyone" is still one tap away.
+  // Top 4 per team (10/5): beyond the four likeliest scorers the rest is noise.
   const perTeam = {}, top4 = rows.filter((x) => { const k = x.r.team; perTeam[k] = (perTeam[k] || 0) + 1; return perTeam[k] <= 4; });
-  const shown = tdShowAll ? rows : top4;
+  const shown = top4;
   if (!rows.length) { $("td").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">No players yet — tap Model (the ▶ button on the right).</div></div>'; return; }
   $("td").innerHTML = moveBox + `<div class="card tdl"><div class="tdh"><span style="flex:1;padding-left:28px">PLAYER</span><span style="width:74px;text-align:right">MODEL</span><span style="width:60px;text-align:right;white-space:nowrap">${pmLogo()}PRICE</span></div>${shown.map(tdRow).join("")}</div>` +
-    (rows.length > top4.length ? `<div class="center"><button class="btn" id="td-all">${tdShowAll ? "Show top 4 per team only" : `Show everyone (${rows.length} players)`}</button></div>` : "") +
     '<div class="s dim" style="text-align:center;margin-top:8px">Tap a row for snaps, 2+ TDs and first TD.</div>';
-  if ($("td-all")) $("td-all").onclick = () => { tdShowAll = !tdShowAll; renderTd(); };
 }
 // ---------- Record: Mine ----------
 const RESMARK = { W: '<span class="g">✓</span>', L: '<span class="r">✗</span>', P: '<span class="dim">=</span>', pending: '<span class="dim">•</span>' };
