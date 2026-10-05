@@ -123,3 +123,5 @@ Next week early (10/5): Game Lines and Anytime TD have a "This week / Next week 
 Next-week Model button (10/5): with "Next week" selected, the ▶ Model button runs `/api/rerun?week=next` (the early estimates) and the empty list says the early estimates aren't ready yet.
 
 Was-out tag fix (10/5): the "WAS OUT" / "RETURNING" tag and the "last week out" note are no longer shown for a player whose snap counts show he played his team's most recent game (`playedLastGame` in `lib/snaps.js`). The injury feed's latest report can be older than that game; Nacua, who played a full game, was still tagged. Display only, the chance is unchanged.
+
+Early game boxes + cache fix (10/5): on next-week games with no market line yet, the Model leans boxes show the model's own spread, win chance and total, labeled "Early estimate" (they stay blank on any other game without a line). The early run now also clears the per-week slate cache (`SLATE_CACHE:wN`), so the Next week view fills in right after it finishes instead of up to 2 minutes later.
