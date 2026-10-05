@@ -22,8 +22,12 @@ export default async function handler(req, res) {
   const base = modelBase();
   if (!base) return res.status(500).json({ ok: false, error: "MODEL_SERVICE_URL not set in Vercel" });
   try {
-    const season = SEASON, week = await currentWeek(season);
+    const season = SEASON, curWeek = await currentWeek(season);
+    // ?week=next runs the NEXT week early, before Polymarket lists lines or prices (10/5): the TD model then uses the game model's own
+    // spread and total, and the result is flagged "early" until a normal rerun at real lines replaces it.
+    const early = req.query.week === "next" || (Number(req.query.week) > curWeek && Number(req.query.week) === curWeek + 1), week = early ? curWeek + 1 : curWeek;
     const all = await loadGames(season, week), games = all.filter((g) => !started(g));
+    if (early && !games.length) return res.status(200).json({ ok: true, week, rerun: 0, early, note: "no games scheduled for that week yet" });
     if (!games.length) return res.status(200).json({ ok: true, week, rerun: 0, note: "every game has started — nothing to rerun" });
     const injMeta = await loadInjuriesMeta().catch(() => null), injuries = injMeta ? injMeta.teams : {}, injPrev = injMeta ? injMeta.prev || {} : {};
     const espn = await loadEspnInjuries().catch(() => null);
@@ -88,7 +92,9 @@ export default async function handler(req, res) {
       awayQbFirstStart: !!qbFirstStart(snaps[x.away], injFor(x.away, x.kickoff), week),
       inj: { away: injFor(x.away, x.kickoff), home: injFor(x.home, x.kickoff) } })) });
     if (!Array.isArray(lines.results)) throw new Error(`model service /rerun-game-lines gave no results: ${JSON.stringify(lines).slice(0, 200)}`);   // was silent: a service-side error object looked like "0 games"
-    const tdIn = payload.filter((x) => x.spread != null && x.total != null);
+    // No market line yet (early run): feed the TD model the game model's own spread and total (home-favored margin -> away spread sign).
+    const ownLine = (x) => { const r = (lines.results || []).find((q) => q.game === x.key); return r && !r.error && r.homeSpread != null && r.total != null ? { spread: -r.homeSpread, total: r.total } : null; };
+    const tdIn = payload.map((x) => (x.spread != null && x.total != null ? x : (() => { const o = ownLine(x); return o ? { ...x, ...o, own: true } : null; })())).filter(Boolean);
     const td = tdIn.length ? await post(base, "/rerun-td-probs", { games: tdIn.map((x) => ({ away: x.away, home: x.home, spread: x.spread, total: x.total, outs: x.outs, active: x.active, returning: x.returning })) }) : { results: [] };
     const store = (await getJSON(K.model(season, week))) || { games: {}, td: {} };
     const runAt = new Date().toISOString();
@@ -113,13 +119,13 @@ export default async function handler(req, res) {
         mktHomeSpread: x.spread != null ? -x.spread : null, mktTotal: x.total ?? null, teamPts: r.teamPts || null, fix: r.fix || null,
         inj: r.inj || null, wind: x.wind, outdoor: x.outdoor, runAt, source: "rerun" };
       nLines++;
-      alertJobs.push(alertsFromRerun(SEASON, x, oldRun, store.games[x.key]).catch(() => 0));   // injuries, QB, model moves, wind -> alerts (10/1)
+      if (!early) alertJobs.push(alertsFromRerun(SEASON, x, oldRun, store.games[x.key]).catch(() => 0));   // injuries, QB, model moves, wind -> alerts (10/1)
     });
     (td.results || []).forEach((r) => {
       const x = byGame(tdIn, r);
       if (!x) return errors.push(`unmatched TD result: ${r.game}`);
       if (r.error) return errors.push(`${x.key} TD: ${r.error}`);
-      store.td[x.key] = { away: r.away, home: r.home, awayGroups: r.awayGroups || null, homeGroups: r.homeGroups || null, outs: r.excluded, linesUsed: { homeSpread: -x.spread, total: x.total }, runAt };
+      store.td[x.key] = { away: r.away, home: r.home, awayGroups: r.awayGroups || null, homeGroups: r.homeGroups || null, outs: r.excluded, linesUsed: { homeSpread: -x.spread, total: x.total }, ...(x.own ? { early: true } : {}), runAt };
       nTd++;
     });
     if (td && td.error) errors.push(`TD: ${String(td.error).slice(0, 120)}`);
@@ -128,12 +134,12 @@ export default async function handler(req, res) {
     await Promise.all(alertJobs);
     await setJSON(K.model(season, week), store);
     // Rerun history: every run with its inputs and outputs (logged only; included in Export)
-    if ((req.query.src || "manual") !== "manual") await setJSON("auto:last", { t: runAt, what: `model rerun (${req.query.src})` });
+    if (!early && (req.query.src || "manual") !== "manual") await setJSON("auto:last", { t: runAt, what: `model rerun (${req.query.src})` });
     await getRedis().lpush(`rerunlog:${season}:${week}`, JSON.stringify({ t: runAt, src: req.query.src || "manual",
       games: payload.map((x) => ({ key: x.key, inputs: { homeSpread: x.spread == null ? null : -x.spread, total: x.total, wind: x.wind, outs: x.outs.length },
         model: store.games[x.key] || null, td: (store.td[x.key] ? [...store.td[x.key].away, ...store.td[x.key].home].map((p) => [p.name, p.fair]) : null) })) }));
     await getRedis().ltrim(`rerunlog:${season}:${week}`, 0, 60);
     await getRedis().del(SLATE_CACHE).catch(() => {});   // new model numbers show immediately
-    res.status(200).json({ ok: true, week, rerun: nLines, td: nTd, skippedTd: payload.length - tdIn.length, locked: all.length - games.length, errors });
+    res.status(200).json({ ok: true, week, rerun: nLines, td: nTd, early, skippedTd: payload.length - tdIn.length, locked: all.length - games.length, errors });
   } catch (err) { await logError("rerun", err).catch(() => {}); res.status(500).json({ ok: false, error: String(err) }); }
 }

@@ -1,6 +1,7 @@
 // NFL SLATEZZZ — everything comes from /api/slate (lines, TD, flags) and /api/mybets + /api/results/list (Record).
 let WINALL = false;
 let PAPER = null, PICKS = null;
+let NEXT = null, VIEW = "this";   // NEXT = next week's slate (early estimates), VIEW = which week Game Lines and Anytime TD show
 let S = null, RES = null, EDGES = null, MB = null, tdSort = "likely", recView = "mine";
 const $ = (id) => document.getElementById(id);
 const dash = '<span class="dim">—</span>';
@@ -273,9 +274,19 @@ function tdRow(x, i) {
     `<div class="mp"><em>${Math.round(r.fair)}%</em><div class="bar"><i style="width:${Math.min(100, r.fair)}%"></i></div></div><div class="pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${(() => { const b = tdBlend(r); return b && b.blend - r.price * 100 >= 5 ? `<div class="g" style="font-size:10px">+${Math.round(b.blend - r.price * 100)} vs price</div>` : ""; })()}</div></div>` +
     `<div class="more" style="--tc:${TEAM_COLOR[r.team] || "#444"};--logo:url(${logoUrl(r.team)})">${prow(r, g, true)}</div></div>`;
 }
-function renderTd() {
+// Next-week view (10/5): the slate for next week has the same shape as this week's, so for Game Lines and Anytime TD the page just
+// swaps S for it while drawing. Everything else (Bets, Models, countdown) keeps this week's data.
+function withView(fn) { if (VIEW === "next" && NEXT && NEXT.games && NEXT.games.length) { const keep = S; S = NEXT; try { return fn(); } finally { S = keep; } } return fn(); }
+function weekToggle() {
+  if (!(NEXT && NEXT.games && NEXT.games.length)) return "";
+  const b = (v, label) => `<button class="btn" data-view="${v}" style="${VIEW === v ? "border-color:var(--cyan,#5ec8e5);color:#fff" : ""}">${label}</button>`;
+  return `<div class="center" style="display:flex;gap:8px;justify-content:center;margin:10px 0 4px">${b("this", "This week")}${b("next", `Next week (Week ${NEXT.week})`)}</div>`;
+}
+const earlyNote = (g) => (g && g.early ? '<span class="pill p-y" style="padding:0 6px;font-size:10px">Early estimate · no market line yet</span>' : "");
+function renderTd() { withView(renderTdNow); }
+function renderTdNow() {
   const wk = S.week ? ` · Week ${S.week}` : "";
-  $("td-header").innerHTML = `<b style="color:#d3d8e0">Anytime TD${wk}</b> · top 3 per team · most likely first`;
+  $("td-header").innerHTML = `<b style="color:#d3d8e0">Anytime TD${wk}</b> · top 3 per team · most likely first` + (S.games.some((g) => g.early) ? ` · ${earlyNote({ early: true })}` : "") + weekToggle();
   const rows = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).map((r) => ({ r, g })))
     .filter((x) => x.r.fair != null && usable(x.r)).sort((a, b) => b.r.fair - a.r.fair);
   const moves = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).filter((r) => r.move).map((r) => r)).sort((a, b) => Math.abs(b.move) - Math.abs(a.move)).slice(0, 10);
@@ -783,15 +794,16 @@ function setBg(g) {
 }
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = "";
-  $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}<div class="sh" style="margin:16px 2px 0">SPREAD &amp; ML</div><div class="grid">${gameCard(g, "x")}</div><div class="sh" style="margin:16px 2px 0">TOTALS</div><div class="grid">${totalCard(g, "x")}</div>${tdTop3(g)}`;
+  $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>. Prices and market lines appear once Polymarket lists them; touchdown chances are re-run then.</div></div></div>` : ""}<div class="sh" style="margin:16px 2px 0">SPREAD &amp; ML</div><div class="grid">${gameCard(g, "x")}</div><div class="sh" style="margin:16px 2px 0">TOTALS</div><div class="grid">${totalCard(g, "x")}</div>${tdTop3(g)}`;
   $("back-btn").onclick = closeGame;
   setBg(g);
 }
-function renderLines() {
+function renderLines() { withView(renderLinesNow); }
+function renderLinesNow() {
   if (DETAIL) { const g = S.games.find((x) => x.key === DETAIL); if (g) return renderDetail(g); DETAIL = null; }
   setBg(null);
   $("detail").style.display = "none"; $("lines").style.display = "";
-  $("lines").innerHTML = gapStrip() + changedBox() + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
+  $("lines").innerHTML = weekToggle() + (VIEW === "next" ? "" : gapStrip() + changedBox()) + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
     '<div class="s dim" style="text-align:center;margin-top:10px">Tap a game for everything on it. Percent = market-based win chance (away · home).</div>';
 }
 function openGame(key) { LASTY = (typeof window !== "undefined" && window.scrollY) || 0; DETAIL = key; renderLines(); if (window.scrollTo) window.scrollTo(0, 0); const g = S.games.find((x) => x.key === key); if (g && g.started && !g.final) liveLoop(); }
@@ -832,6 +844,11 @@ function renderAll() { weekline(); renderLines(); renderTd(); if (PAPER) renderL
 // Newest version all the time (9/30): if a new deploy went live while this page was open (or sat in a phone tab),
 // reload once to pick it up; data refreshes on its own when you come back to the tab after 2+ minutes.
 let BUILD = null, LOADED_AT = 0, LOAD_SEQ = 0;
+async function loadNext() {   // next week's slate (early estimates); a failure just hides the toggle
+  const wk = S && S.week ? S.week + 1 : null; if (!wk) return;
+  const d = await (await fetch(`/api/slate?week=${wk}`, { cache: "no-store" })).json();
+  NEXT = d && d.ok && d.games && d.games.length ? d : null; if (!NEXT) VIEW = "this";
+  renderLines(); renderTd(); }
 async function loadSlate() {
   const seq = ++LOAD_SEQ, r = await fetch("/api/slate", { cache: "no-store" }), build = r.headers.get("x-build"), d = await r.json();
   if (!d.ok) throw new Error(d.error);
@@ -843,6 +860,7 @@ async function loadSlate() {
   const openTd = [...document.querySelectorAll(".tdr")].map((e, i) => (e.classList.contains("open") ? i : -1)).filter((i) => i >= 0);   // and open player rows
   renderAll(); for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
   if (openTd.length) { const rows = document.querySelectorAll(".tdr"); for (const i of openTd) if (rows[i]) rows[i].classList.add("open"); }
+  loadNext().catch(() => {});
   try { localStorage.setItem("lastSeen", new Date().toISOString()); } catch {} }   // next visit's "What changed" starts from now
 $("refresh-btn").onclick = async () => {
   const b = $("refresh-btn"); b.disabled = true; toast("Pulling current Polymarket lines…", 0);
@@ -873,6 +891,7 @@ $("bell").onclick = () => { ALPREV = alSeen(); if (ALERTS.length) { try { localS
 $("al-read").onclick = () => { ALPREV = ALERTS.length ? ALERTS[0].t : ""; renderAlerts(); };
 document.addEventListener("click", (e) => {
   const d = e.target.closest("[data-drop]"); if (d) { const el = $(d.dataset.drop); if (el) el.classList.toggle("open"); return; }
+  const vw = e.target.closest("[data-view]"); if (vw) { VIEW = vw.dataset.view; DETAIL = null; renderLines(); renderTd(); return; }
   const gt = e.target.closest("[data-game]"); if (gt) { openGame(gt.dataset.game); return; }
   const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k) { showPanel("lines"); openGame(k); } return; }
   const gb = e.target.closest("[data-gbw]"); if (gb) { GBGWEEK = gb.dataset.gbw === "all" ? "all" : Number(gb.dataset.gbw); $("gbg").innerHTML = gbgHtml(); return; }

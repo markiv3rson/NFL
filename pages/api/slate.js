@@ -9,6 +9,8 @@ export default async function handler(req, res) {
   try {
     const cacheable = !req.query.week;
     res.setHeader("x-build", BUILD);   // which deployment answered (the page reloads itself when this changes)
+    const wkKey = req.query.week ? `${SLATE_CACHE}:w${Number(req.query.week)}` : null;   // a requested week (the page's "Next week" view) is cached 2 minutes under its own key
+    if (wkKey) { const c = await getRedis().get(wkKey).catch(() => null); if (c) { res.setHeader("Content-Type", "application/json"); return res.status(200).send(c); } }
     if (cacheable) { const c = await getRedis().get(SLATE_CACHE).catch(() => null); if (c) { res.setHeader("Content-Type", "application/json"); return res.status(200).send(c); } }
     const inj = await loadInjuriesMeta().catch(() => null), injuries = inj ? inj.teams : null;
     const data = await buildWeek({ week: Number(req.query.week) || undefined, injuries, injuriesPrev: inj ? inj.prev : null });
@@ -21,6 +23,7 @@ export default async function handler(req, res) {
     const winners = await winnersSummary(data.season).catch(() => null), picks = await picksSummary(data.season).catch(() => null);
     const body = JSON.stringify({ ok: true, ...data, winners, picks, injuries: undefined, injuriesUpdated: inj ? inj.updated : null, status, weekCheck, missFinder, now: new Date().toISOString() });
     if (cacheable) await getRedis().set(SLATE_CACHE, body, "EX", 60).catch(() => {});
+    else if (wkKey) await getRedis().set(wkKey, body, "EX", 120).catch(() => {});
     res.setHeader("Content-Type", "application/json"); res.status(200).send(body);
   } catch (err) { res.status(500).json({ ok: false, error: String(err) }); }
 }

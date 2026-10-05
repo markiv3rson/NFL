@@ -5,6 +5,7 @@ Calls the site's /api/snapshot on Mark's schedule, Pacific time:
   Mon-Sat: 7 AM, 12 PM, 3 PM, 7 PM           (Polymarket + sportsbooks)
   Every kickoff: 3 minutes before -> closing-line snapshot (Polymarket; books reused)
   Every distinct kickoff wave: ~60 min before -> model rerun (catches that wave's active/inactive news)
+  8 AM Pacific daily: next week's early estimates (/api/rerun?week=next)
   Every 15 min: a new nflverse final -> model rerun (src=postgame)
   Nightly 11:45 PM + hourly at :20 (6 AM-11 PM): grade finished games and sync the Polymarket account
 Env: SITE_URL (https://nfl-nfl9.vercel.app), SITE_LOGIN ("user:password" for the site's login).
@@ -178,6 +179,11 @@ def _loop():
                 tag = f"r:{now_pt:%Y-%m-%d-%H}-{now_pt.minute // 30}"
                 # marked done only once it actually started: a rerun still busy from an earlier wave is retried next loop (9/30)
                 if tag not in fired and _bg("rerun", _call, "/api/rerun?src=auto"): fired[tag] = time.time()
+            # Next week's early estimates (10/5): once a day, 8:00-8:59 AM, run next week's TD and game models on the model's own
+            # lines so the site can show percentages before Polymarket lists markets. Same "rerun" slot, so it never overlaps another.
+            if now_pt.hour == 8:
+                tag = f"r:next:{now_pt:%Y-%m-%d}"
+                if tag not in fired and _bg("rerun", _call, "/api/rerun?week=next&src=early"): fired[tag] = time.time()
             # Kickoff-wave reruns: one rerun per distinct kickoff time (10 AM, 1:05, 1:25, 5:20, TNF, SNF, MNF...),
             # fired ~60 min before that wave kicks off -- after teams must confirm active/inactive (~90 min before
             # kickoff) but with enough buffer that the news has settled. Catches every wave, not just the 9:05 AM
