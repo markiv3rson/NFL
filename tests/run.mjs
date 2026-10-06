@@ -431,6 +431,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     await gradeEdges(SEASON, 4, { key: "MIA @ MIN", home: "MIN", away: "MIA", homeScore: 15, awayScore: 10, nvSpread: 10, nvTotal: 38.5 });
     const el2 = await R.hgetall(`edgelog:${SEASON}:4`);
     ok(!el2["MIA @ MIN|MIA ML"] && el2["MIA @ MIN|MIN ML"] && JSON.parse(el2["MIA @ MIN|MIN ML"]).result === "W", "edge tracker: a moneyline spot at an impossible price is removed, the real one is graded");
+    const { gradeEdgesWeek } = await import("../lib/edges.js");
+    await R.hset(`edgelog:${SEASON}:4`, "LAC @ SEA|LAC ML", JSON.stringify({ game: "LAC @ SEA", market: "ml", label: "LAC ML", team: "LAC", price: 0.95, fair: 0.99, result: "L", pl: -1 }));
+    await R.hset(`edgelog:${SEASON}:4`, "LAC @ SEA|SEA ML", JSON.stringify({ game: "LAC @ SEA", market: "ml", label: "SEA ML", team: "SEA", price: 0.7, fair: 0.75, result: "W", pl: 0.43 }));
+    await gradeEdgesWeek(SEASON, 4, [{ key: "LAC @ SEA", home: "SEA", away: "LAC", homeScore: 30, awayScore: 23, nvSpread: 7, nvTotal: 44 }]);
+    const el3 = await R.hgetall(`edgelog:${SEASON}:4`);
+    ok(!el3["LAC @ SEA|LAC ML"] && el3["LAC @ SEA|SEA ML"], "edge tracker: an already-graded spot from a corrupt read is removed too; a real graded one stays");
     const { recordWinner, gradeWinnersWeek } = await import("../lib/paper.js");
     await recordWinner(SEASON, 4, { key: "MIA @ MIN", away: "MIA", home: "MIN", nvSpread: 10 }, { spread: { homeSpread: 19.5 } }, "t");
     const w1 = JSON.parse(await R.hget(`winners:${SEASON}:4`, "MIA @ MIN"));
