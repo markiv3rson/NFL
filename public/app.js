@@ -124,7 +124,7 @@ function leanCell(g, kind) {
   // calibration slightly fades the model. Within 2.5 pts of 50% it now says so; the tilt stays visible in small text.
   const coin = Math.abs(p.pct - 50) < 2.5;
   const agrees = coin && p.gap != null && p.gap <= 1;   // the model and the market are within a point: it agrees with the market
-  return wrap((coin ? `<span>${agrees ? '<b class="g">Agrees with the market</b>' : `<b class="mod">${esc(p.label)}</b> <span class="dim">· weak lean</span>`}</span><div class="s">${agrees ? `Model's side: <b class="mod">${esc(p.label)}</b> · ` : ""}${p.gap != null ? p.gap.toFixed(1) : "?"} pts off the line. Picks like this have won about ${Math.round(p.pct)}% of the time (break-even is 52.4%)</div>` :
+  return wrap((coin ? `<span>${agrees ? '<b class="g">Agrees with the market</b>' : `<b class="mod">${esc(p.label)}</b> <span class="dim">· weak lean</span>`}</span><div class="s">${agrees ? `Model's side: <b class="mod">${esc(p.label)}</b> · ` : ""}${p.gap != null ? p.gap.toFixed(1) : "?"} pts off the line. Picks like this have won about ${Math.round(p.pct)}% of the time</div>` :
     `<span>${p.label}</span><div class="s">${p.pct.toFixed(1)}% model chance</div>`) +
     (reason ? `<div class="s" style="margin-top:6px">${esc(reason)}</div>` : "") +
     (wind ? `<div class="s">${wind}</div>` : "") +
@@ -157,7 +157,7 @@ function winnersBox(mode = "picks") {
   const rec = W && W.all && W.all.n ? `<div class="row"><span class="dim">MONEYLINE · all picks</span><span>${W.all.w}–${W.all.l} · right ${pc(W.all.hit)} <span class="dim">(said ${pc(W.all.said)})</span></span></div>` +
     (W.top4 && W.top4.n ? `<div class="row"><span class="dim">MONEYLINE · each week's top 4</span><span>${W.top4.w}–${W.top4.l} · right ${pc(W.top4.hit)} <span class="dim">(said ${pc(W.top4.said)})</span></span></div>` : "") : '<div class="s dim">The record starts after this week\'s games: each pick is saved at kickoff and graded when the game ends.</div>';
   if (mode === "records") return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Records · model's side</div>${rec}${W && W.stats && W.stats.n ? `<div class="row"><span class="dim">Moneyline · stats-only model (no market)</span><span>${W.stats.w}–${W.stats.l} · right ${pc(W.stats.hit)}</span></div>` : ""}${pickRec("spread", "Spreads")}${pickRec("total", "Totals")}</div></div>`;
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Model's pick on every game</div><div class="s dim">Saved at kickoff and graded after the game. This is how the model is tracked, not a bet.</div>` +
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Model's pick on every game</div>` +
     (list.slice(0, WINALL ? 99 : 8).map((x, i) => { const g = S.games.find((y) => y.key === x.game), sides = g ? modelSide(g) : [], sp = sides.find((s) => s.market === "Spread"), tt = sides.find((s) => s.market === "Total");
       const tdp = g ? (g.td || []).filter((r) => r.fair != null && !/^(out|doubtful)$/i.test(r.injury || "")).sort((a, b) => b.fair - a.fair)[0] : null;   // the game's most likely scorer
       return `<div class="row" style="display:block"><div style="display:flex;justify-content:space-between;gap:8px"><span>${i + 1}. <b>${esc(x.team)}</b> over ${esc(x.opp)}</span><span>${Math.round(x.p * 100)}%${x.price ? ` <span class="dim">· ${Math.round(x.price * 100)}¢</span>` : ""}</span></div>` +
@@ -221,7 +221,7 @@ function totalCard(g, i) {
     const poly = liveHead(g, lv, "total") + (p.total ? `${live}` + row(`Over ${p.total.line}`, odds(toAmerican(p.total.over))) + row(`Under ${p.total.line}`, odds(toAmerican(p.total.under))) : dash) + liveTail(g, lv, "total");
     // Tested angle (10/1): outdoor games with 12+ mph wind went Under the closing total 56.1% of the time, 2007-25 (786 games), and it
     // beat break-even in all three periods (53.7 / 58.1 / 56.7%). The slope is real too: each mph takes ~0.18 pts off what the line allows for.
-    const wd = g.model && g.model.outdoor && g.model.wind != null && g.model.wind >= 12 && !g.final && p.total ? `<div class="s g" style="margin:6px 0 0">★ Tested angle: Under ${p.total.line} (wind forecast ${Math.round(g.model.wind)} mph). 2007–25: outdoor games with 12+ mph wind went Under 56.1% (786 games) and beat break-even (52.4%) in all three periods. History uses the recorded wind, and forecasts can miss.</div>` : "";
+    const wd = g.model && g.model.outdoor && g.model.wind != null && g.model.wind >= 12 && !g.final && p.total ? `<div class="s g" style="margin:6px 0 0">★ Tested angle: Under ${p.total.line} (wind forecast ${Math.round(g.model.wind)} mph).</div>` : "";
     return `<div class="card${g.final ? " fin" : ""}"><div class="inner">${headButtons(g, "t" + i, "", true)}${wd}<div class="f">${HDR}` +
       `<div><div class="k">SPORTSBOOK</div>${b.total ? `${b.total.line}<div class="s">O ${odds(b.total.over.odds)} · U ${odds(b.total.under.odds)}</div>` : dash}</div>` +
       leanCell(g, "total") +
@@ -300,7 +300,7 @@ function renderTd() {
   $("td-header").innerHTML = `<b style="color:#d3d8e0">Anytime TD${wk}</b> · top 3 per team · most likely first` + (S.games.some((g) => g.early) ? ` · ${earlyNote({ early: true })}` : "");
   let html = tdBody(false);
   if (hasNext()) html += `<div class="sh" style="margin:22px 2px 0"><b style="color:#d3d8e0">Next week · Week ${NEXT.week}</b> <span class="dim">· top 3 per team · most likely first</span> ${NEXT.games.some((g) => g.early) ? earlyNote({ early: true }) : ""}</div>` + withData(NEXT, () => tdBody(true));
-  $("td").innerHTML = html + '<div class="s dim" style="text-align:center;margin-top:8px">Tap a row for snaps, 2+ TDs and first TD.</div>';
+  $("td").innerHTML = html + '';
 }
 // ---------- Record: Mine ----------
 const RESMARK = { W: '<span class="g">✓</span>', L: '<span class="r">✗</span>', P: '<span class="dim">=</span>', pending: '<span class="dim">•</span>' };
@@ -351,8 +351,8 @@ function betsAnalysis(bets) {
     return `<div class="row"><span>${LK[kk] || kk} <span class="dim">· ${k.n} legs</span></span><span>hit <b>${Math.round(hit)}%</b> · paid ${Math.round(paid)}¢ · <b class="${d > 3 ? "g" : d < -3 ? "r" : "dim"}">${d > 0 ? "+" : "−"}${Math.abs(d).toFixed(0)} pts</b>${small(k.n)}</span></div>`; }).join("");
   const sizeRows = Object.keys(bySize).map(Number).sort((a, b) => a - b).map((z) => { const k = bySize[z];
     return `<div class="row"><span>${z === 1 ? "Singles" : z + "-leg combos"} <span class="dim">· ${k.n}</span></span><span>${k.w} won · ${cMoney(k.pl)}${k.cost ? ` <span class="dim">(${cPct(k.pl / k.cost)})</span>` : ""}${small(k.n)}</span></div>`; }).join("");
-  return `<div class="s"><b>Each leg type: hit rate against what you paid</b> <span class="dim">(points above or below break-even)</span></div>${legRows}<div class="s" style="margin-top:8px"><b>By combo size</b></div>${sizeRows || '<div class="s dim">No settled combos yet.</div>'}` +
-    `<div class="s dim" style="margin-top:6px">From ${nLegs} settled legs of your typed-in combos. Leg prices are what you paid; the Week 4 combo's leg prices are estimates.</div>`;
+  return `<div class="s"><b>Each leg type: hit rate against what you paid</b></div>${legRows}<div class="s" style="margin-top:8px"><b>By combo size</b></div>${sizeRows || '<div class="s dim">No settled combos yet.</div>'}` +
+    "";
 }
 // The numbers in the Bets tiles and Summary, from the bets being shown. One function so a week's numbers and the season's always add up.
 function betsSummary(shown) {
@@ -415,12 +415,12 @@ function pastBox() {
   const bars = PAST.map((r) => `<div class="pb"><i style="height:${Math.round(((r[3] - 40) / 35) * 52) + 6}px;background:${col(r[3])}"></i></div>`).join("");
   const yrs = PAST.map((r) => `<span>${String(r[0]).slice(2)}</span>`).join("");
   return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Past seasons · favorite won %</div><div class="pbars">${bars}</div><div class="pyrs">${yrs}</div>` +
-    `<div class="s dim" style="margin-top:6px">Green 65%+, amber 62–65%, red below. Average: winners ${f(avg(3))} · spreads ${f(avg(1))} · totals ${f(avg(2))}.</div>` +
+    `<div class="s dim" style="margin-top:6px">Average: winners ${f(avg(3))} · spreads ${f(avg(1))} · totals ${f(avg(2))}.</div>` +
     `<div class="fold" data-drop="pasttbl"><span>Full table by season</span><span>▾</span></div><div class="drop" id="pasttbl">` +
     `<div class="row"><span class="dim">Season</span><span class="dim">WINNER (MARKET) · WINNER (STATS) · SPREAD · TOTAL</span></div>` +
     PAST.slice().reverse().map((r) => `<div class="row"><span>${r[0]}</span><span>${f(r[3])} · ${f(r[4])} · ${f(r[1])} · ${f(r[2])}</span></div>`).join("") +
     `<div class="row"><b>Average</b><b>${f(avg(3))} · ${f(avg(4))} · ${f(avg(1))} · ${f(avg(2))}</b></div>` +
-    `<div class="s dim" style="margin-top:4px">Winner = the team picked to win straight up. Spread and total = the model's side of the closing line. The model's settings were fit on these same years, so treat the older totals with caution; this season's live record is the clean test.</div></div></div></div>`;
+    `</div></div></div>`;
 }
 // Results page: every section collapses to one tappable heading, so the page is a short list instead of a wall of rows.
 // Watchdog warnings stay visible above the list. All sections start closed; a ⚠ count shows next to a heading that has warnings.
@@ -500,7 +500,7 @@ function tdByDefense(players) {
 // One collapsible section: a heading, one plain line saying what it means, then the content. warn = a count shown next to the heading.
 function mSec(id, title, meaning, body, warn = 0, open = false) {
   return `<div class="fold" data-drop="${id}"><span><b>${esc(title)}</b>${warn ? ` <span class="y">⚠ ${warn}</span>` : ""}</span><span>▾</span></div>` +
-    `<div class="drop${open ? " open" : ""}" id="${id}"><div class="s dim" style="margin:2px 0 6px">${esc(meaning)}</div>${body}</div>`;
+    `<div class="drop${open ? " open" : ""}" id="${id}">${body}</div>`;
 }
 // Closing-line value of the model's spread and total sides: did the market move toward the pick after it was first posted?
 // Points = the number at the open minus the number at the close, from the pick's side (positive = the market moved toward the model).
@@ -510,7 +510,7 @@ function clvSummary(res) {
     const avg = xs.reduce((a, x) => a + x.clvPts, 0) / xs.length, up = xs.filter((x) => x.clvPts > 0).length, dn = xs.filter((x) => x.clvPts < 0).length;
     return `<div class="row"><span class="dim">${name} · vs the closing line</span><span><b class="${avg > 0.05 ? "g" : avg < -0.05 ? "r" : "dim"}">${avg > 0 ? "+" : avg < 0 ? "−" : ""}${Math.abs(avg).toFixed(2)} pts</b> avg · ${up} better, ${dn} worse, ${xs.length - up - dn} same${xs.length < 30 ? ' <span class="dim">· small sample</span>' : ""}</span></div>`; };
   const rows = one("spread", "SPREAD side") + one("total", "TOTAL side");
-  return rows ? rows + '<div class="s dim">Better = the number was more generous when first posted than at kickoff, so the market later moved toward the model\'s side.</div>' : "";
+  return rows ? rows : "";
 }
 function renderModelNow() {
   if (!MB || !RES) { $("models").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }
@@ -575,7 +575,7 @@ function renderModelNow() {
       (() => { const c = tdPx.filter((p) => p.openAsk > 0 && p.openBid > 0 && p.openAsk - p.openBid <= Math.min(0.05, 0.4 * p.openAsk) && mp(p) > p.openAsk)   /* opening price must be a real market too */
           .map((p) => (p.bid + p.ask) / 2 / ((p.openAsk + p.openBid) / 2) - 1);   // mid vs mid (was closing mid vs opening ASK: read negative with no move)
         return `<div class="row"><span class="dim">Did prices move toward the model? (model above the opening price)</span><span>${c.length ? `${cPct(c.reduce((a, x) => a + x, 0) / c.length)} avg · ${c.length} players` : "starts Week 4 (needs opening prices)"}</span></div>`; })() +
-      '<div class="s dim">Closing prices, before fees, real markets only. The test of whether the TD model beats Polymarket.</div>';
+      '';
   }
   const st = S.status, wc = S.weekCheck || { games: 0, withLines: 0, modelRun: false, watch: [] };
   const stOk = st && st.ok && !st.creditWarning;
@@ -630,10 +630,10 @@ function renderModelNow() {
     mSec("m-ang", "5 · Tracked angles", "Betting rules tested on paper, each with its record and whether it holds up in past seasons.", pickLabBox()) +
     mSec("m-gap", "6 · Price gaps", "Spots where Polymarket was cheaper than the sportsbooks, and how they turned out.", edgeRows) +
     mSec("m-trend", "7 · Trends and analysis", "How the models are changing week to week, whether higher confidence really wins more, and where the touchdown chances run high or low.",
-      `<div class="s"><b>Hit rate by week</b> <span class="dim">(bars: green beats break-even, amber near it, red below)</span></div>` + (modelsByWeek(res) || '<div class="s">Fills in as games go final.</div>') +
+      `<div class="s"><b>Hit rate by week</b></div>` + (modelsByWeek(res) || '<div class="s">Fills in as games go final.</div>') +
       `<div class="s" style="margin-top:8px"><b>Does more confidence win more? (moneyline)</b></div>` + modelsByConfidence(res) +
       `<div class="s" style="margin-top:8px"><b>Touchdown chances vs what happened</b></div>` + tdCalibration(tdAll) +
-      (() => { const pl = tdPlayersWithDefense(res); return `<div class="s" style="margin-top:8px"><b>By position</b> <span class="dim">(does the model do better at RB, WR or TE?)</span></div>` + tdByPosition(pl) + `<div class="s" style="margin-top:8px"><b>By opponent defense</b> <span class="dim">(opponent's points allowed in its other games)</span></div>` + tdByDefense(pl); })()) +
+      (() => { const pl = tdPlayersWithDefense(res); return `<div class="s" style="margin-top:8px"><b>By position</b></div>` + tdByPosition(pl) + `<div class="s" style="margin-top:8px"><b>By opponent defense</b></div>` + tdByDefense(pl); })()) +
     mSec("m-miss", "8 · Misses and every game", "Where the model keeps getting it wrong, and each graded game by week.", `<div class="s"><b>Miss finder</b></div>` + ((S.missFinder && S.missFinder.misses && S.missFinder.misses.length) ?
       S.missFinder.misses.map((m) => `<div class="row" style="display:block"><b>${esc(m.pattern)}</b><div class="s">${esc(m.note)}</div></div>`).join("") :
       '<div class="s">No consistent misses found yet this season.</div>') + `<div class="s" style="margin-top:8px"><b>Game-by-game results</b></div><div id="gbg">${games || '<div class="s">None yet.</div>'}</div>`) +
@@ -697,7 +697,7 @@ function pickLabBox() {
   const bands = ["spread", "total"].map((m) => (P[m] && P[m].bands || []).filter((b) => b.graded).map((b) => `<div class="row"><span class="dim">${m === "spread" ? "Spread" : "Total"} · model differs by ${b.label}</span><span>${b.w}–${b.l} · ${pc(b.hit)}</span></div>`).join("")).join("");
   return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Tracked angles · paper only</div>` +
     arow("spread", "SPREADS · model side") + arow("total", "TOTALS · model side") + arow("dog", "Road dogs +3 to +6.5") + arow("away3", "Road team, spread 3 or less") + arow("wind", "Under, wind 12+ mph") + arow("lowloss", "Underdog off a loss scoring 10 or fewer") + arow("prebye", "Home team before its bye (wk 8+)") +
-    `<div class="s dim" style="margin-top:6px">Saved at kickoff, graded after. Green 55%+, amber 50–55%, red under 50%. Tested: ~51% on spreads (break-even 52.4%), ~50% on totals. Judge after 100+ picks.</div>` +
+    "" +
     (bands ? `<div class="fold" data-drop="labbands"><span>By how far the model differs from the line</span><span>▾</span></div><div class="drop" id="labbands">${bands}</div>` : "") + `</div></div>`;
 }
 let LAB_SB = "", REPLAY = null;
@@ -717,7 +717,7 @@ function replayBox() {
     REPLAY.rows.map((r) => `<div class="rp"><span>${esc(r.name)}${r.note ? `<span class="dim rn">${esc(r.note)}</span>` : ""}</span><span class="${r.kind === "win" ? "dim" : r.hit > 0.524 || (r.kind === "ml" && r.roi > 0) ? "g" : "r"}">${pc(r.hit)}<span class="dim rn"> n=${r.n}</span></span><span>${live(r)}</span><span class="${cls[r.verdict] || "dim"}"><b>${esc(r.verdict)}</b></span></div>`).join("") +
     `<div class="fold" data-drop="replayper"><span>By period</span><span>▾</span></div><div class="drop" id="replayper">` +
     REPLAY.rows.filter((r) => r.kind !== "win").map((r) => `<div class="row"><span>${esc(r.name)}</span><span class="dim">${r.periods.map((p) => `${esc(p.label)} ${pc(p.hit)}`).join(" · ")}</span></div>`).join("") + `</div>
-    <div class="s dim" style="margin-top:6px">Break-even is 52.4% on spreads and totals (positive return on moneylines). YES = beat it in all three periods; UNSTABLE = beat it overall but not in every period; TOO FEW = under 100 games. Closing lines from sportsbooks, not Polymarket prices. The two model rows are a fixed 2013–25 backtest of the core ratings.</div></div></div>`;
+</div></div>`;
 }
 // Long-run history of a parlay rule (lib/replay.js parlayHistory): the rule replayed week by week on past seasons at moneyline prices.
 function parlayHistLine(id) {
@@ -748,7 +748,7 @@ function renderLab() {
   const rows = (!Object.keys(names).some((k) => board[k] && board[k].graded) ? '<div class="s dim">No graded parlays yet. History below is each rule replayed on past seasons.</div>' : "") + Object.keys(names).map((k) => { const b = board[k]; const rv = b && b.review, rc = rv ? ({ HOLDS: "g", UNDERSTATED: "g", PAYING: "g", OVERSTATED: "r", LOSING: "r" }[rv.verdict] || "dim") : "dim";
     const hist = parlayHistLine(k);
     return `<div class="row" style="display:block"><div style="display:flex;justify-content:space-between;gap:8px"><span class="dim">${esc(names[k])}</span><span>${b ? `${b.hits} of ${b.graded} hit${b.graded ? ` (${pct(b.hitRate)}, model said ${pct(b.expRate)})` : ""} · return ${b.roi == null ? "—" : cPct(b.roi)}` : "—"}</span></div>${rv ? `<div class="s"><b class="${rc}">${esc(rv.verdict)}</b> <span class="dim">${esc(rv.note)}</span></div>` : ""}${hist}</div>`; }).join("");
-  LAB_SB = `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Parlay scoreboard · this season</div>${rows}<div class="s dim" style="margin-top:4px">Types with no history line need the model's own past numbers, so they are judged on live results only. Return per $1, before fees. Each type is judged after ${30} graded parlays by a rule set in advance: HOLDS = it hit about as often as the model said, OVERSTATED = its chances run too high (the model gets fixed, not the picker). Parlays are streaky.</div></div></div>`;
+  LAB_SB = `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Parlay scoreboard · this season</div>${rows}</div></div>`;
   $("lab").innerHTML = intro + `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Your model's parlays · week ${wk ? wk.week : S ? S.week : ""} (paper only, nothing is bet)</div>${thisWeek}</div></div>` + LAB_SB;
   if (MB && RES) renderModel();   // the Models tab reads the same data
 }
@@ -831,7 +831,7 @@ function tdGameLine(gr, rows) {
   const waiting = rows.filter((r) => { const p = gr.map.get(tdKey(r.team, r.player)); return p && !p.scored && p.played === undefined; }).length;
   if (!gp.length) return waiting ? `<div class="s y" style="margin:12px 2px 0">Touchdowns: waiting for snap counts (posted a few hours after the game).</div>` : "";
   const hit = gp.filter((x) => x.p.scored).length, exp = gp.reduce((a, x) => a + x.r.fair, 0) / 100;
-  return `<div class="s" style="margin:12px 2px 0"><b>Touchdowns:</b> model's top ${gp.length} · ${hit} scored · expected ${exp.toFixed(1)}${waiting ? ` · <span class="y">${waiting} waiting for snap counts</span>` : ""}<div class="dim">Counted with every graded player in Models → Touchdowns. One game proves little; the total over many games checks the percentages.</div></div>`;
+  return `<div class="s" style="margin:12px 2px 0"><b>Touchdowns:</b> model's top ${gp.length} · ${hit} scored · expected ${exp.toFixed(1)}${waiting ? ` · <span class="y">${waiting} waiting for snap counts</span>` : ""}</div>`;
 }
 function tdTop3(g) {
   const gr = g.final ? tdGradeMap(g) : null, shown = [];
@@ -879,7 +879,7 @@ function renderLines() {
   $("detail").style.display = "none"; $("lines").style.display = "";
   $("lines").innerHTML = gapStrip() + changedBox() + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
     (hasNext() ? `<div class="sh" style="margin:22px 2px 6px"><b style="color:#d3d8e0">Next week · Week ${NEXT.week}</b> ${NEXT.games.some((g) => g.early) ? earlyNote({ early: true }) : ""}</div><div class="tiles">${withData(NEXT, () => [...NEXT.games].sort(order).map(tile).join(""))}</div>` : "") +
-    '<div class="s dim" style="text-align:center;margin-top:10px">Tap a game for everything on it. Percent = market-based win chance (away · home).</div>';
+    '';
 }
 function openGame(key) { LASTY = (typeof window !== "undefined" && window.scrollY) || 0; DETAIL = key; renderLines(); if (window.scrollTo) window.scrollTo(0, 0); const g = S.games.find((x) => x.key === key); if (g && g.started && !g.final) liveLoop(); }
 function closeGame() { DETAIL = null; renderLines(); if (window.scrollTo) window.scrollTo(0, LASTY); }
