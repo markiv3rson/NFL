@@ -124,7 +124,7 @@ function leanCell(g, kind) {
   // calibration slightly fades the model. Within 2.5 pts of 50% it now says so; the tilt stays visible in small text.
   const coin = Math.abs(p.pct - 50) < 2.5;
   const agrees = coin && p.gap != null && p.gap <= 1;   // the model and the market are within a point: it agrees with the market
-  return wrap((coin ? `<span>${agrees ? '<b class="g">Agrees with the market</b>' : `<b class="mod">${esc(p.label)}</b> <span class="dim">· weak lean</span>`}</span><div class="s">${agrees ? `Model's side: <b class="mod">${esc(p.label)}</b> · ` : ""}${p.gap != null ? p.gap.toFixed(1) : "?"} pts off the line. Picks this close to the line have won about ${Math.round(p.pct)}% of the time (break-even is 52.4%)</div>` :
+  return wrap((coin ? `<span>${agrees ? '<b class="g">Agrees with the market</b>' : `<b class="mod">${esc(p.label)}</b> <span class="dim">· weak lean</span>`}</span><div class="s">${agrees ? `Model's side: <b class="mod">${esc(p.label)}</b> · ` : ""}${p.gap != null ? p.gap.toFixed(1) : "?"} pts off the line. Picks like this have won about ${Math.round(p.pct)}% of the time (break-even is 52.4%)</div>` :
     `<span>${p.label}</span><div class="s">${p.pct.toFixed(1)}% model chance</div>`) +
     (reason ? `<div class="s" style="margin-top:6px">${esc(reason)}</div>` : "") +
     (wind ? `<div class="s">${wind}</div>` : "") +
