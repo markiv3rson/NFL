@@ -324,7 +324,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const h = ctx.T.betsAnalysis(bets);
     ok(/Touchdowns <span class="dim">· 3 legs<\/span>[\s\S]*hit <b>33%<\/b> · paid 43¢ · <b class="r">−10 pts/.test(h), "bets analysis: touchdown legs hit 1 of 3 against an average 43¢ price = −10 points");
     ok(/Spreads <span class="dim">· 2 legs/.test(h) && /Totals <span class="dim">· 1 legs/.test(h) && !/99/.test(h), "bets analysis: legs of unfinished combos count once graded; account bets are left out");
-    ok(/3-leg combos <span class="dim">· 1<\/span>/.test(h) && /2-leg combos <span class="dim">· 1<\/span>/.test(h) && /From 6 settled legs/.test(h), "bets analysis: by combo size, and the leg total matches (3 + 2 + 1 graded legs)");
+    ok(/3-leg combos <span class="dim">· 1<\/span>/.test(h) && /2-leg combos <span class="dim">· 1<\/span>/.test(h) && !/settled legs of your typed-in combos/.test(h), "bets analysis: by combo size, no explanation footnote");
     ok(/Fills in as your combos settle/.test(ctx.T.betsAnalysis([])) && /Fills in as your combos settle/.test(ctx.T.betsAnalysis([{ source: "preloaded", legs: [L("td", "pending", 0.4)], result: "pending" }])), "bets analysis: says so when nothing has settled"); }
   { // closing-line value: hand-worked, and the grading helper
     const mk = (k, c) => ({ [k]: { basis: "model", clvPts: c } });
@@ -591,7 +591,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ctx.T.renderModel(); const h = box.innerHTML;
     const order = ["1 · Scoreboard", "2 · Winners", "3 · Spreads and totals", "4 · Touchdowns", "5 · Tracked angles", "6 · Price gaps", "7 · Trends and analysis", "8 · Misses and every game", "9 · System"].map((x) => h.indexOf(x));
     ok(order.every((x, i) => x > 0 && (i === 0 || x > order[i - 1])), "models tab: nine sections, in order");
-    ok((h.match(/class="s dim" style="margin:2px 0 6px"/g) || []).length === 9, "models tab: every section opens with a one-line meaning");
+    ok((h.match(/class="fold" data-drop="m-/g) || []).length === 9 && !/class="s dim" style="margin:2px 0 6px"/.test(h) && !/break-even/i.test(h), "models tab: nine sections, no explanation lines, no break-even talk");
     ok(/Hit rate by week/.test(h) && /Week 3/.test(h) && /Week 4/.test(h) && /Touchdown chances vs what happened/.test(h) && /Game-by-game results|id="gbg"/.test(h) && !/Parlay scoreboard/.test(h), "models tab: trends and every-game list present, parlay scoreboard kept out");
     const bw = ctx.T.modelsByWeek(res), bc = ctx.T.modelsByConfidence(res), tc = ctx.T.tdCalibration(res.flatMap((r) => r.td));
     ok(/Moneyline[\s\S]*50%[\s\S]*Spread[\s\S]*Total/.test(bw) && /Week 3/.test(bw), "models tab: hit rate by week");
