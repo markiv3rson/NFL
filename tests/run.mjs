@@ -425,6 +425,21 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     await gradeEdges(SEASON, 4, { key: "MIA @ MIN", home: "MIN", away: "MIA", homeScore: 15, awayScore: 10, nvSpread: 10, nvTotal: 38.5 });
     const el = await R.hgetall(`edgelog:${SEASON}:4`);
     ok(!el["MIA @ MIN|MIN +19.5"] && el["MIA @ MIN|Over 38.5"] && JSON.parse(el["MIA @ MIN|Over 38.5"]).result === "L", "edge tracker: a spot logged at an absurd line is removed, the normal one is graded");
+    // moneyline: a spot / winner built from the same corrupt read (MIA 95% at MIN) is removed or replaced; a real one is kept
+    await R.hset(`edgelog:${SEASON}:4`, "MIA @ MIN|MIA ML", JSON.stringify({ game: "MIA @ MIN", market: "ml", label: "MIA ML", team: "MIA", price: 0.95, fair: 0.99 }));
+    await R.hset(`edgelog:${SEASON}:4`, "MIA @ MIN|MIN ML", JSON.stringify({ game: "MIA @ MIN", market: "ml", label: "MIN ML", team: "MIN", price: 0.77, fair: 0.82 }));
+    await gradeEdges(SEASON, 4, { key: "MIA @ MIN", home: "MIN", away: "MIA", homeScore: 15, awayScore: 10, nvSpread: 10, nvTotal: 38.5 });
+    const el2 = await R.hgetall(`edgelog:${SEASON}:4`);
+    ok(!el2["MIA @ MIN|MIA ML"] && el2["MIA @ MIN|MIN ML"] && JSON.parse(el2["MIA @ MIN|MIN ML"]).result === "W", "edge tracker: a moneyline spot at an impossible price is removed, the real one is graded");
+    const { recordWinner, gradeWinnersWeek } = await import("../lib/paper.js");
+    await recordWinner(SEASON, 4, { key: "MIA @ MIN", away: "MIA", home: "MIN", nvSpread: 10 }, { spread: { homeSpread: 19.5 } }, "t");
+    const w1 = JSON.parse(await R.hget(`winners:${SEASON}:4`, "MIA @ MIN"));
+    ok(w1.team === "MIN" && w1.p > 0.7 && w1.p < 0.85, "winners: a pick built from an absurd spread is replaced by the sportsbook spread's favorite", w1);
+    await R.hset(`winners:${SEASON}:4`, "LAC @ SEA", JSON.stringify({ game: "LAC @ SEA", team: "LAC", where: "away", p: 0.95, week: 4 }));
+    await R.hset(`winners:${SEASON}:4`, "DEN @ SF", JSON.stringify({ game: "DEN @ SF", team: "SF", where: "home", p: 0.62, week: 4 }));
+    await gradeWinnersWeek(SEASON, 4, [{ key: "LAC @ SEA", home: "SEA", away: "LAC", homeScore: 30, awayScore: 23, nvSpread: 7 }, { key: "DEN @ SF", home: "SF", away: "DEN", homeScore: 24, awayScore: 14, nvSpread: 2.5 }]);
+    const wk = await R.hgetall(`winners:${SEASON}:4`);
+    ok(!wk["LAC @ SEA"] && JSON.parse(wk["DEN @ SF"]).result === "W", "winners: a stored 95% road pick that doesn't fit the closing spread is removed; a real one is graded");
     globalThis.fetch = realFetch; resetGamesCache(); for (const k of await R.keys(`*${SEASON}:4*`)) await R.del(k); }
   { const rb = ctx.T.replayBox();
     ok(/Road dogs \+3 to \+6\.5/.test(rb) && /53\.5%/.test(rb) && /UNSTABLE/.test(rb) && /<b>YES<\/b>/.test(rb) && /3–1/.test(rb) && /2 saved/.test(rb) && /7–3/.test(rb) && /2007–25/.test(rb), "replay card: history, live record, verdict, season range", rb.slice(0, 400));
