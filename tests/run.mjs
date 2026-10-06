@@ -138,7 +138,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   g = { away: "A", home: "H", model: { total: 44.4, fix: { dome: 2.59, pace: 0.1, div: true } }, poly: { total: { line: 45.5 } } };
   ok(/about 44\.4 total/.test(T.totalReason(g)) && /indoor game \+2\.6/.test(T.totalReason(g)), "totals wording");
   g = { away: "A", home: "H", winPct: 61.2, model: { homeMargin: 3, fix: {} }, spreadPick: { label: "H -2.5", pct: 51.1 }, poly: {} };
-  ok(/weak lean/.test(T.leanCell(g, "spread")) && !/about 50\/50/.test(T.leanCell(g, "spread")) && !/market-based/.test(T.leanCell(g, "spread")), "lean wording");
+  ok(/weak lean/.test(T.leanCell(g, "spread")) && !/about 50\/50/.test(T.leanCell(g, "spread")) && /Picks like this have won/.test(T.leanCell(g, "spread")) && !/this close/.test(T.leanCell(g, "spread")) && !/market-based/.test(T.leanCell(g, "spread")), "lean wording");
   const row = T.prow({ player: "O'Neil <b>", pos: "WR", team: "H", game: "A @ H", fair: 20.1, fairIfPlays: 30, injury: "Questionable", price: 0.25, teamRank: 2 }, { started: false }, false);
   ok(/30% if he plays/.test(row) && /O&#39;Neil &lt;b>/.test(row), "Questionable row + names escaped");
   ok(/check how Polymarket settled it/.test(T.betRow({ source: "preloaded", legs: [{ result: "W", kind: "total", side: "under", line: 43 }, { result: "P", kind: "total", side: "over", line: 44 }], result: "P", pushUnconfirmed: true, cost: 5, toWin: 20, pl: null })), "combo push wording");
@@ -383,6 +383,17 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     await R.set(`close:${SEASON}:4:CCC @ DDD`, JSON.stringify({ poly: {} })); await R.set(`close:${SEASON}:4:EEE @ FFF`, JSON.stringify({ poly: {} })); await R.set(`model:${SEASON}:4`, JSON.stringify({ games: { "EEE @ FFF": { homeMargin: 1 } }, td: {} }));
     await R.set(`res:${SEASON}:4:GGG @ HHH`, JSON.stringify({ v: 2, spread: { result: "W" }, td: [] })); await R.set(`res:${SEASON}:4:KKK @ LLL`, JSON.stringify({ v: 2, ml: { result: "W" } })); const u = await ungradedFinals(SEASON); const by = Object.fromEntries(u.map((x) => [x.key, x.reason]));
     ok(u.length === 4 && /^graded without its spread and total picks \(no closing line was saved\) or its touchdown results$/.test(by["KKK @ LLL"]) && by["AAA @ BBB"] === "no closing line was saved" && by["CCC @ DDD"] === "no model numbers were saved" && by["EEE @ FFF"] === "waiting for the official touchdown data" && !by["GGG @ HHH"] && !by["III @ JJJ"], "ungraded finals: reason per game; graded games and games under 12 h old are left out");
+    globalThis.fetch = realFetch; resetGamesCache(); for (const k of await R.keys(`*${SEASON}:4*`)) await R.del(k); }
+  { // moneyline sanity (10/4: "MIA ML 95%" at MIN, "LAC ML 95%" at SEA, from a corrupt read) and the old-record watchdog
+    const { mlOk, homeWinFromSpread } = await import("../lib/sane.js");
+    ok(!mlOk("MIA ML", 95, "MIN", 10) && !mlOk("LAC ML", 95, "SEA", 7) && mlOk("MIN ML", 77, "MIN", 10) && mlOk("CHI ML", 53, "CHI", 3.5) && mlOk("BAL ML", 82, "BAL", 9.5) && mlOk("X ML", 95, "Y", null) && mlOk("X ML", null, "Y", 3), "moneyline sanity: a pick whose chance doesn't fit the closing spread is dropped, a real one (even a big favorite) is kept");
+    ok(Math.abs(homeWinFromSpread(0) - 50) < 0.01 && homeWinFromSpread(10) > 70 && homeWinFromSpread(-10) < 30 && Math.abs(homeWinFromSpread(3) + homeWinFromSpread(-3) - 100) < 0.01, "moneyline sanity: the spread-to-win-chance curve is symmetric and sensible");
+    const { ungradedFinals } = await import("../lib/grade.js"); const { SEASON, resetGamesCache } = await import("../lib/games.js"); const R = globalThis.__TEST_REDIS__; const realFetch = globalThis.fetch;
+    const H = "season,game_type,week,gameday,gametime,away_team,away_score,home_team,home_score,roof,stadium,location,surface\n", day = (n) => new Date(Date.now() - n * 86400e3).toISOString().slice(0, 10);
+    resetGamesCache(); globalThis.fetch = async (u) => (String(u).includes("games.csv") ? { ok: true, text: async () => H + `${SEASON},REG,4,${day(2)},13:00,OOO,10,PPP,20,o,s,Home,g\n` + `${SEASON},REG,4,${day(2)},13:00,QQQ,10,RRR,20,o,s,Home,g\n` } : { ok: false, text: async () => "" });
+    await R.set(`res:${SEASON}:4:OOO @ PPP`, JSON.stringify({ v: 2, ml: { result: "W" }, gradedAt: new Date(Date.now() - 10 * 86400e3).toISOString() })); await R.set(`res:${SEASON}:4:QQQ @ RRR`, JSON.stringify({ v: 2, ml: { result: "W" }, gradedAt: new Date().toISOString() }));
+    const u = await ungradedFinals(SEASON);
+    ok(u.length === 1 && u[0].key === "QQQ @ RRR", "watchdog: a game graded long ago without a part (it can never be completed) stops warning; a recent one still warns");
     globalThis.fetch = realFetch; resetGamesCache(); for (const k of await R.keys(`*${SEASON}:4*`)) await R.del(k); }
   { // absurd Polymarket lines (10/4: "MIN +19.5" when the real line was MIN -10, "SEA +20.5" vs SEA -7)
     const { spreadOk, totalOk, sanePoly, pickHomeSpread } = await import("../lib/sane.js"); const { parseGame } = await import("../lib/poly.js");
