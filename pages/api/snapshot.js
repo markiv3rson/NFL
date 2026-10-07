@@ -1,6 +1,7 @@
 // Takes a line snapshot: Polymarket lines + TD prices for every game that has NOT kicked off,
 // plus sportsbook consensus when books=1. Called by the Railway scheduler (7/12/3/7 PT, Sunday
 // 6/7/8/9/10/12/3 PT, and just before each kickoff with kickoff=<game>) and by the Refresh button.
+import { recordTeaser } from "../../lib/teaser";
 import { SEASON, currentWeek, loadGames, started } from "../../lib/games";
 import { getRedis, jparse, getJSON, setJSON, K, SLATE_CACHE } from "../../lib/redis";
 import { fetchEvents, gameLines, tdProps } from "../../lib/poly";
@@ -31,6 +32,8 @@ async function writePrelog(season, week, g, t, poly, bk, model) {
     model: mg ? { homeMargin: mg.homeMargin, total: mg.total, homeWinPct: mg.homeWinPct, calHomeCover: mg.calHomeCover, calUnder: mg.calUnder, mktHomeSpread: mg.mktHomeSpread, mktTotal: mg.mktTotal, runAt: mdl.runAt || null } : null, topTd });
   await recordPicks(season, week, g, poly, mg, t).catch(() => 0);   // Pick Lab: the model's side at the kickoff-time price (9/30)
   await recordWinner(season, week, g, poly, t, mg).catch(() => 0);      // Most likely winners: the favorite at kickoff (9/30)
+  { const alts = poly && poly.alts ? poly.alts : ((await getJSON(`alts:${season}:${week}:${g.key}`).catch(() => null)) || {}).alts || null;   // late close: the saved latest copy
+    await recordTeaser(season, week, g, alts ? { ...(poly || {}), alts } : poly, bk, t).catch(() => 0); }   // Teaser leg: underdog +1.5..+2.5 at +7.5..+8.5 (10/6)
 }
 
 export default async function handler(req, res) {
@@ -60,6 +63,9 @@ export default async function handler(req, res) {
       let poly = await gameLines(events, g.away, g.home).catch(() => null);
       { const sp = sanePoly(poly, g.nvSpread, g.nvTotal); poly = sp.poly;   // an alternate line read as the game line (10/4: "MIN +19.5") never gets saved
         if (sp.dropped.length) await logError("snapshot", `${g.key}: dropped implausible Polymarket line (${sp.dropped.join("; ")})`).catch(() => {}); }
+      // Alternate spreads (teaser legs, 10/6) are kept as ONE latest copy per game, not inside every snapshot (200 kept per game: it would
+      // add MBs a week to the database and to every page load).
+      const alts = poly && poly.alts ? poly.alts : null; if (alts) { poly = { ...poly }; delete poly.alts; await setJSON(`alts:${season}:${week}:${g.key}`, { t, alts }); }
       const snap = { t, src, poly: poly || null, books: books ? books[g.key] || null : undefined };
       // Bad-data guard: a line jumping this far between snapshots is almost always a feed glitch, not a real move
       const prevRaw = await redis.lindex(K.snaps(season, week, g.key), -1), prev = prevRaw ? (jparse(prevRaw) || {}).poly || null : null;
@@ -111,7 +117,7 @@ export default async function handler(req, res) {
       if (String(req.query.kickoff || "").split(",").includes(g.key)) {
         const bk = books ? books[g.key] : ((await getJSON(K.books(season, week))) || { games: {} }).games[g.key];
         await setJSON(K.close(season, week, g.key), { t, poly: poly || null, books: bk || null });
-        await writePrelog(season, week, g, t, poly || null, bk || null, model);
+        await writePrelog(season, week, g, t, poly ? (alts ? { ...poly, alts } : poly) : null, bk || null, model);
       }
     }));
     // Safety net: any started game without a closing line gets its last pre-kickoff snapshot.

@@ -1,6 +1,6 @@
 // NFL SLATEZZZ — everything comes from /api/slate (lines, TD, flags) and /api/mybets + /api/results/list (Record).
 let WINALL = false;
-let PAPER = null, PICKS = null;
+let PAPER = null, PICKS = null, TEASERS = null;
 let S = null, RES = null, EDGES = null, MB = null, tdSort = "likely", recView = "mine";
 const $ = (id) => document.getElementById(id);
 const dash = '<span class="dim">—</span>';
@@ -243,6 +243,12 @@ const retPill = (r) => (r.returning ? (r.returningState === "practicing" ? ' <sp
 // On 123 real-market players (Weeks 3-4) the 50/50 mix scored slightly better than either alone (0.2154 vs model 0.2158, market 0.2174):
 // a small sample, so the weight is fixed at 50/50 until about 500 graded players.
 const TD_BLEND_W = 0.5;
+// "No" mark (10/6): on a real market, the model is 5+ points under what a Yes sells for (the bid), so buying No looks cheap.
+// Same rule as the Models row "$1 on No when model is 5+ pts under".
+function tdNoGap(r) {
+  if (!r || r.fair == null || !(r.bid > 0) || !(r.price > 0) || r.stale || r.thin || r.price - r.bid > Math.min(0.05, 0.4 * r.price)) return null;
+  const gap = r.bid * 100 - r.fair; return gap >= 5 ? Math.round(gap) : null;
+}
 function tdBlend(r) {
   if (!r || r.fair == null || r.price == null || r.stale || r.thin || !(r.bid > 0)) return null;
   const mid = (r.price + r.bid) / 2 * 100;
@@ -276,7 +282,8 @@ function tdRow(x, i) {
   const r = x.r, g = x.g;
   return `<div class="tdr"><img class="wmc" loading="lazy" decoding="async" src="${logoUrl(r.team)}" alt="" onerror="this.style.display='none'"><div class="in"><span class="rk">${i + 1}</span>` +
     `<div class="nmx"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos)}</span>${r.injury && GAME_STATUS.test(r.injury) ? ` <span class="pill ${/out|doubt/i.test(r.injury) ? "p-r" : "p-y"}" style="padding:0 6px;font-size:10px">${esc(r.injury)}</span>` : ""}${retPill(r)}<div class="g2">${esc(r.game)}</div></div>` +
-    `<div class="mp"><em>${Math.round(r.fair)}%</em><div class="bar"><i style="width:${Math.min(100, r.fair)}%"></i></div></div><div class="pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${(() => { const b = tdBlend(r); return b && b.blend - r.price * 100 >= 5 ? `<div class="g" style="font-size:10px">+${Math.round(b.blend - r.price * 100)} vs price</div>` : ""; })()}</div></div>` +
+    `<div class="mp"><em>${Math.round(r.fair)}%</em><div class="bar"><i style="width:${Math.min(100, r.fair)}%"></i></div></div><div class="pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${(() => { const b = tdBlend(r); if (b && b.blend - r.price * 100 >= 5) return `<div class="g" style="font-size:10px">+${Math.round(b.blend - r.price * 100)} vs price</div>`;
+      return tdNoGap(r) != null ? `<div class="r" style="font-size:10px">No · ${tdNoGap(r)} under</div>` : ""; })()}</div></div>` +
     `<div class="more" style="--tc:${TEAM_COLOR[r.team] || "#444"};--logo:url(${logoUrl(r.team)})">${prow(r, g, true)}</div></div>`;
 }
 const earlyNote = (g) => (g && g.early ? '<span class="pill p-y" style="padding:0 6px;font-size:10px">Early estimate · no market line yet</span>' : "");
@@ -564,6 +571,10 @@ function renderModelNow() {
       (() => { const no = tdPx.filter((p) => 1 - mp(p) > 1 - p.bid);
         const plNo = no.reduce((a, p) => a + (!p.scored ? 1 / (1 - p.bid) - 1 : -1), 0);
         return `<div class="row"><span class="dim">$1 on No when model &lt; price</span><span>${no.filter((p) => !p.scored).length} of ${no.length} won · ${cMoney(plNo)} ${no.length ? `(${cPct(plNo / no.length)})` : ""}</span></div>`; })() +
+      // The same rule with a 5-point gap (10/6): the "No" mark on Anytime TD. On the 10/6 export it was 21 of 28 (+27%) vs +7.6% for any gap.
+      (() => { const no5 = tdPx.filter((p) => mp(p) <= p.bid - 0.05);
+        const pl5 = no5.reduce((a, p) => a + (!p.scored ? 1 / (1 - p.bid) - 1 : -1), 0);
+        return no5.length ? `<div class="row"><span class="dim">$1 on No when model is 5+ pts under</span><span>${no5.filter((p) => !p.scored).length} of ${no5.length} won · ${cMoney(pl5)} (${cPct(pl5 / no5.length)})${no5.length < 100 ? ' <span class="dim">· too few to trust</span>' : ""}</span></div>` : ""; })() +
       `<div class="row"><span class="dim">Scored vs priced</span><span>${(tdPx.filter((p) => p.scored).length / tdPx.length * 100).toFixed(0)}% scored · Polymarket priced ${(tdPx.reduce((a, p) => a + mk(p), 0) / tdPx.length * 100).toFixed(0)}% · model ${(tdPx.reduce((a, p) => a + mp(p) * 100, 0) / tdPx.length).toFixed(0)}%</span></div>` +
       // TD model CLV (added 9/29): for players where the model was above the OPENING price (first snapshot of the week),
       // did the closing price move toward the model? The fastest signal of real edge, long before win/loss means anything.
@@ -647,7 +658,7 @@ async function loadRecord(sync = false) {
   try {
     const [mb, rl, rp] = await Promise.all([fetch(`/api/mybets${sync ? "?sync=1" : ""}`, { cache: "no-store" }).then((r) => r.json()), fetch("/api/results/list", { cache: "no-store" }).then((r) => r.json()), fetch("/api/replay", { cache: "no-store" }).then((r) => r.json()).catch(() => null)]);
     if (rp && rp.ok) REPLAY = rp.replay;   // history table; a failed fetch just leaves the card out
-    if (!mb.ok) throw new Error(mb.error); stampUpdated(); MB = mb; RES = rl.ok ? rl.results : []; EDGES = rl.ok ? rl.edges : null; PAPER = rl.ok ? rl.paper : null; PICKS = rl.ok ? rl.picks : null; renderLab();
+    if (!mb.ok) throw new Error(mb.error); stampUpdated(); MB = mb; RES = rl.ok ? rl.results : []; EDGES = rl.ok ? rl.edges : null; PAPER = rl.ok ? rl.paper : null; PICKS = rl.ok ? rl.picks : null; TEASERS = rl.ok ? rl.teasers || null : null; renderLab();
     renderRecord();
     if (sync && mb.sync) toast(mb.sync.ok ? `Synced ${mb.sync.positions} positions.` : `Sync: ${mb.sync.note}`);
   } catch (e) { toast("Record failed: " + e.message, 10000); }
@@ -692,8 +703,22 @@ function pickLabBox() {
   const bands = ["spread", "total"].map((m) => (P[m] && P[m].bands || []).filter((b) => b.graded).map((b) => `<div class="row"><span class="dim">${m === "spread" ? "Spread" : "Total"} · model differs by ${b.label}</span><span>${b.w}–${b.l} · ${pc(b.hit)}</span></div>`).join("")).join("");
   return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Tracked angles · paper only</div>` +
     arow("spread", "SPREADS · model side") + arow("total", "TOTALS · model side") + arow("dog", "Road dogs +3 to +6.5") + arow("away3", "Road team, spread 3 or less") + arow("wind", "Under, wind 12+ mph") + arow("lowloss", "Underdog off a loss scoring 10 or fewer") + arow("prebye", "Home team before its bye (wk 8+)") +
-    "" +
+    teaserRow() +
     (bands ? `<div class="fold" data-drop="labbands"><span>By how far the model differs from the line</span><span>▾</span></div><div class="drop" id="labbands">${bands}</div>` : "") + `</div></div>`;
+}
+// Teaser legs (10/6): underdog +1.5..+2.5 bought at +7.5..+8.5 on Polymarket's alternate spread; record, return at the price paid, history.
+function teaserRow() {
+  const T = TEASERS; if (!T) return "";
+  const a = T.all || {}, v = T.value || {}, pc = (x) => (x == null ? "—" : `${Math.round(x * 100)}%`);
+  return `<div class="arow"><span class="nm">Underdog +1.5–2.5 teased to +7.5–8.5</span><span class="dim rc">${a.n ? `${a.w}–${a.l}` : T.recorded ? `${T.recorded} saved` : "none yet"}</span><b class="${a.n ? (a.hit >= 0.76 ? "g" : a.hit >= 0.72 ? "y" : "r") : "dim"}">${a.n ? pc(a.hit) : "—"}</b></div>` +
+    `<div class="s dim">History ${T.hist.years}: ${Math.round(T.hist.hit * 1000) / 10}% of ${T.hist.n}${a.priced ? ` · return ${cPct(a.roi)} at an average ${Math.round(a.avgPrice * 100)}¢` : ""}${v.n ? ` · at ${Math.round(T.maxPrice * 100)}¢ or less: ${v.w}–${v.l}${v.priced ? `, ${cPct(v.roi)}` : ""}` : ""}</div>`;
+}
+// Game Lines strip: this week's teaser legs and what Polymarket charges for each.
+function teaserStrip() {
+  const L = (S && S.teaserLegs) || []; if (!L.length) return "";
+  const nV = L.filter((x) => x.value).length;
+  const rows = L.map((x) => `<div class="row"><span>${esc(x.team)} +${x.line} <span class="dim">(from +${x.base}) · ${esc(x.game)}</span></span><span>${x.price != null ? `${Math.round(x.price * 100)}¢ ${x.value ? '<b class="g">✓ under 73¢</b>' : '<span class="dim">too high</span>'}` : '<span class="dim">no price yet</span>'}</span></div>`).join("");
+  return `<div class="gapstrip" data-drop="teaselist"><div class="t">Teaser legs · ${L.length} this week${nV ? ` · ${nV} priced right` : ""} ›</div></div><div class="drop" id="teaselist"><div class="card"><div class="inner">${rows}</div></div></div>`;
 }
 let LAB_SB = "", REPLAY = null;
 // Replay: every tracked pick rule on past seasons next to its live record; "YES" only when it beat break-even in all three periods.
@@ -888,7 +913,7 @@ function renderLines() {
   if (DETAIL) { const g = S.games.find((x) => x.key === DETAIL); if (g) return renderDetail(g); DETAIL = null; }
   setBg(null);
   $("detail").style.display = "none"; $("lines").style.display = "";
-  $("lines").innerHTML = gapStrip() + changedBox() + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
+  $("lines").innerHTML = gapStrip() + teaserStrip() + changedBox() + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
 
     '';
 }

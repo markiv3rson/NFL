@@ -3,6 +3,7 @@ import { SEASON } from "../../../lib/games";
 import { edgeSummary } from "../../../lib/edges";
 import { paperSummary, picksSummary } from "../../../lib/paper";
 import { currentWeek } from "../../../lib/games";
+import { teaserSummary } from "../../../lib/teaser";
 export default async function handler(req, res) {
   try {
     const redis = getRedis();
@@ -19,6 +20,6 @@ export default async function handler(req, res) {
     // This season only (9/30: after a rollover the Record tab mixed seasons); edge stats computed live, not from the last grading
     res.status(200).json({ ok: true, results: results.filter((r) => Number(r.season) === SEASON), edges: await edgeSummary(SEASON).catch(() => null),
       paper: await paperSummary(SEASON, await currentWeek(SEASON).catch(() => null)).catch(() => null),
-      picks: await picksSummary(SEASON).catch(() => null) });
+      picks: await picksSummary(SEASON).catch(() => null), teasers: await teaserSummary(SEASON).catch(() => null) });
   } catch (err) { res.status(500).json({ ok: false, error: String(err) }); }
 }
