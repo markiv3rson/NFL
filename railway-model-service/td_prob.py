@@ -256,11 +256,13 @@ def two_plus(p):
     p = np.clip(np.asarray(p, dtype=float), 0, 0.95); lam = -np.log(1 - p)
     return np.minimum(0.6, 1.044 * (1 - np.exp(-lam) * (1 + lam)))   # 10/1: 1.035 -> 1.044 once the 35% shrink was removed (plain Poisson 3.50% vs 3.66% actual 2019-25); 9/30: 1.09 -> 1.035 (with the team TD total, x1.09 ran 3.77% vs 3.58% actual)
 FIRST_OTHER = 0.4   # expected first-TD arrivals from non-listed scorers (QB runs, defense, special teams); best fit 2016-25
-def first_td(p_lists):
+FIRST_OTHER_QB = 0.28   # 10/6: once QBs are listed, "someone else" is defense/special teams: 0.275 TDs a game, 2022-25 (5.7% of first TDs)
+def first_td(p_lists, qb_lam=0.0):
     """Chance each player scores the game's FIRST touchdown. p_lists = one array of anytime chances per team (both teams together).
-    A player's share of the game's expected TDs, times the chance any TD happens. Brier 0.0471 vs 0.0486 for a flat guess."""
+    A player's share of the game's expected TDs, times the chance any TD happens. Brier 0.0471 vs 0.0486 for a flat guess.
+    qb_lam > 0 means the QBs are in p_lists (10/6): FIRST_OTHER (fit with QBs unlisted) is then replaced by FIRST_OTHER_QB."""
     allp = np.concatenate([np.clip(np.asarray(a, dtype=float), 0, 0.95) for a in p_lists]); lam = -np.log(1 - allp)
-    T = lam.sum() + FIRST_OTHER
+    T = lam.sum() + (FIRST_OTHER_QB if qb_lam > 0 else FIRST_OTHER)
     return [(-np.log(1 - np.clip(np.asarray(a, dtype=float), 0, 0.95))) / T * (1 - np.exp(-T)) for a in p_lists]
 def group_any(df, n=8):
     """Chance at least one RB / WR / TE of this team scores (top 8 by chance at each position, independent)."""
@@ -362,6 +364,75 @@ def pos_rec(defteam):
     ps=t.receiver_player_id.map(lambda i:{'FB':'RB','HB':'RB'}.get(pos.position.get(i),pos.position.get(i)))
     g=len(games[(games.home_team==defteam)|(games.away_team==defteam)])
     return {k:0.85*((ps==k).sum()+4*v)/(g+4)/v for k,v in AVG.items()}
+def _norm(t): return "".join(ch for ch in t.lower() if ch.isalpha() or ch == " ")
+def is_out_name(short, outs):
+    # Match pbp short name ("Bi.Robinson", "A.St.Brown") to a full name ("Bijan Robinson", "Amon-Ra St. Brown"):
+    # same last name AND the pbp first-name prefix starts the full first name. "Brian Robinson" out
+    # must NOT remove "Bi.Robinson".
+    if short in outs: return True
+    if "." not in short: return False
+    pre, rest = short.split(".", 1)
+    pre, rest = pre.lower(), _norm(rest).replace(" ", "")
+    for o in outs:
+        w = _norm(o.replace("-", " ").replace(".", " ")).split()
+        for a in range(1, len(w)):
+            acc = ""
+            for b in range(a, len(w)):
+                acc += w[b]
+                if acc == rest and (w[a - 1].startswith(pre) or (a > 1 and w[a - 2].startswith(pre))): return True
+                if len(acc) >= len(rest): break
+    return False
+
+# ---- Quarterback rushing touchdowns (10/6) ----
+# Before this the list held RB/WR/TE only, so running QBs (Allen, Hurts, Jackson...) never showed and their TDs sat in "someone else".
+# 2022-25: QBs scored 0.58 rushing TDs a game and 12.4% of games' FIRST touchdown. Model: logistic on the team's starter (most pass
+# attempts), from his rushing per start this season blended with last season (prior counts as 3 games): carries, red-zone carries,
+# inside-5 carries, rushing TDs, plus team implied points and the opponent's rush TDs allowed per game (shrunk 4 games to 0.55).
+# Walk-forward (train the 3 seasons before, test the next): Brier 2022 0.1243 vs 0.1341 flat, 2023 0.1288 vs 0.1415, 2024 0.1242 vs
+# 0.1362, 2025 0.1207 vs 0.1313 (4 of 4 better); said 13.4/24.1/36.3% vs 12.7/29.3/41.1% scored. Coefficients fit on 2023-25 starters
+# (qb_study.py reproduces them). The chance assumes he starts; Out/Doubtful QBs are skipped for the next QB with starts.
+QB_F = ['r_car', 'r_rz', 'r_i5', 'r_rtd', 'imp', 'o_rush']
+QB_COEF, QB_INT = np.array([0.186, 0.166, 0.091, 0.757, 0.001, 0.144]), -2.861
+def qb_starts(pbp):
+    """Per team-game: the starter (most pass attempts) and his rushing that game (kneels left out)."""
+    x = pbp[pbp.season_type == 'REG'] if 'season_type' in pbp else pbp
+    pa = x[x.pass_attempt == 1].groupby(['game_id', 'week', 'posteam', 'passer_player_id']).size().reset_index(name='att')
+    st = pa.sort_values('att').drop_duplicates(['game_id', 'posteam'], keep='last').rename(columns={'passer_player_id': 'pid', 'posteam': 'team'})
+    runs = x[(x.rush_attempt == 1) & (x.qb_kneel != 1) & x.rusher_player_id.notna()]
+    r = runs.groupby(['game_id', 'rusher_player_id']).agg(car=('rush_attempt', 'sum'), rz=('yardline_100', lambda v: (v <= 20).sum()),
+        i5=('yardline_100', lambda v: (v <= 5).sum()), rtd=('rush_touchdown', 'sum')).reset_index().rename(columns={'rusher_player_id': 'pid'})
+    return st.merge(r, on=['game_id', 'pid'], how='left').fillna({'car': 0, 'rz': 0, 'i5': 0, 'rtd': 0})
+def _build_qb():
+    try:
+        c, q = qb_starts(p), qb_starts(p_prev)
+        cur_qb = c.groupby(['pid', 'team']).agg(g=('game_id', 'nunique'), car=('car', 'sum'), rz=('rz', 'sum'), i5=('i5', 'sum'), rtd=('rtd', 'sum'), last=('week', 'max')).reset_index()
+        prior_qb = q.groupby('pid').agg(g=('game_id', 'nunique'), car=('car', 'sum'), rz=('rz', 'sum'), i5=('i5', 'sum'), rtd=('rtd', 'sum'))
+        prev_team = q.sort_values('week').drop_duplicates('pid', keep='last').set_index('pid')['team']
+        return cur_qb, prior_qb, prev_team
+    except Exception as e:
+        print(f"[td] QB tables failed: {e}", flush=True)
+        return pd.DataFrame(columns=['pid', 'team', 'g', 'car', 'rz', 'i5', 'rtd', 'last']), pd.DataFrame(), pd.Series(dtype=object)
+def qb_row(team, opp, imp, outs=()):
+    """The team's expected starting QB and his chance of a rushing TD, or None."""
+    o_rush, _ = dstats(opp)
+    mine = QB_CUR[QB_CUR.team == team].sort_values(['last', 'g'], ascending=False)   # the most recent starter first (a benching or injury shows up here)
+    cands = [(r.pid, r) for r in mine.itertuples()]
+    if not cands and len(QB_PREV_TEAM):   # team hasn't played yet: last season's starter still on the roster
+        cands = [(pid, None) for pid, tm in ROS_TEAM.items() if tm == team and pid in QB_PRIOR.index and QB_PRIOR.loc[pid].g >= 4]
+    for pid, r in cands:
+        name = names.get(pid, pid)
+        if unavailable(pid, team) or is_out_name(name, outs): continue
+        q = QB_PRIOR.loc[pid] if pid in QB_PRIOR.index else None
+        g0 = float(r.g) if r is not None else 0.0
+        def bl(k):
+            cur_v = float(getattr(r, k)) if r is not None else 0.0
+            if q is None: return cur_v / g0 if g0 else 0.0
+            return (cur_v + K * float(q[k]) / float(q.g)) / (g0 + K)
+        x = np.array([bl('car'), bl('rz'), bl('i5'), bl('rtd'), float(imp), float(o_rush)])
+        pq = float(1 / (1 + np.exp(-(QB_INT + QB_COEF @ x))))
+        return {'name': name, 'pos': 'QB', 'p': min(pq, 0.9), 'boosted': False, 'depth_note': None}
+    return None
+QB_CUR, QB_PRIOR, QB_PREV_TEAM = _build_qb()
 def run(team,opp,imp,outs=(),posadj=False,active=False,returning=()):
     o_rush,o_rec=dstats(opp); rows=[]
     mine = cur[cur.team==team]
@@ -395,24 +466,7 @@ def run(team,opp,imp,outs=(),posadj=False,active=False,returning=()):
     df['rz_shift']=[float(RZ_SHIFT.get(pid,0.0)) for pid in df.pid]
     df['depth_known']=[int(pid in DEPTH_KNOWN) for pid in df.pid]
     df['depth1']=[(1.0 if pid in DEPTH_STARTERS else 0.0) if pid in DEPTH_KNOWN else 0.5 for pid in df.pid]
-    def _norm(t): return "".join(ch for ch in t.lower() if ch.isalpha() or ch == " ")
-    def _is_out(short):
-        # Match pbp short name ("Bi.Robinson", "A.St.Brown") to a full name ("Bijan Robinson", "Amon-Ra St. Brown"):
-        # same last name AND the pbp first-name prefix starts the full first name. "Brian Robinson" out
-        # must NOT remove "Bi.Robinson".
-        if short in outs: return True
-        if "." not in short: return False
-        pre, rest = short.split(".", 1)
-        pre, rest = pre.lower(), _norm(rest).replace(" ", "")
-        for o in outs:
-            w = _norm(o.replace("-", " ").replace(".", " ")).split()
-            for a in range(1, len(w)):
-                acc = ""
-                for b in range(a, len(w)):
-                    acc += w[b]
-                    if acc == rest and (w[a - 1].startswith(pre) or (a > 1 and w[a - 2].startswith(pre))): return True
-                    if len(acc) >= len(rest): break
-        return False
+    _is_out = lambda short: is_out_name(short, outs)
     full = df[df.pos.isin(['RB','WR','TE'])].copy()
     outmask = full.name.apply(_is_out)
     df = full[~outmask].copy()
@@ -525,7 +579,7 @@ def refresh_live(max_age=1800):
     for days, until the next deploy -- so new games, snap counts, IR moves and depth changes never reached the TD
     numbers even though reruns kept running. Called at the start of every TD rerun and weekly retrain."""
     global pos, pg, dal, games, p, p_prev, prior, pr, cur, names, SNAP_NOW, _ros_nn, ROS_STATUS, ROS_TEAM, TEAM_WEEKS, PID_LAST_TOUCH, SNAP_TEAM_LAST
-    global PREV_TEAM, RZ_SHIFT, DEPTH_STARTERS, DEPTH_KNOWN, DEPTH_NOTE, _LIVE_T, CUR, CURRENT
+    global PREV_TEAM, RZ_SHIFT, DEPTH_STARTERS, DEPTH_KNOWN, DEPTH_NOTE, _LIVE_T, CUR, CURRENT, QB_CUR, QB_PRIOR, QB_PREV_TEAM
     # Season rollover (9/30): the server runs for months, so the season is re-worked-out here, not only at start-up.
     new_season = _season.data_season()
     if new_season != CUR: CUR = CURRENT = new_season; max_age = 0
@@ -541,6 +595,7 @@ def refresh_live(max_age=1800):
     ROS_STATUS, ROS_TEAM = _latest_roster()
     PREV_TEAM, RZ_SHIFT, DEPTH_STARTERS, DEPTH_KNOWN = _live_flags()
     DEPTH_NOTE = _depth_changes()
+    QB_CUR, QB_PRIOR, QB_PREV_TEAM = _build_qb()
     _LIVE_T = _time.time()
     return True
 

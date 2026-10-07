@@ -51,4 +51,24 @@ ok(ns["touch_prob"](row(lrank=np.log(12), r_t=0.3, r_c=0.1, s1f=0.2, s3f=0.2), a
 # returners are matched by name from the injury file (full names) to play-by-play short names
 ok(ns["match_any"]("N.Collins", ["Nico Collins", "Jaylen Waddle"]) and ns["match_any"]("P.Nacua", ["Puka Nacua"]) and ns["match_any"]("Bi.Robinson", ["Bijan Robinson"]), "returning match: full names find the short names")
 ok(not ns["match_any"]("Bi.Robinson", ["Brian Robinson Jr."]) and not ns["match_any"]("D.Metcalf", ["Terrance Metcalf"]) and ns["match_any"]("Puka Nacua", ["Puka Nacua"]), "returning match: another player with the same last name does not match")
+
+# Quarterback rushing TDs and first-TD with QBs listed (10/6), loaded without importing td_prob
+import pandas as pd
+ns2 = {"np": np, "pd": pd}; exec(src[src.index("FIRST_OTHER = 0.4"):src.index("def group_any(df, n=8):")], ns2)
+pa, ph = np.array([0.5, 0.3, 0.2]), np.array([0.45, 0.25])
+f0 = ns2["first_td"]([pa, ph]); fq = ns2["first_td"]([np.append(pa, 0.4), ph], qb_lam=-np.log(0.6))
+lq = -np.log(1 - np.concatenate([np.append(pa, 0.4), ph])); Tq = lq.sum() + 0.28
+ok(abs(ns2["FIRST_OTHER_QB"] - 0.28) < 1e-12 and fq[0][0] < f0[0][0] and abs(sum(map(sum, fq)) - lq.sum() / Tq * (1 - np.exp(-Tq))) < 1e-12, "first TD: a listed QB takes his share, 0.28 stays for defense/special teams")
+ns3 = {"np": np, "pd": pd}; exec(src[src.index("QB_F = ["):src.index("def _build_qb():")], ns3)
+pbp = pd.DataFrame([
+    dict(season_type="REG", game_id="g1", week=1, posteam="BUF", passer_player_id="QB1", pass_attempt=1, rush_attempt=0, qb_kneel=0, rusher_player_id=None, yardline_100=40, rush_touchdown=0),
+    dict(season_type="REG", game_id="g1", week=1, posteam="BUF", passer_player_id="QB1", pass_attempt=1, rush_attempt=0, qb_kneel=0, rusher_player_id=None, yardline_100=30, rush_touchdown=0),
+    dict(season_type="REG", game_id="g1", week=1, posteam="BUF", passer_player_id="QB2", pass_attempt=1, rush_attempt=0, qb_kneel=0, rusher_player_id=None, yardline_100=30, rush_touchdown=0),
+    dict(season_type="REG", game_id="g1", week=1, posteam="BUF", passer_player_id=None, pass_attempt=0, rush_attempt=1, qb_kneel=0, rusher_player_id="QB1", yardline_100=3, rush_touchdown=1),
+    dict(season_type="REG", game_id="g1", week=1, posteam="BUF", passer_player_id=None, pass_attempt=0, rush_attempt=1, qb_kneel=1, rusher_player_id="QB1", yardline_100=50, rush_touchdown=0)])
+st = ns3["qb_starts"](pbp)
+ok(len(st) == 1 and st.iloc[0].pid == "QB1" and st.iloc[0].car == 1 and st.iloc[0].i5 == 1 and st.iloc[0].rtd == 1, "QB starts: starter = most pass attempts; kneels left out; inside-5 and TD counted")
+lo = 1 / (1 + np.exp(-(ns3["QB_INT"] + ns3["QB_COEF"] @ np.array([1.5, 0.2, 0.05, 0.05, 22, 0.5]))))
+hi = 1 / (1 + np.exp(-(ns3["QB_INT"] + ns3["QB_COEF"] @ np.array([9, 1.5, 0.8, 0.8, 26, 0.6]))))
+ok(0.05 < lo < 0.12 and 0.4 < hi < 0.7, "QB model: a pocket passer ~8%, a goal-line runner well above 40%")
 print(f"service checks: {'FAILED ' + str(bad) if bad else 'all passed'}"); sys.exit(1 if bad else 0)
