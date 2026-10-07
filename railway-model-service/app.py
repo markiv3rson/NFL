@@ -14,7 +14,8 @@ Endpoints:
                            (inj is optional; when present the numbers include the injury adjustment, and "raw" holds the plain model)
   POST /rerun-td-probs     body: {"games": [{"away":"ATL","home":"GB","spread":-2.8,"total":41.2,"outs":["D.Goedert"]}, ...]}
 """
-import os, hmac
+import os
+import numpy as np, pandas as pd, hmac
 from flask import Flask, request, jsonify
 import fair_line
 import td_prob
@@ -161,9 +162,22 @@ def rerun_td_probs():
             returning = g.get("returning", [])   # Out/Doubtful last week, not this week: treated as playing (the page labels them)
             away_df = td_prob.run(nv(g["away"]), nv(g["home"]), g["total"] / 2 - g["spread"] / 2, outs, active=active, returning=returning)
             home_df = td_prob.run(nv(g["home"]), nv(g["away"]), g["total"] / 2 + g["spread"] / 2, outs, active=active, returning=returning)
+            # Starting QB's rushing-TD chance (10/6), added to each team's list; his expected TDs come out of first_td's "someone else".
+            qb_lam = 0.0
+            for side, team, opp, imp in (("away", g["away"], g["home"], g["total"] / 2 - g["spread"] / 2), ("home", g["home"], g["away"], g["total"] / 2 + g["spread"] / 2)):
+                try:
+                    q = td_prob.qb_row(nv(team), nv(opp), imp, outs)
+                except Exception as e:
+                    q = None; print(f"[td] QB row failed for {team}: {e}", flush=True)
+                if q:
+                    qb_lam += float(-np.log(1 - min(q["p"], 0.95)))
+                    df_ = away_df if side == "away" else home_df
+                    df_ = pd.concat([df_, pd.DataFrame([q], index=[f"QB:{team}"])]).sort_values("p", ascending=False)
+                    if side == "away": away_df = df_
+                    else: home_df = df_
             # Extra markets from the same calibrated chances: 2+ TDs, first TD of the game, and any RB/WR/TE per team.
             top_a, top_h = away_df.head(14), home_df.head(14)
-            f_a, f_h = td_prob.first_td([top_a.p.values, top_h.p.values])
+            f_a, f_h = td_prob.first_td([top_a.p.values, top_h.p.values], qb_lam)
             fa = dict(zip(top_a.index, f_a)); fh = dict(zip(top_h.index, f_h))
             def rows(df, first):
                 two = td_prob.two_plus(df.p.values)

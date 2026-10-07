@@ -525,6 +525,11 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(ctx.T.tdNoGap({ fair: 30, price: 0.4, bid: 0.38 }) === 8 && ctx.T.tdNoGap({ fair: 35, price: 0.4, bid: 0.38 }) === null && ctx.T.tdNoGap({ fair: 20, price: 0.9, bid: 0.1, thin: true }) === null && ctx.T.tdNoGap({ fair: 20, price: 0.5, bid: 0.3 }) === null, "No mark: only a real market where the model is 5+ under the bid");
     const row = ctx.T.tdRow({ r: { player: "X.Y", team: "A", pos: "WR", fair: 30, price: 0.4, bid: 0.38, game: "A @ B", flags: [] }, g: { key: "A @ B", away: "A", home: "B" } }, 0);
     ok(/No · 8 under/.test(row) && !/vs price/.test(row), "No mark: shows on the touchdown row"); }
+  { // first-TD shares in the app: with a QB listed, "someone else" drops to defense/special teams (0.28), like the model service
+    const { firstTdShares } = await import("../lib/calibration.js");
+    const base = [{ name: "a", fair: 50 }, { name: "b", fair: 30 }], withQb = [...base, { name: "q", pos: "QB", fair: 40 }];
+    const s0 = firstTdShares(base), s1 = firstTdShares(withQb), tot = (xs) => xs.reduce((a, b) => a + b, 0);
+    ok(s1[0] < s0[0] && tot(s1) > tot(s0) && tot(s1) < 100, "first TD: a listed QB takes a share; listed players cover more of the first TDs"); }
   { // touchdown correction after a retrain: games graded under the old model count half
     const { buildCalibration, OLD_MODEL_W } = await import("../lib/calibration.js");
     const recs = (week, hitEvery) => ({ season: 2026, week, td: [...Array(100)].map((_, i) => ({ fair: 40, scored: i % hitEvery === 0, played: true })) });
