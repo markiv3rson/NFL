@@ -7,6 +7,6 @@ export async function resolve(spec, ctx, next) {
   return next(spec, ctx);
 }
 export async function load(url, ctx, next) {
-  if (url.startsWith("file:") && !url.includes("/node_modules/") && /\/(lib|tests)\/[^/]+\.js$/.test(url)) return next(url, { ...ctx, format: "module" });
+  if (url.startsWith("file:") && !url.includes("/node_modules/") && /\/(lib|tests|pages\/api(\/[^/]+)?)\/[^/]+\.js$/.test(url)) return next(url, { ...ctx, format: "module" });
   return next(url, ctx);
 }
