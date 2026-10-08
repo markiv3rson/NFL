@@ -600,6 +600,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { // proven angles flagged on the game (10/8)
     const g = { ...tg, angles: [{ id: "streakfade", pick: "TB +4.5", price: 0.48, name: "Road team off a loss vs 3-game win streak", hit: 59, n: 283 }] };
     ok(/PICK TB \+4\.5/.test(ctx.T.tile(g)) && /PICK TB \+4\.5<\/b> <span class="dim">48¢/.test(ctx.T.anglesBox(g)) && /59% of 283/.test(ctx.T.anglesBox(g)) && ctx.T.anglesBox(tg) === "", "angles: chip on the tile, rule and record on the game page"); }
+  { // proven angles in Model Picks parlays (10/8)
+    const { buildPaper } = await import("../lib/paper.js");
+    const G = (k, angles, winPct, ml) => ({ key: k, home: k.split(" @ ")[1], away: k.split(" @ ")[0], started: false, final: false, angles, winPct, poly: ml ? { ml: { home: ml }, spread: { homeSpread: -3 } } : null, td: [] });
+    const P = buildPaper({ games: [G("A @ B", [{ id: "streakfade", pick: "A +4.5", price: 0.48, hit: 59, n: 283 }]), G("C @ D", [{ id: "winddiv", pick: "Under 41.5", price: 0.5, hit: 56.8, n: 426 }]), G("E @ F", [], 80, 0.78), G("H @ I", [], 77, 0.75)] });
+    const by = Object.fromEntries(P.map((p) => [p.strategy, p]));
+    ok(by.angles_2 && by.angles_2.legs.map((l) => l.label).join(",") === "A +4.5,Under 41.5" && by.angles_2.legs[1].kind === "total" && Math.abs(by.angles_2.prob - 0.59 * 0.568) < 1e-9 && !by.angles_3, "angle parlays: one per game, rule hit rates as the chance, no 3-leg without 3 angles");
+    ok(by.angles_fav_3 && by.angles_fav_3.legs.map((l) => l.label).join(",") === "A +4.5,F ML,I ML", "angle + favorites parlay: best angle plus the two strongest home favorites"); }
   { // without him (10/8): top 3 TD scorers in games a listed-Out regular missed
     const h = ctx.T.tdTop3({ ...tg, td: [], without: { [tg.away]: [{ out: "A.Kamara", games: 7, top: [{ name: "C.Olave", td: 5 }, { name: "D.Vele", td: 2 }] }], [tg.home]: [{ out: "X.Y", games: 1, top: [] }] } });
     ok(/Without A\.Kamara<\/b> <span class="dim">\(7 games\)<\/span>: C\.Olave 5 · D\.Vele 2/.test(h) && /\(1 game\)<\/span>: no TDs/.test(h), "without him: scorers listed under the team's top 3"); }
