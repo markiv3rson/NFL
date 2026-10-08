@@ -168,3 +168,11 @@ Audit (10/8), end to end with realistic data (slate build, kickoff snapshot, gra
 Season records (10/8): each team's record entering the game (earlier weeks' finals, "3–1", ties as "3–1–1") shows under its code on the game tiles and the game page (`teamRecord` in lib/week.js, `g.rec`).
 
 Kickoff check visible (10/8): after the ESPN override shipped, CHI @ GB still showed the schedule file's time, and nothing said whether ESPN agreed or the check failed. Each fresh ESPN kickoff check now saves `kickcheck` (games read, which games it moved and from/to, games ESPN didn't list, or the failure reason), shown in Models → System as "Kickoff check (ESPN)". ESPN's timeout is 8 s (was 3 s, which a cold start can miss).
+
+Touchdown signals tested, not shipped (10/8, `railway-model-service/td_signal_study.py`, walk-forward 2021-25, train 3 seasons → test the next, Brier vs the live recipe 0.15646 average):
+- xTD (every carry/target weighted by how often plays from that yard line scored, blended with last season): better in 2 of 5, average 0.15646.
+- Team offense EPA per play: better in 3 of 5, average 0.15648 (worse).
+- Opponent per-play run/pass EPA allowed (RB vs WR/TE): better in 4 of 5, but the gain is ~0.00001 Brier (0.15646 both) — too small to be worth a new live input.
+- Game script (expected margin × RB / receiver): better in 2 of 5, average 0.15646.
+- All together: better in 1 of 5.
+The model already has red-zone, inside-10 and inside-5 usage, snap share, depth chart and implied points; these signals add nothing measurable on top.
