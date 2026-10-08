@@ -89,18 +89,41 @@ def _retrain():
         print(f"[scheduler] retrain-td failed: {e}", flush=True)
         _call(f"/api/status?retrain={urllib.parse.quote('failed: ' + str(e))}", tries=1)
 
+ESPN_SB = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
+ESPN_ABBR = {"WSH": "WAS", "LAR": "LA"}   # ESPN -> nflverse team codes where they differ
+def _espn_kickoffs():
+    """{ "AWAY @ HOME": kickoff UTC } from ESPN for the next ~9 days (10/7: nflverse still had CHI @ GB at 1:00 PM ET after the game
+    moved to 4:25 PM ET, so the closing-line snapshot and the kickoff-wave rerun would have fired hours early). Empty on any failure."""
+    try:
+        now = datetime.now(timezone.utc)
+        url = f"{ESPN_SB}?dates={(now - timedelta(days=1)):%Y%m%d}-{(now + timedelta(days=9)):%Y%m%d}&limit=100"
+        with urllib.request.urlopen(url, timeout=20) as r: d = json.loads(r.read().decode())
+        out = {}
+        for ev in d.get("events", []):
+            c = (ev.get("competitions") or [{}])[0]; by = {}
+            for t in c.get("competitors", []):
+                ab = (t.get("team") or {}).get("abbreviation"); by[t.get("homeAway")] = ESPN_ABBR.get(ab, ab)
+            if by.get("away") and by.get("home") and ev.get("date"):
+                out[f"{by['away']} @ {by['home']}"] = datetime.fromisoformat(ev["date"].replace("Z", "+00:00"))
+        return out
+    except Exception as e:
+        print(f"[scheduler] ESPN kickoffs unavailable ({e}); using the schedule file", flush=True); return {}
 def _kickoffs():
-    """Upcoming kickoffs (UTC) for the next 8 days from the NFL schedule."""
+    """Upcoming kickoffs (UTC) for the next 8 days from the NFL schedule, with ESPN's time when it differs by 10+ minutes."""
     try:
         with urllib.request.urlopen(SCHED_URL, timeout=60) as r: rows = list(csv.DictReader(io.StringIO(r.read().decode())))
     except Exception as e:
         print(f"[scheduler] schedule load failed: {e}", flush=True); return []
+    espn = _espn_kickoffs()
     now, out = datetime.now(timezone.utc), []
     for x in rows:
         if x.get("game_type") not in ("REG", "WC", "DIV", "CON", "SB") or not x.get("gameday") or not x.get("gametime"): continue   # + playoffs (9/30)
         try: k = datetime.strptime(f"{x['gameday']} {x['gametime']}", "%Y-%m-%d %H:%M").replace(tzinfo=ET).astimezone(timezone.utc)
         except ValueError: continue
-        if now - timedelta(minutes=5) < k < now + timedelta(days=8): out.append((k, f"{x['away_team']} @ {x['home_team']}"))
+        key = f"{x['away_team']} @ {x['home_team']}"
+        e = espn.get(key)
+        if e is not None and abs((e - k).total_seconds()) >= 600 and abs((e - k).total_seconds()) < 3 * 86400: k = e   # moved game (same week)
+        if now - timedelta(minutes=5) < k < now + timedelta(days=8): out.append((k, key))
     return out
 
 def _finals():

@@ -71,4 +71,25 @@ ok(len(st) == 1 and st.iloc[0].pid == "QB1" and st.iloc[0].car == 1 and st.iloc[
 lo = 1 / (1 + np.exp(-(ns3["QB_INT"] + ns3["QB_COEF"] @ np.array([1.5, 0.2, 0.05, 0.05, 22, 0.5]))))
 hi = 1 / (1 + np.exp(-(ns3["QB_INT"] + ns3["QB_COEF"] @ np.array([9, 1.5, 0.8, 0.8, 26, 0.6]))))
 ok(0.05 < lo < 0.12 and 0.4 < hi < 0.7, "QB model: a pocket passer ~8%, a goal-line runner well above 40%")
+
+# Scheduler: ESPN kickoff replaces a stale schedule time (10/7, CHI @ GB 1:00 -> 4:25 PM ET)
+import io as _io, json as _json, scheduler as _sch
+_sb = {"events": [{"date": "2026-10-11T20:25Z", "competitions": [{"competitors": [{"homeAway": "home", "team": {"abbreviation": "GB"}}, {"homeAway": "away", "team": {"abbreviation": "CHI"}}]}]},
+                  {"date": "2026-10-12T00:15Z", "competitions": [{"competitors": [{"homeAway": "home", "team": {"abbreviation": "LAR"}}, {"homeAway": "away", "team": {"abbreviation": "WSH"}}]}]}]}
+class _R(_io.BytesIO):
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+_csv = "season,game_type,week,gameday,gametime,away_team,home_team\n2026,REG,5,2026-10-11,13:00,CHI,GB\n2026,REG,5,2026-10-11,13:00,CIN,MIA\n"
+def _fake(url, timeout=0): return _R(_json.dumps(_sb).encode() if "espn" in url else _csv.encode())
+_orig = urllib.request.urlopen; urllib.request.urlopen = _fake
+_dt = _sch.datetime
+class _FakeDT(_dt):
+    @classmethod
+    def now(cls, tz=None): return _dt(2026, 10, 8, 3, 0, tzinfo=tz)
+_sch.datetime = _FakeDT
+try:
+    ek = _sch._espn_kickoffs(); ko = dict((g, k) for k, g in _sch._kickoffs())
+    ok(ek.get("WAS @ LA") is not None and ko["CHI @ GB"].strftime("%Y-%m-%d %H:%M") == "2026-10-11 20:25" and ko["CIN @ MIA"].strftime("%H:%M") == "17:00", "scheduler: ESPN kickoff wins for a moved game; ESPN codes WSH/LAR map to WAS/LA")
+finally:
+    urllib.request.urlopen = _orig; _sch.datetime = _dt
 print(f"service checks: {'FAILED ' + str(bad) if bad else 'all passed'}"); sys.exit(1 if bad else 0)
