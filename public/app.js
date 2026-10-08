@@ -728,7 +728,7 @@ function teaserRow() {
 function teaserStrip() {
   const L = (S && S.teaserLegs) || []; if (!L.length) return "";
   const nV = L.filter((x) => x.value).length;
-  const rows = L.map((x) => `<div class="row"><span>${esc(x.team)} +${x.line} <span class="dim">(from +${x.base}) · ${esc(x.game)}</span></span><span>${x.price != null ? `${Math.round(x.price * 100)}¢ ${x.value ? '<b class="g">✓ under 73¢</b>' : '<span class="dim">too high</span>'}` : '<span class="dim">no price yet</span>'}</span></div>`).join("");
+  const rows = L.map((x) => `<div class="row"><span>${esc(x.team)} +${x.line} <span class="dim">(from +${x.base}) · ${esc(x.game)}</span></span><span>${x.price != null ? `${Math.round(x.price * 100)}¢ ${x.value ? '<b class="g">✓ good price</b>' : '<span class="dim">too high</span>'}` : '<span class="dim">no price yet</span>'}</span></div>`).join("");
   return `<div class="gapstrip" data-drop="teaselist"><div class="t">Teaser legs · ${L.length} this week${nV ? ` · ${nV} priced right` : ""} ›</div></div><div class="drop" id="teaselist"><div class="card"><div class="inner">${rows}</div></div></div>`;
 }
 let LAB_SB = "", REPLAY = null;
