@@ -446,8 +446,17 @@ def qb_row(team, opp, imp, outs=()):
     cands = [(r.pid, r) for r in mine.itertuples()]
     if not cands and len(QB_PREV_TEAM):   # team hasn't played yet: last season's starter still on the roster
         cands = [(pid, None) for pid, tm in ROS_TEAM.items() if tm == team and pid in QB_PRIOR.index and QB_PRIOR.loc[pid].g >= 4]
+    # 10/8: every listed starter Out (a backup's first start): fall back to the team's other rostered QBs, depth-chart
+    # starter first. Before, the team got no QB row at all and first_td had no QB in its "someone else" share.
+    seen = {pid for pid, _ in cands}
+    extra = [pid for pid, tm in ROS_TEAM.items() if tm == team and pid not in seen and pid in pos.index and pos.loc[pid, 'position'] == 'QB']
+    cands = cands + [(pid, None) for pid in sorted(extra, key=lambda x: (x not in DEPTH_STARTERS, -(QB_PRIOR.loc[x].g if x in QB_PRIOR.index else 0)))]
     for pid, r in cands:
-        name = names.get(pid, pid)
+        name = names.get(pid)
+        if name is None:   # never touched the ball: "F.Last" from the roster name
+            full = str(_ros_nn.get(pid, "")).split()
+            if len(full) < 2: continue
+            name = f"{full[0][0].upper()}.{' '.join(w.title() for w in full[1:])}"
         if unavailable(pid, team) or is_out_name(name, outs): continue
         q = QB_PRIOR.loc[pid] if pid in QB_PRIOR.index else None
         g0 = float(r.g) if r is not None else 0.0
