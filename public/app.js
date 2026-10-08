@@ -777,7 +777,9 @@ function renderLab() {
     top3_home_75: "Rule: the 3 home teams the market gives 75%+, biggest first.", td_edge_3: "Rule: 3 scorers (different games) whose model chance beats Polymarket's price by 3%+.",
     td_likely_2: "Rule: the 2 players the model rates most likely to score, different games.", td_likely_3: "Rule: the 3 players the model rates most likely to score, different games.",
     right_now_3: "Rule: 3 legs where Polymarket is 3%+ cheaper than the sportsbooks.", model_best_4: "Rule: the 4 legs the model rates most likely to hit, different games.",
-    same_game_3: "Rule: the biggest spread/total/moneyline edge plus the best touchdown edge, all from one game. Legs move together, so no win chance is claimed." };
+    same_game_3: "Rule: the biggest spread/total/moneyline edge plus the best touchdown edge, all from one game. Legs move together, so no win chance is claimed.",
+    angles_2: "Rule: 2 proven angles from Game Lines, different games.", angles_3: "Rule: 3 proven angles from Game Lines, different games.",
+    angles_fav_3: "Rule: the best proven angle plus the 2 strongest home favorites (75%+)." };
   const legLine = (l) => `${esc(l.label)} <span class="dim">${esc(l.game)}</span> · ${Math.round(l.price * 100)}¢${l.result ? ` <span class="${l.result === "W" ? "g" : l.result === "L" ? "r" : "dim"}">${l.result}</span>` : ""}`;
   const thisWeek = !wk ? '<div class="s dim">Recorded about a day before Sunday.</div>' :
     Object.keys(names).map((k) => { const ps = wk.parlays.filter((p) => p.strategy === k);
