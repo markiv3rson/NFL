@@ -130,7 +130,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const ctx = { document: { getElementById: () => el(), querySelectorAll: () => [], addEventListener() {}, hidden: false }, fetch: () => Promise.reject(new Error("offline")),
     localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) }, location: { reload() {} }, window: {}, setTimeout, clearTimeout, console, Date, Math, Number, String, JSON, Promise, Set, Object, Array };
   vm.createContext(ctx);
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={tdNoGap,teaserRow,teaserStrip,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={openMove,tdNoGap,teaserRow,teaserStrip,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   ok(/PHI winning by about 4\.2/.test(T.spreadReason(g)) && /needs PHI to win by 4\+/.test(T.spreadReason(g)), "spread wording");
@@ -547,6 +547,23 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(L.map((x) => x.name).join("") === "EBAD" && L[2].shown === "DNP (practice)" && L[3].shown === "Limited (practice)" && !L[0].shown, "injuries: Out/Questionable first, then DNP and Limited (labeled); full practice left out");
     const card = ctx.T.gameCard({ ...tg, injuries: L.map((x) => ({ ...x, team: "PIT", pos: "WR", week: 5 })) }, "x");
     ok(/Injuries 4/.test(card) && /DNP \(practice\)/.test(card), "injuries: the button shows with practice-only notes"); }
+  { // opening line vs now, from the model side
+    const g = { key: "TB @ DAL", away: "TB", home: "DAL", history: [{ poly: { spread: { homeSpread: -8.5 }, total: { line: 46.5 } } }] };
+    ok(/Opened TB \+8\.5 · moved 1 toward the model/.test(ctx.T.openMove(g, "spread", { team: "TB", line: 7.5 })), "open line: TB +8.5 to +7.5 moved toward a TB pick");
+    ok(/moved 1 toward/.test(ctx.T.openMove(g, "total", { side: "over", line: 47.5 })) && /away from/.test(ctx.T.openMove(g, "total", { side: "under", line: 47.5 })), "open line: totals from the pick's side");
+    ok(ctx.T.openMove(g, "spread", { team: "TB", line: 8.5 }) === "" && ctx.T.openMove({ ...g, final: true }, "spread", { team: "TB", line: 7.5 }) === "", "open line: nothing when unmoved or final"); }
+  { // signal alerts: teaser leg priced right, TD "No" mark, starting QB's TD chance jumping
+    const { alertTeaser, alertsTdNo, alertsQbJump, listAlerts } = await import("../lib/alerts.js"), R = globalThis.__TEST_REDIS__;
+    const g = { key: "TB @ DAL", away: "TB", home: "DAL" };
+    await alertTeaser(2032, g, { team: "TB", base: 2.5, line: 8.5, price: 0.7, value: true }); await alertTeaser(2032, g, { team: "TB", base: 2.5, line: 8.5, price: 0.7, value: true });
+    await alertTeaser(2032, g, { team: "TB", base: 2, line: 8, price: 0.8, value: false });
+    await alertsTdNo(2032, g, [{ player: "G.Pickens", team: "DAL", fair: 30, price: 0.42, bid: 0.4 }, { player: "C.Lamb", team: "DAL", fair: 46, price: 0.49, bid: 0.47 }]);
+    await alertsQbJump(2032, g, { away: [{ name: "B.Mayfield", pos: "QB", fair: 13 }], home: [{ name: "D.Prescott", pos: "QB", fair: 10 }] }, { away: [{ name: "J.Daniels", pos: "QB", fair: 25 }], home: [{ name: "D.Prescott", pos: "QB", fair: 12 }] });
+    const L = await listAlerts(2032), k = (x) => L.filter((a) => a.kind === x);
+    ok(k("TEASER").length === 1 && /TB \+8\.5 at 70¢/.test(k("TEASER")[0].title), "alerts: a teaser leg priced right alerts once; one priced too high doesn't");
+    ok(k("TD NO").length === 1 && /G\.Pickens/.test(k("TD NO")[0].title), "alerts: a TD 'No' mark alerts (model 10 under the bid), a close one doesn't");
+    ok(k("QB TD").length === 1 && /J\.Daniels TD chance now 25%/.test(k("QB TD")[0].title), "alerts: a new starting QB at 20%+ alerts; a 2-point move doesn't");
+    for (const kk of await R.keys("*2032*")) await R.del(kk); }
   { // teaser legs: underdog +1.5..+2.5 at +7.5..+8.5 (lib + page)
     const { teaserLeg, recordTeaser, gradeTeasersWeek, teaserSummary, TEASE_MAX_PRICE } = await import("../lib/teaser.js");
     const g = { key: "A @ B", away: "A", home: "B" };
