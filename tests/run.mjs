@@ -112,7 +112,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const R = computeReplay(rows), by = (id) => R.rows.find((r) => r.id === id);
   ok(by("dog").n === 3 && Math.abs(by("dog").hit - 2 / 3) < 1e-9, "replay: road dogs +3..6.5 — covers counted, push dropped", [by("dog").n, by("dog").hit]);
   ok(by("homefav").n === 1 && Math.abs(by("homefav").roi - 0.2) < 1e-9, "replay: home fav 9.5+ moneyline return from the closing price", by("homefav"));
-  ok(R.rows.length === 9 && R.rows[1].id === "spread_model" && R.rows[0].id === "favorite", "replay: nine rows, favorite first, model rows fixed"); }
+  ok(R.rows.length === 12 && R.rows[1].id === "spread_model" && R.rows[0].id === "favorite", "replay: twelve rows, favorite first, model rows fixed"); }
 // ---------- live scores (ESPN scoreboard -> per-game score + clock)
 { const { parseScoreboard } = await import("../lib/live.js");
   const ev = (away, home, as, hs, state, period, clock, detail, completed = false) => ({ competitions: [{ competitors: [{ homeAway: "home", score: String(hs), team: { displayName: home } }, { homeAway: "away", score: String(as), team: { displayName: away } }] }],
@@ -589,6 +589,14 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(overlayPolyKickoffs(rows, pk) === 1 && rows[0].kickoff === "2026-10-11T20:25:00.000Z" && rows[0].kickoffFrom === "polymarket" && rows[1].kickoff.startsWith("2025") && rows[2].kickoff === "2026-10-12T20:15:00-04:00", "Polymarket kickoff: replaces a stale time, leaves matching times and other seasons"); }
   { const { overlayPolyKickoffs, KICK_FIX } = await import("../lib/games.js"); const r = [{ key: "CHI @ GB", kickoff: "2026-10-11T13:00:00-04:00" }]; overlayPolyKickoffs(r, KICK_FIX);
     ok(new Date(r[0].kickoff).toLocaleString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit" }) === "10:00 AM", "CHI @ GB stays at the official noon CT (10:00 AM Pacific)"); }
+  { // combos (10/8): road dog after a blowout, road team off a loss vs a 3-game streak, windy division under
+    const { picksFor } = await import("../lib/paper.js");
+    const poly = { spread: { homeSpread: -4.5, home: 0.5, away: 0.5 }, total: { line: 44.5, over: 0.5, under: 0.5 } }, m = { outdoor: true, wind: 14, fix: { div: true } };
+    const mk = (sit) => picksFor({ key: "A @ H", away: "A", home: "H", week: 9 }, poly, m, sit).map((p) => p.market);
+    const a = mk({ away: { prevLost: true, prevMarg: -20, prevPts: 3 }, home: { prevMarg: 3, won3: true } });
+    ok(a.includes("dogblow") && a.includes("streakfade") && a.includes("winddiv") && a.includes("wind"), "combos: all three fire when they apply");
+    const b = picksFor({ key: "A @ H", away: "A", home: "H", week: 9 }, poly, { outdoor: true, wind: 14, fix: { div: false } }, { away: { prevLost: false, prevMarg: 7 }, home: { prevMarg: 10, won3: false } }).map((p) => p.market);
+    ok(!b.includes("dogblow") && !b.includes("streakfade") && !b.includes("winddiv"), "combos: none fire when they don't apply"); }
   { // without him (10/8): top 3 TD scorers in games a listed-Out regular missed
     const h = ctx.T.tdTop3({ ...tg, td: [], without: { [tg.away]: [{ out: "A.Kamara", games: 7, top: [{ name: "C.Olave", td: 5 }, { name: "D.Vele", td: 2 }] }], [tg.home]: [{ out: "X.Y", games: 1, top: [] }] } });
     ok(/Without A\.Kamara<\/b> <span class="dim">\(7 games\)<\/span>: C\.Olave 5 · D\.Vele 2/.test(h) && /\(1 game\)<\/span>: no TDs/.test(h), "without him: scorers listed under the team's top 3"); }
