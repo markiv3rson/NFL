@@ -112,7 +112,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const R = computeReplay(rows), by = (id) => R.rows.find((r) => r.id === id);
   ok(by("dog").n === 3 && Math.abs(by("dog").hit - 2 / 3) < 1e-9, "replay: road dogs +3..6.5 — covers counted, push dropped", [by("dog").n, by("dog").hit]);
   ok(by("homefav").n === 1 && Math.abs(by("homefav").roi - 0.2) < 1e-9, "replay: home fav 9.5+ moneyline return from the closing price", by("homefav"));
-  ok(R.rows.length === 13 && R.rows[1].id === "spread_model" && R.rows[0].id === "favorite", "replay: thirteen rows, favorite first, model rows fixed"); }
+  ok(R.rows.length === 14 && R.rows[1].id === "spread_model" && R.rows[0].id === "favorite", "replay: fourteen rows, favorite first, model rows fixed"); }
 // ---------- live scores (ESPN scoreboard -> per-game score + clock)
 { const { parseScoreboard } = await import("../lib/live.js");
   const ev = (away, home, as, hs, state, period, clock, detail, completed = false) => ({ competitions: [{ competitors: [{ homeAway: "home", score: String(hs), team: { displayName: home } }, { homeAway: "away", score: String(as), team: { displayName: away } }] }],
@@ -614,6 +614,11 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const P = buildPaper({ games: [{ key: "BUF @ LA", home: "LA", away: "BUF", started: false, final: false, angles: g.angles, td: [] }, { key: "A @ B", home: "B", away: "A", started: false, final: false, angles: [{ id: "winddiv", pick: "Under 41.5", price: 0.5, hit: 56.8, n: 426 }], td: [] }] });
     const l = P.find((p) => p.strategy === "angles_2").legs.find((x) => x.label === "BUF ML");
     ok(l && l.kind === "ml" && l.team === "BUF", "road ML angle: graded as a moneyline leg on the road team"); }
+  { // coach fade (10/8)
+    const { picksFor } = await import("../lib/paper.js");
+    const poly = { spread: { homeSpread: -6, home: 0.5, away: 0.5 } }, G = { key: "A @ H", away: "A", home: "H", week: 6 };
+    ok(picksFor(G, poly, {}, { home: {}, away: {}, homeCoachAts: { n: 50, rate: 0.42 } }).some((p) => p.market === "coachfade" && p.label === "A +6") &&
+      !picksFor(G, poly, {}, { home: {}, away: {}, homeCoachAts: { n: 50, rate: 0.5 } }).some((p) => p.market === "coachfade"), "coach fade: road team only when the home coach is 44% or worse"); }
   { // without him (10/8): top 3 TD scorers in games a listed-Out regular missed
     const h = ctx.T.tdTop3({ ...tg, td: [], without: { [tg.away]: [{ out: "A.Kamara", games: 7, top: [{ name: "C.Olave", td: 5 }, { name: "D.Vele", td: 2 }] }], [tg.home]: [{ out: "X.Y", games: 1, top: [] }] } });
     ok(/Without A\.Kamara<\/b> <span class="dim">\(7 games\)<\/span>: C\.Olave 5 · D\.Vele 2/.test(h) && /\(1 game\)<\/span>: no TDs/.test(h), "without him: scorers listed under the team's top 3"); }
