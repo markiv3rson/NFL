@@ -92,4 +92,11 @@ try:
     ok(ek.get("WAS @ LA") is not None and ko["CHI @ GB"].strftime("%Y-%m-%d %H:%M") == "2026-10-11 20:25" and ko["CIN @ MIA"].strftime("%H:%M") == "17:00", "scheduler: ESPN kickoff wins for a moved game; ESPN codes WSH/LAR map to WAS/LA")
 finally:
     urllib.request.urlopen = _orig; _sch.datetime = _dt
+
+# Opponent per-play defense (10/8): earlier games only (no look-ahead), shrunk toward 0
+ns4 = {"np": np, "pd": pd}; exec(src[src.index("DEF_SHRINK_RUN, DEF_SHRINK_PASS"):src.index("FEATS=[")], ns4)
+_p = pd.DataFrame([dict(defteam="TB", game_id=g, week=w, play_type=k, epa=e) for g, w, k, e in [("g1", 1, "run", 1.0), ("g1", 1, "run", 1.0), ("g1", 1, "pass", -1.0), ("g2", 2, "run", 0.5), ("g2", 2, "pass", 2.0)]])
+_d = ns4["def_epa_todate"](_p).set_index("game_id")
+ok(_d.loc["g1", "d_repa"] == 0 and abs(_d.loc["g2", "d_repa"] - 2.0 / (2 + 150)) < 1e-12 and abs(_d.loc["g2", "d_pepa"] - (-1.0) / (1 + 200)) < 1e-12, "defense per play: game 2 uses only game 1's plays, shrunk")
+_r, _q = ns4["def_epa_now"](_p, "TB"); ok(abs(_r - 2.5 / (3 + 150)) < 1e-12 and abs(_q - 1.0 / (2 + 200)) < 1e-12, "defense per play: next game uses all games so far")
 print(f"service checks: {'FAILED ' + str(bad) if bad else 'all passed'}"); sys.exit(1 if bad else 0)

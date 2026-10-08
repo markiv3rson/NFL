@@ -118,6 +118,8 @@ def features(season, pos):
     pg = pg.join(pos, on='pid'); pg['pos']=pg.position.map(lambda v: {'FB':'RB','HB':'RB'}.get(v,v))
     pg = pg[pg.pos.isin(['RB','WR','TE'])].dropna(subset=['r_t','r_c','imp'])
     for c in ['r_rzt','r_i10','r_rzc','r_i5','r_td']: pg[c]=pg[c].fillna(0)
+    pg = pg.merge(def_epa_todate(p), on=['opp', 'game_id'], how='left')
+    pg['d_repa'] = pg['d_repa'].fillna(0.0); pg['d_pepa'] = pg['d_pepa'].fillna(0.0)
     return add_flags(add_snap(pg, season), season, prior)
 
 
@@ -166,10 +168,31 @@ def add_flags(pg, season, prior):
     dv = [ds.get((pid, int(wk))) for pid, wk in zip(pg.pid, pg.week)]
     pg["depth_known"] = [int(v is not None) for v in dv]; pg["depth1"] = [0.5 if v is None else float(v) for v in dv]
     return pg
-FEATS=['r_rzt','r_i10','r_rzc','r_i5','r_t','r_c','r_td','imp','o_rush','o_rec','is_rb','is_te','rushx','recx','snap3','snap1','snap_miss','new_team','rz_shift','depth1','depth_known']
+# Opponent per-play defense (10/8): EPA allowed per run play (used for RBs) and per pass play (used for WR/TE), season to date, shrunk
+# toward 0 with 150 run / 200 pass plays. Walk-forward 2021-25 (td_signal_study.py): better than without in 4 of 5 seasons; the gain is
+# small (~0.00001 Brier) but consistent, and it lets the model see how hard a defense is to run or throw on, not only its TDs allowed.
+DEF_SHRINK_RUN, DEF_SHRINK_PASS = 150, 200
+def def_epa_todate(pbp):
+    """Per defense and game: EPA allowed per run / pass play in its EARLIER games this season (no look-ahead)."""
+    x = pbp[pbp.play_type.isin(['pass', 'run']) & pbp.epa.notna()]
+    out = None
+    for kind, shrink, col in (('run', DEF_SHRINK_RUN, 'd_repa'), ('pass', DEF_SHRINK_PASS, 'd_pepa')):
+        g = x[x.play_type == kind].groupby(['defteam', 'game_id', 'week']).epa.agg(['sum', 'count']).reset_index().sort_values(['defteam', 'week'])
+        g[col] = (g.groupby('defteam')['sum'].cumsum() - g['sum']) / (g.groupby('defteam')['count'].cumsum() - g['count'] + shrink)
+        g = g[['defteam', 'game_id', col]]
+        out = g if out is None else out.merge(g, on=['defteam', 'game_id'], how='outer')
+    return out.rename(columns={'defteam': 'opp'})
+def def_epa_now(pbp, team):
+    """A defense's EPA allowed per run / pass play over all its games so far (for the next game)."""
+    x = pbp[(pbp.defteam == team) & pbp.play_type.isin(['pass', 'run']) & pbp.epa.notna()]
+    r, q = x[x.play_type == 'run'].epa, x[x.play_type == 'pass'].epa
+    return float(r.sum() / (len(r) + DEF_SHRINK_RUN)), float(q.sum() / (len(q) + DEF_SHRINK_PASS))
+FEATS=['r_rzt','r_i10','r_rzc','r_i5','r_t','r_c','r_td','imp','o_rush','o_rec','is_rb','is_te','rushx','recx','snap3','snap1','snap_miss','new_team','rz_shift','depth1','depth_known','d_repa_rb','d_pepa_rec']
 def design(df):
     X = df.copy(); X['is_rb']=(X.pos=='RB').astype(int); X['is_te']=(X.pos=='TE').astype(int)
     X['rushx']=(X.r_rzc+X.r_i5)*X.o_rush; X['recx']=(X.r_rzt+X.r_i10)*X.o_rec
+    dr = X['d_repa'] if 'd_repa' in X else 0.0; dp = X['d_pepa'] if 'd_pepa' in X else 0.0
+    X['d_repa_rb'] = np.asarray(dr, dtype=float) * X.is_rb; X['d_pepa_rec'] = np.asarray(dp, dtype=float) * (1 - X.is_rb)
     return X[FEATS].values
 
 def load_pos():
@@ -470,6 +493,7 @@ def run(team,opp,imp,outs=(),posadj=False,active=False,returning=()):
     full = df[df.pos.isin(['RB','WR','TE'])].copy()
     outmask = full.name.apply(_is_out)
     df = full[~outmask].copy()
+    df['d_repa'], df['d_pepa'] = def_epa_now(p, opp)   # opponent per-play defense (10/8)
     if posadj: df['o_rec']=df.pos.map(pos_rec(opp))
     # (Vacated-usage boost removed 9/30: handing an Out player's red-zone share to teammates tested WORSE in 7 of 7
     # seasons, 2019-25 -- the teammates' own usage already carries most of it, and the bump overshot.)

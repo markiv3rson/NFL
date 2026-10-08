@@ -176,3 +176,5 @@ Touchdown signals tested, not shipped (10/8, `railway-model-service/td_signal_st
 - Game script (expected margin × RB / receiver): better in 2 of 5, average 0.15646.
 - All together: better in 1 of 5.
 The model already has red-zone, inside-10 and inside-5 usage, snap share, depth chart and implied points; these signals add nothing measurable on top.
+
+Opponent per-play defense in the touchdown model (10/8): two new inputs, EPA allowed per run play (for RBs) and per pass play (for WR/TE), from the opponent's earlier games, shrunk toward 0 with 150 run / 200 pass plays (`def_epa_todate` for training, `def_epa_now` live). Better in 4 of 5 walk-forward seasons (2021-25); the gain is small but consistent, and it lets the model see how hard a defense is to run or throw on, not only TDs allowed. The saved model is rebuilt on the next start (its input count changed). Team offense EPA, xTD and game script stay out: they were worse or no better.
