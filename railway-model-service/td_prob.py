@@ -508,6 +508,25 @@ def run(team,opp,imp,outs=(),posadj=False,active=False,returning=()):
     df['depth_note']=[DEPTH_NOTE.get(pid) for pid in df.pid]
     return df.sort_values('p',ascending=False)[['name','pos','p','boosted','depth_note']]
 
+# Without him (10/8): for each player on the Out list who is a regular on this team (5+ touches a game), the games the team
+# played this season and last (when he was on the team) where he had no touch, and the top 3 TD scorers in those games.
+# Shown on the page only; not used in the numbers (handing his share to teammates tested worse, 9/30).
+def without(team, outs, n=3):
+    both = pd.concat([pg.assign(cs=1), prior.assign(cs=0)]); mine = both[both.team == team]
+    if not len(mine) or not outs: return []
+    res = []
+    for pid, rows in mine.groupby('pid'):
+        nm = names.get(pid, pid)
+        if not is_out_name(nm, outs): continue
+        now = rows[rows.cs == 1]
+        if not len(now) or (now.tgt.sum() + now.car.sum()) / len(now) < 5: continue
+        seasons = set(rows.cs)
+        team_g = set(mine[mine.cs.isin(seasons)].game_id); missed = team_g - set(rows.game_id)
+        if not missed: continue
+        sc = mine[mine.game_id.isin(missed) & (mine.td > 0) & (mine.pid != pid)].groupby('pid').td.sum().sort_values(ascending=False).head(n)
+        res.append({"out": nm, "games": len(missed), "top": [{"name": names.get(k, k), "td": int(v)} for k, v in sc.items()]})
+    return res
+
 # Team TD total (added 9/30): each player's chance is computed on its own, so a team's list can add up to more (or fewer)
 # TDs than its implied points support. Scale every player's expected TDs halfway toward the team's expected RB/WR/TE
 # TDs (-0.746 + 0.1297 x implied points, fit on 5,278 team-games 2016-25). Tested train-3/test-next 2019-25: better in

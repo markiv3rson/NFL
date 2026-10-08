@@ -147,6 +147,10 @@ def rerun_game_lines():
             out.append({"game": f"{g.get('away')} @ {g.get('home')}", "error": str(e)})
     return jsonify({"ok": True, "results": out})
 
+def _safe(fn, *a):
+    try: return fn(*a)
+    except Exception as e: print(f"[td] {fn.__name__} failed: {e}", flush=True); return []
+
 @app.route("/rerun-td-probs", methods=["POST"])
 def rerun_td_probs():
     body = request.get_json(force=True)
@@ -190,6 +194,7 @@ def rerun_td_probs():
                 "awayGroups": {k: round(v * 100, 1) for k, v in td_prob.group_any(away_df).items()},
                 "homeGroups": {k: round(v * 100, 1) for k, v in td_prob.group_any(home_df).items()},
                 "excluded": outs,
+                "without": {k: _safe(td_prob.without, nv(t), outs) for k, t in (("away", g["away"]), ("home", g["home"]))},
             })
         except Exception as e:
             out.append({"game": f"{g.get('away')} @ {g.get('home')}", "error": str(e)})

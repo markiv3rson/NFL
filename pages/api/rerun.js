@@ -126,7 +126,7 @@ export default async function handler(req, res) {
       if (!x) return errors.push(`unmatched TD result: ${r.game}`);
       if (r.error) return errors.push(`${x.key} TD: ${r.error}`);
       if (!early) alertJobs.push(alertsQbJump(SEASON, x, store.td[x.key] || null, { away: r.away, home: r.home }).catch(() => 0));   // starting QB's TD chance moved 10+ (10/7)
-      store.td[x.key] = { away: r.away, home: r.home, awayGroups: r.awayGroups || null, homeGroups: r.homeGroups || null, outs: r.excluded, linesUsed: { homeSpread: -x.spread, total: x.total }, ...(x.own ? { early: true } : {}), runAt };
+      store.td[x.key] = { away: r.away, home: r.home, awayGroups: r.awayGroups || null, homeGroups: r.homeGroups || null, outs: r.excluded, without: r.without || null, linesUsed: { homeSpread: -x.spread, total: x.total }, ...(x.own ? { early: true } : {}), runAt };
       nTd++;
     });
     if (td && td.error) errors.push(`TD: ${String(td.error).slice(0, 120)}`);
