@@ -13,10 +13,15 @@ import { loadSnaps, qbFirstStart, sameName } from "../../lib/snaps";
 import { loadEspnInjuries, espnOutFor } from "../../lib/espn";
 export const config = { maxDuration: 300 };
 
-async function post(base, path, body) {
-  const r = await fetch(base + path, { method: "POST", headers: modelHeaders({ "Content-Type": "application/json" }), body: JSON.stringify(body) });
-  const text = await r.text();
-  try { return JSON.parse(text); } catch { throw new Error(`model service ${path}: ${text.slice(0, 120)}`); }
+// Railway answers 502/503 "Application failed to respond" while the service restarts after a deploy (10/7 8:33 PM).
+// Wait and try again (up to 2 more times, 20 s then 40 s) before calling it an error.
+async function post(base, path, body, waits = [20000, 40000]) {
+  for (let i = 0; ; i++) {
+    const r = await fetch(base + path, { method: "POST", headers: modelHeaders({ "Content-Type": "application/json" }), body: JSON.stringify(body) });
+    const text = await r.text();
+    if ((r.status === 502 || r.status === 503 || r.status === 504) && i < waits.length) { await new Promise((ok) => setTimeout(ok, waits[i])); continue; }
+    try { return JSON.parse(text); } catch { throw new Error(`model service ${path}: ${text.slice(0, 120)}`); }
+  }
 }
 export default async function handler(req, res) {
   const base = modelBase();
