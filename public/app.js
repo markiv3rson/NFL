@@ -913,7 +913,7 @@ const TEAM_COLOR = { ARI: "#97233f", ATL: "#a71930", BAL: "#5c2d91", BUF: "#0033
 // Proven angles on this game (10/8): rules that beat break-even in every period of 2007-25, with their record.
 function anglesBox(g) {
   const a = g.angles || []; if (!a.length) return "";
-  return `<div class="card" style="margin-top:10px"><div class="inner">` + a.map((x) => `<div class="row"><span><b class="g">PICK ${esc(x.pick)}</b>${x.price ? ` <span class="dim">${Math.round(x.price * 100)}¢</span>` : ""}</span><span class="dim">${esc(x.name)} · ${x.hit}% of ${x.n}</span></div>`).join("") + `</div></div>`;
+  return `<div class="card" style="margin-top:10px"><div class="inner">` + a.map((x) => `<div class="row"><span><b class="g">PICK ${esc(x.pick)}</b>${x.price ? ` <span class="dim">${Math.round(x.price * 100)}¢</span>` : ""}</span><span class="dim">${esc(x.name)} · ${x.roi != null ? `won ${x.hit}%, ${x.roi >= 0 ? "+" : ""}${x.roi}% per $1` : `${x.hit}%`} of ${x.n}</span></div>`).join("") + `</div></div>`;
 }
 function detailTop(g) {
   const dsc = g.started && !g.final ? LIVE_SC[g.key] : null;
