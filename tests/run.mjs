@@ -541,6 +541,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     await status({ query: { retrain: "kept current model: candidate 0.1 vs active 0.1" } }, res); ok(!(await R.get("tdmodel:switch")), "status: a kept model records no switch");
     await status({ query: { retrain: "went live: candidate 0.1 vs active 0.2" } }, res); const sw = JSON.parse(await R.get("tdmodel:switch") || "null");
     ok(sw && sw.t && "week" in sw, "status: a model that went live records the switch week"); await R.del("tdmodel:switch"); }
+  { // injury dropdown: game statuses first; practice-only notes (Wed-Thu) show too so it never vanishes midweek
+    const { injDisplay } = await import("../lib/week.js");
+    const L = injDisplay([{ name: "A", status: "Did Not Participate In Practice" }, { name: "B", status: "Questionable" }, { name: "C", status: "Full Participation in Practice" }, { name: "D", status: "Limited Participation in Practice" }, { name: "E", status: "Out" }]);
+    ok(L.map((x) => x.name).join("") === "EBAD" && L[2].shown === "DNP (practice)" && L[3].shown === "Limited (practice)" && !L[0].shown, "injuries: Out/Questionable first, then DNP and Limited (labeled); full practice left out");
+    const card = ctx.T.gameCard({ ...tg, injuries: L.map((x) => ({ ...x, team: "PIT", pos: "WR", week: 5 })) }, "x");
+    ok(/Injuries 4/.test(card) && /DNP \(practice\)/.test(card), "injuries: the button shows with practice-only notes"); }
   { // teaser legs: underdog +1.5..+2.5 at +7.5..+8.5 (lib + page)
     const { teaserLeg, recordTeaser, gradeTeasersWeek, teaserSummary, TEASE_MAX_PRICE } = await import("../lib/teaser.js");
     const g = { key: "A @ B", away: "A", home: "B" };
