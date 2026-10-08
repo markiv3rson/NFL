@@ -587,6 +587,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(pk["CHI @ GB"] === "2026-10-11T20:25:00.000Z" && pk["BUF @ LA"] === "2026-10-13T00:15:00.000Z" && !pk["X @ Y"], "Polymarket kickoff: event start time, else market game start");
     const rows = [{ key: "CHI @ GB", kickoff: "2026-10-11T13:00:00-04:00" }, { key: "CHI @ GB", kickoff: "2025-10-12T13:00:00-04:00", final: true }, { key: "BUF @ LA", kickoff: "2026-10-12T20:15:00-04:00" }];
     ok(overlayPolyKickoffs(rows, pk) === 1 && rows[0].kickoff === "2026-10-11T20:25:00.000Z" && rows[0].kickoffFrom === "polymarket" && rows[1].kickoff.startsWith("2025") && rows[2].kickoff === "2026-10-12T20:15:00-04:00", "Polymarket kickoff: replaces a stale time, leaves matching times and other seasons"); }
+  { const { overlayPolyKickoffs, KICK_FIX } = await import("../lib/games.js"); const r = [{ key: "CHI @ GB", kickoff: "2026-10-11T13:00:00-04:00" }]; overlayPolyKickoffs(r, KICK_FIX);
+    ok(new Date(r[0].kickoff).toLocaleString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit" }) === "1:25 PM", "CHI @ GB shows 1:25 PM Pacific"); }
   { // without him (10/8): top 3 TD scorers in games a listed-Out regular missed
     const h = ctx.T.tdTop3({ ...tg, td: [], without: { [tg.away]: [{ out: "A.Kamara", games: 7, top: [{ name: "C.Olave", td: 5 }, { name: "D.Vele", td: 2 }] }], [tg.home]: [{ out: "X.Y", games: 1, top: [] }] } });
     ok(/Without A\.Kamara<\/b> <span class="dim">\(7 games\)<\/span>: C\.Olave 5 · D\.Vele 2/.test(h) && /\(1 game\)<\/span>: no TDs/.test(h), "without him: scorers listed under the team's top 3"); }
