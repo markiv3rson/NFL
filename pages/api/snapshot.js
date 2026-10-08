@@ -7,7 +7,7 @@ import { applyCalibration } from "../../lib/calibration";
 import { tdRows } from "../../lib/picks";
 import { SEASON, currentWeek, loadGames, started } from "../../lib/games";
 import { getRedis, jparse, getJSON, setJSON, K, SLATE_CACHE } from "../../lib/redis";
-import { fetchEvents, gameLines, tdProps } from "../../lib/poly";
+import { fetchEvents, gameLines, tdProps, polyKickoffs } from "../../lib/poly";
 import { sanePoly } from "../../lib/sane";
 import { fetchBooks } from "../../lib/books";
 import { gradeRecent } from "../../lib/grade";
@@ -60,6 +60,7 @@ export default async function handler(req, res) {
     const booksNow = books ? { t, games: books } : await getJSON(K.books(season, week));   // for the edge tracker (age-checked there)
     let edges = 0;
     const events = open.length ? await fetchEvents() : [];
+    try { const pk = polyKickoffs(events, open); if (Object.keys(pk).length) await setJSON("polykick", { ...((await getJSON("polykick")) || {}), ...pk }); } catch {}   // Polymarket's start time (10/8: CHI @ GB)
     const model = open.length ? await loadModel(season, week).catch(() => null) : null;
     let lines = 0, props = 0;
     await Promise.all(open.map(async (g) => {

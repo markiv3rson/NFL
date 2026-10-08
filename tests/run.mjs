@@ -580,6 +580,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const g = { ...tg, sos: { [tg.away]: { pct: 0.6, rank: 2 }, [tg.home]: { pct: 0.4, rank: 23 } } };
     const d = ctx.T.detailTop ? ctx.T.detailTop(g) : null;
     if (d) ok(/SOS 2nd/.test(d) && /SOS 23rd/.test(d), "SOS: shown on the game page"); }
+  { // Polymarket kickoff (10/8: CHI @ GB 1:00 ET in the schedule and ESPN, 4:25 on Polymarket)
+    const { polyKickoffs } = await import("../lib/poly.js"); const { overlayPolyKickoffs } = await import("../lib/games.js");
+    const ev = [{ title: "Bears vs. Packers", startTime: "2026-10-11T20:25:00Z", markets: [] }, { title: "Bills vs. Rams", markets: [{ gameStartTime: "2026-10-13 00:15:00+00" }] }];
+    const pk = polyKickoffs(ev, [{ key: "CHI @ GB", away: "CHI", home: "GB" }, { key: "BUF @ LA", away: "BUF", home: "LA" }, { key: "X @ Y", away: "X", home: "Y" }]);
+    ok(pk["CHI @ GB"] === "2026-10-11T20:25:00.000Z" && pk["BUF @ LA"] === "2026-10-13T00:15:00.000Z" && !pk["X @ Y"], "Polymarket kickoff: event start time, else market game start");
+    const rows = [{ key: "CHI @ GB", kickoff: "2026-10-11T13:00:00-04:00" }, { key: "CHI @ GB", kickoff: "2025-10-12T13:00:00-04:00", final: true }, { key: "BUF @ LA", kickoff: "2026-10-12T20:15:00-04:00" }];
+    ok(overlayPolyKickoffs(rows, pk) === 1 && rows[0].kickoff === "2026-10-11T20:25:00.000Z" && rows[0].kickoffFrom === "polymarket" && rows[1].kickoff.startsWith("2025") && rows[2].kickoff === "2026-10-12T20:15:00-04:00", "Polymarket kickoff: replaces a stale time, leaves matching times and other seasons"); }
   { // without him (10/8): top 3 TD scorers in games a listed-Out regular missed
     const h = ctx.T.tdTop3({ ...tg, td: [], without: { [tg.away]: [{ out: "A.Kamara", games: 7, top: [{ name: "C.Olave", td: 5 }, { name: "D.Vele", td: 2 }] }], [tg.home]: [{ out: "X.Y", games: 1, top: [] }] } });
     ok(/Without A\.Kamara<\/b> <span class="dim">\(7 games\)<\/span>: C\.Olave 5 · D\.Vele 2/.test(h) && /\(1 game\)<\/span>: no TDs/.test(h), "without him: scorers listed under the team's top 3"); }
