@@ -552,6 +552,17 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(/Opened TB \+8\.5 · moved 1 toward the model/.test(ctx.T.openMove(g, "spread", { team: "TB", line: 7.5 })), "open line: TB +8.5 to +7.5 moved toward a TB pick");
     ok(/moved 1 toward/.test(ctx.T.openMove(g, "total", { side: "over", line: 47.5 })) && /away from/.test(ctx.T.openMove(g, "total", { side: "under", line: 47.5 })), "open line: totals from the pick's side");
     ok(ctx.T.openMove(g, "spread", { team: "TB", line: 8.5 }) === "" && ctx.T.openMove({ ...g, final: true }, "spread", { team: "TB", line: 7.5 }) === "", "open line: nothing when unmoved or final"); }
+  { // ESPN kickoff overrides a stale schedule time (10/7: CHI @ GB moved to 4:25 ET; nflverse still said 1:00)
+    const { overlayEspnKickoffs, kickoffsFromScoreboard, resetKickCache } = await import("../lib/espnFinals.js");
+    const sb = { events: [{ date: "2026-10-11T20:25Z", competitions: [{ competitors: [{ homeAway: "home", team: { displayName: "Green Bay Packers" } }, { homeAway: "away", team: { displayName: "Chicago Bears" } }] }] },
+      { date: "2026-10-11T17:00Z", competitions: [{ competitors: [{ homeAway: "home", team: { displayName: "Miami Dolphins" } }, { homeAway: "away", team: { displayName: "Cincinnati Bengals" } }] }] }] };
+    ok(kickoffsFromScoreboard(sb)["CHI @ GB"] === "2026-10-11T20:25:00.000Z", "ESPN kickoffs: parsed by team");
+    resetKickCache(); const now = Date.parse("2026-10-08T03:00Z");
+    const rows = [{ key: "CHI @ GB", final: false, kickoff: "2026-10-11T13:00:00-04:00" }, { key: "CIN @ MIA", final: false, kickoff: "2026-10-11T13:00:00-04:00" }, { key: "A @ B", final: true, kickoff: "2026-10-04T13:00:00-04:00" }];
+    const n = await overlayEspnKickoffs(rows, now, async () => ({ ok: true, json: async () => sb }));
+    ok(n === 1 && rows[0].kickoff === "2026-10-11T20:25:00.000Z" && rows[0].kickoffFrom === "espn" && rows[0].kickoffWas && rows[1].kickoff === "2026-10-11T13:00:00-04:00" && !rows[1].kickoffFrom, "ESPN kickoffs: a moved game takes ESPN's time; a matching one is left alone");
+    resetKickCache(); const r2 = [{ key: "CHI @ GB", final: false, kickoff: "2026-10-11T13:00:00-04:00" }];
+    ok((await overlayEspnKickoffs(r2, now, async () => { throw new Error("down"); })) === 0 && r2[0].kickoff === "2026-10-11T13:00:00-04:00", "ESPN kickoffs: ESPN down keeps the schedule's time"); resetKickCache(); }
   { // signal alerts: teaser leg priced right, TD "No" mark, starting QB's TD chance jumping
     const { alertTeaser, alertsTdNo, alertsQbJump, listAlerts } = await import("../lib/alerts.js"), R = globalThis.__TEST_REDIS__;
     const g = { key: "TB @ DAL", away: "TB", home: "DAL" };
