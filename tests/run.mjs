@@ -112,7 +112,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const R = computeReplay(rows), by = (id) => R.rows.find((r) => r.id === id);
   ok(by("dog").n === 3 && Math.abs(by("dog").hit - 2 / 3) < 1e-9, "replay: road dogs +3..6.5 — covers counted, push dropped", [by("dog").n, by("dog").hit]);
   ok(by("homefav").n === 1 && Math.abs(by("homefav").roi - 0.2) < 1e-9, "replay: home fav 9.5+ moneyline return from the closing price", by("homefav"));
-  ok(R.rows.length === 12 && R.rows[1].id === "spread_model" && R.rows[0].id === "favorite", "replay: twelve rows, favorite first, model rows fixed"); }
+  ok(R.rows.length === 13 && R.rows[1].id === "spread_model" && R.rows[0].id === "favorite", "replay: thirteen rows, favorite first, model rows fixed"); }
 // ---------- live scores (ESPN scoreboard -> per-game score + clock)
 { const { parseScoreboard } = await import("../lib/live.js");
   const ev = (away, home, as, hs, state, period, clock, detail, completed = false) => ({ competitions: [{ competitors: [{ homeAway: "home", score: String(hs), team: { displayName: home } }, { homeAway: "away", score: String(as), team: { displayName: away } }] }],
