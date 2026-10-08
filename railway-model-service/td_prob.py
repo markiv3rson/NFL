@@ -415,7 +415,11 @@ def is_out_name(short, outs):
 # 0.1362, 2025 0.1207 vs 0.1313 (4 of 4 better); said 13.4/24.1/36.3% vs 12.7/29.3/41.1% scored. Coefficients fit on 2023-25 starters
 # (qb_study.py reproduces them). The chance assumes he starts; Out/Doubtful QBs are skipped for the next QB with starts.
 QB_F = ['r_car', 'r_rz', 'r_i5', 'r_rtd', 'imp', 'o_rush']
-QB_COEF, QB_INT = np.array([0.186, 0.166, 0.091, 0.757, 0.001, 0.144]), -2.861
+# 10/8: QBs with no previous NFL season (rookies, first-time starters) are blended with an average starter's per-start rushing (3 starts'
+# worth, QB_LG from 2023-25) instead of trusting one or two starts. Walk-forward 2022-25: better overall in 3 of 4 seasons (2025 slightly
+# worse); coefficients refit with the blend on 2023-25 starters.
+QB_COEF, QB_INT = np.array([0.219, 0.031, 0.297, 0.822, 0.0, 0.161]), -2.927
+QB_LG = {'car': 3.3083, 'rz': 0.7337, 'i5': 0.243, 'rtd': 0.1973}
 def qb_starts(pbp):
     """Per team-game: the starter (most pass attempts) and his rushing that game (kneels left out)."""
     x = pbp[pbp.season_type == 'REG'] if 'season_type' in pbp else pbp
@@ -449,7 +453,7 @@ def qb_row(team, opp, imp, outs=()):
         g0 = float(r.g) if r is not None else 0.0
         def bl(k):
             cur_v = float(getattr(r, k)) if r is not None else 0.0
-            if q is None: return cur_v / g0 if g0 else 0.0
+            if q is None: return (cur_v + K * QB_LG[k]) / (g0 + K)   # no NFL history: blend with an average starter
             return (cur_v + K * float(q[k]) / float(q.g)) / (g0 + K)
         x = np.array([bl('car'), bl('rz'), bl('i5'), bl('rtd'), float(imp), float(o_rush)])
         pq = float(1 / (1 + np.exp(-(QB_INT + QB_COEF @ x))))

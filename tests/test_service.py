@@ -71,6 +71,7 @@ ok(len(st) == 1 and st.iloc[0].pid == "QB1" and st.iloc[0].car == 1 and st.iloc[
 lo = 1 / (1 + np.exp(-(ns3["QB_INT"] + ns3["QB_COEF"] @ np.array([1.5, 0.2, 0.05, 0.05, 22, 0.5]))))
 hi = 1 / (1 + np.exp(-(ns3["QB_INT"] + ns3["QB_COEF"] @ np.array([9, 1.5, 0.8, 0.8, 26, 0.6]))))
 ok(0.05 < lo < 0.12 and 0.4 < hi < 0.7, "QB model: a pocket passer ~8%, a goal-line runner well above 40%")
+ok(set(ns3["QB_LG"]) == {"car", "rz", "i5", "rtd"} and len(ns3["QB_COEF"]) == 6, "QB model: rookie blend uses an average starter for each input")
 
 # Scheduler: ESPN kickoff replaces a stale schedule time (10/7, CHI @ GB 1:00 -> 4:25 PM ET)
 import io as _io, json as _json, scheduler as _sch
