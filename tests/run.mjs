@@ -130,7 +130,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const ctx = { document: { getElementById: () => el(), querySelectorAll: () => [], addEventListener() {}, hidden: false }, fetch: () => Promise.reject(new Error("offline")),
     localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) }, location: { reload() {} }, window: {}, setTimeout, clearTimeout, console, Date, Math, Number, String, JSON, Promise, Set, Object, Array };
   vm.createContext(ctx);
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={openMove,tdNoGap,teaserRow,teaserStrip,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={kickLine,openMove,tdNoGap,teaserRow,teaserStrip,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   ok(/PHI winning by about 4\.2/.test(T.spreadReason(g)) && /needs PHI to win by 4\+/.test(T.spreadReason(g)), "spread wording");
@@ -570,6 +570,11 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(teamRecord(rows, "CHI", 5) === "1–1–1" && teamRecord(rows, "GB", 5) === "0–1" && teamRecord(rows, "SEA", 5) === "0–0", "season record: earlier weeks' finals only, ties shown");
     const tl = ctx.T.tile({ ...tg, rec: { [tg.away]: "3–1", [tg.home]: "2–2" } });
     ok(/class="rec">3–1</.test(tl) && /class="rec">2–2</.test(tl) && !/class="t r"/.test(tl), "season record: shown under both team codes on the tile"); }
+  { // kickoff check line in System: failures and moved games are visible
+    ok(/failed: ESPN timed out/.test(ctx.T.kickLine({ t: "2026-10-08T05:00Z", ok: false, error: "ESPN timed out" })) && /moved: CHI @ GB/.test(ctx.T.kickLine({ t: "2026-10-08T05:00Z", ok: true, espnGames: 15, moved: [{ game: "CHI @ GB", was: "2026-10-11T17:00Z", now: "2026-10-11T20:25Z" }] })) && /all match the schedule/.test(ctx.T.kickLine({ t: "2026-10-08T05:00Z", ok: true, espnGames: 15, moved: [] })), "kickoff check: shows failures, moved games, or all-match");
+    const { overlayEspnKickoffs, resetKickCache } = await import("../lib/espnFinals.js"); const R = globalThis.__TEST_REDIS__;
+    resetKickCache(); await overlayEspnKickoffs([{ key: "CHI @ GB", final: false, kickoff: new Date(Date.now() + 86400e3).toISOString() }], Date.now(), async () => { const e = new Error("t"); e.name = "TimeoutError"; throw e; });
+    const kc = JSON.parse(await R.get("kickcheck")); ok(kc && kc.ok === false && /timed out/.test(kc.error), "kickoff check: a failure is recorded"); await R.del("kickcheck"); resetKickCache(); }
   { // signal alerts: teaser leg priced right, TD "No" mark, starting QB's TD chance jumping
     const { alertTeaser, alertsTdNo, alertsQbJump, listAlerts } = await import("../lib/alerts.js"), R = globalThis.__TEST_REDIS__;
     const g = { key: "TB @ DAL", away: "TB", home: "DAL" };
