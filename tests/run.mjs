@@ -593,7 +593,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     vm.runInContext(`TEASERS = ${JSON.stringify(sm)}; S = { week: 3, games: [], teaserLegs: [${JSON.stringify(l1)}, ${JSON.stringify({ ...l2, price: null, value: false })}] }`, ctx);
     const row = ctx.T.teaserRow(), strip = ctx.T.teaserStrip();
     ok(/Underdog \+1\.5–2\.5 teased to \+7\.5–8\.5/.test(row) && /1–1/.test(row) && /76\.1% of 616/.test(row), "teaser: tracked-angles row shows record and history");
-    ok(/Teaser legs · 2 this week · 1 priced right/.test(strip) && /B \+8\.5/.test(strip) && /70¢/.test(strip) && /no price yet/.test(strip), "teaser: Game Lines strip lists each leg and its price");
+    ok(/Teaser legs · 2 this week · 1 priced right/.test(strip) && /B \+8\.5/.test(strip) && /70¢/.test(strip) && /✓ good price/.test(strip) && /no price yet/.test(strip), "teaser: Game Lines strip lists each leg and its price");
     vm.runInContext(`TEASERS = null; S = { week: 3, games: [] }`, ctx); ok(ctx.T.teaserRow() === "" && ctx.T.teaserStrip() === "", "teaser: nothing shown without data");
     for (const k of await R.keys("teaser:2031:*")) await R.del(k); }
   { // blended touchdown chance and "agrees with the market"
