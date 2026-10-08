@@ -570,6 +570,19 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(teamRecord(rows, "CHI", 5) === "1–1–1" && teamRecord(rows, "GB", 5) === "0–1" && teamRecord(rows, "SEA", 5) === "0–0", "season record: earlier weeks' finals only, ties shown");
     const tl = ctx.T.tile({ ...tg, rec: { [tg.away]: "3–1", [tg.home]: "2–2" } });
     ok(/class="rec">3–1</.test(tl) && /class="rec">2–2</.test(tl) && !/class="t r"/.test(tl), "season record: shown under both team codes on the tile"); }
+  { // strength of schedule (10/8)
+    const { schedStrength } = await import("../lib/week.js");
+    const rows = [{ week: 1, final: true, away: "A", home: "B", awayScore: 10, homeScore: 7 }, { week: 1, final: true, away: "C", home: "D", awayScore: 3, homeScore: 7 },
+      { week: 2, final: true, away: "A", home: "D", awayScore: 1, homeScore: 7 }, { week: 3, final: true, away: "B", home: "C", awayScore: 9, homeScore: 3 }];
+    const s = schedStrength(rows, 3);   // week 3 game not counted: A 1-1, B 0-1, C 0-1, D 2-0
+    ok(s.A.pct === 0.667 && s.C.rank === 1 && s.A.rank === 2 && s.B.pct === 0.5 && s.D.rank === 4 && !s.E, "SOS: opponents' win share from earlier weeks, ranked hardest first");
+    ok(s.C.rank === 1 || s.C.pct >= s.A.pct, "SOS: rank follows win share");
+    const g = { ...tg, sos: { [tg.away]: { pct: 0.6, rank: 2 }, [tg.home]: { pct: 0.4, rank: 23 } } };
+    const d = ctx.T.detailTop ? ctx.T.detailTop(g) : null;
+    if (d) ok(/SOS 2nd/.test(d) && /SOS 23rd/.test(d), "SOS: shown on the game page"); }
+  { // without him (10/8): top 3 TD scorers in games a listed-Out regular missed
+    const h = ctx.T.tdTop3({ ...tg, td: [], without: { [tg.away]: [{ out: "A.Kamara", games: 7, top: [{ name: "C.Olave", td: 5 }, { name: "D.Vele", td: 2 }] }], [tg.home]: [{ out: "X.Y", games: 1, top: [] }] } });
+    ok(/Without A\.Kamara<\/b> <span class="dim">\(7 games\)<\/span>: C\.Olave 5 · D\.Vele 2/.test(h) && /\(1 game\)<\/span>: no TDs/.test(h), "without him: scorers listed under the team's top 3"); }
   { // kickoff check line in System: failures and moved games are visible
     ok(/failed: ESPN timed out/.test(ctx.T.kickLine({ t: "2026-10-08T05:00Z", ok: false, error: "ESPN timed out" })) && /moved: CHI @ GB/.test(ctx.T.kickLine({ t: "2026-10-08T05:00Z", ok: true, espnGames: 15, moved: [{ game: "CHI @ GB", was: "2026-10-11T17:00Z", now: "2026-10-11T20:25Z" }] })) && /all match the schedule/.test(ctx.T.kickLine({ t: "2026-10-08T05:00Z", ok: true, espnGames: 15, moved: [] })), "kickoff check: shows failures, moved games, or all-match");
     const { overlayEspnKickoffs, resetKickCache } = await import("../lib/espnFinals.js"); const R = globalThis.__TEST_REDIS__;
