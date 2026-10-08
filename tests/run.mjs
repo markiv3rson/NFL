@@ -563,6 +563,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(n === 1 && rows[0].kickoff === "2026-10-11T20:25:00.000Z" && rows[0].kickoffFrom === "espn" && rows[0].kickoffWas && rows[1].kickoff === "2026-10-11T13:00:00-04:00" && !rows[1].kickoffFrom, "ESPN kickoffs: a moved game takes ESPN's time; a matching one is left alone");
     resetKickCache(); const r2 = [{ key: "CHI @ GB", final: false, kickoff: "2026-10-11T13:00:00-04:00" }];
     ok((await overlayEspnKickoffs(r2, now, async () => { throw new Error("down"); })) === 0 && r2[0].kickoff === "2026-10-11T13:00:00-04:00", "ESPN kickoffs: ESPN down keeps the schedule's time"); resetKickCache(); }
+  { // season record under each team code (10/8)
+    const { teamRecord } = await import("../lib/week.js");
+    const rows = [{ week: 1, final: true, away: "CHI", home: "GB", awayScore: 20, homeScore: 17 }, { week: 2, final: true, away: "DET", home: "CHI", awayScore: 24, homeScore: 24 },
+      { week: 3, final: true, away: "CHI", home: "MIN", awayScore: 10, homeScore: 27 }, { week: 5, final: true, away: "CHI", home: "TB", awayScore: 30, homeScore: 3 }, { week: 4, final: false, away: "CHI", home: "LV" }];
+    ok(teamRecord(rows, "CHI", 5) === "1–1–1" && teamRecord(rows, "GB", 5) === "0–1" && teamRecord(rows, "SEA", 5) === "0–0", "season record: earlier weeks' finals only, ties shown");
+    const tl = ctx.T.tile({ ...tg, rec: { [tg.away]: "3–1", [tg.home]: "2–2" } });
+    ok(/class="rec">3–1</.test(tl) && /class="rec">2–2</.test(tl) && !/class="t r"/.test(tl), "season record: shown under both team codes on the tile"); }
   { // signal alerts: teaser leg priced right, TD "No" mark, starting QB's TD chance jumping
     const { alertTeaser, alertsTdNo, alertsQbJump, listAlerts } = await import("../lib/alerts.js"), R = globalThis.__TEST_REDIS__;
     const g = { key: "TB @ DAL", away: "TB", home: "DAL" };
