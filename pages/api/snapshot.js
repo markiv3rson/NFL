@@ -1,7 +1,10 @@
 // Takes a line snapshot: Polymarket lines + TD prices for every game that has NOT kicked off,
 // plus sportsbook consensus when books=1. Called by the Railway scheduler (7/12/3/7 PT, Sunday
 // 6/7/8/9/10/12/3 PT, and just before each kickoff with kickoff=<game>) and by the Refresh button.
-import { recordTeaser } from "../../lib/teaser";
+import { recordTeaser, teaserLeg } from "../../lib/teaser";
+import { alertTeaser, alertsTdNo } from "../../lib/alerts";
+import { applyCalibration } from "../../lib/calibration";
+import { tdRows } from "../../lib/picks";
 import { SEASON, currentWeek, loadGames, started } from "../../lib/games";
 import { getRedis, jparse, getJSON, setJSON, K, SLATE_CACHE } from "../../lib/redis";
 import { fetchEvents, gameLines, tdProps } from "../../lib/poly";
@@ -66,6 +69,7 @@ export default async function handler(req, res) {
       // Alternate spreads (teaser legs, 10/6) are kept as ONE latest copy per game, not inside every snapshot (200 kept per game: it would
       // add MBs a week to the database and to every page load).
       const alts = poly && poly.alts ? poly.alts : null; if (alts) { poly = { ...poly }; delete poly.alts; await setJSON(`alts:${season}:${week}:${g.key}`, { t, alts }); }
+      if (alts) await alertTeaser(season, g, teaserLeg(g, { ...poly, alts }, books ? books[g.key] || null : ((await getJSON(K.books(season, week)).catch(() => null)) || { games: {} }).games[g.key])).catch(() => 0);   // teaser leg priced right (10/7)
       const snap = { t, src, poly: poly || null, books: books ? books[g.key] || null : undefined };
       // Bad-data guard: a line jumping this far between snapshots is almost always a feed glitch, not a real move
       const prevRaw = await redis.lindex(K.snaps(season, week, g.key), -1), prev = prevRaw ? (jparse(prevRaw) || {}).poly || null : null;
@@ -109,6 +113,9 @@ export default async function handler(req, res) {
         } else await redis.del(`tdrej:${season}:${week}:${g.key}`);
         if (msg) await logError("snapshot", msg);
         if (accept) { await setJSON(K.tdpx(season, week, g.key), px); props++;
+          { const calib = await getJSON(`calib:${season}`).catch(() => null);   // "No" marks on the new prices, from the numbers the tab shows (10/7)
+            const rows = tdRows(g.key, g.away, g.home, (model && model.td && model.td[g.key]) || null, px, {}).map((r) => ({ ...r, fair: r.fair != null && calib ? applyCalibration(r.fair, calib) : r.fair }));
+            await alertsTdNo(season, g, rows).catch(() => 0); }
           // TD price HISTORY (added 9/29): before, each snapshot overwrote the last, so only the latest/closing TD prices
           // existed. Compact rows {t, p: {market: [ask, bid]}}, last 150 snapshots per game (a week uses ~35).
           const compact = {}; for (const [q, v] of Object.entries(px)) { const o = typeof v === "number" ? { ask: v } : v; if (o && o.ask > 0) compact[q] = [o.ask, o.bid ?? null]; }

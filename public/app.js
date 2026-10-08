@@ -104,6 +104,16 @@ function injLine(g, kind) {
 }
 const injApplied = (g, kind) => !!(g.model && g.model.inj && (kind === "total" ? Math.abs(g.model.inj.total || 0) >= 0.05 : (g.model.inj.home.players.length || g.model.inj.away.players.length)));
 // Right-hand "Model leans" cell: the lean, its strength, and in plain words WHY.
+// Opening line vs now, from the model side's view (10/7): "Opened TB +8.5 · moved 1 toward the model". Shown once it moved half a point.
+function openMove(g, kind, p) {
+  const h0 = (g.history || []).find((h) => h.poly && (kind === "total" ? h.poly.total : h.poly.spread)); if (!h0 || !p || g.final) return "";
+  let open, mv;
+  if (kind === "total") { open = h0.poly.total.line; mv = p.side === "over" ? p.line - open : open - p.line; }
+  else { const hs0 = h0.poly.spread.homeSpread; open = p.team === g.home ? hs0 : -hs0; mv = open - p.line; }
+  if (!isFinite(mv) || Math.abs(mv) < 0.5) return "";
+  const lab = kind === "total" ? `${p.side === "over" ? "Over" : "Under"} ${open}` : `${p.team} ${sgn(open)}`;
+  return `<div class="s ${mv > 0 ? "g" : "dim"}">Opened ${esc(lab)} · moved ${Math.abs(mv)} ${mv > 0 ? "toward" : "away from"} the model</div>`;
+}
 function leanCell(g, kind) {
   let p = kind === "total" ? g.totalPick : g.spreadPick;
   const head = `<div class="k">Model leans${injApplied(g, kind) ? ' <span class="pill p-y" style="padding:0 6px;font-size:10px">Estimate</span>' : ""}</div>`;
@@ -127,6 +137,7 @@ function leanCell(g, kind) {
     `<span>${p.label}</span><div class="s">${p.pct.toFixed(1)}% model chance</div>`) +
     (reason ? `<div class="s" style="margin-top:6px">${esc(reason)}</div>` : "") +
     (wind ? `<div class="s">${wind}</div>` : "") +
+    openMove(g, kind, p) +
     (adj ? `<div class="s r" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">${injBadgeFor(g)}${esc(adj)}</div>` : "") +
     (p.warn ? `<div class="s y">${esc(p.warn)}</div>` : ""));
 }
@@ -934,7 +945,7 @@ function tickCd() {
   tickCd._h = setTimeout(tickCd, 1000);
 }
 // alerts: built on the server from changes it already sees between pulls (injuries, lines, price gaps, model moves, results)
-const ALK = { INJURY: ["Injury", "var(--red)"], "PRICE GAP": ["Price gap", "var(--cyan)"], "QB CHANGE": ["QB change", "var(--gold)"], "LINE MOVE": ["Line move", "var(--blue)"], WEATHER: ["Weather", "#7fd1ff"], MODEL: ["Model", "var(--violet)"], RESULT: ["Result", "var(--green)"] };
+const ALK = { INJURY: ["Injury", "var(--red)"], "PRICE GAP": ["Price gap", "var(--cyan)"], "QB CHANGE": ["QB change", "var(--gold)"], "LINE MOVE": ["Line move", "var(--blue)"], WEATHER: ["Weather", "#7fd1ff"], MODEL: ["Model", "var(--violet)"], RESULT: ["Result", "var(--green)"], TEASER: ["Teaser leg", "var(--cyan)"], "TD NO": ["TD No", "var(--red)"], "QB TD": ["QB TD", "var(--gold)"] };
 const alSeen = () => { try { return localStorage.getItem("alSeen") || ""; } catch { return ""; } };
 async function loadAlerts() {
   try { const d = await (await fetch("/api/alerts", { cache: "no-store" })).json(); if (d.ok) { ALERTS = d.alerts || []; renderAlerts(); } } catch {}
