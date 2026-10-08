@@ -607,6 +607,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const by = Object.fromEntries(P.map((p) => [p.strategy, p]));
     ok(by.angles_2 && by.angles_2.legs.map((l) => l.label).join(",") === "A +4.5,Under 41.5" && by.angles_2.legs[1].kind === "total" && Math.abs(by.angles_2.prob - 0.59 * 0.568) < 1e-9 && !by.angles_3, "angle parlays: one per game, rule hit rates as the chance, no 3-leg without 3 angles");
     ok(by.angles_fav_3 && by.angles_fav_3.legs.map((l) => l.label).join(",") === "A +4.5,F ML,I ML", "angle + favorites parlay: best angle plus the two strongest home favorites"); }
+  { // road ML angle: flagged with its return, used as an ML leg in angle parlays (10/8)
+    const g = { ...tg, angles: [{ id: "roadml3", pick: "BUF ML", price: 0.45, name: "Road team · moneyline · spread ~3, total 48+", hit: 55.2, n: 382, roi: 12.9 }] };
+    ok(/won 55\.2%, \+12\.9% per \$1 of 382/.test(ctx.T.anglesBox(g)), "road ML angle: win rate and return shown");
+    const { buildPaper } = await import("../lib/paper.js");
+    const P = buildPaper({ games: [{ key: "BUF @ LA", home: "LA", away: "BUF", started: false, final: false, angles: g.angles, td: [] }, { key: "A @ B", home: "B", away: "A", started: false, final: false, angles: [{ id: "winddiv", pick: "Under 41.5", price: 0.5, hit: 56.8, n: 426 }], td: [] }] });
+    const l = P.find((p) => p.strategy === "angles_2").legs.find((x) => x.label === "BUF ML");
+    ok(l && l.kind === "ml" && l.team === "BUF", "road ML angle: graded as a moneyline leg on the road team"); }
   { // without him (10/8): top 3 TD scorers in games a listed-Out regular missed
     const h = ctx.T.tdTop3({ ...tg, td: [], without: { [tg.away]: [{ out: "A.Kamara", games: 7, top: [{ name: "C.Olave", td: 5 }, { name: "D.Vele", td: 2 }] }], [tg.home]: [{ out: "X.Y", games: 1, top: [] }] } });
     ok(/Without A\.Kamara<\/b> <span class="dim">\(7 games\)<\/span>: C\.Olave 5 · D\.Vele 2/.test(h) && /\(1 game\)<\/span>: no TDs/.test(h), "without him: scorers listed under the team's top 3"); }
