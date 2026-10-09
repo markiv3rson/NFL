@@ -57,38 +57,26 @@ const lastName = (n) => String(n || "").replace(/\s+(Jr\.?|Sr\.?|II|III|IV)$/i, 
 const favOf = (g, mg) => (mg >= 0 ? g.home : g.away);
 function spreadReason(g) {
   const m = g.model; if (!m || m.homeMargin == null) return "";
-  const say = (x) => (Math.abs(x) < 0.05 ? "a toss-up" : `${favOf(g, x)} winning by about ${Math.abs(x).toFixed(1)}`);
-  let s = `Model sees ${say(m.homeMargin)}`;
-  if (m.inj && m.rawMargin != null && Math.abs(m.rawMargin - m.homeMargin) >= 0.05)
-    s += ` after injuries (${Math.abs(m.rawMargin) < 0.05 ? "a toss-up" : `${favOf(g, m.rawMargin)} by ${Math.abs(m.rawMargin).toFixed(1)}`} before)`;
-  s += ".";
-  if (m.fix && m.fix.neutral) s += " Neutral-site game, so no home-field edge is counted.";
-  // (division-game and road-bye notes removed 9/30: those margin terms were dropped after testing worse out of sample)
-  if (m.fix && m.fix.awayElim) s += ` ${g.away} is all but out of the playoff race.`;
-  if (m.fix && m.fix.homeQbFirstStart) s += ` ${g.home}'s backup QB is making his first start.`;
-  if (m.fix && m.fix.awayQbFirstStart) s += ` ${g.away}'s backup QB is making his first start.`;
-  const hs = g.poly && g.poly.spread ? g.poly.spread.homeSpread : null;
-  if (hs != null) {
-    if (hs === 0) s += " Polymarket has it as a pick'em.";
-    else { const n = Math.abs(hs); s += ` Polymarket needs ${hs < 0 ? g.home : g.away} to win by ${Number.isInteger(n) ? "more than " + n : Math.ceil(n) + "+"} to cover.`; }
-  }
-  return s;
+  const say = (x) => (Math.abs(x) < 0.05 ? "Pick'em" : `${favOf(g, x)} by ${Math.abs(x).toFixed(1)}`);
+  const b = [`Model: ${say(m.homeMargin)}`];
+  if (m.inj && m.rawMargin != null && Math.abs(m.rawMargin - m.homeMargin) >= 0.05) b.push(`${say(m.rawMargin)} before injuries`);
+  if (m.fix && m.fix.neutral) b.push("neutral site");
+  if (m.fix && m.fix.awayElim) b.push(`${g.away} eliminated`);
+  if (m.fix && m.fix.homeQbFirstStart) b.push(`${g.home} backup QB`);
+  if (m.fix && m.fix.awayQbFirstStart) b.push(`${g.away} backup QB`);
+  return b.join(" · ");
 }
 function totalReason(g) {
   const m = g.model; if (!m || m.total == null) return "";
-  let s = `Model sees about ${Number(m.total).toFixed(1)} total points`;
-  if (m.inj && m.rawTotal != null && Math.abs(m.rawTotal - m.total) >= 0.05) s += ` after injuries (${Number(m.rawTotal).toFixed(1)} before)`;
-  s += ".";
+  const b = [`Model: ${Number(m.total).toFixed(1)}`];
+  if (m.inj && m.rawTotal != null && Math.abs(m.rawTotal - m.total) >= 0.05) b.push(`${Number(m.rawTotal).toFixed(1)} before injuries`);
   if (m.fix) {
-    const bits = [];
-    if (m.fix.dome) bits.push(`indoor game +${Number(m.fix.dome).toFixed(1)}`);
-    if (Math.abs(m.fix.pace || 0) >= 0.3) bits.push(`pace ${m.fix.pace > 0 ? "+" : ""}${Number(m.fix.pace).toFixed(1)}`);
-    if (m.fix.div) bits.push("division game");
-    if (m.fix.turf) bits.push("turf field");
-    if (bits.length) s += ` Includes ${bits.join(", ")}.`;
+    if (m.fix.dome) b.push(`dome +${Number(m.fix.dome).toFixed(1)}`);
+    if (Math.abs(m.fix.pace || 0) >= 0.3) b.push(`pace ${m.fix.pace > 0 ? "+" : ""}${Number(m.fix.pace).toFixed(1)}`);
+    if (m.fix.div) b.push("division");
+    if (m.fix.turf) b.push("turf");
   }
-  const tl = g.poly && g.poly.total ? g.poly.total.line : null;
-  return tl != null ? s + ` Polymarket's line is ${tl}.` : s;
+  return b.join(" · ");
 }
 // "Injury adjustment: GB -1.6 (Reed out, Banks out). ATL 0."  (only when the estimate actually moved something)
 function injLine(g, kind) {
@@ -121,7 +109,7 @@ function leanCell(g, kind) {
   if (!p && g.early && g.model && g.model.homeMargin != null) {   // next week before any market line: the model's own numbers, labeled
     const m = g.model, side = m.homeMargin >= 0 ? `${g.home} -${m.homeMargin.toFixed(1)}` : `${g.away} -${(-m.homeMargin).toFixed(1)}`, wp = m.homeWinPct != null ? Math.round(m.homeWinPct >= 50 ? m.homeWinPct : 100 - m.homeWinPct) : null;
     return wrap(`${earlyNote(g)}<div style="margin-top:6px"><b class="mod">${kind === "total" ? `Total ${m.total.toFixed(1)}` : side}</b></div>` +
-      `<div class="s">${kind === "total" ? "The model's own total, before any market line." : `The model's own line${wp != null ? ` · ${m.homeWinPct >= 50 ? g.home : g.away} wins ${wp}%` : ""}`}</div>`);
+      `<div class="s">${kind === "total" ? "Model total" : `Model line${wp != null ? ` · ${m.homeWinPct >= 50 ? g.home : g.away} wins ${wp}%` : ""}`}</div>`);
   }
   if (!p) return wrap(dash);
   // finished games hide warnings under the cover
@@ -269,7 +257,7 @@ function prow(r, g, showGame) {
   const inj = (r.injury && GAME_STATUS.test(r.injury) ? ` <span class="pill ${/out|doubt/i.test(r.injury) ? "p-r" : "p-y"}" style="padding:0 6px;font-size:10px">${esc(r.injury)}</span>` : "") + retPill(r);
   // Model's chance (big, left) and Polymarket's price (right), each with its plain label directly underneath. No verdict, no edge, no stake.
   const chance = r.fair != null ? `${Math.round(r.fair)}%` : dash;
-  const cents = r.price != null ? `<span class="price-link" data-market="${esc(r.market || (r.stale ? "Old screenshot price — not live" : ""))}">${Math.round(r.price * 100)}¢</span>` : dash;
+  const cents = r.price != null ? `<span class="price-link" data-market="${esc(r.market || (r.stale ? "Old price" : ""))}">${Math.round(r.price * 100)}¢</span>` : dash;
   const snap = r.snap ? ` · ${r.snap.pct}% snaps${r.snap.missed ? ` <span class="warn-t">⚠ didn't play last game (last played week ${r.snap.lastWeek})${r.lastWeekOut ? ` · ${esc(r.lastWeekOut)}` : ""}</span>` : r.snap.early ? ` <span class="warn-t">⚠ left last game early? (usually ${r.snap.avg}%)</span>` : r.snap.trend === "up" ? ' <span class="g">↑</span>' : r.snap.trend === "down" ? ' <span class="r">↓ role shrinking</span>' : ""}` : "";
   // team code dropped from the subtitle when the logo is shown (showGame) — the logo already carries it
   const sub = `${showGame ? `${esc(r.game)} · ` : ""}#${r.teamRank} on team${snap}`;
@@ -427,7 +415,7 @@ function pastBox() {
   const col = (v) => (v >= 65 ? "var(--green)" : v >= 62 ? "var(--yellow)" : "var(--red)");
   const bars = PAST.map((r) => `<div class="pb"><i style="height:${Math.round(((r[3] - 40) / 35) * 52) + 6}px;background:${col(r[3])}"></i></div>`).join("");
   const yrs = PAST.map((r) => `<span>${String(r[0]).slice(2)}</span>`).join("");
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Past seasons · favorite won %</div><div class="pbars">${bars}</div><div class="pyrs">${yrs}</div>` +
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Past seasons · favorite won</div><div class="pbars">${bars}</div><div class="pyrs">${yrs}</div>` +
     `<div class="s dim" style="margin-top:6px">Average: winners ${f(avg(3))} · spreads ${f(avg(1))} · totals ${f(avg(2))}.</div>` +
     `<div class="fold" data-drop="pasttbl"><span>Full table by season</span><span>▾</span></div><div class="drop" id="pasttbl">` +
     `<div class="row"><span class="dim">Season</span><span class="dim">WINNER (MARKET) · WINNER (STATS) · SPREAD · TOTAL</span></div>` +
@@ -507,7 +495,7 @@ function tdByPosition(players) {
   return (rows || '<div class="s">None yet.</div>') + (none ? `<div class="s dim">${none} with no position</div>` : "");
 }
 function tdByDefense(players) {
-  const rows = [["weak", "Against defenses that allow a lot of points"], ["middle", "Against average defenses"], ["strong", "Against defenses that allow few points"]].map(([k, lab]) => tdGroupRow(lab, players.filter((p) => p.def === k))).join("");
+  const rows = [["weak", "vs weak defenses"], ["middle", "Against average defenses"], ["strong", "vs strong defenses"]].map(([k, lab]) => tdGroupRow(lab, players.filter((p) => p.def === k))).join("");
   return rows || '<div class="s">None yet.</div>';
 }
 // One collapsible section: a heading, one plain line saying what it means, then the content. warn = a count shown next to the heading.
@@ -597,11 +585,11 @@ function renderModelNow() {
   const stOk = st && st.ok && !st.creditWarning;
   const stRows = st ? [
     ["Last automatic run", st.auto ? `${hm(st.auto.t)} · ${esc(st.auto.what)}` + (Date.now() - new Date(st.auto.t) > 9 * 3600e3 ? ' <span class="y">(stale)</span>' : "") : '<span class="y">none recorded</span>'],
-    ["Recorded this week", (wc.recorded || []).length ? (wc.recorded || []).map((x) => `<div>${esc(x.game)} · ${x.close ? '<span class="g">closing line ✓</span>' : '<span class="y">closing line missing</span>'} · ${x.picks ? `<span class="g">${x.picks} picks ✓</span>` : '<span class="y">picks missing</span>'} · ${x.winner ? '<span class="g">winner ✓</span>' : '<span class="y">winner missing</span>'}</div>`).join("") : "no game has kicked off yet"],
+    ["Recorded this week", (wc.recorded || []).length ? (wc.recorded || []).map((x) => `<div>${esc(x.game)} · ${x.close ? '<span class="g">closing line ✓</span>' : '<span class="y">closing line missing</span>'} · ${x.picks ? `<span class="g">${x.picks} picks ✓</span>` : '<span class="y">picks missing</span>'} · ${x.winner ? '<span class="g">winner ✓</span>' : '<span class="y">winner missing</span>'}</div>`).join("") : "—"],
     ["Last snapshot", st.lastSnapshot ? hm(st.lastSnapshot) + (S.meta && S.meta.lastSrc === "manual" ? " · you" : "") : "—"], ["Last model run", st.modelRunAt ? hm(st.modelRunAt) : "—"],
     ["Last self-check", st.selfcheck ? `${hm(st.selfcheck.t)} · ${st.selfcheck.items.length ? `<span class="y">${st.selfcheck.items.length} issue(s) — see Watchdog</span>` : '<span class="g">all clear</span>'}` : "— (Thu 12:05 PM, Fri 5:05 PM, Sun 7:35 AM)"],
     ["Pre-logged at kickoff", `${st.prelogged || 0} of ${(S.games || []).length} games this week`],
-    ["Last backup", st.backup ? `${hm(st.backup.t)} · ${st.backup.where === "volume" ? "saved" : st.backup.where === "failed" ? '<span class="r">failed — check Railway logs</span>' : '<span class="y">temporary — add a Railway volume</span>'}` : '<span class="y">none yet</span>'],
+    ["Last backup", st.backup ? `${hm(st.backup.t)} · ${st.backup.where === "volume" ? "saved" : st.backup.where === "failed" ? '<span class="r">failed</span>' : '<span class="y">temporary</span>'}` : '<span class="y">none yet</span>'],
     ["Last TD retrain", st.retrain ? `${hm(st.retrain.t)} · ${/kept/i.test(st.retrain.summary || "") ? "kept current" : /switch|new model|live/i.test(st.retrain.summary || "") ? "new model live" : esc(String(st.retrain.summary || "").slice(0, 40))}` : '<span class="dim">not run yet</span>'],
     ["Kickoff check (ESPN)", kickLine(st.kickcheck)],
     ["Database used", st.usedMb != null ? `${st.usedMb.toFixed(1)} of ${st.capMb} MB` : "—"],
@@ -637,7 +625,7 @@ function renderModelNow() {
       return body; })();
   const wcRows = `<div class="row"><span class="dim">Week ${S.week} loaded</span><span>${wc.games} games · lines ${wc.withLines}/${wc.games} · model ${wc.modelRun ? '<span class="g">✓</span>' : '<span class="y">not run yet</span>'}</span></div>` +
     ((wc.watch || []).length ? `<div class="s" style="margin-top:6px"><b class="y">Watchdog</b>${wc.watch.map((w) => `<div class="warn">⚠ ${esc(w)}</div>`).join("")}</div>` : '<div class="s dim" style="margin-top:6px"></div>');
-  const recapRows = (wk.length ? `<div class="row"><span class="dim">Tilts: spreads · totals · moneyline</span><span>${rec(pick("spread", wk))} · ${rec(pick("total", wk))} · ${rec(pick("ml", wk))}</span></div>` +
+  const recapRows = (wk.length ? `<div class="row"><span class="dim">Spreads · totals · ML</span><span>${rec(pick("spread", wk))} · ${rec(pick("total", wk))} · ${rec(pick("ml", wk))}</span></div>` +
     (pick("mlModel", wk).length ? `<div class="row"><span class="dim">MONEYLINE · stats</span><span>${rec(pick("mlModel", wk))}</span></div>` : "") : '<div class="s">None yet.</div>') + recapTd;
   $("models").innerHTML = labStats() +
     mSec("m-score", `1 · Scoreboard · Week ${lw ?? S.week}`, "How every model did on the latest week with graded games, and whether this week's data is loaded.", recapRows + wcRows, (wc.watch || []).length, true) +
@@ -681,7 +669,7 @@ function renderRecord() { renderMine(); renderModel(); }
 // "Updated" line at the top of Models and Bets, so you can tell the numbers are fresh (they reload every 2 minutes while you are on the tab).
 function stampUpdated() { const t = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }); for (const id of ["upd-record", "upd-models"]) { const e = $(id); if (e) e.textContent = `Updated ${t}`; } }
 async function loadRecord(sync = false) {
-  if (sync) toast("Syncing your Polymarket account…", 0);
+  if (sync) toast("Syncing…", 0);
   try {
     const [mb, rl, rp] = await Promise.all([fetch(`/api/mybets${sync ? "?sync=1" : ""}`, { cache: "no-store" }).then((r) => r.json()), fetch("/api/results/list", { cache: "no-store" }).then((r) => r.json()), fetch("/api/replay", { cache: "no-store" }).then((r) => r.json()).catch(() => null)]);
     if (rp && rp.ok) REPLAY = rp.replay;   // history table; a failed fetch just leaves the card out
@@ -759,7 +747,7 @@ function replayBox() {
     return hit != null ? `<span>${w}–${l}</span><span class="dim"> · ${Math.round(hit * 100)}%</span>` : saved ? `<span class="dim">${saved} saved</span>` : '<span class="dim">—</span>'; };
   const cls = { YES: "g", UNSTABLE: "y", "NO EDGE": "r", "TOO FEW": "dim", INFO: "dim" };
   const pc = (x) => (x == null ? "—" : (x * 100).toFixed(1) + "%");
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Replay · every pick on ${REPLAY.seasons[0]}–${String(REPLAY.seasons[1]).slice(2)}</div>
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Replay · ${REPLAY.seasons[0]}–${String(REPLAY.seasons[1]).slice(2)}</div>
     <div class="rp rph"><span>PICK</span><span>HISTORY</span><span>LIVE</span><span>HOLDS?</span></div>` +
     REPLAY.rows.map((r) => `<div class="rp"><span>${esc(r.name)}${r.note ? `<span class="dim rn">${esc(r.note)}</span>` : ""}</span><span class="${r.kind === "win" ? "dim" : r.hit > 0.524 || (r.kind === "ml" && r.roi > 0) ? "g" : "r"}">${pc(r.hit)}<span class="dim rn"> n=${r.n}</span></span><span>${live(r)}</span><span class="${cls[r.verdict] || "dim"}"><b>${esc(r.verdict)}</b></span></div>`).join("") +
     `<div class="fold" data-drop="replayper"><span>By period</span><span>▾</span></div><div class="drop" id="replayper">` +
@@ -1010,7 +998,7 @@ async function loadSlate() {
   if (openTd.length) { const rows = document.querySelectorAll(".tdr"); for (const i of openTd) if (rows[i]) rows[i].classList.add("open"); }
   try { localStorage.setItem("lastSeen", new Date().toISOString()); } catch {} }   // next visit's "What changed" starts from now
 $("refresh-btn").onclick = async () => {
-  const b = $("refresh-btn"); b.disabled = true; toast("Pulling current Polymarket lines…", 0);
+  const b = $("refresh-btn"); b.disabled = true; toast("Updating lines…", 0);
   try { const d = await (await fetch("/api/snapshot?src=manual")).json(); if (!d.ok) throw new Error(d.error); await loadSlate();
     toast(`Updated ${d.lines} of ${d.upcoming} upcoming games${d.locked ? ` (${d.locked} locked)` : ""}, TD prices for ${d.props}.`);
   } catch (e) { toast("Refresh failed: " + e.message, 10000); }
