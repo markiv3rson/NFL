@@ -102,14 +102,25 @@ function openMove(g, kind, p) {
   const lab = kind === "total" ? `${p.side === "over" ? "Over" : "Under"} ${open}` : `${p.team} ${sgn(open)}`;
   return `<div class="s ${mv > 0 ? "g" : "dim"}">Opened ${esc(lab)} · moved ${Math.abs(mv)} ${mv > 0 ? "toward" : "away from"} the model</div>`;
 }
-// Line moved 6 points in our favor (10/9): the only spread/total sides that beat a coin flip in every period 2007-25.
-// Spread: underdog +1.5..+2.5 at +7.5..+8.5 (76%). Total: the model's side moved 6 (67%, either side).
+// Line moved 6 points in our favor (10/9): the only spread/total sides that beat a coin flip in every period 2007-25 (and 2016-25).
+// Spread: underdog +1.5..+2.5 at +7.5..+8.5: 83% in wind 15+, 70% when the total is 47+, else 76%.
+// Total: wind 15+ Under +6 71%, dome/closed roof Over -6 69%, otherwise the model's side 67%.
+function saferRate(g) {
+  const m = g.model || {}, tl = (g.books && g.books.total && g.books.total.line) ?? (g.poly && g.poly.total && g.poly.total.line);
+  return m.outdoor && m.wind != null && m.wind >= 15 ? 83 : tl != null && tl >= 47 ? 70 : 76;
+}
+function saferTotal(g, p) {
+  const m = g.model || {};
+  if (m.outdoor && m.wind != null && m.wind >= 15) return { under: true, pct: 71 };
+  if (g.outdoor === false) return { under: false, pct: 69 };
+  return { under: !p || p.side !== "over", pct: 67 };
+}
 function saferSide(g, kind, p) {
   if (g.final) return "";
-  if (kind === "spread") { const t = g.teaser; return t ? `<div class="s g" style="margin-top:6px">Safer: <b>${esc(t.team)} +${t.line}</b> · wins 76%</div>` : ""; }
+  if (kind === "spread") { const t = g.teaser; return t ? `<div class="s g" style="margin-top:6px">Safer: <b>${esc(t.team)} +${t.line}</b> · wins ${saferRate(g)}%</div>` : ""; }
   const tl = (g.books && g.books.total && g.books.total.line) ?? (g.poly && g.poly.total && g.poly.total.line); if (tl == null) return "";
-  const under = !p || p.side !== "over";
-  return `<div class="s g" style="margin-top:6px">Safer: <b>${under ? `Under ${tl + 6}` : `Over ${tl - 6}`}</b> · wins 67%</div>`;
+  const s = saferTotal(g, p);
+  return `<div class="s g" style="margin-top:6px">Safer: <b>${s.under ? `Under ${tl + 6}` : `Over ${tl - 6}`}</b> · wins ${s.pct}%</div>`;
 }
 function leanCell(g, kind) {
   let p = kind === "total" ? g.totalPick : g.spreadPick;
@@ -769,7 +780,7 @@ function bestBets() {
     for (const a of g.angles || []) if (a.hit) out.push({ pick: a.pick, game: g.key, why: a.name, p: a.hit / 100 });
     for (const x of g.altValue || []) out.push({ pick: `${x.team} ${x.line > 0 ? "+" : ""}${x.line}`, game: g.key, why: "ALT line", p: x.hist });
   }
-  for (const x of (S && S.teaserLegs) || []) if (!(ko[x.game] && ko[x.game].started)) out.push({ pick: `${x.team} +${x.line}`, game: x.game, why: "Line +6", p: 0.761 });
+  for (const x of (S && S.teaserLegs) || []) if (!(ko[x.game] && ko[x.game].started)) out.push({ pick: `${x.team} +${x.line}`, game: x.game, why: "Line +6", p: saferRate(ko[x.game] || {}) / 100 });
   const seen = new Set();
   return out.map((x) => ({ ...x, slot: slotOf(ko[x.game]) })).sort((a, b) => b.p - a.p)
     .filter((x) => !seen.has(x.pick + x.game) && seen.add(x.pick + x.game));

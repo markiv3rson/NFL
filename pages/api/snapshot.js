@@ -1,6 +1,7 @@
 // Takes a line snapshot: Polymarket lines + TD prices for every game that has NOT kicked off,
 // plus sportsbook consensus when books=1. Called by the Railway scheduler (7/12/3/7 PT, Sunday
 // 6/7/8/9/10/12/3 PT, and just before each kickoff with kickoff=<game>) and by the Refresh button.
+import { venue } from "../../lib/wind";
 import { recordTeaser, recordTotalLeg, teaserLeg } from "../../lib/teaser";
 import { recordAltValues } from "../../lib/altfair";
 import { alertTeaser, alertsTdNo } from "../../lib/alerts";
@@ -38,7 +39,7 @@ async function writePrelog(season, week, g, t, poly, bk, model) {
   await recordWinner(season, week, g, poly, t, mg).catch(() => 0);      // Most likely winners: the favorite at kickoff (9/30)
   { const alts = poly && poly.alts ? poly.alts : ((await getJSON(`alts:${season}:${week}:${g.key}`).catch(() => null)) || {}).alts || null;   // late close: the saved latest copy
     await recordTeaser(season, week, g, alts ? { ...(poly || {}), alts } : poly, bk, t).catch(() => 0);
-    await recordTotalLeg(season, week, g, poly, bk, mg && mg.calUnder != null ? mg.calUnder >= 50 : true, t).catch(() => 0);   // total moved 6, model's side (10/9)
+    await recordTotalLeg(season, week, g, poly, bk, !mg ? true : mg.outdoor && mg.wind != null && mg.wind >= 15 ? true : (() => { const v = venue(g); return v && !v.outdoor; })() ? false : mg.calUnder != null ? mg.calUnder >= 50 : true, t).catch(() => 0);   // total moved 6, model's side (10/9)
     await recordAltValues(season, week, g, alts ? { ...(poly || {}), alts } : poly, bk, t).catch(() => 0); }   // alt lines under their historical rate (10/9)   // Teaser leg: underdog +1.5..+2.5 at +7.5..+8.5 (10/6)
 }
 
