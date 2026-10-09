@@ -126,8 +126,13 @@ function saferTotal(g, p) {
   if (!p) return { under: true, pct: 68 };
   return { under: modelOver, pct: 70 };
 }
+// Combo picks under the model card (10/9): purple when our model is part of the rule, green when it's history alone.
+const MODEL_COMBOS = new Set(["favwind", "underwinddog", "windover6", "bigfavmodel", "favunder", "domedog6"]);
 function comboLines(g, kind) {
-  return (g.combos || []).filter((c) => c.kind === kind).map((c) => `<div class="s g">${esc(c.why)}: <b>${esc(c.pick)}</b> · wins ${Math.round(c.hit)}%</div>`).join("");
+  if (g.final) return "";
+  const cs = (g.combos || []).filter((c) => c.kind === kind); if (!cs.length) return "";
+  return `<div class="s" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">` + cs.map((c) => { const cl = MODEL_COMBOS.has(c.id) ? "mod" : "g";
+    return `<div class="${cl}"><b>${esc(c.pick)}</b> · wins ${Math.round(c.hit)}%<div class="dim">${esc(c.why)}</div></div>`; }).join("") + `</div>`;
 }
 function saferSide(g, kind, p) {
   if (g.final) return "";
@@ -165,7 +170,7 @@ function leanCell(g, kind) {
     `<span>${p.label}</span><div class="s">${p.pct.toFixed(1)}% model chance</div>`) +
     (reason ? `<div class="s" style="margin-top:6px">${esc(reason)}</div>` : "") +
     (wind ? `<div class="s">${wind}</div>` : "") +
-    openMove(g, kind, p) +
+    openMove(g, kind, p) + comboLines(g, kind) +
     (adj ? `<div class="s r" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">${injBadgeFor(g)}${esc(adj)}</div>` : "") +
     (p.warn ? `<div class="s y">${esc(p.warn)}</div>` : ""));
 }
