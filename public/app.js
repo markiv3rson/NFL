@@ -126,11 +126,12 @@ function saferTotal(g, p) {
   if (!p) return { under: true, pct: 68 };
   return { under: modelOver, pct: 70 };
 }
-// Combo picks under the model card (10/9): every tested combination that fits this game, best 3 per market.
+// Combo picks under the model card (10/9): every tested combination that fits this game, best 3 per market, MARKET LINES ONLY
+// (teasers live in the Teasers & alt lines list on Game Lines).
 // Purple when our model is part of the rule, green when it's history alone.
 function comboLines(g, kind) {
   if (g.final) return "";
-  const cs = (g.combos || []).filter((c) => c.kind === kind && c.hit >= (c.teaser ? 70 : 55)).sort((a, b) => b.hit - a.hit).slice(0, 3); if (!cs.length) return "";   // weak ones hidden (10/9)
+  const cs = (g.combos || []).filter((c) => c.kind === kind && !c.teaser && c.hit >= 55).sort((a, b) => b.hit - a.hit).slice(0, 3); if (!cs.length) return "";   // weak ones hidden (10/9)
   return `<div class="s" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">` + cs.map((c) => `<div class="${c.model ? "mod" : "g"}"><b>${esc(c.pick)}</b> · wins ${Math.round(c.hit)}%<div class="dim">${esc(c.why)}</div></div>`).join("") + `</div>`;
 }
 function saferSide(g, kind, p) {
@@ -835,7 +836,7 @@ function extraBets() {
 }
 function extraStrip() {
   const E = extraBets(); if (!E.length) return "";
-  const rows = E.map((x) => `<div class="bb"><div class="t1"><b>${esc(x.pick)}</b><span style="white-space:nowrap">wins ${Math.round(x.p * 100)}%</span></div><div class="t2">${esc(x.game)} · ${esc(x.why)}</div></div>`).join("");
+  const rows = E.map((x) => `<div class="bb"><div class="t1"><b>${/^Alt/.test(x.why) ? "ALT" : "TEASER"} ${esc(x.pick)}</b><span style="white-space:nowrap">wins ${Math.round(x.p * 100)}%</span></div><div class="t2">${esc(x.game)} · ${esc(x.why)}</div></div>`).join("");
   return `<div class="gapstrip" data-drop="extralist"><div class="t">Teasers &amp; alt lines · ${E.length} ›</div></div><div class="drop" id="extralist"><div class="card"><div class="inner">${rows}</div></div></div>`;
 }
 // Morning / afternoon / primetime (10/9): TNF/SNF/MNF and anything starting 5 PM or later (your time) is primetime.
