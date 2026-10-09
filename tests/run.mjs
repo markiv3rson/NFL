@@ -599,7 +599,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(!b.includes("dogblow") && !b.includes("streakfade") && !b.includes("winddiv"), "combos: none fire when they don't apply"); }
   { // proven angles flagged on the game (10/8)
     const g = { ...tg, angles: [{ id: "streakfade", pick: "TB +4.5", price: 0.48, name: "Road team off a loss vs 3-game win streak", hit: 59, n: 283 }] };
-    ok(/PICK TB \+4\.5/.test(ctx.T.tile(g)) && /PICK TB \+4\.5<\/b><\/span>/.test(ctx.T.anglesBox(g)) && /59% of 283/.test(ctx.T.anglesBox(g)) && ctx.T.anglesBox(tg) === "", "angles: chip on the tile, rule and record on the game page"); }
+    ok(/PICK TB \+4\.5/.test(ctx.T.tile(g)) && /PICK TB \+4\.5<\/b>/.test(ctx.T.anglesBox(g)) && /wins 59%/.test(ctx.T.anglesBox(g)) && /283 games/.test(ctx.T.anglesBox(g)) && ctx.T.anglesBox(tg) === "", "angles: chip on the tile, rule and record on the game page"); }
   { // proven angles in Model Picks parlays (10/8)
     const { buildPaper } = await import("../lib/paper.js");
     const G = (k, angles, winPct, ml) => ({ key: k, home: k.split(" @ ")[1], away: k.split(" @ ")[0], started: false, final: false, angles, winPct, poly: ml ? { ml: { home: ml }, spread: { homeSpread: -3 } } : null, td: [] });
@@ -609,7 +609,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(by.angles_fav_3 && by.angles_fav_3.legs.map((l) => l.label).join(",") === "A +4.5,F ML,I ML", "angle + favorites parlay: best angle plus the two strongest home favorites"); }
   { // road ML angle: flagged with its return, used as an ML leg in angle parlays (10/8)
     const g = { ...tg, angles: [{ id: "roadml3", pick: "BUF ML", price: 0.45, name: "Road team · moneyline · spread ~3, total 48+", hit: 55.2, n: 382, roi: 12.9 }] };
-    ok(/55\.2% of 382/.test(ctx.T.anglesBox(g)) && !/per \$1/.test(ctx.T.anglesBox(g)), "road ML angle: win rate shown, no money");
+    ok(/wins 55\.2%/.test(ctx.T.anglesBox(g)) && !/per \$1/.test(ctx.T.anglesBox(g)), "road ML angle: win rate shown, no money");
     const { buildPaper } = await import("../lib/paper.js");
     const P = buildPaper({ games: [{ key: "BUF @ LA", home: "LA", away: "BUF", started: false, final: false, angles: g.angles, td: [] }, { key: "A @ B", home: "B", away: "A", started: false, final: false, angles: [{ id: "winddiv", pick: "Under 41.5", price: 0.5, hit: 56.8, n: 426 }], td: [] }] });
     const l = P.find((p) => p.strategy === "angles_2").legs.find((x) => x.label === "BUF ML");
@@ -674,7 +674,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const v = altValues(g, { spread: { homeSpread: -3 }, alts: [{ team: "A", line: 6.5, price: 0.58 }, { team: "A", line: 9.5, price: 0.74 }, { team: "H", line: -6.5, price: 0.36 }] }, null);
     ok(v.length === 2 && v[0].hist >= v[1].hist && v.every((x) => x.hist >= 0.6 && x.hist <= 0.85), "alt lines: the two that covered most often (60-85%), price ignored"); }
   { const g = { ...tg, altValue: [{ team: "TB", line: 6.5, price: 0.58, hist: 0.644 }] };
-    ok(/ALT TB \+6\.5<\/b><\/span>/.test(ctx.T.anglesBox(g)) && /covers 64% since 2007/.test(ctx.T.anglesBox(g)) && /ALT TB \+6\.5/.test(ctx.T.tile(g)), "alt value: chip on the tile, line, price and history on the game page"); }
+    ok(/ALT TB \+6\.5<\/b>/.test(ctx.T.anglesBox(g)) && /covers 64%/.test(ctx.T.anglesBox(g)) && /ALT TB \+6\.5/.test(ctx.T.tile(g)), "alt value: chip on the tile, line, price and history on the game page"); }
   ok(/>Q</.test(ctx.T.injTag({ espn: "Questionable — limited Thursday" })) && />OUT</.test(ctx.T.injTag({ injury: "Out" })) && />D</.test(ctx.T.injTag({ injury: "Doubtful" })) && ctx.T.injTag({}) === "", "injury tag: Q / D / OUT from the report, ESPN before Friday");
   { // every tracked angle is summarized (10/9)
     const R = globalThis.__TEST_REDIS__, { picksSummary } = await import("../lib/paper.js");
