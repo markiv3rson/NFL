@@ -772,11 +772,13 @@ function slotOf(g) {
   const h = new Date(g.kickoff).getHours();
   return h < 12 ? "Morning" : h < 17 ? "Afternoon" : "Primetime";
 }
+// Remembered open/closed (10/9): the page redraws every few seconds during games, which kept reopening the list.
+let BEST_OPEN = (() => { try { return localStorage.getItem("bestOpen") !== "0"; } catch { return true; } })();
 function bestStrip() {
   const B = bestBets(); if (!B.length) return "";
   const row = (x) => `<div class="bb"><div class="t1"><b class="g">${esc(x.pick)}</b><span style="white-space:nowrap">wins ${Math.round(x.p * 100)}% · <b class="g">+${Math.round(x.ev * 100)}%</b></span></div><div class="t2">${esc(x.game)} · ${esc(x.why)}</div></div>`;
   const rows = ["Morning", "Afternoon", "Primetime"].map((sl) => { const xs = B.filter((x) => x.slot === sl); return xs.length ? `<div class="sh" style="margin:8px 0 4px">${sl.toUpperCase()}</div>${xs.map(row).join("")}` : ""; }).join("");
-  return `<div class="gapstrip" data-drop="bestlist"><div class="t">Best bets · ${B.length} ›</div></div><div class="drop open" id="bestlist"><div class="card"><div class="inner">${rows}</div></div></div>`;
+  return `<div class="gapstrip" data-drop="bestlist"><div class="t">Best bets · ${B.length} ›</div></div><div class="drop${BEST_OPEN ? " open" : ""}" id="bestlist"><div class="card"><div class="inner">${rows}</div></div></div>`;
 }
 function teaserStrip() {
   const L = (S && S.teaserLegs) || []; if (!L.length) return "";
@@ -1081,7 +1083,7 @@ document.querySelectorAll(".tabs button").forEach((btn) => btn.addEventListener(
 $("bell").onclick = () => { ALPREV = alSeen(); if (ALERTS.length) { try { localStorage.setItem("alSeen", ALERTS[0].t); } catch {} } showPanel("alerts"); renderAlerts(); };
 $("al-read").onclick = () => { ALPREV = ALERTS.length ? ALERTS[0].t : ""; renderAlerts(); };
 document.addEventListener("click", (e) => {
-  const d = e.target.closest("[data-drop]"); if (d) { const el = $(d.dataset.drop); if (el) el.classList.toggle("open"); return; }
+  const d = e.target.closest("[data-drop]"); if (d) { const el = $(d.dataset.drop); if (el) { el.classList.toggle("open"); if (d.dataset.drop === "bestlist") { BEST_OPEN = el.classList.contains("open"); try { localStorage.setItem("bestOpen", BEST_OPEN ? "1" : "0"); } catch {} } } return; }
   const gt = e.target.closest("[data-game]"); if (gt) { openGame(gt.dataset.game); return; }
   const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k) { showPanel("lines"); openGame(k); } return; }
   const gb = e.target.closest("[data-gbw]"); if (gb) { GBGWEEK = gb.dataset.gbw === "all" ? "all" : Number(gb.dataset.gbw); $("gbg").innerHTML = gbgHtml(); return; }
