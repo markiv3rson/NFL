@@ -968,7 +968,7 @@ function topAngle(g) {
 // Proven angles on this game (10/8): rules that beat break-even in every period of 2007-25, with their record.
 function anglesBox(g) {
   const a = g.angles || [], av = g.altValue || []; if (!a.length && !av.length) return "";
-  return `<div class="card" style="margin-top:10px"><div class="inner">` + a.map((x) => `<div class="row"><span><b class="g">PICK ${esc(x.pick)}</b></span><span class="dim">${esc(x.name)} · ${x.hit}% of ${x.n}</span></div>`).join("") + av.map((x) => `<div class="row"><span><b class="g">ALT ${esc(x.team)} ${x.line > 0 ? "+" : ""}${x.line}</b></span><span class="dim">covers ${Math.round(x.hist * 100)}% since 2007</span></div>`).join("") + `</div></div>`;
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Best bets · this game</div>` + a.map((x) => `<div class="row"><span><b class="g">PICK ${esc(x.pick)}</b></span><span class="dim">${esc(x.name)} · ${x.hit}% of ${x.n}</span></div>`).join("") + av.map((x) => `<div class="row"><span><b class="g">ALT ${esc(x.team)} ${x.line > 0 ? "+" : ""}${x.line}</b></span><span class="dim">covers ${Math.round(x.hist * 100)}% since 2007</span></div>`).join("") + `</div></div>`;
 }
 function detailTop(g) {
   const dsc = g.started && !g.final ? LIVE_SC[g.key] : null;
