@@ -1,6 +1,6 @@
 // NFL SLATEZZZ — everything comes from /api/slate (lines, TD, flags) and /api/mybets + /api/results/list (Record).
 let WINALL = false;
-let PAPER = null, PICKS = null, TEASERS = null;
+let PAPER = null, PICKS = null, TEASERS = null, ALTS = null;
 let S = null, RES = null, EDGES = null, MB = null, tdSort = "likely", recView = "mine";
 const $ = (id) => document.getElementById(id);
 const dash = '<span class="dim">—</span>';
@@ -685,7 +685,7 @@ async function loadRecord(sync = false) {
   try {
     const [mb, rl, rp] = await Promise.all([fetch(`/api/mybets${sync ? "?sync=1" : ""}`, { cache: "no-store" }).then((r) => r.json()), fetch("/api/results/list", { cache: "no-store" }).then((r) => r.json()), fetch("/api/replay", { cache: "no-store" }).then((r) => r.json()).catch(() => null)]);
     if (rp && rp.ok) REPLAY = rp.replay;   // history table; a failed fetch just leaves the card out
-    if (!mb.ok) throw new Error(mb.error); stampUpdated(); MB = mb; RES = rl.ok ? rl.results : []; EDGES = rl.ok ? rl.edges : null; PAPER = rl.ok ? rl.paper : null; PICKS = rl.ok ? rl.picks : null; TEASERS = rl.ok ? rl.teasers || null : null; renderLab();
+    if (!mb.ok) throw new Error(mb.error); stampUpdated(); MB = mb; RES = rl.ok ? rl.results : []; EDGES = rl.ok ? rl.edges : null; PAPER = rl.ok ? rl.paper : null; ALTS = rl.ok ? rl.alts : null; PICKS = rl.ok ? rl.picks : null; TEASERS = rl.ok ? rl.teasers || null : null; renderLab();
     renderRecord();
     if (sync && mb.sync) toast(mb.sync.ok ? `Synced ${mb.sync.positions} positions.` : `Sync: ${mb.sync.note}`);
   } catch (e) { toast("Record failed: " + e.message, 10000); }
@@ -730,10 +730,14 @@ function pickLabBox() {
   const bands = ["spread", "total"].map((m) => (P[m] && P[m].bands || []).filter((b) => b.graded).map((b) => `<div class="row"><span class="dim">${m === "spread" ? "Spread" : "Total"} · model differs by ${b.label}</span><span>${b.w}–${b.l} · ${pc(b.hit)}</span></div>`).join("")).join("");
   return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Tracked angles</div>` +
     arow("dog", "Road dogs +3 to +6.5") + arow("away3", "Road team, spread 3 or less") + arow("wind", "Under, wind 12+ mph") + arow("lowloss", "Underdog off a loss scoring 10 or fewer") + arow("prebye", "Home team before its bye (wk 8+)") + arow("dogblow", "Road dog +3 to +6.5 after a blowout") + arow("streakfade", "Road team off a loss vs 3-game win streak") + arow("winddiv", "Under, division game, wind 10+ mph") + arow("roadml3", "Road ML, spread ~3, total 48+") + arow("coachfade", "Road team vs a cold home coach (ATS)") + arow("mlgap", "ML cheaper than its spread (3+ pts)") +
-    teaserRow() +
+    teaserRow() + altRow() +
     (bands ? `<div class="fold" data-drop="labbands"><span>By model gap</span><span>▾</span></div><div class="drop" id="labbands">${bands}</div>` : "") + `</div></div>`;
 }
 // Teaser legs (10/6): underdog +1.5..+2.5 bought at +7.5..+8.5 on Polymarket's alternate spread; record, return at the price paid, history.
+function altRow() {
+  const A = ALTS; if (!A || !A.recorded) return `<div class="arow"><span class="nm">Alt lines under their history (4+ pts)</span><span class="dim rc">none yet</span><b class="dim">—</b></div>`;
+  return `<div class="arow"><span class="nm">Alt lines under their history (4+ pts)</span><span class="dim rc">${A.n ? `${A.w}–${A.l}` : `${A.recorded} saved`}</span><b class="${A.n ? (A.ret >= 0 ? "g" : "r") : "dim"}">${A.n ? cMoney(A.ret) : "—"}</b></div>`;
+}
 function teaserRow() {
   const T = TEASERS; if (!T) return "";
   const a = T.all || {}, v = T.value || {}, pc = (x) => (x == null ? "—" : `${Math.round(x * 100)}%`);
@@ -844,7 +848,7 @@ function tile(g) {
   const eg = (S.edgesNow || []).filter((b) => b.game === g.key);
   const hp = g.winPct != null && isFinite(g.winPct) ? Number(g.winPct) : null, ap = hp == null ? null : 100 - hp;
   const lead = (v, o) => (v >= o ? "mkt" : "dim");
-  const chips = [g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : "", (g.angles || []).length ? `<span class="chip c-grn">PICK ${esc(topAngle(g).pick)}${topAngle(g).n > 1 ? ` ×${topAngle(g).n}` : ""}</span>` : "", eg.length ? `<span class="chip c-cy">GAP +${(Math.max(...eg.map((b) => b.evNet)) * 100).toFixed(1)}%</span>` : "", g.started && !g.final && !sc ? '<span class="chip c-red">LIVE</span>' : ""].join("");
+  const chips = [g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : "", (g.angles || []).length ? `<span class="chip c-grn">PICK ${esc(topAngle(g).pick)}${topAngle(g).n > 1 ? ` ×${topAngle(g).n}` : ""}</span>` : "", !(g.angles || []).length && (g.altValue || []).length ? `<span class="chip c-grn">ALT ${esc(g.altValue[0].team)} ${g.altValue[0].line > 0 ? "+" : ""}${g.altValue[0].line}</span>` : "", eg.length ? `<span class="chip c-cy">GAP +${(Math.max(...eg.map((b) => b.evNet)) * 100).toFixed(1)}%</span>` : "", g.started && !g.final && !sc ? '<span class="chip c-red">LIVE</span>' : ""].join("");
   const mid = g.final && g.awayScore != null && g.homeScore != null ? `<span class="mid"><span class="${g.awayScore > g.homeScore ? "g" : "dim"}">${g.awayScore}</span><span class="dim"> – </span><span class="${g.homeScore > g.awayScore ? "g" : "dim"}">${g.homeScore}</span></span>`
     : hp == null ? '<span class="mid dim">—</span>' : `<span class="mid"><span class="${lead(ap, hp)}">${Math.round(ap)}</span><span class="dim"> · </span><span class="${lead(hp, ap)}">${100 - Math.round(ap)}</span><span class="dim" style="font-size:11px">%</span></span>`;
   const mid2 = sc ? `<span class="mid lvmid"><span class="sr"><span class="${sc.a > sc.h ? "g" : "dim"}">${sc.a}</span><span class="dim"> – </span><span class="${sc.h > sc.a ? "g" : "dim"}">${sc.h}</span></span><span class="lv ${sc.st === "post" ? "dim" : "r"}">${sc.st === "post" ? "FINAL" : "● LIVE · " + esc(sc.lbl)}</span></span>` : mid;
@@ -930,8 +934,8 @@ function topAngle(g) {
 }
 // Proven angles on this game (10/8): rules that beat break-even in every period of 2007-25, with their record.
 function anglesBox(g) {
-  const a = g.angles || []; if (!a.length) return "";
-  return `<div class="card" style="margin-top:10px"><div class="inner">` + a.map((x) => `<div class="row"><span><b class="g">PICK ${esc(x.pick)}</b>${x.price ? ` <span class="dim">${Math.round(x.price * 100)}¢</span>` : ""}</span><span class="dim">${esc(x.name)} · ${x.roi != null ? `won ${x.hit}%, ${x.roi >= 0 ? "+" : ""}${x.roi}% per $1` : `${x.hit}%`} of ${x.n}</span></div>`).join("") + `</div></div>`;
+  const a = g.angles || [], av = g.altValue || []; if (!a.length && !av.length) return "";
+  return `<div class="card" style="margin-top:10px"><div class="inner">` + a.map((x) => `<div class="row"><span><b class="g">PICK ${esc(x.pick)}</b>${x.price ? ` <span class="dim">${Math.round(x.price * 100)}¢</span>` : ""}</span><span class="dim">${esc(x.name)} · ${x.roi != null ? `won ${x.hit}%, ${x.roi >= 0 ? "+" : ""}${x.roi}% per $1` : `${x.hit}%`} of ${x.n}</span></div>`).join("") + av.map((x) => `<div class="row"><span><b class="g">ALT ${esc(x.team)} ${x.line > 0 ? "+" : ""}${x.line}</b> <span class="dim">${Math.round(x.price * 100)}¢</span></span><span class="dim">covers ${Math.round(x.hist * 100)}% since 2007</span></div>`).join("") + `</div></div>`;
 }
 function detailTop(g) {
   const dsc = g.started && !g.final ? LIVE_SC[g.key] : null;

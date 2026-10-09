@@ -667,6 +667,14 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const p1 = picksFor(G, { spread: { homeSpread: -7, home: 0.5, away: 0.5 }, ml: { home: 0.62, away: 0.38 } }, {}, null).find((p) => p.market === "mlgap");   // -7 implies ~70% home
     const p2 = picksFor(G, { spread: { homeSpread: -7, home: 0.5, away: 0.5 }, ml: { home: 0.70, away: 0.30 } }, {}, null).find((p) => p.market === "mlgap");
     ok(p1 && p1.label === "H ML" && p1.price === 0.62 && !p2, "ML vs spread: takes the moneyline priced 3+ pts under its spread's win chance, nothing when they agree"); }
+  { // alt-line fair prices (10/9)
+    const { altFair, altValues } = await import("../lib/altfair.js"); const g = { key: "A @ H", away: "A", home: "H" };
+    const dog65 = altFair(g, -3, "A", 6.5), fav35 = altFair(g, -7, "H", -3.5), tease = altFair(g, 2.5, "H", 8.5);
+    ok(dog65 > 0.62 && dog65 < 0.68 && fav35 > 0.58 && fav35 < 0.64 && tease > 0.7 && tease < 0.8 && altFair(g, -3, "A", 7) === null, "alt fair: fav 3 -> dog +6.5 ~65%, fav 7 -> fav -3.5 ~60%, teaser leg ~77%, whole lines skipped");
+    const v = altValues(g, { spread: { homeSpread: -3 }, alts: [{ team: "A", line: 6.5, price: 0.58 }, { team: "A", line: 9.5, price: 0.74 }, { team: "H", line: -6.5, price: 0.36 }] }, null);
+    ok(v.length === 1 && v[0].team === "A" && v[0].line === 6.5 && v[0].edge > 0.04, "alt value: only alt lines priced 4+ pts under history are flagged"); }
+  { const g = { ...tg, altValue: [{ team: "TB", line: 6.5, price: 0.58, hist: 0.644 }] };
+    ok(/ALT TB \+6\.5<\/b> <span class="dim">58¢/.test(ctx.T.anglesBox(g)) && /covers 64% since 2007/.test(ctx.T.anglesBox(g)) && /ALT TB \+6\.5/.test(ctx.T.tile(g)), "alt value: chip on the tile, line, price and history on the game page"); }
   { // without him (10/8): top 3 TD scorers in games a listed-Out regular missed
     const h = ctx.T.tdTop3({ ...tg, td: [], without: { [tg.away]: [{ out: "A.Kamara", games: 7, top: [{ name: "C.Olave", td: 5 }, { name: "D.Vele", td: 2 }] }], [tg.home]: [{ out: "X.Y", games: 1, top: [] }] } });
     ok(/Without A\.Kamara<\/b> <span class="dim">\(7 games\)<\/span>: C\.Olave 5 · D\.Vele 2/.test(h) && /\(1 game\)<\/span>: no TDs/.test(h), "without him: scorers listed under the team's top 3"); }
