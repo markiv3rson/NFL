@@ -773,6 +773,7 @@ function slotOf(g) {
   return h < 12 ? "Morning" : h < 17 ? "Afternoon" : "Primetime";
 }
 // Remembered open/closed (10/9): the page redraws every few seconds during games, which kept reopening the list.
+let GAMEBEST_OPEN = (() => { try { return localStorage.getItem("gameBestOpen") !== "0"; } catch { return true; } })();
 let BEST_OPEN = (() => { try { return localStorage.getItem("bestOpen") !== "0"; } catch { return true; } })();
 function bestStrip() {
   const B = bestBets(); if (!B.length) return "";
@@ -970,7 +971,7 @@ function topAngle(g) {
 // Proven angles on this game (10/8): rules that beat break-even in every period of 2007-25, with their record.
 function anglesBox(g) {
   const a = g.angles || [], av = g.altValue || []; if (!a.length && !av.length) return "";
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Best bets · this game</div>` + a.map((x) => `<div class="bb"><div class="t1"><b class="g">PICK ${esc(x.pick)}</b><span style="white-space:nowrap">wins ${x.hit}%</span></div><div class="t2">${esc(x.name)}${x.n ? ` · ${x.n} games` : ""}</div></div>`).join("") + av.map((x) => `<div class="bb"><div class="t1"><b class="g">ALT ${esc(x.team)} ${x.line > 0 ? "+" : ""}${x.line}</b><span style="white-space:nowrap">covers ${Math.round(x.hist * 100)}%</span></div><div class="t2">since 2007</div></div>`).join("") + `</div></div>`;
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="fold" data-drop="gamebest" style="border-top:0;padding:0"><span class="sh" style="margin:0">Best bets · this game</span><span>▾</span></div><div class="drop${GAMEBEST_OPEN ? " open" : ""}" id="gamebest" style="border-top:0;margin-top:4px;padding-top:0">` + a.map((x) => `<div class="bb"><div class="t1"><b class="g">PICK ${esc(x.pick)}</b><span style="white-space:nowrap">wins ${x.hit}%</span></div><div class="t2">${esc(x.name)}${x.n ? ` · ${x.n} games` : ""}</div></div>`).join("") + av.map((x) => `<div class="bb"><div class="t1"><b class="g">ALT ${esc(x.team)} ${x.line > 0 ? "+" : ""}${x.line}</b><span style="white-space:nowrap">covers ${Math.round(x.hist * 100)}%</span></div><div class="t2">since 2007</div></div>`).join("") + `</div></div></div>`;
 }
 function detailTop(g) {
   const dsc = g.started && !g.final ? LIVE_SC[g.key] : null;
@@ -1083,7 +1084,8 @@ document.querySelectorAll(".tabs button").forEach((btn) => btn.addEventListener(
 $("bell").onclick = () => { ALPREV = alSeen(); if (ALERTS.length) { try { localStorage.setItem("alSeen", ALERTS[0].t); } catch {} } showPanel("alerts"); renderAlerts(); };
 $("al-read").onclick = () => { ALPREV = ALERTS.length ? ALERTS[0].t : ""; renderAlerts(); };
 document.addEventListener("click", (e) => {
-  const d = e.target.closest("[data-drop]"); if (d) { const el = $(d.dataset.drop); if (el) { el.classList.toggle("open"); if (d.dataset.drop === "bestlist") { BEST_OPEN = el.classList.contains("open"); try { localStorage.setItem("bestOpen", BEST_OPEN ? "1" : "0"); } catch {} } } return; }
+  const d = e.target.closest("[data-drop]"); if (d) { const el = $(d.dataset.drop); if (el) { el.classList.toggle("open"); if (d.dataset.drop === "bestlist") { BEST_OPEN = el.classList.contains("open"); try { localStorage.setItem("bestOpen", BEST_OPEN ? "1" : "0"); } catch {} }
+      if (d.dataset.drop === "gamebest") { GAMEBEST_OPEN = el.classList.contains("open"); try { localStorage.setItem("gameBestOpen", GAMEBEST_OPEN ? "1" : "0"); } catch {} } } return; }
   const gt = e.target.closest("[data-game]"); if (gt) { openGame(gt.dataset.game); return; }
   const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k) { showPanel("lines"); openGame(k); } return; }
   const gb = e.target.closest("[data-gbw]"); if (gb) { GBGWEEK = gb.dataset.gbw === "all" ? "all" : Number(gb.dataset.gbw); $("gbg").innerHTML = gbgHtml(); return; }
