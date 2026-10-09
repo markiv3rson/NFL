@@ -787,8 +787,8 @@ function pickLabBox() {
 }
 // Teaser legs (10/6): underdog +1.5..+2.5 bought at +7.5..+8.5 on Polymarket's alternate spread; record, return at the price paid, history.
 function altRow() {
-  const A = ALTS; if (!A || !A.recorded) return `<div class="arow"><span class="nm">Alt lines that cover 60%+</span><span class="dim rc">none yet</span><b class="dim">—</b></div>`;
-  return `<div class="arow"><span class="nm">Alt lines that cover 60%+</span><span class="dim rc">${A.n ? `${A.w}–${A.l}` : `${A.recorded} saved`}</span><b class="${A.n ? (A.w / A.n >= 0.6 ? "g" : A.w / A.n >= 0.5 ? "y" : "r") : "dim"}">${A.n ? Math.round(A.w / A.n * 100) + "%" : "—"}</b></div>`;
+  const A = ALTS; if (!A || !A.recorded) return `<div class="arow"><span class="nm">Teasers (other lines) 60%+</span><span class="dim rc">none yet</span><b class="dim">—</b></div>`;
+  return `<div class="arow"><span class="nm">Teasers (other lines) 60%+</span><span class="dim rc">${A.n ? `${A.w}–${A.l}` : `${A.recorded} saved`}</span><b class="${A.n ? (A.w / A.n >= 0.6 ? "g" : A.w / A.n >= 0.5 ? "y" : "r") : "dim"}">${A.n ? Math.round(A.w / A.n * 100) + "%" : "—"}</b></div>`;
 }
 function comboRow() {
   const C = COMBOS; if (!C) return "";
@@ -826,7 +826,7 @@ function extraBets() {
   const out = [], ko = {};
   for (const g of (S && S.games) || []) { ko[g.key] = g; if (g.started || g.final) continue;
     for (const c of g.combos || []) if (c.teaser) out.push({ pick: c.pick, game: g.key, why: c.why, p: c.hit / 100 });
-    for (const x of g.altValue || []) out.push({ pick: `${x.team} ${x.line > 0 ? "+" : ""}${x.line}`, game: g.key, why: "Alt line", p: x.hist });
+    for (const x of g.altValue || []) out.push({ pick: `${x.team} ${x.line > 0 ? "+" : ""}${x.line}`, game: g.key, why: "Line moved · since 2007", p: x.hist });
     const tl = (g.books && g.books.total && g.books.total.line) ?? (g.poly && g.poly.total && g.poly.total.line);
     if (tl != null) { const st = saferTotal(g, g.totalPick), mv = totalMoved(g); out.push({ pick: st.under ? `Under ${tl + 6}` : `Over ${tl - 6}`, game: g.key, why: mv ? `Total moved ${mv.open} → ${mv.now}, +6` : "Total +6", p: st.pct / 100 }); }
   }
@@ -836,8 +836,8 @@ function extraBets() {
 }
 function extraStrip() {
   const E = extraBets(); if (!E.length) return "";
-  const rows = E.map((x) => `<div class="bb"><div class="t1"><b>${/^Alt/.test(x.why) ? "ALT" : "TEASER"} ${esc(x.pick)}</b><span style="white-space:nowrap">wins ${Math.round(x.p * 100)}%</span></div><div class="t2">${esc(x.game)} · ${esc(x.why)}</div></div>`).join("");
-  return `<div class="gapstrip" data-drop="extralist"><div class="t">Teasers &amp; alt lines · ${E.length} ›</div></div><div class="drop" id="extralist"><div class="card"><div class="inner">${rows}</div></div></div>`;
+  const rows = E.map((x) => `<div class="bb"><div class="t1"><b>TEASER ${esc(x.pick)}</b><span style="white-space:nowrap">wins ${Math.round(x.p * 100)}%</span></div><div class="t2">${esc(x.game)} · ${esc(x.why)}</div></div>`).join("");
+  return `<div class="gapstrip" data-drop="extralist"><div class="t">Teasers · ${E.length} ›</div></div><div class="drop" id="extralist"><div class="card"><div class="inner">${rows}</div></div></div>`;
 }
 // Morning / afternoon / primetime (10/9): TNF/SNF/MNF and anything starting 5 PM or later (your time) is primetime.
 function slotOf(g) {
@@ -904,7 +904,7 @@ function renderLab() {
   // Scoreboard (10/9): one line per parlay, grouped; this season (W-L, return) and the 2007-25 replay (hit, return).
   const SHORT = { home_fav_95_single: "Home fav 9.5+ · single", home_fav_95_2: "Home fav 9.5+ · 2 legs", home_fav_95_3: "Home fav 9.5+ · 3 legs", top3_home_75: "Top 3 home favs (75%+)",
     td_edge_3: "3 TD value picks", td_likely_2: "2 likeliest TD scorers", td_likely_3: "3 likeliest TD scorers",
-    angles_2: "2 angles", angles_3: "3 angles", angles_fav_3: "Angle + 2 home favs", alt_2: "2 ALT lines", alt_pick_3: "2 ALT + 1 PICK", model_best_4: "Model's 4 best legs", right_now_3: "3 Right now legs", same_game_3: "Same game + TD", linked_sgp_3: "Fav covers + Over + scorer" };
+    angles_2: "2 angles", angles_3: "3 angles", angles_fav_3: "Angle + 2 home favs", alt_2: "2 teasers", alt_pick_3: "2 teasers + 1 pick", model_best_4: "Model's 4 best legs", right_now_3: "3 Right now legs", same_game_3: "Same game + TD", linked_sgp_3: "Fav covers + Over + scorer" };
   const GROUPS = [["MONEYLINE FAVORITES", ["home_fav_95_single", "home_fav_95_2", "home_fav_95_3", "top3_home_75"]], ["TOUCHDOWNS", ["td_edge_3", "td_likely_2", "td_likely_3"]],
     ["ANGLES", ["angles_2", "angles_3", "angles_fav_3", "alt_2", "alt_pick_3"]], ["MIXED", ["model_best_4", "right_now_3", "same_game_3", "linked_sgp_3"]]];
   const seen = new Set(GROUPS.flatMap((g) => g[1])), extra = Object.keys(names).filter((k) => !seen.has(k)); if (extra.length) GROUPS.push(["OTHER", extra]);
