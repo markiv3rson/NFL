@@ -18,7 +18,7 @@ import { loadModel } from "../../lib/week";
 import { isThinMarket } from "../../lib/odds";
 import { nameMatches } from "../../lib/picks";
 import { logEdges } from "../../lib/edges";
-import { recordPaper, recordSameGame, recordPicks, recordWinner } from "../../lib/paper";
+import { recordPaper, recordSameGame, recordPicks, recordWinner, tdTotal } from "../../lib/paper";
 import { buildWeek } from "../../lib/week";
 import { loadInjuriesMeta } from "../../lib/injuries";
 import { alertsFromLines, alertPriceGap } from "../../lib/alerts";
@@ -34,7 +34,7 @@ async function writePrelog(season, week, g, t, poly, bk, model) {
       return { player: p.name, team: p.team, fair: p.fair, ask: v ? v.ask : null, bid: v ? v.bid ?? null : null }; });
   await setJSON(`prelog:${season}:${week}:${g.key}`, { t, game: g.key, poly, books: bk,
     model: mg ? { homeMargin: mg.homeMargin, total: mg.total, homeWinPct: mg.homeWinPct, calHomeCover: mg.calHomeCover, calUnder: mg.calUnder, mktHomeSpread: mg.mktHomeSpread, mktTotal: mg.mktTotal, runAt: mdl.runAt || null } : null, topTd });
-  await recordPicks(season, week, g, poly, mg, t).catch(() => 0);   // Pick Lab: the model's side at the kickoff-time price (9/30)
+  await recordPicks(season, week, g, poly, mg ? { ...mg, tdTotal: tdTotal(mt) } : mg, t).catch(() => 0);   // Pick Lab: the model's side at the kickoff-time price (9/30)
   await recordWinner(season, week, g, poly, t, mg).catch(() => 0);      // Most likely winners: the favorite at kickoff (9/30)
   { const alts = poly && poly.alts ? poly.alts : ((await getJSON(`alts:${season}:${week}:${g.key}`).catch(() => null)) || {}).alts || null;   // late close: the saved latest copy
     await recordTeaser(season, week, g, alts ? { ...(poly || {}), alts } : poly, bk, t).catch(() => 0);

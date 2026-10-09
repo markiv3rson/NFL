@@ -752,6 +752,23 @@ function teaserRow() {
     `<div class="s dim">History ${T.hist.years}: ${Math.round(T.hist.hit * 1000) / 10}% of ${T.hist.n}${a.priced ? ` · return ${cPct(a.roi)} at an average ${Math.round(a.avgPrice * 100)}¢` : ""}${v.n ? ` · at ${Math.round(T.maxPrice * 100)}¢ or less: ${v.w}–${v.l}${v.priced ? `, ${cPct(v.roi)}` : ""}` : ""}</div>`;
 }
 // Game Lines strip: this week's teaser legs and what Polymarket charges for each.
+// Decision model (10/9): every bet the app has a record for (PICK angles, ALT lines, teaser legs), scored by what it has returned
+// historically at today's price: win rate / price - 1. Favorite or underdog doesn't matter; only bets expected to make money are listed.
+function bestBets() {
+  const out = [];
+  for (const g of (S && S.games) || []) { if (g.started) continue;
+    for (const a of g.angles || []) if (a.price > 0 && a.hit) out.push({ pick: a.pick, game: g.key, why: a.name, p: a.hit / 100, price: a.price });
+    for (const x of g.altValue || []) if (x.price > 0) out.push({ pick: `${x.team} ${x.line > 0 ? "+" : ""}${x.line}`, game: g.key, why: "ALT line", p: x.hist, price: x.price });
+  }
+  for (const x of (S && S.teaserLegs) || []) if (x.price > 0) out.push({ pick: `${x.team} +${x.line}`, game: x.game, why: "Teaser leg", p: 0.761, price: x.price });
+  const seen = new Set();
+  return out.map((x) => ({ ...x, ev: x.p / x.price - 1 })).filter((x) => x.ev >= 0.03).sort((a, b) => b.ev - a.ev).filter((x) => !seen.has(x.pick + x.game) && seen.add(x.pick + x.game)).slice(0, 10);
+}
+function bestStrip() {
+  const B = bestBets(); if (!B.length) return "";
+  const rows = B.map((x) => `<div class="row"><span><b class="g">${esc(x.pick)}</b> <span class="dim">${esc(x.game)} · ${esc(x.why)}</span></span><span>wins ${Math.round(x.p * 100)}% · <b class="g">+${Math.round(x.ev * 100)}%</b></span></div>`).join("");
+  return `<div class="gapstrip" data-drop="bestlist"><div class="t">Best bets · ${B.length} ›</div></div><div class="drop open" id="bestlist"><div class="card"><div class="inner">${rows}</div></div></div>`;
+}
 function teaserStrip() {
   const L = (S && S.teaserLegs) || []; if (!L.length) return "";
   const nV = L.filter((x) => x.value).length;
@@ -972,7 +989,7 @@ function renderLines() {
   if (DETAIL) { const g = S.games.find((x) => x.key === DETAIL); if (g) return renderDetail(g); DETAIL = null; }
   setBg(null);
   $("detail").style.display = "none"; $("lines").style.display = "";
-  $("lines").innerHTML = gapStrip() + teaserStrip() + changedBox() + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
+  $("lines").innerHTML = bestStrip() + gapStrip() + teaserStrip() + changedBox() + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
 
     '';
 }

@@ -130,7 +130,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const ctx = { document: { getElementById: () => el(), querySelectorAll: () => [], addEventListener() {}, hidden: false }, fetch: () => Promise.reject(new Error("offline")),
     localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) }, location: { reload() {} }, window: {}, setTimeout, clearTimeout, console, Date, Math, Number, String, JSON, Promise, Set, Object, Array };
   vm.createContext(ctx);
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={injTag,topAngle,weakLeg,anglesBox,kickLine,openMove,tdNoGap,teaserRow,teaserStrip,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={bestBets,injTag,topAngle,weakLeg,anglesBox,kickLine,openMove,tdNoGap,teaserRow,teaserStrip,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   ok(/Model: PHI by 4\.2/.test(T.spreadReason(g)) && !/needs/.test(T.spreadReason(g)), "spread wording");
@@ -688,6 +688,16 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       G("E @ F", { angles: [{ id: "dogblow", pick: "E +4.5", price: 0.5, hist: 58, hit: 58 }] })] });
     const a2 = P.find((p) => p.strategy === "alt_2"), a3 = P.find((p) => p.strategy === "alt_pick_3");
     ok(a2 && a2.legs.map((l) => l.label).join(",") === "D -3.5,A +6.5" && Math.abs(a2.prob - 0.8 * 0.66) < 1e-9 && a3 && a3.legs.length === 3 && a3.legs[2].label === "E +4.5", "ALT parlays: two best ALT lines, plus a PICK from another game"); }
+  { // decision model (10/9)
+    vm.runInContext(`S = { games: [{ key: "A @ B", started: false, angles: [{ pick: "A +4.5", name: "x", hit: 59, price: 0.5 }], altValue: [{ team: "B", line: -3.5, price: 0.7, hist: 0.62 }] }, { key: "C @ D", started: true, angles: [{ pick: "C +3", hit: 70, price: 0.4 }] }], teaserLegs: [{ team: "E", line: 8.5, price: 0.7, game: "E @ F" }] }`, ctx);
+    const B = ctx.T.bestBets();
+    ok(B.length === 2 && B[0].pick === "A +4.5" && Math.abs(B[0].ev - 0.18) < 1e-9 && B[1].pick === "E +8.5" && !B.some((x) => x.pick === "B -3.5" || x.pick === "C +3"), "decision model: only bets with a positive historical return, best first, started games skipped"); }
+  { // TD-based total fade (10/9)
+    const { tdTotal, picksFor } = await import("../lib/paper.js");
+    const td = { away: [{ pos: "RB", fair: 50 }, { pos: "QB", fair: 30 }], home: [{ pos: "WR", fair: 40 }] }, tt = tdTotal(td);
+    ok(Math.abs(tt - (20.976 + 5.727 * (Math.log(2) - Math.log(0.6)))) < 1e-9 && tdTotal({ away: [], home: [] }) === null, "TD total: 10.5 + 5.7 x expected RB/WR/TE TDs per team");
+    const p = picksFor({ key: "A @ B", away: "A", home: "B", week: 6 }, { total: { line: 30, over: 0.5, under: 0.5 } }, { tdTotal: 25 }, null).find((x) => x.market === "tdfade");
+    ok(p && p.label === "Over 30", "TD total fade: bets the opposite side of the TD-based total"); }
   { // without him (10/8): top 3 TD scorers in games a listed-Out regular missed
     const h = ctx.T.tdTop3({ ...tg, td: [], without: { [tg.away]: [{ out: "A.Kamara", games: 7, top: [{ name: "C.Olave", td: 5 }, { name: "D.Vele", td: 2 }] }], [tg.home]: [{ out: "X.Y", games: 1, top: [] }] } });
     ok(/Without A\.Kamara<\/b> <span class="dim">\(7 games\)<\/span>: C\.Olave 5 · D\.Vele 2/.test(h) && /\(1 game\)<\/span>: no TDs/.test(h), "without him: scorers listed under the team's top 3"); }
