@@ -609,7 +609,7 @@ function renderModelNow() {
     ["Sportsbook credits left", st.creditWarning ? `<span class="y">${st.credits ?? "—"}</span>` : (st.credits ?? "—")],
   ].map(([a, b]) => `<div class="row"><span class="dim">${a}</span><span>${b}</span></div>`).join("") +
     (st.creditWarning ? `<div class="s y">⚠ ${esc(st.creditWarning)}</div>` : "") +
-    ((st.errors || []).filter((e) => Date.now() - new Date(e.t) < 24 * 3600e3).length ? st.errors.filter((e) => Date.now() - new Date(e.t) < 24 * 3600e3).map((e) => `<div class="s y">⚠ ${hm(e.t)} · ${esc(e.where)} failed</div>`).join("") : "") : "";
+    "" : "";
   GBG_RES = res; const games = gbgHtml();
   const recapTd = (() => { const tdW = wk.flatMap((r) => r.td || []), td = tdW.filter((p) => p.played === true); if (!tdW.length) return "";
       const exp = td.reduce((a, p) => a + p.fair, 0) / 100, hit = td.filter((p) => p.scored).length;
