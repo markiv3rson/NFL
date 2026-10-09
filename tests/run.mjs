@@ -681,6 +681,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     await R.hset("picks:2099:5", "A @ B|booksmove", JSON.stringify({ market: "booksmove", result: "W", ret: 0.9, price: 0.5 }), "C @ D|mlgap", JSON.stringify({ market: "mlgap", result: "L", ret: -1, price: 0.4 }));
     const P = await picksSummary(2099); await R.del("picks:2099:5");
     ok(P.booksmove && P.booksmove.w === 1 && P.mlgap && P.mlgap.l === 1 && P.dogblow && P.dogblow.recorded === 0, "angle summary: new angles (books moved, ML vs spread, combos) get their records"); }
+  { // ALT parlays (10/9)
+    const { buildPaper } = await import("../lib/paper.js");
+    const G = (k, extra) => ({ key: k, home: k.split(" @ ")[1], away: k.split(" @ ")[0], started: false, final: false, td: [], ...extra });
+    const P = buildPaper({ games: [G("A @ B", { altValue: [{ team: "A", line: 6.5, price: 0.6, hist: 0.66 }] }), G("C @ D", { altValue: [{ team: "D", line: -3.5, price: 0.55, hist: 0.8 }] }),
+      G("E @ F", { angles: [{ id: "dogblow", pick: "E +4.5", price: 0.5, hist: 58, hit: 58 }] })] });
+    const a2 = P.find((p) => p.strategy === "alt_2"), a3 = P.find((p) => p.strategy === "alt_pick_3");
+    ok(a2 && a2.legs.map((l) => l.label).join(",") === "D -3.5,A +6.5" && Math.abs(a2.prob - 0.8 * 0.66) < 1e-9 && a3 && a3.legs.length === 3 && a3.legs[2].label === "E +4.5", "ALT parlays: two best ALT lines, plus a PICK from another game"); }
   { // without him (10/8): top 3 TD scorers in games a listed-Out regular missed
     const h = ctx.T.tdTop3({ ...tg, td: [], without: { [tg.away]: [{ out: "A.Kamara", games: 7, top: [{ name: "C.Olave", td: 5 }, { name: "D.Vele", td: 2 }] }], [tg.home]: [{ out: "X.Y", games: 1, top: [] }] } });
     ok(/Without A\.Kamara<\/b> <span class="dim">\(7 games\)<\/span>: C\.Olave 5 · D\.Vele 2/.test(h) && /\(1 game\)<\/span>: no TDs/.test(h), "without him: scorers listed under the team's top 3"); }
