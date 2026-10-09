@@ -117,7 +117,8 @@ function saferTotal(g, p) {
 }
 function saferSide(g, kind, p) {
   if (g.final) return "";
-  if (kind === "spread") { const t = g.teaser; return t ? `<div class="s g" style="margin-top:6px">Safer: <b>${esc(t.team)} +${t.line}</b> · wins ${saferRate(g)}%</div>` : ""; }
+  if (kind === "spread") { const t = g.teaser; return t ? `<div class="s g" style="margin-top:6px">Safer: <b>${esc(t.team)} +${t.line}</b> · wins ${saferRate(g)}%</div>` +
+    ((t.ladder || []).length ? `<div class="s dim">${t.ladder.map((x) => `+${x.line} ${Math.round(x.hist * 100)}%`).join(" · ")}</div>` : "") : ""; }
   const tl = (g.books && g.books.total && g.books.total.line) ?? (g.poly && g.poly.total && g.poly.total.line); if (tl == null) return "";
   const s = saferTotal(g, p);
   return `<div class="s g" style="margin-top:6px">Safer: <b>${s.under ? `Under ${tl + 6}` : `Over ${tl - 6}`}</b> · wins ${s.pct}%</div>`;
