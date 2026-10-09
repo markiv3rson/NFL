@@ -130,7 +130,7 @@ function saferTotal(g, p) {
 // Purple when our model is part of the rule, green when it's history alone.
 function comboLines(g, kind) {
   if (g.final) return "";
-  const cs = (g.combos || []).filter((c) => c.kind === kind && c.hit >= (c.teaser ? 70 : 55)).sort((a, b) => b.hit - a.hit).slice(0, 3);   // weak ones hidden (10/9) if (!cs.length) return "";
+  const cs = (g.combos || []).filter((c) => c.kind === kind && c.hit >= (c.teaser ? 70 : 55)).sort((a, b) => b.hit - a.hit).slice(0, 3); if (!cs.length) return "";   // weak ones hidden (10/9)
   return `<div class="s" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">` + cs.map((c) => `<div class="${c.model ? "mod" : "g"}"><b>${esc(c.pick)}</b> · wins ${Math.round(c.hit)}%<div class="dim">${esc(c.why)}</div></div>`).join("") + `</div>`;
 }
 function saferSide(g, kind, p) {
