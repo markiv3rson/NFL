@@ -120,7 +120,37 @@ def features(season, pos):
     for c in ['r_rzt','r_i10','r_rzc','r_i5','r_td']: pg[c]=pg[c].fillna(0)
     pg = pg.merge(def_epa_todate(p), on=['opp', 'game_id'], how='left')
     pg['d_repa'] = pg['d_repa'].fillna(0.0); pg['d_pepa'] = pg['d_pepa'].fillna(0.0)
-    return add_flags(add_snap(pg, season), season, prior)
+    return add_extra(add_flags(add_snap(pg, season), season, prior), p)
+
+# Second-model inputs (10/9, idea_study.py / subset_study.py): opponent red-zone TD rate allowed to date, the team's run share
+# inside the 5 to date, snap trend (last game minus last 3) and goal-line role (inside-5 carries vs all carries).
+GL_LG, RZ_K, GL_K = 0.55, 40, 10
+def _rz_def(p):
+    rz = p[(p.yardline_100 <= 20) & p.play_type.isin(['run', 'pass'])]
+    d = rz.groupby(['defteam', 'game_id', 'week']).agg(td=('touchdown', 'sum'), n=('touchdown', 'size')).reset_index().sort_values(['defteam', 'week'])
+    lg = float(rz.touchdown.mean()) if len(rz) else 0.2
+    return d, lg
+def _gl_run(p):
+    gl = p[(p.yardline_100 <= 5) & p.play_type.isin(['run', 'pass'])].assign(r=lambda x: (x.play_type == 'run').astype(int))
+    return gl.groupby(['posteam', 'game_id', 'week']).agg(r=('r', 'sum'), n=('r', 'size')).reset_index().sort_values(['posteam', 'week'])
+def add_extra(f, p):
+    f = f.copy()
+    d, lg = _rz_def(p); d['ct'] = d.groupby('defteam').td.cumsum() - d.td; d['cn'] = d.groupby('defteam').n.cumsum() - d.n
+    d['rzd'] = (d.ct + RZ_K * lg) / (d.cn + RZ_K) - lg
+    f = f.merge(d[['defteam', 'game_id', 'rzd']].rename(columns={'defteam': 'opp'}), on=['opp', 'game_id'], how='left')
+    t = _gl_run(p); t['cr'] = t.groupby('posteam').r.cumsum() - t.r; t['cn'] = t.groupby('posteam').n.cumsum() - t.n
+    t['glrun'] = (t.cr + GL_K * GL_LG) / (t.cn + GL_K)
+    f = f.merge(t[['posteam', 'game_id', 'glrun']].rename(columns={'posteam': 'team'}), on=['team', 'game_id'], how='left')
+    return f
+def live_extra(df, p, team, opp):
+    """Same inputs for the next game: every completed game this season counts."""
+    df = df.copy()
+    try:
+        d, lg = _rz_def(p); x = d[d.defteam == opp]; df['rzd'] = (x.td.sum() + RZ_K * lg) / (x.n.sum() + RZ_K) - lg
+        t = _gl_run(p); y = t[t.posteam == team]; df['glrun'] = (y.r.sum() + GL_K * GL_LG) / (y.n.sum() + GL_K)
+    except Exception: df['rzd'], df['glrun'] = 0.0, GL_LG
+    return df
+EXTRA = ['rzd', 'glrun_rb', 'glrun_rec', 'snap_trend', 'gl_spec']
 
 
 # ---- Research flags (added 9/28; tested 2008-25, 18 train->test windows: -0.00012 Brier, better in 13 of 18) ----
@@ -193,7 +223,21 @@ def design(df):
     X['rushx']=(X.r_rzc+X.r_i5)*X.o_rush; X['recx']=(X.r_rzt+X.r_i10)*X.o_rec
     dr = X['d_repa'] if 'd_repa' in X else 0.0; dp = X['d_pepa'] if 'd_pepa' in X else 0.0
     X['d_repa_rb'] = np.asarray(dr, dtype=float) * X.is_rb; X['d_pepa_rec'] = np.asarray(dp, dtype=float) * (1 - X.is_rb)
-    return X[FEATS].values
+    X['rzd'] = pd.to_numeric(X['rzd'], errors='coerce').fillna(0.0) if 'rzd' in X else 0.0
+    gl = pd.to_numeric(X['glrun'], errors='coerce').fillna(GL_LG) if 'glrun' in X else GL_LG
+    X['glrun_rb'] = (gl - GL_LG) * X.is_rb; X['glrun_rec'] = (gl - GL_LG) * (1 - X.is_rb)
+    X['snap_trend'] = (X.snap1 - X.snap3) if 'snap1' in X and 'snap3' in X else 0.0
+    X['gl_spec'] = X.r_i5 / (X.r_c + 1)
+    return X[FEATS + EXTRA].values.astype(float)
+
+# Two models (10/9): the logistic model (FEATS) and a gradient-boosted one (FEATS + EXTRA), averaged 50/50. Walk-forward 2021-25
+# after the team TD total step: Brier -0.00053, better in 5 of 5 seasons (the logistic alone with EXTRA did nothing: the boosted
+# model finds how they combine). Behaves like one sklearn model so retrain / holdout / pickling stay unchanged.
+class Blend:
+    def __init__(self, lg, gb): self.lg, self.gb = lg, gb; self.n_features_in_ = len(FEATS) + len(EXTRA)
+    def predict_proba(self, X):
+        X = np.asarray(X, dtype=float); a = self.lg.predict_proba(X[:, :len(FEATS)])[:, 1]; b = self.gb.predict_proba(X)[:, 1]; p = (a + b) / 2
+        return np.column_stack([1 - p, p])
 
 def load_pos():
     frames=[]
@@ -232,7 +276,11 @@ def fit_model(train_seasons, exclude=None):
         except Exception: pass
     tr = pd.concat(frames)
     w = recency_weight(tr)
-    return LogisticRegression(C=1.0, max_iter=2000).fit(design(tr), tr.scored, sample_weight=w)
+    X = design(tr)
+    from sklearn.ensemble import HistGradientBoostingClassifier
+    lg = LogisticRegression(C=1.0, max_iter=2000).fit(X[:, :len(FEATS)], tr.scored, sample_weight=w)
+    gb = HistGradientBoostingClassifier(max_depth=3, learning_rate=0.05, max_iter=300, min_samples_leaf=200, random_state=0).fit(X, tr.scored, sample_weight=w)
+    return Blend(lg, gb)
 
 def brier(model, df):
     p = shrink(model.predict_proba(design(df))[:, 1])
@@ -256,7 +304,7 @@ def load_active():
         try:
             with open(p, "rb") as fh: obj = pickle.load(fh)
             # a model saved before snap share was added has fewer inputs; ignore it and retrain
-            if getattr(obj.get("model"), "n_features_in_", None) == len(FEATS): return obj
+            if getattr(obj.get("model"), "n_features_in_", None) == len(FEATS) + len(EXTRA): return obj   # older one-model pickles are refit
         except Exception: pass
     return None
 
@@ -507,6 +555,7 @@ def run(team,opp,imp,outs=(),posadj=False,active=False,returning=()):
     outmask = full.name.apply(_is_out)
     df = full[~outmask].copy()
     df['d_repa'], df['d_pepa'] = def_epa_now(p, opp)   # opponent per-play defense (10/8)
+    df = live_extra(df, p, team, opp)   # second-model inputs (10/9)
     if posadj: df['o_rec']=df.pos.map(pos_rec(opp))
     # (Vacated-usage boost removed 9/30: handing an Out player's red-zone share to teammates tested WORSE in 7 of 7
     # seasons, 2019-25 -- the teammates' own usage already carries most of it, and the bump overshot.)
