@@ -102,6 +102,15 @@ function openMove(g, kind, p) {
   const lab = kind === "total" ? `${p.side === "over" ? "Over" : "Under"} ${open}` : `${p.team} ${sgn(open)}`;
   return `<div class="s ${mv > 0 ? "g" : "dim"}">Opened ${esc(lab)} · moved ${Math.abs(mv)} ${mv > 0 ? "toward" : "away from"} the model</div>`;
 }
+// Line moved 6 points in our favor (10/9): the only spread/total sides that beat a coin flip in every period 2007-25.
+// Spread: underdog +1.5..+2.5 at +7.5..+8.5 (76%). Total: the model's side moved 6 (67%, either side).
+function saferSide(g, kind, p) {
+  if (g.final) return "";
+  if (kind === "spread") { const t = g.teaser; return t ? `<div class="s g" style="margin-top:6px">Safer: <b>${esc(t.team)} +${t.line}</b> · wins 76%</div>` : ""; }
+  const tl = (g.books && g.books.total && g.books.total.line) ?? (g.poly && g.poly.total && g.poly.total.line); if (tl == null) return "";
+  const under = !p || p.side !== "over";
+  return `<div class="s g" style="margin-top:6px">Safer: <b>${under ? `Under ${tl + 6}` : `Over ${tl - 6}`}</b> · wins 67%</div>`;
+}
 function leanCell(g, kind) {
   let p = kind === "total" ? g.totalPick : g.spreadPick;
   const head = `<div class="k">Model leans${injApplied(g, kind) ? ' <span class="pill p-y" style="padding:0 6px;font-size:10px">Estimate</span>' : ""}</div>`;
@@ -125,7 +134,7 @@ function leanCell(g, kind) {
     `<span>${p.label}</span><div class="s">${p.pct.toFixed(1)}% model chance</div>`) +
     (reason ? `<div class="s" style="margin-top:6px">${esc(reason)}</div>` : "") +
     (wind ? `<div class="s">${wind}</div>` : "") +
-    openMove(g, kind, p) +
+    openMove(g, kind, p) + saferSide(g, kind, p) +
     (adj ? `<div class="s r" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">${injBadgeFor(g)}${esc(adj)}</div>` : "") +
     (p.warn ? `<div class="s y">${esc(p.warn)}</div>` : ""));
 }
@@ -747,22 +756,22 @@ function altRow() {
 }
 function teaserRow() {
   const T = TEASERS; if (!T) return "";
+  const tt = T.totals, tRow = tt ? `<div class="arow"><span class="nm">Total moved 6 (model's side)</span><span class="dim rc">${tt.n ? `${tt.w}–${tt.l}` : tt.recorded ? `${tt.recorded} saved` : "none yet"}</span><b class="${tt.n ? (tt.hit >= 0.67 ? "g" : tt.hit >= 0.6 ? "y" : "r") : "dim"}">${tt.n ? Math.round(tt.hit * 100) + "%" : "—"}</b></div>` : "";
   const a = T.all || {}, v = T.value || {}, pc = (x) => (x == null ? "—" : `${Math.round(x * 100)}%`);
   return `<div class="arow"><span class="nm">Underdog +1.5–2.5 teased to +7.5–8.5</span><span class="dim rc">${a.n ? `${a.w}–${a.l}` : T.recorded ? `${T.recorded} saved` : "none yet"}</span><b class="${a.n ? (a.hit >= 0.76 ? "g" : a.hit >= 0.72 ? "y" : "r") : "dim"}">${a.n ? pc(a.hit) : "—"}</b></div>` +
-    `<div class="s dim">History ${T.hist.years}: ${Math.round(T.hist.hit * 1000) / 10}% of ${T.hist.n}${a.priced ? ` · return ${cPct(a.roi)} at an average ${Math.round(a.avgPrice * 100)}¢` : ""}${v.n ? ` · at ${Math.round(T.maxPrice * 100)}¢ or less: ${v.w}–${v.l}${v.priced ? `, ${cPct(v.roi)}` : ""}` : ""}</div>`;
+    `<div class="s dim">History ${T.hist.years}: ${Math.round(T.hist.hit * 1000) / 10}% of ${T.hist.n}</div>` + tRow;
 }
 // Game Lines strip: this week's teaser legs and what Polymarket charges for each.
-// Decision model (10/9): every bet the app has a record for (PICK angles, ALT lines, teaser legs), scored by what it has returned
-// historically at today's price: win rate / price - 1. Favorite or underdog doesn't matter; only bets expected to make money are listed.
+// Decision model (10/9): every pick the app has a history for (PICK angles, ALT lines, teaser legs), sorted only by how often it won.
 function bestBets() {
   const out = [], ko = {};
   for (const g of (S && S.games) || []) { ko[g.key] = g; if (g.started) continue;
-    for (const a of g.angles || []) if (a.price > 0 && a.hit) out.push({ pick: a.pick, game: g.key, why: a.name, p: a.hit / 100, price: a.price });
-    for (const x of g.altValue || []) if (x.price > 0) out.push({ pick: `${x.team} ${x.line > 0 ? "+" : ""}${x.line}`, game: g.key, why: "ALT line", p: x.hist, price: x.price });
+    for (const a of g.angles || []) if (a.hit) out.push({ pick: a.pick, game: g.key, why: a.name, p: a.hit / 100 });
+    for (const x of g.altValue || []) out.push({ pick: `${x.team} ${x.line > 0 ? "+" : ""}${x.line}`, game: g.key, why: "ALT line", p: x.hist });
   }
-  for (const x of (S && S.teaserLegs) || []) if (x.price > 0 && !(ko[x.game] && ko[x.game].started)) out.push({ pick: `${x.team} +${x.line}`, game: x.game, why: "Teaser leg", p: 0.761, price: x.price });
+  for (const x of (S && S.teaserLegs) || []) if (!(ko[x.game] && ko[x.game].started)) out.push({ pick: `${x.team} +${x.line}`, game: x.game, why: "Line +6", p: 0.761 });
   const seen = new Set();
-  return out.map((x) => ({ ...x, ev: x.p / x.price - 1, slot: slotOf(ko[x.game]) })).filter((x) => x.ev >= 0.03).sort((a, b) => b.p - a.p || b.ev - a.ev)
+  return out.map((x) => ({ ...x, slot: slotOf(ko[x.game]) })).sort((a, b) => b.p - a.p)
     .filter((x) => !seen.has(x.pick + x.game) && seen.add(x.pick + x.game));
 }
 // Morning / afternoon / primetime (10/9): TNF/SNF/MNF and anything starting 5 PM or later (your time) is primetime.
@@ -777,7 +786,7 @@ let GAMEBEST_OPEN = (() => { try { return localStorage.getItem("gameBestOpen") !
 let BEST_OPEN = (() => { try { return localStorage.getItem("bestOpen") !== "0"; } catch { return true; } })();
 function bestStrip() {
   const B = bestBets(); if (!B.length) return "";
-  const row = (x) => `<div class="bb"><div class="t1"><b class="g">${esc(x.pick)}</b><span style="white-space:nowrap">wins ${Math.round(x.p * 100)}% · <b class="g">+${Math.round(x.ev * 100)}%</b></span></div><div class="t2">${esc(x.game)} · ${esc(x.why)}</div></div>`;
+  const row = (x) => `<div class="bb"><div class="t1"><b class="g">${esc(x.pick)}</b><span style="white-space:nowrap">wins <b class="g">${Math.round(x.p * 100)}%</b></span></div><div class="t2">${esc(x.game)} · ${esc(x.why)}</div></div>`;
   const rows = ["Morning", "Afternoon", "Primetime"].map((sl) => { const xs = B.filter((x) => x.slot === sl); return xs.length ? `<div class="sh" style="margin:8px 0 4px">${sl.toUpperCase()}</div>${xs.map(row).join("")}` : ""; }).join("");
   return `<div class="gapstrip" data-drop="bestlist"><div class="t">Best bets · ${B.length} ›</div></div><div class="drop${BEST_OPEN ? " open" : ""}" id="bestlist"><div class="card"><div class="inner">${rows}</div></div></div>`;
 }
