@@ -204,7 +204,7 @@ function gameCard(g, i) {
     const hsNow = p.spread ? p.spread.homeSpread : b.spread ? b.spread.homeSpread : null;
     const angle = !g.final && hsNow != null && hsNow <= -9.5 ? `<div class="s g" style="margin:6px 0 0">★ ${g.home} ML · home fav 9.5+ · won 88% 2007–25</div>` : "";
     return `<div class="card${g.final ? " fin" : ""}"><div class="inner">${headButtons(g, "l" + i)}${angle}<div class="f">${HDR}` +
-      `<div><div class="k">SPORTSBOOK</div>${b.spread ? `${g.home} ${sgn(b.spread.homeSpread)} ${odds(b.spread.home.odds)}<div class="s">fair (vig removed) ${g.home} ${odds(toAmerican(b.spread.home.fair))} / ${g.away} ${odds(toAmerican(b.spread.away.fair))}</div>` : dash}</div>` +
+      `<div><div class="k">SPORTSBOOK</div>${b.spread ? `${g.home} ${sgn(b.spread.homeSpread)} ${odds(b.spread.home.odds)}<div class="s">fair ${g.home} ${odds(toAmerican(b.spread.home.fair))} / ${g.away} ${odds(toAmerican(b.spread.away.fair))}</div>` : dash}</div>` +
       leanCell(g, "spread") +
       `<div><div class="k">${pmLogo()}POLYMARKET</div>${poly}</div>` +
       `</div></div>${cover(g, g.spreadPick)}</div>`;
@@ -386,22 +386,20 @@ function renderMineNow() {
     `<div class="stat"><div class="k">PROFIT</div><div class="v">${cMoney(s.pl)}</div><div class="k2">${sel === "all" ? "this season" : "Week " + sel}</div></div></div>`;
   $("record-mine").innerHTML = tiles + `<div class="card" style="margin-top:10px">` +
     `<div class="sec"><div class="sh">Summary</div>` +
-    `<div class="row"><span class="dim">Your record · P/L</span><span>${s.wins}–${s.losses}${s.pushes ? "–" + s.pushes : ""} · ${cMoney(s.pl)}</span></div>` +
     `<div class="row"><span class="dim">Return · CLV</span><span>${cPct(s.roi)} · ${cPct(s.avgClv)}</span></div>` +
     (() => { const sc = MB.summary && MB.summary.settleCheck; if (!sc || !(sc.agree + sc.disagree)) return "";
       return sc.disagree ? `<div class="s y">⚠ Settlement mismatch on ${sc.disagree} combo${sc.disagree === 1 ? "" : "s"}</div>`
         : ""; })() +
     (past ? "" : `<div class="row"><span class="dim">Open this week</span><span>${money(s.openCost)} of $200</span></div>`) + `</div>` +
-    (past ? "" : `<div class="sec"><div class="sh">Open bets</div>${open.map(betRow).join("") || '<div class="s">No open bets.</div>'}</div>` +
+    (past || !open.length ? "" : `<div class="sec"><div class="sh">Open bets</div>${open.map(betRow).join("")}</div>` +
     `<div class="sec"><div class="sh">Expected returns</div>` +
     `<div class="row"><span class="dim">If everything hits</span><span>${money(s.maxPayout)} (${cMoney(s.maxPayout - s.openCost)})</span></div>` +
     `<div class="row"><span class="dim">Expected · market</span><span>${money(s.expMarket)} (${cMoney(s.expMarket - s.openCost)})</span></div>` +
     `<div class="row"><span class="dim">Expected · your model</span><span>${s.modelCovered ? `${money(s.expModel)} (${cMoney(s.expModel - s.expModelCost)})` : "—"}</span></div></div>`) +
-    `<div class="fold" data-drop="settled"><span>${past ? "Results" : "Settled bets"}${done.length ? ` · ${cMoney(settledPl)}` : ""}</span><span>▾</span></div>` +
+    `<div class="fold" data-drop="settled"><span>${past ? "Results" : "Settled bets"}</span><span>▾</span></div>` +
     `<div class="drop${past ? " open" : ""}" id="settled">${(past ? shown : done).map(betRow).join("") || '<div class="s">None yet.</div>'}</div>` +
     `<div class="fold" data-drop="ban"><span>Analysis</span><span>▾</span></div><div class="drop" id="ban">${betsAnalysis(MB.bets)}</div>` +
-    (past ? "" : `<div class="fold" data-drop="synced"><span>Live account view${synced.length ? ` · ${synced.length}` : ""} </span><span>▾</span></div>` +
-    `<div class="drop open" id="synced">${syncedRows || '<div class="s">Tap ↻ Sync account.</div>'}</div>`) + `</div>` +
+    `</div>` +
     `<div class="center"><button class="btn" id="sync-btn">↻ Sync account</button></div>`;
   $("sync-btn").onclick = () => loadRecord(true);
   document.querySelectorAll("#mb-chips [data-mbw]").forEach((b) => { b.onclick = () => { MBWEEK = b.dataset.mbw === "all" ? "all" : Number(b.dataset.mbw); renderMine(); }; });
@@ -637,7 +635,6 @@ function renderModelNow() {
     mSec("m-trend", "7 · Trends and analysis", "How the models are changing week to week, whether higher confidence really wins more, and where the touchdown chances run high or low.",
       `<div class="s"><b>Hit rate by week</b></div>` + (modelsByWeek(res) || '<div class="s">None yet.</div>') +
       `<div class="s" style="margin-top:8px"><b>By confidence · moneyline</b></div>` + modelsByConfidence(res) +
-      `<div class="s" style="margin-top:8px"><b>TD chances vs results</b></div>` + tdCalibration(tdAll) +
       (() => { const pl = tdPlayersWithDefense(res); return `<div class="s" style="margin-top:8px"><b>By position</b></div>` + tdByPosition(pl) + `<div class="s" style="margin-top:8px"><b>By opponent defense</b></div>` + tdByDefense(pl); })()) +
     mSec("m-miss", "8 · Misses and every game", "Where the model keeps getting it wrong, and each graded game by week.", `<div class="s"><b>Miss finder</b></div>` + ((S.missFinder && S.missFinder.misses && S.missFinder.misses.length) ?
       S.missFinder.misses.map((m) => `<div class="row" style="display:block"><b>${esc(m.pattern)}</b><div class="s">${esc(String(m.note).split(" — ")[0])}</div></div>`).join("") :

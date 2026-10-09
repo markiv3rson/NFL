@@ -746,7 +746,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const order = ["1 · Scoreboard", "2 · Winners", "3 · Spreads and totals", "4 · Touchdowns", "5 · Tracked angles", "6 · Price gaps", "7 · Trends and analysis", "8 · Misses and every game", "9 · System"].map((x) => h.indexOf(x));
     ok(order.every((x, i) => x > 0 && (i === 0 || x > order[i - 1])), "models tab: nine sections, in order");
     ok((h.match(/class="fold" data-drop="m-/g) || []).length === 9 && !/class="s dim" style="margin:2px 0 6px"/.test(h) && !/break-even/i.test(h), "models tab: nine sections, no explanation lines, no break-even talk");
-    ok(/Hit rate by week/.test(h) && /Week 3/.test(h) && /Week 4/.test(h) && /TD chances vs results/.test(h) && /Game-by-game results|id="gbg"/.test(h) && !/Parlay scoreboard/.test(h), "models tab: trends and every-game list present, parlay scoreboard kept out");
+    ok(/Hit rate by week/.test(h) && /Week 3/.test(h) && /Week 4/.test(h) && /Game-by-game results|id="gbg"/.test(h) && !/Parlay scoreboard/.test(h), "models tab: trends and every-game list present, parlay scoreboard kept out");
     const bw = ctx.T.modelsByWeek(res), bc = ctx.T.modelsByConfidence(res), tc = ctx.T.tdCalibration(res.flatMap((r) => r.td));
     ok(/Moneyline[\s\S]*50%[\s\S]*Spread[\s\S]*Total/.test(bw) && /Week 3/.test(bw), "models tab: hit rate by week");
     ok(/Said 80\+% · 1 picks/.test(bc) && /Said 60–70% · 1 picks/.test(bc) && /100%/.test(bc), "models tab: confidence buckets use the chance the model said");
@@ -762,7 +762,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     vm.runInContext(`MBWEEK = "all"`, ctx); ctx.T.renderMine(); ok(/1–2/.test(box.innerHTML), "record tab: Season chip shows every week");
     vm.runInContext(`MBWEEK = 3`, ctx); ctx.T.renderMine();
     ok(/BETS/.test(box.innerHTML) && /RECORD/.test(box.innerHTML) && !/OPEN BETS/.test(box.innerHTML) && !/Expected returns/.test(box.innerHTML) && !/Open bets/.test(box.innerHTML) && !/Live account view/.test(box.innerHTML) && /Results/.test(box.innerHTML), "record tab: an earlier week shows results only");
-    vm.runInContext(`MBWEEK = null`, ctx); ctx.T.renderMine(); ok(/OPEN BETS/.test(box.innerHTML) && /Expected returns/.test(box.innerHTML), "record tab: this week keeps open bets and expected returns");
+    vm.runInContext(`MBWEEK = null`, ctx); ctx.T.renderMine(); ok(/OPEN BETS/.test(box.innerHTML) && !/Your record · P\/L/.test(box.innerHTML) && !/Live account view/.test(box.innerHTML), "record tab: this week keeps the open-bets box, no repeated record");
     vm.runInContext(`MBWEEK = null`, ctx); ctx.document.getElementById = old; }
   { const base = { player: "B.Bowers", pos: "TE", team: "LV", game: "LV @ KC", fair: 34, two: 8, first: 9, teamRank: 1, price: 0.3, flags: [] };
     const yes = ctx.T.prow({ ...base, returning: "out", returningState: "practicing" }, { started: false }, true), dnp = ctx.T.prow({ ...base, returning: "out", returningState: "not practicing" }, { started: false }, true), no = ctx.T.prow(base, { started: false }, true);
