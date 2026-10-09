@@ -130,7 +130,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const ctx = { document: { getElementById: () => el(), querySelectorAll: () => [], addEventListener() {}, hidden: false }, fetch: () => Promise.reject(new Error("offline")),
     localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) }, location: { reload() {} }, window: {}, setTimeout, clearTimeout, console, Date, Math, Number, String, JSON, Promise, Set, Object, Array };
   vm.createContext(ctx);
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={anglesBox,kickLine,openMove,tdNoGap,teaserRow,teaserStrip,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={topAngle,weakLeg,anglesBox,kickLine,openMove,tdNoGap,teaserRow,teaserStrip,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   ok(/Model: PHI by 4\.2/.test(T.spreadReason(g)) && !/needs/.test(T.spreadReason(g)), "spread wording");
@@ -625,6 +625,24 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(x && x.slug === "caoc-1" && x.pl === 19.9 && Math.abs(x.proceeds - 24.9) < 1e-9 && soldFrom({ trade: { marketSlug: "b", price: { value: "0.1" }, qty: "50", realizedPnl: { value: "0" } } }) === null, "sold: profit from the selling trade, buys ignored");
     const row = ctx.T.betRow ? ctx.T.betRow({ source: "account", title: "caoc-1", week: 5, cost: 5, price: 0.08, toWin: 59, result: "W", pl: 14.94, sold: { pl: 14.94, proceeds: 21.03 } }) : "";
     ok(/class="g">Sold<\/span> /.test(row) && /sold early for \$19\.94/.test(row), "sold: shown as Sold with the profit; paid back = stake + profit"); }
+  { // linked combo legs (10/9)
+    const { comboChance, pairLift } = await import("../lib/combo.js");
+    const td = { game: "A @ B", kind: "td", team: "B", prob: 0.5 }, cov = { game: "A @ B", kind: "spread", team: "B", prob: 0.5 }, opp = { game: "A @ B", kind: "spread", team: "A", prob: 0.5 },
+      ov = { game: "A @ B", kind: "total", side: "over", prob: 0.5 }, un = { game: "A @ B", kind: "total", side: "under", prob: 0.5 }, other = { game: "C @ D", kind: "spread", team: "D", prob: 0.5 };
+    ok(pairLift(td, cov) === 1.19 && pairLift(cov, td) === 1.19 && pairLift(td, opp) === 0.81 && pairLift(td, ov) === 1.23 && pairLift(td, un) === 0.77 && pairLift(cov, ov) === 1 && pairLift(td, other) === 1, "combo links: TD with cover/Over up, with opponent/Under down, other pairs unrelated");
+    ok(Math.abs(comboChance([td, cov, ov]) - 0.125 * 1.19 * 1.23) < 1e-12 && comboChance([td, { ...cov, prob: null }]) === null && comboChance([{ ...td, prob: 0.9 }, { ...cov, prob: 0.9 }]) <= 0.9, "combo chance: product times same-game links, capped at the least likely leg");
+    const { buildPaper } = await import("../lib/paper.js");
+    const P = buildPaper({ games: [{ key: "A @ B", home: "B", away: "A", started: false, final: false, poly: { spread: { homeSpread: -6.5, home: 0.5, away: 0.5 }, total: { line: 44.5, over: 0.5, under: 0.5 } },
+      td: [{ team: "B", player: "B.Star", fair: 55, price: 0.5, bid: 0.48, market: "m" }, { team: "A", player: "A.Guy", fair: 60, price: 0.5, bid: 0.48 }] }] });
+    const l = P.find((p) => p.strategy === "linked_sgp_3");
+    ok(l && l.legs.map((x) => x.label).join(",") === "B -6.5,Over 44.5,B.Star TD" && Math.abs(l.prob - 0.5 * 0.5 * 0.55 * 1.19 * 1.23) < 1e-9, "linked combo parlay: favorite covers + Over + the favorite's top scorer, links counted"); }
+  { // weakest leg of an open combo (10/9)
+    const L = (n, p, m) => ({ kind: "total", side: "over", line: n, price: p, modelP: m, result: "pending" });
+    const b = { result: "pending", legs: [L(40, 0.5, 0.55), L(41, 0.6, 0.4), L(42, 0.5, 0.49)] };
+    ok(ctx.T.weakLeg(b) === b.legs[1] && ctx.T.weakLeg({ ...b, legs: [L(40, 0.5, 0.55), L(41, 0.5, 0.49)] }) === null && ctx.T.weakLeg({ ...b, result: "W" }) === null, "weakest leg: the leg furthest below its price, only on open combos"); }
+  { // confidence: angles agreeing on one side (10/9)
+    const g = { ...tg, angles: [{ id: "dogblow", pick: "TB +4.5", hit: 58 }, { id: "streakfade", pick: "TB +4.5", hit: 59 }, { id: "winddiv", pick: "Under 41.5", hit: 57 }] };
+    ok(ctx.T.topAngle(g).pick === "TB +4.5" && ctx.T.topAngle(g).n === 2 && /PICK TB \+4\.5 ×2/.test(ctx.T.tile(g)), "confidence: chip shows the side most angles agree on, with the count"); }
   { // without him (10/8): top 3 TD scorers in games a listed-Out regular missed
     const h = ctx.T.tdTop3({ ...tg, td: [], without: { [tg.away]: [{ out: "A.Kamara", games: 7, top: [{ name: "C.Olave", td: 5 }, { name: "D.Vele", td: 2 }] }], [tg.home]: [{ out: "X.Y", games: 1, top: [] }] } });
     ok(/Without A\.Kamara<\/b> <span class="dim">\(7 games\)<\/span>: C\.Olave 5 · D\.Vele 2/.test(h) && /\(1 game\)<\/span>: no TDs/.test(h), "without him: scorers listed under the team's top 3"); }
