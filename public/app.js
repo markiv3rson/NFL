@@ -810,8 +810,8 @@ function straightPicks(g) {
   for (const x of out) { const k = /^(Over|Under)\b/.test(x.pick) ? "total" : /\bML\b/.test(x.pick) ? "ml" : "spread"; if (!best[k] || x.p > best[k].p) best[k] = x; }
   return Object.values(best).filter((x) => x.p >= BEST_MIN).sort((a, b) => b.p - a.p);
 }
-// Only picks that won 56%+ (a coin flip is 50%), and only the top 5 of the week, so the list stays short.
-const BEST_MIN = 0.56, BEST_MAX = 5;
+// Only picks that won 56%+ (a coin flip is 50%), and only the top 10 of the week, so the list stays short.
+const BEST_MIN = 0.56, BEST_MAX = 10;
 function bestBets() {
   const out = [];
   for (const g of (S && S.games) || []) for (const x of straightPicks(g)) out.push({ ...x, slot: slotOf(g) });
@@ -828,7 +828,7 @@ function extraBets() {
   }
   for (const x of (S && S.teaserLegs) || []) if (ko[x.game] && !ko[x.game].started) out.push({ pick: `${x.team} +${x.line}`, game: x.game, why: "Underdog +6", p: saferRate(ko[x.game], x) / 100 });
   const seen = new Set();
-  return out.sort((a, b) => b.p - a.p).filter((x) => !seen.has(x.pick + x.game) && seen.add(x.pick + x.game)).slice(0, BEST_MAX);
+  return out.sort((a, b) => b.p - a.p).filter((x) => !seen.has(x.pick + x.game) && seen.add(x.pick + x.game)).slice(0, 5);
 }
 function extraStrip() {
   const E = extraBets(); if (!E.length) return "";
