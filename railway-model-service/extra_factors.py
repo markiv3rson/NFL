@@ -1,6 +1,6 @@
 """
 extra_factors.py -- game factors for the site's combo picks (10/9) that the site can't work out itself:
-coach and referee records, team age, QB rushing, rest, travel, a points-based total and the 5 stats models' leans.
+coach records, team age, QB rushing, rest, travel, a points-based total and the 5 stats models' leans.
 Every number uses only games played before the one being scored (same as the 2014-25 scan that picked the combos).
 """
 import os, time, threading, pickle
@@ -148,10 +148,6 @@ def factors(games, season=None):
         def coach(c, s):
             x = g[(g.season < s) & (g.season >= s - 3)]
             return _rate(pd.concat([cov[x.index][x.home_coach == c], -cov[x.index][x.away_coach == c]]))
-        def ref(r, s):
-            if not isinstance(r, str): return None
-            x = g[(g.season < s) & (g.season >= s - 3) & (g.referee == r) & g.total.notna()]
-            return float((x.total > x.total_line).mean()) if len(x) >= 30 else None
         # team age: average age of the active weekly roster
         ages = {}
         try:
@@ -187,7 +183,6 @@ def factors(games, season=None):
             f = {"homeRest": float(r.home_rest) if r is not None and pd.notna(r.home_rest) else None,
                  "awayRest": float(r.away_rest) if r is not None and pd.notna(r.away_rest) else None,
                  "homeCoach": coach(r.home_coach, season) if r is not None else None, "awayCoach": coach(r.away_coach, season) if r is not None else None,
-                 "refOver": ref(r.referee, season) if r is not None else None,
                  "homeAge": ages.get(h), "awayAge": ages.get(a), "homeQbRun": qbrun.get(h), "awayQbRun": qbrun.get(a),
                  "tzdiff": TZ.get(h, 0) - TZ.get(a, 0),
                  "early": bool(r is not None and isinstance(r.gametime, str) and r.gametime[:2] in ("09", "12", "13"))}
