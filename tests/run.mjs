@@ -653,13 +653,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { // export includes line history (10/9)
     const R = globalThis.__TEST_REDIS__;
     await R.rpush("snap:2026:5:A @ B", JSON.stringify({ t: "2026-10-06T12:00:00Z", src: "schedule", poly: { spread: { homeSpread: -6.5, home: 0.5, away: 0.5, extra: 1 }, total: { line: 44.5, over: 0.5, under: 0.5 } } }),
-      JSON.stringify({ t: "2026-10-11T16:00:00Z", poly: { spread: { homeSpread: -7.5, home: 0.5, away: 0.5 } } }));
+      JSON.stringify({ t: "2026-10-11T16:00:00Z", poly: { spread: { homeSpread: -7.5, home: 0.5, away: 0.5 } }, books: { spread: { homeSpread: -8, home: { odds: -110, fair: 0.5 }, away: { odds: -110, fair: 0.5 } } } }));
     await R.set("close:2026:5:A @ B", JSON.stringify({ t: "2026-10-11T17:00:00Z", poly: { spread: { homeSpread: -7.5, home: 0.51, away: 0.49 } } }));
     await R.set("model:2026:5", JSON.stringify({ games: { "A @ B": { homeMargin: 9.7, total: 44.8, homeWinPct: 76, junk: 1 } } }));
     const { default: h } = await import("../pages/api/results/export.js"); let out = null;
     await h({ query: {} }, { setHeader() {}, status() { return { json(x) { out = x; } }; } });
     const L = out && out.lines && out.lines["2026:5:A @ B"];
-    ok(L && L.snaps.length === 2 && L.snaps[0].spread.homeSpread === -6.5 && !("extra" in L.snaps[0].spread) && L.close.spread.homeSpread === -7.5 && out.models["2026:5"]["A @ B"].homeMargin === 9.7 && !("junk" in out.models["2026:5"]["A @ B"]),
+    ok(L && L.snaps.length === 2 && L.snaps[0].spread.homeSpread === -6.5 && !("extra" in L.snaps[0].spread) && L.close.spread.homeSpread === -7.5 && L.snaps[1].books.spread.homeSpread === -8 && L.snaps[1].books.spread.home === 0.5 && out.models["2026:5"]["A @ B"].homeMargin === 9.7 && !("junk" in out.models["2026:5"]["A @ B"]),
       "export: every line snapshot, the closing line and the model numbers per game");
     await R.del("snap:2026:5:A @ B", "close:2026:5:A @ B", "model:2026:5"); }
   { // without him (10/8): top 3 TD scorers in games a listed-Out regular missed
