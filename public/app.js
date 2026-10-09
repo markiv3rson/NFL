@@ -755,18 +755,27 @@ function teaserRow() {
 // Decision model (10/9): every bet the app has a record for (PICK angles, ALT lines, teaser legs), scored by what it has returned
 // historically at today's price: win rate / price - 1. Favorite or underdog doesn't matter; only bets expected to make money are listed.
 function bestBets() {
-  const out = [];
-  for (const g of (S && S.games) || []) { if (g.started) continue;
+  const out = [], ko = {};
+  for (const g of (S && S.games) || []) { ko[g.key] = g; if (g.started) continue;
     for (const a of g.angles || []) if (a.price > 0 && a.hit) out.push({ pick: a.pick, game: g.key, why: a.name, p: a.hit / 100, price: a.price });
     for (const x of g.altValue || []) if (x.price > 0) out.push({ pick: `${x.team} ${x.line > 0 ? "+" : ""}${x.line}`, game: g.key, why: "ALT line", p: x.hist, price: x.price });
   }
-  for (const x of (S && S.teaserLegs) || []) if (x.price > 0) out.push({ pick: `${x.team} +${x.line}`, game: x.game, why: "Teaser leg", p: 0.761, price: x.price });
+  for (const x of (S && S.teaserLegs) || []) if (x.price > 0 && !(ko[x.game] && ko[x.game].started)) out.push({ pick: `${x.team} +${x.line}`, game: x.game, why: "Teaser leg", p: 0.761, price: x.price });
   const seen = new Set();
-  return out.map((x) => ({ ...x, ev: x.p / x.price - 1 })).filter((x) => x.ev >= 0.03).sort((a, b) => b.ev - a.ev).filter((x) => !seen.has(x.pick + x.game) && seen.add(x.pick + x.game)).slice(0, 10);
+  return out.map((x) => ({ ...x, ev: x.p / x.price - 1, slot: slotOf(ko[x.game]) })).filter((x) => x.ev >= 0.03).sort((a, b) => b.p - a.p || b.ev - a.ev)
+    .filter((x) => !seen.has(x.pick + x.game) && seen.add(x.pick + x.game));
+}
+// Morning / afternoon / primetime (10/9): TNF/SNF/MNF and anything starting 5 PM or later (your time) is primetime.
+function slotOf(g) {
+  if (!g || !g.kickoff) return "Afternoon";
+  if (/TNF|SNF|MNF/.test(g.badge || "")) return "Primetime";
+  const h = new Date(g.kickoff).getHours();
+  return h < 12 ? "Morning" : h < 17 ? "Afternoon" : "Primetime";
 }
 function bestStrip() {
   const B = bestBets(); if (!B.length) return "";
-  const rows = B.map((x) => `<div class="row"><span><b class="g">${esc(x.pick)}</b> <span class="dim">${esc(x.game)} · ${esc(x.why)}</span></span><span>wins ${Math.round(x.p * 100)}% · <b class="g">+${Math.round(x.ev * 100)}%</b></span></div>`).join("");
+  const row = (x) => `<div class="row"><span><b class="g">${esc(x.pick)}</b> <span class="dim">${esc(x.game)} · ${esc(x.why)}</span></span><span>wins ${Math.round(x.p * 100)}% · <b class="g">+${Math.round(x.ev * 100)}%</b></span></div>`;
+  const rows = ["Morning", "Afternoon", "Primetime"].map((sl) => { const xs = B.filter((x) => x.slot === sl); return xs.length ? `<div class="sh" style="margin:8px 0 4px">${sl.toUpperCase()}</div>${xs.map(row).join("")}` : ""; }).join("");
   return `<div class="gapstrip" data-drop="bestlist"><div class="t">Best bets · ${B.length} ›</div></div><div class="drop open" id="bestlist"><div class="card"><div class="inner">${rows}</div></div></div>`;
 }
 function teaserStrip() {

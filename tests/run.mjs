@@ -130,7 +130,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const ctx = { document: { getElementById: () => el(), querySelectorAll: () => [], addEventListener() {}, hidden: false }, fetch: () => Promise.reject(new Error("offline")),
     localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) }, location: { reload() {} }, window: {}, setTimeout, clearTimeout, console, Date, Math, Number, String, JSON, Promise, Set, Object, Array };
   vm.createContext(ctx);
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={bestBets,injTag,topAngle,weakLeg,anglesBox,kickLine,openMove,tdNoGap,teaserRow,teaserStrip,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={slotOf,bestBets,injTag,topAngle,weakLeg,anglesBox,kickLine,openMove,tdNoGap,teaserRow,teaserStrip,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   ok(/Model: PHI by 4\.2/.test(T.spreadReason(g)) && !/needs/.test(T.spreadReason(g)), "spread wording");
@@ -691,7 +691,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { // decision model (10/9)
     vm.runInContext(`S = { games: [{ key: "A @ B", started: false, angles: [{ pick: "A +4.5", name: "x", hit: 59, price: 0.5 }], altValue: [{ team: "B", line: -3.5, price: 0.7, hist: 0.62 }] }, { key: "C @ D", started: true, angles: [{ pick: "C +3", hit: 70, price: 0.4 }] }], teaserLegs: [{ team: "E", line: 8.5, price: 0.7, game: "E @ F" }] }`, ctx);
     const B = ctx.T.bestBets();
-    ok(B.length === 2 && B[0].pick === "A +4.5" && Math.abs(B[0].ev - 0.18) < 1e-9 && B[1].pick === "E +8.5" && !B.some((x) => x.pick === "B -3.5" || x.pick === "C +3"), "decision model: only bets with a positive historical return, best first, started games skipped"); }
+    ok(B.length === 2 && B[0].pick === "E +8.5" && B[1].pick === "A +4.5" && Math.abs(B[1].ev - 0.18) < 1e-9 && !B.some((x) => x.pick === "B -3.5" || x.pick === "C +3"), "decision model: positive historical return only, highest win rate first, started games skipped"); }
+  ok(ctx.T.slotOf({ badge: "SNF", kickoff: "2026-10-11T12:00:00" }) === "Primetime" && ctx.T.slotOf({ kickoff: "2026-10-11T10:00:00" }) === "Morning" && ctx.T.slotOf({ kickoff: "2026-10-11T13:25:00" }) === "Afternoon", "best bets: morning / afternoon / primetime");
   { // TD-based total fade (10/9)
     const { tdTotal, picksFor } = await import("../lib/paper.js");
     const td = { away: [{ pos: "RB", fair: 50 }, { pos: "QB", fair: 30 }], home: [{ pos: "WR", fair: 40 }] }, tt = tdTotal(td);
