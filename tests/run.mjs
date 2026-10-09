@@ -130,7 +130,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const ctx = { document: { getElementById: () => el(), querySelectorAll: () => [], addEventListener() {}, hidden: false }, fetch: () => Promise.reject(new Error("offline")),
     localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) }, location: { reload() {} }, window: {}, setTimeout, clearTimeout, console, Date, Math, Number, String, JSON, Promise, Set, Object, Array };
   vm.createContext(ctx);
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={slotOf,saferSide,bestBets,injTag,topAngle,weakLeg,anglesBox,kickLine,openMove,tdNoGap,teaserRow,teaserStrip,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={slotOf,saferSide,extraBets,bestBets,injTag,topAngle,weakLeg,anglesBox,kickLine,openMove,tdNoGap,teaserRow,teaserStrip,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   ok(/Model: PHI by 4\.2/.test(T.spreadReason(g)) && !/needs/.test(T.spreadReason(g)), "spread wording");
@@ -599,7 +599,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(!b.includes("dogblow") && !b.includes("streakfade") && !b.includes("winddiv"), "combos: none fire when they don't apply"); }
   { // proven angles flagged on the game (10/8)
     const g = { ...tg, angles: [{ id: "streakfade", pick: "TB +4.5", price: 0.48, name: "Road team off a loss vs 3-game win streak", hit: 59, n: 283 }] };
-    ok(/PICK TB \+4\.5/.test(ctx.T.tile(g)) && /PICK TB \+4\.5<\/b>/.test(ctx.T.anglesBox(g)) && /wins 59%/.test(ctx.T.anglesBox(g)) && /283 games/.test(ctx.T.anglesBox(g)) && ctx.T.anglesBox(tg) === "", "angles: chip on the tile, rule and record on the game page"); }
+    const lo = { ...tg, angles: [{ pick: "Over 46.5", name: "x", hit: 53 }, { pick: "Under 46.5", name: "y", hit: 56.8 }, { pick: "Under 46.5", name: "z", hit: 56.1 }] };
+    ok(/>TB \+4\.5</.test(ctx.T.tile(g)) && /TB \+4\.5<\/b>/.test(ctx.T.anglesBox(g)) && /wins 59%/.test(ctx.T.anglesBox(g)) && ctx.T.anglesBox(tg) === "" &&
+      (ctx.T.anglesBox(lo).match(/class="bb"/g) || []).length === 1 && /Under 46\.5<\/b>.*wins 56\.8%/.test(ctx.T.anglesBox(lo)) && !/Over 46\.5/.test(ctx.T.anglesBox(lo)), "game page: one straight pick per market, 56%+, no opposite sides"); }
   { // proven angles in Model Picks parlays (10/8)
     const { buildPaper } = await import("../lib/paper.js");
     const G = (k, angles, winPct, ml) => ({ key: k, home: k.split(" @ ")[1], away: k.split(" @ ")[0], started: false, final: false, angles, winPct, poly: ml ? { ml: { home: ml }, spread: { homeSpread: -3 } } : null, td: [] });
@@ -608,8 +610,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(by.angles_2 && by.angles_2.legs.map((l) => l.label).join(",") === "A +4.5,Under 41.5" && by.angles_2.legs[1].kind === "total" && Math.abs(by.angles_2.prob - 0.59 * 0.568) < 1e-9 && !by.angles_3, "angle parlays: one per game, rule hit rates as the chance, no 3-leg without 3 angles");
     ok(by.angles_fav_3 && by.angles_fav_3.legs.map((l) => l.label).join(",") === "A +4.5,F ML,I ML", "angle + favorites parlay: best angle plus the two strongest home favorites"); }
   { // road ML angle: flagged with its return, used as an ML leg in angle parlays (10/8)
-    const g = { ...tg, angles: [{ id: "roadml3", pick: "BUF ML", price: 0.45, name: "Road team · moneyline · spread ~3, total 48+", hit: 55.2, n: 382, roi: 12.9 }] };
-    ok(/wins 55\.2%/.test(ctx.T.anglesBox(g)) && !/per \$1/.test(ctx.T.anglesBox(g)), "road ML angle: win rate shown, no money");
+    const g = { ...tg, angles: [{ id: "roadml3", pick: "BUF ML", price: 0.45, name: "Road team · moneyline · spread ~3, total 48+", hit: 57.2, n: 382, roi: 12.9 }] };
+    ok(/wins 57\.2%/.test(ctx.T.anglesBox(g)) && !/per \$1/.test(ctx.T.anglesBox(g)), "road ML angle: win rate shown, no money");
     const { buildPaper } = await import("../lib/paper.js");
     const P = buildPaper({ games: [{ key: "BUF @ LA", home: "LA", away: "BUF", started: false, final: false, angles: g.angles, td: [] }, { key: "A @ B", home: "B", away: "A", started: false, final: false, angles: [{ id: "winddiv", pick: "Under 41.5", price: 0.5, hit: 56.8, n: 426 }], td: [] }] });
     const l = P.find((p) => p.strategy === "angles_2").legs.find((x) => x.label === "BUF ML");
@@ -642,7 +644,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(ctx.T.weakLeg(b) === b.legs[1] && ctx.T.weakLeg({ ...b, legs: [L(40, 0.5, 0.55), L(41, 0.5, 0.49)] }) === null && ctx.T.weakLeg({ ...b, result: "W" }) === null, "weakest leg: the leg furthest below its price, only on open combos"); }
   { // confidence: angles agreeing on one side (10/9)
     const g = { ...tg, angles: [{ id: "dogblow", pick: "TB +4.5", hit: 58 }, { id: "streakfade", pick: "TB +4.5", hit: 59 }, { id: "winddiv", pick: "Under 41.5", hit: 57 }] };
-    ok(ctx.T.topAngle(g).pick === "TB +4.5" && ctx.T.topAngle(g).n === 2 && /PICK TB \+4\.5 ×2/.test(ctx.T.tile(g)), "confidence: chip shows the side most angles agree on, with the count"); }
+    ok(/>TB \+4\.5</.test(ctx.T.tile(g)) && !/×2/.test(ctx.T.tile(g)), "tile chip: the game's best straight pick only"); }
   { // news lag alert (10/9)
     const { alertsTdJump } = await import("../lib/alerts.js"), { SEASON } = await import("../lib/games.js"); const { getRedis: gR } = await import("../lib/redis.js"); await gR().del(`alerts:${SEASON}`).catch(() => {});
     const g = { key: "A @ B", away: "A", home: "B" };
@@ -674,7 +676,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const v = altValues(g, { spread: { homeSpread: -3 }, alts: [{ team: "A", line: 6.5, price: 0.58 }, { team: "A", line: 9.5, price: 0.74 }, { team: "H", line: -6.5, price: 0.36 }] }, null);
     ok(v.length === 2 && v[0].hist >= v[1].hist && v.every((x) => x.hist >= 0.6 && x.hist <= 0.85), "alt lines: the two that covered most often (60-85%), price ignored"); }
   { const g = { ...tg, altValue: [{ team: "TB", line: 6.5, price: 0.58, hist: 0.644 }] };
-    ok(/ALT TB \+6\.5<\/b>/.test(ctx.T.anglesBox(g)) && /covers 64%/.test(ctx.T.anglesBox(g)) && /ALT TB \+6\.5/.test(ctx.T.tile(g)), "alt value: chip on the tile, line, price and history on the game page"); }
+    ok(!/TB \+6\.5/.test(ctx.T.anglesBox(g)) && !/TB \+6\.5/.test(ctx.T.tile(g)), "alt lines: off the game page and tiles (Game Lines only)"); }
   ok(/>Q</.test(ctx.T.injTag({ espn: "Questionable — limited Thursday" })) && />OUT</.test(ctx.T.injTag({ injury: "Out" })) && />D</.test(ctx.T.injTag({ injury: "Doubtful" })) && ctx.T.injTag({}) === "", "injury tag: Q / D / OUT from the report, ESPN before Friday");
   { // every tracked angle is summarized (10/9)
     const R = globalThis.__TEST_REDIS__, { picksSummary } = await import("../lib/paper.js");
@@ -691,7 +693,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { // decision model (10/9)
     vm.runInContext(`S = { games: [{ key: "A @ B", started: false, angles: [{ pick: "A +4.5", name: "x", hit: 59, price: 0.5 }], altValue: [{ team: "B", line: -3.5, price: 0.7, hist: 0.62 }] }, { key: "C @ D", started: true, angles: [{ pick: "C +3", hit: 70, price: 0.4 }] }], teaserLegs: [{ team: "E", line: 8.5, price: 0.7, game: "E @ F" }] }`, ctx);
     const B = ctx.T.bestBets();
-    ok(B.length === 3 && B[0].pick === "E +8.5" && B[1].pick === "B -3.5" && B[2].pick === "A +4.5" && !B.some((x) => "ev" in x || x.pick === "C +3"), "decision model: win rate only (no price), highest first, started games skipped"); }
+    ok(B.length === 1 && B[0].pick === "A +4.5" && !B.some((x) => x.pick === "C +3"), "best bets: straight picks only, started games skipped");
+    vm.runInContext(`S.games.push(...Array.from({ length: 8 }, (_, i) => ({ key: "G" + i, started: false, angles: [{ pick: "T" + i + " +3", name: "x", hit: 57 + i }] })), { key: "L", started: false, angles: [{ pick: "L +1", name: "x", hit: 53 }] })`, ctx);
+    const B2 = ctx.T.bestBets(), X = ctx.T.extraBets();
+    ok(B2.length === 5 && B2[0].p >= B2[4].p && !B2.some((x) => x.pick === "L +1") && X.some((x) => x.pick === "B -3.5") && !B2.some((x) => x.pick === "B -3.5") && X.length <= 5, "best bets: top 5 at 56%+; teasers and alt lines in their own list"); }
   { const sp = ctx.T.saferSide({ teaser: { team: "E", line: 8.5 } }, "spread"), to = ctx.T.saferSide({ books: { total: { line: 44.5 } } }, "total", { side: "over" });
     ok(/E \+8\.5<\/b> · wins 76%/.test(sp) && /Under 50\.5<\/b> · wins 70%/.test(to) && ctx.T.saferSide({ final: true, teaser: { team: "E", line: 8.5 } }, "spread") === "", "safer side: dog moved 6 and total moved 6 on the cards");
     ok(/Under 50\.5<\/b> · wins 86%/.test(ctx.T.saferSide({ model: { outdoor: true, wind: 18 }, books: { total: { line: 44.5 } } }, "total", { side: "over" })) && /Over 38\.5<\/b> · wins 70%/.test(ctx.T.saferSide({ outdoor: false, books: { total: { line: 44.5 } } }, "total", { side: "under" })) && /wins 77%/.test(ctx.T.saferSide({ spreadPick: { team: "E" }, teaser: { team: "E", line: 8.5 } }, "spread")) && /wins 73%/.test(ctx.T.saferSide({ spreadPick: { team: "F" }, teaser: { team: "E", line: 8.5 } }, "spread")) && /wins 78%/.test(ctx.T.saferSide({ model: { turf: true }, spreadPick: { team: "F" }, teaser: { team: "E", line: 8.5 } }, "spread")) && /wins 83%/.test(ctx.T.saferSide({ model: { outdoor: true, wind: 16 }, teaser: { team: "E", line: 8.5 } }, "spread")) && /wins 70%/.test(ctx.T.saferSide({ teaser: { team: "E", line: 8.5 }, books: { total: { line: 48 } } }, "spread")), "safer side: wind and dome pick the total side; dog leg rate by wind and total");
