@@ -306,6 +306,12 @@ function renderTd() {
 // ---------- Record: Mine ----------
 const RESMARK = { W: '<span class="g">✓</span>', L: '<span class="r">✗</span>', P: '<span class="dim">=</span>', pending: '<span class="dim">•</span>' };
 function legName(l) { return esc(l.kind === "td" ? `${l.player} TD` : l.kind === "spread" ? `${l.team} ${sgn(l.line)}` : `${l.side === "over" ? "Over" : "Under"} ${l.line}`); }
+// Weakest leg of an open combo (10/9): the leg where the model is furthest below the price paid, if it is below at all.
+function weakLeg(b) {
+  if (b.result !== "pending" || !b.legs || b.legs.length < 2) return null;
+  const xs = b.legs.filter((l) => l.result === "pending" && l.modelP != null && l.price > 0).map((l) => ({ l, gap: l.modelP - l.price })).sort((a, c) => a.gap - c.gap);
+  return xs.length && xs[0].gap < -0.03 ? xs[0].l : null;
+}
 function betRow(b) {
   if (b.source === "account") {   // bet recorded automatically from your Polymarket account
     const st = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Even" : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : (b.waiting ? '<span class="y">waiting for TD results</span>' : '<span class="dim">open</span>');
@@ -315,7 +321,7 @@ function betRow(b) {
   const hit = b.legs.filter((l) => l.result === "W").length;
   const state = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? (b.pushUnconfirmed ? '<span class="y">Push leg</span>' : "Push") : (b.waiting ? '<span class="y">waiting for TD results</span>' : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : `<span class="dim">${hit} of ${b.legs.length} hit</span>`);
   return `<div class="row"><span>${b.legs.length > 1 ? "Combo" : "Single"} · ${money(b.cost)} → ${money(b.toWin)}</span><span>${state}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
-    `<div class="s" style="padding:0 0 6px 8px">${b.legs.map((l) => `${RESMARK[l.result]} ${legName(l)}${l.clv != null ? ` <span class="${signCls(l.clv)}">(${(l.clv * 100).toFixed(0)}%)</span>` : ""}`).join(" · ")}</div>`;
+    `<div class="s" style="padding:0 0 6px 8px">${b.legs.map((l) => `${RESMARK[l.result]} ${weakLeg(b) === l ? '<b class="y">⚠</b> ' : ""}${legName(l)}${l.clv != null ? ` <span class="${signCls(l.clv)}">(${(l.clv * 100).toFixed(0)}%)</span>` : ""}`).join(" · ")}</div>`;
 }
 // Re-rendering a tab must not close what you opened (auto-refresh every 2 min, "Show all games", Sync): remember each section's state
 // by id, run the render, put the state back.
@@ -571,6 +577,15 @@ function renderModelNow() {
       (() => { const no5 = tdPx.filter((p) => mp(p) <= p.bid - 0.05);
         const pl5 = no5.reduce((a, p) => a + (!p.scored ? 1 / (1 - p.bid) - 1 : -1), 0);
         return no5.length ? `<div class="row"><span class="dim">No · model 5+ under</span><span>${no5.filter((p) => !p.scored).length} of ${no5.length} won · ${cMoney(pl5)} (${cPct(pl5 / no5.length)})</span></div>` : ""; })() +
+      // Price-based trackers (10/9): star tax, Questionable gap, stuck prices, price moves. Tracked, not trusted, until 100+ each.
+      (() => { const noRow = (lab, xs) => { if (!xs.length) return ""; const w = xs.filter((p) => !p.scored).length, r = xs.reduce((a, p) => a + (!p.scored ? 1 / (1 - p.bid) - 1 : -1), 0);
+          return `<div class="row"><span class="dim">${lab}</span><span>${w}–${xs.length - w} · ${cMoney(r)}</span></div>`; };
+        const yesRow = (lab, xs) => { if (!xs.length) return ""; const w = xs.filter((p) => p.scored).length, r = xs.reduce((a, p) => a + (p.scored ? 1 / p.ask - 1 : -1), 0);
+          return `<div class="row"><span class="dim">${lab}</span><span>${w}–${xs.length - w} · ${cMoney(r)}</span></div>`; };
+        const opened = (p) => p.openAsk > 0 && p.openBid > 0, mv = (p) => (p.ask + p.bid) / 2 - (p.openAsk + p.openBid) / 2;
+        return noRow("No · stars 50¢+", tdPx.filter((p) => p.ask >= 0.5)) + noRow("No · Questionable", tdPx.filter((p) => /^questionable$/i.test(p.rep || ""))) +
+          noRow("No · stuck price, model 5+ under", tdPx.filter((p) => opened(p) && Math.abs(mv(p)) < 0.02 && mp(p) <= p.bid - 0.05)) +
+          yesRow("Yes · price rose 5¢+", tdPx.filter((p) => opened(p) && mv(p) >= 0.05)) + noRow("No · price rose 5¢+", tdPx.filter((p) => opened(p) && mv(p) >= 0.05)); })() +
       `<div class="row"><span class="dim">Scored vs priced</span><span>${(tdPx.filter((p) => p.scored).length / tdPx.length * 100).toFixed(0)}% · Poly ${(tdPx.reduce((a, p) => a + mk(p), 0) / tdPx.length * 100).toFixed(0)}% · model ${(tdPx.reduce((a, p) => a + mp(p) * 100, 0) / tdPx.length).toFixed(0)}%</span></div>` +
       // TD model CLV (added 9/29): for players where the model was above the OPENING price (first snapshot of the week),
       // did the closing price move toward the model? The fastest signal of real edge, long before win/loss means anything.
@@ -775,9 +790,9 @@ function renderLab() {
   // Scoreboard (10/9): one line per parlay, grouped; this season (W-L, return) and the 2007-25 replay (hit, return).
   const SHORT = { home_fav_95_single: "Home fav 9.5+ · single", home_fav_95_2: "Home fav 9.5+ · 2 legs", home_fav_95_3: "Home fav 9.5+ · 3 legs", top3_home_75: "Top 3 home favs (75%+)",
     td_edge_3: "3 TD value picks", td_likely_2: "2 likeliest TD scorers", td_likely_3: "3 likeliest TD scorers",
-    angles_2: "2 angles", angles_3: "3 angles", angles_fav_3: "Angle + 2 home favs", model_best_4: "Model's 4 best legs", right_now_3: "3 Right now legs", same_game_3: "Same game + TD" };
+    angles_2: "2 angles", angles_3: "3 angles", angles_fav_3: "Angle + 2 home favs", model_best_4: "Model's 4 best legs", right_now_3: "3 Right now legs", same_game_3: "Same game + TD", linked_sgp_3: "Fav covers + Over + scorer" };
   const GROUPS = [["MONEYLINE FAVORITES", ["home_fav_95_single", "home_fav_95_2", "home_fav_95_3", "top3_home_75"]], ["TOUCHDOWNS", ["td_edge_3", "td_likely_2", "td_likely_3"]],
-    ["ANGLES", ["angles_2", "angles_3", "angles_fav_3"]], ["MIXED", ["model_best_4", "right_now_3", "same_game_3"]]];
+    ["ANGLES", ["angles_2", "angles_3", "angles_fav_3"]], ["MIXED", ["model_best_4", "right_now_3", "same_game_3", "linked_sgp_3"]]];
   const seen = new Set(GROUPS.flatMap((g) => g[1])), extra = Object.keys(names).filter((k) => !seen.has(k)); if (extra.length) GROUPS.push(["OTHER", extra]);
   const hist = (k) => { const h = REPLAY && REPLAY.parlays && REPLAY.parlays.find((x) => x.id === k); return h && h.n ? `${Math.round(h.hit * 100)}% · ${cPct(h.roi)}` : "—"; };
   const now = (k) => { const b = board[k]; if (!b || !b.graded) return "—"; const l = b.graded - b.hits; return `${b.hits}–${l} · ${b.roi == null ? "—" : cPct(b.roi)}`; };
@@ -829,7 +844,7 @@ function tile(g) {
   const eg = (S.edgesNow || []).filter((b) => b.game === g.key);
   const hp = g.winPct != null && isFinite(g.winPct) ? Number(g.winPct) : null, ap = hp == null ? null : 100 - hp;
   const lead = (v, o) => (v >= o ? "mkt" : "dim");
-  const chips = [g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : "", (g.angles || []).length ? `<span class="chip c-grn">PICK ${esc(g.angles[0].pick)}</span>` : "", eg.length ? `<span class="chip c-cy">GAP +${(Math.max(...eg.map((b) => b.evNet)) * 100).toFixed(1)}%</span>` : "", g.started && !g.final && !sc ? '<span class="chip c-red">LIVE</span>' : ""].join("");
+  const chips = [g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : "", (g.angles || []).length ? `<span class="chip c-grn">PICK ${esc(topAngle(g).pick)}${topAngle(g).n > 1 ? ` ×${topAngle(g).n}` : ""}</span>` : "", eg.length ? `<span class="chip c-cy">GAP +${(Math.max(...eg.map((b) => b.evNet)) * 100).toFixed(1)}%</span>` : "", g.started && !g.final && !sc ? '<span class="chip c-red">LIVE</span>' : ""].join("");
   const mid = g.final && g.awayScore != null && g.homeScore != null ? `<span class="mid"><span class="${g.awayScore > g.homeScore ? "g" : "dim"}">${g.awayScore}</span><span class="dim"> – </span><span class="${g.homeScore > g.awayScore ? "g" : "dim"}">${g.homeScore}</span></span>`
     : hp == null ? '<span class="mid dim">—</span>' : `<span class="mid"><span class="${lead(ap, hp)}">${Math.round(ap)}</span><span class="dim"> · </span><span class="${lead(hp, ap)}">${100 - Math.round(ap)}</span><span class="dim" style="font-size:11px">%</span></span>`;
   const mid2 = sc ? `<span class="mid lvmid"><span class="sr"><span class="${sc.a > sc.h ? "g" : "dim"}">${sc.a}</span><span class="dim"> – </span><span class="${sc.h > sc.a ? "g" : "dim"}">${sc.h}</span></span><span class="lv ${sc.st === "post" ? "dim" : "r"}">${sc.st === "post" ? "FINAL" : "● LIVE · " + esc(sc.lbl)}</span></span>` : mid;
@@ -907,6 +922,12 @@ function startsIn(g) {
   return d ? `starts in ${d}d ${h}h` : h ? `starts in ${h}h ${m}m` : `starts in ${m}m`;
 }
 const TEAM_COLOR = { ARI: "#97233f", ATL: "#a71930", BAL: "#5c2d91", BUF: "#00338d", CAR: "#0085ca", CHI: "#e64100", CIN: "#fb4f14", CLE: "#ff3c00", DAL: "#2a5db0", DEN: "#fb4f14", DET: "#0076b6", GB: "#2f7d4f", HOU: "#c8102e", IND: "#2a6ebb", JAX: "#00a3b5", KC: "#e31837", LV: "#a5acaf", LAC: "#0080c6", LA: "#2a6ebb", LAR: "#2a6ebb", MIA: "#00a6a6", MIN: "#6a3fb0", NE: "#2a5db0", NO: "#d3bc8d", NYG: "#2a5db0", NYJ: "#2f7d4f", PHI: "#00898a", PIT: "#ffb612", SF: "#c8102e", SEA: "#4a8f2a", TB: "#d50a0a", TEN: "#4b92db", WAS: "#7a2236" };
+// Confidence (10/9): the side backed by the most proven angles on this game, and how many agree on it.
+function topAngle(g) {
+  const by = {}; for (const a of g.angles || []) (by[a.pick] = by[a.pick] || []).push(a);
+  const [pick, xs] = Object.entries(by).sort((a, b) => b[1].length - a[1].length || Math.max(...b[1].map((x) => x.hit)) - Math.max(...a[1].map((x) => x.hit)))[0] || [null, []];
+  return { pick, n: xs.length };
+}
 // Proven angles on this game (10/8): rules that beat break-even in every period of 2007-25, with their record.
 function anglesBox(g) {
   const a = g.angles || []; if (!a.length) return "";
@@ -961,7 +982,7 @@ function tickCd() {
   tickCd._h = setTimeout(tickCd, 1000);
 }
 // alerts: built on the server from changes it already sees between pulls (injuries, lines, price gaps, model moves, results)
-const ALK = { INJURY: ["Injury", "var(--red)"], "PRICE GAP": ["Price gap", "var(--cyan)"], "QB CHANGE": ["QB change", "var(--gold)"], "LINE MOVE": ["Line move", "var(--blue)"], WEATHER: ["Weather", "#7fd1ff"], MODEL: ["Model", "var(--violet)"], RESULT: ["Result", "var(--green)"], TEASER: ["Teaser leg", "var(--cyan)"], "TD NO": ["TD No", "var(--red)"], "QB TD": ["QB TD", "var(--gold)"] };
+const ALK = { INJURY: ["Injury", "var(--red)"], "PRICE GAP": ["Price gap", "var(--cyan)"], "QB CHANGE": ["QB change", "var(--gold)"], "LINE MOVE": ["Line move", "var(--blue)"], WEATHER: ["Weather", "#7fd1ff"], MODEL: ["Model", "var(--violet)"], RESULT: ["Result", "var(--green)"], TEASER: ["Teaser leg", "var(--cyan)"], "TD NO": ["TD No", "var(--red)"], "TD JUMP": ["TD jump", "var(--green)"], "QB TD": ["QB TD", "var(--gold)"] };
 const alSeen = () => { try { return localStorage.getItem("alSeen") || ""; } catch { return ""; } };
 async function loadAlerts() {
   try { const d = await (await fetch("/api/alerts", { cache: "no-store" })).json(); if (d.ok) { ALERTS = d.alerts || []; renderAlerts(); } } catch {}
