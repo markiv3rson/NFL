@@ -787,8 +787,8 @@ function pickLabBox() {
 }
 // Teaser legs (10/6): underdog +1.5..+2.5 bought at +7.5..+8.5 on Polymarket's alternate spread; record, return at the price paid, history.
 function altRow() {
-  const A = ALTS; if (!A || !A.recorded) return `<div class="arow"><span class="nm">Alt lines that cover 60%+</span><span class="dim rc">none yet</span><b class="dim">—</b></div>`;
-  return `<div class="arow"><span class="nm">Alt lines that cover 60%+</span><span class="dim rc">${A.n ? `${A.w}–${A.l}` : `${A.recorded} saved`}</span><b class="${A.n ? (A.w / A.n >= 0.6 ? "g" : A.w / A.n >= 0.5 ? "y" : "r") : "dim"}">${A.n ? Math.round(A.w / A.n * 100) + "%" : "—"}</b></div>`;
+  const A = ALTS; if (!A || !A.recorded) return `<div class="arow"><span class="nm">Teasers (other lines) 60%+</span><span class="dim rc">none yet</span><b class="dim">—</b></div>`;
+  return `<div class="arow"><span class="nm">Teasers (other lines) 60%+</span><span class="dim rc">${A.n ? `${A.w}–${A.l}` : `${A.recorded} saved`}</span><b class="${A.n ? (A.w / A.n >= 0.6 ? "g" : A.w / A.n >= 0.5 ? "y" : "r") : "dim"}">${A.n ? Math.round(A.w / A.n * 100) + "%" : "—"}</b></div>`;
 }
 function comboRow() {
   const C = COMBOS; if (!C) return "";
@@ -826,7 +826,7 @@ function extraBets() {
   const out = [], ko = {};
   for (const g of (S && S.games) || []) { ko[g.key] = g; if (g.started || g.final) continue;
     for (const c of g.combos || []) if (c.teaser) out.push({ pick: c.pick, game: g.key, why: c.why, p: c.hit / 100 });
-    for (const x of g.altValue || []) out.push({ pick: `${x.team} ${x.line > 0 ? "+" : ""}${x.line}`, game: g.key, why: "Alt line", p: x.hist });
+    for (const x of g.altValue || []) out.push({ pick: `${x.team} ${x.line > 0 ? "+" : ""}${x.line}`, game: g.key, why: "Line moved · since 2007", p: x.hist });
     const tl = (g.books && g.books.total && g.books.total.line) ?? (g.poly && g.poly.total && g.poly.total.line);
     if (tl != null) { const st = saferTotal(g, g.totalPick), mv = totalMoved(g); out.push({ pick: st.under ? `Under ${tl + 6}` : `Over ${tl - 6}`, game: g.key, why: mv ? `Total moved ${mv.open} → ${mv.now}, +6` : "Total +6", p: st.pct / 100 }); }
   }
@@ -836,8 +836,8 @@ function extraBets() {
 }
 function extraStrip() {
   const E = extraBets(); if (!E.length) return "";
-  const rows = E.map((x) => `<div class="bb"><div class="t1"><b>${/^Alt/.test(x.why) ? "ALT" : "TEASER"} ${esc(x.pick)}</b><span style="white-space:nowrap">wins ${Math.round(x.p * 100)}%</span></div><div class="t2">${esc(x.game)} · ${esc(x.why)}</div></div>`).join("");
-  return `<div class="gapstrip" data-drop="extralist"><div class="t">Teasers &amp; alt lines · ${E.length} ›</div></div><div class="drop" id="extralist"><div class="card"><div class="inner">${rows}</div></div></div>`;
+  const rows = E.map((x) => `<div class="bb"><div class="t1"><b>TEASER ${esc(x.pick)}</b><span style="white-space:nowrap">wins ${Math.round(x.p * 100)}%</span></div><div class="t2">${esc(x.game)} · ${esc(x.why)}</div></div>`).join("");
+  return `<div class="gapstrip" data-drop="extralist"><div class="t">Teasers · ${E.length} ›</div></div><div class="drop" id="extralist"><div class="card"><div class="inner">${rows}</div></div></div>`;
 }
 // Morning / afternoon / primetime (10/9): TNF/SNF/MNF and anything starting 5 PM or later (your time) is primetime.
 function slotOf(g) {
