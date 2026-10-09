@@ -716,6 +716,18 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       ok(/class="mod"><b>B -8<\/b>/.test(cl) && (cl.match(/<b>/g) || []).length <= 3 && ctx.T.comboLines({ final: true, combos: P }, "spread") === "", "combo picks under the model card: best 3, purple with the model");
       ok(ctx.T.comboLines({ combos: [{ kind: "total", pick: "Under 42.5", hit: 51.5, why: "x" }, { kind: "total", pick: "Over 36.5", hit: 90, teaser: true, why: "y" }] }, "total") === "", "model card: market-line picks only (no teasers), 55%+");
       ok(gradeStackPick({ kind: "spread", team: "A", home: "B", line: 8.5 }, 24, 17) === "W" && gradeStackPick({ kind: "total", side: "over", line: 34 }, 20, 13) === "L", "combo picks: grading"); }
+    { // combo picks from Polymarket's position data (10/9)
+      const { comboPicks } = await import("../lib/mybets.js"), { setJSON: sj, K: KK } = await import("../lib/redis.js");
+      await sj(KK.tdpx(2026, 5, "NYG @ WAS"), { "Cam Skattebo: Anytime Touchdown": 0.41, "Jacory Croskey-Merritt: Anytime Touchdown": 0.4 });
+      const raw = { positions: { positions: { "caoc-x": { comboLegDetails: [
+        { slug: "asc-nfl-nyg-was-2026-10-11-pos-3pt5", outcome: "+3.50", team: { abbreviation: "nyg" }, eventSlug: "nfl-nyg-was-2026-10-11", state: "COMBO_LEG_STATE_WON" },
+        { slug: "astatc-nfl-nyg-was-2026-10-11-td-camska-gte1", outcome: "Yes", eventSlug: "nfl-nyg-was-2026-10-11", state: "COMBO_LEG_STATE_PENDING" },
+        { slug: "astatc-nfl-nyg-was-2026-10-11-td-jacomer-gte1", outcome: "Yes", eventSlug: "nfl-nyg-was-2026-10-11", state: "COMBO_LEG_STATE_LOST" },
+        { slug: "tsc-nfl-nyg-was-2026-10-11-total-42pt5", outcome: "Over", eventSlug: "nfl-nyg-was-2026-10-11" }] } } } };
+      const cp = await comboPicks(raw, "caoc-x", 2026, 5);
+      ok(cp.map((x) => x.label).join("|") === "NYG +3.5|Cam Skattebo 1+ TD|Jacory Croskey-Merritt 1+ TD|Over 42.5 · NYG @ WAS" && cp[0].result === "W" && cp[2].result === "L" && cp[1].result === null && (await comboPicks(raw, "caoc-y", 2026, 5)) === null, "my bets: combo picks read from Polymarket (spread, TD names, total, won/lost)");
+      const row = ctx.T.betRow({ source: "account", title: "caoc-x", week: 5, cost: 10, toWin: 294, price: 0.034, result: "pending", picks: cp });
+      ok(/Combo · 4 picks/.test(row) && !/caoc-x/.test(row) && /NYG \+3\.5/.test(row) && /Cam Skattebo 1\+ TD/.test(row) && /pays \$294\.00 if it wins/.test(row), "my bets: open combo shows its picks in a list"); }
     const { totalMove } = await import("../lib/teaser.js"); ok(totalMove(47.5, 44).under && totalMove(44, 47).under === false && totalMove(44, 46.5) === null, "total move: 3+ points from the open"); }
   ok(ctx.T.slotOf({ badge: "SNF", kickoff: "2026-10-11T12:00:00" }) === "Primetime" && ctx.T.slotOf({ kickoff: "2026-10-11T10:00:00" }) === "Morning" && ctx.T.slotOf({ kickoff: "2026-10-11T13:25:00" }) === "Afternoon", "best bets: morning / afternoon / primetime");
   { // TD-based total fade (10/9)
