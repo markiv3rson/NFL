@@ -149,30 +149,33 @@ function saferOne(g, kind, p) {
 }
 function leanCell(g, kind) {
   let p = kind === "total" ? g.totalPick : g.spreadPick;
-  const head = `<div class="k">Model leans${injApplied(g, kind) ? ' <span class="pill p-y" style="padding:0 6px;font-size:10px">Estimate</span>' : ""}</div>`;
+  const head = `<div class="k">Model${injApplied(g, kind) ? ' <span class="pill p-y" style="padding:0 6px;font-size:10px">Estimate</span>' : ""}</div>`;
   const wrap = (inner) => `<div class="modelcell" style="grid-row:span 2">${head}${inner}</div>`;
   if (!p && g.early && g.model && g.model.homeMargin != null) {   // next week before any market line: the model's own numbers, labeled
     const m = g.model, side = m.homeMargin >= 0 ? `${g.home} -${m.homeMargin.toFixed(1)}` : `${g.away} -${(-m.homeMargin).toFixed(1)}`, wp = m.homeWinPct != null ? Math.round(m.homeWinPct >= 50 ? m.homeWinPct : 100 - m.homeWinPct) : null;
     return wrap(`${earlyNote(g)}<div style="margin-top:6px"><b class="mod">${kind === "total" ? `Total ${m.total.toFixed(1)}` : side}</b></div>` +
       `<div class="s">${kind === "total" ? "Model total" : `Model line${wp != null ? ` · ${m.homeWinPct >= 50 ? g.home : g.away} wins ${wp}%` : ""}`}</div>`);
   }
-  if (!p) return wrap(dash);
-  // finished games hide warnings under the cover
-  if (p.warn && g.final) p = { ...p, warn: null };
-  const reason = kind === "total" ? totalReason(g) : spreadReason(g), adj = injLine(g, kind);
-  const m = g.model, wind = kind === "total" && m ? (m.outdoor && m.wind != null ? `wind ${m.wind} mph` : g.outdoor ? "outdoor" : "dome / roof") : "";
-  // Protocol 3.3: calibrated cover/Under near 50% is the correct output, NOT a lean. Before 9/28 the card still printed
-  // the >50% side as the pick (e.g. "GB -1.5 · 52.1%") even when "Model sees TB by 4.6" sat right under it, because the
-  // calibration slightly fades the model. Within 2.5 pts of 50% it now says so; the tilt stays visible in small text.
-  const coin = Math.abs(p.pct - 50) < 2.5;
-  const agrees = coin && p.gap != null && p.gap <= 1;   // the model and the market are within a point: it agrees with the market
-  return wrap((coin ? `<span>${agrees ? '<b class="g">Agrees with the market</b>' : `<b class="mod">${esc(p.label)}</b> <span class="dim">· weak lean</span>`}</span><div class="s">${agrees ? `Model's side: <b class="mod">${esc(p.label)}</b> · ` : ""}${p.gap != null ? p.gap.toFixed(1) : "?"} pts off the line · ${Math.round(p.pct)}% historically</div>` :
-    `<span>${p.label}</span><div class="s">${p.pct.toFixed(1)}% model chance</div>`) +
-    (reason ? `<div class="s" style="margin-top:6px">${esc(reason)}</div>` : "") +
-    (wind ? `<div class="s">${wind}</div>` : "") +
-    openMove(g, kind, p) + comboLines(g, kind) +
+  // One answer per card (10/9): the model's number, then the ONE pick the decision layer chose for this market (best tested win rate,
+  // 56%+), and why. When the pick goes against the model, it says so in plain words. No pick -> "No pick".
+  const m = g.model; if (!m || m.homeMargin == null || m.total == null) return wrap(dash);
+  const adj = injLine(g, kind), isTot = (x) => /^(Over|Under)\b/.test(x);
+  const mline = kind === "total" ? `Model: <b class="mod">${m.total.toFixed(1)}</b>` : `Model: <b class="mod">${m.homeMargin >= 0 ? g.home : g.away} by ${Math.abs(m.homeMargin).toFixed(1)}</b>`;
+  const P = g.final ? null : straightPicks(g).find((x) => (kind === "total" ? isTot(x.pick) : !isTot(x.pick) && !/\bML\b/.test(x.pick)));
+  let body = "";
+  if (!g.final) {
+    if (!P) body = `<div style="margin-top:6px"><b class="dim">No pick</b></div>`;
+    else {
+      const pc = Math.round(P.p * 100);
+      const against = !!p && (kind === "total" ? /^Over/.test(P.pick) !== (p.side === "over") : !P.pick.startsWith(`${p.team} `));
+      const who = kind === "total" ? (p && p.side === "over" ? "the Over" : "the Under") : p ? p.team : "";
+      body = `<div style="margin-top:6px"><b class="g" style="font-size:16px">PICK: ${esc(P.pick)} · ${pc}%</b></div>` +
+        `<div class="s" style="margin-top:4px">${against ? `Model is too high on ${esc(who)} here: in games like this, ${esc(P.pick.split(" ")[0])} won ${pc}%.` : `${esc(P.why)} · won ${pc}%.`}</div>`;
+    }
+  }
+  return wrap(`<div class="s">${mline}</div>` + body +
     (adj ? `<div class="s r" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">${injBadgeFor(g)}${esc(adj)}</div>` : "") +
-    (p.warn ? `<div class="s y">${esc(p.warn)}</div>` : ""));
+    (p && p.warn && !g.final ? `<div class="s y">${esc(p.warn)}</div>` : ""));   // e.g. QB change the model can't see
 }
 function cover(g, pick) {
   if (!g.final) return "";

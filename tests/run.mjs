@@ -137,8 +137,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   g.poly.spread.homeSpread = -3; ok(!/\./.test(T.spreadReason(g).replace(/\d\.\d/g, "")), "spread wording: no sentences");
   g = { away: "A", home: "H", model: { total: 44.4, fix: { dome: 2.59, pace: 0.1, div: true } }, poly: { total: { line: 45.5 } } };
   ok(/Model: 44\.4/.test(T.totalReason(g)) && /dome \+2\.6/.test(T.totalReason(g)), "totals wording");
-  g = { away: "A", home: "H", winPct: 61.2, model: { homeMargin: 3, fix: {} }, spreadPick: { label: "H -2.5", pct: 51.1 }, poly: {} };
-  ok(/weak lean/.test(T.leanCell(g, "spread")) && !/about 50\/50/.test(T.leanCell(g, "spread")) && /historically/.test(T.leanCell(g, "spread")) && !/this close/.test(T.leanCell(g, "spread")) && !/market-based/.test(T.leanCell(g, "spread")), "lean wording");
+  g = { away: "A", home: "H", winPct: 61.2, model: { homeMargin: 3, total: 44, fix: {} }, spreadPick: { label: "H -2.5", pct: 51.1 }, poly: {} };
+{ const c = T.leanCell(g, "spread"); ok(/Model: <b class="mod">H by 3\.0<\/b>/.test(c) && /No pick/.test(c) && !/weak lean|Agrees with the market|historically/.test(c), "model card: the model's number, and No pick when nothing reaches 56%"); }
   const row = T.prow({ player: "O'Neil <b>", pos: "WR", team: "H", game: "A @ H", fair: 20.1, fairIfPlays: 30, injury: "Questionable", price: 0.25, teamRank: 2 }, { started: false }, false);
   ok(/30% if he plays/.test(row) && /O&#39;Neil &lt;b>/.test(row), "Questionable row + names escaped");
   ok(/Push leg/.test(T.betRow({ source: "preloaded", legs: [{ result: "W", kind: "total", side: "under", line: 43 }, { result: "P", kind: "total", side: "over", line: 44 }], result: "P", pushUnconfirmed: true, cost: 5, toWin: 20, pl: null })), "combo push wording");
@@ -796,9 +796,11 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { // blended touchdown chance and "agrees with the market"
     const b1 = ctx.T.tdBlend({ fair: 40, price: 0.30, bid: 0.28 }), b2 = ctx.T.tdBlend({ fair: 40, price: 0.30, bid: 0.01, thin: true });
     ok(b1 && Math.abs(b1.mid - 29) < 1e-9 && Math.abs(b1.blend - 34.5) < 1e-9 && b2 === null && ctx.T.tdBlend({ fair: 40, price: 0.3, bid: 0.28, stale: true }) === null && ctx.T.tdBlend({ fair: 40, price: null }) === null, "touchdown blend: half the model, half the market mid, only on a real market");
-    const g = (gap, pct) => ({ key: "A @ B", away: "A", home: "B", started: false, model: {}, spreadPick: { label: "A +3", gap, pct, side: "away" }, totalPick: { label: "Over 44", gap, pct, side: "over" } });
-    const a1 = ctx.T.leanCell(g(0.4, 50.8), "spread"), a2 = ctx.T.leanCell(g(2.2, 50.8), "spread"), a3 = ctx.T.leanCell(g(0.4, 50.8), "total");
-    ok(/Agrees with the market/.test(a1) && /Agrees with the market/.test(a3) && /weak lean/.test(a2) && !/Agrees with the market/.test(a2), "lean box: within a point of the line says it agrees with the market; a bigger gap keeps 'no lean'");
+    const G = { key: "CHI @ GB", away: "CHI", home: "GB", started: false, model: { homeMargin: -5.6, total: 46.1, fix: {} }, spreadPick: { label: "CHI -1.5", team: "CHI", side: "away", pct: 51 }, totalPick: { label: "Under 46.5", side: "under", pct: 50.5 },
+      combos: [{ kind: "spread", pick: "GB +1.5", hit: 62.3, why: "model likes the favorite by 3+ · line moved 1+ toward the dog", model: true }, { kind: "total", pick: "Under 46.5", hit: 57.2, why: "wind 10+ · older teams" }, { kind: "total", pick: "Over 40.5", hit: 75, teaser: true, why: "t" }] };
+    const sp = ctx.T.leanCell(G, "spread"), to = ctx.T.leanCell(G, "total");
+    ok(/Model: <b class="mod">CHI by 5\.6<\/b>/.test(sp) && /PICK: GB \+1\.5 · 62%/.test(sp) && /Model is too high on CHI here: in games like this, GB won 62%\./.test(sp) && (sp.match(/PICK:/g) || []).length === 1, "model card: one pick, and plain words when it goes against the model");
+    ok(/Model: <b class="mod">46\.1<\/b>/.test(to) && /PICK: Under 46\.5 · 57%/.test(to) && /wind 10\+ · older teams · won 57%\./.test(to) && !/40\.5/.test(to), "model card (total): one market-line pick with its reason, no teasers");
     const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "models" ? box : id === "export-btn" ? { onclick: null } : old(id));
     const px = (fair, scored, ask, bid) => ({ team: "A", player: "P", fair, scored, played: true, ask, bid });
     vm.runInContext(`S = { week: 4, games: [], status: { ok: true, errors: [] }, weekCheck: { games: 16, withLines: 16, modelRun: true, watch: [] }, missFinder: null, winners: null }; MB = { summary: {}, bets: [] }; PAPER = { names: {}, board: {}, week: null }; PICKS = null; EDGES = null; REPLAY = null; RES = [ { game: "A @ B", week: 4, td: [ ${JSON.stringify(px(40, true, 0.30, 0.28))}, ${JSON.stringify(px(20, false, 0.25, 0.23))}, ${JSON.stringify(px(30, true, 0.33, 0.30))} ] } ]`, ctx);
