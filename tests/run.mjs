@@ -138,7 +138,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   g = { away: "A", home: "H", model: { total: 44.4, fix: { dome: 2.59, pace: 0.1, div: true } }, poly: { total: { line: 45.5 } } };
   ok(/about 44\.4 total/.test(T.totalReason(g)) && /indoor game \+2\.6/.test(T.totalReason(g)), "totals wording");
   g = { away: "A", home: "H", winPct: 61.2, model: { homeMargin: 3, fix: {} }, spreadPick: { label: "H -2.5", pct: 51.1 }, poly: {} };
-  ok(/weak lean/.test(T.leanCell(g, "spread")) && !/about 50\/50/.test(T.leanCell(g, "spread")) && /Picks like this have won/.test(T.leanCell(g, "spread")) && !/this close/.test(T.leanCell(g, "spread")) && !/market-based/.test(T.leanCell(g, "spread")), "lean wording");
+  ok(/weak lean/.test(T.leanCell(g, "spread")) && !/about 50\/50/.test(T.leanCell(g, "spread")) && /historically/.test(T.leanCell(g, "spread")) && !/this close/.test(T.leanCell(g, "spread")) && !/market-based/.test(T.leanCell(g, "spread")), "lean wording");
   const row = T.prow({ player: "O'Neil <b>", pos: "WR", team: "H", game: "A @ H", fair: 20.1, fairIfPlays: 30, injury: "Questionable", price: 0.25, teamRank: 2 }, { started: false }, false);
   ok(/30% if he plays/.test(row) && /O&#39;Neil &lt;b>/.test(row), "Questionable row + names escaped");
   ok(/check how Polymarket settled it/.test(T.betRow({ source: "preloaded", legs: [{ result: "W", kind: "total", side: "under", line: 43 }, { result: "P", kind: "total", side: "over", line: 44 }], result: "P", pushUnconfirmed: true, cost: 5, toWin: 20, pl: null })), "combo push wording");
@@ -493,7 +493,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const lone = ctx.T.tdPlayersWithDefense([{ game: "A @ B", awayScore: 10, homeScore: 40, td: [P("A", "A.RB", "RB", 40, false)] }]);
     ok(lone.length === 1 && lone[0].def === null, "by defense: an opponent with no OTHER graded game has no group (the game itself never counts)");
     const pos = ctx.T.tdByPosition(pl);
-    ok(/RB · 2 players/.test(pos) && /WR · 1 players/.test(pos) && /TE · 2 players/.test(pos) && /1 graded players have no position/.test(pos), "by position: RB, WR and TE rows with sample size, margin and a no-position note");
+    ok(/RB · 2 players/.test(pos) && /WR · 1 players/.test(pos) && /TE · 2 players/.test(pos) && /1 with no position/.test(pos), "by position: RB, WR and TE rows with sample size, margin and a no-position note");
     ok(ctx.T.tdByDefense([]).includes("None yet"), "by defense: rows flag small samples; empty says it fills in"); }
   { // one week only (10/6): Anytime TD and Game Lines show this week, no next-week section
     const bx = { innerHTML: "" }, hx = { innerHTML: "" }, oldG = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "td" ? bx : id === "td-header" ? hx : oldG(id));
@@ -687,7 +687,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(!findMisses([hi(undefined)]).some((m) => /High-confidence TD misses/.test(m.pattern)) && findMisses([hi(true)]).some((m) => /High-confidence TD misses/.test(m.pattern)), "miss finder: players with unknown played status are not model misses");
     const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "models" ? box : id === "export-btn" ? { onclick: null } : old(id));
     vm.runInContext(`S = { week: 4, games: [], status: { ok: true, errors: [] }, weekCheck: { games: 16, withLines: 16, modelRun: true, watch: [] }, missFinder: null, winners: null }; MB = { summary: {}, bets: [] }; PAPER = { names: {}, board: {}, week: null }; PICKS = null; EDGES = null; REPLAY = null; RES = [ { game: "A @ B", week: 4, td: [ { team: "A", player: "P1", fair: 40, scored: true, played: true }, { team: "A", player: "P2", fair: 30, scored: false }, { team: "B", player: "P3", fair: 30, scored: false } ] } ]`, ctx);
-    ctx.T.renderModel(); ok(/2 players are waiting for snap counts/.test(box.innerHTML) && /2 waiting for snap counts/.test(box.innerHTML), "models tab: says how many touchdown players are waiting for snap counts");
+    ctx.T.renderModel(); ok(/2 waiting for snap counts/.test(box.innerHTML), "models tab: says how many touchdown players are waiting for snap counts");
     ctx.document.getElementById = old; }
   { // dead toss-up on the raw numbers still gets a side from the calibrated chance; same-game parlay filled from the model's own sides; result alerts
     const { spreadPick, totalPick } = await import("../lib/picks.js"); const { buildSameGame, picksFor, gradePaper } = await import("../lib/paper.js"); const { listAlerts } = await import("../lib/alerts.js"); const R = globalThis.__TEST_REDIS__;
@@ -733,6 +733,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "lab" ? box : old(id));
     vm.runInContext(`S = { week: 4, games: [], winners: { all: { n: 1, w: 1, l: 0, hit: 1 } } }; MB = null; RES = null; PAPER = { names: { model_best_4: "Model's 4 most likely legs", same_game_3: "Same game" }, board: {}, week: { week: 4, parlays: [ { strategy: "model_best_4", legs: [ { label: "H1 ML", game: "A @ H1", price: 0.8 }, { label: "H2 ML", game: "A @ H2", price: 0.8 } ], pay: 1.56, prob: 0.6 } ] } }`, ctx);
     ctx.T.renderLab(); ok(/pays 1\.56x · market chance 64% · model 60%/.test(box.innerHTML) && !/Model's pick on every game/.test(box.innerHTML) && /Your model's parlays/.test(box.innerHTML) && !/Rule:/.test(box.innerHTML) && /H1 ML/.test(box.innerHTML) && /Parlay scoreboard/.test(box.innerHTML), "pick lab: parlays and their scoreboard only, with how each parlay was chosen");
+    ok(/THIS SEASON/.test(box.innerHTML) && /2007–25/.test(box.innerHTML) && /MIXED/.test(box.innerHTML) && /4 best legs/.test(box.innerHTML) && !/graded before it is judged/.test(box.innerHTML), "parlay scoreboard: one line per parlay, grouped, season and history columns");
     ctx.document.getElementById = old; }
   { // Models tab: nine sections in order, each with a one-line meaning; the analysis helpers on real-shaped data
     const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "models" ? box : id === "export-btn" ? { onclick: null } : old(id));
@@ -765,8 +766,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     vm.runInContext(`MBWEEK = null`, ctx); ctx.document.getElementById = old; }
   { const base = { player: "B.Bowers", pos: "TE", team: "LV", game: "LV @ KC", fair: 34, two: 8, first: 9, teamRank: 1, price: 0.3, flags: [] };
     const yes = ctx.T.prow({ ...base, returning: "out", returningState: "practicing" }, { started: false }, true), dnp = ctx.T.prow({ ...base, returning: "out", returningState: "not practicing" }, { started: false }, true), no = ctx.T.prow(base, { started: false }, true);
-    ok(/RETURNING/.test(yes) && /was out on last week/.test(yes) && /assumes he plays/.test(yes) && /34%/.test(yes) && !/RETURNING/.test(no), "returning label: practicing returner is labelled, plain players are not");
-    ok(/NOT PRACTICING/.test(dnp) && /NOT treated as playing/.test(dnp) && !/↩ RETURNING/.test(dnp), "returning label: a returner who is not practicing is flagged, not treated as playing"); }
+    ok(/RETURNING/.test(yes) && /was out last week/.test(yes) && /34%/.test(yes) && !/RETURNING/.test(no), "returning label: practicing returner is labelled, plain players are not");
+    ok(/NOT PRACTICING/.test(dnp) && /treated as out/.test(dnp) && !/↩ RETURNING/.test(dnp), "returning label: a returner who is not practicing is flagged, not treated as playing"); }
   { const w = (m) => ctx.T.totalCard({ ...tg, poly: { total: { line: 38.5, over: 0.5, under: 0.52 } }, model: { total: 37, ...m } }, "x");
     ok(/Tested angle: Under 38\.5 \(wind forecast 14 mph\)/.test(w({ outdoor: true, wind: 14 })) && !/Tested angle: Under/.test(w({ outdoor: true, wind: 8 })) && !/Tested angle: Under/.test(w({ outdoor: false, wind: 20 })) && !/Tested angle: Under/.test(ctx.T.totalCard({ ...tg, final: true, poly: { total: { line: 38.5 } }, model: { total: 37, outdoor: true, wind: 20 } }, "x")), "windy-under note: only for an outdoor game with 12+ mph forecast, not finished")
     ok(!/Tested angle/.test(w({ outdoor: true, wind: 14 }) && ctx.T.totalCard({ ...tg, totalPick: { side: "over", line: 38.5, label: "Over 38.5", pct: 50.5, gap: 4 }, poly: { total: { line: 38.5, over: 0.5, under: 0.52 } }, model: { total: 43, outdoor: true, wind: 14 } }, "x")) && /Tested angle/.test(ctx.T.totalCard({ ...tg, totalPick: { side: "under", line: 38.5, label: "Under 38.5", pct: 50.5, gap: 1.5 }, poly: { total: { line: 38.5, over: 0.5, under: 0.52 } }, model: { total: 37, outdoor: true, wind: 14 } }, "x")), "windy-under note: hidden when the model leans Over, shown when the model agrees (Under)"); }
