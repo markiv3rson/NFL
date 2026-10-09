@@ -705,14 +705,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const gm = { key: "A @ B", history: [{ poly: { total: { line: 47.5 } } }], books: { total: { line: 44 } } };
     const st = ctx.T.saferSide(gm, "total", { side: "under" });
     ok(/Under 50<\/b> · wins 75%/.test(st) && /Total fell 47\.5 → 44: <b>Under 44<\/b> · wins 64%/.test(st) && !/Total fell/.test(ctx.T.saferSide(gm, "total", { side: "over" })) && !/Total fell/.test(ctx.T.saferSide({ ...gm, books: { total: { line: 45 } } }, "total")), "total moved 3+: that side +6 (75%), straight Under after a 3+ drop only with the model's Under (64%)");
-    { const { stackPicks, gradeStackPick } = await import("../lib/stack.js"), G = { key: "A @ B", away: "A", home: "B", outdoor: true };
-      // home B favored by 8, total 40, model likes B by 3+ (homeMargin 12), wind 16: favorite in wind, big fav + low total Over -6
-      const P = stackPicks(G, { homeMargin: 12, total: 41, outdoor: true, wind: 16, fix: {} }, -8, 40, -8, 40), ids = P.map((x) => x.id);
-      ok(ids.includes("favwind") && ids.includes("bigfavlow") && P.find((x) => x.id === "favwind").pick === "B -8" && P.find((x) => x.id === "bigfavlow").pick === "Over 34" && !ids.includes("roaddog6"), "combo picks: wind favorite and big-favorite Over -6");
-      const Q = stackPicks(G, { homeMargin: -1, total: 44, fix: {} }, -2.5, 40, -3.5, 44), q = Q.map((x) => x.id);
-      ok(q.includes("roaddog6") && Q.find((x) => x.id === "roaddog6").pick === "A +8.5" && q.includes("lowmovefav6") && Q.find((x) => x.id === "lowmovefav6").pick === "B +3.5", "combo picks: road dog +6, line moved toward the dog -> favorite +6");
-      const cl = ctx.T.comboLines({ combos: P }, "spread"), ct = ctx.T.comboLines({ combos: [...P, ...Q] }, "spread");
-      ok(/class="mod"><b>B -8<\/b> · wins 70%/.test(cl) && /class="g"><b>A \+8\.5<\/b>/.test(ct) && !/Over 34/.test(cl) && ctx.T.comboLines({ final: true, combos: P }, "spread") === "", "combo picks under the model card: purple with the model, green from history alone");
+    { const { tablePicks, gradeStackPick, comboFactors } = await import("../lib/stack.js"), G = { key: "A @ B", away: "A", home: "B", outdoor: true, kickoff: "2026-10-11T17:00:00Z" };
+      const F = comboFactors(G, { homeMargin: 12, total: 41, outdoor: true, wind: 16, fix: {} }, -8, 40, -8, 40, null, 6).F;
+      ok(F.wind15 && F.wind10 && F["sp>=7"] && F["tot<=41"] && F.mdlFav3 && F.mdlO && !F.mdlDog && !F.prime && F.roadDog, "combo factors from the game");
+      const P = tablePicks(G, { homeMargin: 12, total: 41, outdoor: true, wind: 16, fix: {} }, -8, 40, -8, 40, null, 6);
+      ok(P.length > 0 && P.some((x) => x.pick === "B -8" && x.model) && P.every((x) => x.hit > 50 && x.why) && !(P.some((x) => x.kind === "total" && !x.teaser && x.side === "under") && P.some((x) => x.kind === "total" && !x.teaser && x.side === "over")), "combo table: fits this game, one side per market, model rules flagged");
+      const cl = ctx.T.comboLines({ combos: P }, "spread");
+      ok(/class="mod"><b>B -8<\/b>/.test(cl) && (cl.match(/<b>/g) || []).length <= 3 && ctx.T.comboLines({ final: true, combos: P }, "spread") === "", "combo picks under the model card: best 3, purple with the model");
       ok(gradeStackPick({ kind: "spread", team: "A", home: "B", line: 8.5 }, 24, 17) === "W" && gradeStackPick({ kind: "total", side: "over", line: 34 }, 20, 13) === "L", "combo picks: grading"); }
     const { totalMove } = await import("../lib/teaser.js"); ok(totalMove(47.5, 44).under && totalMove(44, 47).under === false && totalMove(44, 46.5) === null, "total move: 3+ points from the open"); }
   ok(ctx.T.slotOf({ badge: "SNF", kickoff: "2026-10-11T12:00:00" }) === "Primetime" && ctx.T.slotOf({ kickoff: "2026-10-11T10:00:00" }) === "Morning" && ctx.T.slotOf({ kickoff: "2026-10-11T13:25:00" }) === "Afternoon", "best bets: morning / afternoon / primetime");

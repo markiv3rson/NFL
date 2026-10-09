@@ -126,13 +126,12 @@ function saferTotal(g, p) {
   if (!p) return { under: true, pct: 68 };
   return { under: modelOver, pct: 70 };
 }
-// Combo picks under the model card (10/9): purple when our model is part of the rule, green when it's history alone.
-const MODEL_COMBOS = new Set(["favwind", "underwinddog", "windover6", "bigfavmodel", "favunder", "domedog6"]);
+// Combo picks under the model card (10/9): every tested combination that fits this game, best 3 per market.
+// Purple when our model is part of the rule, green when it's history alone.
 function comboLines(g, kind) {
   if (g.final) return "";
-  const cs = (g.combos || []).filter((c) => c.kind === kind); if (!cs.length) return "";
-  return `<div class="s" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">` + cs.map((c) => { const cl = MODEL_COMBOS.has(c.id) ? "mod" : "g";
-    return `<div class="${cl}"><b>${esc(c.pick)}</b> · wins ${Math.round(c.hit)}%<div class="dim">${esc(c.why)}</div></div>`; }).join("") + `</div>`;
+  const cs = (g.combos || []).filter((c) => c.kind === kind).sort((a, b) => b.hit - a.hit).slice(0, 3); if (!cs.length) return "";
+  return `<div class="s" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">` + cs.map((c) => `<div class="${c.model ? "mod" : "g"}"><b>${esc(c.pick)}</b> · wins ${Math.round(c.hit)}%<div class="dim">${esc(c.why)}</div></div>`).join("") + `</div>`;
 }
 function saferSide(g, kind, p) {
   if (g.final) return "";
@@ -804,12 +803,11 @@ function teaserRow() {
 }
 // Decision model (10/9): straight bets only (no teasers, no alt lines), ONE pick per game per market (spread, total): the one
 // with the best record. Two angles on opposite sides of the same total no longer both show.
-const STRAIGHT_COMBOS = new Set(["favwind", "underwinddog", "favunder", "divlowdog"]);
 function straightPicks(g) {
   if (!g || g.started || g.final) return [];
   const out = [];
   for (const a of g.angles || []) if (a.hit) out.push({ pick: a.pick, game: g.key, why: a.name, p: a.hit / 100 });
-  for (const c of g.combos || []) if (STRAIGHT_COMBOS.has(c.id)) out.push({ pick: c.pick, game: g.key, why: c.why, p: c.hit / 100 });
+  for (const c of g.combos || []) if (!c.teaser) out.push({ pick: c.pick, game: g.key, why: c.why, p: c.hit / 100 });
   const mv = totalMoved(g); if (mv && mv.under && g.totalPick && g.totalPick.side === "under") out.push({ pick: `Under ${mv.now}`, game: g.key, why: `Total fell ${mv.open} → ${mv.now} · model Under`, p: 0.635 });
   const best = {};
   for (const x of out) { const k = /^(Over|Under)\b/.test(x.pick) ? "total" : /\bML\b/.test(x.pick) ? "ml" : "spread"; if (!best[k] || x.p > best[k].p) best[k] = x; }
@@ -826,7 +824,7 @@ function bestBets() {
 function extraBets() {
   const out = [], ko = {};
   for (const g of (S && S.games) || []) { ko[g.key] = g; if (g.started || g.final) continue;
-    for (const c of g.combos || []) if (!STRAIGHT_COMBOS.has(c.id)) out.push({ pick: c.pick, game: g.key, why: c.why, p: c.hit / 100 });
+    for (const c of g.combos || []) if (c.teaser) out.push({ pick: c.pick, game: g.key, why: c.why, p: c.hit / 100 });
     for (const x of g.altValue || []) out.push({ pick: `${x.team} ${x.line > 0 ? "+" : ""}${x.line}`, game: g.key, why: "Alt line", p: x.hist });
     const tl = (g.books && g.books.total && g.books.total.line) ?? (g.poly && g.poly.total && g.poly.total.line);
     if (tl != null) { const st = saferTotal(g, g.totalPick), mv = totalMoved(g); out.push({ pick: st.under ? `Under ${tl + 6}` : `Over ${tl - 6}`, game: g.key, why: mv ? `Total moved ${mv.open} → ${mv.now}, +6` : "Total +6", p: st.pct / 100 }); }
