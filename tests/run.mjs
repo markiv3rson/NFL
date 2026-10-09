@@ -130,7 +130,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const ctx = { document: { getElementById: () => el(), querySelectorAll: () => [], addEventListener() {}, hidden: false }, fetch: () => Promise.reject(new Error("offline")),
     localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) }, location: { reload() {} }, window: {}, setTimeout, clearTimeout, console, Date, Math, Number, String, JSON, Promise, Set, Object, Array };
   vm.createContext(ctx);
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={topAngle,weakLeg,anglesBox,kickLine,openMove,tdNoGap,teaserRow,teaserStrip,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={injTag,topAngle,weakLeg,anglesBox,kickLine,openMove,tdNoGap,teaserRow,teaserStrip,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   ok(/Model: PHI by 4\.2/.test(T.spreadReason(g)) && !/needs/.test(T.spreadReason(g)), "spread wording");
@@ -599,7 +599,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(!b.includes("dogblow") && !b.includes("streakfade") && !b.includes("winddiv"), "combos: none fire when they don't apply"); }
   { // proven angles flagged on the game (10/8)
     const g = { ...tg, angles: [{ id: "streakfade", pick: "TB +4.5", price: 0.48, name: "Road team off a loss vs 3-game win streak", hit: 59, n: 283 }] };
-    ok(/PICK TB \+4\.5/.test(ctx.T.tile(g)) && /PICK TB \+4\.5<\/b> <span class="dim">48¢/.test(ctx.T.anglesBox(g)) && /59% of 283/.test(ctx.T.anglesBox(g)) && ctx.T.anglesBox(tg) === "", "angles: chip on the tile, rule and record on the game page"); }
+    ok(/PICK TB \+4\.5/.test(ctx.T.tile(g)) && /PICK TB \+4\.5<\/b><\/span>/.test(ctx.T.anglesBox(g)) && /59% of 283/.test(ctx.T.anglesBox(g)) && ctx.T.anglesBox(tg) === "", "angles: chip on the tile, rule and record on the game page"); }
   { // proven angles in Model Picks parlays (10/8)
     const { buildPaper } = await import("../lib/paper.js");
     const G = (k, angles, winPct, ml) => ({ key: k, home: k.split(" @ ")[1], away: k.split(" @ ")[0], started: false, final: false, angles, winPct, poly: ml ? { ml: { home: ml }, spread: { homeSpread: -3 } } : null, td: [] });
@@ -609,7 +609,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(by.angles_fav_3 && by.angles_fav_3.legs.map((l) => l.label).join(",") === "A +4.5,F ML,I ML", "angle + favorites parlay: best angle plus the two strongest home favorites"); }
   { // road ML angle: flagged with its return, used as an ML leg in angle parlays (10/8)
     const g = { ...tg, angles: [{ id: "roadml3", pick: "BUF ML", price: 0.45, name: "Road team · moneyline · spread ~3, total 48+", hit: 55.2, n: 382, roi: 12.9 }] };
-    ok(/won 55\.2%, \+12\.9% per \$1 of 382/.test(ctx.T.anglesBox(g)), "road ML angle: win rate and return shown");
+    ok(/55\.2% of 382/.test(ctx.T.anglesBox(g)) && !/per \$1/.test(ctx.T.anglesBox(g)), "road ML angle: win rate shown, no money");
     const { buildPaper } = await import("../lib/paper.js");
     const P = buildPaper({ games: [{ key: "BUF @ LA", home: "LA", away: "BUF", started: false, final: false, angles: g.angles, td: [] }, { key: "A @ B", home: "B", away: "A", started: false, final: false, angles: [{ id: "winddiv", pick: "Under 41.5", price: 0.5, hit: 56.8, n: 426 }], td: [] }] });
     const l = P.find((p) => p.strategy === "angles_2").legs.find((x) => x.label === "BUF ML");
@@ -672,9 +672,15 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const dog65 = altFair(g, -3, "A", 6.5), fav35 = altFair(g, -7, "H", -3.5), tease = altFair(g, 2.5, "H", 8.5);
     ok(dog65 > 0.62 && dog65 < 0.68 && fav35 > 0.58 && fav35 < 0.64 && tease > 0.7 && tease < 0.8 && altFair(g, -3, "A", 7) === null, "alt fair: fav 3 -> dog +6.5 ~65%, fav 7 -> fav -3.5 ~60%, teaser leg ~77%, whole lines skipped");
     const v = altValues(g, { spread: { homeSpread: -3 }, alts: [{ team: "A", line: 6.5, price: 0.58 }, { team: "A", line: 9.5, price: 0.74 }, { team: "H", line: -6.5, price: 0.36 }] }, null);
-    ok(v.length === 1 && v[0].team === "A" && v[0].line === 6.5 && v[0].edge > 0.04, "alt value: only alt lines priced 4+ pts under history are flagged"); }
+    ok(v.length === 2 && v[0].hist >= v[1].hist && v.every((x) => x.hist >= 0.6 && x.hist <= 0.85), "alt lines: the two that covered most often (60-85%), price ignored"); }
   { const g = { ...tg, altValue: [{ team: "TB", line: 6.5, price: 0.58, hist: 0.644 }] };
-    ok(/ALT TB \+6\.5<\/b> <span class="dim">58¢/.test(ctx.T.anglesBox(g)) && /covers 64% since 2007/.test(ctx.T.anglesBox(g)) && /ALT TB \+6\.5/.test(ctx.T.tile(g)), "alt value: chip on the tile, line, price and history on the game page"); }
+    ok(/ALT TB \+6\.5<\/b><\/span>/.test(ctx.T.anglesBox(g)) && /covers 64% since 2007/.test(ctx.T.anglesBox(g)) && /ALT TB \+6\.5/.test(ctx.T.tile(g)), "alt value: chip on the tile, line, price and history on the game page"); }
+  ok(/>Q</.test(ctx.T.injTag({ espn: "Questionable — limited Thursday" })) && />OUT</.test(ctx.T.injTag({ injury: "Out" })) && />D</.test(ctx.T.injTag({ injury: "Doubtful" })) && ctx.T.injTag({}) === "", "injury tag: Q / D / OUT from the report, ESPN before Friday");
+  { // every tracked angle is summarized (10/9)
+    const R = globalThis.__TEST_REDIS__, { picksSummary } = await import("../lib/paper.js");
+    await R.hset("picks:2099:5", "A @ B|booksmove", JSON.stringify({ market: "booksmove", result: "W", ret: 0.9, price: 0.5 }), "C @ D|mlgap", JSON.stringify({ market: "mlgap", result: "L", ret: -1, price: 0.4 }));
+    const P = await picksSummary(2099); await R.del("picks:2099:5");
+    ok(P.booksmove && P.booksmove.w === 1 && P.mlgap && P.mlgap.l === 1 && P.dogblow && P.dogblow.recorded === 0, "angle summary: new angles (books moved, ML vs spread, combos) get their records"); }
   { // without him (10/8): top 3 TD scorers in games a listed-Out regular missed
     const h = ctx.T.tdTop3({ ...tg, td: [], without: { [tg.away]: [{ out: "A.Kamara", games: 7, top: [{ name: "C.Olave", td: 5 }, { name: "D.Vele", td: 2 }] }], [tg.home]: [{ out: "X.Y", games: 1, top: [] }] } });
     ok(/Without A\.Kamara<\/b> <span class="dim">\(7 games\)<\/span>: C\.Olave 5 · D\.Vele 2/.test(h) && /\(1 game\)<\/span>: no TDs/.test(h), "without him: scorers listed under the team's top 3"); }
