@@ -122,7 +122,7 @@ export default async function handler(req, res) {
         // The market lines those calibrated chances were computed at, so other lines (e.g. a My Bets leg at -3.5)
         // can be converted from the same calibrated number instead of the raw model gap.
         mktHomeSpread: x.spread != null ? -x.spread : null, mktTotal: x.total ?? null, teamPts: r.teamPts || null, fix: r.fix || null,
-        inj: r.inj || null, wind: x.wind, outdoor: x.outdoor, runAt, source: "rerun" };
+        inj: r.inj || null, wind: x.wind, outdoor: x.outdoor, turf: x.turf, runAt, source: "rerun" };
       nLines++;
       if (!early) alertJobs.push(alertsFromRerun(SEASON, x, oldRun, store.games[x.key]).catch(() => 0));   // injuries, QB, model moves, wind -> alerts (10/1)
     });
