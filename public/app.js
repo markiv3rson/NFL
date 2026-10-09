@@ -84,11 +84,11 @@ function injLine(g, kind) {
   const who = (t, key) => t.players.filter((p) => (key ? p[key] : true) && (key ? p[key] !== 0 : true)).map((p) => `${lastName(p.name)} ${p.status}`).join(", ");
   if (kind === "total") {
     if (Math.abs(inj.total || 0) < 0.05) return "";
-    return `Injury adjustment: ${inj.total.toFixed(1)} on the total (${[who(inj.home, "total"), who(inj.away, "total")].filter(Boolean).join(", ")}).`;
+    return `Injuries: total ${inj.total.toFixed(1)} (${[who(inj.home, "total"), who(inj.away, "total")].filter(Boolean).join(", ")})`;
   }
   if (!inj.home.players.length && !inj.away.players.length) return "";
   const one = (team, t) => (t.pts ? `${team} ${t.pts.toFixed(1)} (${who(t)}${t.capped ? ", capped" : ""})` : `${team} 0`);
-  return `Injury adjustment: ${one(g.home, inj.home)}. ${one(g.away, inj.away)}.`;
+  return `Injuries: ${one(g.home, inj.home)} · ${one(g.away, inj.away)}`;
 }
 const injApplied = (g, kind) => !!(g.model && g.model.inj && (kind === "total" ? Math.abs(g.model.inj.total || 0) >= 0.05 : (g.model.inj.home.players.length || g.model.inj.away.players.length)));
 // Right-hand "Model leans" cell: the lean, its strength, and in plain words WHY.
