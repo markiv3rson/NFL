@@ -1,6 +1,6 @@
 // NFL SLATEZZZ — everything comes from /api/slate (lines, TD, flags) and /api/mybets + /api/results/list (Record).
 let WINALL = false;
-let PAPER = null, PICKS = null, TEASERS = null, ALTS = null;
+let PAPER = null, PICKS = null, TEASERS = null, ALTS = null, COMBOS = null;
 let S = null, RES = null, EDGES = null, MB = null, tdSort = "likely", recView = "mine";
 const $ = (id) => document.getElementById(id);
 const dash = '<span class="dim">—</span>';
@@ -104,10 +104,11 @@ function openMove(g, kind, p) {
 }
 // Line moved 6 points in our favor (10/9): the only spread/total sides that beat a coin flip in every period.
 // Rates: nflverse closing lines 2007-25, aussportsbetting opening lines 2014-26, and this app's game model replayed 2014-25.
-// Spread: underdog +1.5..+2.5 at +7.5..+8.5: 83% in wind 15+, 77% when our model likes the dog, 73% when it likes the favorite.
+// Spread: underdog +1.5..+2.5 at +7.5..+8.5: 83% in wind 15+, 78% on turf, 77% when our model likes the dog, 73% when it likes the favorite.
 function saferRate(g, t) {
   const m = g.model || {}, tl = (g.books && g.books.total && g.books.total.line) ?? (g.poly && g.poly.total && g.poly.total.line);
   if (m.outdoor && m.wind != null && m.wind >= 15) return 83;
+  if (m.turf) return 78;   // artificial turf: 78.5% (80/78/78 by period); grass 74%
   const sp = g.spreadPick; if (t && sp && sp.team) return sp.team === t.team ? 77 : 73;
   return tl != null && tl >= 47 ? 70 : 76;
 }
@@ -125,8 +126,14 @@ function saferTotal(g, p) {
   if (!p) return { under: true, pct: 68 };
   return { under: modelOver, pct: 70 };
 }
+function comboLines(g, kind) {
+  return (g.combos || []).filter((c) => c.kind === kind).map((c) => `<div class="s g">${esc(c.why)}: <b>${esc(c.pick)}</b> · wins ${Math.round(c.hit)}%</div>`).join("");
+}
 function saferSide(g, kind, p) {
   if (g.final) return "";
+  return saferOne(g, kind, p) + comboLines(g, kind);
+}
+function saferOne(g, kind, p) {
   if (kind === "spread") { const t = g.teaser; return t ? `<div class="s g" style="margin-top:6px">Safer: <b>${esc(t.team)} +${t.line}</b> · wins ${saferRate(g, t)}%</div>` +
     ((t.ladder || []).length ? `<div class="s dim">${t.ladder.map((x) => `+${x.line} ${Math.round(x.hist * 100)}%`).join(" · ")}</div>` : "") : ""; }
   const tl = (g.books && g.books.total && g.books.total.line) ?? (g.poly && g.poly.total && g.poly.total.line); if (tl == null) return "";
@@ -725,7 +732,7 @@ async function loadRecord(sync = false) {
   try {
     const [mb, rl, rp] = await Promise.all([fetch(`/api/mybets${sync ? "?sync=1" : ""}`, { cache: "no-store" }).then((r) => r.json()), fetch("/api/results/list", { cache: "no-store" }).then((r) => r.json()), fetch("/api/replay", { cache: "no-store" }).then((r) => r.json()).catch(() => null)]);
     if (rp && rp.ok) REPLAY = rp.replay;   // history table; a failed fetch just leaves the card out
-    if (!mb.ok) throw new Error(mb.error); stampUpdated(); MB = mb; RES = rl.ok ? rl.results : []; EDGES = rl.ok ? rl.edges : null; PAPER = rl.ok ? rl.paper : null; ALTS = rl.ok ? rl.alts : null; PICKS = rl.ok ? rl.picks : null; TEASERS = rl.ok ? rl.teasers || null : null; renderLab();
+    if (!mb.ok) throw new Error(mb.error); stampUpdated(); MB = mb; RES = rl.ok ? rl.results : []; EDGES = rl.ok ? rl.edges : null; PAPER = rl.ok ? rl.paper : null; ALTS = rl.ok ? rl.alts : null; PICKS = rl.ok ? rl.picks : null; TEASERS = rl.ok ? rl.teasers || null : null; COMBOS = rl.ok ? rl.combos || null : null; renderLab();
     renderRecord();
     if (sync && mb.sync) toast(mb.sync.ok ? `Synced ${mb.sync.positions} positions.` : `Sync: ${mb.sync.note}`);
   } catch (e) { toast("Record failed: " + e.message, 10000); }
@@ -770,13 +777,17 @@ function pickLabBox() {
   const bands = ["spread", "total"].map((m) => (P[m] && P[m].bands || []).filter((b) => b.graded).map((b) => `<div class="row"><span class="dim">${m === "spread" ? "Spread" : "Total"} · model differs by ${b.label}</span><span>${b.w}–${b.l} · ${pc(b.hit)}</span></div>`).join("")).join("");
   return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Tracked angles</div>` +
     arow("dog", "Road dogs +3 to +6.5") + arow("away3", "Road team, spread 3 or less") + arow("wind", "Under, wind 12+ mph") + arow("lowloss", "Underdog off a loss scoring 10 or fewer") + arow("prebye", "Home team before its bye (wk 8+)") + arow("dogblow", "Road dog +3 to +6.5 after a blowout") + arow("streakfade", "Road team off a loss vs 3-game win streak") + arow("winddiv", "Under, division game, wind 10+ mph") + arow("roadml3", "Road ML, spread ~3, total 48+") + arow("coachfade", "Road team vs a cold home coach (ATS)") + arow("mlgap", "ML cheaper than its spread (3+ pts)") + arow("booksmove", "Books moved, Polymarket lagged") +
-    teaserRow() + altRow() +
+    teaserRow() + altRow() + comboRow() +
     (bands ? `<div class="fold" data-drop="labbands"><span>By model gap</span><span>▾</span></div><div class="drop" id="labbands">${bands}</div>` : "") + `</div></div>`;
 }
 // Teaser legs (10/6): underdog +1.5..+2.5 bought at +7.5..+8.5 on Polymarket's alternate spread; record, return at the price paid, history.
 function altRow() {
   const A = ALTS; if (!A || !A.recorded) return `<div class="arow"><span class="nm">Alt lines that cover 60%+</span><span class="dim rc">none yet</span><b class="dim">—</b></div>`;
   return `<div class="arow"><span class="nm">Alt lines that cover 60%+</span><span class="dim rc">${A.n ? `${A.w}–${A.l}` : `${A.recorded} saved`}</span><b class="${A.n ? (A.w / A.n >= 0.6 ? "g" : A.w / A.n >= 0.5 ? "y" : "r") : "dim"}">${A.n ? Math.round(A.w / A.n * 100) + "%" : "—"}</b></div>`;
+}
+function comboRow() {
+  const C = COMBOS; if (!C) return "";
+  return `<div class="arow"><span class="nm">Combo picks</span><span class="dim rc">${C.n ? `${C.w}–${C.l}` : C.recorded ? `${C.recorded} saved` : "none yet"}</span><b class="${C.n ? (C.w / C.n >= 0.6 ? "g" : C.w / C.n >= 0.5 ? "y" : "r") : "dim"}">${C.n ? Math.round(C.w / C.n * 100) + "%" : "—"}</b></div>`;
 }
 function teaserRow() {
   const T = TEASERS; if (!T) return "";
@@ -792,6 +803,7 @@ function bestBets() {
   const out = [], ko = {};
   for (const g of (S && S.games) || []) { ko[g.key] = g; if (g.started) continue;
     for (const a of g.angles || []) if (a.hit) out.push({ pick: a.pick, game: g.key, why: a.name, p: a.hit / 100 });
+    for (const c of g.combos || []) out.push({ pick: c.pick, game: g.key, why: c.why, p: c.hit / 100 });
     for (const x of g.altValue || []) out.push({ pick: `${x.team} ${x.line > 0 ? "+" : ""}${x.line}`, game: g.key, why: "ALT line", p: x.hist });
   }
   for (const g of (S && S.games) || []) { if (g.started || g.final) continue; const mv = totalMoved(g);
