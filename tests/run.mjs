@@ -708,9 +708,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     { const { stackPicks, gradeStackPick } = await import("../lib/stack.js"), G = { key: "A @ B", away: "A", home: "B", outdoor: true };
       // home B favored by 8, total 40, model likes B by 3+ (homeMargin 12), wind 16: favorite in wind, big fav + low total Over -6
       const P = stackPicks(G, { homeMargin: 12, total: 41, outdoor: true, wind: 16, fix: {} }, -8, 40, -8, 40), ids = P.map((x) => x.id);
-      ok(ids.includes("favwind") && P.find((x) => x.id === "favwind").pick === "B -8" && !ids.includes("bigfavlow") && !ids.includes("roaddog6"), "combo picks: wind favorite (luck-checked list only)");
+      ok(ids.includes("favwind") && ids.includes("bigfavlow") && P.find((x) => x.id === "favwind").pick === "B -8" && P.find((x) => x.id === "bigfavlow").pick === "Over 34" && !ids.includes("roaddog6"), "combo picks: wind favorite and big-favorite Over -6");
       const Q = stackPicks(G, { homeMargin: -1, total: 44, fix: {} }, -2.5, 40, -3.5, 44), q = Q.map((x) => x.id);
-      ok(q.includes("roaddog6") && Q.find((x) => x.id === "roaddog6").pick === "A +8.5" && !q.includes("lowmovefav6"), "combo picks: road dog +6");
+      ok(q.includes("roaddog6") && Q.find((x) => x.id === "roaddog6").pick === "A +8.5" && q.includes("lowmovefav6") && Q.find((x) => x.id === "lowmovefav6").pick === "B +3.5", "combo picks: road dog +6, line moved toward the dog -> favorite +6");
       ok(gradeStackPick({ kind: "spread", team: "A", home: "B", line: 8.5 }, 24, 17) === "W" && gradeStackPick({ kind: "total", side: "over", line: 34 }, 20, 13) === "L", "combo picks: grading"); }
     const { totalMove } = await import("../lib/teaser.js"); ok(totalMove(47.5, 44).under && totalMove(44, 47).under === false && totalMove(44, 46.5) === null, "total move: 3+ points from the open"); }
   ok(ctx.T.slotOf({ badge: "SNF", kickoff: "2026-10-11T12:00:00" }) === "Primetime" && ctx.T.slotOf({ kickoff: "2026-10-11T10:00:00" }) === "Morning" && ctx.T.slotOf({ kickoff: "2026-10-11T13:25:00" }) === "Afternoon", "best bets: morning / afternoon / primetime");

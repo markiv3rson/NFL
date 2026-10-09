@@ -799,7 +799,7 @@ function teaserRow() {
 }
 // Decision model (10/9): straight bets only (no teasers, no alt lines), ONE pick per game per market (spread, total): the one
 // with the best record. Two angles on opposite sides of the same total no longer both show.
-const STRAIGHT_COMBOS = new Set(["favwind"]);
+const STRAIGHT_COMBOS = new Set(["favwind", "underwinddog", "favunder", "divlowdog"]);
 function straightPicks(g) {
   if (!g || g.started || g.final) return [];
   const out = [];
