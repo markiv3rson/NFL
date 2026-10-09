@@ -662,6 +662,11 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(L && L.snaps.length === 2 && L.snaps[0].spread.homeSpread === -6.5 && !("extra" in L.snaps[0].spread) && L.close.spread.homeSpread === -7.5 && L.snaps[1].books.spread.homeSpread === -8 && L.snaps[1].books.spread.home === 0.5 && out.models["2026:5"]["A @ B"].homeMargin === 9.7 && !("junk" in out.models["2026:5"]["A @ B"]),
       "export: every line snapshot, the closing line and the model numbers per game");
     await R.del("snap:2026:5:A @ B", "close:2026:5:A @ B", "model:2026:5"); }
+  { // Polymarket ML vs its own spread (10/9)
+    const { picksFor } = await import("../lib/paper.js"); const G = { key: "A @ H", away: "A", home: "H", week: 6 };
+    const p1 = picksFor(G, { spread: { homeSpread: -7, home: 0.5, away: 0.5 }, ml: { home: 0.62, away: 0.38 } }, {}, null).find((p) => p.market === "mlgap");   // -7 implies ~70% home
+    const p2 = picksFor(G, { spread: { homeSpread: -7, home: 0.5, away: 0.5 }, ml: { home: 0.70, away: 0.30 } }, {}, null).find((p) => p.market === "mlgap");
+    ok(p1 && p1.label === "H ML" && p1.price === 0.62 && !p2, "ML vs spread: takes the moneyline priced 3+ pts under its spread's win chance, nothing when they agree"); }
   { // without him (10/8): top 3 TD scorers in games a listed-Out regular missed
     const h = ctx.T.tdTop3({ ...tg, td: [], without: { [tg.away]: [{ out: "A.Kamara", games: 7, top: [{ name: "C.Olave", td: 5 }, { name: "D.Vele", td: 2 }] }], [tg.home]: [{ out: "X.Y", games: 1, top: [] }] } });
     ok(/Without A\.Kamara<\/b> <span class="dim">\(7 games\)<\/span>: C\.Olave 5 · D\.Vele 2/.test(h) && /\(1 game\)<\/span>: no TDs/.test(h), "without him: scorers listed under the team's top 3"); }
