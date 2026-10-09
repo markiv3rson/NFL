@@ -17,7 +17,8 @@ Endpoints:
 import os, threading
 import numpy as np, pandas as pd, hmac
 from flask import Flask, request, jsonify
-import fair_line
+import fair_line, extra_factors
+extra_factors.warm()   # 10/9: build the stats models in the background at startup
 import td_prob
 import injury_adj
 import season as _season
@@ -148,6 +149,15 @@ def _rerun_game_lines():
             out.append(result)
         except Exception as e:
             out.append({"game": f"{g.get('away')} @ {g.get('home')}", "error": str(e)})
+    # Extra factors for the site's combo picks (10/9): coach/referee records, team age, QB rushing, rest, travel, the 5 stats models.
+    try:
+        xf = extra_factors.factors([{"away": nv(g["away"]), "home": nv(g["home"]), "week": g.get("week"), "spread": g.get("spread"), "total": g.get("total"),
+                                     "wind": g.get("wind") if g.get("outdoor") else 0, "dome": g.get("dome"), "temp": g.get("temp"),
+                                     "div": fair_line.is_division_game(nv(g["away"]), nv(g["home"]))} for g in games])
+        for g, r in zip(games, out):
+            if "error" not in r: r["xf"] = xf.get(f"{nv(g['away'])} @ {nv(g['home'])}")
+    except Exception as e:
+        print(f"[xf] failed: {e}", flush=True)
     return jsonify({"ok": True, "results": out})
 
 def _safe(fn, *a):

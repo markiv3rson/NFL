@@ -71,7 +71,7 @@ export default async function handler(req, res) {
       // Only players practicing this week (full 87% played, limited 61%); did-not-participate (17%) and no entry (6%) are NOT treated as playing.
       const returning = [g.away, g.home].flatMap((t) => { const cur = injuries[t] || [];
         return (cur.some((x) => Number(x.week) === Number(week)) ? injPrev[t] || [] : []).map((x) => x.name).filter((n) => cur.some((x) => Number(x.week) === Number(week) && sameName(x.name, n) && /^(full|limited)/i.test(x.status || ""))); }).filter((n) => !outs.some((o) => sameName(o, n)));
-      return { away: g.away, home: g.home, key: g.key, kickoff: g.kickoff, returning, wind: w.wind, outdoor: w.outdoor && w.wind != null,
+      return { away: g.away, home: g.home, key: g.key, kickoff: g.kickoff, returning, wind: w.wind, temp: w.temp ?? null, outdoor: w.outdoor && w.wind != null,
         dome: vn ? !vn.outdoor : null, neutral: isNeutral(g), turf: isTurf(g),
         restAwayDays: g.kickoff ? restDays(g.away, g.kickoff) : null,
         spread: hs == null ? null : -hs, total, outs,
@@ -89,7 +89,7 @@ export default async function handler(req, res) {
       const mins = gk ? (new Date(gk) - Date.now()) / 60000 : null;
       if (espn && mins != null && mins >= 0 && mins <= 80) return off.filter((x) => !/^questionable$/i.test(x.status || ""));
       return off; };
-    const lines = await post(base, "/rerun-game-lines", { games: payload.map((x) => ({ away: x.away, home: x.home, wind: x.wind, outdoor: x.outdoor,
+    const lines = await post(base, "/rerun-game-lines", { games: payload.map((x) => ({ away: x.away, home: x.home, wind: x.wind, temp: x.temp, outdoor: x.outdoor,
       spread: x.spread, total: x.total, dome: x.dome, neutral: x.neutral, turf: x.turf, restAwayDays: x.restAwayDays, week,
       // Backup QB making his first start this week (tested 2016-25, margin effect): homeQbFirstStart -6.29 pts,
       // awayQbFirstStart +4.46 pts, both split evenly across each team's own score on the model service side.
@@ -122,7 +122,7 @@ export default async function handler(req, res) {
         // The market lines those calibrated chances were computed at, so other lines (e.g. a My Bets leg at -3.5)
         // can be converted from the same calibrated number instead of the raw model gap.
         mktHomeSpread: x.spread != null ? -x.spread : null, mktTotal: x.total ?? null, teamPts: r.teamPts || null, fix: r.fix || null,
-        inj: r.inj || null, wind: x.wind, outdoor: x.outdoor, turf: x.turf, runAt, source: "rerun" };
+        inj: r.inj || null, wind: x.wind, temp: x.temp ?? null, outdoor: x.outdoor, turf: x.turf, xf: r.xf || null, runAt, source: "rerun" };
       nLines++;
       if (!early) alertJobs.push(alertsFromRerun(SEASON, x, oldRun, store.games[x.key]).catch(() => 0));   // injuries, QB, model moves, wind -> alerts (10/1)
     });
