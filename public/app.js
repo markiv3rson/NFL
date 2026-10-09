@@ -46,7 +46,7 @@ function historyRows(g) {
   const rows = [{ from: hs[0], last: hs[0] }];
   for (const h of hs.slice(1)) { const cur = rows[rows.length - 1]; if (moved(key(h.poly), key(cur.from.poly))) rows.push({ from: h, last: h }); else cur.last = h; }
   const cell = (p) => `<span>${p.spread ? `${g.home} ${sgn(p.spread.homeSpread)} ${odds(toAmerican(p.spread.home))}` : "—"}</span><span>${p.total ? `${p.total.line} (O ${odds(toAmerican(p.total.over))})` : "—"}</span><span>${p.ml ? `${g.home} ${odds(toAmerican(p.ml.home))}` : "—"}</span>`;
-  return `<div class="s" style="margin-bottom:4px">How the line moved this week (Polymarket) · resets every week · ${rows.length === 1 ? "no change yet" : `${rows.length - 1} move${rows.length === 2 ? "" : "s"}`}</div>` +
+  return `<div class="s" style="margin-bottom:4px">${rows.length === 1 ? "no change yet" : `${rows.length - 1} move${rows.length === 2 ? "" : "s"}`}</div>` +
     `<div class="drow dim"><span>Since</span><span>SPREAD</span><span>TOTAL</span><span>MONEYLINE</span></div>` +
     rows.slice().reverse().map((r, i) => `<div class="drow"><span>${hm(r.from.t)}${r.from.src === "kickoff" ? " 🔒" : ""}` +
       `${r.last !== r.from ? `<br><span class="dim">last checked ${hm(r.last.t)}</span>` : ""}${i === rows.length - 1 ? '<br><span class="dim">opening line</span>' : ""}</span>${cell(r.from.poly)}</div>`).join("");
@@ -165,7 +165,7 @@ function winnersBox(mode = "picks") {
   const list = S.games.filter((g) => !g.started).map(winnerOf).filter(Boolean).sort((a, b) => b.p - a.p);
   const W = S.winners, pc = (x) => (x == null ? "—" : `${Math.round(x * 100)}%`);
   const rec = W && W.all && W.all.n ? `<div class="row"><span class="dim">MONEYLINE · all picks</span><span>${W.all.w}–${W.all.l} · right ${pc(W.all.hit)} <span class="dim">(said ${pc(W.all.said)})</span></span></div>` +
-    (W.top4 && W.top4.n ? `<div class="row"><span class="dim">MONEYLINE · each week's top 4</span><span>${W.top4.w}–${W.top4.l} · right ${pc(W.top4.hit)} <span class="dim">(said ${pc(W.top4.said)})</span></span></div>` : "") : '<div class="s dim">The record starts after this week\'s games: each pick is saved at kickoff and graded when the game ends.</div>';
+    (W.top4 && W.top4.n ? `<div class="row"><span class="dim">MONEYLINE · each week's top 4</span><span>${W.top4.w}–${W.top4.l} · right ${pc(W.top4.hit)} <span class="dim">(said ${pc(W.top4.said)})</span></span></div>` : "") : '';
   if (mode === "records") return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Records · model's side</div>${rec}${W && W.stats && W.stats.n ? `<div class="row"><span class="dim">Moneyline · stats-only model (no market)</span><span>${W.stats.w}–${W.stats.l} · right ${pc(W.stats.hit)}</span></div>` : ""}${pickRec("spread", "Spreads")}${pickRec("total", "Totals")}</div></div>`;
   return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Model's pick on every game</div>` +
     (list.slice(0, WINALL ? 99 : 8).map((x, i) => { const g = S.games.find((y) => y.key === x.game), sides = g ? modelSide(g) : [], sp = sides.find((s) => s.market === "Spread"), tt = sides.find((s) => s.market === "Total");
@@ -183,7 +183,7 @@ function rightNowBox() {
   return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Right now · Polymarket cheaper than the sportsbooks</div>` +
     (E.length ? E.map((b) => `<div class="row"><span>${esc(b.label)} <span class="dim">${esc(b.game)}</span>${b.held ? ` <span class="y">(${esc(b.held)} — hold)</span>` : ""}</span>` +
       `<span>${Math.round(b.price * 100)}¢ vs fair ${Math.round(b.fair * 100)}¢ · <span class="g">+${(b.evNet * 100).toFixed(1)}%</span></span></div>`).join("") : `<div class="s">No gap of 3%+ (${why}).</div>`) +
-    `<div class="s dim" style="margin-top:4px">Gap = fair chance ÷ price − 1, ${fee}; book odds under ${R.booksMaxAgeEarlyH || 8} h old. Tracked in Models → Price gaps.</div></div></div>`;
+    "</div></div>";
 }
 // "What changed" (9/30): Polymarket line moves since your last visit on this device.
 let LAST_SEEN = null;
@@ -322,7 +322,7 @@ function betRow(b) {
   if (b.source === "account") {   // bet recorded automatically from your Polymarket account
     const st = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Even" : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : (b.waiting ? '<span class="y">final · waiting for touchdown results</span>' : '<span class="dim">open</span>');
     return `<div class="row"><span>${esc(b.title)}${b.outcome ? ` — ${esc(b.outcome)}` : ""} <span class="dim">wk ${b.week ?? "?"}</span></span><span>${st}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
-      `<div class="s" style="padding:0 0 6px 8px">${money(b.cost)}${b.price != null ? ` at ${Math.round(b.price * 100)}¢` : ""} · ${b.sold ? `sold early for ${money((b.cost || 0) + (b.pl || 0))}` : `pays ${money(b.toWin)} if it wins`} · auto-recorded from your account</div>`;
+      `<div class="s" style="padding:0 0 6px 8px">${money(b.cost)}${b.price != null ? ` at ${Math.round(b.price * 100)}¢` : ""} · ${b.sold ? `sold early for ${money((b.cost || 0) + (b.pl || 0))}` : `pays ${money(b.toWin)} if it wins`}</div>`;
   }
   const hit = b.legs.filter((l) => l.result === "W").length;
   const state = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? (b.pushUnconfirmed ? '<span class="y">Push leg — check how Polymarket settled it</span>' : "Push") : (b.waiting ? '<span class="y">final · waiting for touchdown results</span>' : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : `<span class="dim">${hit} of ${b.legs.length} hit</span>`);
@@ -358,7 +358,7 @@ function betsAnalysis(bets) {
     for (const l of b.legs) { if (l.result !== "W" && l.result !== "L") continue; const k = byKind[l.kind] = byKind[l.kind] || { n: 0, w: 0, price: 0 }; k.n++; k.w += l.result === "W" ? 1 : 0; k.price += Number(l.price) || 0; nLegs++; }
     if (b.result === "W" || b.result === "L") { const z = bySize[b.legs.length] = bySize[b.legs.length] || { n: 0, w: 0, cost: 0, pl: 0 }; z.n++; z.w += b.result === "W" ? 1 : 0; z.cost += b.cost; z.pl += b.pl || 0; }
   }
-  if (!nLegs) return '<div class="s">Fills in as your combos settle.</div>';
+  if (!nLegs) return '<div class="s">None yet.</div>';
   const small = (n) => (n < 30 ? ' <span class="dim">· small sample</span>' : "");
   const legRows = Object.keys(byKind).sort().map((kk) => { const k = byKind[kk], hit = k.w / k.n * 100, paid = k.price / k.n * 100, d = hit - paid;
     return `<div class="row"><span>${LK[kk] || kk} <span class="dim">· ${k.n} legs</span></span><span>hit <b>${Math.round(hit)}%</b> · paid ${Math.round(paid)}¢ · <b class="${d > 3 ? "g" : d < -3 ? "r" : "dim"}">${d > 0 ? "+" : "−"}${Math.abs(d).toFixed(0)} pts</b>${small(k.n)}</span></div>`; }).join("");
@@ -402,7 +402,7 @@ function renderMineNow() {
     `<div class="row"><span class="dim">Return · avg price move your way</span><span>${cPct(s.roi)} · ${cPct(s.avgClv)}</span></div>` +
     (() => { const sc = MB.summary && MB.summary.settleCheck; if (!sc || !(sc.agree + sc.disagree)) return "";
       return sc.disagree ? `<div class="s y">⚠ Polymarket's settlement and the final scores disagree on ${sc.disagree} of ${sc.agree + sc.disagree} combos. The score-based result is shown. Check those bets.</div>`
-        : `<div class="s dim">Polymarket's settlements matched the final scores on ${sc.agree} of ${sc.agree} combos.</div>`; })() +
+        : ""; })() +
     (past ? "" : `<div class="row"><span class="dim">Open this week</span><span>${money(s.openCost)} of $200</span></div>`) + `</div>` +
     (past ? "" : `<div class="sec"><div class="sh">Open bets</div>${open.map(betRow).join("") || '<div class="s">No open bets.</div>'}</div>` +
     `<div class="sec"><div class="sh">Expected returns</div>` +
@@ -410,10 +410,10 @@ function renderMineNow() {
     `<div class="row"><span class="dim">Expected · market</span><span>${money(s.expMarket)} (${cMoney(s.expMarket - s.openCost)})</span></div>` +
     `<div class="row"><span class="dim">Expected · your model</span><span>${s.modelCovered ? `${money(s.expModel)} (${cMoney(s.expModel - s.expModelCost)})` : "—"}</span></div></div>`) +
     `<div class="fold" data-drop="settled"><span>${past ? "Results" : "Settled bets"}${done.length ? ` · ${cMoney(settledPl)}` : ""}</span><span>▾</span></div>` +
-    `<div class="drop${past ? " open" : ""}" id="settled">${(past ? shown : done).map(betRow).join("") || '<div class="s">Nothing settled yet — bets grade automatically when games go final.</div>'}</div>` +
+    `<div class="drop${past ? " open" : ""}" id="settled">${(past ? shown : done).map(betRow).join("") || '<div class="s">None yet.</div>'}</div>` +
     `<div class="fold" data-drop="ban"><span>Analysis · where your bets win and lose</span><span>▾</span></div><div class="drop" id="ban">${betsAnalysis(MB.bets)}</div>` +
-    (past ? "" : `<div class="fold" data-drop="synced"><span>Live account view${synced.length ? ` · ${synced.length}` : ""} <span class="dim">(already counted in your bets above)</span></span><span>▾</span></div>` +
-    `<div class="drop open" id="synced">${syncedRows || '<div class="s">No synced positions yet — tap ↻ Sync account.</div>'}</div>`) + `</div>` +
+    (past ? "" : `<div class="fold" data-drop="synced"><span>Live account view${synced.length ? ` · ${synced.length}` : ""} </span><span>▾</span></div>` +
+    `<div class="drop open" id="synced">${syncedRows || '<div class="s">Tap ↻ Sync account.</div>'}</div>`) + `</div>` +
     `<div class="center"><button class="btn" id="sync-btn">↻ Sync account</button></div>`;
   $("sync-btn").onclick = () => loadRecord(true);
   document.querySelectorAll("#mb-chips [data-mbw]").forEach((b) => { b.onclick = () => { MBWEEK = b.dataset.mbw === "all" ? "all" : Number(b.dataset.mbw); renderMine(); }; });
@@ -468,14 +468,14 @@ function modelsByConfidence(res) {
   const rows = [[50, 60], [60, 70], [70, 80], [80, 101]].map(([lo, hi]) => { const xs = ml.filter((x) => x.pct >= lo && x.pct < hi); if (!xs.length) return "";
     const w = xs.filter((x) => x.result === "W").length, said = xs.reduce((a, x) => a + x.pct, 0) / xs.length, hit = w / xs.length * 100;
     return `<div class="row"><span class="dim">Said ${hi > 100 ? lo + "+" : lo + "–" + hi}% · ${xs.length} picks</span><span>${bar(hit, hitColor(hit, said))} <b>${Math.round(hit)}%</b> <span class="dim">hit · said ${Math.round(said)}%</span></span></div>`; }).join("");
-  return rows || '<div class="s">Fills in as games go final.</div>';
+  return rows || '<div class="s">None yet.</div>';
 }
 // Touchdown calibration: for each band of stated chance, the chance said next to how often those players scored.
 function tdCalibration(tdAll) {
   const rows = [[5, 15], [15, 25], [25, 35], [35, 50], [50, 101]].map(([lo, hi]) => { const xs = (tdAll || []).filter((p) => p.fair >= lo && p.fair < hi); if (!xs.length) return "";
     const said = xs.reduce((a, p) => a + p.fair, 0) / xs.length, hit = xs.filter((p) => p.scored).length / xs.length * 100;
-    return `<div class="row" style="display:block"><div class="dim">Said ${hi > 100 ? lo + "+" : lo + "–" + hi}% · ${xs.length} players · scored ${Math.round(hit)}% ±${Math.round(Math.sqrt(Math.max(hit * (100 - hit), 400) / xs.length / 100 * 100) * 1)}${xs.length < 30 ? " · too few to trust" : ""}</div><div class="s" style="display:grid;grid-template-columns:auto 1fr;gap:3px 8px;align-items:center"><span class="dim">said</span><span>${bar(said, "var(--cyan, #5ec8e5)", Math.round(said) + "%")}</span><span class="dim">scored</span><span>${bar(hit, hitColor(hit, said), Math.round(hit) + "%")}</span></div></div>`; }).join("");
-  return rows || '<div class="s">Fills in as games go final.</div>';
+    return `<div class="row" style="display:block"><div class="dim">Said ${hi > 100 ? lo + "+" : lo + "–" + hi}% · ${xs.length} players · scored ${Math.round(hit)}% ±${Math.round(Math.sqrt(Math.max(hit * (100 - hit), 400) / xs.length / 100 * 100) * 1)}${xs.length < 30 ? "" : ""}</div><div class="s" style="display:grid;grid-template-columns:auto 1fr;gap:3px 8px;align-items:center"><span class="dim">said</span><span>${bar(said, "var(--cyan, #5ec8e5)", Math.round(said) + "%")}</span><span class="dim">scored</span><span>${bar(hit, hitColor(hit, said), Math.round(hit) + "%")}</span></div></div>`; }).join("");
+  return rows || '<div class="s">None yet.</div>';
 }
 // Touchdown chances split by position and by opponent defense (10/5). Same rule as the calibration rows: only players who played,
 // "said" vs "scored" with a margin of error, and "too few to trust" under 30. Opponent strength = the opponent's average points allowed in its OTHER
@@ -483,7 +483,7 @@ function tdCalibration(tdAll) {
 function tdGroupRow(label, xs) {
   if (!xs.length) return "";
   const said = xs.reduce((a, p) => a + p.fair, 0) / xs.length, hit = xs.filter((p) => p.scored).length / xs.length * 100, n = xs.length;
-  return `<div class="row" style="display:block"><div class="dim">${esc(label)} · ${n} players · scored ${Math.round(hit)}% ±${Math.round(Math.sqrt(Math.max(hit * (100 - hit), 400) / n))}${n < 30 ? " · too few to trust" : ""}</div><div class="s" style="display:grid;grid-template-columns:auto 1fr;gap:3px 8px;align-items:center"><span class="dim">said</span><span>${bar(said, "var(--cyan, #5ec8e5)", Math.round(said) + "%")}</span><span class="dim">scored</span><span>${bar(hit, hitColor(hit, said), Math.round(hit) + "%")}</span></div></div>`;
+  return `<div class="row" style="display:block"><div class="dim">${esc(label)} · ${n} players · scored ${Math.round(hit)}% ±${Math.round(Math.sqrt(Math.max(hit * (100 - hit), 400) / n))}${n < 30 ? "" : ""}</div><div class="s" style="display:grid;grid-template-columns:auto 1fr;gap:3px 8px;align-items:center"><span class="dim">said</span><span>${bar(said, "var(--cyan, #5ec8e5)", Math.round(said) + "%")}</span><span class="dim">scored</span><span>${bar(hit, hitColor(hit, said), Math.round(hit) + "%")}</span></div></div>`;
 }
 // Played players of every graded game, each with the opponent's strength attached.
 function tdPlayersWithDefense(res) {
@@ -504,11 +504,11 @@ function tdPlayersWithDefense(res) {
 function tdByPosition(players) {
   const rows = ["RB", "WR", "TE", "QB"].map((pos) => tdGroupRow(pos, players.filter((p) => p.pos === pos))).join("");
   const none = players.filter((p) => !p.pos).length;
-  return (rows || '<div class="s">Fills in as games go final.</div>') + (none ? `<div class="s dim">${none} graded players have no position on record and are left out.</div>` : "");
+  return (rows || '<div class="s">None yet.</div>') + (none ? `<div class="s dim">${none} graded players have no position on record and are left out.</div>` : "");
 }
 function tdByDefense(players) {
   const rows = [["weak", "Against defenses that allow a lot of points"], ["middle", "Against average defenses"], ["strong", "Against defenses that allow few points"]].map(([k, lab]) => tdGroupRow(lab, players.filter((p) => p.def === k))).join("");
-  return rows || '<div class="s">Fills in as games go final.</div>';
+  return rows || '<div class="s">None yet.</div>';
 }
 // One collapsible section: a heading, one plain line saying what it means, then the content. warn = a count shown next to the heading.
 function mSec(id, title, meaning, body, warn = 0, open = false) {
@@ -569,7 +569,7 @@ function renderModelNow() {
     const buys = tdPx.filter((p) => mp(p) > p.ask);
     const pl = buys.reduce((a, p) => a + (p.scored ? 1 / p.ask - 1 : -1), 0);
     const hits = buys.filter((p) => p.scored).length;
-    const small = tdPx.length < 200 ? ' <span class="dim">· small sample (needs ~200+)</span>' : "";
+    const small = tdPx.length < 200 ? ' <span class="dim">· small sample</span>' : "";
     vsMkt = `<div class="row"><span class="dim">Players checked (real markets)</span><span>${tdPx.length}${small}</span></div>` +
       (thinN ? `<div class="row"><span class="dim">Thin markets skipped</span><span>${thinN} <span class="dim">· no real bid</span></span></div>` : "") +
       `<div class="row"><span class="dim">Accuracy score (lower is better)</span><span>Model ${bM.toFixed(3)} · Polymarket ${bP.toFixed(3)} ` +
@@ -585,7 +585,7 @@ function renderModelNow() {
       // The same rule with a 5-point gap (10/6): the "No" mark on Anytime TD. On the 10/6 export it was 21 of 28 (+27%) vs +7.6% for any gap.
       (() => { const no5 = tdPx.filter((p) => mp(p) <= p.bid - 0.05);
         const pl5 = no5.reduce((a, p) => a + (!p.scored ? 1 / (1 - p.bid) - 1 : -1), 0);
-        return no5.length ? `<div class="row"><span class="dim">$1 on No when model is 5+ pts under</span><span>${no5.filter((p) => !p.scored).length} of ${no5.length} won · ${cMoney(pl5)} (${cPct(pl5 / no5.length)})${no5.length < 100 ? ' <span class="dim">· too few to trust</span>' : ""}</span></div>` : ""; })() +
+        return no5.length ? `<div class="row"><span class="dim">$1 on No when model is 5+ pts under</span><span>${no5.filter((p) => !p.scored).length} of ${no5.length} won · ${cMoney(pl5)} (${cPct(pl5 / no5.length)})</span></div>` : ""; })() +
       `<div class="row"><span class="dim">Scored vs priced</span><span>${(tdPx.filter((p) => p.scored).length / tdPx.length * 100).toFixed(0)}% scored · Polymarket priced ${(tdPx.reduce((a, p) => a + mk(p), 0) / tdPx.length * 100).toFixed(0)}% · model ${(tdPx.reduce((a, p) => a + mp(p) * 100, 0) / tdPx.length).toFixed(0)}%</span></div>` +
       // TD model CLV (added 9/29): for players where the model was above the OPENING price (first snapshot of the week),
       // did the closing price move toward the model? The fastest signal of real edge, long before win/loss means anything.
@@ -603,7 +603,7 @@ function renderModelNow() {
     ["Last self-check", st.selfcheck ? `${hm(st.selfcheck.t)} · ${st.selfcheck.items.length ? `<span class="y">${st.selfcheck.items.length} issue(s) — see Watchdog</span>` : '<span class="g">all clear</span>'}` : "— (Thu 12:05 PM, Fri 5:05 PM, Sun 7:35 AM)"],
     ["Pre-logged at kickoff", `${st.prelogged || 0} of ${(S.games || []).length} games this week`],
     ["Last backup", st.backup ? `${hm(st.backup.t)} · ${st.backup.where === "volume" ? "saved" : st.backup.where === "failed" ? '<span class="r">failed — check Railway logs</span>' : '<span class="y">temporary — add a Railway volume</span>'}` : '<span class="y">none yet</span>'],
-    ["Last TD retrain", st.retrain ? `${hm(st.retrain.t)} · ${esc(st.retrain.summary)}` : '<span class="dim">not run yet — runs every Tuesday</span>'],
+    ["Last TD retrain", st.retrain ? `${hm(st.retrain.t)} · ${esc(st.retrain.summary)}` : '<span class="dim">not run yet</span>'],
     ["Kickoff check (ESPN)", kickLine(st.kickcheck)],
     ["Database used", st.usedMb != null ? `${st.usedMb.toFixed(1)} of ${st.capMb} MB` : "—"],
     ["Sportsbook credits left", st.creditWarning ? `<span class="y">${st.credits ?? "—"}</span>` : (st.credits ?? "—")],
@@ -627,14 +627,14 @@ function renderModelNow() {
       const two = all.filter((p) => p.two != null), ftd = all.filter((p) => p.ftd != null);
       const extra = (two.length ? `<div class="row"><span class="dim">2+ TDs</span><span>${two.filter((p) => p.twoHit).length} players did it · model expected ${(two.reduce((a, p) => a + p.two, 0) / 100).toFixed(1)}</span></div>` : "") +
         (ftd.length ? `<div class="row"><span class="dim">First TD of the game</span><span>${ftd.filter((p) => p.ftdHit).length} listed players scored first · model expected ${(ftd.reduce((a, p) => a + p.ftd, 0) / 100).toFixed(1)}</span></div>` : "") + firstTdRecord(res);
-      return t1.length ? `${line("#1 per team", t1)}${line("Top 2 per team", t2)}${extra}` : '<div class="s">Fills in as games go final.</div>'; })();
+      return t1.length ? `${line("#1 per team", t1)}${line("Top 2 per team", t2)}${extra}` : '<div class="s">None yet.</div>'; })();
   const edgeRows = (() => { const e = EDGES; const pct = (x) => (x == null ? "—" : cPct(x));
-      const body = !e || !e.logged ? '<div class="s">Logs itself from the next snapshots (needs fresh sportsbook odds); grades as games go final.</div>' :
+      const body = !e || !e.logged ? '<div class="s">None yet.</div>' :
         `<div class="row"><span class="dim">Spots logged · graded</span><span>${e.logged} · ${e.graded}</span></div>` +
         (e.graded ? `<div class="row"><span class="dim">Record · return per $1</span><span>${e.w}–${e.l}${e.p ? "–" + e.p : ""} · ${pct(e.roi)} <span class="dim">(claimed edge ${pct(e.avgEv)})</span></span></div>` +
           `<div class="row"><span class="dim">Beat the closing price (price moved your way)</span><span>${pct(e.avgClv)} <span class="dim">(${e.clvN} with a same-line close)</span></span></div>` +
           e.byMarket.filter((m) => m.n).map((m) => `<div class="row"><span class="dim">${{ spread: "SPREADS", ml: "MONEYLINES", total: "TOTALS" }[m.market]}</span><span>${m.w} of ${m.n} won · ${pct(m.roi)}</span></div>`).join("") +
-          `<div class="s dim">Real edge shows up first as prices moving your way after you'd have bet; win/loss needs ~200+ graded spots before it means much.</div>` : "");
+          "" : "");
       return body; })();
   const wcRows = `<div class="row"><span class="dim">Week ${S.week} loaded</span><span>${wc.games} games · lines ${wc.withLines}/${wc.games} · model ${wc.modelRun ? '<span class="g">✓</span>' : '<span class="y">not run yet</span>'}</span></div>` +
     ((wc.watch || []).length ? `<div class="s" style="margin-top:6px"><b class="y">Watchdog</b>${wc.watch.map((w) => `<div class="warn">⚠ ${esc(w)}</div>`).join("")}</div>` : '<div class="s dim" style="margin-top:6px">Watchdog: nothing missing or stale.</div>');
@@ -644,11 +644,11 @@ function renderModelNow() {
     mSec("m-score", `1 · Scoreboard · Week ${lw ?? S.week}`, "How every model did on the latest week with graded games, and whether this week's data is loaded.", recapRows + wcRows, (wc.watch || []).length, true) +
     mSec("m-win", "2 · Winners · moneyline", "Who wins each game: the model's pick on every game, saved at kickoff and graded after, with its season record.", winnersBox("picks") + winnersBox("records")) +
     mSec("m-line", "3 · Spreads and totals", "Which side of the line to take. The model has no measured edge here, so about 50% is expected. Past seasons are shown for comparison.", clvSummary(res) + replayBox() + pastBox()) +
-    mSec("m-td", "4 · Touchdowns", "Players' chances to score. The check shows whether the chances match reality; the picks show how the top scorers per team did.", `<div class="s"><b>Do the chances match reality?</b></div>` + (tdWaiting ? `<div class="s y">${tdWaiting} players are waiting for snap counts (posted a few hours after games), so they are left out until then.</div>` : "") + (buckets || '<div class="s">Fills in as games go final.</div>') + `<div class="s" style="margin-top:8px"><b>Top picks per team</b></div>` + topTd + `<div class="s" style="margin-top:8px"><b>Against Polymarket's price</b></div>` + (vsMkt || '<div class="s">Fills in as games go final (needs closing TD prices).</div>')) +
+    mSec("m-td", "4 · Touchdowns", "Players' chances to score. The check shows whether the chances match reality; the picks show how the top scorers per team did.", `<div class="s"><b>Do the chances match reality?</b></div>` + (tdWaiting ? `<div class="s y">${tdWaiting} players are waiting for snap counts (posted a few hours after games), so they are left out until then.</div>` : "") + (buckets || '<div class="s">None yet.</div>') + `<div class="s" style="margin-top:8px"><b>Top picks per team</b></div>` + topTd + `<div class="s" style="margin-top:8px"><b>Against Polymarket's price</b></div>` + (vsMkt || '<div class="s">None yet.</div>')) +
     mSec("m-ang", "5 · Tracked angles", "Betting rules tested on paper, each with its record and whether it holds up in past seasons.", pickLabBox()) +
     mSec("m-gap", "6 · Price gaps", "Spots where Polymarket was cheaper than the sportsbooks, and how they turned out.", edgeRows) +
     mSec("m-trend", "7 · Trends and analysis", "How the models are changing week to week, whether higher confidence really wins more, and where the touchdown chances run high or low.",
-      `<div class="s"><b>Hit rate by week</b></div>` + (modelsByWeek(res) || '<div class="s">Fills in as games go final.</div>') +
+      `<div class="s"><b>Hit rate by week</b></div>` + (modelsByWeek(res) || '<div class="s">None yet.</div>') +
       `<div class="s" style="margin-top:8px"><b>Does more confidence win more? (moneyline)</b></div>` + modelsByConfidence(res) +
       `<div class="s" style="margin-top:8px"><b>Touchdown chances vs what happened</b></div>` + tdCalibration(tdAll) +
       (() => { const pl = tdPlayersWithDefense(res); return `<div class="s" style="margin-top:8px"><b>By position</b></div>` + tdByPosition(pl) + `<div class="s" style="margin-top:8px"><b>By opponent defense</b></div>` + tdByDefense(pl); })()) +
@@ -671,7 +671,7 @@ function renderMine() { keepOpenState("record-mine", renderMineNow); }
 function renderModel() { keepOpenState("models", renderModelNow); }
 function renderRecord() { renderMine(); renderModel(); }
 // "Updated" line at the top of Models and Bets, so you can tell the numbers are fresh (they reload every 2 minutes while you are on the tab).
-function stampUpdated() { const t = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }); for (const id of ["upd-record", "upd-models"]) { const e = $(id); if (e) e.textContent = `Updated ${t} · reloads every 2 minutes`; } }
+function stampUpdated() { const t = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }); for (const id of ["upd-record", "upd-models"]) { const e = $(id); if (e) e.textContent = `Updated ${t}`; } }
 async function loadRecord(sync = false) {
   if (sync) toast("Syncing your Polymarket account…", 0);
   try {
@@ -781,12 +781,12 @@ function renderLab() {
     angles_2: "Rule: 2 proven angles from Game Lines, different games.", angles_3: "Rule: 3 proven angles from Game Lines, different games.",
     angles_fav_3: "Rule: the best proven angle plus the 2 strongest home favorites (75%+)." };
   const legLine = (l) => `${esc(l.label)} <span class="dim">${esc(l.game)}</span> · ${Math.round(l.price * 100)}¢${l.result ? ` <span class="${l.result === "W" ? "g" : l.result === "L" ? "r" : "dim"}">${l.result}</span>` : ""}`;
-  const thisWeek = !wk ? '<div class="s dim">Recorded about a day before Sunday.</div>' :
+  const thisWeek = !wk ? '<div class="s dim">Not recorded yet.</div>' :
     Object.keys(names).map((k) => { const ps = wk.parlays.filter((p) => p.strategy === k);
-      return `<div class="sec"><div class="sh">${esc(names[k])}</div>${HOW[k] ? `<div class="s dim">${esc(HOW[k])}</div>` : ""}` + (ps.length ? ps.map((p) =>
+      return `<div class="sec"><div class="sh">${esc(names[k])}</div>` + (ps.length ? ps.map((p) =>
         `<div class="row" style="display:block"><div>${p.legs.map(legLine).join("<br>")}</div><div class="s">pays ${p.pay.toFixed(2)}x · market chance ${pct(1 / p.pay)}${p.prob != null ? ` · model ${pct(p.prob)}` : ""}${p.result ? ` · <b class="${p.result === "W" ? "g" : p.result === "L" ? "r" : ""}">${p.result === "W" ? "HIT" : p.result === "L" ? "missed" : "push"}</b>` : ""}</div></div>`).join("") :
         '<div class="s">No qualifying legs this week.</div>') + `</div>`; }).join("");
-  const rows = (!Object.keys(names).some((k) => board[k] && board[k].graded) ? '<div class="s dim">No graded parlays yet. History below is each rule replayed on past seasons.</div>' : "") + Object.keys(names).map((k) => { const b = board[k]; const rv = b && b.review, rc = rv ? ({ HOLDS: "g", UNDERSTATED: "g", PAYING: "g", OVERSTATED: "r", LOSING: "r" }[rv.verdict] || "dim") : "dim";
+  const rows = (!Object.keys(names).some((k) => board[k] && board[k].graded) ? '<div class="s dim">No graded parlays yet.</div>' : "") + Object.keys(names).map((k) => { const b = board[k]; const rv = b && b.review, rc = rv ? ({ HOLDS: "g", UNDERSTATED: "g", PAYING: "g", OVERSTATED: "r", LOSING: "r" }[rv.verdict] || "dim") : "dim";
     const hist = parlayHistLine(k);
     return `<div class="row" style="display:block"><div style="display:flex;justify-content:space-between;gap:8px"><span class="dim">${esc(names[k])}</span><span>${b ? `${b.hits} of ${b.graded} hit${b.graded ? ` (${pct(b.hitRate)}, model said ${pct(b.expRate)})` : ""} · return ${b.roi == null ? "—" : cPct(b.roi)}` : "—"}</span></div>${rv ? `<div class="s"><b class="${rc}">${esc(rv.verdict)}</b> <span class="dim">${esc(rv.note)}</span></div>` : ""}${hist}</div>`; }).join("");
   LAB_SB = `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Parlay scoreboard · this season</div>${rows}</div></div>`;
@@ -873,7 +873,7 @@ function tdGameLine(gr, rows) {
   if (!gr || !gr.found) return "";
   const gp = rows.map((r) => ({ r, p: gr.map.get(tdKey(r.team, r.player)) })).filter((x) => x.p && (x.p.scored || x.p.played === true));
   const waiting = rows.filter((r) => { const p = gr.map.get(tdKey(r.team, r.player)); return p && !p.scored && p.played === undefined; }).length;
-  if (!gp.length) return waiting ? `<div class="s y" style="margin:12px 2px 0">Touchdowns: waiting for snap counts (posted a few hours after the game).</div>` : "";
+  if (!gp.length) return waiting ? `<div class="s y" style="margin:12px 2px 0">Touchdowns: waiting for snap counts.</div>` : "";
   const hit = gp.filter((x) => x.p.scored).length, exp = gp.reduce((a, x) => a + x.r.fair, 0) / 100;
   return `<div class="s" style="margin:12px 2px 0"><b>Touchdowns:</b> model's top ${gp.length} · ${hit} scored · expected ${exp.toFixed(1)}${waiting ? ` · <span class="y">${waiting} waiting for snap counts</span>` : ""}</div>`;
 }
@@ -886,7 +886,7 @@ function firstTdRecord(res) {
   const picks = (res || []).map((r) => (r.td || []).filter((p) => p.ftd != null && p.played !== false).sort((a, b) => b.ftd - a.ftd)[0]).filter(Boolean);
   if (!picks.length) return "";
   const hit = picks.filter((p) => p.ftdHit).length, said = picks.reduce((a, p) => a + p.ftd, 0) / picks.length;
-  return `<div class="row"><span class="dim">First TD picks</span><span>${hit} of ${picks.length} right (${Math.round(hit / picks.length * 100)}%) · model said ${Math.round(said)}%${picks.length < 30 ? " · too few to trust" : ""}</span></div>`;
+  return `<div class="row"><span class="dim">First TD picks</span><span>${hit} of ${picks.length} right (${Math.round(hit / picks.length * 100)}%) · model said ${Math.round(said)}%${picks.length < 30 ? "" : ""}</span></div>`;
 }
 function firstTdLine(g, gr) {
   const p = firstTdPick(g); if (!p) return "";
@@ -934,7 +934,7 @@ function setBg(g) {
 }
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = "";
-  $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}${anglesBox(g)}${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>. Prices and market lines appear once Polymarket lists them; touchdown chances are re-run then.</div></div></div>` : ""}<div class="sh" style="margin:16px 2px 0">SPREAD &amp; ML</div><div class="grid">${gameCard(g, "x")}</div><div class="sh" style="margin:16px 2px 0">TOTALS</div><div class="grid">${totalCard(g, "x")}</div>${tdTop3(g)}`;
+  $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}${anglesBox(g)}${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : ""}<div class="sh" style="margin:16px 2px 0">SPREAD &amp; ML</div><div class="grid">${gameCard(g, "x")}</div><div class="sh" style="margin:16px 2px 0">TOTALS</div><div class="grid">${totalCard(g, "x")}</div>${tdTop3(g)}`;
   $("back-btn").onclick = closeGame;
   if (g.final) ensureGrades();
   setBg(g);
@@ -979,7 +979,7 @@ function renderAlerts() {
     const ic = a.kind === "INJURY" && a.team ? injBadge(a.team) : a.kind === "PRICE GAP" || a.kind === "LINE MOVE" ? pmLogo() : "";
     return `<div class="card al${a.t > dots ? " un" : ""}" data-algame="${esc(a.game || "")}"><span class="dot"></span><div style="flex:1"><div class="kd" style="color:${col}"><span>${ic}${lab.toUpperCase()}</span><span class="dim" style="font-weight:600;letter-spacing:0">${hm(a.t)}</span></div>` +
       `<div class="ti">${esc(a.title)}</div>${a.sub ? `<div class="su">${esc(a.sub)}</div>` : ""}${a.game ? `<div style="font-size:11px;font-weight:700;margin-top:6px;color:var(--blue)">${esc(a.game)} ›</div>` : ""}</div></div>`; }).join("") ||
-    '<div class="card" style="margin-top:10px"><div class="s">Nothing yet. Alerts appear as injuries, line moves, price gaps and results come in.</div></div>';
+    '<div class="card" style="margin-top:10px"><div class="s">No alerts.</div></div>';
 }
 function renderAll() { weekline(); renderLines(); renderTd(); if (PAPER) renderLab(); if (MB) renderRecord(); tickCd(); renderAlerts(); }
 // Newest version all the time (9/30): if a new deploy went live while this page was open (or sat in a phone tab),
