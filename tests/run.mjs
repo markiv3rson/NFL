@@ -725,9 +725,25 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
         { slug: "astatc-nfl-nyg-was-2026-10-11-td-jacomer-gte1", outcome: "Yes", eventSlug: "nfl-nyg-was-2026-10-11", state: "COMBO_LEG_STATE_LOST" },
         { slug: "tsc-nfl-nyg-was-2026-10-11-total-42pt5", outcome: "Over", eventSlug: "nfl-nyg-was-2026-10-11" }] } } } };
       const cp = await comboPicks(raw, "caoc-x", 2026, 5);
+      const lar = await comboPicks({ positions: { positions: { r: { comboLegDetails: [{ slug: "asc-nfl-lar-den-2026-10-11-pos-2pt5", outcome: "+2.50", team: { abbreviation: "lar" }, eventSlug: "nfl-lar-den-2026-10-11" }, { slug: "tsc-nfl-lar-den-2026-10-11-total-44pt5", outcome: "Under", eventSlug: "nfl-lar-den-2026-10-11" }] } } } }, "r", 2026, 5);
+      ok(lar[0].label === "LA +2.5" && lar[1].label === "Under 44.5 · LA @ DEN", "my bets: Polymarket's LAR shows as the app's LA");
       ok(cp.map((x) => x.label).join("|") === "NYG +3.5|Cam Skattebo 1+ TD|Jacory Croskey-Merritt 1+ TD|Over 42.5 · NYG @ WAS" && cp[0].result === "W" && cp[2].result === "L" && cp[1].result === null && (await comboPicks(raw, "caoc-y", 2026, 5)) === null, "my bets: combo picks read from Polymarket (spread, TD names, total, won/lost)");
       const row = ctx.T.betRow({ source: "account", title: "caoc-x", week: 5, cost: 10, toWin: 294, price: 0.034, result: "pending", picks: cp });
       ok(/Combo · 4 picks/.test(row) && !/caoc-x/.test(row) && /NYG \+3\.5/.test(row) && /Cam Skattebo 1\+ TD/.test(row) && /pays \$294\.00 if it wins/.test(row), "my bets: open combo shows its picks in a list"); }
+    { // kickoff save (10/9): teaser leg, total +6 leg, total-fell Under and combo picks are all recorded, then graded
+      const { writePrelog } = await import("../pages/api/snapshot.js"), { getRedis: gr, K: KK, setJSON: sj } = await import("../lib/redis.js"), R = gr();
+      const G = { key: "A @ B", away: "A", home: "B", week: 5, kickoff: "2026-10-11T17:00:00Z" };
+      await R.rpush(KK.snaps(2026, 5, G.key), JSON.stringify({ t: 1, poly: { spread: { homeSpread: -3 }, total: { line: 48 } } }));
+      const poly = { spread: { homeSpread: -2, home: 0.5, away: 0.5 }, total: { line: 44, over: 0.5, under: 0.5 }, ml: { home: 0.55, away: 0.45 } };
+      const model = { games: { [G.key]: { homeMargin: 6, total: 41, calHomeCover: 55, calUnder: 60, outdoor: true, wind: 16, fix: { turf: true } } }, td: {} };
+      await writePrelog(2026, 5, G, "2026-10-11T16:55:00Z", poly, null, model);
+      const T = await R.hgetall("teaser:2026:5"), S = await R.hgetall("stack:2026:5");
+      ok(T[G.key] && JSON.parse(T[G.key]).line === 8 && T[G.key + "|total"] && JSON.parse(T[G.key + "|total"]).side === "under" && T[G.key + "|totmove"] && Object.keys(S).length > 0, "kickoff save: teaser leg, total +6, total-fell Under and combo picks all recorded");
+      const { gradeTeasersWeek } = await import("../lib/teaser.js"), { gradeStackWeek } = await import("../lib/stack.js");
+      const fin = [{ key: G.key, home: "B", away: "A", homeScore: 20, awayScore: 17 }];
+      await gradeTeasersWeek(2026, 5, fin); await gradeStackWeek(2026, 5, fin);
+      const T2 = await R.hgetall("teaser:2026:5"), S2 = Object.values(await R.hgetall("stack:2026:5")).map((x) => JSON.parse(x));
+      ok(JSON.parse(T2[G.key]).result === "W" && JSON.parse(T2[G.key + "|total"]).result === "W" && JSON.parse(T2[G.key + "|totmove"]).result === "W" && S2.every((x) => ["W", "L", "P"].includes(x.result)), "kickoff save: every recorded pick is graded after the final"); }
     const { totalMove } = await import("../lib/teaser.js"); ok(totalMove(47.5, 44).under && totalMove(44, 47).under === false && totalMove(44, 46.5) === null, "total move: 3+ points from the open"); }
   ok(ctx.T.slotOf({ badge: "SNF", kickoff: "2026-10-11T12:00:00" }) === "Primetime" && ctx.T.slotOf({ kickoff: "2026-10-11T10:00:00" }) === "Morning" && ctx.T.slotOf({ kickoff: "2026-10-11T13:25:00" }) === "Afternoon", "best bets: morning / afternoon / primetime");
   { // TD-based total fade (10/9)

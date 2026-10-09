@@ -28,7 +28,7 @@ export const config = { maxDuration: 120 };
 
 // Automatic pre-log (protocol 3.3): model vs Polymarket frozen at kickoff for every game. Used by the kickoff snapshot
 // AND the late-closing safety net below (added 9/29), so a missed kickoff (e.g. the scheduler down) still gets one.
-async function writePrelog(season, week, g, t, poly, bk, model) {
+export async function writePrelog(season, week, g, t, poly, bk, model) {
   const mdl = model || (await loadModel(season, week).catch(() => null)) || { games: {}, td: {} };
   const mg = mdl.games[g.key] || null, mt = mdl.td[g.key] || {}, tdp = (await getJSON(K.tdpx(season, week, g.key))) || {};
   const topTd = [...(mt.away || []).map((p) => ({ ...p, team: g.away })), ...(mt.home || []).map((p) => ({ ...p, team: g.home }))]
@@ -46,7 +46,7 @@ async function writePrelog(season, week, g, t, poly, bk, model) {
       const mU = mg && mg.calUnder != null ? mg.calUnder >= 50 : null;
       { const s0 = first && first.poly && first.poly.spread ? first.poly.spread.homeSpread : null, v = venue(g) || {};
         const hsNow = bk && bk.spread && bk.spread.homeSpread != null ? bk.spread.homeSpread : poly && poly.spread ? poly.spread.homeSpread : null;
-        await recordStack(season, week, g, tablePicks({ ...g, outdoor: !!v.outdoor }, mg, hsNow, now, s0, open, await situationFor(season, week, g).catch(() => null), Number(week)), t).catch(() => 0); }   // combo picks (10/9)
+        try { await recordStack(season, week, g, tablePicks({ ...g, outdoor: !!v.outdoor }, mg, hsNow, now, s0, open, await situationFor(season, week, g).catch(() => null), Number(week)), t); } catch {} }   // combo picks (10/9); a failure here never stops the rest
       await recordTotalLeg(season, week, g, poly, bk, mv ? mv.under : mg && mg.outdoor && mg.wind != null && mg.wind >= 15 ? true : mU == null ? true : !mU, t, open, mU === true).catch(() => 0); }
     await recordAltValues(season, week, g, alts ? { ...(poly || {}), alts } : poly, bk, t).catch(() => 0); }   // alt lines under their historical rate (10/9)   // Teaser leg: underdog +1.5..+2.5 at +7.5..+8.5 (10/6)
 }
