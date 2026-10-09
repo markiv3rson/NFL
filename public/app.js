@@ -102,35 +102,38 @@ function openMove(g, kind, p) {
   const lab = kind === "total" ? `${p.side === "over" ? "Over" : "Under"} ${open}` : `${p.team} ${sgn(open)}`;
   return `<div class="s ${mv > 0 ? "g" : "dim"}">Opened ${esc(lab)} · moved ${Math.abs(mv)} ${mv > 0 ? "toward" : "away from"} the model</div>`;
 }
-// Line moved 6 points in our favor (10/9): the only spread/total sides that beat a coin flip in every period 2007-25 (and 2016-25).
-// Spread: underdog +1.5..+2.5 at +7.5..+8.5: 83% in wind 15+, 70% when the total is 47+, else 76%.
-// Total: wind 15+ Under +6 71%, dome/closed roof Over -6 69%, otherwise the model's side 67%.
-function saferRate(g) {
+// Line moved 6 points in our favor (10/9): the only spread/total sides that beat a coin flip in every period.
+// Rates: nflverse closing lines 2007-25, aussportsbetting opening lines 2014-26, and this app's game model replayed 2014-25.
+// Spread: underdog +1.5..+2.5 at +7.5..+8.5: 83% in wind 15+, 77% when our model likes the dog, 73% when it likes the favorite.
+function saferRate(g, t) {
   const m = g.model || {}, tl = (g.books && g.books.total && g.books.total.line) ?? (g.poly && g.poly.total && g.poly.total.line);
-  return m.outdoor && m.wind != null && m.wind >= 15 ? 83 : tl != null && tl >= 47 ? 70 : 76;
+  if (m.outdoor && m.wind != null && m.wind >= 15) return 83;
+  const sp = g.spreadPick; if (t && sp && sp.team) return sp.team === t.team ? 77 : 73;
+  return tl != null && tl >= 47 ? 70 : 76;
 }
-// Opening total = the week's first saved line; moved 3+ since (10/9, open/close lines 2014-26).
 function totalMoved(g) {
   const h0 = (g.history || []).find((h) => h.poly && h.poly.total), tl = (g.books && g.books.total && g.books.total.line) ?? (g.poly && g.poly.total && g.poly.total.line);
   if (!h0 || tl == null) return null; const open = h0.poly.total.line;
   return Math.abs(tl - open) >= 3 ? { under: tl < open, open, now: tl } : null;
 }
+// Total moved 6 (replayed 2014-25): first the line's own move (3+ since open: that way, 75%); wind 15+: Under (75%, 86% when our
+// model says Over); otherwise AGAINST our model's side (70%; with the model 67%) - its total leans too far when teased.
 function saferTotal(g, p) {
-  const m = g.model || {}, mv = totalMoved(g);
+  const m = g.model || {}, mv = totalMoved(g), modelOver = p && p.side === "over";
   if (mv) return { under: mv.under, pct: 75 };
-  if (m.outdoor && m.wind != null && m.wind >= 15) return { under: true, pct: 71 };
-  if (g.outdoor === false) return { under: false, pct: 69 };
-  return { under: !p || p.side !== "over", pct: 67 };
+  if (m.outdoor && m.wind != null && m.wind >= 15) return { under: true, pct: modelOver ? 86 : 75 };
+  if (!p) return { under: true, pct: 68 };
+  return { under: modelOver, pct: 70 };
 }
 function saferSide(g, kind, p) {
   if (g.final) return "";
-  if (kind === "spread") { const t = g.teaser; return t ? `<div class="s g" style="margin-top:6px">Safer: <b>${esc(t.team)} +${t.line}</b> · wins ${saferRate(g)}%</div>` +
+  if (kind === "spread") { const t = g.teaser; return t ? `<div class="s g" style="margin-top:6px">Safer: <b>${esc(t.team)} +${t.line}</b> · wins ${saferRate(g, t)}%</div>` +
     ((t.ladder || []).length ? `<div class="s dim">${t.ladder.map((x) => `+${x.line} ${Math.round(x.hist * 100)}%`).join(" · ")}</div>` : "") : ""; }
   const tl = (g.books && g.books.total && g.books.total.line) ?? (g.poly && g.poly.total && g.poly.total.line); if (tl == null) return "";
   const s = saferTotal(g, p);
   const mv = totalMoved(g);
   return `<div class="s g" style="margin-top:6px">Safer: <b>${s.under ? `Under ${tl + 6}` : `Over ${tl - 6}`}</b> · wins ${s.pct}%</div>` +
-    (mv && mv.under ? `<div class="s g">Total fell ${mv.open} → ${mv.now}: <b>Under ${mv.now}</b> · wins 58%</div>` : "");
+    (mv && mv.under && p && p.side === "under" ? `<div class="s g">Total fell ${mv.open} → ${mv.now}: <b>Under ${mv.now}</b> · wins 64%</div>` : "");
 }
 function leanCell(g, kind) {
   let p = kind === "total" ? g.totalPick : g.spreadPick;
@@ -793,8 +796,10 @@ function bestBets() {
   }
   for (const g of (S && S.games) || []) { if (g.started || g.final) continue; const mv = totalMoved(g);
     if (mv) out.push({ pick: `${mv.under ? "Under" : "Over"} ${mv.under ? mv.now + 6 : mv.now - 6}`, game: g.key, why: `Total moved ${mv.open} → ${mv.now}, +6`, p: 0.754 });
-    if (mv && mv.under) out.push({ pick: `Under ${mv.now}`, game: g.key, why: `Total fell ${mv.open} → ${mv.now}`, p: 0.579 }); }
-  for (const x of (S && S.teaserLegs) || []) if (!(ko[x.game] && ko[x.game].started)) out.push({ pick: `${x.team} +${x.line}`, game: x.game, why: "Line +6", p: saferRate(ko[x.game] || {}) / 100 });
+    if (mv && mv.under && g.totalPick && g.totalPick.side === "under") out.push({ pick: `Under ${mv.now}`, game: g.key, why: `Total fell ${mv.open} → ${mv.now} · model Under`, p: 0.635 });
+    const tl = (g.books && g.books.total && g.books.total.line) ?? (g.poly && g.poly.total && g.poly.total.line);
+    if (!mv && tl != null && g.totalPick) { const st = saferTotal(g, g.totalPick); out.push({ pick: st.under ? `Under ${tl + 6}` : `Over ${tl - 6}`, game: g.key, why: "Total +6", p: st.pct / 100 }); } }
+  for (const x of (S && S.teaserLegs) || []) if (!(ko[x.game] && ko[x.game].started)) out.push({ pick: `${x.team} +${x.line}`, game: x.game, why: "Line +6", p: saferRate(ko[x.game] || {}, x) / 100 });
   const seen = new Set();
   return out.map((x) => ({ ...x, slot: slotOf(ko[x.game]) })).sort((a, b) => b.p - a.p)
     .filter((x) => !seen.has(x.pick + x.game) && seen.add(x.pick + x.game));
