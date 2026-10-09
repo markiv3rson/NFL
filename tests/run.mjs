@@ -643,6 +643,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { // confidence: angles agreeing on one side (10/9)
     const g = { ...tg, angles: [{ id: "dogblow", pick: "TB +4.5", hit: 58 }, { id: "streakfade", pick: "TB +4.5", hit: 59 }, { id: "winddiv", pick: "Under 41.5", hit: 57 }] };
     ok(ctx.T.topAngle(g).pick === "TB +4.5" && ctx.T.topAngle(g).n === 2 && /PICK TB \+4\.5 ×2/.test(ctx.T.tile(g)), "confidence: chip shows the side most angles agree on, with the count"); }
+  { // news lag alert (10/9)
+    const { alertsTdJump } = await import("../lib/alerts.js"), { SEASON } = await import("../lib/games.js"); const { getRedis: gR } = await import("../lib/redis.js"); await gR().del(`alerts:${SEASON}`).catch(() => {});
+    const g = { key: "A @ B", away: "A", home: "B" };
+    const n = await alertsTdJump(SEASON, g, { away: [], home: [{ name: "B.Back", pos: "RB", fair: 20 }, { name: "B.QB", pos: "QB", fair: 10 }] }, { away: [], home: [{ name: "B.Back", pos: "RB", fair: 35 }, { name: "B.QB", pos: "QB", fair: 30 }] },
+      { "B.Back anytime touchdown?": { ask: 0.22 } });
+    const n2 = await alertsTdJump(SEASON, g, { away: [], home: [{ name: "B.Back", pos: "RB", fair: 20 }] }, { away: [], home: [{ name: "B.Back", pos: "RB", fair: 35 }] }, { "B.Back anytime touchdown?": { ask: 0.33 } });
+    ok(n === 1 && n2 === 0, "news lag: alert when a player's chance jumps 8+ and the price lags 5+, not for QBs or caught-up prices"); }
   { // without him (10/8): top 3 TD scorers in games a listed-Out regular missed
     const h = ctx.T.tdTop3({ ...tg, td: [], without: { [tg.away]: [{ out: "A.Kamara", games: 7, top: [{ name: "C.Olave", td: 5 }, { name: "D.Vele", td: 2 }] }], [tg.home]: [{ out: "X.Y", games: 1, top: [] }] } });
     ok(/Without A\.Kamara<\/b> <span class="dim">\(7 games\)<\/span>: C\.Olave 5 · D\.Vele 2/.test(h) && /\(1 game\)<\/span>: no TDs/.test(h), "without him: scorers listed under the team's top 3"); }

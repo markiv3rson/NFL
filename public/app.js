@@ -577,6 +577,15 @@ function renderModelNow() {
       (() => { const no5 = tdPx.filter((p) => mp(p) <= p.bid - 0.05);
         const pl5 = no5.reduce((a, p) => a + (!p.scored ? 1 / (1 - p.bid) - 1 : -1), 0);
         return no5.length ? `<div class="row"><span class="dim">No · model 5+ under</span><span>${no5.filter((p) => !p.scored).length} of ${no5.length} won · ${cMoney(pl5)} (${cPct(pl5 / no5.length)})</span></div>` : ""; })() +
+      // Price-based trackers (10/9): star tax, Questionable gap, stuck prices, price moves. Tracked, not trusted, until 100+ each.
+      (() => { const noRow = (lab, xs) => { if (!xs.length) return ""; const w = xs.filter((p) => !p.scored).length, r = xs.reduce((a, p) => a + (!p.scored ? 1 / (1 - p.bid) - 1 : -1), 0);
+          return `<div class="row"><span class="dim">${lab}</span><span>${w}–${xs.length - w} · ${cMoney(r)}</span></div>`; };
+        const yesRow = (lab, xs) => { if (!xs.length) return ""; const w = xs.filter((p) => p.scored).length, r = xs.reduce((a, p) => a + (p.scored ? 1 / p.ask - 1 : -1), 0);
+          return `<div class="row"><span class="dim">${lab}</span><span>${w}–${xs.length - w} · ${cMoney(r)}</span></div>`; };
+        const opened = (p) => p.openAsk > 0 && p.openBid > 0, mv = (p) => (p.ask + p.bid) / 2 - (p.openAsk + p.openBid) / 2;
+        return noRow("No · stars 50¢+", tdPx.filter((p) => p.ask >= 0.5)) + noRow("No · Questionable", tdPx.filter((p) => /^questionable$/i.test(p.rep || ""))) +
+          noRow("No · stuck price, model 5+ under", tdPx.filter((p) => opened(p) && Math.abs(mv(p)) < 0.02 && mp(p) <= p.bid - 0.05)) +
+          yesRow("Yes · price rose 5¢+", tdPx.filter((p) => opened(p) && mv(p) >= 0.05)) + noRow("No · price rose 5¢+", tdPx.filter((p) => opened(p) && mv(p) >= 0.05)); })() +
       `<div class="row"><span class="dim">Scored vs priced</span><span>${(tdPx.filter((p) => p.scored).length / tdPx.length * 100).toFixed(0)}% · Poly ${(tdPx.reduce((a, p) => a + mk(p), 0) / tdPx.length * 100).toFixed(0)}% · model ${(tdPx.reduce((a, p) => a + mp(p) * 100, 0) / tdPx.length).toFixed(0)}%</span></div>` +
       // TD model CLV (added 9/29): for players where the model was above the OPENING price (first snapshot of the week),
       // did the closing price move toward the model? The fastest signal of real edge, long before win/loss means anything.
@@ -973,7 +982,7 @@ function tickCd() {
   tickCd._h = setTimeout(tickCd, 1000);
 }
 // alerts: built on the server from changes it already sees between pulls (injuries, lines, price gaps, model moves, results)
-const ALK = { INJURY: ["Injury", "var(--red)"], "PRICE GAP": ["Price gap", "var(--cyan)"], "QB CHANGE": ["QB change", "var(--gold)"], "LINE MOVE": ["Line move", "var(--blue)"], WEATHER: ["Weather", "#7fd1ff"], MODEL: ["Model", "var(--violet)"], RESULT: ["Result", "var(--green)"], TEASER: ["Teaser leg", "var(--cyan)"], "TD NO": ["TD No", "var(--red)"], "QB TD": ["QB TD", "var(--gold)"] };
+const ALK = { INJURY: ["Injury", "var(--red)"], "PRICE GAP": ["Price gap", "var(--cyan)"], "QB CHANGE": ["QB change", "var(--gold)"], "LINE MOVE": ["Line move", "var(--blue)"], WEATHER: ["Weather", "#7fd1ff"], MODEL: ["Model", "var(--violet)"], RESULT: ["Result", "var(--green)"], TEASER: ["Teaser leg", "var(--cyan)"], "TD NO": ["TD No", "var(--red)"], "TD JUMP": ["TD jump", "var(--green)"], "QB TD": ["QB TD", "var(--gold)"] };
 const alSeen = () => { try { return localStorage.getItem("alSeen") || ""; } catch { return ""; } };
 async function loadAlerts() {
   try { const d = await (await fetch("/api/alerts", { cache: "no-store" })).json(); if (d.ok) { ALERTS = d.alerts || []; renderAlerts(); } } catch {}
