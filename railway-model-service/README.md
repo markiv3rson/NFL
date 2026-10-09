@@ -70,6 +70,12 @@ Built on the same calibrated anytime-TD chance, tested walk-forward 2016-2025 (t
   all. Brier 0.0471 vs 0.0486 for a flat guess.
 - **Chance any RB / WR / TE on a team scores.** Independent-OR across the top players at that position. Works
   best for WR and TE; weak for RB (barely beats a no-info guess) — shown as extra context, not a primary number.
+- **Two models, averaged (10/9):** the logistic model plus a gradient-boosted model that also sees opponent red-zone TD rate
+  allowed, the team's run share inside the 5, snap trend and goal-line role. Walk-forward 2021-25 after the team TD total step:
+  Brier -0.00053, better in 5 of 5 seasons (live code on 2025: 0.15628 vs 0.15692). `idea_study.py`, `blend_study.py`,
+  `subset_study.py`. Tested and NOT added as single signals (each < 4 of 5 seasons): short week, prime time, cold weather,
+  garbage time, rematch, vs old team, QB change, after a 2+ TD game, rookie growth, blind-spot fix; QB rushing as a big
+  underdog (QB model, 0 of 4).
 - **Not added — tested and dropped:** recent goal-line role (redundant once snap share is in), team red-zone
   pass rate, and weather all failed to move the walk-forward Brier score.
 - **Not built — parked on request (9/28):** player yardage/reception O/U props. Confirmed Polymarket lists these
