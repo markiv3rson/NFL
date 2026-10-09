@@ -717,6 +717,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       const cl = ctx.T.comboLines({ combos: P }, "spread");
       ok(/class="mod"><b>B -8<\/b>/.test(cl) && (cl.match(/<b>/g) || []).length <= 3 && ctx.T.comboLines({ final: true, combos: P }, "spread") === "", "combo picks under the model card: best 3, purple with the model");
       ok(ctx.T.comboLines({ combos: [{ kind: "total", pick: "Under 42.5", hit: 51.5, why: "x" }, { kind: "total", pick: "Over 36.5", hit: 90, teaser: true, why: "y" }] }, "total") === "", "model card: market-line picks only (no teasers), 55%+");
+      { const sit = { home: { prevOT: true, nextDiv: true, prevDiv: true, revenge: true, winPct: 0.8 }, away: { prevMon: true, prevAway: true, prev2Away: true, prevMarg: -30, winPct: 0.2 } };
+        const NF = comboFactors(G, { homeMargin: 12, total: 41, outdoor: true, wind: 0, fix: { div: false }, xf: { awayRest: 14 } }, -8, 40, -8, 40, sit, 17).F;
+        ok(NF.favAfterOT && NF.favLookaheadDiv && NF.favRevenge && NF.dogAfterMNF && NF.dogAfterLoss28 && NF.road2nd && NF.road3rd && NF.roadOffBye && NF.sandwichAny && NF.wk17dogLosing && !NF.divRematch, "combo factors: research factors (overtime, Monday, revenge, lookahead, road trip, bye, sandwich, late season)"); }
+      { const K1 = tablePicks({ key: "MIA @ GB", away: "MIA", home: "GB", outdoor: true, kickoff: "2026-12-20T18:00:00Z" }, { homeMargin: 3, total: 40, temp: 20, fix: {} }, -3, 40).find((x) => x.id === "keeper|cold");
+        const K2 = tablePicks({ key: "NYJ @ SEA", away: "NYJ", home: "SEA", outdoor: true, kickoff: "2026-10-12T00:20:00Z" }, { homeMargin: 3, total: 40, fix: {} }, -3, 40).find((x) => x.id === "keeper|westnight");
+        ok(K1 && K1.pick === "GB -3" && K1.hit === 55.5 && K2 && K2.pick === "SEA -3" && K2.hit === 58.1, "research keepers: cold home team, West Coast night game"); }
       ok(gradeStackPick({ kind: "spread", team: "A", home: "B", line: 8.5 }, 24, 17) === "W" && gradeStackPick({ kind: "total", side: "over", line: 34 }, 20, 13) === "L", "combo picks: grading"); }
     { // combo picks from Polymarket's position data (10/9)
       const { comboPicks } = await import("../lib/mybets.js"), { setJSON: sj, K: KK } = await import("../lib/redis.js");
