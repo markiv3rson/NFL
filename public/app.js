@@ -199,6 +199,11 @@ function leanCell(g, kind) {
         recLine(P.rec) + lineCheck(g, kind, P.pick);
     }
   }
+  // Early-week total (10/9): while the total hasn't moved from its opening number, the early model's side of it (won 54.5% at the open, 2014-25).
+  if (kind === "total" && !g.final && g.modelEarly != null && g.totalOpen != null && LN.tl != null && Math.abs(LN.tl - g.totalOpen) < 0.5 && Math.abs(g.modelEarly - g.totalOpen) >= 0.5) {
+    const ov = g.modelEarly > g.totalOpen;
+    body += `<div class="s" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">Early-week edge: <b class="g">${ov ? "Over" : "Under"} ${g.totalOpen} · 54%</b> · the total hasn't moved yet; best bet before it does.</div>`;
+  }
   return wrap(`<div class="s">${mline}</div>` + body +
     (adj ? `<div class="s r" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">${injBadgeFor(g)}${esc(adj)}</div>` : "") +
     (p && p.warn && !g.final ? `<div class="s y">${esc(p.warn)}</div>` : ""));   // e.g. QB change the model can't see
