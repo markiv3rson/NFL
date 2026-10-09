@@ -14,7 +14,7 @@ Endpoints:
                            (inj is optional; when present the numbers include the injury adjustment, and "raw" holds the plain model)
   POST /rerun-td-probs     body: {"games": [{"away":"ATL","home":"GB","spread":-2.8,"total":41.2,"outs":["D.Goedert"]}, ...]}
 """
-import os
+import os, threading
 import numpy as np, pandas as pd, hmac
 from flask import Flask, request, jsonify
 import fair_line
@@ -80,8 +80,11 @@ def retrain_td():
 def health():
     return jsonify({"ok": True, "service": "nfl-bettors-model"})
 
+_LINES_LOCK = threading.Lock()   # 10/9: fair_line.build keeps module state; one game-lines run at a time
 @app.route("/rerun-game-lines", methods=["POST"])
 def rerun_game_lines():
+    with _LINES_LOCK: return _rerun_game_lines()
+def _rerun_game_lines():
     body = request.get_json(force=True)
     games = body.get("games", [])
     out = []

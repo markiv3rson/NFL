@@ -20,7 +20,7 @@ Blind spots (call out manually): snap-share/role shifts, QB changes, new-team pl
 import pandas as pd, numpy as np, pickle
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import brier_score_loss, log_loss
-import os, urllib.request, argparse
+import os, urllib.request, argparse, threading
 BASE="https://github.com/nflverse/nflverse-data/releases/download"; CACHE=os.path.expanduser("~/.nfl_cache")
 def _get(path, local, fresh):
     os.makedirs(CACHE,exist_ok=True); f=os.path.join(CACHE,local)
@@ -629,7 +629,10 @@ def touch_adjusted(df, pb, team, active=False, playing=None):
 
 import time as _time
 _LIVE_T = _time.time()
+_REFRESH_LOCK = threading.Lock()   # 10/9: 4 request threads -- one reload at a time
 def refresh_live(max_age=1800):
+    with _REFRESH_LOCK: return _refresh_live(max_age)
+def _refresh_live(max_age=1800):
     """Reload this season's data (play-by-play, snap counts, rosters, depth charts, positions) if it is older than
     max_age seconds. Before 9/28 all of it loaded ONCE when the Railway server started and every rerun reused it --
     for days, until the next deploy -- so new games, snap counts, IR moves and depth changes never reached the TD
