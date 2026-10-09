@@ -145,7 +145,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   vm.runInContext(`S = { games: [{ key: "DAL @ PHI", away: "DAL", home: "PHI", started: false, poly: { spread: { homeSpread: -4 }, total: { line: 45.5 }, ml: { home: 0.66 } },
     history: [{ t: "2026-10-01T10:00:00Z", poly: { spread: { homeSpread: -3 }, total: { line: 45.5 }, ml: { home: 0.60 } } }] }], edgesNow: [], edgeRule: { min: 0.03, feePct: 2, booksAgeH: 5, booksMaxAgeH: 3 } }`, ctx);
   ok(/spread PHI -3 → -4/.test(T.changedBox()) && /moneyline 60¢ → 66¢/.test(T.changedBox()), "what changed");
-  ok(/5 h old/.test(T.rightNowBox()) && /after a 2% fee/.test(T.rightNowBox()), "right now box");
+  ok(!/Gap = fair chance/.test(T.rightNowBox()), "right now box: no explanation line");
   globalThis.__ctx = ctx; }
 
 // ---------- Parlay Lab (paper parlays)
@@ -325,7 +325,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(/Touchdowns <span class="dim">· 3 legs<\/span>[\s\S]*hit <b>33%<\/b> · paid 43¢ · <b class="r">−10 pts/.test(h), "bets analysis: touchdown legs hit 1 of 3 against an average 43¢ price = −10 points");
     ok(/Spreads <span class="dim">· 2 legs/.test(h) && /Totals <span class="dim">· 1 legs/.test(h) && !/99/.test(h), "bets analysis: legs of unfinished combos count once graded; account bets are left out");
     ok(/3-leg combos <span class="dim">· 1<\/span>/.test(h) && /2-leg combos <span class="dim">· 1<\/span>/.test(h) && !/settled legs of your typed-in combos/.test(h), "bets analysis: by combo size, no explanation footnote");
-    ok(/Fills in as your combos settle/.test(ctx.T.betsAnalysis([])) && /Fills in as your combos settle/.test(ctx.T.betsAnalysis([{ source: "preloaded", legs: [L("td", "pending", 0.4)], result: "pending" }])), "bets analysis: says so when nothing has settled"); }
+    ok(/None yet/.test(ctx.T.betsAnalysis([])) && /None yet/.test(ctx.T.betsAnalysis([{ source: "preloaded", legs: [L("td", "pending", 0.4)], result: "pending" }])), "bets analysis: says so when nothing has settled"); }
   { // closing-line value: hand-worked, and the grading helper
     const mk = (k, c) => ({ [k]: { basis: "model", clvPts: c } });
     const h = ctx.T.clvSummary([mk("spread", 0.5), mk("spread", -0.5), mk("spread", 1), mk("spread", 0), mk("total", -1), { spread: { basis: "stats", clvPts: 9 } }, { spread: { basis: "model", clvPts: null } }]);
@@ -464,7 +464,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const mk = (fair, price) => ctx.T.tdRow({ r: { player: "X.Y", team: "A", pos: "WR", fair, price, bid: price - 0.02, game: "A @ B", flags: [] }, g: { key: "A @ B", away: "A", home: "B" } }, 0);
     ok(/\+\d+ vs price/.test(mk(60, 0.40)) && !/vs price/.test(mk(40, 0.40)), "touchdown row: marks a player only when the blend beats the price by 5+");
     const cal = ctx.T.tdCalibration([...Array(24)].map((_, i) => ({ fair: 40, scored: i < 7 })));
-    ok(/scored 29% ±9/.test(cal) && /too few to trust/.test(cal), "calibration rows: show the margin of error and flag small samples"); }
+    ok(/scored 29% ±9/.test(cal) && !/too few to trust/.test(cal), "calibration rows: show the margin of error and flag small samples"); }
   ok(playedLastGame({ missed: false, pct: 88 }) && !playedLastGame({ missed: true, pct: 60 }) && !playedLastGame({ missed: false, pct: 0 }) && !playedLastGame(null), "was-out tag: a player who played his team's last game is never tagged as out");
   { const ge = { key: "A @ B", away: "A", home: "B", early: true, spreadPick: null, totalPick: null, model: { homeMargin: 5.1, total: 44.9, homeWinPct: 66.4 } };
     const sp = ctx.T.leanCell(ge, "spread"), tt = ctx.T.leanCell(ge, "total");
@@ -493,8 +493,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const lone = ctx.T.tdPlayersWithDefense([{ game: "A @ B", awayScore: 10, homeScore: 40, td: [P("A", "A.RB", "RB", 40, false)] }]);
     ok(lone.length === 1 && lone[0].def === null, "by defense: an opponent with no OTHER graded game has no group (the game itself never counts)");
     const pos = ctx.T.tdByPosition(pl);
-    ok(/RB · 2 players/.test(pos) && /WR · 1 players/.test(pos) && /TE · 2 players/.test(pos) && /1 graded players have no position/.test(pos) && /too few to trust/.test(pos), "by position: RB, WR and TE rows with sample size, margin and a no-position note");
-    ok(/too few to trust/.test(ctx.T.tdByDefense(pl)) && ctx.T.tdByDefense([]).includes("Fills in"), "by defense: rows flag small samples; empty says it fills in"); }
+    ok(/RB · 2 players/.test(pos) && /WR · 1 players/.test(pos) && /TE · 2 players/.test(pos) && /1 graded players have no position/.test(pos), "by position: RB, WR and TE rows with sample size, margin and a no-position note");
+    ok(ctx.T.tdByDefense([]).includes("None yet"), "by defense: rows flag small samples; empty says it fills in"); }
   { // one week only (10/6): Anytime TD and Game Lines show this week, no next-week section
     const bx = { innerHTML: "" }, hx = { innerHTML: "" }, oldG = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "td" ? bx : id === "td-header" ? hx : oldG(id));
     const pl = (team, i) => ({ player: `T.${team}${i}`, team, pos: "RB", fair: 60 - i * 5, price: 0.5, bid: 0.48, teamRank: i + 1, game: "A @ B", flags: [] });
@@ -515,7 +515,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const gr = { found: true, map: new Map([["B|bone", { ftdHit: true }]]) }, grMiss = { found: true, map: new Map([["B|bone", { ftdHit: false }]]) };
     ok(/✓ scored first/.test(ctx.T.firstTdLine({ ...g, final: true }, gr)) && /✗/.test(ctx.T.firstTdLine({ ...g, final: true }, grMiss)) && !/✓|✗/.test(ctx.T.firstTdLine(g, gr)), "first TD pick: ✓ / ✗ only after the game");
     const res = [{ td: [{ ftd: 20, ftdHit: true, played: true }, { ftd: 10, ftdHit: false, played: true }] }, { td: [{ ftd: 30, ftdHit: false, played: false }, { ftd: 18, ftdHit: false, played: true }] }];
-    ok(/1 of 2 right \(50%\) · model said 19% · too few to trust/.test(ctx.T.firstTdRecord(res)) && ctx.T.firstTdRecord([]) === "", "first TD picks: season record uses each game's top pick who played");
+    ok(/1 of 2 right \(50%\) · model said 19%/.test(ctx.T.firstTdRecord(res)) && ctx.T.firstTdRecord([]) === "", "first TD picks: season record uses each game's top pick who played");
     const { buildFtdCalibration, applyFtdCalibration, FTD_MIN_GAMES } = await import("../lib/calibration.js");
     const recs = (n) => [...Array(n)].map(() => ({ td: [...Array(10)].map((_, i) => ({ ftd: 8, ftdHit: i === 0, played: true })) }));
     const off = { ftd: buildFtdCalibration(recs(15)) }, on = { ftd: buildFtdCalibration(recs(FTD_MIN_GAMES)) };
@@ -732,7 +732,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { // Pick Lab: the model's parlays only (no single-game winners list), each type says how it was chosen
     const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "lab" ? box : old(id));
     vm.runInContext(`S = { week: 4, games: [], winners: { all: { n: 1, w: 1, l: 0, hit: 1 } } }; MB = null; RES = null; PAPER = { names: { model_best_4: "Model's 4 most likely legs", same_game_3: "Same game" }, board: {}, week: { week: 4, parlays: [ { strategy: "model_best_4", legs: [ { label: "H1 ML", game: "A @ H1", price: 0.8 }, { label: "H2 ML", game: "A @ H2", price: 0.8 } ], pay: 1.56, prob: 0.6 } ] } }`, ctx);
-    ctx.T.renderLab(); ok(/pays 1\.56x · market chance 64% · model 60%/.test(box.innerHTML) && !/Model's pick on every game/.test(box.innerHTML) && /Your model's parlays/.test(box.innerHTML) && /Rule: the 4 legs the model rates most likely/.test(box.innerHTML) && /H1 ML/.test(box.innerHTML) && /Parlay scoreboard/.test(box.innerHTML), "pick lab: parlays and their scoreboard only, with how each parlay was chosen");
+    ctx.T.renderLab(); ok(/pays 1\.56x · market chance 64% · model 60%/.test(box.innerHTML) && !/Model's pick on every game/.test(box.innerHTML) && /Your model's parlays/.test(box.innerHTML) && !/Rule:/.test(box.innerHTML) && /H1 ML/.test(box.innerHTML) && /Parlay scoreboard/.test(box.innerHTML), "pick lab: parlays and their scoreboard only, with how each parlay was chosen");
     ctx.document.getElementById = old; }
   { // Models tab: nine sections in order, each with a one-line meaning; the analysis helpers on real-shaped data
     const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "models" ? box : id === "export-btn" ? { onclick: null } : old(id));
@@ -750,7 +750,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(/Moneyline[\s\S]*50%[\s\S]*Spread[\s\S]*Total/.test(bw) && /Week 3/.test(bw), "models tab: hit rate by week");
     ok(/Said 80\+% · 1 picks/.test(bc) && /Said 60–70% · 1 picks/.test(bc) && /100%/.test(bc), "models tab: confidence buckets use the chance the model said");
     ok(/Said 35–50% · 1 players/.test(tc) && /Said 15–25% · 1 players/.test(tc), "models tab: touchdown calibration bands");
-    ok(/Fills in as games go final/.test(ctx.T.modelsByConfidence([])) && /Fills in as games go final/.test(ctx.T.tdCalibration([])), "models tab: empty data says so");
+    ok(/None yet/.test(ctx.T.modelsByConfidence([])) && /None yet/.test(ctx.T.tdCalibration([])), "models tab: empty data says so");
     ctx.document.getElementById = old; }
   { // Record tab week filter: this week by default, Season shows everything, tiles recomputed from the bets shown
     const box = { innerHTML: "", onclick: null }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "record-mine" ? box : old(id));
