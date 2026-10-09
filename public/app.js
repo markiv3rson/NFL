@@ -164,7 +164,12 @@ function leanCell(g, kind) {
   const P = g.final ? null : straightPicks(g).find((x) => (kind === "total" ? isTot(x.pick) : !isTot(x.pick) && !/\bML\b/.test(x.pick)));
   let body = "";
   if (!g.final) {
-    if (!P) body = `<div style="margin-top:6px"><b class="dim">No pick</b></div>`;
+    if (!P) {   // nothing at 56%+: still lean to the side most likely to win (10/9) - the best tested pick below 56%, else the model's side
+      const L = straightPicks(g, 0).find((x) => (kind === "total" ? isTot(x.pick) : !isTot(x.pick) && !/\bML\b/.test(x.pick)));
+      const lp = L && L.p > 0.5 ? L : p ? { pick: p.label, p: 0.51, why: "model's side" } : null;
+      body = lp ? `<div style="margin-top:6px"><b class="y" style="font-size:16px">LEAN: ${esc(lp.pick)} · ${Math.round(lp.p * 100)}%</b></div><div class="s" style="margin-top:4px">${esc(lp.why)} · close to a coin flip, smaller bet.</div>`
+        : `<div style="margin-top:6px"><b class="dim">No pick</b></div>`;
+    }
     else {
       const pc = Math.round(P.p * 100);
       const against = !!p && (kind === "total" ? /^Over/.test(P.pick) !== (p.side === "over") : !P.pick.startsWith(`${p.team} `));
@@ -809,7 +814,7 @@ function teaserRow() {
 }
 // Decision model (10/9): straight bets only (no teasers, no alt lines), ONE pick per game per market (spread, total): the one
 // with the best record. Two angles on opposite sides of the same total no longer both show.
-function straightPicks(g) {
+function straightPicks(g, min = BEST_MIN) {
   if (!g || g.started || g.final) return [];
   const out = [];
   for (const a of g.angles || []) if (a.hit) out.push({ pick: a.pick, game: g.key, why: a.name, p: a.hit / 100 });
@@ -817,7 +822,7 @@ function straightPicks(g) {
   const mv = totalMoved(g); if (mv && mv.under && g.totalPick && g.totalPick.side === "under") out.push({ pick: `Under ${mv.now}`, game: g.key, why: `Total fell ${mv.open} → ${mv.now} · model Under`, p: 0.635 });
   const best = {};
   for (const x of out) { const k = /^(Over|Under)\b/.test(x.pick) ? "total" : /\bML\b/.test(x.pick) ? "ml" : "spread"; if (!best[k] || x.p > best[k].p) best[k] = x; }
-  return Object.values(best).filter((x) => x.p >= BEST_MIN).sort((a, b) => b.p - a.p);
+  return Object.values(best).filter((x) => x.p >= min).sort((a, b) => b.p - a.p);
 }
 // Only picks that won 56%+ (a coin flip is 50%), and only the top 10 of the week, so the list stays short.
 const BEST_MIN = 0.56, BEST_MAX = 10;
