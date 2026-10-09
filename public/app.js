@@ -147,6 +147,20 @@ function saferOne(g, kind, p) {
   return `<div class="s g" style="margin-top:6px">Safer: <b>${s.under ? `Under ${tl + 6}` : `Over ${tl - 6}`}</b> · wins ${s.pct}%</div>` +
     (mv && mv.under && p && p.side === "under" ? `<div class="s g">Total fell ${mv.open} → ${mv.now}: <b>Under ${mv.now}</b> · wins 64%</div>` : "");
 }
+// This season's record for the pick's type (10/9).
+function recLine(r) { return r ? `<div class="s" style="margin-top:6px">This season: <b>${r.w}–${r.l}</b>${r.w + r.l ? "" : " (none graded yet)"}</div>` : ""; }
+// Line check (10/9): the pick's line vs the week's first saved line for the same side; better or worse number since it opened.
+function lineCheck(g, kind, pick) {
+  const h0 = (g.history || []).find((h) => h.poly && (kind === "total" ? h.poly.total : h.poly.spread)); if (!h0) return "";
+  const m = /^(Over|Under) ([\d.]+)/.exec(pick), t = /^([A-Z]{2,3}) ([+-][\d.]+)/.exec(pick);
+  let open, now, better;
+  if (kind === "total" && m) { open = h0.poly.total.line; now = Number(m[2]); better = m[1] === "Over" ? now < open : now > open; }
+  else if (kind === "spread" && t) { const hs0 = h0.poly.spread.homeSpread; open = t[1] === g.home ? hs0 : -hs0; now = Number(t[2]); better = now > open; }
+  else return "";
+  if (!isFinite(open) || Math.abs(now - open) < 0.5) return "";
+  const lab = (x) => (kind === "total" ? `${m[1]} ${x}` : `${t[1]} ${x > 0 ? "+" : ""}${x}`);
+  return `<div class="s ${better ? "g" : "y"}" style="margin-top:4px">${better ? "✓" : "⚠"} Line moved: opened ${esc(lab(open))}, now ${esc(lab(now))} · ${better ? "better number now" : "worse number now"}</div>`;
+}
 function leanCell(g, kind) {
   let p = kind === "total" ? g.totalPick : g.spreadPick;
   const head = `<div class="k">Model${injApplied(g, kind) ? ' <span class="pill p-y" style="padding:0 6px;font-size:10px">Estimate</span>' : ""}</div>`;
@@ -175,7 +189,8 @@ function leanCell(g, kind) {
       const against = !!p && (kind === "total" ? /^Over/.test(P.pick) !== (p.side === "over") : !P.pick.startsWith(`${p.team} `));
       const who = kind === "total" ? (p && p.side === "over" ? "the Over" : "the Under") : p ? p.team : "";
       body = `<div style="margin-top:6px"><b class="g" style="font-size:16px">PICK: ${esc(P.pick)} · ${pc}%</b></div>` +
-        `<div class="s" style="margin-top:4px">${against ? `Model is too high on ${esc(who)} here: in games like this, ${esc(P.pick.split(" ")[0])} won ${pc}%.` : `${esc(P.why)} · won ${pc}%.`}</div>`;
+        `<div class="s" style="margin-top:4px">${against ? `Model is too high on ${esc(who)} here: in games like this, ${esc(P.pick.split(" ")[0])} won ${pc}%.` : `${esc(P.why)} · won ${pc}%.`}</div>` +
+        recLine(P.rec) + lineCheck(g, kind, P.pick);
     }
   }
   return wrap(`<div class="s">${mline}</div>` + body +
@@ -817,9 +832,9 @@ function teaserRow() {
 function straightPicks(g, min = BEST_MIN) {
   if (!g || g.started || g.final) return [];
   const out = [];
-  for (const a of g.angles || []) if (a.hit) out.push({ pick: a.pick, game: g.key, why: a.name, p: a.hit / 100 });
-  for (const c of g.combos || []) if (!c.teaser) out.push({ pick: c.pick, game: g.key, why: c.why, p: c.hit / 100 });
-  const mv = totalMoved(g); if (mv && mv.under && g.totalPick && g.totalPick.side === "under") out.push({ pick: `Under ${mv.now}`, game: g.key, why: `Total fell ${mv.open} → ${mv.now} · model Under`, p: 0.635 });
+  for (const a of g.angles || []) if (a.hit) out.push({ pick: a.pick, game: g.key, why: a.name, p: a.hit / 100, rec: a.rec });
+  for (const c of g.combos || []) if (!c.teaser) out.push({ pick: c.pick, game: g.key, why: c.why, p: c.hit / 100, rec: c.rec });
+  const mv = totalMoved(g); if (mv && mv.under && g.totalPick && g.totalPick.side === "under") out.push({ pick: `Under ${mv.now}`, game: g.key, why: `Total fell ${mv.open} → ${mv.now} · model Under`, p: 0.635, rec: S && S.moveRec });
   const best = {};
   for (const x of out) { const k = /^(Over|Under)\b/.test(x.pick) ? "total" : /\bML\b/.test(x.pick) ? "ml" : "spread"; if (!best[k] || x.p > best[k].p) best[k] = x; }
   return Object.values(best).filter((x) => x.p >= min).sort((a, b) => b.p - a.p);
@@ -843,6 +858,18 @@ function extraBets() {
   for (const x of (S && S.teaserLegs) || []) if (ko[x.game] && !ko[x.game].started) out.push({ pick: `${x.team} +${x.line}`, game: x.game, why: "Underdog +6", p: saferRate(ko[x.game], x) / 100 });
   const seen = new Set();
   return out.sort((a, b) => b.p - a.p).filter((x) => !seen.has(x.pick + x.game) && seen.add(x.pick + x.game)).slice(0, 5);
+}
+// Parlay of the week (10/9): the strongest green picks, one per game (up to 4), and the chance all of them hit.
+function parlayPicks() {
+  const seen = new Set(), out = [];
+  for (const x of bestBets()) { if (seen.has(x.game)) continue; seen.add(x.game); out.push(x); if (out.length === 4) break; }
+  return out.length >= 2 ? out : [];
+}
+function parlayStrip() {
+  const P = parlayPicks(); if (!P.length) return "";
+  const ch = P.reduce((a, x) => a * x.p, 1);
+  const rows = P.map((x) => `<div class="bb"><div class="t1"><b class="g">${esc(x.pick)}</b><span style="white-space:nowrap">${Math.round(x.p * 100)}%</span></div><div class="t2">${esc(x.game)}</div></div>`).join("");
+  return `<div class="gapstrip" data-drop="parlaylist"><div class="t">Parlay of the week · ${P.length} picks ›</div></div><div class="drop" id="parlaylist"><div class="card"><div class="inner">${rows}<div class="s" style="margin-top:8px">Chance all ${P.length} hit: <b>${Math.round(ch * 100)}%</b> · one pick per game</div></div></div></div>`;
 }
 function extraStrip() {
   const E = extraBets(); if (!E.length) return "";
@@ -1086,7 +1113,7 @@ function renderLines() {
   if (DETAIL) { const g = S.games.find((x) => x.key === DETAIL); if (g) return renderDetail(g); DETAIL = null; }
   setBg(null);
   $("detail").style.display = "none"; $("lines").style.display = "";
-  $("lines").innerHTML = bestStrip() + extraStrip() + changedBox() + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
+  $("lines").innerHTML = bestStrip() + parlayStrip() + extraStrip() + changedBox() + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
 
     '';
 }
