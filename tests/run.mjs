@@ -619,6 +619,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const poly = { spread: { homeSpread: -6, home: 0.5, away: 0.5 } }, G = { key: "A @ H", away: "A", home: "H", week: 6 };
     ok(picksFor(G, poly, {}, { home: {}, away: {}, homeCoachAts: { n: 50, rate: 0.42 } }).some((p) => p.market === "coachfade" && p.label === "A +6") &&
       !picksFor(G, poly, {}, { home: {}, away: {}, homeCoachAts: { n: 50, rate: 0.5 } }).some((p) => p.market === "coachfade"), "coach fade: road team only when the home coach is 44% or worse"); }
+  { // sold combos (10/9): profit read from the selling trade
+    const { soldFrom } = await import("../lib/mybets.js");
+    const x = soldFrom({ type: "ACTIVITY_TYPE_TRADE", trade: { marketSlug: "caoc-1", price: { value: "0.4980" }, qty: "-50", realizedPnl: { value: "19.90" }, updateTime: "2026-10-09T02:00:00Z" } });
+    ok(x && x.slug === "caoc-1" && x.pl === 19.9 && Math.abs(x.proceeds - 24.9) < 1e-9 && soldFrom({ trade: { marketSlug: "b", price: { value: "0.1" }, qty: "50", realizedPnl: { value: "0" } } }) === null, "sold: profit from the selling trade, buys ignored");
+    const row = ctx.T.betRow ? ctx.T.betRow({ source: "account", title: "caoc-1", week: 5, cost: 5, price: 0.08, toWin: 59, result: "W", pl: 19.9, sold: { pl: 19.9, proceeds: 24.9 } }) : "";
+    ok(/class="g">Sold<\/span> /.test(row) && /sold early for \$24\.90/.test(row), "sold: shown as Sold with the profit"); }
   { // without him (10/8): top 3 TD scorers in games a listed-Out regular missed
     const h = ctx.T.tdTop3({ ...tg, td: [], without: { [tg.away]: [{ out: "A.Kamara", games: 7, top: [{ name: "C.Olave", td: 5 }, { name: "D.Vele", td: 2 }] }], [tg.home]: [{ out: "X.Y", games: 1, top: [] }] } });
     ok(/Without A\.Kamara<\/b> <span class="dim">\(7 games\)<\/span>: C\.Olave 5 · D\.Vele 2/.test(h) && /\(1 game\)<\/span>: no TDs/.test(h), "without him: scorers listed under the team's top 3"); }
