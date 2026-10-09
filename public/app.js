@@ -109,8 +109,15 @@ function saferRate(g) {
   const m = g.model || {}, tl = (g.books && g.books.total && g.books.total.line) ?? (g.poly && g.poly.total && g.poly.total.line);
   return m.outdoor && m.wind != null && m.wind >= 15 ? 83 : tl != null && tl >= 47 ? 70 : 76;
 }
+// Opening total = the week's first saved line; moved 3+ since (10/9, open/close lines 2014-26).
+function totalMoved(g) {
+  const h0 = (g.history || []).find((h) => h.poly && h.poly.total), tl = (g.books && g.books.total && g.books.total.line) ?? (g.poly && g.poly.total && g.poly.total.line);
+  if (!h0 || tl == null) return null; const open = h0.poly.total.line;
+  return Math.abs(tl - open) >= 3 ? { under: tl < open, open, now: tl } : null;
+}
 function saferTotal(g, p) {
-  const m = g.model || {};
+  const m = g.model || {}, mv = totalMoved(g);
+  if (mv) return { under: mv.under, pct: 75 };
   if (m.outdoor && m.wind != null && m.wind >= 15) return { under: true, pct: 71 };
   if (g.outdoor === false) return { under: false, pct: 69 };
   return { under: !p || p.side !== "over", pct: 67 };
@@ -121,7 +128,9 @@ function saferSide(g, kind, p) {
     ((t.ladder || []).length ? `<div class="s dim">${t.ladder.map((x) => `+${x.line} ${Math.round(x.hist * 100)}%`).join(" · ")}</div>` : "") : ""; }
   const tl = (g.books && g.books.total && g.books.total.line) ?? (g.poly && g.poly.total && g.poly.total.line); if (tl == null) return "";
   const s = saferTotal(g, p);
-  return `<div class="s g" style="margin-top:6px">Safer: <b>${s.under ? `Under ${tl + 6}` : `Over ${tl - 6}`}</b> · wins ${s.pct}%</div>`;
+  const mv = totalMoved(g);
+  return `<div class="s g" style="margin-top:6px">Safer: <b>${s.under ? `Under ${tl + 6}` : `Over ${tl - 6}`}</b> · wins ${s.pct}%</div>` +
+    (mv && mv.under ? `<div class="s g">Total fell ${mv.open} → ${mv.now}: <b>Under ${mv.now}</b> · wins 58%</div>` : "");
 }
 function leanCell(g, kind) {
   let p = kind === "total" ? g.totalPick : g.spreadPick;
@@ -768,10 +777,11 @@ function altRow() {
 }
 function teaserRow() {
   const T = TEASERS; if (!T) return "";
+  const mm = T.moves, mRow = mm ? `<div class="arow"><span class="nm">Under after total fell 3+</span><span class="dim rc">${mm.n ? `${mm.w}–${mm.l}` : mm.recorded ? `${mm.recorded} saved` : "none yet"}</span><b class="${mm.n ? (mm.hit >= 0.55 ? "g" : mm.hit >= 0.5 ? "y" : "r") : "dim"}">${mm.n ? Math.round(mm.hit * 100) + "%" : "—"}</b></div>` : "";
   const tt = T.totals, tRow = tt ? `<div class="arow"><span class="nm">Total moved 6 (model's side)</span><span class="dim rc">${tt.n ? `${tt.w}–${tt.l}` : tt.recorded ? `${tt.recorded} saved` : "none yet"}</span><b class="${tt.n ? (tt.hit >= 0.67 ? "g" : tt.hit >= 0.6 ? "y" : "r") : "dim"}">${tt.n ? Math.round(tt.hit * 100) + "%" : "—"}</b></div>` : "";
   const a = T.all || {}, v = T.value || {}, pc = (x) => (x == null ? "—" : `${Math.round(x * 100)}%`);
   return `<div class="arow"><span class="nm">Underdog +1.5–2.5 teased to +7.5–8.5</span><span class="dim rc">${a.n ? `${a.w}–${a.l}` : T.recorded ? `${T.recorded} saved` : "none yet"}</span><b class="${a.n ? (a.hit >= 0.76 ? "g" : a.hit >= 0.72 ? "y" : "r") : "dim"}">${a.n ? pc(a.hit) : "—"}</b></div>` +
-    `<div class="s dim">History ${T.hist.years}: ${Math.round(T.hist.hit * 1000) / 10}% of ${T.hist.n}</div>` + tRow;
+    `<div class="s dim">History ${T.hist.years}: ${Math.round(T.hist.hit * 1000) / 10}% of ${T.hist.n}</div>` + tRow + mRow;
 }
 // Game Lines strip: this week's teaser legs and what Polymarket charges for each.
 // Decision model (10/9): every pick the app has a history for (PICK angles, ALT lines, teaser legs), sorted only by how often it won.
@@ -781,6 +791,9 @@ function bestBets() {
     for (const a of g.angles || []) if (a.hit) out.push({ pick: a.pick, game: g.key, why: a.name, p: a.hit / 100 });
     for (const x of g.altValue || []) out.push({ pick: `${x.team} ${x.line > 0 ? "+" : ""}${x.line}`, game: g.key, why: "ALT line", p: x.hist });
   }
+  for (const g of (S && S.games) || []) { if (g.started || g.final) continue; const mv = totalMoved(g);
+    if (mv) out.push({ pick: `${mv.under ? "Under" : "Over"} ${mv.under ? mv.now + 6 : mv.now - 6}`, game: g.key, why: `Total moved ${mv.open} → ${mv.now}, +6`, p: 0.754 });
+    if (mv && mv.under) out.push({ pick: `Under ${mv.now}`, game: g.key, why: `Total fell ${mv.open} → ${mv.now}`, p: 0.579 }); }
   for (const x of (S && S.teaserLegs) || []) if (!(ko[x.game] && ko[x.game].started)) out.push({ pick: `${x.team} +${x.line}`, game: x.game, why: "Line +6", p: saferRate(ko[x.game] || {}) / 100 });
   const seen = new Set();
   return out.map((x) => ({ ...x, slot: slotOf(ko[x.game]) })).sort((a, b) => b.p - a.p)
