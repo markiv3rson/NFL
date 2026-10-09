@@ -149,7 +149,7 @@ def _rerun_game_lines():
             out.append(result)
         except Exception as e:
             out.append({"game": f"{g.get('away')} @ {g.get('home')}", "error": str(e)})
-    # Extra factors for the site's combo picks (10/9): coach/referee records, team age, QB rushing, rest, travel, the 5 stats models.
+    # Extra factors for the site's combo picks (10/9): coach records, team age, QB rushing, rest, travel, the 5 stats models.
     try:
         xf = extra_factors.factors([{"away": nv(g["away"]), "home": nv(g["home"]), "week": g.get("week"), "spread": g.get("spread"), "total": g.get("total"),
                                      "wind": g.get("wind") if g.get("outdoor") else 0, "dome": g.get("dome"), "temp": g.get("temp"),
