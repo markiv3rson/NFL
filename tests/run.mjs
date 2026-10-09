@@ -515,7 +515,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const gr = { found: true, map: new Map([["B|bone", { ftdHit: true }]]) }, grMiss = { found: true, map: new Map([["B|bone", { ftdHit: false }]]) };
     ok(/✓ scored first/.test(ctx.T.firstTdLine({ ...g, final: true }, gr)) && /✗/.test(ctx.T.firstTdLine({ ...g, final: true }, grMiss)) && !/✓|✗/.test(ctx.T.firstTdLine(g, gr)), "first TD pick: ✓ / ✗ only after the game");
     const res = [{ td: [{ ftd: 20, ftdHit: true, played: true }, { ftd: 10, ftdHit: false, played: true }] }, { td: [{ ftd: 30, ftdHit: false, played: false }, { ftd: 18, ftdHit: false, played: true }] }];
-    ok(/1 of 2 right \(50%\) · model said 19%/.test(ctx.T.firstTdRecord(res)) && ctx.T.firstTdRecord([]) === "", "first TD picks: season record uses each game's top pick who played");
+    ok(/1 of 2 · 50% · exp 19%/.test(ctx.T.firstTdRecord(res)) && ctx.T.firstTdRecord([]) === "", "first TD picks: season record uses each game's top pick who played");
     const { buildFtdCalibration, applyFtdCalibration, FTD_MIN_GAMES } = await import("../lib/calibration.js");
     const recs = (n) => [...Array(n)].map(() => ({ td: [...Array(10)].map((_, i) => ({ ftd: 8, ftdHit: i === 0, played: true })) }));
     const off = { ftd: buildFtdCalibration(recs(15)) }, on = { ftd: buildFtdCalibration(recs(FTD_MIN_GAMES)) };
@@ -675,7 +675,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "models" ? box : id === "export-btn" ? { onclick: null } : old(id));
     const px = (fair, scored, ask, bid) => ({ team: "A", player: "P", fair, scored, played: true, ask, bid });
     vm.runInContext(`S = { week: 4, games: [], status: { ok: true, errors: [] }, weekCheck: { games: 16, withLines: 16, modelRun: true, watch: [] }, missFinder: null, winners: null }; MB = { summary: {}, bets: [] }; PAPER = { names: {}, board: {}, week: null }; PICKS = null; EDGES = null; REPLAY = null; RES = [ { game: "A @ B", week: 4, td: [ ${JSON.stringify(px(40, true, 0.30, 0.28))}, ${JSON.stringify(px(20, false, 0.25, 0.23))}, ${JSON.stringify(px(30, true, 0.33, 0.30))} ] } ]`, ctx);
-    ctx.T.renderModel(); ok(/Blend: half model, half market/.test(box.innerHTML), "models tab: the touchdown check scores the 50/50 blend next to the model and the market");
+    ctx.T.renderModel(); ok(/50\/50 blend/.test(box.innerHTML), "models tab: the touchdown check scores the 50/50 blend next to the model and the market");
     ctx.document.getElementById = old; }
   { // snap counts not posted yet (played unset): those players are left out of every accuracy number instead of counting as misses
     const { buildCalibration } = await import("../lib/calibration.js"); const { findMisses } = await import("../lib/missfinder.js");

@@ -255,7 +255,7 @@ const retPill = (r) => (r.returning ? (r.returningState === "practicing" ? ' <sp
 // a small sample, so the weight is fixed at 50/50 until about 500 graded players.
 const TD_BLEND_W = 0.5;
 // "No" mark (10/6): on a real market, the model is 5+ points under what a Yes sells for (the bid), so buying No looks cheap.
-// Same rule as the Models row "$1 on No when model is 5+ pts under".
+// Same rule as the Models row "No · model 5+ under".
 function tdNoGap(r) {
   if (!r || r.fair == null || !(r.bid > 0) || !(r.price > 0) || r.stale || r.thin || r.price - r.bid > Math.min(0.05, 0.4 * r.price)) return null;
   const gap = r.bid * 100 - r.fair; return gap >= 5 ? Math.round(gap) : null;
@@ -359,7 +359,7 @@ function betsAnalysis(bets) {
     if (b.result === "W" || b.result === "L") { const z = bySize[b.legs.length] = bySize[b.legs.length] || { n: 0, w: 0, cost: 0, pl: 0 }; z.n++; z.w += b.result === "W" ? 1 : 0; z.cost += b.cost; z.pl += b.pl || 0; }
   }
   if (!nLegs) return '<div class="s">None yet.</div>';
-  const small = (n) => (n < 30 ? ' <span class="dim">· small sample</span>' : "");
+  const small = (n) => (n < 30 ? '' : "");
   const legRows = Object.keys(byKind).sort().map((kk) => { const k = byKind[kk], hit = k.w / k.n * 100, paid = k.price / k.n * 100, d = hit - paid;
     return `<div class="row"><span>${LK[kk] || kk} <span class="dim">· ${k.n} legs</span></span><span>hit <b>${Math.round(hit)}%</b> · paid ${Math.round(paid)}¢ · <b class="${d > 3 ? "g" : d < -3 ? "r" : "dim"}">${d > 0 ? "+" : "−"}${Math.abs(d).toFixed(0)} pts</b>${small(k.n)}</span></div>`; }).join("");
   const sizeRows = Object.keys(bySize).map(Number).sort((a, b) => a - b).map((z) => { const k = bySize[z];
@@ -521,7 +521,7 @@ function mSec(id, title, meaning, body, warn = 0, open = false) {
 function clvSummary(res) {
   const one = (k, name) => { const xs = (res || []).map((r) => r[k]).filter((x) => x && x.basis === "model" && x.clvPts != null && isFinite(x.clvPts)); if (!xs.length) return "";
     const avg = xs.reduce((a, x) => a + x.clvPts, 0) / xs.length, up = xs.filter((x) => x.clvPts > 0).length, dn = xs.filter((x) => x.clvPts < 0).length;
-    return `<div class="row"><span class="dim">${name} · vs the closing line</span><span><b class="${avg > 0.05 ? "g" : avg < -0.05 ? "r" : "dim"}">${avg > 0 ? "+" : avg < 0 ? "−" : ""}${Math.abs(avg).toFixed(2)} pts</b> avg · ${up} better, ${dn} worse, ${xs.length - up - dn} same${xs.length < 30 ? ' <span class="dim">· small sample</span>' : ""}</span></div>`; };
+    return `<div class="row"><span class="dim">${name} · vs the closing line</span><span><b class="${avg > 0.05 ? "g" : avg < -0.05 ? "r" : "dim"}">${avg > 0 ? "+" : avg < 0 ? "−" : ""}${Math.abs(avg).toFixed(2)} pts</b> avg · ${up} better, ${dn} worse, ${xs.length - up - dn} same${xs.length < 30 ? '' : ""}</span></div>`; };
   const rows = one("spread", "SPREAD side") + one("total", "TOTAL side");
   return rows ? rows : "";
 }
@@ -543,8 +543,8 @@ function renderModelNow() {
     // "too high/low" only when the gap is bigger than chance alone would produce (2 standard errors), not just 5 points:
     // 28% of 29 vs a 35% forecast is normal luck (±18 pts), and calling it "too high" was a false signal.
     const se2 = 2 * Math.sqrt(mid * (100 - mid) / xs.length), gap = rate - mid;
-    const verdict = xs.length < 20 ? '<span class="dim">small sample</span>' : Math.abs(gap) <= 5 ? '<span class="g">on target</span>' :
-      Math.abs(gap) <= se2 ? '<span class="dim">within normal luck</span>' : gap < 0 ? '<span class="r">too high</span>' : '<span class="y">too low</span>';
+    const verdict = xs.length < 20 ? '<span class="dim">—</span>' : Math.abs(gap) <= 5 ? '<span class="g">on target</span>' :
+      Math.abs(gap) <= se2 ? '<span class="dim">ok</span>' : gap < 0 ? '<span class="r">too high</span>' : '<span class="y">too low</span>';
     return `<div class="row"><span class="dim">Said ${hi > 100 ? lo + "+" : lo + "–" + hi}%</span><span>scored ${rate.toFixed(0)}% of ${xs.length} · ${verdict}</span></div>`;
   }).join("");
   // TD model vs Polymarket: same graded players, scored against the closing price. Brier = average squared miss
@@ -569,24 +569,23 @@ function renderModelNow() {
     const buys = tdPx.filter((p) => mp(p) > p.ask);
     const pl = buys.reduce((a, p) => a + (p.scored ? 1 / p.ask - 1 : -1), 0);
     const hits = buys.filter((p) => p.scored).length;
-    const small = tdPx.length < 200 ? ' <span class="dim">· small sample</span>' : "";
+    const small = tdPx.length < 200 ? '' : "";
     vsMkt = `<div class="row"><span class="dim">Players checked</span><span>${tdPx.length}${small}</span></div>` +
-      (thinN ? `<div class="row"><span class="dim">Thin markets skipped</span><span>${thinN} <span class="dim">· no real bid</span></span></div>` : "") +
-      `<div class="row"><span class="dim">Accuracy (lower = better)</span><span>Model ${bM.toFixed(3)} · Polymarket ${bP.toFixed(3)} ` +
-      (bM < bP ? '<span class="g">model ahead</span>' : '<span class="r">market ahead</span>') + `</span></div>` +
-      `<div class="row"><span class="dim">Blend: half model, half market</span><span>${bBl.toFixed(3)} ${bBl < Math.min(bM, bP) ? '<span class="g">better than either alone</span>' : '<span class="dim">not better than the best one</span>'}</span></div>` +
-      `<div class="row"><span class="dim">$1 on Yes when model &gt; price</span><span>${hits} of ${buys.length} scored · ${cMoney(pl)} ${buys.length ? `(${cPct(pl / buys.length)})` : ""}</span></div>` +
+      (thinN ? `<div class="row"><span class="dim">Thin markets skipped</span><span>${thinN}</span></div>` : "") +
+      `<div class="row"><span class="dim">Accuracy</span><span>${bM < bP ? '<span class="g">' : '<span class="r">'}Model ${bM.toFixed(3)}</span> · Poly ${bP.toFixed(3)}</span></div>` +
+      `<div class="row"><span class="dim">50/50 blend</span><span>${bBl.toFixed(3)}</span></div>` +
+      `<div class="row"><span class="dim">Yes · model above price</span><span>${hits} of ${buys.length} scored · ${cMoney(pl)} ${buys.length ? `(${cPct(pl / buys.length)})` : ""}</span></div>` +
       // The other side of the same markets: most of the model's disagreements are "less likely than the price says"
       // (Week 3: model below market on 67 of 83 real markets), and a Yes-only check ignored all of them. Buying No
       // costs 1 − bid. Tracked here, not recommended, until it has a real sample.
       (() => { const no = tdPx.filter((p) => 1 - mp(p) > 1 - p.bid);
         const plNo = no.reduce((a, p) => a + (!p.scored ? 1 / (1 - p.bid) - 1 : -1), 0);
-        return `<div class="row"><span class="dim">$1 on No when model &lt; price</span><span>${no.filter((p) => !p.scored).length} of ${no.length} won · ${cMoney(plNo)} ${no.length ? `(${cPct(plNo / no.length)})` : ""}</span></div>`; })() +
+        return `<div class="row"><span class="dim">No · model below price</span><span>${no.filter((p) => !p.scored).length} of ${no.length} won · ${cMoney(plNo)} ${no.length ? `(${cPct(plNo / no.length)})` : ""}</span></div>`; })() +
       // The same rule with a 5-point gap (10/6): the "No" mark on Anytime TD. On the 10/6 export it was 21 of 28 (+27%) vs +7.6% for any gap.
       (() => { const no5 = tdPx.filter((p) => mp(p) <= p.bid - 0.05);
         const pl5 = no5.reduce((a, p) => a + (!p.scored ? 1 / (1 - p.bid) - 1 : -1), 0);
-        return no5.length ? `<div class="row"><span class="dim">$1 on No when model is 5+ pts under</span><span>${no5.filter((p) => !p.scored).length} of ${no5.length} won · ${cMoney(pl5)} (${cPct(pl5 / no5.length)})</span></div>` : ""; })() +
-      `<div class="row"><span class="dim">Scored vs priced</span><span>${(tdPx.filter((p) => p.scored).length / tdPx.length * 100).toFixed(0)}% scored · Polymarket priced ${(tdPx.reduce((a, p) => a + mk(p), 0) / tdPx.length * 100).toFixed(0)}% · model ${(tdPx.reduce((a, p) => a + mp(p) * 100, 0) / tdPx.length).toFixed(0)}%</span></div>` +
+        return no5.length ? `<div class="row"><span class="dim">No · model 5+ under</span><span>${no5.filter((p) => !p.scored).length} of ${no5.length} won · ${cMoney(pl5)} (${cPct(pl5 / no5.length)})</span></div>` : ""; })() +
+      `<div class="row"><span class="dim">Scored vs priced</span><span>${(tdPx.filter((p) => p.scored).length / tdPx.length * 100).toFixed(0)}% · Poly ${(tdPx.reduce((a, p) => a + mk(p), 0) / tdPx.length * 100).toFixed(0)}% · model ${(tdPx.reduce((a, p) => a + mp(p) * 100, 0) / tdPx.length).toFixed(0)}%</span></div>` +
       // TD model CLV (added 9/29): for players where the model was above the OPENING price (first snapshot of the week),
       // did the closing price move toward the model? The fastest signal of real edge, long before win/loss means anything.
       (() => { const c = tdPx.filter((p) => p.openAsk > 0 && p.openBid > 0 && p.openAsk - p.openBid <= Math.min(0.05, 0.4 * p.openAsk) && mp(p) > p.openAsk)   /* opening price must be a real market too */
@@ -621,12 +620,12 @@ function renderModelNow() {
         ""; })();
   const topTd = (() => { const byTeam = {}; for (const r of res) for (const p of (r.td || []).filter((x) => x.played === true)) (byTeam[r.game + "|" + p.team] = byTeam[r.game + "|" + p.team] || []).push(p);
       const top = (n) => Object.values(byTeam).flatMap((ps) => ps.slice().sort((a, b) => b.fair - a.fair).slice(0, n));
-      const line = (lab, L) => L.length ? `<div class="row"><span class="dim">${lab}</span><span>${L.filter((p) => p.scored).length} of ${L.length} scored · model expected ${(L.reduce((a, p) => a + p.fair, 0) / 100).toFixed(1)}</span></div>` : "";
+      const line = (lab, L) => L.length ? `<div class="row"><span class="dim">${lab}</span><span>${L.filter((p) => p.scored).length} of ${L.length} scored · exp ${(L.reduce((a, p) => a + p.fair, 0) / 100).toFixed(1)}</span></div>` : "";
       const t1 = top(1), t2 = top(2);
       const all = Object.values(byTeam).flat();
       const two = all.filter((p) => p.two != null), ftd = all.filter((p) => p.ftd != null);
-      const extra = (two.length ? `<div class="row"><span class="dim">2+ TDs</span><span>${two.filter((p) => p.twoHit).length} players did it · model expected ${(two.reduce((a, p) => a + p.two, 0) / 100).toFixed(1)}</span></div>` : "") +
-        (ftd.length ? `<div class="row"><span class="dim">First TD of the game</span><span>${ftd.filter((p) => p.ftdHit).length} listed players scored first · model expected ${(ftd.reduce((a, p) => a + p.ftd, 0) / 100).toFixed(1)}</span></div>` : "") + firstTdRecord(res);
+      const extra = (two.length ? `<div class="row"><span class="dim">2+ TDs</span><span>${two.filter((p) => p.twoHit).length} · exp ${(two.reduce((a, p) => a + p.two, 0) / 100).toFixed(1)}</span></div>` : "") +
+        (ftd.length ? `<div class="row"><span class="dim">First TD</span><span>${ftd.filter((p) => p.ftdHit).length} · exp ${(ftd.reduce((a, p) => a + p.ftd, 0) / 100).toFixed(1)}</span></div>` : "") + firstTdRecord(res);
       return t1.length ? `${line("#1 per team", t1)}${line("Top 2 per team", t2)}${extra}` : '<div class="s">None yet.</div>'; })();
   const edgeRows = (() => { const e = EDGES; const pct = (x) => (x == null ? "—" : cPct(x));
       const body = !e || !e.logged ? '<div class="s">None yet.</div>' :
@@ -720,7 +719,7 @@ function pickLabBox() {
   const arow = (m, name) => { const x = P[m];
     return `<div class="arow"><span class="nm">${name}</span><span class="dim rc">${x && x.graded ? `${x.w}–${x.l}` : x && x.recorded ? `${x.recorded} saved` : "none yet"}</span><b class="${hitCls(x && x.graded ? x.hit : null)}">${x && x.graded ? Math.round(x.hit * 100) + "%" : "—"}</b></div>`; };
   const bands = ["spread", "total"].map((m) => (P[m] && P[m].bands || []).filter((b) => b.graded).map((b) => `<div class="row"><span class="dim">${m === "spread" ? "Spread" : "Total"} · model differs by ${b.label}</span><span>${b.w}–${b.l} · ${pc(b.hit)}</span></div>`).join("")).join("");
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Tracked angles · paper only</div>` +
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Tracked angles</div>` +
     arow("spread", "SPREADS · model side") + arow("total", "TOTALS · model side") + arow("dog", "Road dogs +3 to +6.5") + arow("away3", "Road team, spread 3 or less") + arow("wind", "Under, wind 12+ mph") + arow("lowloss", "Underdog off a loss scoring 10 or fewer") + arow("prebye", "Home team before its bye (wk 8+)") + arow("dogblow", "Road dog +3 to +6.5 after a blowout") + arow("streakfade", "Road team off a loss vs 3-game win streak") + arow("winddiv", "Under, division game, wind 10+ mph") + arow("roadml3", "Road ML, spread ~3, total 48+") + arow("coachfade", "Road team vs a cold home coach (ATS)") +
     teaserRow() +
     (bands ? `<div class="fold" data-drop="labbands"><span>By model gap</span><span>▾</span></div><div class="drop" id="labbands">${bands}</div>` : "") + `</div></div>`;
@@ -890,7 +889,7 @@ function firstTdRecord(res) {
   const picks = (res || []).map((r) => (r.td || []).filter((p) => p.ftd != null && p.played !== false).sort((a, b) => b.ftd - a.ftd)[0]).filter(Boolean);
   if (!picks.length) return "";
   const hit = picks.filter((p) => p.ftdHit).length, said = picks.reduce((a, p) => a + p.ftd, 0) / picks.length;
-  return `<div class="row"><span class="dim">First TD picks</span><span>${hit} of ${picks.length} right (${Math.round(hit / picks.length * 100)}%) · model said ${Math.round(said)}%${picks.length < 30 ? "" : ""}</span></div>`;
+  return `<div class="row"><span class="dim">First TD picks</span><span>${hit} of ${picks.length} · ${Math.round(hit / picks.length * 100)}% · exp ${Math.round(said)}%${picks.length < 30 ? "" : ""}</span></div>`;
 }
 function firstTdLine(g, gr) {
   const p = firstTdPick(g); if (!p) return "";
