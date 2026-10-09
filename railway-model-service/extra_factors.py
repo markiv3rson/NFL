@@ -200,5 +200,13 @@ def factors(games, season=None):
                         v = {n: float(_pred(m, n, A)[0]) for n, m in mods.items()}
                         v["ens"] = float(np.mean([v[n] / sd[n] for n in mods]))
                         f[kind] = {k: round(val, 4) for k, val in v.items()}
-            out[f"{a} @ {h}"] = f
+            out[f"{a} @ {h}"] = _clean(f)
         return out
+
+def _clean(v):
+    """NaN/inf are not valid JSON (10/9: they broke the site's rerun); send null instead."""
+    if isinstance(v, dict): return {k: _clean(x) for k, x in v.items()}
+    if isinstance(v, (float, np.floating)): return float(v) if np.isfinite(v) else None
+    if isinstance(v, np.integer): return int(v)
+    if isinstance(v, np.bool_): return bool(v)
+    return v

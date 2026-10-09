@@ -100,4 +100,8 @@ _p = pd.DataFrame([dict(defteam="TB", game_id=g, week=w, play_type=k, epa=e) for
 _d = ns4["def_epa_todate"](_p).set_index("game_id")
 ok(_d.loc["g1", "d_repa"] == 0 and abs(_d.loc["g2", "d_repa"] - 2.0 / (2 + 150)) < 1e-12 and abs(_d.loc["g2", "d_pepa"] - (-1.0) / (1 + 200)) < 1e-12, "defense per play: game 2 uses only game 1's plays, shrunk")
 _r, _q = ns4["def_epa_now"](_p, "TB"); ok(abs(_r - 2.5 / (3 + 150)) < 1e-12 and abs(_q - 1.0 / (2 + 200)) < 1e-12, "defense per play: next game uses all games so far")
+# Extra factors (10/9): NaN must never reach the JSON (it broke the site's rerun)
+import importlib, json as _json; _xf = importlib.import_module("extra_factors")
+_c = _xf._clean({"a": float("nan"), "b": np.float64(1.5), "c": {"d": float("inf"), "e": np.bool_(True)}})
+ok(_c == {"a": None, "b": 1.5, "c": {"d": None, "e": True}} and "NaN" not in _json.dumps(_c), "extra factors: NaN/inf sent as null")
 print(f"service checks: {'FAILED ' + str(bad) if bad else 'all passed'}"); sys.exit(1 if bad else 0)
