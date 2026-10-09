@@ -164,9 +164,9 @@ function winnersBox(mode = "picks") {
   const pickRec = (m, name) => { const x = P[m]; return x && x.graded ? `<div class="row"><span class="dim">${name} (model's side)</span><span>${x.w}–${x.l} · ${m === "spread" ? "covered" : "right"} ${pcx(x.hit)}</span></div>` : `<div class="row"><span class="dim">${name} (model's side)</span><span class="dim">none graded yet</span></div>`; };
   const list = S.games.filter((g) => !g.started).map(winnerOf).filter(Boolean).sort((a, b) => b.p - a.p);
   const W = S.winners, pc = (x) => (x == null ? "—" : `${Math.round(x * 100)}%`);
-  const rec = W && W.all && W.all.n ? `<div class="row"><span class="dim">MONEYLINE · all picks</span><span>${W.all.w}–${W.all.l} · right ${pc(W.all.hit)} <span class="dim">(said ${pc(W.all.said)})</span></span></div>` +
-    (W.top4 && W.top4.n ? `<div class="row"><span class="dim">MONEYLINE · each week's top 4</span><span>${W.top4.w}–${W.top4.l} · right ${pc(W.top4.hit)} <span class="dim">(said ${pc(W.top4.said)})</span></span></div>` : "") : '';
-  if (mode === "records") return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Records · model's side</div>${rec}${W && W.stats && W.stats.n ? `<div class="row"><span class="dim">Moneyline · stats-only model (no market)</span><span>${W.stats.w}–${W.stats.l} · right ${pc(W.stats.hit)}</span></div>` : ""}${pickRec("spread", "Spreads")}${pickRec("total", "Totals")}</div></div>`;
+  const rec = W && W.all && W.all.n ? `<div class="row"><span class="dim">MONEYLINE · all picks</span><span>${W.all.w}–${W.all.l} · right ${pc(W.all.hit)}</span></div>` +
+    (W.top4 && W.top4.n ? `<div class="row"><span class="dim">MONEYLINE · each week's top 4</span><span>${W.top4.w}–${W.top4.l} · right ${pc(W.top4.hit)}</span></div>` : "") : '';
+  if (mode === "records") return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Records · model's side</div>${rec}${W && W.stats && W.stats.n ? `<div class="row"><span class="dim">MONEYLINE · stats</span><span>${W.stats.w}–${W.stats.l} · right ${pc(W.stats.hit)}</span></div>` : ""}${pickRec("spread", "Spreads")}${pickRec("total", "Totals")}</div></div>`;
   return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Model's pick on every game</div>` +
     (list.slice(0, WINALL ? 99 : 8).map((x, i) => { const g = S.games.find((y) => y.key === x.game), sides = g ? modelSide(g) : [], sp = sides.find((s) => s.market === "Spread"), tt = sides.find((s) => s.market === "Total");
       const tdp = g ? (g.td || []).filter((r) => r.fair != null && !/^(out|doubtful)$/i.test(r.injury || "")).sort((a, b) => b.fair - a.fair)[0] : null;   // the game's most likely scorer
@@ -570,7 +570,7 @@ function renderModelNow() {
     const pl = buys.reduce((a, p) => a + (p.scored ? 1 / p.ask - 1 : -1), 0);
     const hits = buys.filter((p) => p.scored).length;
     const small = tdPx.length < 200 ? ' <span class="dim">· small sample</span>' : "";
-    vsMkt = `<div class="row"><span class="dim">Players checked (real markets)</span><span>${tdPx.length}${small}</span></div>` +
+    vsMkt = `<div class="row"><span class="dim">Players checked</span><span>${tdPx.length}${small}</span></div>` +
       (thinN ? `<div class="row"><span class="dim">Thin markets skipped</span><span>${thinN} <span class="dim">· no real bid</span></span></div>` : "") +
       `<div class="row"><span class="dim">Accuracy (lower = better)</span><span>Model ${bM.toFixed(3)} · Polymarket ${bP.toFixed(3)} ` +
       (bM < bP ? '<span class="g">model ahead</span>' : '<span class="r">market ahead</span>') + `</span></div>` +
@@ -603,21 +603,21 @@ function renderModelNow() {
     ["Last self-check", st.selfcheck ? `${hm(st.selfcheck.t)} · ${st.selfcheck.items.length ? `<span class="y">${st.selfcheck.items.length} issue(s) — see Watchdog</span>` : '<span class="g">all clear</span>'}` : "— (Thu 12:05 PM, Fri 5:05 PM, Sun 7:35 AM)"],
     ["Pre-logged at kickoff", `${st.prelogged || 0} of ${(S.games || []).length} games this week`],
     ["Last backup", st.backup ? `${hm(st.backup.t)} · ${st.backup.where === "volume" ? "saved" : st.backup.where === "failed" ? '<span class="r">failed — check Railway logs</span>' : '<span class="y">temporary — add a Railway volume</span>'}` : '<span class="y">none yet</span>'],
-    ["Last TD retrain", st.retrain ? `${hm(st.retrain.t)} · ${esc(st.retrain.summary)}` : '<span class="dim">not run yet</span>'],
+    ["Last TD retrain", st.retrain ? `${hm(st.retrain.t)} · ${/kept/i.test(st.retrain.summary || "") ? "kept current" : /switch|new model|live/i.test(st.retrain.summary || "") ? "new model live" : esc(String(st.retrain.summary || "").slice(0, 40))}` : '<span class="dim">not run yet</span>'],
     ["Kickoff check (ESPN)", kickLine(st.kickcheck)],
     ["Database used", st.usedMb != null ? `${st.usedMb.toFixed(1)} of ${st.capMb} MB` : "—"],
     ["Sportsbook credits left", st.creditWarning ? `<span class="y">${st.credits ?? "—"}</span>` : (st.credits ?? "—")],
   ].map(([a, b]) => `<div class="row"><span class="dim">${a}</span><span>${b}</span></div>`).join("") +
     (st.creditWarning ? `<div class="s y">⚠ ${esc(st.creditWarning)}</div>` : "") +
-    ((st.errors || []).length ? st.errors.map((e) => `<div class="s y">⚠ ${hm(e.t)} · ${esc(e.where)}: ${esc(e.msg)}</div>`).join("") : '<div class="s g">No errors.</div>') : "";
+    ((st.errors || []).filter((e) => Date.now() - new Date(e.t) < 24 * 3600e3).length ? st.errors.filter((e) => Date.now() - new Date(e.t) < 24 * 3600e3).map((e) => `<div class="s y">⚠ ${hm(e.t)} · ${esc(e.where)} failed</div>`).join("") : "") : "";
   GBG_RES = res; const games = gbgHtml();
   const recapTd = (() => { const tdW = wk.flatMap((r) => r.td || []), td = tdW.filter((p) => p.played === true); if (!tdW.length) return "";
       const exp = td.reduce((a, p) => a + p.fair, 0) / 100, hit = td.filter((p) => p.scored).length;
       const real = tdW.filter((p) => p.played !== undefined && p.ask > 0 && p.bid > 0 && p.ask - p.bid <= Math.min(0.05, 0.4 * p.ask)), y = (p) => (p.scored ? 1 : 0);
       const bm = real.length ? real.reduce((a, p) => a + (mp(p) - y(p)) ** 2, 0) / real.length : null, bp = real.length ? real.reduce((a, p) => a + ((p.ask + p.bid) / 2 - y(p)) ** 2, 0) / real.length : null;
       const mine = (MB.bets || []).filter((b) => b.week === lw && b.result !== "pending"), mpl = mine.reduce((a, b) => a + (b.pl || 0), 0);
-      return `<div class="row"><span class="dim">TD model</span><span>${hit} scored · model expected ${exp.toFixed(1)} (${td.length} players who played${tdW.filter((p) => p.played === false).length ? `; ${tdW.filter((p) => p.played === false).length} inactive left out` : ""}${tdW.filter((p) => p.played === undefined).length ? `; <span class=\"y\">${tdW.filter((p) => p.played === undefined).length} waiting for snap counts</span>` : ""})</span></div>` +
-        (bm != null ? `<div class="row"><span class="dim">TD vs Polymarket (real markets)</span><span>${real.length} players · model ${bm.toFixed(3)} · Polymarket ${bp.toFixed(3)}</span></div>` : "") +
+      return `<div class="row"><span class="dim">TD model</span><span>${hit} scored · model expected ${exp.toFixed(1)}${tdW.filter((p) => p.played === undefined).length ? ` · <span class=\"y\">${tdW.filter((p) => p.played === undefined).length} waiting for snap counts</span>` : ""}</span></div>` +
+        (bm != null ? `<div class="row"><span class="dim">TD vs Polymarket</span><span>${real.length} players · model ${bm.toFixed(3)} · Polymarket ${bp.toFixed(3)}</span></div>` : "") +
         ""; })();
   const topTd = (() => { const byTeam = {}; for (const r of res) for (const p of (r.td || []).filter((x) => x.played === true)) (byTeam[r.game + "|" + p.team] = byTeam[r.game + "|" + p.team] || []).push(p);
       const top = (n) => Object.values(byTeam).flatMap((ps) => ps.slice().sort((a, b) => b.fair - a.fair).slice(0, n));
@@ -639,7 +639,7 @@ function renderModelNow() {
   const wcRows = `<div class="row"><span class="dim">Week ${S.week} loaded</span><span>${wc.games} games · lines ${wc.withLines}/${wc.games} · model ${wc.modelRun ? '<span class="g">✓</span>' : '<span class="y">not run yet</span>'}</span></div>` +
     ((wc.watch || []).length ? `<div class="s" style="margin-top:6px"><b class="y">Watchdog</b>${wc.watch.map((w) => `<div class="warn">⚠ ${esc(w)}</div>`).join("")}</div>` : '<div class="s dim" style="margin-top:6px"></div>');
   const recapRows = (wk.length ? `<div class="row"><span class="dim">Tilts: spreads · totals · moneyline</span><span>${rec(pick("spread", wk))} · ${rec(pick("total", wk))} · ${rec(pick("ml", wk))}</span></div>` +
-    (pick("mlModel", wk).length ? `<div class="row"><span class="dim">MONEYLINE (stats-only model)</span><span>${rec(pick("mlModel", wk))}</span></div>` : "") : '<div class="s">None yet.</div>') + recapTd;
+    (pick("mlModel", wk).length ? `<div class="row"><span class="dim">MONEYLINE · stats</span><span>${rec(pick("mlModel", wk))}</span></div>` : "") : '<div class="s">None yet.</div>') + recapTd;
   $("models").innerHTML = labStats() +
     mSec("m-score", `1 · Scoreboard · Week ${lw ?? S.week}`, "How every model did on the latest week with graded games, and whether this week's data is loaded.", recapRows + wcRows, (wc.watch || []).length, true) +
     mSec("m-win", "2 · Winners · moneyline", "Who wins each game: the model's pick on every game, saved at kickoff and graded after, with its season record.", winnersBox("picks") + winnersBox("records")) +
@@ -653,7 +653,7 @@ function renderModelNow() {
       `<div class="s" style="margin-top:8px"><b>TD chances vs results</b></div>` + tdCalibration(tdAll) +
       (() => { const pl = tdPlayersWithDefense(res); return `<div class="s" style="margin-top:8px"><b>By position</b></div>` + tdByPosition(pl) + `<div class="s" style="margin-top:8px"><b>By opponent defense</b></div>` + tdByDefense(pl); })()) +
     mSec("m-miss", "8 · Misses and every game", "Where the model keeps getting it wrong, and each graded game by week.", `<div class="s"><b>Miss finder</b></div>` + ((S.missFinder && S.missFinder.misses && S.missFinder.misses.length) ?
-      S.missFinder.misses.map((m) => `<div class="row" style="display:block"><b>${esc(m.pattern)}</b><div class="s">${esc(m.note)}</div></div>`).join("") :
+      S.missFinder.misses.map((m) => `<div class="row" style="display:block"><b>${esc(m.pattern)}</b><div class="s">${esc(String(m.note).split(" — ")[0])}</div></div>`).join("") :
       '<div class="s">None yet.</div>') + `<div class="s" style="margin-top:8px"><b>Game-by-game results</b></div><div id="gbg">${games || '<div class="s">None yet.</div>'}</div>`) +
     mSec("m-sys", "9 · System", "Is everything running: the last automatic run, what was saved for each game, the last retrain, and any errors.", stRows, 0, !stOk) +
     `<div class="center"><button class="btn" id="export-btn">Export data</button></div>`;
@@ -665,7 +665,7 @@ function kickLine(k) {
   if (!k) return '<span class="dim">not run yet</span>';
   if (!k.ok) return `<span class="r">${hm(k.t)} · failed: ${esc(k.error || "")}</span>`;
   const mv = (k.moved || []).map((m) => `${esc(m.game)} ${tm(m.was)} → ${tm(m.now)}`).join(" · ");
-  return `${hm(k.t)} · ${k.espnGames} games from ESPN · ${mv ? `<span class="y">moved: ${mv}</span>` : "OK"}${(k.missing || []).length ? ` · <span class="dim">not on ESPN: ${esc(k.missing.join(", "))}</span>` : ""}`;
+  return `${hm(k.t)} · ${k.espnGames} games from ESPN · ${mv ? `<span class="y">moved: ${mv}</span>` : "OK"}`;
 }
 function renderMine() { keepOpenState("record-mine", renderMineNow); }
 function renderModel() { keepOpenState("models", renderModelNow); }
