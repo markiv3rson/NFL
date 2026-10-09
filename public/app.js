@@ -165,7 +165,7 @@ function leanCell(g, kind) {
     `<span>${p.label}</span><div class="s">${p.pct.toFixed(1)}% model chance</div>`) +
     (reason ? `<div class="s" style="margin-top:6px">${esc(reason)}</div>` : "") +
     (wind ? `<div class="s">${wind}</div>` : "") +
-    openMove(g, kind, p) + saferSide(g, kind, p) +
+    openMove(g, kind, p) +
     (adj ? `<div class="s r" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">${injBadgeFor(g)}${esc(adj)}</div>` : "") +
     (p.warn ? `<div class="s y">${esc(p.warn)}</div>` : ""));
 }
@@ -797,24 +797,43 @@ function teaserRow() {
   return `<div class="arow"><span class="nm">Underdog +1.5–2.5 teased to +7.5–8.5</span><span class="dim rc">${a.n ? `${a.w}–${a.l}` : T.recorded ? `${T.recorded} saved` : "none yet"}</span><b class="${a.n ? (a.hit >= 0.76 ? "g" : a.hit >= 0.72 ? "y" : "r") : "dim"}">${a.n ? pc(a.hit) : "—"}</b></div>` +
     `<div class="s dim">History ${T.hist.years}: ${Math.round(T.hist.hit * 1000) / 10}% of ${T.hist.n}</div>` + tRow + mRow;
 }
-// Game Lines strip: this week's teaser legs and what Polymarket charges for each.
-// Decision model (10/9): every pick the app has a history for (PICK angles, ALT lines, teaser legs), sorted only by how often it won.
+// Decision model (10/9): straight bets only (no teasers, no alt lines), ONE pick per game per market (spread, total): the one
+// with the best record. Two angles on opposite sides of the same total no longer both show.
+const STRAIGHT_COMBOS = new Set(["favwind"]);
+function straightPicks(g) {
+  if (!g || g.started || g.final) return [];
+  const out = [];
+  for (const a of g.angles || []) if (a.hit) out.push({ pick: a.pick, game: g.key, why: a.name, p: a.hit / 100 });
+  for (const c of g.combos || []) if (STRAIGHT_COMBOS.has(c.id)) out.push({ pick: c.pick, game: g.key, why: c.why, p: c.hit / 100 });
+  const mv = totalMoved(g); if (mv && mv.under && g.totalPick && g.totalPick.side === "under") out.push({ pick: `Under ${mv.now}`, game: g.key, why: `Total fell ${mv.open} → ${mv.now} · model Under`, p: 0.635 });
+  const best = {};
+  for (const x of out) { const k = /^(Over|Under)\b/.test(x.pick) ? "total" : /\bML\b/.test(x.pick) ? "ml" : "spread"; if (!best[k] || x.p > best[k].p) best[k] = x; }
+  return Object.values(best).filter((x) => x.p >= BEST_MIN).sort((a, b) => b.p - a.p);
+}
+// Only picks that won 56%+ (a coin flip is 50%), and only the top 5 of the week, so the list stays short.
+const BEST_MIN = 0.56, BEST_MAX = 5;
 function bestBets() {
+  const out = [];
+  for (const g of (S && S.games) || []) for (const x of straightPicks(g)) out.push({ ...x, slot: slotOf(g) });
+  return out.sort((a, b) => b.p - a.p).slice(0, BEST_MAX);
+}
+// Teasers & alt lines (10/9): every bet that moves the line in our favor. Kept off the game cards; listed only on Game Lines.
+function extraBets() {
   const out = [], ko = {};
-  for (const g of (S && S.games) || []) { ko[g.key] = g; if (g.started) continue;
-    for (const a of g.angles || []) if (a.hit) out.push({ pick: a.pick, game: g.key, why: a.name, p: a.hit / 100 });
-    for (const c of g.combos || []) out.push({ pick: c.pick, game: g.key, why: c.why, p: c.hit / 100 });
-    for (const x of g.altValue || []) out.push({ pick: `${x.team} ${x.line > 0 ? "+" : ""}${x.line}`, game: g.key, why: "ALT line", p: x.hist });
-  }
-  for (const g of (S && S.games) || []) { if (g.started || g.final) continue; const mv = totalMoved(g);
-    if (mv) out.push({ pick: `${mv.under ? "Under" : "Over"} ${mv.under ? mv.now + 6 : mv.now - 6}`, game: g.key, why: `Total moved ${mv.open} → ${mv.now}, +6`, p: 0.754 });
-    if (mv && mv.under && g.totalPick && g.totalPick.side === "under") out.push({ pick: `Under ${mv.now}`, game: g.key, why: `Total fell ${mv.open} → ${mv.now} · model Under`, p: 0.635 });
+  for (const g of (S && S.games) || []) { ko[g.key] = g; if (g.started || g.final) continue;
+    for (const c of g.combos || []) if (!STRAIGHT_COMBOS.has(c.id)) out.push({ pick: c.pick, game: g.key, why: c.why, p: c.hit / 100 });
+    for (const x of g.altValue || []) out.push({ pick: `${x.team} ${x.line > 0 ? "+" : ""}${x.line}`, game: g.key, why: "Alt line", p: x.hist });
     const tl = (g.books && g.books.total && g.books.total.line) ?? (g.poly && g.poly.total && g.poly.total.line);
-    if (!mv && tl != null && g.totalPick) { const st = saferTotal(g, g.totalPick); out.push({ pick: st.under ? `Under ${tl + 6}` : `Over ${tl - 6}`, game: g.key, why: "Total +6", p: st.pct / 100 }); } }
-  for (const x of (S && S.teaserLegs) || []) if (!(ko[x.game] && ko[x.game].started)) out.push({ pick: `${x.team} +${x.line}`, game: x.game, why: "Line +6", p: saferRate(ko[x.game] || {}, x) / 100 });
+    if (tl != null) { const st = saferTotal(g, g.totalPick), mv = totalMoved(g); out.push({ pick: st.under ? `Under ${tl + 6}` : `Over ${tl - 6}`, game: g.key, why: mv ? `Total moved ${mv.open} → ${mv.now}, +6` : "Total +6", p: st.pct / 100 }); }
+  }
+  for (const x of (S && S.teaserLegs) || []) if (ko[x.game] && !ko[x.game].started) out.push({ pick: `${x.team} +${x.line}`, game: x.game, why: "Underdog +6", p: saferRate(ko[x.game], x) / 100 });
   const seen = new Set();
-  return out.map((x) => ({ ...x, slot: slotOf(ko[x.game]) })).sort((a, b) => b.p - a.p)
-    .filter((x) => !seen.has(x.pick + x.game) && seen.add(x.pick + x.game));
+  return out.sort((a, b) => b.p - a.p).filter((x) => !seen.has(x.pick + x.game) && seen.add(x.pick + x.game)).slice(0, BEST_MAX);
+}
+function extraStrip() {
+  const E = extraBets(); if (!E.length) return "";
+  const rows = E.map((x) => `<div class="bb"><div class="t1"><b>${esc(x.pick)}</b><span style="white-space:nowrap">wins ${Math.round(x.p * 100)}%</span></div><div class="t2">${esc(x.game)} · ${esc(x.why)}</div></div>`).join("");
+  return `<div class="gapstrip" data-drop="extralist"><div class="t">Teasers &amp; alt lines · ${E.length} ›</div></div><div class="drop" id="extralist"><div class="card"><div class="inner">${rows}</div></div></div>`;
 }
 // Morning / afternoon / primetime (10/9): TNF/SNF/MNF and anything starting 5 PM or later (your time) is primetime.
 function slotOf(g) {
@@ -935,7 +954,7 @@ function tile(g) {
   const eg = (S.edgesNow || []).filter((b) => b.game === g.key);
   const hp = g.winPct != null && isFinite(g.winPct) ? Number(g.winPct) : null, ap = hp == null ? null : 100 - hp;
   const lead = (v, o) => (v >= o ? "mkt" : "dim");
-  const chips = [g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : "", (g.angles || []).length ? `<span class="chip c-grn">PICK ${esc(topAngle(g).pick)}${topAngle(g).n > 1 ? ` ×${topAngle(g).n}` : ""}</span>` : "", !(g.angles || []).length && (g.altValue || []).length ? `<span class="chip c-grn">ALT ${esc(g.altValue[0].team)} ${g.altValue[0].line > 0 ? "+" : ""}${g.altValue[0].line}</span>` : "", eg.length ? `<span class="chip c-cy">GAP +${(Math.max(...eg.map((b) => b.evNet)) * 100).toFixed(1)}%</span>` : "", g.started && !g.final && !sc ? '<span class="chip c-red">LIVE</span>' : ""].join("");
+  const chips = [g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : "", straightPicks(g).length ? `<span class="chip c-grn">${esc(straightPicks(g)[0].pick)}</span>` : "", eg.length ? `<span class="chip c-cy">GAP +${(Math.max(...eg.map((b) => b.evNet)) * 100).toFixed(1)}%</span>` : "", g.started && !g.final && !sc ? '<span class="chip c-red">LIVE</span>' : ""].join("");
   const mid = g.final && g.awayScore != null && g.homeScore != null ? `<span class="mid"><span class="${g.awayScore > g.homeScore ? "g" : "dim"}">${g.awayScore}</span><span class="dim"> – </span><span class="${g.homeScore > g.awayScore ? "g" : "dim"}">${g.homeScore}</span></span>`
     : hp == null ? '<span class="mid dim">—</span>' : `<span class="mid"><span class="${lead(ap, hp)}">${Math.round(ap)}</span><span class="dim"> · </span><span class="${lead(hp, ap)}">${100 - Math.round(ap)}</span><span class="dim" style="font-size:11px">%</span></span>`;
   const mid2 = sc ? `<span class="mid lvmid"><span class="sr"><span class="${sc.a > sc.h ? "g" : "dim"}">${sc.a}</span><span class="dim"> – </span><span class="${sc.h > sc.a ? "g" : "dim"}">${sc.h}</span></span><span class="lv ${sc.st === "post" ? "dim" : "r"}">${sc.st === "post" ? "FINAL" : "● LIVE · " + esc(sc.lbl)}</span></span>` : mid;
@@ -1021,8 +1040,9 @@ function topAngle(g) {
 }
 // Proven angles on this game (10/8): rules that beat break-even in every period of 2007-25, with their record.
 function anglesBox(g) {
-  const a = g.angles || [], av = g.altValue || []; if (!a.length && !av.length) return "";
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="fold" data-drop="gamebest" style="border-top:0;padding:0"><span class="sh" style="margin:0">Best bets · this game</span><span>▾</span></div><div class="drop${GAMEBEST_OPEN ? " open" : ""}" id="gamebest" style="border-top:0;margin-top:4px;padding-top:0">` + a.map((x) => `<div class="bb"><div class="t1"><b class="g">PICK ${esc(x.pick)}</b><span style="white-space:nowrap">wins ${x.hit}%</span></div><div class="t2">${esc(x.name)}${x.n ? ` · ${x.n} games` : ""}</div></div>`).join("") + av.map((x) => `<div class="bb"><div class="t1"><b class="g">ALT ${esc(x.team)} ${x.line > 0 ? "+" : ""}${x.line}</b><span style="white-space:nowrap">covers ${Math.round(x.hist * 100)}%</span></div><div class="t2">since 2007</div></div>`).join("") + `</div></div></div>`;
+  const P = straightPicks(g); if (!P.length) return "";
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="fold" data-drop="gamebest" style="border-top:0;padding:0"><span class="sh" style="margin:0">Best pick · this game</span><span>▾</span></div><div class="drop${GAMEBEST_OPEN ? " open" : ""}" id="gamebest" style="border-top:0;margin-top:4px;padding-top:0">` +
+    P.map((x) => `<div class="bb"><div class="t1"><b class="g">${esc(x.pick)}</b><span style="white-space:nowrap">wins ${Math.round(x.p * 1000) / 10}%</span></div><div class="t2">${esc(x.why)}</div></div>`).join("") + `</div></div></div>`;
 }
 function detailTop(g) {
   const dsc = g.started && !g.final ? LIVE_SC[g.key] : null;
@@ -1052,7 +1072,7 @@ function renderLines() {
   if (DETAIL) { const g = S.games.find((x) => x.key === DETAIL); if (g) return renderDetail(g); DETAIL = null; }
   setBg(null);
   $("detail").style.display = "none"; $("lines").style.display = "";
-  $("lines").innerHTML = bestStrip() + gapStrip() + teaserStrip() + changedBox() + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
+  $("lines").innerHTML = bestStrip() + extraStrip() + gapStrip() + changedBox() + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
 
     '';
 }
