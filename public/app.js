@@ -273,14 +273,21 @@ function prow(r, g, showGame) {
   const logo = r.team ? `<img class="logo" src="${logoUrl(r.team)}" alt="${r.team}">` : "";
   return `<div class="prow"><div>${logo}<b style="font-weight:600">${esc(r.player)}</b><span class="pos">${esc(r.pos)}</span>${inj}<div class="s">${sub}</div></div>` +
     `<div class="n"><span class="big">${chance}</span><span class="lbl">model's<br>chance</span></div>` +
-    `<div class="n"><span class="px">${cents}</span><span class="lbl">Polymarket<br>price${r.stale ? " (old)" : r.thin ? '<br><span class="warn-t">thin market</span>' : ""}${r.open != null && r.price != null && Math.round(r.open * 100) !== Math.round(r.price * 100) ? `<br><span class="dim">opened ${Math.round(r.open * 100)}¢</span>` : ""}</span></div>` +
+    `<div class="n"><span class="px">${cents}</span><span class="lbl">Polymarket<br>price${r.stale ? " (old)" : ""}${r.open != null && r.price != null && Math.round(r.open * 100) !== Math.round(r.price * 100) ? `<br><span class="dim">opened ${Math.round(r.open * 100)}¢</span>` : ""}</span></div>` +
     `<div class="why">${(() => { const b = tdBlend(r); return b ? `<div style="font-size:11.5px">Blended chance <b>${Math.round(b.blend)}%</b> <span class="dim">(half model ${Math.round(b.model)}% · half market ${Math.round(b.mid)}%)</span></div>` : ""; })()}${more}${flags}</div></div>`;
 }
 const usable = (r) => !(r.odds != null && r.odds <= -600 && !r.thin);   // a real -600 price is broken data; never hide a player over a thin placeholder
+// Injury tag next to the name (10/9): official report first, ESPN's status before Friday. Q yellow, D orange, OUT red.
+function injTag(r) {
+  const st = r.injury && GAME_STATUS.test(r.injury) ? r.injury : (String(r.espn || "").match(/^(Out|Doubtful|Questionable)/i) || [])[1];
+  if (!st) return "";
+  const k = /^out/i.test(st) ? ["OUT", "var(--red)"] : /^doubt/i.test(st) ? ["D", "#ff9f43"] : ["Q", "var(--yellow)"];
+  return ` <span class="pill" style="padding:0 6px;font-size:10px;font-weight:800;color:${k[1]};border:1px solid ${k[1]}">${k[0]}</span>`;
+}
 function tdRow(x, i) {
   const r = x.r, g = x.g;
   return `<div class="tdr"><img class="wmc" loading="lazy" decoding="async" src="${logoUrl(r.team)}" alt="" onerror="this.style.display='none'"><div class="in"><span class="rk">${i + 1}</span>` +
-    `<div class="nmx"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos)}</span>${r.injury && GAME_STATUS.test(r.injury) ? ` <span class="pill ${/out|doubt/i.test(r.injury) ? "p-r" : "p-y"}" style="padding:0 6px;font-size:10px">${esc(r.injury)}</span>` : ""}${retPill(r)}<div class="g2">${esc(r.game)}</div></div>` +
+    `<div class="nmx"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos)}</span>${injTag(r)}${retPill(r)}<div class="g2">${esc(r.game)}</div></div>` +
     `<div class="mp"><em>${Math.round(r.fair)}%</em><div class="bar"><i style="width:${Math.min(100, r.fair)}%"></i></div></div><div class="pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${(() => { const b = tdBlend(r); if (b && b.blend - r.price * 100 >= 5) return `<div class="g" style="font-size:10px">+${Math.round(b.blend - r.price * 100)} vs price</div>`;
       return tdNoGap(r) != null ? `<div class="r" style="font-size:10px">No · ${tdNoGap(r)} under</div>` : ""; })()}</div></div>` +
     `<div class="more" style="--tc:${TEAM_COLOR[r.team] || "#444"};--logo:url(${logoUrl(r.team)})">${prow(r, g, true)}</div></div>`;
@@ -729,14 +736,14 @@ function pickLabBox() {
     return `<div class="arow"><span class="nm">${name}</span><span class="dim rc">${x && x.graded ? `${x.w}–${x.l}` : x && x.recorded ? `${x.recorded} saved` : "none yet"}</span><b class="${hitCls(x && x.graded ? x.hit : null)}">${x && x.graded ? Math.round(x.hit * 100) + "%" : "—"}</b></div>`; };
   const bands = ["spread", "total"].map((m) => (P[m] && P[m].bands || []).filter((b) => b.graded).map((b) => `<div class="row"><span class="dim">${m === "spread" ? "Spread" : "Total"} · model differs by ${b.label}</span><span>${b.w}–${b.l} · ${pc(b.hit)}</span></div>`).join("")).join("");
   return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Tracked angles</div>` +
-    arow("dog", "Road dogs +3 to +6.5") + arow("away3", "Road team, spread 3 or less") + arow("wind", "Under, wind 12+ mph") + arow("lowloss", "Underdog off a loss scoring 10 or fewer") + arow("prebye", "Home team before its bye (wk 8+)") + arow("dogblow", "Road dog +3 to +6.5 after a blowout") + arow("streakfade", "Road team off a loss vs 3-game win streak") + arow("winddiv", "Under, division game, wind 10+ mph") + arow("roadml3", "Road ML, spread ~3, total 48+") + arow("coachfade", "Road team vs a cold home coach (ATS)") + arow("mlgap", "ML cheaper than its spread (3+ pts)") +
+    arow("dog", "Road dogs +3 to +6.5") + arow("away3", "Road team, spread 3 or less") + arow("wind", "Under, wind 12+ mph") + arow("lowloss", "Underdog off a loss scoring 10 or fewer") + arow("prebye", "Home team before its bye (wk 8+)") + arow("dogblow", "Road dog +3 to +6.5 after a blowout") + arow("streakfade", "Road team off a loss vs 3-game win streak") + arow("winddiv", "Under, division game, wind 10+ mph") + arow("roadml3", "Road ML, spread ~3, total 48+") + arow("coachfade", "Road team vs a cold home coach (ATS)") + arow("mlgap", "ML cheaper than its spread (3+ pts)") + arow("booksmove", "Books moved, Polymarket lagged") +
     teaserRow() + altRow() +
     (bands ? `<div class="fold" data-drop="labbands"><span>By model gap</span><span>▾</span></div><div class="drop" id="labbands">${bands}</div>` : "") + `</div></div>`;
 }
 // Teaser legs (10/6): underdog +1.5..+2.5 bought at +7.5..+8.5 on Polymarket's alternate spread; record, return at the price paid, history.
 function altRow() {
-  const A = ALTS; if (!A || !A.recorded) return `<div class="arow"><span class="nm">Alt lines under their history (4+ pts)</span><span class="dim rc">none yet</span><b class="dim">—</b></div>`;
-  return `<div class="arow"><span class="nm">Alt lines under their history (4+ pts)</span><span class="dim rc">${A.n ? `${A.w}–${A.l}` : `${A.recorded} saved`}</span><b class="${A.n ? (A.ret >= 0 ? "g" : "r") : "dim"}">${A.n ? cMoney(A.ret) : "—"}</b></div>`;
+  const A = ALTS; if (!A || !A.recorded) return `<div class="arow"><span class="nm">Alt lines that cover 60%+</span><span class="dim rc">none yet</span><b class="dim">—</b></div>`;
+  return `<div class="arow"><span class="nm">Alt lines that cover 60%+</span><span class="dim rc">${A.n ? `${A.w}–${A.l}` : `${A.recorded} saved`}</span><b class="${A.n ? (A.w / A.n >= 0.6 ? "g" : A.w / A.n >= 0.5 ? "y" : "r") : "dim"}">${A.n ? Math.round(A.w / A.n * 100) + "%" : "—"}</b></div>`;
 }
 function teaserRow() {
   const T = TEASERS; if (!T) return "";
@@ -935,7 +942,7 @@ function topAngle(g) {
 // Proven angles on this game (10/8): rules that beat break-even in every period of 2007-25, with their record.
 function anglesBox(g) {
   const a = g.angles || [], av = g.altValue || []; if (!a.length && !av.length) return "";
-  return `<div class="card" style="margin-top:10px"><div class="inner">` + a.map((x) => `<div class="row"><span><b class="g">PICK ${esc(x.pick)}</b>${x.price ? ` <span class="dim">${Math.round(x.price * 100)}¢</span>` : ""}</span><span class="dim">${esc(x.name)} · ${x.roi != null ? `won ${x.hit}%, ${x.roi >= 0 ? "+" : ""}${x.roi}% per $1` : `${x.hit}%`} of ${x.n}</span></div>`).join("") + av.map((x) => `<div class="row"><span><b class="g">ALT ${esc(x.team)} ${x.line > 0 ? "+" : ""}${x.line}</b> <span class="dim">${Math.round(x.price * 100)}¢</span></span><span class="dim">covers ${Math.round(x.hist * 100)}% since 2007</span></div>`).join("") + `</div></div>`;
+  return `<div class="card" style="margin-top:10px"><div class="inner">` + a.map((x) => `<div class="row"><span><b class="g">PICK ${esc(x.pick)}</b></span><span class="dim">${esc(x.name)} · ${x.hit}% of ${x.n}</span></div>`).join("") + av.map((x) => `<div class="row"><span><b class="g">ALT ${esc(x.team)} ${x.line > 0 ? "+" : ""}${x.line}</b></span><span class="dim">covers ${Math.round(x.hist * 100)}% since 2007</span></div>`).join("") + `</div></div>`;
 }
 function detailTop(g) {
   const dsc = g.started && !g.final ? LIVE_SC[g.key] : null;
