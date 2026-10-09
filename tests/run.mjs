@@ -693,7 +693,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const B = ctx.T.bestBets();
     ok(B.length === 3 && B[0].pick === "E +8.5" && B[1].pick === "B -3.5" && B[2].pick === "A +4.5" && !B.some((x) => "ev" in x || x.pick === "C +3"), "decision model: win rate only (no price), highest first, started games skipped"); }
   { const sp = ctx.T.saferSide({ teaser: { team: "E", line: 8.5 } }, "spread"), to = ctx.T.saferSide({ books: { total: { line: 44.5 } } }, "total", { side: "over" });
-    ok(/E \+8\.5<\/b> · wins 76%/.test(sp) && /Over 38\.5<\/b> · wins 67%/.test(to) && ctx.T.saferSide({ final: true, teaser: { team: "E", line: 8.5 } }, "spread") === "", "safer side: dog moved 6 and total moved 6 on the cards"); }
+    ok(/E \+8\.5<\/b> · wins 76%/.test(sp) && /Over 38\.5<\/b> · wins 67%/.test(to) && ctx.T.saferSide({ final: true, teaser: { team: "E", line: 8.5 } }, "spread") === "", "safer side: dog moved 6 and total moved 6 on the cards");
+    ok(/Under 50\.5<\/b> · wins 71%/.test(ctx.T.saferSide({ model: { outdoor: true, wind: 18 }, books: { total: { line: 44.5 } } }, "total", { side: "over" })) && /Over 38\.5<\/b> · wins 69%/.test(ctx.T.saferSide({ outdoor: false, books: { total: { line: 44.5 } } }, "total", { side: "under" })) && /wins 83%/.test(ctx.T.saferSide({ model: { outdoor: true, wind: 16 }, teaser: { team: "E", line: 8.5 } }, "spread")) && /wins 70%/.test(ctx.T.saferSide({ teaser: { team: "E", line: 8.5 }, books: { total: { line: 48 } } }, "spread")), "safer side: wind and dome pick the total side; dog leg rate by wind and total"); }
   ok(ctx.T.slotOf({ badge: "SNF", kickoff: "2026-10-11T12:00:00" }) === "Primetime" && ctx.T.slotOf({ kickoff: "2026-10-11T10:00:00" }) === "Morning" && ctx.T.slotOf({ kickoff: "2026-10-11T13:25:00" }) === "Afternoon", "best bets: morning / afternoon / primetime");
   { // TD-based total fade (10/9)
     const { tdTotal, picksFor } = await import("../lib/paper.js");
