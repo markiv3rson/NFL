@@ -656,9 +656,18 @@ function renderModelNow() {
       '<div class="s">None yet.</div>') + `<div class="s" style="margin-top:8px"><b>Game-by-game results</b></div><div id="gbg">${games || '<div class="s">None yet.</div>'}</div>`) +
     mSec("m-sys", "9 · System", "Is everything running: the last automatic run, what was saved for each game, the last retrain, and any errors.", stRows, 0, !stOk) +
     `<div class="center"><button class="btn" id="export-btn">Export data</button></div>`;
+  paintBox($("models"));
   $("export-btn").onclick = () => (window.location.href = "/api/results/export");
   if ($("win-all")) $("win-all").onclick = () => { WINALL = !WINALL; renderModel(); };
 }
+// Color code (10/9): records green at 55%+ won, yellow 50-55%, red under 50%; status words green; dates and times dimmed.
+function paint(html) {
+  return html.replace(/>([^<>]+)</g, (all, t) => ">" + t
+    .replace(/(^|[^\d/.])(\d{1,4})–(\d{1,4})(?![\d/])/g, (m, pre, w, l) => { const n = +w + +l; if (!n) return m; const r = +w / n; return `${pre}<b class="${r >= 0.55 ? "g" : r >= 0.5 ? "y" : "r"}">${w}–${l}</b>`; })
+    .replace(/\b(OK|all clear|saved|kept current|new model live)\b/g, '<span class="g">$1</span>')
+    .replace(/\b((?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{1,2}\/\d{1,2}, \d{1,2}:\d{2}\s?(?:AM|PM))/g, '<span class="dim">$1</span>') + "<");
+}
+function paintBox(el) { if (el) el.innerHTML = paint(el.innerHTML); }
 // What ESPN said about kickoff times on the last check (10/8): which games it moved, or why the check failed.
 function kickLine(k) {
   if (!k) return '<span class="dim">not run yet</span>';
