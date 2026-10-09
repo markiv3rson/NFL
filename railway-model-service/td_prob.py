@@ -352,10 +352,10 @@ def _depth_changes():
             before = before[before.t == before.t.max()]
             a, b = top(now), top(before)
             for pid in a - b:
-                if pid in set(before.gsis_id): out[pid] = "moved up to starter on the depth chart"
-                else: out[pid] = "new on the depth chart as a starter"
+                if pid in set(before.gsis_id): out[pid] = "new starter"
+                else: out[pid] = "new starter"
             for pid in b - a:
-                if pid in set(now.gsis_id): out[pid] = "dropped from starter on the depth chart"
+                if pid in set(now.gsis_id): out[pid] = "lost starter spot"
     except Exception: pass
     return out
 DEPTH_NOTE = _depth_changes()
