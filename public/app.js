@@ -174,7 +174,13 @@ function leanCell(g, kind) {
   // 56%+), and why. When the pick goes against the model, it says so in plain words. No pick -> "No pick".
   const m = g.model; if (!m || m.homeMargin == null || m.total == null) return wrap(dash);
   const adj = injLine(g, kind), isTot = (x) => /^(Over|Under)\b/.test(x);
-  const mline = kind === "total" ? `Model: <b class="mod">${m.total.toFixed(1)}</b>` : `Model: <b class="mod">${m.homeMargin >= 0 ? g.home : g.away} by ${Math.abs(m.homeMargin).toFixed(1)}</b>`;
+  // Upgraded model (10/9) when the slate has it: the game model corrected with everything else known before kickoff.
+  const U = g.modelUp, LN = g.lineNow || {}, mm = U ? U.margin : m.homeMargin, mt = U ? U.total : m.total;
+  const mline = kind === "total" ? `Model: <b class="mod">${mt.toFixed(1)}</b>` : `Model: <b class="mod">${mm >= 0 ? g.home : g.away} by ${Math.abs(mm).toFixed(1)}</b>`;
+  if (U && LN.hs != null && LN.tl != null) {   // the model's side vs the current line, from the upgraded numbers
+    const homeSide = mm + LN.hs > 0, t = homeSide ? g.home : g.away, ln = homeSide ? LN.hs : -LN.hs;
+    p = kind === "total" ? { side: mt > LN.tl ? "over" : "under", label: `${mt > LN.tl ? "Over" : "Under"} ${LN.tl}`, warn: p && p.warn } : { team: t, label: `${t} ${sgn(ln)}`, warn: p && p.warn };
+  }
   const P = g.final ? null : straightPicks(g).find((x) => (kind === "total" ? isTot(x.pick) : !isTot(x.pick) && !/\bML\b/.test(x.pick)));
   let body = "";
   if (!g.final) {
