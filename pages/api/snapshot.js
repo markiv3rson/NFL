@@ -1,7 +1,7 @@
 // Takes a line snapshot: Polymarket lines + TD prices for every game that has NOT kicked off,
 // plus sportsbook consensus when books=1. Called by the Railway scheduler (7/12/3/7 PT, Sunday
 // 6/7/8/9/10/12/3 PT, and just before each kickoff with kickoff=<game>) and by the Refresh button.
-import { stackPicks, recordStack } from "../../lib/stack";
+import { tablePicks, recordStack } from "../../lib/stack";
 import { venue } from "../../lib/wind";
 import { recordTeaser, recordTotalLeg, teaserLeg, totalMove } from "../../lib/teaser";
 import { recordAltValues } from "../../lib/altfair";
@@ -20,7 +20,7 @@ import { loadModel } from "../../lib/week";
 import { isThinMarket } from "../../lib/odds";
 import { nameMatches } from "../../lib/picks";
 import { logEdges } from "../../lib/edges";
-import { recordPaper, recordSameGame, recordPicks, recordWinner, tdTotal } from "../../lib/paper";
+import { recordPaper, recordSameGame, recordPicks, recordWinner, tdTotal, situationFor } from "../../lib/paper";
 import { buildWeek } from "../../lib/week";
 import { loadInjuriesMeta } from "../../lib/injuries";
 import { alertsFromLines, alertPriceGap } from "../../lib/alerts";
@@ -46,7 +46,7 @@ async function writePrelog(season, week, g, t, poly, bk, model) {
       const mU = mg && mg.calUnder != null ? mg.calUnder >= 50 : null;
       { const s0 = first && first.poly && first.poly.spread ? first.poly.spread.homeSpread : null, v = venue(g) || {};
         const hsNow = bk && bk.spread && bk.spread.homeSpread != null ? bk.spread.homeSpread : poly && poly.spread ? poly.spread.homeSpread : null;
-        await recordStack(season, week, g, stackPicks({ ...g, outdoor: !!v.outdoor }, mg, hsNow, now, s0, open), t).catch(() => 0); }   // combo picks (10/9)
+        await recordStack(season, week, g, tablePicks({ ...g, outdoor: !!v.outdoor }, mg, hsNow, now, s0, open, await situationFor(season, week, g).catch(() => null), Number(week)), t).catch(() => 0); }   // combo picks (10/9)
       await recordTotalLeg(season, week, g, poly, bk, mv ? mv.under : mg && mg.outdoor && mg.wind != null && mg.wind >= 15 ? true : mU == null ? true : !mU, t, open, mU === true).catch(() => 0); }
     await recordAltValues(season, week, g, alts ? { ...(poly || {}), alts } : poly, bk, t).catch(() => 0); }   // alt lines under their historical rate (10/9)   // Teaser leg: underdog +1.5..+2.5 at +7.5..+8.5 (10/6)
 }
