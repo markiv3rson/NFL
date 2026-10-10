@@ -20,6 +20,11 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 - Model card: ONE answer — the model's number (purple), then **PICK** (green, 56%+) or **LEAN** (yellow) with a plain reason. No teasers on cards; market lines only.
 - Teasers (incl. alt lines) are all labeled **TEASER**, in a folded list on Game Lines, top 5.
 - Best bets = top 10 straight picks at 56%+. Parlay of the week = top 4, one per game.
+- Model Picks tab: ~22 parlay types built once a week (first scheduled snapshot within 26 h of the first Sunday kickoff — Sat 7 AM PT
+  when the first game is London) and graded. Includes "Best bets · 2/3/4" (= the Parlay of the week). Alt-line parlays are labeled
+  TEASER. TD parlays may use thin markets (leg says "thin"); the price shown is the ask.
+- Bets tab: an open leg says "⚠ app now picks the other side" when the app has a 56%+ pick against it.
+- Early-week total edge shows only when the early model is 2+ points from the opening total (55%).
 - Anytime TD tab: top 3 per team (owner wants it kept), plus a "⚠ Market disagrees" box for any player 20+ points from Polymarket.
 - Referees and price-gap alerts were removed on purpose.
 
@@ -38,6 +43,20 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 
 Train on earlier seasons, predict the next one (2019–25 for the TD model). A change is kept only if it's more accurate in most seasons. Combo picks: kept when every period (2014–17 / 2018–21 / 2022–now) beats the base rate.
 
+## Combo picks — starters out (added Oct 10, 2026)
+
+- Factors: dog/fav starting QB out, a skill starter out, 2+ OL / DB / front-seven starters out (official Out/Doubtful +
+  60%+ snap share; `lib/snaps.js startersOut`, `weekly_rebuild.py starters_out`). STRAIGHT BETS ONLY — owner never bets teasers;
+  the rebuild skips teaser bet types for these factors. Best: favorite ATS when the dog's QB is out + boosted model likes the dog, ~65%.
+- Until a rebuild publishes them, `lib/combomodel.js` adds them from the built-in `lib/combotable.js`.
+
+## Game model — already tested, not added
+
+- Injured starters as inputs (margin error 10.020 -> 10.024: the line already prices injuries).
+- QB quality / backup QB starting (worse in new-QB games).
+- Same-game legs: spread and total are basically unrelated; a team's TD scorers rise a lot with its cover + Over (3.10 vs 2.14
+  TDs) — the app only multiplies legs across different games, so no fix needed.
+
 ## TD model — already tested (don't redo without a new idea)
 
 Added (Oct 10, 2026):
@@ -48,7 +67,16 @@ Tested and NOT added (made it worse):
 - Last-3-game usage weighting (worse 6/7).
 - Opposing defense injuries: plain counts (3/7), starters weighted by snaps (2/7), per-player defender stats — coverage, pressures, tackles (2/7).
 - Rookie draft pick (3/7; rookies already about right on average).
+- Weather — wind, cold, outdoor (2/7).
+- Head-coach change mid-season: model already close (19.6% said vs 20.3% actual). Play-caller changes aren't in any data.
+- 2+ TD and first-TD numbers: already calibrated 2019-25; this season's small sample agrees.
 - Known gap: news not on any report (coach comments) — can't be tested; the "Market disagrees" box is the warning for it.
+
+## Already handled (don't rebuild)
+
+- Late scratches: Railway reruns the model ~60 min before every kickoff wave.
+- Combo grading: account bets use Polymarket's own payouts.
+- Live / in-game picks: owner doesn't want them. Player props beyond anytime TD: not wanted unless accurate.
 
 ## Betting notes from the owner's experience
 
