@@ -129,7 +129,52 @@ def features(season, pos):
         for wk, part in f.groupby('week'):
             out.append(add_inj(part, {pid: fl.get((pid, wk), {}) for pid in part.pid}))
         f = pd.concat(out).drop(columns=['_k']).sort_index()
-    return f
+    return add_backup(f, pg)
+
+# Starter RB out (10/10): the team's lead back (10+ carries a game, 2+ games so far) is not playing. 'bk' marks the team's other
+# RBs, 'bk1' the one with the most carries a game (the one who takes over). Before this the model gave the new lead back the
+# backup's old numbers: 2019-25 those backups scored ~38% and the model said ~24% (Mike Washington with Jeanty out: 11%).
+# Tested train-3/test-next 2019-25: Brier 0.15973 -> 0.15958, better in 5 of 7 seasons; closer for the new lead back in 7 of 7.
+BK = ['bk', 'bk1', 'rec_bk', 'rec_bk1']
+# Starter WR / TE out (10/10): same idea for pass catchers -- the lead WR (6+ targets a game) or lead TE (4+) is not playing;
+# 'rec_bk' marks the team's WR/TE, 'rec_bk1' the two with the most targets a game. Tested the same way: Brier 0.15954 -> 0.15947,
+# better in 4 of 7 seasons; for the receivers who take over closer to actual in 5 of 7. (Opponent defense injuries -- DB / LB / DL
+# Out or Doubtful -- tested worse: 3 of 7, so not used.)
+def lead_rb(rb, wk=None, col='car', minv=10):
+    """rb: one team's player-games at a spot (pid, week, col). Lead player entering week wk (all games when wk is None), or None."""
+    prev = rb if wk is None else rb[rb.week < wk]
+    if not len(prev): return None
+    a = prev.groupby('pid').agg(c=(col, 'sum'), n=('week', 'nunique')); a = a[a.n >= 2]
+    if not len(a): return None
+    cpg = a.c / a.n
+    return cpg.idxmax() if cpg.max() >= minv else None
+REC_LEADS = (('WR', 6), ('TE', 4))
+def _spot(pg, p): return pg[pg.pid.map(pos.position) == p]
+def _mark_rec(df, out_rec):
+    df = df.copy(); df['rec_bk'] = ((df.pos != 'RB') & out_rec).astype(float)
+    rk = df[df.rec_bk == 1].groupby(['game_id', 'team'] if 'game_id' in df else ['team']).r_t.rank(ascending=False, method='first')
+    df['rec_bk1'] = (rk.reindex(df.index) <= 2).astype(float)
+    return df
+def _mark_bk(df, out_lead):
+    df = df.copy(); df['bk'] = ((df.pos == 'RB') & out_lead).astype(float)
+    rk = df[df.pos == 'RB'].groupby(['game_id', 'team'] if 'game_id' in df else ['team']).r_c.rank(ascending=False, method='first')
+    df['bk1'] = ((df.bk == 1) & (rk.reindex(df.index) == 1)).astype(float)
+    return df
+def _rbs(pg): return pg[pg.pid.map(pos.position).isin(['RB', 'HB', 'FB'])]
+def add_backup(f, pg):
+    rbp = _rbs(pg)
+    played = set(zip(pg.pid, pg.week)); lead = {}
+    for tm, g in rbp.groupby('team'):
+        for wk in f[f.team == tm].week.unique(): lead[(tm, wk)] = lead_rb(g, wk)
+    out = [(t, w) in lead and lead[(t, w)] is not None and (lead[(t, w)], w) not in played and p != lead[(t, w)] for t, w, p in zip(f.team, f.week, f.pid)]
+    f = _mark_bk(f, pd.Series(out, index=f.index))
+    rec = np.zeros(len(f), dtype=bool)
+    for sp, mv in REC_LEADS:
+        L = {}
+        for tm, g in _spot(pg, sp).groupby('team'):
+            for wk in f[f.team == tm].week.unique(): L[(tm, wk)] = lead_rb(g, wk, 'tgt', mv)
+        rec |= np.array([L.get((t, w)) is not None and (L[(t, w)], w) not in played and p != L[(t, w)] for t, w, p in zip(f.team, f.week, f.pid)])
+    return _mark_rec(f, pd.Series(rec, index=f.index))
 
 # Second-model inputs (10/9, idea_study.py / subset_study.py): opponent red-zone TD rate allowed to date, the team's run share
 # inside the 5 to date, snap trend (last game minus last 3) and goal-line role (inside-5 carries vs all carries).
@@ -252,7 +297,7 @@ def def_epa_now(pbp, team):
     x = pbp[(pbp.defteam == team) & pbp.play_type.isin(['pass', 'run']) & pbp.epa.notna()]
     r, q = x[x.play_type == 'run'].epa, x[x.play_type == 'pass'].epa
     return float(r.sum() / (len(r) + DEF_SHRINK_RUN)), float(q.sum() / (len(q) + DEF_SHRINK_PASS))
-FEATS=['r_rzt','r_i10','r_rzc','r_i5','r_t','r_c','r_td','imp','o_rush','o_rec','is_rb','is_te','rushx','recx','snap3','snap1','snap_miss','new_team','rz_shift','depth1','depth_known','d_repa_rb','d_pepa_rec'] + INJ
+FEATS=['r_rzt','r_i10','r_rzc','r_i5','r_t','r_c','r_td','imp','o_rush','o_rec','is_rb','is_te','rushx','recx','snap3','snap1','snap_miss','new_team','rz_shift','depth1','depth_known','d_repa_rb','d_pepa_rec'] + INJ + BK
 def design(df):
     X = df.copy(); X['is_rb']=(X.pos=='RB').astype(int); X['is_te']=(X.pos=='TE').astype(int)
     X['rushx']=(X.r_rzc+X.r_i5)*X.o_rush; X['recx']=(X.r_rzt+X.r_i10)*X.o_rec
@@ -263,7 +308,7 @@ def design(df):
     X['glrun_rb'] = (gl - GL_LG) * X.is_rb; X['glrun_rec'] = (gl - GL_LG) * (1 - X.is_rb)
     X['snap_trend'] = (X.snap1 - X.snap3) if 'snap1' in X and 'snap3' in X else 0.0
     X['gl_spec'] = X.r_i5 / (X.r_c + 1)
-    for c in INJ:
+    for c in INJ + BK:
         if c not in X: X[c] = 0.0
     return X[FEATS + EXTRA].values.astype(float)
 
@@ -554,7 +599,7 @@ def qb_row(team, opp, imp, outs=()):
         return {'name': name, 'pos': 'QB', 'p': min(pq, 0.9), 'boosted': False, 'depth_note': None}
     return None
 QB_CUR, QB_PRIOR, QB_PREV_TEAM = _build_qb()
-def run(team,opp,imp,outs=(),posadj=False,active=False,returning=()):
+def run(team,opp,imp,outs=(),posadj=False,active=False,returning=(),quest=()):
     o_rush,o_rec=dstats(opp); rows=[]
     mine = cur[cur.team==team]
     if not len(mine) and len(ROS_TEAM):
@@ -593,8 +638,23 @@ def run(team,opp,imp,outs=(),posadj=False,active=False,returning=()):
     df = full[~outmask].copy()
     df['d_repa'], df['d_pepa'] = def_epa_now(p, opp)   # opponent per-play defense (10/8)
     df = live_extra(df, p, team, opp)   # second-model inputs (10/9)
-    try: df = add_inj(df, INJ_NOW)   # injury-report flags (10/10)
+    # Questionable from the site (official report + ESPN, 10/10): the nflverse injury file often lags Friday's game statuses
+    # (week 5 2026: 2 Questionable league-wide; Jeanty Questionable on ESPN, missing there), so the backup boost never fired.
+    flags = {k: dict(v) for k, v in INJ_NOW.items()}
+    if quest:
+        for pid, nm in zip(df.pid, df.name):
+            if match_any(nm, list(quest)): flags.setdefault(pid, {})['q'] = 1
+    try: df = add_inj(df, flags)   # injury-report flags (10/10)
     except Exception as e: print(f"[td] injury flags failed: {e}", flush=True)
+    try:   # starter RB out (10/10): lead back this season is on the Out list
+        lp = lead_rb(_rbs(pg[pg.team == team]))
+        lout = lp is not None and lp not in set(df.pid)
+        df = _mark_bk(df, pd.Series(lout & (df.pid != lp).values, index=df.index))
+        here = set(df.pid); rec = False
+        for sp, mv in REC_LEADS:
+            lr = lead_rb(_spot(pg[pg.team == team], sp), None, 'tgt', mv); rec = rec or (lr is not None and lr not in here)
+        df = _mark_rec(df, pd.Series(rec, index=df.index))
+    except Exception as e: print(f"[td] backup flags failed: {e}", flush=True)
     if posadj: df['o_rec']=df.pos.map(pos_rec(opp))
     # (Vacated-usage boost removed 9/30: handing an Out player's red-zone share to teammates tested WORSE in 7 of 7
     # seasons, 2019-25 -- the teammates' own usage already carries most of it, and the bump overshot.)

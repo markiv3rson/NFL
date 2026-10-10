@@ -378,10 +378,15 @@ function tdBody() {
     .filter((x) => x.r.fair != null && usable(x.r)).sort((a, b) => b.r.fair - a.r.fair);
   const moves = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).filter((r) => r.move).map((r) => r)).sort((a, b) => Math.abs(b.move) - Math.abs(a.move)).slice(0, 10);
   const moveBox = moves.length ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Price moves (5¢+, real markets)</div>${moves.map((r) => `<div class="row"><span>${esc(r.player)} <span class="dim">${esc(r.game)}</span></span><span class="${r.move > 0 ? "g" : "r"}">${r.move > 0 ? "▲ +" : "▼ "}${r.move}¢</span></div>`).join("")}</div></div>` : "";
+  // Market disagrees (10/10): Polymarket 20+ points from the model, any player (also below the top 3). Usually news the model
+  // can't see yet (a role change, a starter likely to sit). A warning to check the news, not a bet.
+  const gaps = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).filter((r) => r.fair != null && r.price != null && Math.abs(r.price * 100 - r.fair) >= 20))
+    .sort((a, b) => Math.abs(b.price * 100 - b.fair) - Math.abs(a.price * 100 - a.fair));
+  const gapBox = gaps.length ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">⚠ Market disagrees · check the news</div>${gaps.map((r) => `<div class="row"><span>${esc(r.player)} <span class="dim">${esc(r.game)}${r.thin ? " · thin market" : ""}</span></span><span>model ${Math.round(r.fair)}% · Polymarket ${Math.round(r.price * 100)}¢</span></div>`).join("")}</div></div>` : "";
   // Top 3 per team (10/5): beyond the three likeliest scorers the rest is noise.
   const perTeam = {}, shown = rows.filter((x) => { const k = x.r.team; perTeam[k] = (perTeam[k] || 0) + 1; return perTeam[k] <= 3; });
   if (!rows.length) return `<div class="card" style="margin-top:10px"><div class="s">${S.games.length && S.games.every((g) => g.started) ? "No games left this week." : "No players yet."}</div></div>`;
-  return moveBox + `<div class="card tdl"><div class="tdh"><span style="flex:1;padding-left:28px">PLAYER</span><span style="width:74px;text-align:right">MODEL</span><span style="width:60px;text-align:right;white-space:nowrap">${pmLogo()}PRICE</span></div>${shown.map(tdRow).join("")}</div>`;
+  return gapBox + moveBox + `<div class="card tdl"><div class="tdh"><span style="flex:1;padding-left:28px">PLAYER</span><span style="width:74px;text-align:right">MODEL</span><span style="width:60px;text-align:right;white-space:nowrap">${pmLogo()}PRICE</span></div>${shown.map(tdRow).join("")}</div>`;
 }
 function renderTd() {
   const wk = S.week ? ` · Week ${S.week}` : "";

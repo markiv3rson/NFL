@@ -10,7 +10,7 @@ import { loadInjuriesMeta } from "../../lib/injuries";
 import { alertsFromRerun, alertsQbJump, alertsTdJump } from "../../lib/alerts";
 import { windAtKickoff, venue, isNeutral } from "../../lib/wind";
 import { loadSnaps, qbFirstStart, sameName } from "../../lib/snaps";
-import { loadEspnInjuries, espnOutFor } from "../../lib/espn";
+import { loadEspnInjuries, espnOutFor, espnQuestionableFor } from "../../lib/espn";
 export const config = { maxDuration: 300 };
 
 // Railway answers 502/503 "Application failed to respond" while the service restarts after a deploy (10/7 8:33 PM).
@@ -66,6 +66,9 @@ export default async function handler(req, res) {
       const outs = [...(injuries[g.away] || []), ...(injuries[g.home] || [])].filter((x) => Number(x.week) === Number(week) && /^(out|doubtful)$/i.test(x.status)).map((x) => x.name);
       // + ESPN game-day Out (inactives etc., dated this week) so the kickoff-wave rerun hands their share to teammates
       for (const t of [g.away, g.home]) for (const e of ((espn && espn.teams[t]) || [])) if (espnOutFor(e, t, g.kickoff, seasonRows) && !outs.includes(e.name)) outs.push(e.name);   // Doubtful too: 99% sit, and their red-zone share goes to teammates
+      // Questionable this week (official + ESPN): the model service's own injury file lags game statuses, so it gets them from here
+      const quest = [...(injuries[g.away] || []), ...(injuries[g.home] || [])].filter((x) => Number(x.week) === Number(week) && /^questionable$/i.test(x.status)).map((x) => x.name);
+      for (const t of [g.away, g.home]) for (const e of ((espn && espn.teams[t]) || [])) if (espnQuestionableFor(e, t, g.kickoff, seasonRows) && !quest.includes(e.name) && !outs.includes(e.name)) quest.push(e.name);
       // (THIS week's report only — before 9/28 a Tuesday rerun dropped last week's Out players from the new week's TD list)
       // Returning from injury: Out/Doubtful on last week's report, not Out/Doubtful now. The service treats them as playing (the page labels them).
       // Only players practicing this week (full 87% played, limited 61%); did-not-participate (17%) and no entry (6%) are NOT treated as playing.
@@ -74,7 +77,7 @@ export default async function handler(req, res) {
       return { away: g.away, home: g.home, key: g.key, kickoff: g.kickoff, returning, wind: w.wind, temp: w.temp ?? null, outdoor: w.outdoor && w.wind != null,
         dome: vn ? !vn.outdoor : null, neutral: isNeutral(g), turf: isTurf(g),
         restAwayDays: g.kickoff ? restDays(g.away, g.kickoff) : null,
-        spread: hs == null ? null : -hs, total, outs,
+        spread: hs == null ? null : -hs, total, outs, quest,
         // inactive list is out: inside 80 min of kickoff with the ESPN feed up, everyone still listed is playing (same rule as the page)
         active: !!espn && !!g.kickoff && (new Date(g.kickoff) - Date.now()) / 60000 >= 0 && (new Date(g.kickoff) - Date.now()) / 60000 <= 80 };
     }));
@@ -100,7 +103,7 @@ export default async function handler(req, res) {
     // No market line yet (early run): feed the TD model the game model's own spread and total (home-favored margin -> away spread sign).
     const ownLine = (x) => { const r = (lines.results || []).find((q) => q.game === x.key); return r && !r.error && r.homeSpread != null && r.total != null ? { spread: -r.homeSpread, total: r.total } : null; };
     const tdIn = payload.map((x) => (x.spread != null && x.total != null ? x : (() => { const o = ownLine(x); return o ? { ...x, ...o, own: true } : null; })())).filter(Boolean);
-    const td = tdIn.length ? await post(base, "/rerun-td-probs", { games: tdIn.map((x) => ({ away: x.away, home: x.home, spread: x.spread, total: x.total, outs: x.outs, active: x.active, returning: x.returning })) }) : { results: [] };
+    const td = tdIn.length ? await post(base, "/rerun-td-probs", { games: tdIn.map((x) => ({ away: x.away, home: x.home, spread: x.spread, total: x.total, outs: x.outs, quest: x.quest, active: x.active, returning: x.returning })) }) : { results: [] };
     const store = (await getJSON(K.model(season, week))) || { games: {}, td: {} };
     const runAt = new Date().toISOString();
     let nLines = 0, nTd = 0; const errors = [], alertJobs = [];
