@@ -152,6 +152,39 @@ def qb_runs(seasons):
         except Exception as e: _log("qbrun", y, e)
     return out
 
+# Starters out (10/10): per team-week, Out/Doubtful players on the official report who averaged 60%+ of offensive or defensive snaps in
+# the team's earlier games that season, by group. Same rule as the site (lib/snaps.js startersOut). Combos with these factors are kept
+# for straight bets only (no teasers, owner's call).
+INJ_GRP = {"QB": "qb", "WR": "sk", "TE": "sk", "RB": "sk", "T": "ol", "G": "ol", "C": "ol", "OT": "ol", "OG": "ol", "CB": "db", "S": "db", "FS": "db", "SS": "db",
+           "LB": "f7", "ILB": "f7", "OLB": "f7", "MLB": "f7", "DE": "f7", "DT": "f7", "NT": "f7"}
+INJ_FACTORS = [f"{s}{g}out" for g in ("QB", "SK", "OL", "DB", "F7") for s in ("dog", "fav")]
+INJ_MIN = {"qb": 1, "sk": 1, "ol": 2, "db": 2, "f7": 2}
+def _nn(x):
+    import re
+    return re.sub(r"\b(jr|sr|ii|iii|iv|v)\b", "", re.sub(r"[^a-z ]", "", str(x).lower())).strip().replace("  ", " ")
+def _nfl_file(path, local, y):
+    f = os.path.join(CACHE, local)
+    if not os.path.exists(f) or (y >= _season.data_season() and time.time() - os.path.getmtime(f) > 6 * 3600):
+        _season.download(f"{_season.BASE}/{path}", f)
+    return f
+def starters_out(seasons):
+    out = {}
+    for y in seasons:
+        try:
+            sn = pd.read_parquet(_nfl_file(f"snap_counts/snap_counts_{y}.parquet", f"snap_counts_{y}.parquet", y))
+            inj = pd.read_parquet(_nfl_file(f"injuries/injuries_{y}.parquet", f"inj_{y}.parquet", y))
+        except Exception as e: _log("starters out", y, e); continue
+        sn = sn[sn.game_type == "REG"].copy(); sn["pct"] = sn[["offense_pct", "defense_pct"]].max(axis=1); sn["n"] = sn.player.map(_nn)
+        inj = inj[(inj.game_type == "REG") & inj.report_status.isin(["Out", "Doubtful"])].copy(); inj["n"] = inj.full_name.map(_nn)
+        for (tm, wk), x in inj.groupby(["team", "week"]):
+            prev = sn[(sn.team == tm) & (sn.week < wk)]
+            if not len(prev): continue
+            avg = prev.groupby("n").agg(p=("pct", "mean"), pos=("position", "last")); o = {k: 0 for k in INJ_MIN}
+            for n in x.n:
+                if n in avg.index and avg.at[n, "p"] >= 0.6 and INJ_GRP.get(avg.at[n, "pos"]): o[INJ_GRP[avg.at[n, "pos"]]] += 1
+            out[(int(y), tm, int(wk))] = o
+    return out
+
 def assemble(site_opens=None):
     cur = _season.data_season()
     os.makedirs(WORK, exist_ok=True)
@@ -168,6 +201,10 @@ def assemble(site_opens=None):
     d["hage"] = [AG.get((s, t, w)) for s, t, w in zip(d.season, d.home_team, d.week)]; d["aage"] = [AG.get((s, t, w)) for s, t, w in zip(d.season, d.away_team, d.week)]
     d["hqbrun"] = [QR.get((s, q, w), np.nan) for s, q, w in zip(d.season, d.home_qb_id, d.week)]; d["aqbrun"] = [QR.get((s, q, w), np.nan) for s, q, w in zip(d.season, d.away_qb_id, d.week)]
     d["tzdiff"] = [TZ.get(h, 0) - TZ.get(a, 0) for h, a in zip(d.home_team, d.away_team)]
+    SO = starters_out(range(FIRST, cur + 1))
+    for g_ in INJ_MIN:
+        d["h_inj_" + g_] = [SO.get((int(s_), t, int(w)), {}).get(g_, 0) for s_, t, w in zip(d.season, d.home_team, d.week)]
+        d["a_inj_" + g_] = [SO.get((int(s_), t, int(w)), {}).get(g_, 0) for s_, t, w in zip(d.season, d.away_team, d.week)]
     d["early_slot"] = d.gametime.fillna("").str[:2].isin(["09", "12", "13"])
     return d.reset_index(drop=True), cur
 
@@ -229,6 +266,9 @@ def factors(d, mm, mt):
     hw = num(d.h_wins) / np.where(num(d.h_gp) > 0, num(d.h_gp), np.nan); aw = num(d.a_wins) / np.where(num(d.a_gp) > 0, num(d.a_gp), np.nan)
     dw, fw = np.where(homeDog, hw, aw), np.where(homeDog, aw, hw)
     F["wk17dogLosing"] = (d.week.values >= 17) & (dw < 0.4) & (fw > 0.6)
+    for g_, th in INJ_MIN.items():
+        if "h_inj_" + g_ in d:
+            F[f"dog{g_.upper()}out"] = num(H("h_inj_" + g_, "a_inj_" + g_)) >= th; F[f"fav{g_.upper()}out"] = num(V("h_inj_" + g_, "a_inj_" + g_)) >= th
     return {k: np.nan_to_num(np.asarray(v, dtype=float)) > 0 for k, v in F.items()}
 
 NUM = ["mm", "km", "mt", "kt", "mv", "tmv", "w", "tmp", "out", "restd", "aged", "qbr", "coach", "hpm", "apm", "dv", "s_ens", "t_ens", "s_gbm", "t_gbm", "ptstot"]
@@ -255,7 +295,9 @@ def scan(d, F, per):
     names = list(F); combos = [(n,) for n in names] + list(itertools.combinations(names, 2)); rows = []
     for bn, x in B.items():
         x = np.asarray(x, float); valid = ~np.isnan(x) & (x != 0); base = (x[valid] > 0).mean()
+        straight = bn in ("Dog ATS", "Fav ATS", "Under", "Over")
         for c in combos:
+            if not straight and any(n in INJ_FACTORS for n in c): continue   # starters-out combos: straight bets only
             k = valid.copy()
             for n in c: k &= F[n]
             n = int(k.sum())
