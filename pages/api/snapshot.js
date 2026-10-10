@@ -3,7 +3,8 @@
 // 6/7/8/9/10/12/3 PT, and just before each kickoff with kickoff=<game>) and by the Refresh button.
 import { tablePicks, recordStack } from "../../lib/stack";
 import { venue } from "../../lib/wind";
-import { recordTeaser, recordTotalLeg, teaserLeg, totalMove } from "../../lib/teaser";
+import { recordTeaser, recordTotalLeg, teaserLeg, totalMove, recordEarlyTotal, tkey } from "../../lib/teaser";
+import { comboFactors } from "../../lib/stack";
 import { recordAltValues } from "../../lib/altfair";
 import { alertTeaser, alertsTdNo } from "../../lib/alerts";
 import { applyCalibration } from "../../lib/calibration";
@@ -96,6 +97,13 @@ export default async function handler(req, res) {
          await logEdges(season, week, g, poly, booksNow.games[g.key], booksNow.t, t, () => 0).catch(() => 0); edges += n; }   // add AFTER the await: "edges += await" lost updates across parallel games
       if (prev && poly && !snap.suspect) await alertsFromLines(season, g, prev, poly).catch(() => 0);   // line-move alerts (10/1)
       if (poly || snap.books) { await redis.rpush(K.snaps(season, week, g.key), JSON.stringify(snap)); await redis.ltrim(K.snaps(season, week, g.key), -200, -1); lines += poly ? 1 : 0; }
+      // Early-week total (10/9): record the early model's side of the opening total once, while the total hasn't moved
+      if (poly && poly.total && !snap.suspect && !(await redis.hexists(tkey(season, week), `${g.key}|early`).catch(() => 1))) try {
+        const mdlE = await loadModel(season, week).catch(() => null), mgE = mdlE && mdlE.games[g.key];
+        const f0 = jparse(await redis.lindex(K.snaps(season, week, g.key), 0)), so = f0 && f0.poly && f0.poly.spread ? f0.poly.spread.homeSpread : null, to = f0 && f0.poly && f0.poly.total ? f0.poly.total.line : null;
+        if (mgE && poly.spread) { const v = venue(g) || {}, c = comboFactors({ ...g, outdoor: !!v.outdoor }, mgE, poly.spread.homeSpread, poly.total.line, so, to, await situationFor(season, week, g).catch(() => null), Number(week));
+          if (c) await recordEarlyTotal(season, week, g, c.early, to, poly.total.line, t); }
+      } catch {}
       const px = await tdProps(events, g.away, g.home).catch(() => null);
       if (px) {
         // TD guard. A feed glitch (e.g. the 2+ market read as anytime) halves prices for BOTH teams at once; real news

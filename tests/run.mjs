@@ -753,6 +753,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       await gradeTeasersWeek(2026, 5, fin); await gradeStackWeek(2026, 5, fin);
       const T2 = await R.hgetall("teaser:2026:5"), S2 = Object.values(await R.hgetall("stack:2026:5")).map((x) => JSON.parse(x));
       ok(JSON.parse(T2[G.key]).result === "W" && JSON.parse(T2[G.key + "|total"]).result === "W" && JSON.parse(T2[G.key + "|totmove"]).result === "W" && S2.every((x) => ["W", "L", "P"].includes(x.result)), "kickoff save: every recorded pick is graded after the final"); }
+    { const { recordEarlyTotal, gradeTeasersWeek: gtw, teaserSummary: tsum } = await import("../lib/teaser.js"), R2 = (await import("../lib/redis.js")).getRedis();
+      const E = { key: "E @ F", home: "F", away: "E" };
+      ok((await recordEarlyTotal(2026, 6, E, 46, 44.5, 46.5, "t")) === 0 && (await recordEarlyTotal(2026, 6, E, 47, 44.5, 44.5, "t1")) === 1 && (await recordEarlyTotal(2026, 6, E, 40, 44.5, 44.5, "t2")) === 0, "early-week total: saved once, only while the total is at its opening number");
+      await gtw(2026, 6, [{ key: "E @ F", home: "F", away: "E", homeScore: 24, awayScore: 23 }]);
+      const ex = JSON.parse((await R2.hget("teaser:2026:6", "E @ F|early")));
+      ok(ex.side === "over" && ex.line === 44.5 && ex.result === "W" && (await tsum(2026)).early.w >= 1, "early-week total: graded at the opening number and counted in its own record"); }
     const { totalMove } = await import("../lib/teaser.js"); ok(totalMove(47.5, 44).under && totalMove(44, 47).under === false && totalMove(44, 46.5) === null, "total move: 3+ points from the open"); }
   ok(ctx.T.slotOf({ badge: "SNF", kickoff: "2026-10-11T12:00:00" }) === "Primetime" && ctx.T.slotOf({ kickoff: "2026-10-11T10:00:00" }) === "Morning" && ctx.T.slotOf({ kickoff: "2026-10-11T13:25:00" }) === "Afternoon", "best bets: morning / afternoon / primetime");
   { // TD-based total fade (10/9)

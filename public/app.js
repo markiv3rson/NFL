@@ -202,7 +202,7 @@ function leanCell(g, kind) {
   // Early-week total (10/9): while the total hasn't moved from its opening number, the early model's side of it (won 54.5% at the open, 2014-25).
   if (kind === "total" && !g.final && g.modelEarly != null && g.totalOpen != null && LN.tl != null && Math.abs(LN.tl - g.totalOpen) < 0.5 && Math.abs(g.modelEarly - g.totalOpen) >= 0.5) {
     const ov = g.modelEarly > g.totalOpen;
-    body += `<div class="s" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">Early-week edge: <b class="g">${ov ? "Over" : "Under"} ${g.totalOpen} · 54%</b> · the total hasn't moved yet; best bet before it does.</div>`;
+    body += `<div class="s" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">Early-week edge: <b class="g">${ov ? "Over" : "Under"} ${g.totalOpen} · 54%</b> · the total hasn't moved yet; best bet before it does.${S && S.earlyRec ? ` This season: <b>${S.earlyRec.w}–${S.earlyRec.l}</b>.` : ""}</div>`;
   }
   return wrap(`<div class="s">${mline}</div>` + body +
     (adj ? `<div class="s r" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">${injBadgeFor(g)}${esc(adj)}</div>` : "") +
@@ -832,11 +832,12 @@ function comboRow() {
 }
 function teaserRow() {
   const T = TEASERS; if (!T) return "";
+  const ee = T.early, eRow = ee ? `<div class="arow"><span class="nm">Early-week total (at the opening number)</span><span class="dim rc">${ee.n ? `${ee.w}–${ee.l}` : ee.recorded ? `${ee.recorded} saved` : "none yet"}</span><b class="${ee.n ? (ee.hit >= 0.545 ? "g" : ee.hit >= 0.5 ? "y" : "r") : "dim"}">${ee.n ? Math.round(ee.hit * 100) + "%" : "—"}</b></div>` : "";
   const mm = T.moves, mRow = mm ? `<div class="arow"><span class="nm">Under after total fell 3+</span><span class="dim rc">${mm.n ? `${mm.w}–${mm.l}` : mm.recorded ? `${mm.recorded} saved` : "none yet"}</span><b class="${mm.n ? (mm.hit >= 0.55 ? "g" : mm.hit >= 0.5 ? "y" : "r") : "dim"}">${mm.n ? Math.round(mm.hit * 100) + "%" : "—"}</b></div>` : "";
   const tt = T.totals, tRow = tt ? `<div class="arow"><span class="nm">Total moved 6 (model's side)</span><span class="dim rc">${tt.n ? `${tt.w}–${tt.l}` : tt.recorded ? `${tt.recorded} saved` : "none yet"}</span><b class="${tt.n ? (tt.hit >= 0.67 ? "g" : tt.hit >= 0.6 ? "y" : "r") : "dim"}">${tt.n ? Math.round(tt.hit * 100) + "%" : "—"}</b></div>` : "";
   const a = T.all || {}, v = T.value || {}, pc = (x) => (x == null ? "—" : `${Math.round(x * 100)}%`);
   return `<div class="arow"><span class="nm">Underdog +1.5–2.5 teased to +7.5–8.5</span><span class="dim rc">${a.n ? `${a.w}–${a.l}` : T.recorded ? `${T.recorded} saved` : "none yet"}</span><b class="${a.n ? (a.hit >= 0.76 ? "g" : a.hit >= 0.72 ? "y" : "r") : "dim"}">${a.n ? pc(a.hit) : "—"}</b></div>` +
-    `<div class="s dim">History ${T.hist.years}: ${Math.round(T.hist.hit * 1000) / 10}% of ${T.hist.n}</div>` + tRow + mRow;
+    `<div class="s dim">History ${T.hist.years}: ${Math.round(T.hist.hit * 1000) / 10}% of ${T.hist.n}</div>` + tRow + mRow + eRow;
 }
 // Decision model (10/9): straight bets only (no teasers, no alt lines), ONE pick per game per market (spread, total): the one
 // with the best record. Two angles on opposite sides of the same total no longer both show.
