@@ -150,6 +150,20 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   globalThis.__ctx = ctx; }
 
 // ---------- Parlay Lab (paper parlays)
+{ // Best bets parlays (10/10): 56%+ straight picks (combos + angles, no teasers), one per game, priced from Polymarket
+  const { buildPaper } = await import("../lib/paper.js");
+  const gg = (k, home, away, combos) => ({ key: k, home, away, started: false, final: false, td: [], angles: [], combos,
+    poly: { spread: { homeSpread: -3.5, home: 0.5, away: 0.5 }, total: { line: 44.5, over: 0.5, under: 0.5 }, ml: { home: 0.6, away: 0.4 } } });
+  const P = buildPaper({ games: [gg("A @ B", "B", "A", [{ pick: "A +3.5", hit: 62 }, { pick: "Over 40.5", hit: 80, teaser: true }]), gg("C @ D", "D", "C", [{ pick: "Under 44.5", hit: 58 }]),
+    gg("E @ F", "F", "E", [{ pick: "F -3.5", hit: 55 }]), gg("G @ H", "H", "G", [{ pick: "H -3.5", hit: 70 }])], edgesNow: [] });
+  const b2 = P.find((p) => p.strategy === "best_2"), b3 = P.find((p) => p.strategy === "best_3"), b4 = P.find((p) => p.strategy === "best_4");
+  ok(b2 && b2.legs.map((l) => l.label).join(",") === "H -3.5,A +3.5" && b3 && b3.legs.length === 3 && !b4 && !b3.legs.some((l) => /40\.5|F -3\.5/.test(l.label)) && Math.abs(b2.pay - 4) < 1e-9,
+    "best-bets parlays: top 56%+ straight picks, one per game, no teasers, none when too few"); }
+{ const { startersOut } = await import("../lib/snaps.js");
+  const sn = { "Joe QB": { name: "Joe QB", pos: "QB", weeks: { 1: 1, 2: 1 }, dweeks: { 1: 0, 2: 0 } }, "Al CB": { name: "Al CB", pos: "CB", weeks: { 1: 0, 2: 0 }, dweeks: { 1: 0.9, 2: 0.8 } },
+    "Bo CB": { name: "Bo CB", pos: "CB", weeks: { 1: 0 }, dweeks: { 1: 0.3 } }, "Cy S": { name: "Cy S", pos: "S", weeks: { 1: 0, 2: 0 }, dweeks: { 1: 1, 2: 0.95 } } };
+  const o = startersOut(sn, [{ name: "Joe QB Jr.", status: "Out", week: 3 }, { name: "Al CB", status: "Doubtful", week: 3 }, { name: "Bo CB", status: "Out", week: 3 }, { name: "Cy S", status: "Questionable", week: 3 }], 3);
+  ok(o.qb === 1 && o.db === 1 && o.sk === 0, "starters out: Out/Doubtful 60%+ starters only, by group, names matched across suffixes"); }
 { const { buildPaper, gradePaper } = await import("../lib/paper.js");
   const { booksMaxAgeH } = await import("../lib/edges.js");
   const game = (k, hs, ml, win, extra = {}) => ({ key: k, away: k.split(" @ ")[0], home: k.split(" @ ")[1], started: false, final: false, poly: { spread: { homeSpread: hs }, ml: { home: ml, away: 1 - ml } }, winPct: win, td: [], ...extra });
