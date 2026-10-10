@@ -200,9 +200,9 @@ function leanCell(g, kind) {
     }
   }
   // Early-week total (10/9): while the total hasn't moved from its opening number, the early model's side of it (won 54.5% at the open, 2014-25).
-  if (kind === "total" && !g.final && g.modelEarly != null && g.totalOpen != null && LN.tl != null && Math.abs(LN.tl - g.totalOpen) < 0.5 && Math.abs(g.modelEarly - g.totalOpen) >= 0.5) {
+  if (kind === "total" && !g.final && g.modelEarly != null && g.totalOpen != null && LN.tl != null && Math.abs(LN.tl - g.totalOpen) < 0.5 && Math.abs(g.modelEarly - g.totalOpen) >= 2) {   // 2+ apart (10/10): 55% since 2014; 0.5+ was 54%
     const ov = g.modelEarly > g.totalOpen;
-    body += `<div class="s" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">Early-week edge: <b class="g">${ov ? "Over" : "Under"} ${g.totalOpen} · 54%</b> · the total hasn't moved yet; best bet before it does.${S && S.earlyRec ? ` This season: <b>${S.earlyRec.w}–${S.earlyRec.l}</b>.` : ""}</div>`;
+    body += `<div class="s" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">Early-week edge: <b class="g">${ov ? "Over" : "Under"} ${g.totalOpen} · 55%</b> · the total hasn't moved yet; best bet before it does.${S && S.earlyRec ? ` This season: <b>${S.earlyRec.w}–${S.earlyRec.l}</b>.` : ""}</div>`;
   }
   return wrap(`<div class="s">${mline}</div>` + body +
     (adj ? `<div class="s r" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">${injBadgeFor(g)}${esc(adj)}</div>` : "") +
@@ -379,10 +379,11 @@ function tdBody() {
   const moves = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).filter((r) => r.move).map((r) => r)).sort((a, b) => Math.abs(b.move) - Math.abs(a.move)).slice(0, 10);
   const moveBox = moves.length ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Price moves (5¢+, real markets)</div>${moves.map((r) => `<div class="row"><span>${esc(r.player)} <span class="dim">${esc(r.game)}</span></span><span class="${r.move > 0 ? "g" : "r"}">${r.move > 0 ? "▲ +" : "▼ "}${r.move}¢</span></div>`).join("")}</div></div>` : "";
   // Market disagrees (10/10): Polymarket 20+ points from the model, any player (also below the top 3). Usually news the model
-  // can't see yet (a role change, a starter likely to sit). A warning to check the news, not a bet.
+  // can't see yet (a role change, a starter likely to sit). A warning to check the news, not a bet. Nearly every TD market is 'thin',
+  // so the label is kept for prices that are just the middle of an empty book: best bid 15c+ under the price (Washington 50c, bid 6c).
   const gaps = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).filter((r) => r.fair != null && r.price != null && Math.abs(r.price * 100 - r.fair) >= 20))
     .sort((a, b) => Math.abs(b.price * 100 - b.fair) - Math.abs(a.price * 100 - a.fair));
-  const gapBox = gaps.length ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">⚠ Market disagrees · check the news</div>${gaps.map((r) => `<div class="row"><span>${esc(r.player)} <span class="dim">${esc(r.game)}${r.thin ? " · thin market" : ""}</span></span><span>model ${Math.round(r.fair)}% · Polymarket ${Math.round(r.price * 100)}¢</span></div>`).join("")}</div></div>` : "";
+  const gapBox = gaps.length ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">⚠ Market disagrees · check the news</div>${gaps.map((r) => `<div class="row"><span>${esc(r.player)} <span class="dim">${esc(r.game)}${r.bid != null && r.price - r.bid >= 0.15 ? ` · price unreliable (best bid ${Math.round(r.bid * 100)}¢)` : ""}</span></span><span>model ${Math.round(r.fair)}% · Polymarket ${Math.round(r.price * 100)}¢</span></div>`).join("")}</div></div>` : "";
   // Top 3 per team (10/5): beyond the three likeliest scorers the rest is noise.
   const perTeam = {}, shown = rows.filter((x) => { const k = x.r.team; perTeam[k] = (perTeam[k] || 0) + 1; return perTeam[k] <= 3; });
   if (!rows.length) return `<div class="card" style="margin-top:10px"><div class="s">${S.games.length && S.games.every((g) => g.started) ? "No games left this week." : "No players yet."}</div></div>`;
@@ -403,11 +404,22 @@ function weakLeg(b) {
   const xs = b.legs.filter((l) => l.result === "pending" && l.modelP != null && l.price > 0).map((l) => ({ l, gap: l.modelP - l.price })).sort((a, c) => a.gap - c.gap);
   return xs.length && xs[0].gap < -0.03 ? xs[0].l : null;
 }
+// Pick flipped (10/10): an open bet leg (spread or total) where the app now has a PICK (56%+) on the other side --
+// lines and weather move during the week (CHI @ GB: Over at the open, Under after the total rose and the wind came in).
+function legFlipped(label) {
+  const games = ((S && S.games) || []).filter((g) => !g.started && !g.final);
+  const tot = String(label).match(/^(Over|Under)\s+[\d.]+\s+·\s+(.+)$/), sp = String(label).match(/^([A-Z]{2,3})\s+[+-][\d.]+$/);
+  if (tot) { const g = games.find((x) => x.key === tot[2]); if (!g) return false;
+    const t = straightPicks(g).find((x) => /^(Over|Under)\b/.test(x.pick)); return !!t && !t.pick.startsWith(tot[1]); }
+  if (sp) { const g = games.find((x) => x.away === sp[1] || x.home === sp[1]); if (!g) return false;
+    const t = straightPicks(g).find((x) => !/^(Over|Under)\b/.test(x.pick) && !/\bML\b/.test(x.pick)); return !!t && !t.pick.startsWith(sp[1] + " "); }
+  return false;
+}
 function betRow(b) {
   if (b.source === "account") {   // bet recorded automatically from your Polymarket account
     const st = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Even" : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : (b.waiting ? '<span class="y">waiting for TD results</span>' : '<span class="dim">open</span>');
     const name = b.picks && b.picks.length ? `Combo · ${b.picks.length} picks` : `${esc(b.title)}${b.outcome ? ` — ${esc(b.outcome)}` : ""}`;
-    const picks = b.picks && b.picks.length ? b.picks.map((p) => `<div class="s" style="padding:0 0 0 16px">${p.result ? RESMARK[p.result] + " " : "• "}${esc(p.label)}</div>`).join("") : "";
+    const picks = b.picks && b.picks.length ? b.picks.map((p) => `<div class="s" style="padding:0 0 0 16px">${p.result ? RESMARK[p.result] + " " : "• "}${esc(p.label)}${!p.result && legFlipped(p.label) ? ' <span class="y">⚠ app now picks the other side</span>' : ""}</div>`).join("") : "";
     return `<div class="row"><span>${name} <span class="dim">wk ${b.week ?? "?"}</span></span><span>${st}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
       `<div class="s" style="padding:0 0 ${picks ? 2 : 6}px 8px">${money(b.cost)}${b.price != null ? ` at ${b.price < 0.005 ? "<1" : Math.round(b.price * 100)}¢` : ""} · ${b.sold ? `sold early for ${money(Math.max(0, (b.cost || 0) + (b.pl || 0)))}` : `pays ${money(b.toWin)} if it wins`}</div>` + (picks ? `<div style="padding-bottom:6px">${picks}</div>` : "");
   }
