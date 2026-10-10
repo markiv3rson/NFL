@@ -475,6 +475,36 @@ function betsSummary(shown) {
     avgClv: cl.length ? cl.reduce((a, b) => a + b, 0) / cl.length : null, maxPayout: open.reduce((a, b) => a + b.toWin, 0), expMarket: open.reduce((a, b) => a + b.expMarket, 0),
     expModel: wm.reduce((a, b) => a + b.expModel, 0), expModelCost: wm.reduce((a, b) => a + b.cost, 0), modelCovered: wm.length };
 }
+// Open bets by kickoff time (10/10): every leg is matched to its game (team code, "· AWAY @ HOME", or a TD player's name); a bet whose
+// legs fall in more than one slot goes in its own "Mixed times" list with a warning (it isn't settled until its last game ends).
+const BET_SLOTS = ["Early (London / international)", "Morning (10 AM)", "Afternoon (1 PM)", "Prime time"];
+function kickSlot(g) {
+  if (!g || !g.kickoff) return null;
+  if (/TNF|SNF|MNF/.test(g.badge || "")) return BET_SLOTS[3];
+  const h = Number(new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone: "America/Los_Angeles" }).format(new Date(g.kickoff)));
+  return h < 9 ? BET_SLOTS[0] : h < 12 ? BET_SLOTS[1] : h < 17 ? BET_SLOTS[2] : BET_SLOTS[3];
+}
+function legGame(label, games) {
+  const L = String(label), at = L.match(/·\s+(.+ @ .+)$/); if (at) return games.find((g) => g.key === at[1]) || null;
+  const sp = L.match(/^([A-Z]{2,3})\s+(?:[+-][\d.]+|ML)$/); if (sp) return games.find((g) => g.away === sp[1] || g.home === sp[1]) || null;
+  const td = L.match(/^(.+?)\s+\d\+\s+TD$/); if (!td) return null;
+  const w = td[1].replace(/\b(Jr|Sr|II|III|IV)\.?$/i, "").trim().split(/\s+/), first = (w[0] || "")[0], last = w.slice(1).join(" ").toLowerCase();
+  const hit = games.filter((g) => (g.td || []).some((r) => { const [a, ...b] = String(r.player).split("."); return b.join(".").toLowerCase() === last && (a || "")[0] === first; }));
+  return hit.length === 1 ? hit[0] : null;   // two players with the same short name on different teams: unknown
+}
+function betSlots(b) {
+  const games = (S && S.games) || [], out = new Set();
+  for (const p of b.picks || []) { const g = legGame(p.label, games), sl = kickSlot(g); if (sl) out.add(sl); }
+  for (const l of b.legs || []) { const g = games.find((x) => x.key === l.game), sl = kickSlot(g); if (sl) out.add(sl); }
+  return [...out];
+}
+function openBySlot(open) {
+  const groups = Object.fromEntries(BET_SLOTS.map((k) => [k, []])), mixed = [], other = [];
+  for (const b of open) { const sl = betSlots(b); if (sl.length === 1) groups[sl[0]].push(b); else if (sl.length > 1) mixed.push({ b, sl }); else other.push(b); }
+  return BET_SLOTS.filter((k) => groups[k].length).map((k) => `<div class="sec"><div class="sh">Open · ${k}</div>${groups[k].map(betRow).join("")}</div>`).join("") +
+    (mixed.length ? `<div class="sec"><div class="sh">Open · Mixed times</div><div class="s y">⚠ These have legs in more than one time slot. They aren't settled until the last game ends.</div>${mixed.map(({ b, sl }) => `<div class="s dim" style="margin-top:6px">${sl.sort((x, y) => BET_SLOTS.indexOf(x) - BET_SLOTS.indexOf(y)).join(" + ")}</div>${betRow(b)}`).join("")}</div>` : "") +
+    (other.length ? `<div class="sec"><div class="sh">Open · Time unknown</div>${other.map(betRow).join("")}</div>` : "");
+}
 function renderMineNow() {
   if (!MB) { $("record-mine").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }
   // Week filter: default is this week; "All" is the season. The summary is recomputed from the bets shown.
@@ -502,7 +532,7 @@ function renderMineNow() {
       return sc.disagree ? `<div class="s y">⚠ Settlement mismatch on ${sc.disagree} combo${sc.disagree === 1 ? "" : "s"}</div>`
         : ""; })() +
     (past ? "" : `<div class="row"><span class="dim">Open this week</span><span>${money(s.openCost)} of $200</span></div>`) + `</div>` +
-    (past || !open.length ? "" : `<div class="sec"><div class="sh">Open bets</div>${open.map(betRow).join("")}</div>` +
+    (past || !open.length ? "" : openBySlot(open) +
     `<div class="sec"><div class="sh">Expected returns</div>` +
     `<div class="row"><span class="dim">If everything hits</span><span>${money(s.maxPayout)} (${cMoney(s.maxPayout - s.openCost)})</span></div>` +
     `<div class="row"><span class="dim">Expected · market</span><span>${money(s.expMarket)} (${cMoney(s.expMarket - s.openCost)})</span></div>` +
