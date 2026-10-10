@@ -5,6 +5,7 @@ import { tablePicks, recordStack } from "../../lib/stack";
 import { venue } from "../../lib/wind";
 import { recordTeaser, recordTotalLeg, teaserLeg, totalMove, recordEarlyTotal, tkey } from "../../lib/teaser";
 import { comboFactors } from "../../lib/stack";
+import { loadComboModel } from "../../lib/combomodel";
 import { recordAltValues } from "../../lib/altfair";
 import { alertTeaser, alertsTdNo } from "../../lib/alerts";
 import { applyCalibration } from "../../lib/calibration";
@@ -30,6 +31,7 @@ export const config = { maxDuration: 120 };
 // Automatic pre-log (protocol 3.3): model vs Polymarket frozen at kickoff for every game. Used by the kickoff snapshot
 // AND the late-closing safety net below (added 9/29), so a missed kickoff (e.g. the scheduler down) still gets one.
 export async function writePrelog(season, week, g, t, poly, bk, model) {
+  await loadComboModel().catch(() => null);   // newest weekly rebuild (10/9)
   const mdl = model || (await loadModel(season, week).catch(() => null)) || { games: {}, td: {} };
   const mg = mdl.games[g.key] || null, mt = mdl.td[g.key] || {}, tdp = (await getJSON(K.tdpx(season, week, g.key))) || {};
   const topTd = [...(mt.away || []).map((p) => ({ ...p, team: g.away })), ...(mt.home || []).map((p) => ({ ...p, team: g.home }))]
@@ -54,6 +56,7 @@ export async function writePrelog(season, week, g, t, poly, bk, model) {
 
 export default async function handler(req, res) {
   try {
+    await loadComboModel().catch(() => null);   // newest weekly rebuild for the combo / early-week picks (10/9)
     const src = req.query.src || "manual";
     const season = SEASON, week = Number(req.query.week) || (await currentWeek(season));
     const games = await loadGames(season, week);

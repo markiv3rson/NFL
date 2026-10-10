@@ -759,6 +759,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       await gtw(2026, 6, [{ key: "E @ F", home: "F", away: "E", homeScore: 24, awayScore: 23 }]);
       const ex = JSON.parse((await R2.hget("teaser:2026:6", "E @ F|early")));
       ok(ex.side === "over" && ex.line === 44.5 && ex.result === "W" && (await tsum(2026)).early.w >= 1, "early-week total: graded at the opening number and counted in its own record"); }
+    { // weekly rebuild (10/9): a published set switches the table and coefficients; a bad or missing one falls back to the built-in copies
+      const { applyComboModel } = await import("../lib/combomodel.js"), { upgraded, UP } = await import("../lib/upgrade.js");
+      const base = upgraded({ mm: 3, km: 3, mt: 44, kt: 44 });
+      const fake = { table: Array.from({ length: 300 }, () => ["Dog ATS", ["homeDog"], 99.9, 100]), upgrade: { ...UP, mi: UP.mi + 5 }, early: null };
+      ok(applyComboModel(fake) && Math.abs(upgraded({ mm: 3, km: 3, mt: 44, kt: 44 }).margin - base.margin - 5) < 0.11, "weekly rebuild: a published set is used");
+      ok(!applyComboModel({ table: [] }) && Math.abs(upgraded({ mm: 3, km: 3, mt: 44, kt: 44 }).margin - base.margin) < 0.01, "weekly rebuild: a bad set falls back to the built-in model"); }
     const { totalMove } = await import("../lib/teaser.js"); ok(totalMove(47.5, 44).under && totalMove(44, 47).under === false && totalMove(44, 46.5) === null, "total move: 3+ points from the open"); }
   ok(ctx.T.slotOf({ badge: "SNF", kickoff: "2026-10-11T12:00:00" }) === "Primetime" && ctx.T.slotOf({ kickoff: "2026-10-11T10:00:00" }) === "Morning" && ctx.T.slotOf({ kickoff: "2026-10-11T13:25:00" }) === "Afternoon", "best bets: morning / afternoon / primetime");
   { // TD-based total fade (10/9)

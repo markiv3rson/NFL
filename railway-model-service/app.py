@@ -17,8 +17,10 @@ Endpoints:
 import os, threading
 import numpy as np, pandas as pd, hmac
 from flask import Flask, request, jsonify
-import fair_line, extra_factors
+import fair_line, extra_factors, weekly_rebuild
 extra_factors.warm()   # 10/9: build the stats models in the background at startup
+if weekly_rebuild.latest() is None and os.environ.get("REBUILD_ON_START", "1") == "1":   # first deploy: build the weekly combo set once (then Tuesdays)
+    threading.Thread(target=lambda: (__import__("time").sleep(120), weekly_rebuild.run()), daemon=True).start()
 import td_prob
 import injury_adj
 import season as _season
@@ -76,6 +78,20 @@ def retrain_td():
         return jsonify({"ok": True, **td_prob.retrain(int(request.args.get("season") or _season.data_season()))})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/combo-model", methods=["GET"])
+def combo_model():
+    """The latest weekly-rebuilt upgraded model + early-week model + combo table (weekly_rebuild.py); 404 until the first build."""
+    a = weekly_rebuild.latest()
+    return (jsonify({"ok": True, **a}), 200) if a else (jsonify({"ok": False, "note": "no weekly build yet", "status": weekly_rebuild.STATUS}), 404)
+
+@app.route("/rebuild-combos", methods=["POST"])
+def rebuild_combos():
+    """Start the weekly rebuild now (background). Body may carry {"opens": {game_id: {so, to}}}."""
+    body = request.get_json(silent=True) or {}
+    if weekly_rebuild.STATUS["running"]: return jsonify({"ok": True, "note": "already running"})
+    threading.Thread(target=weekly_rebuild.run, args=(body.get("opens"),), daemon=True).start()
+    return jsonify({"ok": True, "note": "started", "last": weekly_rebuild.STATUS["last"]})
 
 @app.route("/health", methods=["GET"])
 def health():

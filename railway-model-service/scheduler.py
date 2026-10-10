@@ -89,6 +89,25 @@ def _retrain():
         print(f"[scheduler] retrain-td failed: {e}", flush=True)
         _call(f"/api/status?retrain={urllib.parse.quote('failed: ' + str(e))}", tries=1)
 
+def _rebuild_combos():
+    """Weekly combo / upgraded-model rebuild (10/9), in-process. Opening lines for this season come from the site's own first saved lines."""
+    try:
+        import weekly_rebuild, extra_factors
+        opens = {}
+        raw = _call("/api/opens", tries=2)
+        if raw:
+            g = extra_factors._games(); idx = {(int(r.season), int(r.week), r.away_team, r.home_team): r.game_id for r in g.itertuples()}
+            for x in json.loads(raw).get("games", []):
+                gid = idx.get((int(x["season"]), int(x["week"]), x["away"], x["home"]))
+                if gid and x.get("so") is not None and x.get("to") is not None: opens[gid] = {"so": x["so"], "to": x["to"]}
+        r = weekly_rebuild.run(opens)
+        summary = ("went live: " if r.get("ok") else "kept previous: ") + json.dumps({k: r.get(k) for k in ("games", "marginErr", "oldMarginErr", "totalErr", "combos", "minutes", "error") if r.get(k) is not None})
+        print(f"[scheduler] combo rebuild -> {summary}", flush=True)
+        _call(f"/api/status?combos={urllib.parse.quote(summary)}", tries=1)
+    except Exception as e:
+        print(f"[scheduler] combo rebuild failed: {e}", flush=True)
+        _call(f"/api/status?combos={urllib.parse.quote('failed: ' + str(e))}", tries=1)
+
 ESPN_SB = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
 ESPN_ABBR = {"WSH": "WAS", "LAR": "LA"}   # ESPN -> nflverse team codes where they differ
 def _espn_kickoffs():
@@ -211,6 +230,10 @@ def _loop():
             # Weekly TD retrain: Tuesday 7:15 AM, after the rerun above has the new week's data loaded.
             # Wednesday too (10/2): if nflverse posted Monday night's game after Tuesday's retrain, this one picks it up. The
             # clear-win rule means a retrain on unchanged data keeps the live model.
+            # Weekly combo / upgraded-model rebuild (10/9): Tuesday 4 AM PT, before the 7:30 rerun uses it. ~10-20 minutes in its own thread.
+            if now_pt.weekday() == 1 and now_pt.hour == 4 and now_pt.minute < 5:
+                tag = f"combos:{now_pt:%Y-%m-%d}"
+                if tag not in fired: fired[tag] = time.time(); _bg("combos", _rebuild_combos)
             if now_pt.weekday() in (1, 2) and now_pt.hour == 7 and 15 <= now_pt.minute < 20:
                 tag = f"rt:{now_pt:%Y-%m-%d}"
                 if tag not in fired: fired[tag] = time.time(); _bg("retrain", _retrain)
