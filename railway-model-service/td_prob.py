@@ -135,15 +135,26 @@ def features(season, pos):
 # RBs, 'bk1' the one with the most carries a game (the one who takes over). Before this the model gave the new lead back the
 # backup's old numbers: 2019-25 those backups scored ~38% and the model said ~24% (Mike Washington with Jeanty out: 11%).
 # Tested train-3/test-next 2019-25: Brier 0.15973 -> 0.15958, better in 5 of 7 seasons; closer for the new lead back in 7 of 7.
-BK = ['bk', 'bk1']
-def lead_rb(rb, wk=None):
-    """rb: one team's RB player-games (pid, week, car). Lead back entering week wk (all games when wk is None), or None."""
+BK = ['bk', 'bk1', 'rec_bk', 'rec_bk1']
+# Starter WR / TE out (10/10): same idea for pass catchers -- the lead WR (6+ targets a game) or lead TE (4+) is not playing;
+# 'rec_bk' marks the team's WR/TE, 'rec_bk1' the two with the most targets a game. Tested the same way: Brier 0.15954 -> 0.15947,
+# better in 4 of 7 seasons; for the receivers who take over closer to actual in 5 of 7. (Opponent defense injuries -- DB / LB / DL
+# Out or Doubtful -- tested worse: 3 of 7, so not used.)
+def lead_rb(rb, wk=None, col='car', minv=10):
+    """rb: one team's player-games at a spot (pid, week, col). Lead player entering week wk (all games when wk is None), or None."""
     prev = rb if wk is None else rb[rb.week < wk]
     if not len(prev): return None
-    a = prev.groupby('pid').agg(c=('car', 'sum'), n=('week', 'nunique')); a = a[a.n >= 2]
+    a = prev.groupby('pid').agg(c=(col, 'sum'), n=('week', 'nunique')); a = a[a.n >= 2]
     if not len(a): return None
     cpg = a.c / a.n
-    return cpg.idxmax() if cpg.max() >= 10 else None
+    return cpg.idxmax() if cpg.max() >= minv else None
+REC_LEADS = (('WR', 6), ('TE', 4))
+def _spot(pg, p): return pg[pg.pid.map(pos.position) == p]
+def _mark_rec(df, out_rec):
+    df = df.copy(); df['rec_bk'] = ((df.pos != 'RB') & out_rec).astype(float)
+    rk = df[df.rec_bk == 1].groupby(['game_id', 'team'] if 'game_id' in df else ['team']).r_t.rank(ascending=False, method='first')
+    df['rec_bk1'] = (rk.reindex(df.index) <= 2).astype(float)
+    return df
 def _mark_bk(df, out_lead):
     df = df.copy(); df['bk'] = ((df.pos == 'RB') & out_lead).astype(float)
     rk = df[df.pos == 'RB'].groupby(['game_id', 'team'] if 'game_id' in df else ['team']).r_c.rank(ascending=False, method='first')
@@ -156,7 +167,14 @@ def add_backup(f, pg):
     for tm, g in rbp.groupby('team'):
         for wk in f[f.team == tm].week.unique(): lead[(tm, wk)] = lead_rb(g, wk)
     out = [(t, w) in lead and lead[(t, w)] is not None and (lead[(t, w)], w) not in played and p != lead[(t, w)] for t, w, p in zip(f.team, f.week, f.pid)]
-    return _mark_bk(f, pd.Series(out, index=f.index))
+    f = _mark_bk(f, pd.Series(out, index=f.index))
+    rec = np.zeros(len(f), dtype=bool)
+    for sp, mv in REC_LEADS:
+        L = {}
+        for tm, g in _spot(pg, sp).groupby('team'):
+            for wk in f[f.team == tm].week.unique(): L[(tm, wk)] = lead_rb(g, wk, 'tgt', mv)
+        rec |= np.array([L.get((t, w)) is not None and (L[(t, w)], w) not in played and p != L[(t, w)] for t, w, p in zip(f.team, f.week, f.pid)])
+    return _mark_rec(f, pd.Series(rec, index=f.index))
 
 # Second-model inputs (10/9, idea_study.py / subset_study.py): opponent red-zone TD rate allowed to date, the team's run share
 # inside the 5 to date, snap trend (last game minus last 3) and goal-line role (inside-5 carries vs all carries).
@@ -632,6 +650,10 @@ def run(team,opp,imp,outs=(),posadj=False,active=False,returning=(),quest=()):
         lp = lead_rb(_rbs(pg[pg.team == team]))
         lout = lp is not None and lp not in set(df.pid)
         df = _mark_bk(df, pd.Series(lout & (df.pid != lp).values, index=df.index))
+        here = set(df.pid); rec = False
+        for sp, mv in REC_LEADS:
+            lr = lead_rb(_spot(pg[pg.team == team], sp), None, 'tgt', mv); rec = rec or (lr is not None and lr not in here)
+        df = _mark_rec(df, pd.Series(rec, index=df.index))
     except Exception as e: print(f"[td] backup flags failed: {e}", flush=True)
     if posadj: df['o_rec']=df.pos.map(pos_rec(opp))
     # (Vacated-usage boost removed 9/30: handing an Out player's red-zone share to teammates tested WORSE in 7 of 7
