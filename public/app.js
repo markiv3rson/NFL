@@ -962,7 +962,7 @@ function renderLab() {
   const intro = "";
   // One plain line per parlay type: who chose the legs. Every one is a fixed rule applied to the model's numbers (nobody hand-picks).
   // Teaser legs say TEASER (owner's rule); older saved weeks have no flag, so the alt-line legs of the teaser parlays are matched by type.
-  const legLine = (l, k) => `${l.teaser || (/^alt_/.test(k || "") && !l.rule) ? "<b>TEASER</b> " : ""}${esc(l.label)} <span class="dim">${esc(l.game)}</span> · ${Math.round(l.price * 100)}¢${l.result ? ` <span class="${l.result === "W" ? "g" : l.result === "L" ? "r" : "dim"}">${l.result}</span>` : ""}`;
+  const legLine = (l, k) => `${l.teaser || (/^alt_/.test(k || "") && !l.rule) ? "<b>TEASER</b> " : ""}${esc(l.label)} <span class="dim">${esc(l.game)}${l.thin ? " · thin" : ""}</span> · ${Math.round(l.price * 100)}¢${l.result ? ` <span class="${l.result === "W" ? "g" : l.result === "L" ? "r" : "dim"}">${l.result}</span>` : ""}`;
   const thisWeek = !wk ? '<div class="s dim">Not recorded yet.</div>' :
     Object.keys(names).map((k) => { const ps = wk.parlays.filter((p) => p.strategy === k);
       return `<div class="sec"><div class="sh">${esc(names[k])}</div>` + (ps.length ? ps.map((p) =>

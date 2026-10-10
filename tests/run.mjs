@@ -183,8 +183,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const d2 = { games: [game("A @ B", -3, 0.6, 60, { td: [td("Top.One", "A", 70), td("Top.Two", "A", 66)] }), game("C @ D", -3, 0.6, 60, { td: [td("Sit.Q", "C", 80, { injury: "Questionable" }), td("Real.Two", "D", 55)] }),
       game("E @ F", -3, 0.6, 60, { td: [td("Thin.X", "E", 90, { thin: true, bid: 0.01 }), td("Real.Three", "F", 40)] }), game("G @ H", -3, 0.6, 60, { td: [td("Late.Four", "G", 30)] })], edgesNow: [] };
     const Q = buildPaper(d2), l2 = Q.filter((p) => p.strategy === "td_likely_2"), l3 = Q.filter((p) => p.strategy === "td_likely_3");
-    ok(l2.length === 1 && l2[0].legs.map((l) => l.player).join() === "Top.One,Real.Two", "likely-2: best player, one per game, injury-listed player skipped", l2[0] && l2[0].legs.map((l) => l.player));
-    ok(l3.length === 1 && l3[0].legs.map((l) => l.player).join() === "Top.One,Real.Two,Real.Three" && Math.abs(l3[0].prob - 0.7 * 0.55 * 0.4) < 1e-9, "likely-3: thin market skipped, chance = legs multiplied", l3[0] && l3[0].legs.map((l) => l.player)); }
+    ok(l2.length === 1 && l2[0].legs.map((l) => l.player).join() === "Thin.X,Top.One" && l2[0].legs[0].thin === true, "likely-2: best player, one per game, injury-listed player skipped, thin markets allowed and marked", l2[0] && l2[0].legs.map((l) => l.player));
+    ok(l3.length === 1 && l3[0].legs.map((l) => l.player).join() === "Thin.X,Top.One,Real.Two" && Math.abs(l3[0].prob - 0.9 * 0.7 * 0.55) < 1e-9, "likely-3: thin market allowed, chance = legs multiplied", l3[0] && l3[0].legs.map((l) => l.player)); }
   ok(Math.abs(by("home_fav_95_2")[0].pay - 1 / (0.9 * 0.86)) < 1e-9, "payout = legs multiplied");
   await setJSON("paper:2026:9", { parlays: [{ strategy: "x", legs: [{ game: "A @ B", kind: "ml", team: "B", price: 0.8 }, { game: "C @ D", kind: "ml", team: "D", price: 0.5 }] },
     { strategy: "y", legs: [{ game: "A @ B", kind: "ml", team: "B", price: 0.8 }, { game: "I @ J", kind: "td", team: "J", player: "X.Back", price: 0.3 }] }] });
