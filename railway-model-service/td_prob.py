@@ -120,7 +120,16 @@ def features(season, pos):
     for c in ['r_rzt','r_i10','r_rzc','r_i5','r_td']: pg[c]=pg[c].fillna(0)
     pg = pg.merge(def_epa_todate(p), on=['opp', 'game_id'], how='left')
     pg['d_repa'] = pg['d_repa'].fillna(0.0); pg['d_pepa'] = pg['d_pepa'].fillna(0.0)
-    return add_extra(add_flags(add_snap(pg, season), season, prior), p)
+    f = add_extra(add_flags(add_snap(pg, season), season, prior), p)
+    it = inj_table(season)
+    if len(it) and 'week' in f:
+        fl = {(r.pid, r.week): {'q': r.q, 'lim': r.lim, 'dnp': r.dnp} for r in it.itertuples()}
+        f = f.copy(); f['_k'] = list(zip(f.pid, f.week))
+        out = []
+        for wk, part in f.groupby('week'):
+            out.append(add_inj(part, {pid: fl.get((pid, wk), {}) for pid in part.pid}))
+        f = pd.concat(out).drop(columns=['_k']).sort_index()
+    return f
 
 # Second-model inputs (10/9, idea_study.py / subset_study.py): opponent red-zone TD rate allowed to date, the team's run share
 # inside the 5 to date, snap trend (last game minus last 3) and goal-line role (inside-5 carries vs all carries).
@@ -158,6 +167,32 @@ EXTRA = ['rzd', 'glrun_rb', 'glrun_rec', 'snap_trend', 'gl_spec']
 # last 2 games minus his season rate so far. depth1: listed first at his spot on the team's depth chart before the game
 # (depth_known = 0 when no chart was found; depth1 is then 0.5). All use only information available before kickoff.
 def fetch_depth(s): return _get(f"depth_charts/depth_charts_{s}.parquet", f"depth_{s}.parquet", s==CUR)
+def fetch_inj(s): return _get(f"injuries/injuries_{s}.parquet", f"inj_{s}.parquet", s==CUR)
+# Injury report (10/10): the player's own status, and whether the top player at his spot on his team (RB room / receivers) is
+# Questionable, practicing limited or not practicing -- so a backup's chance rises before the starter is officially out.
+# Tested train-3/test-next 2019-25: Brier 0.15985 -> 0.15973, better in 4 of the last 5 seasons; for backups of a hurt starter
+# better in 5 straight seasons (2021-25).
+INJ = ['q', 'lim', 'dnp', 'top_q', 'top_lim', 'top_dnp']
+def inj_table(s):
+    try: inj = fetch_inj(s)
+    except Exception: return pd.DataFrame(columns=['pid', 'week', 'q', 'lim', 'dnp'])
+    inj = inj[inj.game_type == 'REG'] if 'game_type' in inj else inj
+    ps = inj.practice_status.fillna('').astype(str)
+    out = pd.DataFrame({'pid': inj.gsis_id, 'week': inj.week, 'team': inj.team, 'q': (inj.report_status == 'Questionable').astype(int),
+                        'lim': ps.str.startswith('Limited').astype(int), 'dnp': ps.str.startswith('Did Not').astype(int)})
+    return out.dropna(subset=['pid']).drop_duplicates(['pid', 'week'])
+def add_inj(df, flags):
+    """df rows (one team-game each group) get q/lim/dnp from `flags` (pid -> row) and the top_* flags from the group leader."""
+    df = df.copy()
+    for c in ['q', 'lim', 'dnp']: df[c] = [float(flags.get(pid, {}).get(c, 0)) for pid in df.pid]
+    grp = np.where(df.pos == 'RB', 'RB', 'REC'); share = np.where(df.pos == 'RB', df.r_c, df.r_t)
+    key = df['game_id'].astype(str) + '|' + df['team'].astype(str) if 'game_id' in df else df['team'].astype(str)
+    tmp = pd.DataFrame({'k': key.values + '|' + grp, 'share': share, 'q': df.q.values, 'lim': df.lim.values, 'dnp': df.dnp.values}, index=df.index)
+    lead = tmp.sort_values('share', ascending=False).groupby('k').head(1)
+    L = lead.set_index('k')
+    for c in ['q', 'lim', 'dnp']:
+        df['top_' + c] = [0.0 if i in lead.index else float(L.at[k, c]) for i, k in zip(df.index, tmp.k)]
+    return df
 def depth_starters(season, game_dates=None):
     """{(pid, week): 1/0} starter flags. Old format (<=2024): depth_team == 1 on offense. New format (2025+, dated
     snapshots): for each game, the team's latest snapshot BEFORE the game date; a player is a starter if he is first
@@ -217,7 +252,7 @@ def def_epa_now(pbp, team):
     x = pbp[(pbp.defteam == team) & pbp.play_type.isin(['pass', 'run']) & pbp.epa.notna()]
     r, q = x[x.play_type == 'run'].epa, x[x.play_type == 'pass'].epa
     return float(r.sum() / (len(r) + DEF_SHRINK_RUN)), float(q.sum() / (len(q) + DEF_SHRINK_PASS))
-FEATS=['r_rzt','r_i10','r_rzc','r_i5','r_t','r_c','r_td','imp','o_rush','o_rec','is_rb','is_te','rushx','recx','snap3','snap1','snap_miss','new_team','rz_shift','depth1','depth_known','d_repa_rb','d_pepa_rec']
+FEATS=['r_rzt','r_i10','r_rzc','r_i5','r_t','r_c','r_td','imp','o_rush','o_rec','is_rb','is_te','rushx','recx','snap3','snap1','snap_miss','new_team','rz_shift','depth1','depth_known','d_repa_rb','d_pepa_rec'] + INJ
 def design(df):
     X = df.copy(); X['is_rb']=(X.pos=='RB').astype(int); X['is_te']=(X.pos=='TE').astype(int)
     X['rushx']=(X.r_rzc+X.r_i5)*X.o_rush; X['recx']=(X.r_rzt+X.r_i10)*X.o_rec
@@ -228,6 +263,8 @@ def design(df):
     X['glrun_rb'] = (gl - GL_LG) * X.is_rb; X['glrun_rec'] = (gl - GL_LG) * (1 - X.is_rb)
     X['snap_trend'] = (X.snap1 - X.snap3) if 'snap1' in X and 'snap3' in X else 0.0
     X['gl_spec'] = X.r_i5 / (X.r_c + 1)
+    for c in INJ:
+        if c not in X: X[c] = 0.0
     return X[FEATS + EXTRA].values.astype(float)
 
 # Two models (10/9): the logistic model (FEATS) and a gradient-boosted one (FEATS + EXTRA), averaged 50/50. Walk-forward 2021-25
@@ -556,6 +593,8 @@ def run(team,opp,imp,outs=(),posadj=False,active=False,returning=()):
     df = full[~outmask].copy()
     df['d_repa'], df['d_pepa'] = def_epa_now(p, opp)   # opponent per-play defense (10/8)
     df = live_extra(df, p, team, opp)   # second-model inputs (10/9)
+    try: df = add_inj(df, INJ_NOW)   # injury-report flags (10/10)
+    except Exception as e: print(f"[td] injury flags failed: {e}", flush=True)
     if posadj: df['o_rec']=df.pos.map(pos_rec(opp))
     # (Vacated-usage boost removed 9/30: handing an Out player's red-zone share to teammates tested WORSE in 7 of 7
     # seasons, 2019-25 -- the teammates' own usage already carries most of it, and the bump overshot.)
@@ -679,6 +718,13 @@ def touch_adjusted(df, pb, team, active=False, playing=None):
 import time as _time
 _LIVE_T = _time.time()
 _REFRESH_LOCK = threading.Lock()   # 10/9: 4 request threads -- one reload at a time
+def _inj_now():
+    """Latest injury-report week per team this season: pid -> {q, lim, dnp}."""
+    it = inj_table(CUR)
+    if not len(it): return {}
+    last = it.groupby('team').week.transform('max'); it = it[it.week == last]
+    return {r.pid: {'q': r.q, 'lim': r.lim, 'dnp': r.dnp} for r in it.itertuples()}
+INJ_NOW = {}
 def refresh_live(max_age=1800):
     with _REFRESH_LOCK: return _refresh_live(max_age)
 def _refresh_live(max_age=1800):
@@ -687,7 +733,7 @@ def _refresh_live(max_age=1800):
     for days, until the next deploy -- so new games, snap counts, IR moves and depth changes never reached the TD
     numbers even though reruns kept running. Called at the start of every TD rerun and weekly retrain."""
     global pos, pg, dal, games, p, p_prev, prior, pr, cur, names, SNAP_NOW, _ros_nn, ROS_STATUS, ROS_TEAM, TEAM_WEEKS, PID_LAST_TOUCH, SNAP_TEAM_LAST
-    global PREV_TEAM, RZ_SHIFT, DEPTH_STARTERS, DEPTH_KNOWN, DEPTH_NOTE, _LIVE_T, CUR, CURRENT, QB_CUR, QB_PRIOR, QB_PREV_TEAM
+    global PREV_TEAM, RZ_SHIFT, DEPTH_STARTERS, DEPTH_KNOWN, DEPTH_NOTE, _LIVE_T, CUR, CURRENT, QB_CUR, QB_PRIOR, QB_PREV_TEAM, INJ_NOW
     # Season rollover (9/30): the server runs for months, so the season is re-worked-out here, not only at start-up.
     new_season = _season.data_season()
     if new_season != CUR: CUR = CURRENT = new_season; max_age = 0
@@ -698,6 +744,7 @@ def _refresh_live(max_age=1800):
     cur = pg.groupby(['pid','team']).agg(g=('game_id','nunique'),rz=('rz_tgt','sum'),i10=('i10_tgt','sum'),rzc=('rz_car','sum'),i5=('i5_car','sum'),t=('tgt','sum'),c=('car','sum'),td=('td','sum')).reset_index()
     names = _names(p, p_prev)
     SNAP_NOW = _live_snap(); TEAM_WEEKS, PID_LAST_TOUCH, SNAP_TEAM_LAST = _live_touch_ctx()
+    INJ_NOW = _inj_now()
     try: _ros_nn = fetch_ros(CUR).sort_values("week").drop_duplicates("gsis_id", keep="last").set_index("gsis_id")["full_name"].map(_nn)
     except Exception: _ros_nn = pd.Series(dtype=object)
     ROS_STATUS, ROS_TEAM = _latest_roster()
