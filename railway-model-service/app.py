@@ -193,8 +193,9 @@ def rerun_td_probs():
             # posadj off (9/30 test: neutral) -- the old call passed True here, so the "default off" change never took effect
             active = bool(g.get("active"))   # inactive list is out (inside 80 min of kickoff): everyone listed is playing
             returning = g.get("returning", [])   # Out/Doubtful last week, not this week: treated as playing (the page labels them)
-            away_df = td_prob.run(nv(g["away"]), nv(g["home"]), g["total"] / 2 - g["spread"] / 2, outs, active=active, returning=returning)
-            home_df = td_prob.run(nv(g["home"]), nv(g["away"]), g["total"] / 2 + g["spread"] / 2, outs, active=active, returning=returning)
+            quest = g.get("quest", [])   # Questionable this week (official + ESPN)
+            away_df = td_prob.run(nv(g["away"]), nv(g["home"]), g["total"] / 2 - g["spread"] / 2, outs, active=active, returning=returning, quest=quest)
+            home_df = td_prob.run(nv(g["home"]), nv(g["away"]), g["total"] / 2 + g["spread"] / 2, outs, active=active, returning=returning, quest=quest)
             # Starting QB's rushing-TD chance (10/6), added to each team's list; his expected TDs come out of first_td's "someone else".
             qb_lam = 0.0
             for side, team, opp, imp in (("away", g["away"], g["home"], g["total"] / 2 - g["spread"] / 2), ("home", g["home"], g["away"], g["total"] / 2 + g["spread"] / 2)):
