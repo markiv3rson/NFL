@@ -184,11 +184,12 @@ function leanCell(g, kind) {
   const P = g.final ? null : straightPicks(g).find((x) => (kind === "total" ? isTot(x.pick) : !isTot(x.pick) && !/\bML\b/.test(x.pick)));
   let body = "";
   if (!g.final) {
-    if (!P) {   // nothing at 56%+: still lean to the side most likely to win (10/9) - the best tested pick below 56%, else the model's side
-      const L = straightPicks(g, 0).find((x) => (kind === "total" ? isTot(x.pick) : !isTot(x.pick) && !/\bML\b/.test(x.pick)));
-      const lp = L && L.p > 0.5 ? L : p ? { pick: p.label, p: 0.51, why: "model's side" } : null;
+    if (!P) {   // nothing at 56%+: LEAN only on a tested pick above 50%. 10/11: the game model's own side was dropped as a fallback --
+      // tested on 2,531 games 2014-26 it won 50.6% against the spread and 51.7% on totals (a coin flip), so it is not shown as a lean.
+      const L = straightPicks(g, 0).find((x) => (kind === "total" ? isTot(x.pick) : !isTot(x.pick) && !/\bML\b/.test(x.pick)) && !isSmall(x));
+      const lp = L && L.p > 0.5 ? L : null;
       body = lp ? `<div style="margin-top:6px"><b class="y" style="font-size:16px">LEAN: ${esc(lp.pick)} · ${Math.round(lp.p * 100)}%</b></div><div class="s" style="margin-top:4px">${esc(lp.why)} · close to a coin flip, smaller bet.</div>`
-        : `<div style="margin-top:6px"><b class="dim">No pick</b></div>`;
+        : `<div style="margin-top:6px"><b class="dim">No pick</b></div><div class="s" style="margin-top:4px">No tested edge on this one.</div>`;
     }
     else {
       const pc = Math.round(P.p * 100);

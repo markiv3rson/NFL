@@ -50,6 +50,14 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   the rebuild skips teaser bet types for these factors. Best: favorite ATS when the dog's QB is out + boosted model likes the dog, ~65%.
 - Until a rebuild publishes them, `lib/combomodel.js` adds them from the built-in `lib/combotable.js`.
 
+## Game model vs the betting line (checked Oct 11, 2026)
+
+- The upgraded game model alone has NO edge on the line: its spread side won 50.6% and total side 51.7% on 2,531 games 2014-26
+  (bigger gaps don't help); its errors are about the line's (margin 10.0 vs 9.9, total 10.5 vs 10.46). "Better" only means better
+  than the old model. Never present its side as a pick or a lean. The edge is in the tested combo picks (59.7% live in 2026).
+- Cards: PICK = tested pick 56%+; LEAN = tested pick 50-56%; otherwise "No pick". A pick on fewer than 60 games shows its game count
+  and never outranks a tested pick (week 5: the three small-sample PICKs went 0-3).
+
 ## Game model — already tested, not added
 
 - Injured starters as inputs (margin error 10.020 -> 10.024: the line already prices injuries).
