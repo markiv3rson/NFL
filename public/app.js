@@ -888,22 +888,27 @@ function teaserRow() {
 }
 // Decision model (10/9): straight bets only (no teasers, no alt lines), ONE pick per game per market (spread, total): the one
 // with the best record. Two angles on opposite sides of the same total no longer both show.
+// Small samples (10/11): a pick resting on fewer than SMALL_N games (the this-season-only angles, e.g. "2-1 this season") shows its
+// game count and never outranks a long-tested pick: in each market the tested pick wins, and a small-sample pick is used only when the
+// market has no tested pick at all. Week 5: MIA +6.5 "67%" (3 games) beat CIN -6.5 55% (tested since 2014) to the top; CIN covered.
+const SMALL_N = 60;
+const isSmall = (x) => x.n != null && x.n < SMALL_N;
 function straightPicks(g, min = BEST_MIN) {
   if (!g || g.started || g.final) return [];
-  const out = [];
-  for (const a of g.angles || []) if (a.hit) out.push({ pick: a.pick, game: g.key, why: a.name, p: a.hit / 100, rec: a.rec });
-  for (const c of g.combos || []) if (!c.teaser) out.push({ pick: c.pick, game: g.key, why: c.why, p: c.hit / 100, rec: c.rec });
-  const mv = totalMoved(g); if (mv && mv.under && g.totalPick && g.totalPick.side === "under") out.push({ pick: `Under ${mv.now}`, game: g.key, why: `Total fell ${mv.open} → ${mv.now} · model Under`, p: 0.635, rec: S && S.moveRec });
-  const best = {};
-  for (const x of out) { const k = /^(Over|Under)\b/.test(x.pick) ? "total" : /\bML\b/.test(x.pick) ? "ml" : "spread"; if (!best[k] || x.p > best[k].p) best[k] = x; }
-  return Object.values(best).filter((x) => x.p >= min).sort((a, b) => b.p - a.p);
+  const out = [], games = (n) => (n != null && n < SMALL_N ? ` · ${n} game${n === 1 ? "" : "s"}` : "");
+  for (const a of g.angles || []) if (a.hit) out.push({ pick: a.pick, game: g.key, why: a.name + games(a.n), p: a.hit / 100, rec: a.rec, n: a.n ?? null });
+  for (const c of g.combos || []) if (!c.teaser) out.push({ pick: c.pick, game: g.key, why: c.why, p: c.hit / 100, rec: c.rec, n: c.n ?? null });
+  const mv = totalMoved(g); if (mv && mv.under && g.totalPick && g.totalPick.side === "under") out.push({ pick: `Under ${mv.now}`, game: g.key, why: `Total fell ${mv.open} → ${mv.now} · model Under`, p: 0.635, rec: S && S.moveRec, n: null });
+  const best = {}, better = (x, y) => (isSmall(x) !== isSmall(y) ? !isSmall(x) : x.p > y.p);
+  for (const x of out) { const k = /^(Over|Under)\b/.test(x.pick) ? "total" : /\bML\b/.test(x.pick) ? "ml" : "spread"; if (!best[k] || better(x, best[k])) best[k] = x; }
+  return Object.values(best).filter((x) => x.p >= min).sort((a, b) => (isSmall(a) - isSmall(b)) || b.p - a.p);
 }
 // Only picks that won 56%+ (a coin flip is 50%), and only the top 10 of the week, so the list stays short.
 const BEST_MIN = 0.56, BEST_MAX = 10;
 function bestBets() {
   const out = [];
   for (const g of (S && S.games) || []) for (const x of straightPicks(g)) out.push({ ...x, slot: slotOf(g) });
-  return out.sort((a, b) => b.p - a.p).slice(0, BEST_MAX);
+  return out.sort((a, b) => (isSmall(a) - isSmall(b)) || b.p - a.p).slice(0, BEST_MAX);   // tested picks first (10/11)
 }
 // Teasers & alt lines (10/9): every bet that moves the line in our favor. Kept off the game cards; listed only on Game Lines.
 function extraBets() {
