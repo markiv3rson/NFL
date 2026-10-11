@@ -200,8 +200,8 @@ function leanCell(g, kind) {
         recLine(P.rec) + lineCheck(g, kind, P.pick);
     }
   }
-  // Early-week total (10/9): while the total hasn't moved from its opening number, the early model's side of it (won 54.5% at the open, 2014-25).
-  if (kind === "total" && !g.final && g.modelEarly != null && g.totalOpen != null && LN.tl != null && Math.abs(LN.tl - g.totalOpen) < 0.5 && Math.abs(g.modelEarly - g.totalOpen) >= 2) {   // 2+ apart (10/10): 55% since 2014; 0.5+ was 54%
+  // Early-week total: TURNED OFF 10/11 (owner) -- 11-18 live in 2026. Still recorded and graded on paper (lib/teaser.js) so its record keeps.
+  if (EARLY_ON && kind === "total" && !g.final && g.modelEarly != null && g.totalOpen != null && LN.tl != null && Math.abs(LN.tl - g.totalOpen) < 0.5 && Math.abs(g.modelEarly - g.totalOpen) >= 2) {   // 2+ apart (10/10): 55% since 2014; 0.5+ was 54%
     const ov = g.modelEarly > g.totalOpen;
     body += `<div class="s" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">Early-week edge: <b class="g">${ov ? "Over" : "Under"} ${g.totalOpen} · 55%</b> · the total hasn't moved yet; best bet before it does.${S && S.earlyRec ? ` This season: <b>${S.earlyRec.w}–${S.earlyRec.l}</b>.` : ""}</div>`;
   }
@@ -894,6 +894,7 @@ function teaserRow() {
 // market has no tested pick at all. Week 5: MIA +6.5 "67%" (3 games) beat CIN -6.5 55% (tested since 2014) to the top; CIN covered.
 const SMALL_N = 60;
 const isSmall = (x) => x.n != null && x.n < SMALL_N;
+const EARLY_ON = false;   // early-week total edge on the total card (off 10/11)
 function straightPicks(g, min = BEST_MIN) {
   if (!g || g.started || g.final) return [];
   const out = [], games = (n) => (n != null && n < SMALL_N ? ` · ${n} game${n === 1 ? "" : "s"}` : "");
