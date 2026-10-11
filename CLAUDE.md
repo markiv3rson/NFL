@@ -24,7 +24,7 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   when the first game is London) and graded. Includes "Best bets · 2/3/4" (= the Parlay of the week). Alt-line parlays are labeled
   TEASER. TD parlays may use thin markets (leg says "thin"); the price shown is the ask.
 - Bets tab: an open leg says "⚠ app now picks the other side" when the app has a 56%+ pick against it.
-- Early-week total edge shows only when the early model is 2+ points from the opening total (55%).
+- Early-week total edge: TURNED OFF on cards 10/11 (11-18 live); still recorded and graded on paper.
 - Anytime TD tab: top 3 per team (owner wants it kept), plus a "⚠ Market disagrees" box for any player 20+ points from Polymarket.
 - Referees and price-gap alerts were removed on purpose.
 
