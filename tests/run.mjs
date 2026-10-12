@@ -172,9 +172,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
 { const { lineMovePick } = await import("../lib/stack.js"); const G = { key: "BUF @ LA", away: "BUF", home: "LA", kickoff: new Date(Date.now() + 3600e3).toISOString() };
   const pm = (P) => ({ spread: { homeSpread: P } }), now = new Date().toISOString(), old = new Date(Date.now() - 10 * 3600e3).toISOString();
   const a = lineMovePick(G, pm(-3.5), pm(-5)), b = lineMovePick(G, pm(-6.5), pm(-5.5)), c = lineMovePick(G, pm(-2.5), pm(-3)), d = lineMovePick(G, pm(-3.5), pm(-4)), e = lineMovePick(G, pm(-1), pm(-4.5));
-  ok(a && a.pick === "LA -3.5" && a.hit === 58 && !/crossed/.test(a.why) && b && b.pick === "BUF +6.5" && b.hit === 56.1 && c && c.pick === "LA -2.5" && c.hit === 60.9 && /crossed 3/.test(c.why) && !d && e && e.hit === 62.1,
-    "line move: side the books moved toward at Polymarket's old number; 1+ / 1.5+ / 3+ tiers; crossing 3 or 7 counts at any size; a half point otherwise is nothing");
-  ok(lineMovePick(G, pm(-3.5), pm(-5), { booksT: now, polyT: now }) && !lineMovePick(G, pm(-3.5), pm(-5), { booksT: old, polyT: now }) && !lineMovePick(G, pm(-3.5), pm(-5), { booksT: now, polyT: old }),
+  const f = lineMovePick(G, pm(-6.5), pm(-7)), h = lineMovePick(G, pm(-2.5), pm(-3.5)), k = lineMovePick(G, pm(-4.5), pm(-6.5)), j = lineMovePick(G, pm(-4.5), pm(-7.5));
+  ok(!a && !b && !c && !d && !f && !k && e && e.pick === "LA -1" && e.hit === 63.2 && /crossed 3/.test(e.why) && h && h.pick === "LA -2.5" && h.hit === 63.2 && j && j.pick === "LA -4.5" && j.hit === 63.2 && lineMovePick(G, pm(-8.5), pm(-11.5)).hit === 58.5,
+    "line move: only crossing 3 or 7 by 1+ point (63.2%) or a 3+ point move (58.5%); half-point rounding (books 7 vs Polymarket 6.5) and small moves are nothing");
+  ok(lineMovePick(G, pm(-2.5), pm(-3.5), { booksT: now, polyT: now }) && !lineMovePick(G, pm(-2.5), pm(-3.5), { booksT: old, polyT: now }) && !lineMovePick(G, pm(-2.5), pm(-3.5), { booksT: now, polyT: old }),
     "line move: only when both the sportsbook and Polymarket readings are recent"); }
 { const { tdCodeName } = await import("../lib/mybets.js"); const N = ["D'Andre Swift", "Cam Skattebo", "Jacory Croskey-Merritt", "Caleb Williams", "Darnell Mooney", "Dan Moore"];
   ok(tdCodeName("dswi", N) === "D'Andre Swift" && tdCodeName("camska", N) === "Cam Skattebo" && tdCodeName("jacomer", N) === "Jacory Croskey-Merritt" && tdCodeName("dmoo", N) === null && tdCodeName("darmoo", N) === "Darnell Mooney",
@@ -848,7 +849,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       combos: [{ kind: "spread", pick: "GB +1.5", hit: 62.3, why: "model likes the favorite by 3+ · line moved 1+ toward the dog", model: true }, { kind: "total", pick: "Under 46.5", hit: 57.2, why: "wind 10+ · older teams" }, { kind: "total", pick: "Over 40.5", hit: 75, teaser: true, why: "t" }] };
     G.combos[0].rec = { w: 3, l: 1 }; G.history = [{ poly: { spread: { homeSpread: 2.5 }, total: { line: 45.5 } } }];
     const sp = ctx.T.leanCell(G, "spread"), to = ctx.T.leanCell(G, "total");
-    ok(/Model: <b class="mod">CHI by 5\.6<\/b>/.test(sp) && /PICK: GB \+1\.5 · 62%/.test(sp) && /Model is too high on CHI here: in games like this, GB won 62%\./.test(sp) && (sp.match(/PICK:/g) || []).length === 1, "model card: one pick, and plain words when it goes against the model");
+    ok(/Model: <b class="mod">CHI by 5\.6<\/b>/.test(sp) && /PICK: GB \+1\.5 · 62%/.test(sp) && /won 62%\. Goes against the model's number \(CHI\)\./.test(sp) && (sp.match(/PICK:/g) || []).length === 1, "model card: one pick, its own reason always shown, and a plain note when it goes against the model");
     ok(/This season: <b>3–1<\/b>/.test(sp) && /Line moved: opened GB \+2\.5, now GB \+1\.5 · worse number now/.test(sp) && /Line moved: opened Under 45\.5, now Under 46\.5 · better number now/.test(to) && ctx.T.recLine({ w: 0, l: 0 }) === "", "model card: this season's record and the line check");
     ok(/Model: <b class="mod">46\.1<\/b>/.test(to) && /PICK: Under 46\.5 · 57%/.test(to) && /wind 10\+ · older teams · won 57%\./.test(to) && !/40\.5/.test(to), "model card (total): one market-line pick with its reason, no teasers");
     { const U = ctx.T.leanCell({ ...G, combos: [], modelUp: { margin: 2.1, total: 43.0 }, lineNow: { hs: 1.5, tl: 46.5 } }, "spread"), V = ctx.T.leanCell({ ...G, combos: [], modelUp: { margin: 2.1, total: 43.0 }, lineNow: { hs: 1.5, tl: 46.5 } }, "total");

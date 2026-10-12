@@ -196,7 +196,8 @@ function leanCell(g, kind) {
       const against = !!p && (kind === "total" ? /^Over/.test(P.pick) !== (p.side === "over") : !P.pick.startsWith(`${p.team} `));
       const who = kind === "total" ? (p && p.side === "over" ? "the Over" : "the Under") : p ? p.team : "";
       body = `<div style="margin-top:6px"><b class="g" style="font-size:16px">PICK: ${esc(P.pick)} · ${pc}%</b></div>` +
-        `<div class="s" style="margin-top:4px">${against ? `Model is too high on ${esc(who)} here: in games like this, ${esc(P.pick.split(" ")[0])} won ${pc}%.` : `${esc(P.why)} · won ${pc}%.`}</div>` +
+        // 10/12: the pick's own reason always shows (a LINE MOVE pick against the model used to show only "Model is too high on X")
+        `<div class="s" style="margin-top:4px">${esc(P.why)} · won ${pc}%.${against ? ` Goes against the model's number (${esc(who)}).` : ""}</div>` +
         recLine(P.rec) + lineCheck(g, kind, P.pick);
     }
   }

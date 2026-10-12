@@ -68,8 +68,12 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
 ## LINE MOVE (Oct 12, 2026) — the one spread edge found
 
 - Rule (nothing fitted): when sportsbooks moved the spread and Polymarket still has the old number, take the side the books moved
-  toward at Polymarket's number (`lib/stack.js lineMovePick`). History 2014-26, graded at the opening number: moved 1+ 56.1%,
-  1.5+ 58.0%, 3+ 62.1%, crossed 3 or 7 (any size) 60.9%; 11-12 of 13 seasons; stronger since 2022. Half the move caught: 52.6%.
+  toward at Polymarket's number (`lib/stack.js lineMovePick`). History 2014-26, graded at the opening number, each game once:
+  crossed 3 or 7 AND moved 1+ point 63.2% (495 games, 13/13 seasons); no crossing, moved 3+ 58.5% (205, 10/13). Those two only.
+  NOT picks: no crossing 1-1.4 48.2%, 1.5-1.9 57.4% (not steady), 2-2.9 49.8%; half-point crossings 53.7%.
+- Corrected 10/12: the first version fired on any 1+ move (48-52% without a crossing) and on half-point crossings. Polymarket only
+  lists half-point spreads, so books 7 vs Polymarket 6.5 is rounding, not a move (CIN @ MIA week 5 would have been a fake signal).
+- Live caveat: history uses where the line CLOSED; a midweek book move can still go back.
 - Shown as a PICK on the spread card when it applies; recorded and graded with the other picks. Needs fresh books (3 h game day /
   8 h before) and fresh Polymarket (3 h) on the page.
 - Tested and NOT edges on spreads (unseen games): game model vs opening line 51.5%, chooser vs opening line 50.2%, home dogs,
