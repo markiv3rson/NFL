@@ -170,13 +170,15 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(sp5 && to5 && !/\b(Over|Under)\b/.test(sp5.why) && !/likes? the (dog|favorite)/.test(to5.why) && P5.every((p) => !/likes the dog \(fade it\)/.test(p.why) || (p.kind === "spread" && p.team === "CHI")) && P5.every((p) => !/likes the favorite \(fade it\)/.test(p.why) || (p.kind === "spread" && p.team === "GB")),
     "chooser reasons: spread reasons skip Over/Under leans, total reasons skip dog/favorite leans, and a lean pointing away from the pick says (fade it)"); }
 { const { lineMovePick } = await import("../lib/stack.js"); const G = { key: "BUF @ LA", away: "BUF", home: "LA", kickoff: new Date(Date.now() + 3600e3).toISOString() };
-  const pm = (P) => ({ spread: { homeSpread: P } }), now = new Date().toISOString(), old = new Date(Date.now() - 10 * 3600e3).toISOString();
+  const pm = (P, h = 0.5, a = 0.5) => ({ spread: { homeSpread: P, home: h, away: a } }), now = new Date().toISOString(), old = new Date(Date.now() - 10 * 3600e3).toISOString();
   const a = lineMovePick(G, pm(-3.5), pm(-5)), b = lineMovePick(G, pm(-6.5), pm(-5.5)), c = lineMovePick(G, pm(-2.5), pm(-3)), d = lineMovePick(G, pm(-3.5), pm(-4)), e = lineMovePick(G, pm(-1), pm(-4.5));
   const f = lineMovePick(G, pm(-6.5), pm(-7)), h = lineMovePick(G, pm(-2.5), pm(-3.5)), k = lineMovePick(G, pm(-4.5), pm(-6.5)), j = lineMovePick(G, pm(-4.5), pm(-7.5));
   ok(!a && !b && !c && !d && !f && !k && e && e.pick === "LA -1" && e.hit === 63.2 && /crossed 3/.test(e.why) && h && h.pick === "LA -2.5" && h.hit === 63.2 && j && j.pick === "LA -4.5" && j.hit === 63.2 && lineMovePick(G, pm(-8.5), pm(-11.5)).hit === 58.5,
     "line move: only crossing 3 or 7 by 1+ point (63.2%) or a 3+ point move (58.5%); half-point rounding (books 7 vs Polymarket 6.5) and small moves are nothing");
   ok(lineMovePick(G, pm(-2.5), pm(-3.5), { booksT: now, polyT: now }) && !lineMovePick(G, pm(-2.5), pm(-3.5), { booksT: old, polyT: now }) && !lineMovePick(G, pm(-2.5), pm(-3.5), { booksT: now, polyT: old }),
-    "line move: only when both the sportsbook and Polymarket readings are recent"); }
+    "line move: only when both the sportsbook and Polymarket readings are recent");
+  ok(!lineMovePick(G, pm(17.5, 0.505, 0.99), pm(-11.5)) && !lineMovePick(G, pm(-2.5, 0.95, 0.06), pm(-3.5)) && lineMovePick(G, pm(-2.5, 0.53, 0.48), pm(-3.5)),
+    "line move: never on a dead one-sided Polymarket book (10/4 BAL +17.5 at 0.99)"); }
 { const { tdCodeName } = await import("../lib/mybets.js"); const N = ["D'Andre Swift", "Cam Skattebo", "Jacory Croskey-Merritt", "Caleb Williams", "Darnell Mooney", "Dan Moore"];
   ok(tdCodeName("dswi", N) === "D'Andre Swift" && tdCodeName("camska", N) === "Cam Skattebo" && tdCodeName("jacomer", N) === "Jacory Croskey-Merritt" && tdCodeName("dmoo", N) === null && tdCodeName("darmoo", N) === "Darnell Mooney",
     "bets: Polymarket TD codes map to names (1-letter first names too); a tie keeps the code"); }
