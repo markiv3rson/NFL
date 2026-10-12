@@ -88,6 +88,11 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
   splits are paid too). Owner chose to keep pulling that feed for its per-book LINES with posting times (likely includes openers):
   `lib/splits.js`, Redis `splits:<season>:<week>:<game>`. Only a failed pull is logged.
+- TESTED 10/12 on 2,127 games 2018-2025 (past splits are free via `/api/splitshist?season=&week=`; graded at the closing consensus line):
+  NO splits rule reaches 56%. Spreads: fade the public 49-51%, follow money 50-52%, reverse line move 50.2% (2023-25 only).
+  Totals: fade the public 50-51%; follow the money when money% - bets% >= 20: 54.5% (294-245) even with the cutoff picked
+  leave-one-season-out, but only 33-31 in 2024-25 and season counts swing wildly (7 to 142 games). Not added as a pick; live
+  splits aren't free anyway.
 - B: each sportsbook's own spread/total on every books pull (`byBook` in the books data and snapshots), for testing line moves per
   book and by time of week.
 
