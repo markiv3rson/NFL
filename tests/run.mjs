@@ -139,7 +139,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(/Model: 44\.4/.test(T.totalReason(g)) && /dome \+2\.6/.test(T.totalReason(g)), "totals wording");
   g = { away: "A", home: "H", winPct: 61.2, model: { homeMargin: 3, total: 44, fix: {} }, spreadPick: { label: "H -2.5", pct: 51.1 }, poly: {} };
 { const c = T.leanCell(g, "spread"); ok(/Model: <b class="mod">H by 3\.0<\/b>/.test(c) && /No pick/.test(c) && /No tested edge/.test(c) && !/LEAN/.test(c), "model card: no tested pick -> No pick (the model's own side is a coin flip vs the line, not shown as a lean)");
-  { const c2 = T.leanCell({ ...g, combos: [{ kind: "spread", pick: "A +2.5", hit: 54.4, why: "road dog" }] }, "spread"); ok(/LEAN: A \+2\.5 · 54%/.test(c2) && /road dog/.test(c2), "model card: lean = best tested pick below 56%"); } }
+  { const c2 = T.leanCell({ ...g, combos: [{ kind: "spread", pick: "A +2.5", hit: 54.4, why: "road dog" }] }, "spread"); ok(/PICK: A \+2\.5 · 54%/.test(c2) && /road dog/.test(c2) && /weak pick: won 54%/.test(c2) && !/LEAN/.test(c2), "model card: below 56% the best tested pick still shows as a (yellow, weak) PICK"); } }
   const row = T.prow({ player: "O'Neil <b>", pos: "WR", team: "H", game: "A @ H", fair: 20.1, fairIfPlays: 30, injury: "Questionable", price: 0.25, teamRank: 2 }, { started: false }, false);
   ok(/30% if he plays/.test(row) && /O&#39;Neil &lt;b>/.test(row), "Questionable row + names escaped");
   ok(/Push leg/.test(T.betRow({ source: "preloaded", legs: [{ result: "W", kind: "total", side: "under", line: 43 }, { result: "P", kind: "total", side: "over", line: 44 }], result: "P", pushUnconfirmed: true, cost: 5, toWin: 20, pl: null })), "combo push wording");
@@ -179,6 +179,16 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     "line move: only when both the sportsbook and Polymarket readings are recent");
   ok(!lineMovePick(G, pm(17.5, 0.505, 0.99), pm(-11.5)) && !lineMovePick(G, pm(-2.5, 0.95, 0.06), pm(-3.5)) && lineMovePick(G, pm(-2.5, 0.53, 0.48), pm(-3.5)),
     "line move: never on a dead one-sided Polymarket book (10/4 BAL +17.5 at 0.99)"); }
+{ const { parseSplits } = await import("../lib/splits.js"); const { parseBooks } = await import("../lib/books.js");
+  const j = { games: [{ away_team_id: 1, home_team_id: 2, teams: [{ id: 1, abbr: "BUF", full_name: "Buffalo Bills" }, { id: 2, abbr: "LAR", full_name: "Los Angeles Rams" }],
+    odds: [{ book_id: 15, spread_home: -3.5, spread_home_public: 38, spread_home_money: 61, total_over_public: 70, junk: { x: 1 } }] }] };
+  const r = parseSplits(j); ok(r.games["BUF @ LA"] && r.games["BUF @ LA"][0].spread_home_money === 61 && r.fields === 3 && !("junk" in r.games["BUF @ LA"][0]) && parseSplits({}).fields === 0,
+    "splits: bets % and money % kept per game (LAR -> LA); an empty feed counts 0 fields (logged)");
+  const ev = [{ away_team: "Buffalo Bills", home_team: "Los Angeles Rams", bookmakers: [
+    { key: "draftkings", markets: [{ key: "spreads", outcomes: [{ name: "Los Angeles Rams", point: -3.5, price: -110 }, { name: "Buffalo Bills", point: 3.5, price: -110 }] }, { key: "totals", outcomes: [{ name: "Over", point: 54.5, price: -110 }, { name: "Under", point: 54.5, price: -110 }] }] },
+    { key: "fanduel", markets: [{ key: "spreads", outcomes: [{ name: "Los Angeles Rams", point: -3, price: -120 }, { name: "Buffalo Bills", point: 3, price: 100 }] }] }] }];
+  const b = parseBooks(ev)["BUF @ LA"]; ok(b && b.byBook.draftkings.hs === -3.5 && b.byBook.draftkings.tl === 54.5 && b.byBook.fanduel.hs === -3 && b.spread && b.spread.n === 1,
+    "books: each sportsbook's own line is kept on every pull (consensus unchanged)"); }
 { const { tdCodeName } = await import("../lib/mybets.js"); const N = ["D'Andre Swift", "Cam Skattebo", "Jacory Croskey-Merritt", "Caleb Williams", "Darnell Mooney", "Dan Moore"];
   ok(tdCodeName("dswi", N) === "D'Andre Swift" && tdCodeName("camska", N) === "Cam Skattebo" && tdCodeName("jacomer", N) === "Jacory Croskey-Merritt" && tdCodeName("dmoo", N) === null && tdCodeName("darmoo", N) === "Darnell Mooney",
     "bets: Polymarket TD codes map to names (1-letter first names too); a tie keeps the code"); }

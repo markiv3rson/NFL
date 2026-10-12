@@ -17,7 +17,8 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 
 ## What the app shows (owner's layout rules)
 
-- Model card: ONE answer — the model's number (purple), then **PICK** (green, 56%+) or **LEAN** (yellow) with a plain reason. No teasers on cards; market lines only.
+- Model card: ONE answer — the model's number (purple, with "less accurate than the line" under it), then **PICK** — green at 56%+, yellow
+  below it ("weak pick: won X% on games it never saw"). Owner chose C on 10/12: always a PICK, never LEAN. No teasers on cards; market lines only.
 - Teasers (incl. alt lines) are all labeled **TEASER**, in a folded list on Game Lines, top 5.
 - Best bets = top 10 straight picks at 56%+. Parlay of the week = top 4, one per game.
 - Model Picks tab: ~22 parlay types built once a week (first scheduled snapshot within 26 h of the first Sunday kickoff — Sat 7 AM PT
@@ -81,6 +82,14 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
 - Tested and NOT edges on spreads (unseen games): game model vs opening line 51.5%, chooser vs opening line 50.2%, home dogs,
   road dogs, big dogs, +3/+3.5 dogs, division dogs, home dogs +3 or less (48-51.5%).
 - Picks are recorded at the same line the card shows (Polymarket first). Before 10/12 the recorder used the books' line first.
+
+## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
+
+- A: betting splits (bets % vs money %) from Action Network's public feed, every scheduled/kickoff snapshot: `lib/splits.js`,
+  Redis `splits:<season>:<week>:<game>`. Field names unverified at build time (the build machine can't reach the feed); a pull with no
+  split fields or a failure is logged to the status panel. No free history, so test after ~half a season.
+- B: each sportsbook's own spread/total on every books pull (`byBook` in the books data and snapshots), for testing line moves per
+  book and by time of week.
 
 ## Game model — already tested, not added
 
