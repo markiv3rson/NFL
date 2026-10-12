@@ -630,15 +630,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const G = (k, angles, winPct, ml) => ({ key: k, home: k.split(" @ ")[1], away: k.split(" @ ")[0], started: false, final: false, angles, winPct, poly: ml ? { ml: { home: ml }, spread: { homeSpread: -3 } } : null, td: [] });
     const P = buildPaper({ games: [G("A @ B", [{ id: "streakfade", pick: "A +4.5", price: 0.48, hit: 59, n: 283 }]), G("C @ D", [{ id: "winddiv", pick: "Under 41.5", price: 0.5, hit: 56.8, n: 426 }]), G("E @ F", [], 80, 0.78), G("H @ I", [], 77, 0.75)] });
     const by = Object.fromEntries(P.map((p) => [p.strategy, p]));
-    ok(by.angles_2 && by.angles_2.legs.map((l) => l.label).join(",") === "A +4.5,Under 41.5" && by.angles_2.legs[1].kind === "total" && Math.abs(by.angles_2.prob - 0.59 * 0.568) < 1e-9 && !by.angles_3, "angle parlays: one per game, rule hit rates as the chance, no 3-leg without 3 angles");
-    ok(by.angles_fav_3 && by.angles_fav_3.legs.map((l) => l.label).join(",") === "A +4.5,F ML,I ML", "angle + favorites parlay: best angle plus the two strongest home favorites"); }
+    ok(!by.angles_2 && !by.angles_3 && !by.angles_fav_3, "angle parlays are no longer built (their rates were never checked on unseen games)"); }
   { // road ML angle: flagged with its return, used as an ML leg in angle parlays (10/8)
     const g = { ...tg, angles: [{ id: "roadml3", pick: "BUF ML", price: 0.45, name: "Road team · moneyline · spread ~3, total 48+", hit: 57.2, n: 382, roi: 12.9 }] };
     ok(/wins 57\.2%/.test(ctx.T.anglesBox({ ...tg, combos: [{ pick: "BUF ML", why: "x", hit: 57.2, n: 382 }] })) && !/per \$1/.test(ctx.T.anglesBox(g)), "road ML angle: win rate shown, no money");
     const { buildPaper } = await import("../lib/paper.js");
     const P = buildPaper({ games: [{ key: "BUF @ LA", home: "LA", away: "BUF", started: false, final: false, angles: g.angles, td: [] }, { key: "A @ B", home: "B", away: "A", started: false, final: false, angles: [{ id: "winddiv", pick: "Under 41.5", price: 0.5, hit: 56.8, n: 426 }], td: [] }] });
-    const l = P.find((p) => p.strategy === "angles_2").legs.find((x) => x.label === "BUF ML");
-    ok(l && l.kind === "ml" && l.team === "BUF", "road ML angle: graded as a moneyline leg on the road team"); }
+    ok(!P.some((p) => p.strategy === "angles_2"), "road ML angle: no angle parlay built"); }
   { // coach fade (10/8)
     const { picksFor } = await import("../lib/paper.js");
     const poly = { spread: { homeSpread: -6, home: 0.5, away: 0.5 } }, G = { key: "A @ H", away: "A", home: "H", week: 6 };
@@ -712,7 +710,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const P = buildPaper({ games: [G("A @ B", { altValue: [{ team: "A", line: 6.5, price: 0.6, hist: 0.66 }] }), G("C @ D", { altValue: [{ team: "D", line: -3.5, price: 0.55, hist: 0.8 }] }),
       G("E @ F", { angles: [{ id: "dogblow", pick: "E +4.5", price: 0.5, hist: 58, hit: 58 }] })] });
     const a2 = P.find((p) => p.strategy === "alt_2"), a3 = P.find((p) => p.strategy === "alt_pick_3");
-    ok(a2 && a2.legs.map((l) => l.label).join(",") === "D -3.5,A +6.5" && Math.abs(a2.prob - 0.8 * 0.66) < 1e-9 && a3 && a3.legs.length === 3 && a3.legs[2].label === "E +4.5", "ALT parlays: two best ALT lines, plus a PICK from another game"); }
+    ok(a2 && a2.legs.map((l) => l.label).join(",") === "D -3.5,A +6.5" && Math.abs(a2.prob - 0.8 * 0.66) < 1e-9 && !a3, "TEASER parlays: two best alt lines; the alt + angle-pick parlay is no longer built"); }
   { // decision model (10/9)
     vm.runInContext(`S = { games: [{ key: "A @ B", started: false, combos: [{ pick: "A +4.5", why: "x", hit: 59, n: 2535 }], altValue: [{ team: "B", line: -3.5, price: 0.7, hist: 0.62 }] }, { key: "C @ D", started: true, combos: [{ pick: "C +3", why: "y", hit: 70, n: 2535 }] }], teaserLegs: [{ team: "E", line: 8.5, price: 0.7, game: "E @ F" }] }`, ctx);
     const B = ctx.T.bestBets();
