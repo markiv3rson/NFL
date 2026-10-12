@@ -307,6 +307,28 @@ def scan(d, F, per):
             if min(pr) >= base + 0.02 and wv.mean() >= base + 0.04: rows.append([bn, list(c), round(float(wv.mean()) * 100, 1), n])
     return rows
 
+# Pick chooser (10/12, lib/chooser.js): one logistic model per market over every factor; its win rate is made honest by a calibration
+# fit on leave-one-season-out predictions (each game judged by a model that never saw its season). Scanned single patterns won 49.8%
+# on unseen games, so the site's picks come from this instead.
+def train_chooser(d, F):
+    from sklearn.linear_model import LogisticRegression
+    names = list(F); X = np.column_stack([F[n] for n in names]).astype(float)
+    hs = d.km.values; homeDog = hs < 0; dm = np.where(homeDog, d.res, -d.res); sp = np.abs(hs)
+    Y = {"spread": np.sign(dm + sp), "total": np.sign(d.tot.values - d.kt.values)}
+    lg = lambda p: np.log(p / (1 - p)); out = {"feat": names, "markets": {}, "oos": {}}
+    for mk, y in Y.items():
+        ok = y != 0; oos = np.full(len(d), np.nan)
+        for s in sorted(d.season.unique()):
+            tr = (d.season != s).values & ok; te = (d.season == s).values
+            oos[te] = LogisticRegression(C=0.05, max_iter=3000).fit(X[tr], (y[tr] > 0).astype(int)).predict_proba(X[te])[:, 1]
+        q = np.maximum(oos, 1 - oos); win = ((oos > 0.5) == (y > 0)).astype(int)
+        cal = LogisticRegression(C=1e6).fit(lg(np.clip(q[ok], 0.5001, 0.999)).reshape(-1, 1), win[ok])
+        full = LogisticRegression(C=0.05, max_iter=3000).fit(X[ok], (y[ok] > 0).astype(int))
+        out["markets"][mk] = {"coef": [round(float(c), 6) for c in full.coef_[0]], "b0": round(float(full.intercept_[0]), 6),
+                              "cal": [round(float(cal.intercept_[0]), 6), round(float(cal.coef_[0][0]), 6)]}
+        out["oos"][mk] = {"games": int(ok.sum()), "hit": round(float(win[ok].mean()) * 100, 1)}
+    return out
+
 def build(site_opens=None):
     from sklearn.linear_model import Ridge
     t0 = time.time(); d, cur = assemble(site_opens)
@@ -328,7 +350,7 @@ def build(site_opens=None):
     return {"builtAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "season": int(cur), "checks": checks,
             "upgrade": {"feat": feat, "m": [round(float(v), 6) for v in fm.coef_], "mi": round(float(fm.intercept_), 6), "t": [round(float(v), 6) for v in ft.coef_], "ti": round(float(ft.intercept_), 6)},
             "early": {"feat": list(ZE.columns), "t": [round(float(v), 6) for v in fe.coef_], "ti": round(float(fe.intercept_), 6)},
-            "table": rows}
+            "table": rows, "chooser": train_chooser(d, F)}
 
 def passes(a):
     c = a["checks"]

@@ -164,10 +164,11 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     "Bo CB": { name: "Bo CB", pos: "CB", weeks: { 1: 0 }, dweeks: { 1: 0.3 } }, "Cy S": { name: "Cy S", pos: "S", weeks: { 1: 0, 2: 0 }, dweeks: { 1: 1, 2: 0.95 } } };
   const o = startersOut(sn, [{ name: "Joe QB Jr.", status: "Out", week: 3 }, { name: "Al CB", status: "Doubtful", week: 3 }, { name: "Bo CB", status: "Out", week: 3 }, { name: "Cy S", status: "Questionable", week: 3 }], 3);
   ok(o.qb === 1 && o.db === 1 && o.sk === 0, "starters out: Out/Doubtful 60%+ starters only, by group, names matched across suffixes"); }
-{ const S5 = await import("../lib/stack.js"); S5.useTable([["Dog ATS", ["gbmFav"], 61, 100], ["Over", ["statU"], 62, 100]]);
-  const P5 = S5.tablePicks({ key: "CHI @ GB", away: "CHI", home: "GB", outdoor: true, kickoff: "2026-10-11T17:00:00Z" }, { homeMargin: -2, total: 44, wind: 0, temp: 60, fix: {}, xf: { s: { gbm: -3, ens: -3 }, t: { ens: -2 } } }, 1.5, 46.5, null, null, null, 5);
-  S5.useTable(null);
-  ok(P5.some((p) => p.pick === "GB +1.5" && /likes the favorite \(fade it\)/.test(p.why)) && P5.some((p) => p.pick === "Over 46.5" && /Under \(fade it\)/.test(p.why)), "combo reasons: a model lean pointing away from the pick says (fade it)"); }
+{ const S5 = await import("../lib/stack.js");
+  const P5 = S5.tablePicks({ key: "CHI @ GB", away: "CHI", home: "GB", outdoor: true, kickoff: "2026-10-11T17:00:00Z" }, { homeMargin: -2, total: 44, wind: 0, temp: 60, fix: {}, xf: { s: { gbm: 3, ens: 3 }, t: { ens: -2 } } }, 1.5, 46.5, null, null, null, 5);
+  const sp5 = P5.find((p) => p.kind === "spread"), to5 = P5.find((p) => p.kind === "total");
+  ok(sp5 && to5 && !/\b(Over|Under)\b/.test(sp5.why) && !/likes? the (dog|favorite)/.test(to5.why) && P5.every((p) => !/likes the dog \(fade it\)/.test(p.why) || (p.kind === "spread" && p.team === "CHI")) && P5.every((p) => !/likes the favorite \(fade it\)/.test(p.why) || (p.kind === "spread" && p.team === "GB")),
+    "chooser reasons: spread reasons skip Over/Under leans, total reasons skip dog/favorite leans, and a lean pointing away from the pick says (fade it)"); }
 { const { tdCodeName } = await import("../lib/mybets.js"); const N = ["D'Andre Swift", "Cam Skattebo", "Jacory Croskey-Merritt", "Caleb Williams", "Darnell Mooney", "Dan Moore"];
   ok(tdCodeName("dswi", N) === "D'Andre Swift" && tdCodeName("camska", N) === "Cam Skattebo" && tdCodeName("jacomer", N) === "Jacory Croskey-Merritt" && tdCodeName("dmoo", N) === null && tdCodeName("darmoo", N) === "Darnell Mooney",
     "bets: Polymarket TD codes map to names (1-letter first names too); a tie keeps the code"); }
@@ -620,8 +621,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const b = picksFor({ key: "A @ H", away: "A", home: "H", week: 9 }, poly, { outdoor: true, wind: 14, fix: { div: false } }, { away: { prevLost: false, prevMarg: 7 }, home: { prevMarg: 10, won3: false } }).map((p) => p.market);
     ok(!b.includes("dogblow") && !b.includes("streakfade") && !b.includes("winddiv"), "combos: none fire when they don't apply"); }
   { // proven angles flagged on the game (10/8)
-    const g = { ...tg, angles: [{ id: "streakfade", pick: "TB +4.5", price: 0.48, name: "Road team off a loss vs 3-game win streak", hit: 59, n: 283 }] };
-    const lo = { ...tg, angles: [{ pick: "Over 46.5", name: "x", hit: 53 }, { pick: "Under 46.5", name: "y", hit: 56.8 }, { pick: "Under 46.5", name: "z", hit: 56.1 }] };
+    const g = { ...tg, combos: [{ id: "c1", pick: "TB +4.5", why: "Road team off a loss vs 3-game win streak", hit: 59, n: 283 }] };
+    const lo = { ...tg, combos: [{ pick: "Over 46.5", why: "x", hit: 53, n: 2580 }, { pick: "Under 46.5", why: "y", hit: 56.8, n: 2580 }, { pick: "Under 46.5", why: "z", hit: 56.1, n: 2580 }] };
     ok(/>TB \+4\.5</.test(ctx.T.tile(g)) && /TB \+4\.5<\/b>/.test(ctx.T.anglesBox(g)) && /wins 59%/.test(ctx.T.anglesBox(g)) && ctx.T.anglesBox(tg) === "" &&
       (ctx.T.anglesBox(lo).match(/class="bb"/g) || []).length === 1 && /Under 46\.5<\/b>.*wins 56\.8%/.test(ctx.T.anglesBox(lo)) && !/Over 46\.5/.test(ctx.T.anglesBox(lo)), "game page: one straight pick per market, 56%+, no opposite sides"); }
   { // proven angles in Model Picks parlays (10/8)
@@ -633,7 +634,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(by.angles_fav_3 && by.angles_fav_3.legs.map((l) => l.label).join(",") === "A +4.5,F ML,I ML", "angle + favorites parlay: best angle plus the two strongest home favorites"); }
   { // road ML angle: flagged with its return, used as an ML leg in angle parlays (10/8)
     const g = { ...tg, angles: [{ id: "roadml3", pick: "BUF ML", price: 0.45, name: "Road team · moneyline · spread ~3, total 48+", hit: 57.2, n: 382, roi: 12.9 }] };
-    ok(/wins 57\.2%/.test(ctx.T.anglesBox(g)) && !/per \$1/.test(ctx.T.anglesBox(g)), "road ML angle: win rate shown, no money");
+    ok(/wins 57\.2%/.test(ctx.T.anglesBox({ ...tg, combos: [{ pick: "BUF ML", why: "x", hit: 57.2, n: 382 }] })) && !/per \$1/.test(ctx.T.anglesBox(g)), "road ML angle: win rate shown, no money");
     const { buildPaper } = await import("../lib/paper.js");
     const P = buildPaper({ games: [{ key: "BUF @ LA", home: "LA", away: "BUF", started: false, final: false, angles: g.angles, td: [] }, { key: "A @ B", home: "B", away: "A", started: false, final: false, angles: [{ id: "winddiv", pick: "Under 41.5", price: 0.5, hit: 56.8, n: 426 }], td: [] }] });
     const l = P.find((p) => p.strategy === "angles_2").legs.find((x) => x.label === "BUF ML");
@@ -665,7 +666,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const b = { result: "pending", legs: [L(40, 0.5, 0.55), L(41, 0.6, 0.4), L(42, 0.5, 0.49)] };
     ok(ctx.T.weakLeg(b) === b.legs[1] && ctx.T.weakLeg({ ...b, legs: [L(40, 0.5, 0.55), L(41, 0.5, 0.49)] }) === null && ctx.T.weakLeg({ ...b, result: "W" }) === null, "weakest leg: the leg furthest below its price, only on open combos"); }
   { // confidence: angles agreeing on one side (10/9)
-    const g = { ...tg, angles: [{ id: "dogblow", pick: "TB +4.5", hit: 58 }, { id: "streakfade", pick: "TB +4.5", hit: 59 }, { id: "winddiv", pick: "Under 41.5", hit: 57 }] };
+    const g = { ...tg, combos: [{ pick: "TB +4.5", why: "a", hit: 58, n: 2535 }, { pick: "TB +4.5", why: "b", hit: 59, n: 2535 }, { pick: "Under 41.5", why: "c", hit: 57, n: 2580 }] };
     ok(/>TB \+4\.5</.test(ctx.T.tile(g)) && !/×2/.test(ctx.T.tile(g)), "tile chip: the game's best straight pick only"); }
   { // news lag alert (10/9)
     const { alertsTdJump } = await import("../lib/alerts.js"), { SEASON } = await import("../lib/games.js"); const { getRedis: gR } = await import("../lib/redis.js"); await gR().del(`alerts:${SEASON}`).catch(() => {});
@@ -713,10 +714,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const a2 = P.find((p) => p.strategy === "alt_2"), a3 = P.find((p) => p.strategy === "alt_pick_3");
     ok(a2 && a2.legs.map((l) => l.label).join(",") === "D -3.5,A +6.5" && Math.abs(a2.prob - 0.8 * 0.66) < 1e-9 && a3 && a3.legs.length === 3 && a3.legs[2].label === "E +4.5", "ALT parlays: two best ALT lines, plus a PICK from another game"); }
   { // decision model (10/9)
-    vm.runInContext(`S = { games: [{ key: "A @ B", started: false, angles: [{ pick: "A +4.5", name: "x", hit: 59, price: 0.5 }], altValue: [{ team: "B", line: -3.5, price: 0.7, hist: 0.62 }] }, { key: "C @ D", started: true, angles: [{ pick: "C +3", hit: 70, price: 0.4 }] }], teaserLegs: [{ team: "E", line: 8.5, price: 0.7, game: "E @ F" }] }`, ctx);
+    vm.runInContext(`S = { games: [{ key: "A @ B", started: false, combos: [{ pick: "A +4.5", why: "x", hit: 59, n: 2535 }], altValue: [{ team: "B", line: -3.5, price: 0.7, hist: 0.62 }] }, { key: "C @ D", started: true, combos: [{ pick: "C +3", why: "y", hit: 70, n: 2535 }] }], teaserLegs: [{ team: "E", line: 8.5, price: 0.7, game: "E @ F" }] }`, ctx);
     const B = ctx.T.bestBets();
     ok(B.length === 1 && B[0].pick === "A +4.5" && !B.some((x) => x.pick === "C +3"), "best bets: straight picks only, started games skipped");
-    vm.runInContext(`S.games.push(...Array.from({ length: 12 }, (_, i) => ({ key: "G" + i, started: false, angles: [{ pick: "T" + i + " +3", name: "x", hit: 57 + i }] })), { key: "L", started: false, angles: [{ pick: "L +1", name: "x", hit: 53 }] })`, ctx);
+    vm.runInContext(`S.games.push(...Array.from({ length: 12 }, (_, i) => ({ key: "G" + i, started: false, combos: [{ pick: "T" + i + " +3", why: "x", hit: 57 + i, n: 2535 }] })), { key: "L", started: false, combos: [{ pick: "L +1", why: "x", hit: 53, n: 2535 }] })`, ctx);
     const B2 = ctx.T.bestBets(), X = ctx.T.extraBets();
     { const PP = ctx.T.parlayPicks(); ok(PP.length === 4 && new Set(PP.map((x) => x.game)).size === 4 && PP[0].p >= PP[3].p && /Chance all 4 hit: <b>\d+%<\/b>/.test(ctx.T.parlayStrip()), "parlay of the week: top 4 green picks, one per game, chance all hit"); }
     ok(B2.length === 10 && B2[0].p >= B2[9].p && !B2.some((x) => x.pick === "L +1") && X.some((x) => x.pick === "B -3.5") && !B2.some((x) => x.pick === "B -3.5") && X.length <= 5, "best bets: top 10 at 56%+; teasers and alt lines in their own list"); }
@@ -735,16 +736,16 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       const C0 = comboFactors(G, { homeMargin: 12, total: 41, outdoor: true, wind: 16, fix: {} }, -8, 40, -8, 40, null, 6), ug = C0.up.margin - 8, ut = C0.up.total - 40;
       ok(F.wind15 && F.wind10 && F["sp>=7"] && F["tot<=41"] && F.mdlFav === (ug > 0) && F.mdlFav3 === (ug >= 3) && F.mdlO === (ut > 0) && F.mdlU === (ut < 0) && !F.prime && F.roadDog, "combo factors from the game (model leans from the upgraded model)");
       const P = tablePicks(G, { homeMargin: 12, total: 41, outdoor: true, wind: 16, fix: {} }, -8, 40, -8, 40, null, 6);
-      ok(P.length > 0 && P.every((x) => x.hit > 50 && x.why) && !(P.some((x) => x.kind === "total" && !x.teaser && x.side === "under") && P.some((x) => x.kind === "total" && !x.teaser && x.side === "over")), "combo table: fits this game, one side per market, model rules flagged");
+      ok(P.length === 2 && P.every((x) => x.hit > 50 && x.why) && !(P.some((x) => x.kind === "total" && x.side === "under") && P.some((x) => x.kind === "total" && x.side === "over")), "chooser picks: one side per market, with reasons");
       const cl = ctx.T.comboLines({ combos: P }, "spread");
       ok((cl.match(/<b>/g) || []).length <= 3 && (!P.some((x) => x.kind === "spread" && !x.teaser && x.hit >= 55) || /<b>/.test(cl)) && ctx.T.comboLines({ final: true, combos: P }, "spread") === "", "combo picks under the model card: best 3, purple with the model");
       ok(ctx.T.comboLines({ combos: [{ kind: "total", pick: "Under 42.5", hit: 51.5, why: "x" }, { kind: "total", pick: "Over 36.5", hit: 90, teaser: true, why: "y" }] }, "total") === "", "model card: market-line picks only (no teasers), 55%+");
       { const sit = { home: { prevOT: true, nextDiv: true, prevDiv: true, revenge: true, winPct: 0.8 }, away: { prevMon: true, prevAway: true, prev2Away: true, prevMarg: -30, winPct: 0.2 } };
         const NF = comboFactors(G, { homeMargin: 12, total: 41, outdoor: true, wind: 0, fix: { div: false }, xf: { awayRest: 14 } }, -8, 40, -8, 40, sit, 17).F;
         ok(NF.favAfterOT && NF.favLookaheadDiv && NF.favRevenge && NF.dogAfterMNF && NF.dogAfterLoss28 && NF.road2nd && NF.road3rd && NF.roadOffBye && NF.sandwichAny && NF.wk17dogLosing && !NF.divRematch, "combo factors: research factors (overtime, Monday, revenge, lookahead, road trip, bye, sandwich, late season)"); }
-      { const K1 = tablePicks({ key: "MIA @ GB", away: "MIA", home: "GB", outdoor: true, kickoff: "2026-12-20T18:00:00Z" }, { homeMargin: 3, total: 40, temp: 20, fix: {} }, -3, 40).find((x) => x.id === "keeper|cold");
-        const K2 = tablePicks({ key: "NYJ @ SEA", away: "NYJ", home: "SEA", outdoor: true, kickoff: "2026-10-12T00:20:00Z" }, { homeMargin: 3, total: 40, fix: {} }, -3, 40).find((x) => x.id === "keeper|westnight");
-        ok(K1 && K1.pick === "GB -3" && K1.hit === 55.5 && K2 && K2.pick === "SEA -3" && K2.hit === 58.1, "research keepers: cold home team, West Coast night game"); }
+      { const K = tablePicks({ key: "MIA @ GB", away: "MIA", home: "GB", outdoor: true, kickoff: "2026-12-20T18:00:00Z" }, { homeMargin: 3, total: 40, temp: 20, fix: {} }, -3, 40);
+        ok(K.length === 2 && K.some((x) => x.id === "chooser|spread" && /^(MIA \+3|GB -3)$/.test(x.pick)) && K.some((x) => x.id === "chooser|total" && /^(Over|Under) 40$/.test(x.pick)) && K.every((x) => x.hit > 50 && x.hit < 60 && x.n >= 2000 && !x.teaser && x.why) && !K.some((x) => /^keeper/.test(x.id)),
+          "chooser: one spread and one total pick per game, honest rate (50-60%), tested on 2,000+ unseen games; no keeper angles"); }
       ok(gradeStackPick({ kind: "spread", team: "A", home: "B", line: 8.5 }, 24, 17) === "W" && gradeStackPick({ kind: "total", side: "over", line: 34 }, 20, 13) === "L", "combo picks: grading"); }
     { // combo picks from Polymarket's position data (10/9)
       const { comboPicks } = await import("../lib/mybets.js"), { setJSON: sj, K: KK } = await import("../lib/redis.js");
@@ -849,8 +850,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       ok(/Model: <b class="mod">GB by 2\.1<\/b>/.test(U) && /No pick/.test(U) && /Model: <b class="mod">43\.0<\/b>/.test(V) && /No pick/.test(V), "model card: shows the upgraded model's number; with no tested pick it says No pick");
       const E1 = ctx.T.leanCell({ ...G, combos: [], modelUp: { margin: 2.1, total: 43.0 }, lineNow: { hs: 1.5, tl: 46.5 }, modelEarly: 48.7, totalOpen: 46.5 }, "total"), E3 = ctx.T.leanCell({ ...G, combos: [], modelUp: { margin: 2.1, total: 43.0 }, lineNow: { hs: 1.5, tl: 46.5 }, modelEarly: 48.2, totalOpen: 46.5 }, "total"), E2 = ctx.T.leanCell({ ...G, combos: [], modelUp: { margin: 2.1, total: 43.0 }, lineNow: { hs: 1.5, tl: 44.5 }, modelEarly: 48.2, totalOpen: 46.5 }, "total");
       ok(!/Early-week/.test(E1) && !/Early-week/.test(E2) && !/Early-week/.test(E3), "total card: early-week edge is turned off (11-18 live)"); }
-    { const G = { key: "CIN @ MIA", away: "CIN", home: "MIA", started: false, final: false, angles: [{ pick: "MIA +6.5", hit: 66.7, n: 3, name: "Underdog off a loss · 2–1 this season" }], combos: [{ pick: "CIN -6.5", hit: 58.9, n: 73, why: "stats" }, { pick: "Over 44.5", hit: 57, n: 200, why: "x" }] };
-      const P = ctx.T.straightPicks(G), G2 = { ...G, combos: [] }, P2 = ctx.T.straightPicks(G2);
+    { const G = { key: "CIN @ MIA", away: "CIN", home: "MIA", started: false, final: false, combos: [{ pick: "MIA +6.5", hit: 66.7, n: 3, why: "Underdog off a loss · 2–1 this season" }, { pick: "CIN -6.5", hit: 58.9, n: 73, why: "stats" }, { pick: "Over 44.5", hit: 57, n: 200, why: "x" }] };
+      const P = ctx.T.straightPicks(G), G2 = { ...G, combos: [G.combos[0]] }, P2 = ctx.T.straightPicks(G2);
       ok(P[0].pick === "CIN -6.5" && !P.some((x) => x.pick === "MIA +6.5") && P2[0].pick === "MIA +6.5" && /3 games/.test(P2[0].why), "picks: a tested pick beats a small-sample one in its market; small-sample picks show their game count"); }
     { vm.runInContext(`S = { games: [{ key: "PHI @ JAX", away: "PHI", home: "JAX", kickoff: "2026-10-11T13:30:00Z", td: [{ player: "D.Cooper", team: "PHI" }] }, { key: "CHI @ GB", away: "CHI", home: "GB", kickoff: "2026-10-11T17:00:00Z", td: [{ player: "D.Swift", team: "CHI" }, { player: "J.Love", team: "GB" }] },
         { key: "SF @ SEA", away: "SF", home: "SEA", kickoff: "2026-10-11T20:25:00Z", td: [{ player: "C.McCaffrey", team: "SF" }] }, { key: "DET @ ARI", away: "DET", home: "ARI", kickoff: "2026-10-11T20:25:00Z", td: [{ player: "J.Love", team: "ARI" }] },

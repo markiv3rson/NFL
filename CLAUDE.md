@@ -47,16 +47,23 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
 
 - Factors: dog/fav starting QB out, a skill starter out, 2+ OL / DB / front-seven starters out (official Out/Doubtful +
   60%+ snap share; `lib/snaps.js startersOut`, `weekly_rebuild.py starters_out`). STRAIGHT BETS ONLY — owner never bets teasers;
-  the rebuild skips teaser bet types for these factors. Best: favorite ATS when the dog's QB is out + boosted model likes the dog, ~65%.
-- Until a rebuild publishes them, `lib/combomodel.js` adds them from the built-in `lib/combotable.js`.
+  the rebuild skips teaser bet types for these factors. Their scanned rates (~65%) were measured on the games they were found in, so
+  they are NOT win rates; since 10/12 these factors are only inputs to the chooser (see "How picks are chosen").
 
-## Game model vs the betting line (checked Oct 11, 2026)
+## How picks are chosen (Oct 12, 2026 — owner chose "A + B")
 
-- The upgraded game model alone has NO edge on the line: its spread side won 50.6% and total side 51.7% on 2,531 games 2014-26
-  (bigger gaps don't help); its errors are about the line's (margin 10.0 vs 9.9, total 10.5 vs 10.46). "Better" only means better
-  than the old model. Never present its side as a pick or a lean. The edge is in the tested combo picks (59.7% live in 2026).
-- Cards: PICK = tested pick 56%+; LEAN = tested pick 50-56%; otherwise "No pick". A pick on fewer than 60 games shows its game count
-  and never outranks a tested pick (week 5: the three small-sample PICKs went 0-3).
+- The scanned single patterns ("combos") were OVERFIT: judged on the same games they were found in they won 60.7%; on unseen
+  games (each season's patterns found without it, 2014-26) only 49.8%. Week 5, the first true live test, went 15-21.
+  The earlier "77-41" included weeks 3-4 REPLAYED with patterns built from those same games — not a real test.
+- Cards now use the combined chooser (`lib/chooser.js`): one logistic model per market over all 109 factors, with the % shown
+  made HONEST by a calibration fit on unseen games. Unseen-game results: spreads 51.2% (its confidence doesn't separate
+  winners), totals 52.0% (54.9% on its 195 most confident). So most cards show LEAN ~51-54%; PICK (56%+) is rare or absent.
+- The weekly rebuild refits it (`weekly_rebuild.py train_chooser`) and publishes `chooser`; `lib/combomodel.js` loads it.
+- Dropped as picks (rates never checked on unseen games): scanned teaser combos, the 3 "keeper" angles, angles in general,
+  the "total fell" rule. Teasers left: dog +6 ladder and total ±6 (simple base rates: 67% 2007-25, 28-13 live).
+- The game model alone has no edge on the line (50.6% / 51.7% on 2,531 games). Never present its side as a pick.
+- RULE FOR ANY NEW PICK SOURCE: test it on games it has never seen (leave one season out) before showing any win rate.
+  A rate measured on the games a pattern was found in is not a win rate.
 
 ## Game model — already tested, not added
 
