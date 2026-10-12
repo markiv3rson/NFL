@@ -169,6 +169,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const sp5 = P5.find((p) => p.kind === "spread"), to5 = P5.find((p) => p.kind === "total");
   ok(sp5 && to5 && !/\b(Over|Under)\b/.test(sp5.why) && !/likes? the (dog|favorite)/.test(to5.why) && P5.every((p) => !/likes the dog \(fade it\)/.test(p.why) || (p.kind === "spread" && p.team === "CHI")) && P5.every((p) => !/likes the favorite \(fade it\)/.test(p.why) || (p.kind === "spread" && p.team === "GB")),
     "chooser reasons: spread reasons skip Over/Under leans, total reasons skip dog/favorite leans, and a lean pointing away from the pick says (fade it)"); }
+{ const { lineMovePick } = await import("../lib/stack.js"); const G = { key: "BUF @ LA", away: "BUF", home: "LA", kickoff: new Date(Date.now() + 3600e3).toISOString() };
+  const pm = (P) => ({ spread: { homeSpread: P } }), now = new Date().toISOString(), old = new Date(Date.now() - 10 * 3600e3).toISOString();
+  const a = lineMovePick(G, pm(-3.5), pm(-5)), b = lineMovePick(G, pm(-6.5), pm(-5.5)), c = lineMovePick(G, pm(-2.5), pm(-3)), d = lineMovePick(G, pm(-3.5), pm(-4)), e = lineMovePick(G, pm(-1), pm(-4.5));
+  ok(a && a.pick === "LA -3.5" && a.hit === 58 && !/crossed/.test(a.why) && b && b.pick === "BUF +6.5" && b.hit === 56.1 && c && c.pick === "LA -2.5" && c.hit === 60.9 && /crossed 3/.test(c.why) && !d && e && e.hit === 62.1,
+    "line move: side the books moved toward at Polymarket's old number; 1+ / 1.5+ / 3+ tiers; crossing 3 or 7 counts at any size; a half point otherwise is nothing");
+  ok(lineMovePick(G, pm(-3.5), pm(-5), { booksT: now, polyT: now }) && !lineMovePick(G, pm(-3.5), pm(-5), { booksT: old, polyT: now }) && !lineMovePick(G, pm(-3.5), pm(-5), { booksT: now, polyT: old }),
+    "line move: only when both the sportsbook and Polymarket readings are recent"); }
 { const { tdCodeName } = await import("../lib/mybets.js"); const N = ["D'Andre Swift", "Cam Skattebo", "Jacory Croskey-Merritt", "Caleb Williams", "Darnell Mooney", "Dan Moore"];
   ok(tdCodeName("dswi", N) === "D'Andre Swift" && tdCodeName("camska", N) === "Cam Skattebo" && tdCodeName("jacomer", N) === "Jacory Croskey-Merritt" && tdCodeName("dmoo", N) === null && tdCodeName("darmoo", N) === "Darnell Mooney",
     "bets: Polymarket TD codes map to names (1-letter first names too); a tie keeps the code"); }

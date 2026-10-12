@@ -1,7 +1,7 @@
 // Takes a line snapshot: Polymarket lines + TD prices for every game that has NOT kicked off,
 // plus sportsbook consensus when books=1. Called by the Railway scheduler (7/12/3/7 PT, Sunday
 // 6/7/8/9/10/12/3 PT, and just before each kickoff with kickoff=<game>) and by the Refresh button.
-import { tablePicks, recordStack } from "../../lib/stack";
+import { tablePicks, recordStack, lineMovePick } from "../../lib/stack";
 import { venue } from "../../lib/wind";
 import { recordTeaser, recordTotalLeg, teaserLeg, totalMove, recordEarlyTotal, tkey } from "../../lib/teaser";
 import { comboFactors } from "../../lib/stack";
@@ -48,8 +48,11 @@ export async function writePrelog(season, week, g, t, poly, bk, model) {
       // Total moved 6 (10/9, model replayed 2014-25): the line's 3+ move first, then wind 15+ Under, else AGAINST the model's side
       const mU = mg && mg.calUnder != null ? mg.calUnder >= 50 : null;
       { const s0 = first && first.poly && first.poly.spread ? first.poly.spread.homeSpread : null, v = venue(g) || {};
-        const hsNow = bk && bk.spread && bk.spread.homeSpread != null ? bk.spread.homeSpread : poly && poly.spread ? poly.spread.homeSpread : null;
-        try { await recordStack(season, week, g, tablePicks({ ...g, outdoor: !!v.outdoor }, mg, hsNow, now, s0, open, await situationFor(season, week, g).catch(() => null), Number(week)), t); } catch {} }   // combo picks (10/9); a failure here never stops the rest
+        // 10/12: recorded at the SAME line the card shows -- Polymarket first (where the bet is placed), books only as a fallback.
+        // Before, books came first, so a recorded pick could sit on a different number than the one shown.
+        const hsNow = poly && poly.spread && poly.spread.homeSpread != null ? poly.spread.homeSpread : bk && bk.spread ? bk.spread.homeSpread : null;
+        const tlNow = poly && poly.total && poly.total.line != null ? poly.total.line : now;
+        try { await recordStack(season, week, g, tablePicks({ ...g, outdoor: !!v.outdoor }, mg, hsNow, tlNow, s0, open, await situationFor(season, week, g).catch(() => null), Number(week)).concat(lineMovePick(g, poly, bk) || []), t); } catch {} }   // combo picks (10/9); a failure here never stops the rest
       await recordTotalLeg(season, week, g, poly, bk, mv ? mv.under : mg && mg.outdoor && mg.wind != null && mg.wind >= 15 ? true : mU == null ? true : !mU, t, open, mU === true).catch(() => 0); }
     await recordAltValues(season, week, g, alts ? { ...(poly || {}), alts } : poly, bk, t).catch(() => 0); }   // alt lines under their historical rate (10/9)   // Teaser leg: underdog +1.5..+2.5 at +7.5..+8.5 (10/6)
 }
