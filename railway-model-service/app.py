@@ -19,7 +19,10 @@ import numpy as np, pandas as pd, hmac
 from flask import Flask, request, jsonify
 import fair_line, extra_factors, weekly_rebuild
 extra_factors.warm()   # 10/9: build the stats models in the background at startup
-if weekly_rebuild.latest() is None and os.environ.get("REBUILD_ON_START", "1") == "1":   # first deploy: build the weekly combo set once (then Tuesdays)
+_last = weekly_rebuild.latest()
+# 10/12: also rebuild on start when the saved build predates the pick chooser (no "chooser" in it), so a deploy brings the new
+# chooser and its honest rates live right away instead of waiting for Tuesday's run.
+if (_last is None or "chooser" not in _last) and os.environ.get("REBUILD_ON_START", "1") == "1":   # first deploy / outdated build: rebuild now (then Tuesdays)
     threading.Thread(target=lambda: (__import__("time").sleep(120), weekly_rebuild.run()), daemon=True).start()
 import td_prob
 import injury_adj
