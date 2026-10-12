@@ -62,6 +62,8 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
 - Dropped as picks (rates never checked on unseen games): scanned teaser combos, the 3 "keeper" angles, angles in general,
   the "total fell" rule. Teasers left: dog +6 ladder and total ±6 (simple base rates: 67% 2007-25, 28-13 live).
 - The game model alone has no edge on the line (50.6% / 51.7% on 2,531 games). Never present its side as a pick.
+- Its number (even the upgraded one) is LESS accurate than the line: margin off 9.99 vs 9.89, total 10.52 vs 10.47, better in only
+  3 of 13 seasons (2014-26, each season unseen). Cards say so under the purple number (10/12).
 - RULE FOR ANY NEW PICK SOURCE: test it on games it has never seen (leave one season out) before showing any win rate.
   A rate measured on the games a pattern was found in is not a win rate.
 
