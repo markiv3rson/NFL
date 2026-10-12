@@ -65,6 +65,17 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
 - RULE FOR ANY NEW PICK SOURCE: test it on games it has never seen (leave one season out) before showing any win rate.
   A rate measured on the games a pattern was found in is not a win rate.
 
+## LINE MOVE (Oct 12, 2026) — the one spread edge found
+
+- Rule (nothing fitted): when sportsbooks moved the spread and Polymarket still has the old number, take the side the books moved
+  toward at Polymarket's number (`lib/stack.js lineMovePick`). History 2014-26, graded at the opening number: moved 1+ 56.1%,
+  1.5+ 58.0%, 3+ 62.1%, crossed 3 or 7 (any size) 60.9%; 11-12 of 13 seasons; stronger since 2022. Half the move caught: 52.6%.
+- Shown as a PICK on the spread card when it applies; recorded and graded with the other picks. Needs fresh books (3 h game day /
+  8 h before) and fresh Polymarket (3 h) on the page.
+- Tested and NOT edges on spreads (unseen games): game model vs opening line 51.5%, chooser vs opening line 50.2%, home dogs,
+  road dogs, big dogs, +3/+3.5 dogs, division dogs, home dogs +3 or less (48-51.5%).
+- Picks are recorded at the same line the card shows (Polymarket first). Before 10/12 the recorder used the books' line first.
+
 ## Game model — already tested, not added
 
 - Injured starters as inputs (margin error 10.020 -> 10.024: the line already prices injuries).
