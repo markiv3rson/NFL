@@ -15,6 +15,7 @@ import { getRedis, jparse, getJSON, setJSON, K, SLATE_CACHE } from "../../lib/re
 import { fetchEvents, gameLines, tdProps } from "../../lib/poly";
 import { sanePoly } from "../../lib/sane";
 import { fetchBooks } from "../../lib/books";
+import { fetchSplits } from "../../lib/splits";
 import { gradeRecent } from "../../lib/grade";
 import { syncAccount } from "../../lib/mybets";
 import { logError } from "../../lib/status";
@@ -79,6 +80,16 @@ export default async function handler(req, res) {
     const booksNow = books ? { t, games: books } : await getJSON(K.books(season, week));   // for the edge tracker (age-checked there)
     let edges = 0;
     const events = open.length ? await fetchEvents() : [];
+    // Betting splits (10/12, owner chose A): recorded on every scheduled / kickoff snapshot for games not yet started. Not shown or
+    // used for picks until tested on unseen games. A failure or a feed with no split fields is logged and never stops the snapshot.
+    let splitsNote = null;
+    if (open.length && src !== "manual") try {
+      const sp = await fetchSplits(); let n = 0;
+      for (const g of open) { const rows = sp.games[g.key]; if (!rows) continue;
+        await redis.rpush(`splits:${season}:${week}:${g.key}`, JSON.stringify({ t, src, rows })); await redis.ltrim(`splits:${season}:${week}:${g.key}`, -60, -1); n++; }
+      splitsNote = `${n} games, ${sp.fields} split fields`;
+      if (!sp.fields) await logError("splits", `Betting splits feed had no split fields (${n} games matched)`);
+    } catch (e) { splitsNote = String(e).slice(0, 120); await logError("splits", `Betting splits pull failed: ${splitsNote}`).catch(() => {}); }
     const model = open.length ? await loadModel(season, week).catch(() => null) : null;
     let lines = 0, props = 0;
     await Promise.all(open.map(async (g) => {
@@ -186,6 +197,6 @@ export default async function handler(req, res) {
     }
     const graded = src === "manual" ? 0 : await gradeRecent(season).catch(() => 0);
     const acct = src === "manual" ? { ok: false, note: "skipped on manual refresh" } : await syncAccount().catch((e) => ({ ok: false, note: String(e) }));  // auto-sync My Bets
-    res.status(200).json({ ok: true, week, upcoming: open.length, locked: games.length - open.length, lines, props, books: booksNote, closedLate, graded, edges, paper, account: acct.ok ? `synced ${acct.positions} positions` : acct.note });
+    res.status(200).json({ ok: true, week, upcoming: open.length, locked: games.length - open.length, lines, props, books: booksNote, splits: splitsNote, closedLate, graded, edges, paper, account: acct.ok ? `synced ${acct.positions} positions` : acct.note });
   } catch (err) { await logError("snapshot", err).catch(() => {}); res.status(500).json({ ok: false, error: String(err) }); }
 }
