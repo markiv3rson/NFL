@@ -164,6 +164,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     "Bo CB": { name: "Bo CB", pos: "CB", weeks: { 1: 0 }, dweeks: { 1: 0.3 } }, "Cy S": { name: "Cy S", pos: "S", weeks: { 1: 0, 2: 0 }, dweeks: { 1: 1, 2: 0.95 } } };
   const o = startersOut(sn, [{ name: "Joe QB Jr.", status: "Out", week: 3 }, { name: "Al CB", status: "Doubtful", week: 3 }, { name: "Bo CB", status: "Out", week: 3 }, { name: "Cy S", status: "Questionable", week: 3 }], 3);
   ok(o.qb === 1 && o.db === 1 && o.sk === 0, "starters out: Out/Doubtful 60%+ starters only, by group, names matched across suffixes"); }
+{ const S5 = await import("../lib/stack.js"); S5.useTable([["Dog ATS", ["gbmFav"], 61, 100], ["Over", ["statU"], 62, 100]]);
+  const P5 = S5.tablePicks({ key: "CHI @ GB", away: "CHI", home: "GB", outdoor: true, kickoff: "2026-10-11T17:00:00Z" }, { homeMargin: -2, total: 44, wind: 0, temp: 60, fix: {}, xf: { s: { gbm: -3, ens: -3 }, t: { ens: -2 } } }, 1.5, 46.5, null, null, null, 5);
+  S5.useTable(null);
+  ok(P5.some((p) => p.pick === "GB +1.5" && /likes the favorite \(fade it\)/.test(p.why)) && P5.some((p) => p.pick === "Over 46.5" && /Under \(fade it\)/.test(p.why)), "combo reasons: a model lean pointing away from the pick says (fade it)"); }
 { const { tdCodeName } = await import("../lib/mybets.js"); const N = ["D'Andre Swift", "Cam Skattebo", "Jacory Croskey-Merritt", "Caleb Williams", "Darnell Mooney", "Dan Moore"];
   ok(tdCodeName("dswi", N) === "D'Andre Swift" && tdCodeName("camska", N) === "Cam Skattebo" && tdCodeName("jacomer", N) === "Jacory Croskey-Merritt" && tdCodeName("dmoo", N) === null && tdCodeName("darmoo", N) === "Darnell Mooney",
     "bets: Polymarket TD codes map to names (1-letter first names too); a tie keeps the code"); }
@@ -839,7 +843,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     G.combos[0].rec = { w: 3, l: 1 }; G.history = [{ poly: { spread: { homeSpread: 2.5 }, total: { line: 45.5 } } }];
     const sp = ctx.T.leanCell(G, "spread"), to = ctx.T.leanCell(G, "total");
     ok(/Model: <b class="mod">CHI by 5\.6<\/b>/.test(sp) && /PICK: GB \+1\.5 · 62%/.test(sp) && /Model is too high on CHI here: in games like this, GB won 62%\./.test(sp) && (sp.match(/PICK:/g) || []).length === 1, "model card: one pick, and plain words when it goes against the model");
-    ok(/This season: <b>3–1<\/b>/.test(sp) && /Line moved: opened GB \+2\.5, now GB \+1\.5 · worse number now/.test(sp) && /Line moved: opened Under 45\.5, now Under 46\.5 · better number now/.test(to) && /none graded yet/.test(ctx.T.recLine({ w: 0, l: 0 })), "model card: this season's record and the line check");
+    ok(/This season: <b>3–1<\/b>/.test(sp) && /Line moved: opened GB \+2\.5, now GB \+1\.5 · worse number now/.test(sp) && /Line moved: opened Under 45\.5, now Under 46\.5 · better number now/.test(to) && ctx.T.recLine({ w: 0, l: 0 }) === "", "model card: this season's record and the line check");
     ok(/Model: <b class="mod">46\.1<\/b>/.test(to) && /PICK: Under 46\.5 · 57%/.test(to) && /wind 10\+ · older teams · won 57%\./.test(to) && !/40\.5/.test(to), "model card (total): one market-line pick with its reason, no teasers");
     { const U = ctx.T.leanCell({ ...G, combos: [], modelUp: { margin: 2.1, total: 43.0 }, lineNow: { hs: 1.5, tl: 46.5 } }, "spread"), V = ctx.T.leanCell({ ...G, combos: [], modelUp: { margin: 2.1, total: 43.0 }, lineNow: { hs: 1.5, tl: 46.5 } }, "total");
       ok(/Model: <b class="mod">GB by 2\.1<\/b>/.test(U) && /No pick/.test(U) && /Model: <b class="mod">43\.0<\/b>/.test(V) && /No pick/.test(V), "model card: shows the upgraded model's number; with no tested pick it says No pick");

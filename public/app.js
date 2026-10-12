@@ -148,7 +148,7 @@ function saferOne(g, kind, p) {
     (mv && mv.under && p && p.side === "under" ? `<div class="s g">Total fell ${mv.open} → ${mv.now}: <b>Under ${mv.now}</b> · wins 64%</div>` : "");
 }
 // This season's record for the pick's type (10/9).
-function recLine(r) { return r ? `<div class="s" style="margin-top:6px">This season: <b>${r.w}–${r.l}</b>${r.w + r.l ? "" : " (none graded yet)"}</div>` : ""; }
+function recLine(r) { return r && r.w + r.l ? `<div class="s" style="margin-top:6px">This season: <b>${r.w}–${r.l}</b></div>` : ""; }   // nothing until a pick of this kind is graded (10/12: "0–0" was noise)
 // Line check (10/9): the pick's line vs the week's first saved line for the same side; better or worse number since it opened.
 function lineCheck(g, kind, pick) {
   const h0 = (g.history || []).find((h) => h.poly && (kind === "total" ? h.poly.total : h.poly.spread)); if (!h0) return "";
