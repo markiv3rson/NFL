@@ -80,16 +80,15 @@ export default async function handler(req, res) {
     const booksNow = books ? { t, games: books } : await getJSON(K.books(season, week));   // for the edge tracker (age-checked there)
     let edges = 0;
     const events = open.length ? await fetchEvents() : [];
-    // Betting splits (10/12, owner chose A): recorded on every scheduled / kickoff snapshot for games not yet started. Not shown or
-    // used for picks until tested on unseen games. A failure or a feed with no split fields is logged and never stops the snapshot.
+    // Action Network lines per book (+ splits if they ever appear), 10/12: recorded on every scheduled / kickoff snapshot for games
+    // not yet started. Not shown or used for picks until tested on unseen games. A failed pull is logged and never stops the snapshot.
     let splitsNote = null;
     if (open.length && src !== "manual") try {
       const sp = await fetchSplits(); let n = 0;
       for (const g of open) { const rows = sp.games[g.key]; if (!rows) continue;
         await redis.rpush(`splits:${season}:${week}:${g.key}`, JSON.stringify({ t, src, rows })); await redis.ltrim(`splits:${season}:${week}:${g.key}`, -60, -1); n++; }
       splitsNote = `${n} games, ${sp.fields} split fields`;
-      if (!sp.fields) await logError("splits", `Betting splits feed had no split fields (${n} games matched)`);
-    } catch (e) { splitsNote = String(e).slice(0, 120); await logError("splits", `Betting splits pull failed: ${splitsNote}`).catch(() => {}); }
+    } catch (e) { splitsNote = String(e).slice(0, 120); await logError("splits", `Action Network lines pull failed: ${splitsNote}`).catch(() => {}); }
     const model = open.length ? await loadModel(season, week).catch(() => null) : null;
     let lines = 0, props = 0;
     await Promise.all(open.map(async (g) => {

@@ -183,7 +183,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const j = { games: [{ away_team_id: 1, home_team_id: 2, teams: [{ id: 1, abbr: "BUF", full_name: "Buffalo Bills" }, { id: 2, abbr: "LAR", full_name: "Los Angeles Rams" }],
     odds: [{ book_id: 15, spread_home: -3.5, spread_home_public: 38, spread_home_money: 61, total_over_public: 70, junk: { x: 1 } }] }] };
   const r = parseSplits(j); ok(r.games["BUF @ LA"] && r.games["BUF @ LA"][0].spread_home_money === 61 && r.fields === 3 && !("junk" in r.games["BUF @ LA"][0]) && parseSplits({}).fields === 0,
-    "splits: bets % and money % kept per game (LAR -> LA); an empty feed counts 0 fields (logged)");
+    "splits: bets % and money % kept per game (LAR -> LA); an empty feed counts 0 fields");
+  { const real = { games: [{ away_team_id: 142, home_team_id: 134, teams: [{ id: 142, abbr: "PHI", full_name: "Philadelphia Eagles" }, { id: 134, abbr: "JAC", full_name: "Jacksonville Jaguars" }],
+      odds: [{ book_id: 30, spread_home: 1.5, total: 44.5, over: -110, ml_home: 110, spread_home_public: null, spread_home_money: null, inserted: "2026-10-05T13:38:41Z", meta: null, line_status: { over: 0 } }] }] };
+    const q = parseSplits(real), row = (q.games["PHI @ JAX"] || [])[0] || {};
+    ok(q.fields === 0 && row.book_id === 30 && row.spread_home === 1.5 && row.total === 44.5 && row.over === -110 && row.inserted === "2026-10-05T13:38:41Z" && !("spread_home_public" in row) && !("meta" in row),
+      "Action Network feed as it really is (10/12): splits null (PRO only) -> 0 fields; each book's lines + posting time kept (JAC -> JAX)"); }
   const ev = [{ away_team: "Buffalo Bills", home_team: "Los Angeles Rams", bookmakers: [
     { key: "draftkings", markets: [{ key: "spreads", outcomes: [{ name: "Los Angeles Rams", point: -3.5, price: -110 }, { name: "Buffalo Bills", point: 3.5, price: -110 }] }, { key: "totals", outcomes: [{ name: "Over", point: 54.5, price: -110 }, { name: "Under", point: 54.5, price: -110 }] }] },
     { key: "fanduel", markets: [{ key: "spreads", outcomes: [{ name: "Los Angeles Rams", point: -3, price: -120 }, { name: "Buffalo Bills", point: 3, price: 100 }] }] }] }];

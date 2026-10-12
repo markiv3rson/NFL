@@ -85,9 +85,9 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
 
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
-- A: betting splits (bets % vs money %) from Action Network's public feed, every scheduled/kickoff snapshot: `lib/splits.js`,
-  Redis `splits:<season>:<week>:<game>`. Field names unverified at build time (the build machine can't reach the feed); a pull with no
-  split fields or a failure is logged to the status panel. No free history, so test after ~half a season.
+- A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
+  splits are paid too). Owner chose to keep pulling that feed for its per-book LINES with posting times (likely includes openers):
+  `lib/splits.js`, Redis `splits:<season>:<week>:<game>`. Only a failed pull is logged.
 - B: each sportsbook's own spread/total on every books pull (`byBook` in the books data and snapshots), for testing line moves per
   book and by time of week.
 
