@@ -217,6 +217,11 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   aggressiveness 49-52%. Totals with all of it 48-52%. INJURY weighted by QBR: no better (good QB lost 51.5% close, weaker QB 55.2%).
 - Not tested: FTN charting (only 2022+), TD-model inputs from Next Gen/charting (TD model ~ Polymarket already).
 
+- Injury cluster vs matchup (10/13, 2018-26, bet the team facing the injury): 2+ OL out vs top-10 pass rush 64.0% open / 59.3% close
+  (25 games); vs bottom-half pass rush 63.4% / 64.3% (41) -> the edge is the 2+ OL injury itself (already in INJURY), the pass rush adds
+  nothing. 1+ OL vs top-10 rush 47.0% / 44.3% (234); 2+ DB vs top-10 pass offense 50.0% / 44.4% (36). Margin error line 9.871, + cluster
+  matchups 9.901 (worse). Closed: don't add defensive-matchup overlays to injuries.
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
