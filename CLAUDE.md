@@ -300,6 +300,17 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   Friday-kickoff -- and compare win rate and LINE VALUE; use the 30-min Pinnacle log for when lines moved. Not testable on past seasons
   (history has only open and close).
 
+- SHADOW PICKS BUILT 10/14 (owner: "build everything now") -- recorded every 30 min by `/api/pinnaclepull` (`recordShadow`), saved
+  ONCE when first fired in the teaser hash, graded, kept out of other records; Models -> Tracked angles rows. NOT shown, NOT picks until
+  they hold live: (1) LINE MOVE with PINNACLE in place of the books (`|pinlm` spread, `|pinlmT` total) vs Polymarket at the same moment;
+  (2) Polymarket order-book TILT: one side has 4x+ the money resting near the top and $1,000+ (`|tilt` spread home-side book, `|tiltT`
+  Over book) -> that side at Polymarket's number. Market-only CHOOSER: needs several hundred graded games of these inputs -> mid-season.
+- Batch 8 (10/14, closing 1999-2025, open 2014+). Nothing added: market momentum -- line moved toward a team open->close 3 straight
+  games -> follow 54.2% open (325, 9/12) / 52.6% close; fading it 45.8%; line-implied rating up/down 3 straight 47-53%. Public teams
+  (DAL/KC/PHI/GB/SF) favored -> opponent 49.7% close; in primetime 45.4% (355) -- popular favorites slightly OVER-covered; by team
+  46-53%. Underdog implied score <=17 -> dog 52.5% close / 45.3% open. Weeks 17-18 fade a 12+ win team 50.0% / 41.7%. Head coach vs a
+  team he coached in the last 3 seasons 55.3% (38 games; 2020-25 38%).
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's

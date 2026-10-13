@@ -887,7 +887,9 @@ function teaserRow() {
   const wu = T.windU, wRow = wu ? `<div class="arow"><span class="nm">Early-week Under, wind 10+ forecast (opening number)</span><span class="dim rc">${wu.n ? `${wu.w}–${wu.l}` : wu.recorded ? `${wu.recorded} saved` : "none yet"}</span><b class="${wu.n ? (wu.hit >= 0.56 ? "g" : wu.hit >= 0.5 ? "y" : "r") : "dim"}">${wu.n ? Math.round(wu.hit * 100) + "%" : "—"}</b></div>` : "";
   // 10/14 paper: team scored 3 or less last week -> that team at the kickoff spread (with the shut-out and road splits)
   const fl = T.floor, rr = (x) => (x && x.n ? `${x.w}–${x.l}` : "—"), fRow = fl ? `<div class="arow"><span class="nm">Team scored 3 or less last week (kickoff spread) · shut out ${rr(fl.shut)} · on the road ${rr(fl.road)}</span><span class="dim rc">${fl.n ? `${fl.w}–${fl.l}` : fl.recorded ? `${fl.recorded} saved` : "none yet"}</span><b class="${fl.n ? (fl.hit >= 0.56 ? "g" : fl.hit >= 0.5 ? "y" : "r") : "dim"}">${fl.n ? Math.round(fl.hit * 100) + "%" : "—"}</b></div>` : "";
-  return wRow + fRow || '<div class="s dim">None yet.</div>';
+  // 10/14 shadow picks (recorded + graded, not shown): LINE MOVE triggered by Pinnacle; Polymarket order-book tilt 4x+
+  const row = (x, name) => (x ? `<div class="arow"><span class="nm">${name} · spread ${rr(x.spread)} · total ${rr(x.total)}</span><span class="dim rc">${x.n ? `${x.w}–${x.l}` : x.recorded ? `${x.recorded} saved` : "none yet"}</span><b class="${x.n ? (x.hit >= 0.56 ? "g" : x.hit >= 0.5 ? "y" : "r") : "dim"}">${x.n ? Math.round(x.hit * 100) + "%" : "—"}</b></div>` : "");
+  return wRow + fRow + row(T.pinlm, "LINE MOVE using Pinnacle (shadow)") + row(T.tilt, "Polymarket order-book tilt 4x+ (shadow)") || '<div class="s dim">None yet.</div>';
 }
 // Decision model (10/9): straight bets only (no teasers, no alt lines), ONE pick per game per market (spread, total): the one
 // with the best record. Two angles on opposite sides of the same total no longer both show.

@@ -199,6 +199,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   await recordStack(2099, 6, G, [{ id: "keynumber|spread", team: "DEN", line: 2.5, kind: "spread", hit: 58.1 }], "2099-10-16T00:00:00Z");
   const rec = JSON.parse(await getRedis().hget(skey(2099, 6), "SEA @ DEN|keynumber|spread"));
   ok(rec.first && rec.first.line === 3.5 && rec.line === 2.5, "CLV: kickoff record keeps the line first SHOWN during the week (not the kickoff line)", rec); }
+{ const { recordShadow } = await import("../pages/api/pinnaclepull.js"); const { teaserSummary, gradeTeasersWeek } = await import("../lib/teaser.js"); const { getRedis } = await import("../lib/redis.js");
+  const G = { home: "DEN", away: "SEA", key: "SEA @ DEN", week: 7 }, p = { spread: { homeSpread: 2.5, home: 0.5, away: 0.5 }, total: { line: 40.5, over: 0.5, under: 0.5 } };
+  const n = await recordShadow(getRedis(), 2097, G, p, { hs: 3.5, tl: 44 }, { bd: 9000, ad: 1500 }, { bd: 800, ad: 600 }, "t");
+  const n2 = await recordShadow(getRedis(), 2097, G, p, { hs: 3.5, tl: 44 }, { bd: 9000, ad: 1500 }, null, "t2");   // second sighting: no new rows
+  await gradeTeasersWeek(2097, 7, [{ key: "SEA @ DEN", home: "DEN", away: "SEA", homeScore: 20, awayScore: 24 }]); const s = await teaserSummary(2097);
+  ok(n === 3 && n2 === 0 && s.pinlm && s.pinlm.recorded === 2 && s.tilt.recorded === 1 && s.all.n === 0 && s.totals.n === 0,
+    "shadow picks: Pinnacle LINE MOVE (crossed 3 -> SEA side; total 3.5 apart -> Over) + order-book tilt 6x -> DEN; saved once, graded, kept out of other records", { n, n2, pinlm: s.pinlm, tilt: s.tilt }); }
 { const { recordFloor, gradeTeasersWeek, teaserSummary, tkey } = await import("../lib/teaser.js"); const { getRedis } = await import("../lib/redis.js"); const G = { home: "ATL", away: "CHI", key: "CHI @ ATL" };
   const n0 = await recordFloor(2098, 6, G, 3.5, { home: { prevPts: 10 }, away: { prevPts: 10 } }, "t"), n1 = await recordFloor(2098, 6, G, 3.5, { home: { prevPts: 17 }, away: { prevPts: 0 } }, "t");
   const leg = JSON.parse(await getRedis().hget(tkey(2098, 6), "CHI @ ATL|floor"));
