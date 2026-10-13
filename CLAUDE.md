@@ -229,6 +229,12 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   Polymarket line (same as the card -- INJURY / TOTAL MOVE were lost when the week's first snapshot had no Polymarket line); BOUNCE BACK DOG
   has its own label; order-book TILT ignores dead/placeholder books; Pinnacle pull runs 6 games at a time with a 15 s cap per game's
   Polymarket part (it could pass Vercel's 60 s limit); first-seen saves use one hmget per game; situationFor runs once per game per build.
+- REVIEW 2 FIXES 10/14: TOTAL MOVE's early inputs included 4 stats models built from the CLOSING line (s_ens/t_ens/s_gbm/t_gbm) -- removed
+  (`weekly_rebuild.py MOVE_DROP`); retested without them: top 20% 59.1% (508), top 10% 62.7% (252) -> the edge never depended on them.
+  `situationFor`: if a team's last game isn't final yet, "last game" is unknown (it used to fall back two weeks -> BOUNCE BACK misfires).
+  Bets tab: positions paged past 200 (open bets were stamped closed); a bet placed after MNF on next week's game isn't marked settled;
+  TD legs need the scorer on the right team (as in grade.js). Rebuild drops ambiguous replay joins (same lines + same result, same week).
+  Not fixed (small): the chooser's model-lean factors for other seasons were fitted with the held-out season (slightly optimistic %).
 - CLV tracker built: each card pick keeps the line it FIRST showed at (`first` in `stack:` records, `lib/stack.js recordStack/clvOf`);
   the kickoff line is the close. Models tab -> "LINE VALUE" tile: average points gained vs the close and % of picks that beat it.
 - "Line moved with/against the model" (game model side vs the open, 2014-26, 2,578 games): moved WITH 55.1% at the open (48.1% at the
