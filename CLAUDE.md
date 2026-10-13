@@ -272,7 +272,10 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   not-started game it lists, next week's included (`lib/pinnacle.js`, Redis `pinnacle:<season>:<week>:<game>`; check: `/api/pinnaclecheck`). No history exists, so it needs ~half a season before any test;
   LINE MOVE's 63.2% was measured on the consensus line, not Pinnacle's.
   Also every 30 min (Railway scheduler :10/:40 -> `/api/pinnaclepull`, src "pin30") with Polymarket's main line read at the same moment
-  (`poly` in each record), to test "Pinnacle moved first, Polymarket hasn't caught up". A failed pull shows in 8 · System → "Errors (last 2 days)".
+  (`poly` in each record), to test "Pinnacle moved first, Polymarket hasn't caught up".
+  10/14 (owner: "go"): each pin30 `poly` also has the main markets' Polymarket order book -- `sb` (spread, home side) and `tb`
+  (total, Over side): `bb`/`ba` best bid/ask, `bd`/`ad` dollars resting within 5c of them, `vol`/`liq` Polymarket's running volume /
+  liquidity (30-min volume = difference between records). `lib/poly.js bookDepth` + non-enumerable `_mkt` (never saved in snapshots). A failed pull shows in 8 · System → "Errors (last 2 days)".
 
 ## Game model — already tested, not added
 
