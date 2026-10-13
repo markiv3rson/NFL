@@ -38,7 +38,9 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   - Bets tab / Polymarket sync: `lib/mybets.js`, `pages/api/mybets.js`.
 - Model service (Python on Railway): `railway-model-service/`.
   - TD model: `td_prob.py`. Weekly rebuild (Tue 4 AM PT, publishes only if checks pass): `weekly_rebuild.py`, `scheduler.py`.
-- Tests: `npm test` (site checks, grading audit, service checks).
+- Tests: `npm test` (site checks, grading audit, service checks, then ACCURACY: `tests/accuracy.mjs` replays the app's own green-rule code on
+  past games -- KEY NUMBER, BOUNCE BACK, BOUNCE BACK DOG, LINE MOVE spread/total -- and FAILS if one wins under 56% or 1.5+ points under
+  the % its card shows; then prints each rule's live record this season. `npm run accuracy` runs just that part.)
 - Weekly Tuesday check-in routine exists (9:52 AM PT) to confirm the rebuild and report records.
 
 ## How models are tested
