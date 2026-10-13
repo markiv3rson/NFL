@@ -20,8 +20,9 @@ export async function recordShadow(redis, season, g, p, pin, sb, tb, t) {
   if (pin && pin.hs != null) { const x = lineMovePick(g, p, { spread: { homeSpread: pin.hs } }); if (x) await put("pinlm", { kind: "spread", pinlm: true, team: x.team, line: x.line, pin: pin.hs, poly: p.spread.homeSpread }); }
   if (pin && pin.tl != null) { const x = lineMoveTotalPick(g, p, { total: { line: pin.tl } }); if (x) await put("pinlmT", { kind: "total", pinlm: true, side: x.side, line: x.line, pin: pin.tl, poly: p.total.line }); }
   const tilt = (b) => (b && b.bd != null && b.ad != null && Math.max(b.bd, b.ad) >= 1000 ? (b.bd >= 4 * Math.max(b.ad, 1) ? 1 : b.ad >= 4 * Math.max(b.bd, 1) ? -1 : 0) : 0);
-  const ts = tilt(sb); if (ts && p.spread) { const home = ts > 0, P = p.spread.homeSpread; await put("tilt", { kind: "spread", tilt: true, team: home ? g.home : g.away, line: home ? P : -P, bd: sb.bd, ad: sb.ad }); }
-  const tt = tilt(tb); if (tt && p.total) await put("tiltT", { kind: "total", tilt: true, side: tt > 0 ? "over" : "under", line: p.total.line, bd: tb.bd, ad: tb.ad });
+  const live = (a, b) => a > 0.1 && a < 0.9 && b > 0.1 && b < 0.9;   // review fix: skip dead / placeholder books, like LINE MOVE
+  const ts = tilt(sb); if (ts && p.spread && live(Number(p.spread.home), Number(p.spread.away))) { const home = ts > 0, P = p.spread.homeSpread; await put("tilt", { kind: "spread", tilt: true, team: home ? g.home : g.away, line: home ? P : -P, bd: sb.bd, ad: sb.ad }); }
+  const tt = tilt(tb); if (tt && p.total && live(Number(p.total.over), Number(p.total.under))) await put("tiltT", { kind: "total", tilt: true, side: tt > 0 ? "over" : "under", line: p.total.line, bd: tb.bd, ad: tb.ad });
   return n;
 }
 export default async function handler(req, res) {
