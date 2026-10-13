@@ -17,8 +17,8 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 
 ## What the app shows (owner's layout rules)
 
-- Model card: ONE answer — the model's number (purple, with "less accurate than the line" under it), then **PICK** — green at 56%+, yellow
-  below it ("weak pick: won X% on games it never saw"). Owner chose C on 10/12: always a PICK, never LEAN. No teasers on cards; market lines only.
+- Model card: ONE answer — the model's number (purple), then **PICK** — green at 56%+ (with its short reason, e.g. LINE MOVE), yellow
+  below it with NO notes (owner 10/13: "too many notes"). Always a PICK, never LEAN. No teasers on cards; market lines only.
 - Teasers (incl. alt lines) are all labeled **TEASER**, in a folded list on Game Lines, top 5.
 - Best bets = top 10 straight picks at 56%+. Parlay of the week = top 4, one per game.
 - Model Picks tab: ~22 parlay types built once a week (first scheduled snapshot within 26 h of the first Sunday kickoff — Sat 7 AM PT
@@ -64,7 +64,7 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   the "total fell" rule. Teasers left: dog +6 ladder and total ±6 (simple base rates: 67% 2007-25, 28-13 live).
 - The game model alone has no edge on the line (50.6% / 51.7% on 2,531 games). Never present its side as a pick.
 - Its number (even the upgraded one) is LESS accurate than the line: margin off 9.99 vs 9.89, total 10.52 vs 10.47, better in only
-  3 of 13 seasons (2014-26, each season unseen). Cards say so under the purple number (10/12).
+  3 of 13 seasons (2014-26, each season unseen). (Owner removed the card note saying so, 10/13.)
 - RULE FOR ANY NEW PICK SOURCE: test it on games it has never seen (leave one season out) before showing any win rate.
   A rate measured on the games a pattern was found in is not a win rate.
 

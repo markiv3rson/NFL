@@ -189,16 +189,14 @@ function leanCell(g, kind) {
       const L = straightPicks(g, 0).find((x) => (kind === "total" ? isTot(x.pick) : !isTot(x.pick) && !/\bML\b/.test(x.pick)) && !isSmall(x));
       const lp = L && L.p > 0.5 ? L : null;
       // 10/12 (owner: "I want a pick, not a lean"): every game gets a PICK. Below 56% it stays yellow and says its real tested rate.
-      body = lp ? `<div style="margin-top:6px"><b class="y" style="font-size:16px">PICK: ${esc(lp.pick)} · ${Math.round(lp.p * 100)}%</b></div><div class="s" style="margin-top:4px">${esc(lp.why)} · weak pick: won ${Math.round(lp.p * 100)}% on games it never saw.</div>`
+      body = lp ? `<div style="margin-top:6px"><b class="y" style="font-size:16px">PICK: ${esc(lp.pick)} · ${Math.round(lp.p * 100)}%</b></div>`   // 10/13 (owner): no notes under a yellow pick
         : `<div style="margin-top:6px"><b class="dim">No pick</b></div><div class="s" style="margin-top:4px">No tested edge on this one.</div>`;
     }
     else {
       const pc = Math.round(P.p * 100);
-      const against = !!p && (kind === "total" ? /^Over/.test(P.pick) !== (p.side === "over") : !P.pick.startsWith(`${p.team} `));
-      const who = kind === "total" ? (p && p.side === "over" ? "the Over" : "the Under") : p ? p.team : "";
       body = `<div style="margin-top:6px"><b class="g" style="font-size:16px">PICK: ${esc(P.pick)} · ${pc}%</b></div>` +
-        // 10/12: the pick's own reason always shows (a LINE MOVE pick against the model used to show only "Model is too high on X")
-        `<div class="s" style="margin-top:4px">${esc(P.why)} · won ${pc}%.${against ? ` Goes against the model's number (${esc(who)}).` : ""}</div>` +
+        // 10/13 (owner: fewer notes): just the green pick's own reason (e.g. the LINE MOVE numbers)
+        `<div class="s" style="margin-top:4px">${esc(P.why)}</div>` +
         recLine(P.rec) + lineCheck(g, kind, P.pick);
     }
   }
@@ -210,7 +208,7 @@ function leanCell(g, kind) {
   // 10/12 (owner: the number must be honest). Tested on 2,578 games 2014-26, each season predicted without it: margin off by 9.99
   // points vs the line's 9.89, total 10.52 vs 10.47; the model beat the line in only 3 of 13 seasons on each. So it is shown as an
   // opinion, never as a pick.
-  return wrap(`<div class="s">${mline}</div><div class="s dim">Less accurate than the line (better in 3 of 13 seasons) · not a pick.</div>` + body +
+  return wrap(`<div class="s">${mline}</div>` + body +
     (adj ? `<div class="s r" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">${injBadgeFor(g)}${esc(adj)}</div>` : "") +
     (p && p.warn && !g.final ? `<div class="s y">${esc(p.warn)}</div>` : ""));   // e.g. QB change the model can't see
 }
