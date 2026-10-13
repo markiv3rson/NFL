@@ -184,6 +184,17 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   53.9%, 4+ 54.1%. Best cuts still under 56% and need the OPENING number early in the week (Polymarket may lag it) -- candidate,
   NOT a pick. Needs the live opening-vs-Polymarket record (Pinnacle + pin30 data) to confirm.
 
+## TOTAL MOVE (Oct 13, 2026 -- owner: "build the ones that work")
+
+- `lib/upgrade.js predictTotalMove` + `lib/stack.js totalMovePick`: a ridge model (early features only: what is known at the open)
+  predicts how far the total will move from its OPENING number. While the total is within half a point of its opening number and the
+  prediction is strong, take that direction at that number. Unseen seasons 2014-26, bet at the opening total: top 20% 57.4% (507 games,
+  11/12 seasons), top 10% 61.9% (252). Refit weekly (`weekly_rebuild.py train_move`, published as `moveT`; dry run passed).
+- Owner 10/13: "Don't make it green" -- it shows as a YELLOW pick only (no notes), never in Best bets or parlays (`soft` in app.js
+  straightPicks). Still recorded and graded with the card picks. Same family as the early-week total that went 11-18 live: watch it.
+- Same method on spreads: top 10% 55.9%, top 20% 53% -- not added. Also tested 10/13, no edge: Poisson scoring model (49.3% totals),
+  538 Elo rebuilt (52.2%), MGM money vs bets splits (spreads 47.8%).
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
