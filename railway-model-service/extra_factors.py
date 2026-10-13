@@ -78,7 +78,10 @@ def _ratings(g, last):
 
 def _row(f, o_h, d_a, o_a, d_h):
     for k in ST:
-        f[f"m_{k}"] = (o_h[k] + d_h[k]) / 2 - (o_a[k] + d_a[k]) / 2
+        # 10/13 fix: each offense is paired with the OPPONENT's defense (D = what a defense allows). Before, it was home offense + home
+        # defense vs away offense + away defense, so a bad defense counted FOR its own team. Stats-only margin fit 2014-25: correlation
+        # with the real margin 0.14 -> 0.35, error 11.08 -> 10.46.
+        f[f"m_{k}"] = (o_h[k] + d_a[k]) / 2 - (o_a[k] + d_h[k]) / 2
         f[f"t_{k}"] = o_h[k] + d_h[k] + o_a[k] + d_a[k]
     f["pts_tot"] = (o_h["pts"] + d_a["pts"] + o_a["pts"] + d_h["pts"]) / 2
     return f
@@ -89,7 +92,7 @@ TF = [f"t_{k}" for k in ST] + ["tot", "wind", "dome", "temp"]
 def _stats_models(g, season):
     """The 5 stats models (logistic, ridge, two boosted trees, random forest) for spread and total, trained on every game before now."""
     key = (season, str(g[g.result.notna()].gameday.max()))
-    pk = os.path.join(CACHE, f"xf_models_{season}.pkl")
+    pk = os.path.join(CACHE, f"xf_models2_{season}.pkl")   # "2": rebuilt after the 10/13 matchup-pairing fix
     if _mem.get("models_key") == key: return _mem["models"]
     if os.path.exists(pk):
         with open(pk, "rb") as fh: saved = pickle.load(fh)
