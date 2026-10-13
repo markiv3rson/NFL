@@ -30,6 +30,19 @@ export const config = { maxDuration: 120 };
 
 // Automatic pre-log (protocol 3.3): model vs Polymarket frozen at kickoff for every game. Used by the kickoff snapshot
 // AND the late-closing safety net below (added 9/29), so a missed kickoff (e.g. the scheduler down) still gets one.
+// LINE MOVE / KEY NUMBER at kickoff (10/14 fix): the kickoff snapshot reuses the last books pull, which can be many hours old (a London
+// kickoff used Saturday's) -- an old books line next to a fresh Polymarket line fakes a move. Same limit as the card: books within 3 h of
+// kickoff, else no LINE MOVE; KEY NUMBER then uses the newest Pinnacle line (under 1.5 h), as the card does.
+async function timingAtKickoff(season, week, g, t, poly, bk) {
+  const bkT = ((await getJSON(K.books(season, week)).catch(() => null)) || {}).t, hrs = (x) => (new Date(t) - new Date(x)) / 3600e3;
+  const fresh = !!bkT && hrs(bkT) <= 3;
+  const alts = poly && poly.alts ? poly.alts : ((await getJSON(`alts:${season}:${week}:${g.key}`).catch(() => null)) || {}).alts || null;
+  let B = fresh ? bk : null;
+  if (!fresh) { const raws = (await getRedis().lrange(`pinnacle:${season}:${week}:${g.key}`, -6, -1).catch(() => null)) || [];
+    const pr = raws.map(jparse).filter((x) => x && x.hs != null && hrs(x.t) <= 1.5 && hrs(x.t) >= -0.1).pop();
+    if (pr) B = { spread: { homeSpread: pr.hs } }; }
+  return [...(fresh ? [lineMovePick(g, poly, bk), lineMoveTotalPick(g, poly, bk)] : []), keyNumberPick(g, poly, B, alts)].filter(Boolean);
+}
 export async function writePrelog(season, week, g, t, poly, bk, model) {
   await loadComboModel().catch(() => null);   // newest weekly rebuild (10/9)
   const mdl = model || (await loadModel(season, week).catch(() => null)) || { games: {}, td: {} };
@@ -53,7 +66,7 @@ export async function writePrelog(season, week, g, t, poly, bk, model) {
         // Before, books came first, so a recorded pick could sit on a different number than the one shown.
         const hsNow = poly && poly.spread && poly.spread.homeSpread != null ? poly.spread.homeSpread : bk && bk.spread ? bk.spread.homeSpread : null;
         const tlNow = poly && poly.total && poly.total.line != null ? poly.total.line : now;
-        try { const sitS = await situationFor(season, week, g).catch(() => null); await recordFloor(season, week, g, hsNow, sitS, t).catch(() => 0); await recordStack(season, week, g, tablePicks({ ...g, outdoor: !!v.outdoor }, mg, hsNow, tlNow, s0, open, sitS, Number(week)).concat(injuryPick(g, hsNow, s0, sitS) || [], bounceBackPick(g, hsNow, sitS) || [], floorDogPick(g, hsNow, sitS) || [], lineMovePick(g, poly, bk) || [], lineMoveTotalPick(g, poly, bk) || [], keyNumberPick(g, poly, bk, poly && poly.alts ? poly.alts : ((await getJSON(`alts:${season}:${week}:${g.key}`).catch(() => null)) || {}).alts || null) || []), t); } catch {} }   // combo picks (10/9); a failure here never stops the rest
+        try { const sitS = await situationFor(season, week, g).catch(() => null); await recordFloor(season, week, g, hsNow, sitS, t).catch(() => 0); await recordStack(season, week, g, tablePicks({ ...g, outdoor: !!v.outdoor }, mg, hsNow, tlNow, s0, open, sitS, Number(week)).concat(injuryPick(g, hsNow, s0, sitS) || [], bounceBackPick(g, hsNow, sitS) || [], floorDogPick(g, hsNow, sitS) || [], ...(await timingAtKickoff(season, week, g, t, poly, bk))), t); } catch {} }   // combo picks (10/9); a failure here never stops the rest
       await recordTotalLeg(season, week, g, poly, bk, mv ? mv.under : mg && mg.outdoor && mg.wind != null && mg.wind >= 15 ? true : mU == null ? true : !mU, t, open, mU === true).catch(() => 0); }
     await recordAltValues(season, week, g, alts ? { ...(poly || {}), alts } : poly, bk, t).catch(() => 0); }   // alt lines under their historical rate (10/9)   // Teaser leg: underdog +1.5..+2.5 at +7.5..+8.5 (10/6)
 }

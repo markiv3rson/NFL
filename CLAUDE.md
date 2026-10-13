@@ -249,6 +249,11 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   Same fix extended: LINE MOVE (spread + total) also uses that newer Polymarket reading (books stay the books -- LINE MOVE was tested on
   the books' consensus; Pinnacle-as-books is the shadow test). INJURY's "line hasn't moved yet" check uses the newest Polymarket line.
   The fallback now looks at the last 6 records (the newest one is often a snapshot record with no Polymarket reading).
+  Full pass 10/14: every card pick (incl. TOTAL MOVE, BOUNCE BACK, BOUNCE BACK DOG, chooser) uses the newest Polymarket line. Books now
+  pulled 7 AM / 3 PM / 7 PM weekdays and 6, 7, 9 AM, 12, 3 PM Sunday (23/week, ~300 of 500 credits/month): LINE MOVE stays up until ~3 AM.
+  Kickoff recorder: LINE MOVE only if the books are within 3 h of kickoff (a London kickoff reused Saturday's books = fake moves);
+  KEY NUMBER then uses the newest Pinnacle line. Still a gap: within 24 h of kickoff the books must be under 3 h old, so LINE MOVE is
+  off Saturday ~6 PM-7 PM and after ~10 PM until Sunday's pulls (KEY NUMBER keeps working through Pinnacle).
 - CLV tracker built: each card pick keeps the line it FIRST showed at (`first` in `stack:` records, `lib/stack.js recordStack/clvOf`);
   the kickoff line is the close. Models tab -> "LINE VALUE" tile: average points gained vs the close and % of picks that beat it.
 - "Line moved with/against the model" (game model side vs the open, 2014-26, 2,578 games): moved WITH 55.1% at the open (48.1% at the
