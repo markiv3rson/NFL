@@ -112,7 +112,9 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
 
 - `lib/stack.js keyNumberPick`: books' spread exactly 3 -> underdog +3.5 on Polymarket (main line or alternate). Nothing fitted.
   Regular season 2006-25, closing line exactly 3 (793 games): dog +3.5 won 58.1% (61/56/56% by period); fav -2.5 50.9%.
-  The +3.5 usually costs ~53-55c. Shown as a green PICK, recorded and graded. Books at 10 -> dog +10.5 61% but only 160 games and
+  The +3.5 usually costs ~53-55c. Shown as a green PICK, recorded and graded. WIDENED 10/14 (owner: "build now" -- DEN +3.5 vanished when the
+  books moved 3 -> 2.5): books exactly 2.5 -> underdog +3.5 too: 2006-25 59.6% (240-163; 1999-05 59.4, 06-13 62.4, 14-19 58.1, 20-25 59.2).
+  Card shows 59.6% at 2.5 / 58.1% at 3; both replayed in `npm run accuracy`. Books at 3.5 -> no pick (the dog just gets the line). Books at 10 -> dog +10.5 61% but only 160 games and
   uneven (54/75/59): not added. Books at 7 -> dog +7.5 51%: no.
 - Also tested 10/13, not added: half point on totals (finals land on any one total only 2-5%; Under 47.5 at books 47 won 58% on
   205 but that's 1 of 10 numbers tried -- likely chance); moneyline vs spread disagreement 48-51%; unit vs unit matchups = the fixed
