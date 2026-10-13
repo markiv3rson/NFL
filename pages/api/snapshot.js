@@ -3,7 +3,7 @@
 // 6/7/8/9/10/12/3 PT, and just before each kickoff with kickoff=<game>) and by the Refresh button.
 import { tablePicks, recordStack, lineMovePick, lineMoveTotalPick, keyNumberPick, injuryPick } from "../../lib/stack";
 import { venue, windAtKickoff } from "../../lib/wind";
-import { recordTeaser, recordTotalLeg, teaserLeg, totalMove, recordEarlyTotal, tkey, WIND_U_MPH } from "../../lib/teaser";
+import { recordTeaser, recordTotalLeg, teaserLeg, totalMove, tkey, WIND_U_MPH } from "../../lib/teaser";
 import { comboFactors } from "../../lib/stack";
 import { loadComboModel } from "../../lib/combomodel";
 import { recordAltValues } from "../../lib/altfair";
@@ -15,7 +15,6 @@ import { getRedis, jparse, getJSON, setJSON, K, SLATE_CACHE } from "../../lib/re
 import { fetchEvents, gameLines, tdProps } from "../../lib/poly";
 import { sanePoly } from "../../lib/sane";
 import { fetchBooks } from "../../lib/books";
-import { fetchSplits } from "../../lib/splits";
 import { savePinnacle } from "../../lib/pinnacle";
 import { gradeRecent } from "../../lib/grade";
 import { syncAccount } from "../../lib/mybets";
@@ -81,15 +80,8 @@ export default async function handler(req, res) {
     const booksNow = books ? { t, games: books } : await getJSON(K.books(season, week));   // for the edge tracker (age-checked there)
     let edges = 0;
     const events = open.length ? await fetchEvents() : [];
-    // Action Network lines per book (+ splits if they ever appear), 10/12: recorded on every scheduled / kickoff snapshot for games
-    // not yet started. Not shown or used for picks until tested on unseen games. A failed pull is logged and never stops the snapshot.
-    let splitsNote = null;
-    if (open.length && src !== "manual") try {
-      const sp = await fetchSplits(); let n = 0;
-      for (const g of open) { const rows = sp.games[g.key]; if (!rows) continue;
-        await redis.rpush(`splits:${season}:${week}:${g.key}`, JSON.stringify({ t, src, rows })); await redis.ltrim(`splits:${season}:${week}:${g.key}`, -60, -1); n++; }
-      splitsNote = `${n} games, ${sp.fields} split fields`;
-    } catch (e) { splitsNote = String(e).slice(0, 120); await logError("splits", `Action Network lines pull failed: ${splitsNote}`).catch(() => {}); }
+    // Action Network pull CUT 10/13 (owner): its free splits were always empty and it matched 0 games; lib/splits.js and /api/splitshist stay for reference.
+    const splitsNote = null;
     // Pinnacle main spread / total, 10/13: recorded the same way (Redis pinnacle:<season>:<week>:<game>, last 60) on every snapshot, for
     // EVERY not-started game Pinnacle lists -- next week's too, under that game's own week, so its early lines are kept (owner: "do it
     // now"). Not shown or used for picks until tested on unseen games. A failed pull is logged and never stops the snapshot.
@@ -122,13 +114,7 @@ export default async function handler(req, res) {
          await logEdges(season, week, g, poly, booksNow.games[g.key], booksNow.t, t, () => 0).catch(() => 0); edges += n; }   // add AFTER the await: "edges += await" lost updates across parallel games
       if (prev && poly && !snap.suspect) await alertsFromLines(season, g, prev, poly).catch(() => 0);   // line-move alerts (10/1)
       if (poly || snap.books) { await redis.rpush(K.snaps(season, week, g.key), JSON.stringify(snap)); await redis.ltrim(K.snaps(season, week, g.key), -200, -1); lines += poly ? 1 : 0; }
-      // Early-week total (10/9): record the early model's side of the opening total once, while the total hasn't moved
-      if (poly && poly.total && !snap.suspect && !(await redis.hexists(tkey(season, week), `${g.key}|early`).catch(() => 1))) try {
-        const mdlE = await loadModel(season, week).catch(() => null), mgE = mdlE && mdlE.games[g.key];
-        const f0 = jparse(await redis.lindex(K.snaps(season, week, g.key), 0)), so = f0 && f0.poly && f0.poly.spread ? f0.poly.spread.homeSpread : null, to = f0 && f0.poly && f0.poly.total ? f0.poly.total.line : null;
-        if (mgE && poly.spread) { const v = venue(g) || {}, c = comboFactors({ ...g, outdoor: !!v.outdoor }, mgE, poly.spread.homeSpread, poly.total.line, so, to, await situationFor(season, week, g).catch(() => null), Number(week));
-          if (c) await recordEarlyTotal(season, week, g, c.early, to, poly.total.line, t); }
-      } catch {}
+      // Early-week total recording CUT 10/13 (owner): it went 11-18 live and is off on cards. Old saved rows still grade.
       // Early-week wind Under (10/13, owner: "build both"): saved ONCE, the first time the kickoff forecast says wind 10+ at an outdoor
       // stadium while Polymarket's total is still at its first number this week; graded at that number. Paper only (history at the
       // opening total 60.5% 2014-26, but 2024 51% / 2025 52%, so it gets a live test first).

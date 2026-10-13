@@ -19,15 +19,15 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 
 - Model card: ONE answer — the model's number (purple), then **PICK** — green at 56%+ (with its short reason, e.g. LINE MOVE), yellow
   below it with NO notes (owner 10/13: "too many notes"). Always a PICK, never LEAN. No teasers on cards; market lines only.
-- Teasers (incl. alt lines) are all labeled **TEASER**, in a folded list on Game Lines, top 5.
+- Teasers: CUT from Game Lines 10/13 (owner never bets them). The code stays; teaser legs are still recorded and graded.
 - Best bets = top 10 straight picks at 56%+. Parlay of the week = top 4, one per game.
-- Model Picks tab: ~22 parlay types built once a week (first scheduled snapshot within 26 h of the first Sunday kickoff — Sat 7 AM PT
+- Model Picks tab (10/13: the angle / teaser / price-gap / spread-total-side parlays are hidden: angles_2/3, angles_fav_3, alt_2, alt_pick_3, right_now_3, same_game_3, linked_sgp_3): ~22 parlay types built once a week (first scheduled snapshot within 26 h of the first Sunday kickoff — Sat 7 AM PT
   when the first game is London) and graded. Includes "Best bets · 2/3/4" (= the Parlay of the week). Alt-line parlays are labeled
   TEASER. TD parlays may use thin markets (leg says "thin"); the price shown is the ask.
 - Bets tab: an open leg says "⚠ app now picks the other side" when the app has a 56%+ pick against it.
-- Early-week total edge: TURNED OFF on cards 10/11 (11-18 live); still recorded and graded on paper.
+- Early-week total edge: TURNED OFF on cards 10/11 (11-18 live); recording CUT 10/13 (old rows still grade).
 - Anytime TD tab: top 3 per team (owner wants it kept), plus a "⚠ Market disagrees" box for any player 20+ points from Polymarket.
-- Referees and price-gap alerts were removed on purpose.
+- Referees and price-gap alerts were removed on purpose. Models tab is 8 sections (10/13: "Price gaps" cut, "Records · model's side" cut, "Tracked angles" is only the wind Under paper row). The Action Network pull was cut 10/13 (`lib/splits.js` and `/api/splitshist` stay for reference).
 
 ## Where things live
 
@@ -163,7 +163,7 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   not-started game it lists, next week's included (`lib/pinnacle.js`, Redis `pinnacle:<season>:<week>:<game>`; check: `/api/pinnaclecheck`). No history exists, so it needs ~half a season before any test;
   LINE MOVE's 63.2% was measured on the consensus line, not Pinnacle's.
   Also every 30 min (Railway scheduler :10/:40 -> `/api/pinnaclepull`, src "pin30") with Polymarket's main line read at the same moment
-  (`poly` in each record), to test "Pinnacle moved first, Polymarket hasn't caught up". A failed pull shows in 9 · System → "Errors (last 2 days)".
+  (`poly` in each record), to test "Pinnacle moved first, Polymarket hasn't caught up". A failed pull shows in 8 · System → "Errors (last 2 days)".
 
 ## Game model — already tested, not added
 

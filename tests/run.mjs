@@ -888,7 +888,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(sm.all.n === 2 && sm.all.w === 1 && sm.all.priced === 1 && Math.abs(sm.all.roi - (1 / 0.7 - 1)) < 1e-9 && sm.value.n === 1, "teaser: B +8.5 losing by 7 covers (paid 70¢), C +8 losing by 10 doesn't; return only counts priced legs", sm);
     vm.runInContext(`TEASERS = ${JSON.stringify(sm)}; S = { week: 3, games: [], teaserLegs: [${JSON.stringify(l1)}, ${JSON.stringify({ ...l2, price: null, value: false })}] }`, ctx);
     const row = ctx.T.teaserRow(), strip = ctx.T.teaserStrip();
-    ok(/Underdog \+1\.5–2\.5 teased to \+7\.5–8\.5/.test(row) && /1–1/.test(row) && /76\.1% of 616/.test(row), "teaser: tracked-angles row shows record and history");
+    ok(!/teased/.test(row) && /Early-week Under, wind 10\+|None yet/.test(row), "tracked angles (10/13): the teaser rows were cut; only the wind Under paper row is left");
     ok(/Teaser legs · 2 this week · 1 priced right/.test(strip) && /B \+8\.5/.test(strip) && /70¢/.test(strip) && /✓ good price/.test(strip) && /no price yet/.test(strip), "teaser: Game Lines strip lists each leg and its price");
     vm.runInContext(`TEASERS = null; S = { week: 3, games: [] }`, ctx); ok(ctx.T.teaserRow() === "" && ctx.T.teaserStrip() === "", "teaser: nothing shown without data");
     for (const k of await R.keys("teaser:2031:*")) await R.del(k); }
@@ -990,9 +990,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     vm.runInContext(`S = { week: 4, games: [], status: { ok: true, errors: [] }, weekCheck: { games: 16, withLines: 16, modelRun: true, watch: [] }, missFinder: null, winners: { all: { n: 3, w: 2, l: 1, hit: 0.67 } } }; MB = { summary: { wins: 0, losses: 0, pushes: 0, pl: 0 }, bets: [] }; PAPER = { names: {}, board: {}, week: null }; PICKS = null; EDGES = null; REPLAY = null; WINALL = false`, ctx);
     vm.runInContext(`RES = ${JSON.stringify(res)}`, ctx);
     ctx.T.renderModel(); const h = box.innerHTML;
-    const order = ["1 · Scoreboard", "2 · Winners", "3 · Spreads and totals", "4 · Touchdowns", "5 · Tracked angles", "6 · Price gaps", "7 · Trends and analysis", "8 · Misses and every game", "9 · System"].map((x) => h.indexOf(x));
-    ok(order.every((x, i) => x > 0 && (i === 0 || x > order[i - 1])), "models tab: nine sections, in order");
-    ok((h.match(/class="fold" data-drop="m-/g) || []).length === 9 && !/class="s dim" style="margin:2px 0 6px"/.test(h) && !/break-even/i.test(h), "models tab: nine sections, no explanation lines, no break-even talk");
+    const order = ["1 · Scoreboard", "2 · Winners", "3 · Spreads and totals", "4 · Touchdowns", "5 · Tracked angles", "6 · Trends and analysis", "7 · Misses and every game", "8 · System"].map((x) => h.indexOf(x));
+    ok(order.every((x, i) => x > 0 && (i === 0 || x > order[i - 1])) && !/Price gaps/.test(h), "models tab: eight sections, in order (Price gaps cut 10/13)");
+    ok((h.match(/class="fold" data-drop="m-/g) || []).length === 8 && !/class="s dim" style="margin:2px 0 6px"/.test(h) && !/break-even/i.test(h), "models tab: eight sections, no explanation lines, no break-even talk");
     ok(/Hit rate by week/.test(h) && /Week 3/.test(h) && /Week 4/.test(h) && /Game-by-game results|id="gbg"/.test(h) && !/Parlay scoreboard/.test(h), "models tab: trends and every-game list present, parlay scoreboard kept out");
     const bw = ctx.T.modelsByWeek(res), bc = ctx.T.modelsByConfidence(res), tc = ctx.T.tdCalibration(res.flatMap((r) => r.td));
     ok(/Moneyline[\s\S]*50%[\s\S]*Spread[\s\S]*Total/.test(bw) && /Week 3/.test(bw), "models tab: hit rate by week");
