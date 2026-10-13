@@ -185,7 +185,7 @@ function leanCell(g, kind) {
   let body = "";
   const LP = (g.started || g.final) && g.lockedPicks ? g.lockedPicks[kind === "total" ? "total" : "spread"] : null;
   if (LP) {   // 10/13: after kickoff, the pick that was locked in at kickoff and how it did
-    const pc = Math.round(LP.hit), cls = pc >= 56 ? "g" : "y", rs = LP.result === "W" ? ' · <span class="g">W</span>' : LP.result === "L" ? ' · <span class="r">L</span>' : LP.result === "P" ? " · push" : g.final ? "" : ' · <span class="dim">live</span>';
+    const pc = Math.round(LP.hit), cls = pc >= 56 ? "g" : pc >= 53 ? "lg" : "y", rs = LP.result === "W" ? ' · <span class="g">W</span>' : LP.result === "L" ? ' · <span class="r">L</span>' : LP.result === "P" ? " · push" : g.final ? "" : ' · <span class="dim">live</span>';
     body = `<div style="margin-top:6px"><b class="${cls}" style="font-size:16px">PICK: ${esc(LP.pick)} · ${pc}%</b>${rs}</div><div class="s dim" style="margin-top:4px">locked at kickoff</div>`;
   }
   else if (!g.final) {
@@ -194,7 +194,8 @@ function leanCell(g, kind) {
       const L = straightPicks(g, 0).find((x) => (kind === "total" ? isTot(x.pick) : !isTot(x.pick) && !/\bML\b/.test(x.pick)) && !isSmall(x));
       const lp = L && L.p > 0.5 ? L : null;
       // 10/12 (owner: "I want a pick, not a lean"): every game gets a PICK. Below 56% it stays yellow and says its real tested rate.
-      body = lp ? `<div style="margin-top:6px"><b class="y" style="font-size:16px">PICK: ${esc(lp.pick)} · ${Math.round(lp.p * 100)}%</b></div>`   // 10/13 (owner): no notes under a yellow pick
+      // 10/13 (owner): 53-55% shows light green, below 53% yellow; no notes under either
+      body = lp ? `<div style="margin-top:6px"><b class="${Math.round(lp.p * 100) >= 53 ? "lg" : "y"}" style="font-size:16px">PICK: ${esc(lp.pick)} · ${Math.round(lp.p * 100)}%</b></div>`
         : `<div style="margin-top:6px"><b class="dim">No pick</b></div><div class="s" style="margin-top:4px">No tested edge on this one.</div>`;
     }
     else {

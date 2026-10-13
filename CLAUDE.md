@@ -18,8 +18,8 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 ## What the app shows (owner's layout rules)
 
 - Tab bar (10/13): at the bottom, icon over each name, plus the Alerts bell; same rose color as the Lines / Model buttons (NOT green).
-- Model card: ONE answer — the model's number (purple), then **PICK** — green at 56%+ (with its short reason, e.g. LINE MOVE), yellow
-  below it with NO notes (owner 10/13: "too many notes"). Always a PICK, never LEAN. No teasers on cards; market lines only.
+- Model card: ONE answer — the model's number (purple), then **PICK** — green at 56%+ (with its short reason, e.g. LINE MOVE), LIGHT GREEN at 53-55% (owner 10/13), yellow
+  below 53% with NO notes (owner 10/13: "too many notes"). Always a PICK, never LEAN. No teasers on cards; market lines only.
 - Teasers: CUT from Game Lines 10/13 (owner never bets them). The code stays; teaser legs are still recorded and graded.
 - Best bets = top 10 straight picks at 56%+. Parlay of the week = top 4, one per game.
 - Model Picks tab (10/13: the angle / teaser / price-gap / spread-total-side parlays are hidden: angles_2/3, angles_fav_3, alt_2, alt_pick_3, right_now_3, same_game_3, linked_sgp_3): ~22 parlay types built once a week (first scheduled snapshot within 26 h of the first Sunday kickoff — Sat 7 AM PT
