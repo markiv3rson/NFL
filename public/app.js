@@ -778,14 +778,6 @@ function renderModelNow() {
       const extra = (two.length ? `<div class="row"><span class="dim">2+ TDs</span><span>${two.filter((p) => p.twoHit).length} · exp ${(two.reduce((a, p) => a + p.two, 0) / 100).toFixed(1)}</span></div>` : "") +
         (ftd.length ? `<div class="row"><span class="dim">First TD</span><span>${ftd.filter((p) => p.ftdHit).length} · exp ${(ftd.reduce((a, p) => a + p.ftd, 0) / 100).toFixed(1)}</span></div>` : "") + firstTdRecord(res);
       return t1.length ? `${line("#1 per team", t1)}${line("Top 2 per team", t2)}${extra}` : '<div class="s">None yet.</div>'; })();
-  const edgeRows = (() => { const e = EDGES; const pct = (x) => (x == null ? "—" : cPct(x));
-      const body = !e || !e.logged ? '<div class="s">None yet.</div>' :
-        `<div class="row"><span class="dim">Spots logged · graded</span><span>${e.logged} · ${e.graded}</span></div>` +
-        (e.graded ? `<div class="row"><span class="dim">Record · return per $1</span><span>${e.w}–${e.l}${e.p ? "–" + e.p : ""} · ${pct(e.roi)} <span class="dim">(claimed edge ${pct(e.avgEv)})</span></span></div>` +
-          `<div class="row"><span class="dim">Beat the closing price</span><span>${pct(e.avgClv)} <span class="dim">(${e.clvN} with a same-line close)</span></span></div>` +
-          e.byMarket.filter((m) => m.n).map((m) => `<div class="row"><span class="dim">${{ spread: "SPREADS", ml: "MONEYLINES", total: "TOTALS" }[m.market]}</span><span>${m.w} of ${m.n} won · ${pct(m.roi)}</span></div>`).join("") +
-          "" : "");
-      return body; })();
   const wcRows = `<div class="row"><span class="dim">Week ${S.week} loaded</span><span>${wc.games} games · lines ${wc.withLines}/${wc.games} · model ${wc.modelRun ? '<span class="g">✓</span>' : '<span class="y">not run yet</span>'}</span></div>` +
     ((wc.watch || []).length ? `<div class="s" style="margin-top:6px"><b class="y">Watchdog</b>${wc.watch.map((w) => `<div class="warn">⚠ ${esc(w)}</div>`).join("")}</div>` : '<div class="s dim" style="margin-top:6px"></div>');
   const recapRows = (wk.length ? "" +
@@ -793,12 +785,11 @@ function renderModelNow() {
   $("models").innerHTML = labStats() +
     mSec("m-score", `1 · Scoreboard · Week ${lw ?? S.week}`, "How every model did on the latest week with graded games, and whether this week's data is loaded.", recapRows + wcRows, (wc.watch || []).length, true) +
     mSec("m-win", "2 · Winners · moneyline", "Who wins each game: the model's pick on every game, saved at kickoff and graded after, with its season record.", winnersBox("picks")) +
-    mSec("m-line", "3 · Spreads and totals", "Which side of the line to take. The model has no measured edge here, so about 50% is expected. Past seasons are shown for comparison.", clvSummary(res) + replayBox() + pastBox()) +
+    mSec("m-line", "3 · Spreads and totals", "Which side of the line to take. The model has no measured edge here, so about 50% is expected. Past seasons are shown for comparison.", clvSummary(res) + pastBox()) +
     mSec("m-td", "4 · Touchdowns", "Players' chances to score. The check shows whether the chances match reality; the picks show how the top scorers per team did.", `<div class="s"><b>Said vs scored</b></div>` + (tdWaiting ? `<div class="s y">${tdWaiting} waiting for snap counts</div>` : "") + (buckets || '<div class="s">None yet.</div>') + `<div class="s" style="margin-top:8px"><b>Top picks per team</b></div>` + topTd + `<div class="s" style="margin-top:8px"><b>Against Polymarket's price</b></div>` + (vsMkt || '<div class="s">None yet.</div>')) +
     mSec("m-ang", "5 · Tracked angles", "Betting rules tested on paper, each with its record and whether it holds up in past seasons.", pickLabBox()) +
     mSec("m-trend", "6 · Trends and analysis", "How the models are changing week to week, whether higher confidence really wins more, and where the touchdown chances run high or low.",
-      `<div class="s"><b>Hit rate by week</b></div>` + (modelsByWeek(res) || '<div class="s">None yet.</div>') +
-      `<div class="s" style="margin-top:8px"><b>By confidence · moneyline</b></div>` + modelsByConfidence(res) +
+      `<div class="s"><b>By confidence · moneyline</b></div>` + modelsByConfidence(res) +
       (() => { const pl = tdPlayersWithDefense(res); return `<div class="s" style="margin-top:8px"><b>By position</b></div>` + tdByPosition(pl) + `<div class="s" style="margin-top:8px"><b>By opponent defense</b></div>` + tdByDefense(pl); })()) +
     mSec("m-miss", "7 · Misses and every game", "Where the model keeps getting it wrong, and each graded game by week.", `<div class="s"><b>Miss finder</b></div>` + ((S.missFinder && S.missFinder.misses && S.missFinder.misses.length) ?
       S.missFinder.misses.map((m) => `<div class="row" style="display:block"><b>${esc(m.pattern)}</b><div class="s">${esc(String(m.note).split(" — ")[0])}</div></div>`).join("") :

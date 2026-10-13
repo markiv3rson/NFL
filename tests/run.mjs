@@ -86,7 +86,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(n === 3 && all.some((a) => a.kind === "INJURY" && /Jenkins ruled out/.test(a.title) && a.team === "CLE" && /CLE by 2\.3 \(was CLE by 3\.1\)/.test(a.sub)), "alerts: a new injury says who and how the model moved", all);
   ok(all.some((a) => a.kind === "QB CHANGE") && all.some((a) => a.kind === "WEATHER" && /14 mph/.test(a.title)), "alerts: backup QB and wind crossing 12 mph");
   ok(await alertsFromRerun(2026, g, null, nw) === 0 && await alertsFromRerun(2026, g, nw, nw) === 0, "alerts: the first run of a week, or an unchanged run, adds nothing");
-  ok(await alertsFromRerun(2026, { key: "A @ B", away: "A", home: "B" }, { homeMargin: 1.2, homeWinPct: 54, inj: {}, fix: {} }, { homeMargin: -1.5, homeWinPct: 47, inj: {}, fix: {} }) === 1, "alerts: the model flipping sides is one alert");
+  ok(await alertsFromRerun(2026, { key: "A @ B", away: "A", home: "B" }, { homeMargin: 1.2, homeWinPct: 54, inj: {}, fix: {} }, { homeMargin: -1.5, homeWinPct: 47, inj: {}, fix: {} }) === 0, "alerts: model-move alerts were cut 10/13 (the model flipping sides adds nothing)");
   const lm = await alertsFromLines(2026, g, { spread: { homeSpread: 3 }, total: { line: 38.5 }, ml: { home: 0.40 } }, { spread: { homeSpread: 2.5 }, total: { line: 38.5 }, ml: { home: 0.41 } });
   ok(lm === 1 && (await listAlerts(2026))[0].title === "PIT @ CLE spread: CLE +3 → +2.5", "alerts: a half-point spread move, but not a 1-cent price move");
   await alertResult(2026, { key: "TEN @ BAL", away: "TEN", home: "BAL", awayScore: 13, homeScore: 27 }, { ml: { label: "BAL ML", result: "W" }, spread: { label: "BAL -10.5", result: "W" } });
@@ -867,7 +867,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     await alertsTdNo(2032, g, [{ player: "G.Pickens", team: "DAL", fair: 30, price: 0.42, bid: 0.4 }, { player: "C.Lamb", team: "DAL", fair: 46, price: 0.49, bid: 0.47 }]);
     await alertsQbJump(2032, g, { away: [{ name: "B.Mayfield", pos: "QB", fair: 13 }], home: [{ name: "D.Prescott", pos: "QB", fair: 10 }] }, { away: [{ name: "J.Daniels", pos: "QB", fair: 25 }], home: [{ name: "D.Prescott", pos: "QB", fair: 12 }] });
     const L = await listAlerts(2032), k = (x) => L.filter((a) => a.kind === x);
-    ok(k("TEASER").length === 1 && /TB \+8\.5 at 70¢/.test(k("TEASER")[0].title), "alerts: a teaser leg priced right alerts once; one priced too high doesn't");
+    ok(k("TEASER").length === 0, "alerts: teaser-leg alerts were cut 10/13");
     ok(k("TD NO").length === 1 && /G\.Pickens/.test(k("TD NO")[0].title), "alerts: a TD 'No' mark alerts (model 10 under the bid), a close one doesn't");
     ok(k("QB TD").length === 1 && /J\.Daniels TD chance now 25%/.test(k("QB TD")[0].title), "alerts: a new starting QB at 20%+ alerts; a 2-point move doesn't");
     for (const kk of await R.keys("*2032*")) await R.del(kk); }
@@ -993,7 +993,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const order = ["1 · Scoreboard", "2 · Winners", "3 · Spreads and totals", "4 · Touchdowns", "5 · Tracked angles", "6 · Trends and analysis", "7 · Misses and every game", "8 · System"].map((x) => h.indexOf(x));
     ok(order.every((x, i) => x > 0 && (i === 0 || x > order[i - 1])) && !/Price gaps/.test(h), "models tab: eight sections, in order (Price gaps cut 10/13)");
     ok((h.match(/class="fold" data-drop="m-/g) || []).length === 8 && !/class="s dim" style="margin:2px 0 6px"/.test(h) && !/break-even/i.test(h), "models tab: eight sections, no explanation lines, no break-even talk");
-    ok(/Hit rate by week/.test(h) && /Week 3/.test(h) && /Week 4/.test(h) && /Game-by-game results|id="gbg"/.test(h) && !/Parlay scoreboard/.test(h), "models tab: trends and every-game list present, parlay scoreboard kept out");
+    ok(!/Hit rate by week/.test(h) && /Week 3/.test(h) && /Week 4/.test(h) && /Game-by-game results|id="gbg"/.test(h) && !/Parlay scoreboard/.test(h), "models tab: every-game list present, parlay scoreboard kept out, Hit rate by week cut 10/13");
     const bw = ctx.T.modelsByWeek(res), bc = ctx.T.modelsByConfidence(res), tc = ctx.T.tdCalibration(res.flatMap((r) => r.td));
     ok(/Moneyline[\s\S]*50%[\s\S]*Spread[\s\S]*Total/.test(bw) && /Week 3/.test(bw), "models tab: hit rate by week");
     ok(/Said 80\+% · 1 picks/.test(bc) && /Said 60–70% · 1 picks/.test(bc) && /100%/.test(bc), "models tab: confidence buckets use the chance the model said");
