@@ -896,11 +896,10 @@ function straightPicks(g, min = BEST_MIN) {
   const out = [], games = (n) => (n != null && n < SMALL_N ? ` · ${n} game${n === 1 ? "" : "s"}` : "");
   // 10/12: picks come only from the combined chooser (g.combos, honest win rates on unseen games). Angles and the "total fell" rule
   // were dropped as picks: their rates were measured on the same games they were chosen from.
-  // 10/13 (owner: "don't make it green"): TOTAL MOVE shows as a yellow pick only -- never green, never in Best bets / parlays.
-  for (const c of g.combos || []) if (!c.teaser) out.push({ pick: c.pick, game: g.key, why: c.why + games(c.n), p: c.hit / 100, rec: c.rec, n: c.n ?? null, soft: /^movepred\|/.test(c.id || "") });
+  for (const c of g.combos || []) if (!c.teaser) out.push({ pick: c.pick, game: g.key, why: c.why + games(c.n), p: c.hit / 100, rec: c.rec, n: c.n ?? null });
   const best = {}, better = (x, y) => (isSmall(x) !== isSmall(y) ? !isSmall(x) : x.p > y.p);
   for (const x of out) { const k = /^(Over|Under)\b/.test(x.pick) ? "total" : /\bML\b/.test(x.pick) ? "ml" : "spread"; if (!best[k] || better(x, best[k])) best[k] = x; }
-  return Object.values(best).filter((x) => x.p >= min && !(x.soft && min > 0)).sort((a, b) => (isSmall(a) - isSmall(b)) || b.p - a.p);
+  return Object.values(best).filter((x) => x.p >= min).sort((a, b) => (isSmall(a) - isSmall(b)) || b.p - a.p);
 }
 // Only picks that won 56%+ (a coin flip is 50%), and only the top 10 of the week, so the list stays short.
 const BEST_MIN = 0.56, BEST_MAX = 10;

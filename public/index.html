@@ -44,13 +44,13 @@
   .cdg { font-size:11px; color:#c9ced6; margin-top:6px; }
   /* Bottom tab bar (10/13, owner's picture): icon over the name; the open tab green with a green bar under it */
   .tabs { position:fixed; left:0; right:0; bottom:0; z-index:55; display:flex; max-width:980px; margin:0 auto; padding:6px max(2px,env(safe-area-inset-right)) env(safe-area-inset-bottom,0px) max(2px,env(safe-area-inset-left));
-    background:linear-gradient(160deg,#16302a,#0c1a16); border-top:1px solid rgba(61,220,151,.18); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); }
+    background:rgba(60,10,26,.92); border-top:1px solid rgba(255,150,170,.45); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); }
   .tabs button { flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:4px; font:inherit; font-size:10.5px; letter-spacing:-.3px; font-weight:700; white-space:nowrap; padding:8px 0 10px; cursor:pointer;
-    color:#8fa69c; background:transparent; border:0; border-bottom:3px solid transparent; border-radius:0; }
+    color:rgba(255,163,179,.55); background:transparent; border:0; border-bottom:3px solid transparent; border-radius:0; }
   .tabs button span { overflow:hidden; text-overflow:ellipsis; max-width:100%; }
-  .tabs button.on { color:#6fdc9a; border-bottom-color:#6fdc9a; }
+  .tabs button.on { color:var(--rose); border-bottom-color:var(--rose); }
   .tabs .bell { position:relative; }
-  .tabs .bell.on { color:#6fdc9a; border-bottom-color:#6fdc9a; }
+  .tabs .bell.on { color:var(--rose); border-bottom-color:var(--rose); }
   .bell .cnt { position:absolute; top:3px; left:calc(50% + 4px); min-width:16px; height:16px; border-radius:8px; padding:0 4px; font-size:10px; font-weight:800; display:none; align-items:center; justify-content:center;
     background:rgba(255,93,93,.3); border:1px solid rgba(255,130,130,.75); color:#ffc2c2; }
     .panel { display:none; } .panel.on { display:block; }
