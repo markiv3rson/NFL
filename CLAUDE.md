@@ -292,6 +292,14 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   Popular teams (DAL/KC/PHI/GB/SF) on bye: 3+ in one week never happened 2014-26; 2+ only 6 weeks; average open->close spread move
   1.48 (0 on bye) / 1.32 (1) / 1.60 (2); LINE MOVE in 2+ weeks 65.2% (23) vs 62.8% otherwise -> no effect.
 
+- Slate split (10/14, 2014-26, history replay): LINE MOVE spread / LINE MOVE total / TOTAL MOVE (top 20%) won
+  Sunday 1 PM 58.6% (261) / 67.0% (200) / 56.5% (260); Sunday 4 PM 66.7% (147) / 65.1% (86) / 57.1% (105); standalone TNF/SNF/MNF/intl
+  65.3% (121) / 70.3% (74) / 65.5% (116, small -- anchor on the 57.4% overall). Closing-line error: margin 9.85 (1 PM) / 10.09 (4 PM) /
+  9.96 (standalone), totals 10.51 / 10.26 / 10.55 -> primetime lines are NOT sharper. Keep firing in every window; no slate filter.
+- TODO (live data, after ~4-8 weeks): split live picks by WHEN they first fired (`stackfirst:` time) -- Sunday night-Monday vs
+  Friday-kickoff -- and compare win rate and LINE VALUE; use the 30-min Pinnacle log for when lines moved. Not testable on past seasons
+  (history has only open and close).
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
