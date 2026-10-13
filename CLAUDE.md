@@ -249,6 +249,13 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   rush over expected alone 0.15590, 5/5; separation+YAC alone 2/5. Gain ~0.1% (would not move a shown TD % by a point). NOT added
   -- owner 10/14: leave it out (gain too small for a weekly NGS download in td_prob.py).
 
+- Last four (10/14, closing line 2006-25 unless noted). NONE added; historical testing is done until the live logs mature:
+  Mid-season head coach change (nflverse coach name change, 43 team-seasons): first 3 games under the new coach -> that team 59.3%
+  close (91) but 1999-2005 (held out) 35.7% (28) -> 53.8% on 119 over 1999-2025. First game only 60.6% (33). Noise.
+  New kicker (fade in the new kicker's 2nd game): 57.6% open / 54.8% close, periods 50/47/59 -> no. Denver: bet DEN at home 45.6%
+  close; fade the team the week after playing AT Denver 43.5% open / 50.0% close. In-season trade within 8 days: buyer 55.0% open /
+  51.1% close; fade the seller 49.2% close. Referee crews stay removed (owner).
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
