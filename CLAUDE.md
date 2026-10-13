@@ -147,6 +147,18 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   model + injuries vs the opening line 53.4% (50.6% without) -- noted, under 56%.
 - Sign check: `d.km` / `d.so` are HOME-FAVORED margins (home -3.5 spread = +3.5), so the line's margin is +km, not -km.
 
+## Tests after PR #232 + access check (Oct 13, 2026 night) -- nothing new passed
+
+- Tested on unseen seasons, no pick found: team turnover luck, league scoring trend, week-1 Under, clean backup-QB retest (first week
+  with a backup 59.2% at the open but 51.3% at the close; later weeks 52-53% -- an earlier 61.3% claim did NOT replicate, retracted),
+  WR / CB starters out, late-season rest, training-window length. TD model vs Polymarket prices: about tied.
+- Polymarket price history only goes back to Aug 2026 (preseason + weeks 1-5). NFL.com daily injury feed is not reachable.
+- RECORDING (not shown, `pages/api/snapshot.js`): kickoff-hour forecast every snapshot (Redis `fcst:<season>:<week>:<game>`, last 120)
+  and starters-out counts whenever they change (`inj:<season>:<week>:<game>`, last 60), each with a time, to test later who knew
+  first -- the forecast/news or the line. Past forecasts/news times can't be rebuilt, so this is the only way to get them.
+- Access check (about 240 hosts): api.the-odds-api.com reachable but needs a key (not in the sandbox; past odds by timestamp would
+  fix the "past hourly lines" gap). Open-Meteo and Kalshi were rate-limited. Pro-Football-Reference, Reddit, many books block us.
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
