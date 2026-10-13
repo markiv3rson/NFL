@@ -4,11 +4,13 @@
 // Then prints each rule's LIVE record this season from the site. Needs the internet (nflverse schedule + the site); without it, it says so.
 // Rules that need inputs not in public history files (INJURY: weekly starters out; TOTAL MOVE: the model's early features) are live-only here.
 import { readFileSync } from "node:fs";
-import { keyNumberPick, bounceBackPick, floorDogPick, lineMovePick, lineMoveTotalPick, gradeStackPick } from "../lib/stack.js";
+import { keyNumberPick, bounceBackPick, floorDogPick, lineMovePick, lineMoveTotalPick, injuryPick, gradeStackPick } from "../lib/stack.js";
+import { startersOut } from "../lib/snaps.js";
 import { parseCSV } from "../lib/injuries.js";
 
 const SITE = process.env.SITE_URL || "https://nfl-nfl9.vercel.app";
 import { execFileSync } from "node:child_process";
+const getText = (u) => execFileSync("curl", ["-sL", "--max-time", "120", u], { maxBuffer: 256 << 20 }).toString();
 const getJSONurl = async (u) => { try { const r = await fetch(u, { signal: AbortSignal.timeout(60000) }); return await r.json(); }
   catch { return JSON.parse(execFileSync("curl", ["-s", "--max-time", "90", u], { maxBuffer: 64 << 20 }).toString()); } };   // plain fetch can't use a proxy
 const pct = (w, l) => (w + l ? (100 * w) / (w + l) : null);
@@ -56,8 +58,37 @@ if (games) {
     if (fail) bad++;
     console.log(`${fail ? "FAIL" : "ok  "} ${name.padEnd(20)} ${w}-${l}${p ? ` (${p} push)` : ""} = ${hit == null ? "—" : hit.toFixed(1) + "%"} ${R.from}-${String(R.to).slice(2)} · ${tierTxt}`);
   }
-  console.log("     INJURY, TOTAL MOVE: need weekly injury / model inputs not in the public files -- live record only (below).");
+  // INJURY (10/14): starters out rebuilt per team-week from nflverse's injury reports + snap counts with the app's own startersOut(), then
+  // the app's own injuryPick(): line not yet moved 1+ toward the healthy team between the opening line and the close, graded at the close.
+  { let w = 0, l = 0, p = 0, seasons = 0;
+    for (let y = 2014; y <= Math.max(...games.map((x) => x.season)); y++) {
+      let injRows, snapRows;
+      try { injRows = parseCSV(getText(`https://github.com/nflverse/nflverse-data/releases/download/injuries/injuries_${y}.csv`));
+        snapRows = parseCSV(getText(`https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_${y}.csv`)); } catch { continue; }
+      if (injRows.length < 100 || snapRows.length < 100) continue; seasons++;
+      const ih = injRows[0], sh = snapRows[0], I = (k) => ih.indexOf(k), S = (k) => sh.indexOf(k), AL = { LAR: "LA", WSH: "WAS", JAC: "JAX", LVR: "LV" };
+      const snaps = {};   // same shape as lib/snaps.js loadSnaps
+      for (const r of snapRows.slice(1)) { if (r[S("game_type")] !== "REG" || !r[S("team")]) continue; const t = AL[r[S("team")]] || r[S("team")], n = r[S("player")];
+        const q = ((snaps[t] = snaps[t] || {})[n] = snaps[t][n] || { name: n, pos: r[S("position")], weeks: {}, dweeks: {} });
+        q.weeks[+r[S("week")]] = +r[S("offense_pct")] || 0; q.dweeks[+r[S("week")]] = +r[S("defense_pct")] || 0; q.pos = r[S("position")]; }
+      const inj = {};
+      for (const r of injRows.slice(1)) { if (r[I("game_type")] !== "REG" || !r[I("team")]) continue; const t = AL[r[I("team")]] || r[I("team")];
+        (inj[t] = inj[t] || []).push({ name: r[I("full_name")], status: r[I("report_status")] || "", week: +r[I("week")] }); }
+      for (const G of games.filter((x) => x.season === y)) { const o = opens[G.id]; if (!o || !isFinite(o.so)) continue;
+        const sit = { home: { inj: startersOut(snaps[G.home], (inj[G.home] || []).filter((x) => x.week === G.week), G.week) },
+                      away: { inj: startersOut(snaps[G.away], (inj[G.away] || []).filter((x) => x.week === G.week), G.week) } };
+        const g = { key: `${G.away} @ ${G.home}`, away: G.away, home: G.home }, x = injuryPick(g, -G.sp, -o.so, sit, G.week); if (!x) continue;
+        const res = gradeStackPick({ ...x, home: G.home }, G.hs, G.as); if (res === "W") w++; else if (res === "L") l++; else p++; } }
+    const hit = pct(w, l), fail = !seasons || hit == null || hit < 56 || hit < 57.0 - 1.5; if (fail) bad++;
+    console.log(`${fail ? "FAIL" : "ok  "} ${"INJURY".padEnd(20)} ${w}-${l}${p ? ` (${p} push)` : ""} = ${hit == null ? "—" : hit.toFixed(1) + "%"} 2014-${String(Math.max(...games.map((x) => x.season))).slice(2)} (${seasons} seasons of reports) · card says 57%`); }
 }
+// TOTAL MOVE: its inputs are the model's early features, so it is checked by the weekly rebuild's own honest test (every season predicted by a
+// model that never saw it, bet at the opening total), read from the site. The card shows these same numbers.
+try { const st = (await getJSONurl(`${SITE}/api/slate`)) || {}, m = st.status && st.status.moveCheck;   // getStatus() rides on the slate
+  if (m) { const fail = m.hit20 < 56; if (fail) bad++;
+    console.log(`${fail ? "FAIL" : "ok  "} ${"TOTAL MOVE".padEnd(20)} top 20% ${m.hit20}% (${m.n20}) · top 10% ${m.hit10}% (${m.n10}) · unseen seasons, rebuild ${String(m.builtAt || "").slice(0, 10)}`); }
+  else console.log("     TOTAL MOVE: the site has no rebuild numbers yet (shows the built-in 59.1% / 62.7%)");
+} catch (e) { console.log(`     TOTAL MOVE: site not reachable (${String(e).slice(0, 60)})`); }
 
 // Live record this season, from the site (each pick counted once, at the line it was first shown).
 try {
