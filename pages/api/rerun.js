@@ -58,7 +58,7 @@ export default async function handler(req, res) {
     };
     const books = (await getJSON(K.books(season, week))) || { games: {} };
     const payload = await Promise.all(games.map(async (g) => {
-      const last = [...(await history(season, week, g.key))].reverse().find((s) => s.poly) || {};
+      const hh = [...(await history(season, week, g.key))].reverse(), last = hh.find((s) => s.poly && !s.suspect) || hh.find((s) => s.poly) || {};   // 10/14: skip a reading that failed the data check, like the card
       const p = last.poly || {}, b = books.games[g.key] || {};
       const hs = p.spread ? p.spread.homeSpread : b.spread ? b.spread.homeSpread : null;
       const total = p.total ? p.total.line : b.total ? b.total.line : null;

@@ -277,6 +277,7 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   "late" = 1 h past the next scheduled snapshot (`lib/watchdog.js`), and the 30-min Pinnacle pull marks the scheduler alive (`auto:last`).
   (14) Bell: the "Final" alert and the weekly recap reported the old game model's spread/total SIDE as won/lost (never a pick) -- now
   they report the card's picks locked at kickoff (`lib/alerts.js alertResult`, `lib/grade.js weekRecap`).
+  (15) Model rerun sent the TD/game model the latest Polymarket line even when it failed the data check -- now skips it like the card.
 - CLV tracker built: each card pick keeps the line it FIRST showed at (`first` in `stack:` records, `lib/stack.js recordStack/clvOf`);
   the kickoff line is the close. Models tab -> "LINE VALUE" tile: average points gained vs the close and % of picks that beat it.
 - "Line moved with/against the model" (game model side vs the open, 2014-26, 2,578 games): moved WITH 55.1% at the open (48.1% at the
