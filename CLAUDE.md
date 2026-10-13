@@ -41,6 +41,12 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 - Tests: `npm test` (site checks, grading audit, service checks, then ACCURACY: `tests/accuracy.mjs` replays the app's own green-rule code on
   past games -- KEY NUMBER, BOUNCE BACK, BOUNCE BACK DOG, LINE MOVE spread/total -- and FAILS if one wins under 56% or 1.5+ points under
   the % its card shows; then prints each rule's live record this season. `npm run accuracy` runs just that part.)
+  10/14: INJURY is replayed too (starters out rebuilt per team-week from nflverse injury reports + snap counts with the app's own
+  startersOut/injuryPick): weeks 4+ 147-113 = 56.5% (2014-26; periods 52/61/57). It FAILED at first (54.7%) because the app also fired
+  in weeks 1-3, which were never tested (the 57.0% came from week-4+ games) and went 3-11 there -> INJURY and TOTAL MOVE now fire from
+  week 4 only (`lib/stack.js TESTED_FROM_WEEK`). TOTAL MOVE is checked by the weekly rebuild's own unseen-season numbers (`moveCheck`
+  in the slate status). Tuesday check-in routine (9:52 AM PT) now posts a WEEKLY REPORT CARD from `npm run accuracy`: per green rule live
+  W-L vs history %, flag only.
 - Weekly Tuesday check-in routine exists (9:52 AM PT) to confirm the rebuild and report records.
 
 ## How models are tested
