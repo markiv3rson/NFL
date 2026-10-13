@@ -230,7 +230,9 @@ def _loop():
             # fired ~60 min before that wave kicks off -- after teams must confirm active/inactive (~90 min before
             # kickoff) but with enough buffer that the news has settled. Catches every wave, not just the 9:05 AM
             # Sunday rerun, which only lines up with the 10 AM games.
-            for k in {k for k, _ in kicks if k - timedelta(minutes=65) <= nowu < k - timedelta(minutes=55)}:
+            # review fix 10/14: window 65 -> 25 min before kickoff (was 65 -> 55). A postgame rerun (same "rerun" kind, up to ~16 min)
+            # running at the wave time used to make the wave rerun skip for good; now it retries until 25 min before kickoff.
+            for k in {k for k, _ in kicks if k - timedelta(minutes=65) <= nowu < k - timedelta(minutes=25)}:
                 tag = f"rw:{k:%Y%m%d%H%M}"
                 if tag not in fired and _bg("rerun", _call, "/api/rerun?src=wave"): fired[tag] = time.time()
             # Weekly TD retrain: Tuesday 7:15 AM, after the rerun above has the new week's data loaded.

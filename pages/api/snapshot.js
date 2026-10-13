@@ -118,7 +118,8 @@ export default async function handler(req, res) {
       // stadium while Polymarket's total is still at its first number this week; graded at that number. Paper only (history at the
       // opening total 60.5% 2014-26, but 2024 51% / 2025 52%, so it gets a live test first).
       if (poly && poly.total && !snap.suspect && !(await redis.hexists(tkey(season, week), `${g.key}|windU`).catch(() => 1))) try {
-        const f0 = jparse(await redis.lindex(K.snaps(season, week, g.key), 0)), to = f0 && f0.poly && f0.poly.total ? f0.poly.total.line : null;
+        // review fix 10/14: opening total = first snapshot WITH a Polymarket total (index 0 is often a books-only snapshot -> never fired)
+        const f0 = ((await redis.lrange(K.snaps(season, week, g.key), 0, -1)) || []).map(jparse).find((x) => x && x.poly && x.poly.total) || null, to = f0 ? f0.poly.total.line : null;
         if (to != null && Math.abs(poly.total.line - to) < 0.5) { const wk = await windAtKickoff(g);
           if (wk.outdoor && wk.wind != null && wk.wind >= WIND_U_MPH) await redis.hsetnx(tkey(season, week), `${g.key}|windU`,
             JSON.stringify({ game: g.key, kind: "total", windU: true, side: "under", base: to, line: to, wind: wk.wind, week, t })); }
@@ -127,7 +128,7 @@ export default async function handler(req, res) {
       // (forecast every snapshot, injuries only when they change). Later tests can ask "who knew first, the forecast/news or the line?".
       try { const wf = await windAtKickoff(g); if (wf.outdoor && wf.wind != null) { const fk = `fcst:${season}:${week}:${g.key}`; await redis.rpush(fk, JSON.stringify({ t, wind: wf.wind, temp: wf.temp == null ? null : wf.temp })); await redis.ltrim(fk, -120, -1); }
         const sj = await situationFor(season, week, g).catch(() => null), ik = `inj:${season}:${week}:${g.key}`;
-        if (sj) { const cur = JSON.stringify({ h: sj.home && sj.home.inj || null, a: sj.away && sj.away.inj || null }), last = await redis.lindex(ik, -1), lj = last ? jparse(last) : null;
+        if (sj && sj.home && sj.away && sj.home.inj && sj.away.inj) { const cur = JSON.stringify({ h: sj.home && sj.home.inj || null, a: sj.away && sj.away.inj || null }), last = await redis.lindex(ik, -1), lj = last ? jparse(last) : null;
           if (!lj || JSON.stringify(lj.s) !== cur) { await redis.rpush(ik, JSON.stringify({ t, s: JSON.parse(cur) })); await redis.ltrim(ik, -60, -1); } } } catch {}
       const px = await tdProps(events, g.away, g.home).catch(() => null);
       if (px) {

@@ -783,8 +783,16 @@ def _inj_now():
     it = inj_table(CUR)
     if not len(it): return {}
     last = it.groupby('team').week.transform('max'); it = it[it.week == last]
+    # review fix 10/14: before a team's new report (Mon-Wed) its latest report is LAST week's -- training never pairs that with the next
+    # game, so it is dropped (a player Questionable last week no longer boosts his backups for the new week).
+    try:
+        played = p[p.season_type == 'REG'].groupby('posteam').week.max().to_dict() if 'season_type' in p.columns else p.groupby('posteam').week.max().to_dict()
+        it = it[[w > played.get(t, 0) for t, w in zip(it.team, it.week)]]
+    except Exception: pass
     return {r.pid: {'q': r.q, 'lim': r.lim, 'dnp': r.dnp} for r in it.itertuples()}
-INJ_NOW = {}
+# review fix 10/14: filled at start-up too (it was {} for the first 30 min after every deploy, so early reruns ran without injury flags)
+try: INJ_NOW = _inj_now()
+except Exception: INJ_NOW = {}
 def refresh_live(max_age=1800):
     with _REFRESH_LOCK: return _refresh_live(max_age)
 def _refresh_live(max_age=1800):

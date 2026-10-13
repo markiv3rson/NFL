@@ -999,7 +999,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     for (const k of await R.keys("paper:2099:*")) await R.del(k); await R.del("alerts:2099");
     // the Pick Lab list uses the tie rule too
     vm.runInContext(`S = { week: 4, games: [ { key: "LA @ PHI", away: "LA", home: "PHI", started: false, winPct: 38.1, model: { homeMargin: -3, total: 43.5, calHomeCover: 48.8, calUnder: 50.5 }, poly: { ml: { home: 0.42, away: 0.6 }, spread: { homeSpread: 3, home: 0.51, away: 0.51 }, total: { line: 43.5, over: 0.51, under: 0.51 } } } ], winners: null, picks: null }`, ctx);
-    ok(/Spread <b>LA -3<\/b> <span class="dim">\(agrees\)<\/span> · Total <b>Under 43\.5<\/b> <span class="dim">\(agrees\)<\/span>/.test(ctx.T.winnersBox()), "pick list: a toss-up game still shows its spread and total side, marked as agreeing with the market"); }
+    ok(!/Spread <b>LA -3<\/b> <span class="dim">\(agrees\)/.test(ctx.T.winnersBox()) && /Spread <b>—<\/b>/.test(ctx.T.winnersBox()), "pick list: shows the CARD's pick (none here), never the game model's own side (review fix 10/14)"); }
   { // earlier week: a bet that is final but waiting for touchdown data stays visible; no slate yet must not break Bets; sections keep their state
     const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "record-mine" ? box : old(id));
     vm.runInContext(`S = { week: 5, games: [] }; MBWEEK = 4; MB = { summary: {}, synced: null, bets: [ { id: "a", week: 4, source: "account", title: "Waiting combo", cost: 10, toWin: 100, result: "pending", waiting: true, legs: [] }, { id: "b", week: 4, source: "account", title: "Lost combo", cost: 5, toWin: 50, result: "L", pl: -5, legs: [] }, { id: "c", week: 4, cost: 8, toWin: 80, result: "pending", waiting: true, legs: [ { kind: "td", player: "Q", game: "A @ B", team: "B", result: "pending", price: 0.5 } ] } ] }`, ctx);
@@ -1060,8 +1060,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(/RETURNING/.test(yes) && /was out last week/.test(yes) && /34%/.test(yes) && !/RETURNING/.test(no), "returning label: practicing returner is labelled, plain players are not");
     ok(/NOT PRACTICING/.test(dnp) && /treated as out/.test(dnp) && !/↩ RETURNING/.test(dnp), "returning label: a returner who is not practicing is flagged, not treated as playing"); }
   { const w = (m) => ctx.T.totalCard({ ...tg, poly: { total: { line: 38.5, over: 0.5, under: 0.52 } }, model: { total: 37, ...m } }, "x");
-    ok(/Tested angle: Under 38\.5 \(wind forecast 14 mph\)/.test(w({ outdoor: true, wind: 14 })) && !/Tested angle: Under/.test(w({ outdoor: true, wind: 8 })) && !/Tested angle: Under/.test(w({ outdoor: false, wind: 20 })) && !/Tested angle: Under/.test(ctx.T.totalCard({ ...tg, final: true, poly: { total: { line: 38.5 } }, model: { total: 37, outdoor: true, wind: 20 } }, "x")), "windy-under note: only for an outdoor game with 12+ mph forecast, not finished")
-    ok(!/Tested angle/.test(w({ outdoor: true, wind: 14 }) && ctx.T.totalCard({ ...tg, totalPick: { side: "over", line: 38.5, label: "Over 38.5", pct: 50.5, gap: 4 }, poly: { total: { line: 38.5, over: 0.5, under: 0.52 } }, model: { total: 43, outdoor: true, wind: 14 } }, "x")) && /Tested angle/.test(ctx.T.totalCard({ ...tg, totalPick: { side: "under", line: 38.5, label: "Under 38.5", pct: 50.5, gap: 1.5 }, poly: { total: { line: 38.5, over: 0.5, under: 0.52 } }, model: { total: 37, outdoor: true, wind: 14 } }, "x")), "windy-under note: hidden when the model leans Over, shown when the model agrees (Under)"); }
+    ok(!/Tested angle/.test(w({ outdoor: true, wind: 14 })) && !/Tested angle/.test(w({ outdoor: true, wind: 20 })), "windy-under note: removed from the card (tested, not added; review fix 10/14)");
+    ok(!/★/.test(w({ outdoor: true, wind: 14 })), "total card: no extra angle note next to the PICK"); }
   vm.runInContext(`S = { week: 4, games: [], edgesNow: [{ game: "PIT @ CLE", label: "CLE ML", price: 0.37, fair: 0.42, evNet: 0.134 }] }; LIVE = {}; LIVE_T = null`, ctx);
   const lg = { key: "PIT @ CLE", away: "PIT", home: "CLE", kickoff: "2026-10-02T00:15:00Z", started: true, final: false, injuries: [], history: [], poly: { spread: { homeSpread: 2.5, home: 0.5, away: 0.5 }, ml: { home: 0.4, away: 0.62 }, total: { line: 38.5, over: 0.5, under: 0.5 } } };
   ok(!/LIVE/.test(ctx.T.gameCard(lg, "x")), "live view: nothing live until live lines are loaded (the card shows the locked kickoff line)");
@@ -1085,7 +1085,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   vm.runInContext(`S.games[0].td = [{ player: "D.Henry", fair: 58, injury: "" }, { player: "Out.Guy", fair: 90, injury: "Out" }, { player: "L.Jackson", fair: 41 }]`, ctx);
   ok(/TD <b>D\.Henry 58%<\/b>/.test(ctx.T.winnersBox()), "page: touchdown side is the most likely scorer who is not out");
   ok(/84%/.test(box) && /82¢/.test(box) && !/7–3/.test(box) && !/all picks/.test(recs) && /top 4/i.test(recs), "page: picks show chance and price; the season record is on the Results tab");
-  ok(/Spread <b>BAL -10\.5<\/b> · Total <b>Under 41\.5<\/b> · TD <b>/.test(box), "page: each game shows labeled spread side, total side and touchdown side");
+  ok(/Spread <b>—<\/b> · Total <b>—<\/b> · TD <b>/.test(box) && !/BAL -10\.5/.test(box), "page: each game shows the card's spread / total pick (none here) and the touchdown side -- not the game model's own side");
   ok(/Spreads[\s\S]*6–5 · covered 55%/.test(recs) && /Totals[\s\S]*4–6 · right 40%/.test(recs), "page: separate season records for winners, spreads and totals"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);
