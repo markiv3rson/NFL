@@ -204,6 +204,19 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   less rest + 2 zones travel 47.9%; road-upset winner then division game 46%; Thursday home team 53.5% (217); big favorite after a loss
   50.8%; home team after a 21+ ATS miss 52.4%.
 
+## Tests 10/13 late + CLV tracker (owner: "go")
+
+- CLV tracker built: each card pick keeps the line it FIRST showed at (`first` in `stack:` records, `lib/stack.js recordStack/clvOf`);
+  the kickoff line is the close. Models tab -> "LINE VALUE" tile: average points gained vs the close and % of picks that beat it.
+- "Line moved with/against the model" (game model side vs the open, 2014-26, 2,578 games): moved WITH 55.1% at the open (48.1% at the
+  close), static 51.4%, AGAINST 45.7% (52.4% at the close). Only knowable after the move -> no pick; it is why LINE MOVE works.
+- No gain (unseen seasons, ATS at close / open, and margin error vs the line 9.904): owner's EPA power-rating code 48.3% close / 45.0% open
+  (its line error 10.67); pass70/rush30 50.7%; success rate 51.5%; garbage time removed 49.3%; leverage-weighted 49.7%; Next Gen
+  (CPOE, time to throw, aggressiveness, RYOE, separation) 48-52%; ESPN QBR 49.5%; PFR pressures/blitz/bad throws/drops/missed tackles
+  47.5-50.4%; all new data together 50.8% (error 9.939, worse); PageRank 47.5%; rest edge (bye/TNF) 45.6/52.7%; coach 4th-down
+  aggressiveness 49-52%. Totals with all of it 48-52%. INJURY weighted by QBR: no better (good QB lost 51.5% close, weaker QB 55.2%).
+- Not tested: FTN charting (only 2022+), TD-model inputs from Next Gen/charting (TD model ~ Polymarket already).
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
