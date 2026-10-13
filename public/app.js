@@ -183,7 +183,12 @@ function leanCell(g, kind) {
   }
   const P = g.final ? null : straightPicks(g).find((x) => (kind === "total" ? isTot(x.pick) : !isTot(x.pick) && !/\bML\b/.test(x.pick)));
   let body = "";
-  if (!g.final) {
+  const LP = (g.started || g.final) && g.lockedPicks ? g.lockedPicks[kind === "total" ? "total" : "spread"] : null;
+  if (LP) {   // 10/13: after kickoff, the pick that was locked in at kickoff and how it did
+    const pc = Math.round(LP.hit), cls = pc >= 56 ? "g" : "y", rs = LP.result === "W" ? ' · <span class="g">W</span>' : LP.result === "L" ? ' · <span class="r">L</span>' : LP.result === "P" ? " · push" : g.final ? "" : ' · <span class="dim">live</span>';
+    body = `<div style="margin-top:6px"><b class="${cls}" style="font-size:16px">PICK: ${esc(LP.pick)} · ${pc}%</b>${rs}</div><div class="s dim" style="margin-top:4px">locked at kickoff</div>`;
+  }
+  else if (!g.final) {
     if (!P) {   // nothing at 56%+: a yellow PICK from the best tested pick above 50%. 10/11: the game model's own side was dropped as a fallback --
       // tested on 2,531 games 2014-26 it won 50.6% against the spread and 51.7% on totals (a coin flip), so it is not shown as a lean.
       const L = straightPicks(g, 0).find((x) => (kind === "total" ? isTot(x.pick) : !isTot(x.pick) && !/\bML\b/.test(x.pick)) && !isSmall(x));
