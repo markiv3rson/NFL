@@ -447,8 +447,13 @@ function gbgHtml() {
   const wks = [...new Set(GBG_RES.map((r) => r.week))].sort((a, b) => b - a); if (!wks.length) return "";
   const sel = GBGWEEK && (GBGWEEK === "all" || wks.includes(GBGWEEK)) ? GBGWEEK : wks[0];
   const list = GBG_RES.filter((r) => sel === "all" || r.week === sel).sort((a, b) => b.week - a.week || String(a.gradedAt || "").localeCompare(String(b.gradedAt || "")));
-  const row = (r) => `<div class="row"><span>${esc(r.game)} <span class="dim">wk ${r.week} · ${r.awayScore}–${r.homeScore}</span></span><span>` +
-    [r.spread, r.total, r.ml].filter(Boolean).map((x) => `${esc(x.label)} ${x.result === "W" ? '<span class="g">W</span>' : x.result === "L" ? '<span class="r">L</span>' : "P"}`).join(" · ") + `</span></div>`;
+  // 10/13 (owner): each game shows the card's PICK results (chooser / LINE MOVE / KEY NUMBER). Games before 10/12 have no recorded card
+  // pick, so they show the old game model's side, labeled as such.
+  const res1 = (x) => (x.result === "W" ? '<span class="g">W</span>' : x.result === "L" ? '<span class="r">L</span>' : x.result === "P" ? "P" : '<span class="dim">…</span>');
+  const row = (r) => { const cp = ((COMBOS && COMBOS.card && COMBOS.card.byGame) || {})[`${r.week}|${r.game}`];
+    const body = cp && cp.length ? cp.sort((a, b) => (a.kind === "total") - (b.kind === "total")).map((x) => `${esc(x.pick)} ${res1(x)}`).concat(r.ml ? [`${esc(r.ml.label)} ${res1(r.ml)}`] : []).join(" · ")
+      : `<span class="dim">old model:</span> ` + [r.spread, r.total, r.ml].filter(Boolean).map((x) => `${esc(x.label)} ${res1(x)}`).join(" · ");
+    return `<div class="row"><span>${esc(r.game)} <span class="dim">wk ${r.week} · ${r.awayScore}–${r.homeScore}</span></span><span>${body}</span></div>`; };
   return `<div class="chips" id="gbg-chips">${wks.map((w) => `<button data-gbw="${w}" class="${String(sel) === String(w) ? "on" : ""}">Week ${w} (${GBG_RES.filter((r) => r.week === w).length})</button>`).join("")}<button data-gbw="all" class="${sel === "all" ? "on" : ""}">All</button></div>` + list.map(row).join("");
 }
 // Bets analysis (10/2): where your money wins and loses, from the legs of your typed-in combos (account bets do not list legs).
@@ -860,8 +865,10 @@ function statTile(label, w, l, hit, sub) {
 function labStats() {
   const P = PICKS || {}, W = (S && S.winners && S.winners.all) || {};
   const g = (m) => { const x = P[m] || {}; return [x.w, x.l, x.graded ? x.hit : null]; };
-  const sp = g("spread"), tt = g("total");
-  return `<div class="stats">${statTile("MONEYLINE", W.w, W.l, W.n ? W.hit : null, "right")}${statTile("SPREAD SIDE", sp[0], sp[1], sp[2], "covered")}${statTile("TOTAL SIDE", tt[0], tt[1], tt[2], "right")}</div>`;
+  // 10/13 (owner): the spread/total tiles show YOUR card picks (chooser, LINE MOVE, KEY NUMBER), not the old game model's side.
+  const C = (COMBOS && COMBOS.card) || { spread: { w: 0, l: 0 }, total: { w: 0, l: 0 } }, cs = C.spread, ct = C.total;
+  const ch = (x) => (x.w + x.l ? x.w / (x.w + x.l) : null);
+  return `<div class="stats">${statTile("MONEYLINE", W.w, W.l, W.n ? W.hit : null, "right")}${statTile("SPREAD PICKS", cs.w, cs.l, ch(cs), "covered")}${statTile("TOTAL PICKS", ct.w, ct.l, ch(ct), "right")}</div>`;
 }
 function pickLabBox() {
   const pc = (x) => (x == null ? "—" : `${(x * 100).toFixed(1)}%`), P = PICKS || {};
