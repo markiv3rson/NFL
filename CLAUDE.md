@@ -241,6 +241,9 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   calibrated % for its side is under 50%, it flips to the other side. Starters-out recorder ignores failed loads. Cards: the old
   "★ Tested angle: Under" (wind) and "★ home fav 9.5+ ML" notes removed (angles dropped as picks); Models "Model's pick on every game"
   shows the CARD's pick, not the game model's own side. Left: ~150 lines of unused front-end code (harmless).
+- FIX 10/14: books are pulled only 2x a weekday (7 AM / 3 PM PT) to save credits, so overnight they pass the 8 h limit and KEY NUMBER
+  vanished from the cards ~half the day. Now, when the books are stale, the latest Pinnacle line (30-min pull, under 1.5 h old) stands in
+  for "the books sit on 3" (`lib/week.js`); the reason then says "Pinnacle at ...". Pinnacle fetch retries once (occasional 403s).
 - CLV tracker built: each card pick keeps the line it FIRST showed at (`first` in `stack:` records, `lib/stack.js recordStack/clvOf`);
   the kickoff line is the close. Models tab -> "LINE VALUE" tile: average points gained vs the close and % of picks that beat it.
 - "Line moved with/against the model" (game model side vs the open, 2014-26, 2,578 games): moved WITH 55.1% at the open (48.1% at the
