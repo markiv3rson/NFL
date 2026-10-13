@@ -42,18 +42,16 @@
   .cdn i { display:block; font-style:normal; font-size:8px; font-weight:700; letter-spacing:.1em; color:var(--faint); margin-top:3px; }
   .cdn span { font-size:21px; font-weight:700; color:var(--faint); line-height:1; }
   .cdg { font-size:11px; color:#c9ced6; margin-top:6px; }
-  .tabrow { display:flex; gap:6px; align-items:center; margin-top:6px; }
-  .tabrow { justify-content:flex-end; }
   /* Bottom tab bar (10/13, owner's picture): icon over the name; the open tab green with a green bar under it */
-  .tabs { position:fixed; left:0; right:0; bottom:0; z-index:55; display:flex; max-width:980px; margin:0 auto; padding:6px max(6px,env(safe-area-inset-right)) env(safe-area-inset-bottom,0px) max(6px,env(safe-area-inset-left));
+  .tabs { position:fixed; left:0; right:0; bottom:0; z-index:55; display:flex; max-width:980px; margin:0 auto; padding:6px max(2px,env(safe-area-inset-right)) env(safe-area-inset-bottom,0px) max(2px,env(safe-area-inset-left));
     background:linear-gradient(160deg,#16302a,#0c1a16); border-top:1px solid rgba(61,220,151,.18); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); }
-  .tabs button { flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:4px; font:inherit; font-size:11.5px; font-weight:700; white-space:nowrap; padding:8px 2px 10px; cursor:pointer;
+  .tabs button { flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:4px; font:inherit; font-size:10.5px; letter-spacing:-.3px; font-weight:700; white-space:nowrap; padding:8px 0 10px; cursor:pointer;
     color:#8fa69c; background:transparent; border:0; border-bottom:3px solid transparent; border-radius:0; }
   .tabs button span { overflow:hidden; text-overflow:ellipsis; max-width:100%; }
   .tabs button.on { color:#6fdc9a; border-bottom-color:#6fdc9a; }
-  .bell { position:relative; width:34px; height:30px; flex-shrink:0; border-radius:12px; cursor:pointer; color:var(--rose); background:rgba(255,110,140,.14); border:1px solid rgba(255,150,170,.42); display:flex; align-items:center; justify-content:center; padding:0; }
-  .bell.on { background:rgba(255,110,140,.3); }
-  .bell .cnt { position:absolute; top:3px; right:3px; min-width:16px; height:16px; border-radius:8px; padding:0 4px; font-size:10px; font-weight:800; display:none; align-items:center; justify-content:center;
+  .tabs .bell { position:relative; }
+  .tabs .bell.on { color:#6fdc9a; border-bottom-color:#6fdc9a; }
+  .bell .cnt { position:absolute; top:3px; left:calc(50% + 4px); min-width:16px; height:16px; border-radius:8px; padding:0 4px; font-size:10px; font-weight:800; display:none; align-items:center; justify-content:center;
     background:rgba(255,93,93,.3); border:1px solid rgba(255,130,130,.75); color:#ffc2c2; }
     .panel { display:none; } .panel.on { display:block; }
   .grid { display:grid; grid-template-columns:1fr; gap:10px; margin-top:10px; }
@@ -226,9 +224,6 @@
       <div class="cdn"><div><b id="cd-d">--</b><i>DAYS</i></div><span>:</span><div><b id="cd-h">--</b><i>HRS</i></div><span>:</span><div><b id="cd-m">--</b><i>MINS</i></div><span>:</span><div><b id="cd-s">--</b><i>SECS</i></div></div>
       <div class="cdg" id="cd-g"></div></div>
   </div>
-  <div class="tabrow">
-    <button class="bell" id="bell" aria-label="Alerts"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span class="cnt" id="bell-cnt"></span></button>
-  </div>
   <div id="weekline" style="display:none"></div>
 
   <div class="panel on" id="panel-lines"><div id="lines"></div><div id="detail" style="display:none"></div></div>
@@ -259,6 +254,7 @@
   <button data-tab="record"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a1.5 1.5 0 0 1 1.5-1.5h13A1.5 1.5 0 0 1 20 7v2.5a2.5 2.5 0 0 0 0 5V17a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17v-2.5a2.5 2.5 0 0 0 0-5z"/><path d="M14.5 6v2M14.5 11v2M14.5 16v2"/></svg><span>Bets</span></button>
   <button data-tab="models"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20V11M12 20V5M18 20v-6"/></svg><span>Models</span></button>
   <button data-tab="lab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 3.5h5M10.5 3.5v5.2L5.2 18a1.6 1.6 0 0 0 1.4 2.5h10.8a1.6 1.6 0 0 0 1.4-2.5l-5.3-9.3V3.5"/></svg><span>Model Picks</span></button>
+  <button class="bell" id="bell" aria-label="Alerts"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span>Alerts</span><b class="cnt" id="bell-cnt"></b></button>
 </nav>
 <div class="fab">
   <div id="toast" class="toast"></div>
