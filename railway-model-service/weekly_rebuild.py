@@ -190,7 +190,11 @@ def assemble(site_opens=None):
     os.makedirs(WORK, exist_ok=True)
     g = games(); g["gameday"] = pd.to_datetime(g.gameday)
     fl = pd.concat([fl_replay(s, cur) for s in range(FIRST, cur + 1)], ignore_index=True); _log("game-model replay rows", len(fl))
-    d = fl.merge(g, left_on=["season", "week", "km", "kt", "res", "tot"], right_on=["season", "week", "spread_line", "total_line", "result", "total"]).drop_duplicates("game_id")
+    d = fl.merge(g, left_on=["season", "week", "km", "kt", "res", "tot"], right_on=["season", "week", "spread_line", "total_line", "result", "total"])
+    # review fix 10/14: two games in one week with the same lines AND result would swap model rows -- drop any game whose join is ambiguous
+    amb = d.groupby(["season", "week", "km", "kt", "res", "tot"]).game_id.transform("nunique") > 1
+    if amb.any(): _log("ambiguous replay joins dropped", int(d[amb].game_id.nunique()))
+    d = d[~amb].drop_duplicates("game_id")
     o = opens(site_opens); d = d.merge(o, on="game_id", how="left")
     d = d.merge(stats_preds(g, cur), on="game_id", how="left")
     T = team_table(g); cr = coach_rates(g); AG = ages(range(FIRST - 1, cur + 1)); QR = qb_runs(range(FIRST - 1, cur + 1))
@@ -334,6 +338,9 @@ def train_chooser(d, F):
 # open (same early features as the early-week total). Ridge on standardized features. Tested leave-one-season-out on 2014-26 (2,5xx games):
 # betting the opening total in the predicted direction on its 20% most confident games won 58-59% (11/12 seasons), top 10% 60-61%.
 # thr20 / thr10 = the 80th / 90th percentile of |prediction| (honest: from leave-one-season-out predictions).
+# Review fix 10/14: the 4 stats-model inputs were built from the CLOSING line, so they don't belong in a model of the move FROM the open.
+# Without them (unseen seasons 2014-26): top 20% 58.6% (497), top 10% 62.5% (253) -- the edge did not depend on them.
+MOVE_DROP = ("s_ens", "t_ens", "s_gbm", "t_gbm")
 def train_move(ZE, mv, seasons, tot, op):
     from sklearn.linear_model import Ridge
     from sklearn.preprocessing import StandardScaler
@@ -372,7 +379,7 @@ def build(site_opens=None):
             "upgrade": {"feat": feat, "m": [round(float(v), 6) for v in fm.coef_], "mi": round(float(fm.intercept_), 6), "t": [round(float(v), 6) for v in ft.coef_], "ti": round(float(ft.intercept_), 6)},
             "early": {"feat": list(ZE.columns), "t": [round(float(v), 6) for v in fe.coef_], "ti": round(float(fe.intercept_), 6)},
             "table": rows, "chooser": train_chooser(d, F),
-            "moveT": train_move(ZE, (d.kt[eo] - d.to[eo]).values, d.season[eo].values, d.tot[eo].values, d.to[eo].values)}
+            "moveT": train_move(ZE.drop(columns=[c for c in MOVE_DROP if c in ZE.columns]), (d.kt[eo] - d.to[eo]).values, d.season[eo].values, d.tot[eo].values, d.to[eo].values)}
 
 def passes(a):
     c = a["checks"]
