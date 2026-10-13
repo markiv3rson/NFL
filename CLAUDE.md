@@ -206,6 +206,10 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
 
 ## Tests 10/13 late + CLV tracker (owner: "go")
 
+- Audit page (read-only): `/api/recordcheck?week=N` -> per game the latest 30-min Pinnacle/Polymarket record (order book incl.), the
+  first line each pick was SHOWN at (`stackfirst:`), and the saved kickoff picks with first line, kickoff line, CLV and result.
+- CLV FIX 10/14: picks are recorded only at kickoff, so the first line now comes from `stackfirst:<season>:<week>` (write-once, saved
+  when the slate first shows each pick; `lib/stack.js noteFirstSeen`). Before the fix CLV was always 0.
 - CLV tracker built: each card pick keeps the line it FIRST showed at (`first` in `stack:` records, `lib/stack.js recordStack/clvOf`);
   the kickoff line is the close. Models tab -> "LINE VALUE" tile: average points gained vs the close and % of picks that beat it.
 - "Line moved with/against the model" (game model side vs the open, 2014-26, 2,578 games): moved WITH 55.1% at the open (48.1% at the
