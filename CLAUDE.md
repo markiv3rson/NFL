@@ -132,6 +132,21 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
 - Research: most studies find the NFL spread market efficient; post-bye road teams 53.6% overall but 47% 2020-25; half point on 3
   confirmed as the most valuable half point (9-15% of games land on 3; we measured 9.1%).
 
+## INJURY pick + six "make the model more accurate" tests (Oct 13, 2026 night)
+
+- INJURY pick (`lib/stack.js injuryPick`, green, recorded and graded): exactly one team has its starting QB, 2+ DBs or 2+ linemen out
+  (official Out/Doubtful + 60%+ snap share) -> take the OTHER team at the current line, only while the line has not moved 1+ point
+  toward it since the week's first reading. History 2014-26 at the closing line: not yet moved 57.0% (256 games; 52/62/58 by period);
+  already moved 54.2% (not a pick). Graded at the OPENING line all injury games win 60.0% (472, 12/13 seasons) -- the edge is the news
+  arriving before the line moves; by Sunday it's 55.8%. Questionable QB 52.6%, limited/DNP practice but not out 48.8%: no edge.
+  The nflverse injury file keeps only each player's latest status, so a Wednesday-only practice test isn't possible.
+- Tested, no gain (model still LESS accurate than the line): blending the model with the line (best 10% model on the opening line:
+  margin error 9.998 vs 10.000; on the close, any model weight is worse); a learned new-QB-game shift (10.138 vs 10.063 line alone;
+  the line beats the model in QB-change games 10.06 vs 10.85); rating speed (new-game weight 0.10-0.15 best, 10.454 vs 10.456 now);
+  TD prices as a total check (26 games; sum of TD prices tracks the real total 0.36 vs the line's 0.54; disagreements 6-11 wrong);
+  model + injuries vs the opening line 53.4% (50.6% without) -- noted, under 56%.
+- Sign check: `d.km` / `d.so` are HOME-FAVORED margins (home -3.5 spread = +3.5), so the line's margin is +km, not -km.
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's

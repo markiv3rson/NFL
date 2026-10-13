@@ -193,6 +193,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     && !keyNumberPick(G, sp(-3.5), bk(-3.5)) && !keyNumberPick(G, sp(-2.5), bk(-3)) && !keyNumberPick(G, sp(-2.5), bk(-3), [{ team: "BUF", line: 3.5, price: 0.95 }])
     && gradeStackPick({ ...main, home: "LA" }, 24, 21) === "W" && gradeStackPick({ ...main, home: "LA" }, 28, 21) === "L",
     "key number: books at exactly 3 -> underdog +3.5 on Polymarket (main or alternate); wins when the favorite wins by exactly 3"); }
+{ const { injuryPick } = await import("../lib/stack.js"); const G = { home: "LA", away: "BUF", key: "BUF @ LA" };
+  const inj = (o) => ({ qb: 0, sk: 0, ol: 0, db: 0, f7: 0, ...o }), sit = (h, a) => ({ home: { inj: inj(h) }, away: { inj: inj(a) } });
+  const a = injuryPick(G, -3.5, -3.5, sit({ qb: 1 }, {})), b = injuryPick(G, -3.5, -3.5, sit({}, { db: 2 })), c = injuryPick(G, -2.5, -3.5, sit({ ol: 2 }, {}));
+  ok(a && a.pick === "BUF +3.5" && a.hit === 57 && b && b.pick === "LA -3.5" && !c && !injuryPick(G, -3.5, -3.5, sit({ qb: 1 }, { qb: 1 })) && !injuryPick(G, -3.5, -3.5, sit({ db: 1 }, {}))
+    && !injuryPick(G, -3.5, null, sit({ qb: 1 }, {})) && injuryPick(G, -4, -3.5, sit({ qb: 1 }, {})) && !injuryPick(G, -4.5, -3.5, sit({}, { qb: 1 })),
+    "injury pick: one team has its QB / 2+ DBs / 2+ OL out -> the other team at the current line, only while the line hasn't moved 1+ toward it; both hurt or one DB -> nothing"); }
 { const { parseSplits } = await import("../lib/splits.js"); const { parseBooks } = await import("../lib/books.js");
   const j = { games: [{ away_team_id: 1, home_team_id: 2, teams: [{ id: 1, abbr: "BUF", full_name: "Buffalo Bills" }, { id: 2, abbr: "LAR", full_name: "Los Angeles Rams" }],
     odds: [{ book_id: 15, spread_home: -3.5, spread_home_public: 38, spread_home_money: 61, total_over_public: 70, junk: { x: 1 } }] }] };
