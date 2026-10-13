@@ -1257,7 +1257,7 @@ $("rerun-btn").onclick = async () => {
   const b = $("rerun-btn"); b.disabled = true; toast("Rerunning…", 0);
   try { const d = await (await fetch("/api/rerun", { method: "POST" })).json(); if (!d.ok) throw new Error(d.error);
     await loadSlate();
-    toast(`Model rerun: ${d.rerun} games, TD for ${d.td}.${d.errors && d.errors.length ? " Errors: " + d.errors.join("; ") : ""}`, 10000);
+    toast(d.note && !d.rerun ? `Model rerun: ${d.note}.` : `Model rerun: ${d.rerun} games, TD for ${d.td ?? 0}.${d.errors && d.errors.length ? " Errors: " + d.errors.join("; ") : ""}`, 10000);   // 10/13: said "TD for undefined" when every game had started
   } catch (e) { toast("Rerun failed: " + e.message, 12000); }
   b.disabled = false;
 };
