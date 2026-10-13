@@ -257,6 +257,12 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   LINE MOVE / KEY NUMBER no longer drop off between pulls. Kickoff recorder uses the same rule; if the books aren't current, no LINE MOVE
   is saved and KEY NUMBER uses the newest Pinnacle line. Risk: a books move after the last pull (most likely overnight) isn't seen until
   the next pull.
+- AUDIT 10/14 (owner: "check everything"): (1) Polymarket pick'em: both teams listed at -1.5 at ~48% (NO @ NYG) -- the app took the one a
+  hair nearer 50% (NYG -1.5) though the moneyline and books had NO favored, flipping every dog/favorite input. Now when two lines are within
+  1.5c of 50/50 it takes the one nearer the moneyline's spread (`lib/poly.js parseGame`). (2) Card %: 55.6% showed "56%" in light green --
+  below green the % now rounds DOWN, colors use the real rate. (3) Records: a first-shown pick replaces the kickoff record only when it is
+  GREEN (timing picks); the chooser's yellow side can flip midweek, so its record is the side locked at kickoff (`stackRecords`,
+  `stackSummary`). (4) `situationFor`: while a team's last game is still being played, its 3-game streak and two-games-back are unknown too.
 - CLV tracker built: each card pick keeps the line it FIRST showed at (`first` in `stack:` records, `lib/stack.js recordStack/clvOf`);
   the kickoff line is the close. Models tab -> "LINE VALUE" tile: average points gained vs the close and % of picks that beat it.
 - "Line moved with/against the model" (game model side vs the open, 2014-26, 2,578 games): moved WITH 55.1% at the open (48.1% at the
