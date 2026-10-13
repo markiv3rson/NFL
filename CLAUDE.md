@@ -107,6 +107,16 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
 - Also tested 10/13, not added: a second model that learns when the chooser is wrong and switches sides (spreads 51.1% -> 49.0%,
   totals 52.6% -> 48.9% on unseen seasons); boosted-tree chooser (spreads 52%, totals 52-54%).
 
+## Matchup-pairing bug (fixed Oct 13, 2026)
+
+- `extra_factors.py _row`: the 14 spread stat features paired each offense with its OWN defense ((home off + home def) - (away off +
+  away def), D = what a defense allows), so a bad defense counted FOR its team. Fixed to offense vs the OPPONENT's defense. Stats-only
+  margin fit 2014-25: correlation with the real margin 0.14 -> 0.35, error 11.08 -> 10.46. Totals features were unaffected (sum of all
+  four). Caches renamed (`xf_models2_`, `stats2_`) so everything rebuilds. Against the spread it adds nothing (the line already knows):
+  chooser on unseen seasons spreads 51.2% -> 49.7%, totals 52.0% -> 50.8% -- both inside coin-flip noise. Kept because it is correct.
+- Checked 10/13 and found consistent: the site sends the line to the model with the right sign; the site's chooser inputs (upgraded
+  model leans, line move, stats leans) match how the rebuild trains them; books' consensus line is the most common number (not an average).
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's

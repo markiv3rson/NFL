@@ -74,7 +74,7 @@ def stats_preds(g, cur):
     X = pd.DataFrame(rows)
     out = []
     for t in range(FIRST, cur + 1):
-        f = os.path.join(WORK, f"stats_{t}.parquet")
+        f = os.path.join(WORK, f"stats2_{t}.parquet")   # "2": rebuilt after the 10/13 matchup-pairing fix
         if t < cur and os.path.exists(f): out.append(pd.read_parquet(f)); continue
         tr, te = X[X.season < t], X[X.season == t]
         if not len(te): continue
