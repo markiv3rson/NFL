@@ -22,8 +22,7 @@ import { logError } from "../../lib/status";
 import { loadModel } from "../../lib/week";
 import { isThinMarket } from "../../lib/odds";
 import { nameMatches } from "../../lib/picks";
-import { logEdges } from "../../lib/edges";
-import { recordPaper, recordSameGame, recordPicks, recordWinner, tdTotal, situationFor } from "../../lib/paper";
+import { recordPaper, recordSameGame, recordWinner, tdTotal, situationFor } from "../../lib/paper";
 import { buildWeek } from "../../lib/week";
 import { loadInjuriesMeta } from "../../lib/injuries";
 import { alertsFromLines } from "../../lib/alerts";
@@ -40,7 +39,7 @@ export async function writePrelog(season, week, g, t, poly, bk, model) {
       return { player: p.name, team: p.team, fair: p.fair, ask: v ? v.ask : null, bid: v ? v.bid ?? null : null }; });
   await setJSON(`prelog:${season}:${week}:${g.key}`, { t, game: g.key, poly, books: bk,
     model: mg ? { homeMargin: mg.homeMargin, total: mg.total, homeWinPct: mg.homeWinPct, calHomeCover: mg.calHomeCover, calUnder: mg.calUnder, mktHomeSpread: mg.mktHomeSpread, mktTotal: mg.mktTotal, runAt: mdl.runAt || null } : null, topTd });
-  await recordPicks(season, week, g, poly, mg ? { ...mg, tdTotal: tdTotal(mt) } : mg, t).catch(() => 0);   // Pick Lab: the model's side at the kickoff-time price (9/30)
+  // Pick Lab paper singles (the old game model's side) CUT 10/13 (owner).
   await recordWinner(season, week, g, poly, t, mg).catch(() => 0);      // Most likely winners: the favorite at kickoff (9/30)
   { const alts = poly && poly.alts ? poly.alts : ((await getJSON(`alts:${season}:${week}:${g.key}`).catch(() => null)) || {}).alts || null;   // late close: the saved latest copy
     await recordTeaser(season, week, g, alts ? { ...(poly || {}), alts } : poly, bk, t).catch(() => 0);
@@ -110,8 +109,7 @@ export default async function handler(req, res) {
         if (prev.ml && poly.ml && Math.abs(prev.ml.home - poly.ml.home) >= 0.25) why.push("moneyline jumped 25+ cents");
         if (why.length) snap.suspect = `Data check failed: ${why.join(", ")}. Bet held until next refresh.`;
       }
-      if (poly && !snap.suspect && booksNow && booksNow.games) { const n =   // not when this snapshot failed the data check (9/30)
-         await logEdges(season, week, g, poly, booksNow.games[g.key], booksNow.t, t, () => 0).catch(() => 0); edges += n; }   // add AFTER the await: "edges += await" lost updates across parallel games
+      // Edge tracker (Polymarket vs sportsbook price gaps) CUT 10/13 (owner).
       if (prev && poly && !snap.suspect) await alertsFromLines(season, g, prev, poly).catch(() => 0);   // line-move alerts (10/1)
       if (poly || snap.books) { await redis.rpush(K.snaps(season, week, g.key), JSON.stringify(snap)); await redis.ltrim(K.snaps(season, week, g.key), -200, -1); lines += poly ? 1 : 0; }
       // Early-week total recording CUT 10/13 (owner): it went 11-18 live and is off on cards. Old saved rows still grade.

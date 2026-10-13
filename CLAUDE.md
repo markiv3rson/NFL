@@ -27,7 +27,7 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 - Bets tab: an open leg says "⚠ app now picks the other side" when the app has a 56%+ pick against it.
 - Early-week total edge: TURNED OFF on cards 10/11 (11-18 live); recording CUT 10/13 (old rows still grade).
 - Anytime TD tab: top 3 per team (owner wants it kept), plus a "⚠ Market disagrees" box for any player 20+ points from Polymarket.
-- Referees and price-gap alerts were removed on purpose. Models tab is 8 sections (10/13: "Price gaps" cut, "Records · model's side" cut, "Tracked angles" is only the wind Under paper row). The Action Network pull was cut 10/13 (`lib/splits.js` and `/api/splitshist` stay for reference).
+- Referees and price-gap alerts were removed on purpose. Models tab is 8 sections (10/13: "Price gaps" cut, "Records · model's side" cut, "Tracked angles" is only the wind Under paper row). Also cut 10/13: "Hit rate by week" (Trends), the Replay box, the Pick Lab paper singles (old game model's side; `recordPicks` no longer runs), bell alerts for MODEL / PRICE GAP / TEASER, and the edge tracker (`logEdges` no longer runs; the code stays). The Action Network pull was cut 10/13 (`lib/splits.js` and `/api/splitshist` stay for reference).
 
 ## Where things live
 
