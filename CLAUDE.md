@@ -195,6 +195,15 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
 - Same method on spreads: top 10% 55.9%, top 20% 53% -- not added. Also tested 10/13, no edge: Poisson scoring model (49.3% totals),
   538 Elo rebuilt (52.2%), MGM money vs bets splits (spreads 47.8%).
 
+## BOUNCE BACK (Oct 13, 2026 -- owner: "build now")
+
+- `lib/stack.js bounceBackPick` (+ `prevAts` in `lib/paper.js situationFor`): the ROAD team missed the spread by 21+ in its last game ->
+  road team at the current line. Nothing fitted. Closing line 2006-25 57.6% (297; 55/60/58% by period, 14/20 seasons); 1999-2005 (held
+  out) 54.9% (82); 24+ 60.8% (209). Home-team version 52.4%: road only. Week 6 2026: CHI @ ATL qualifies (CHI -25.5 ATS in week 5).
+- Other angles tested 10/13, NOT edges (closing line 2006-25): late-season home dogs 50.0%; cold home vs dome road team 50.6%; road team
+  less rest + 2 zones travel 47.9%; road-upset winner then division game 46%; Thursday home team 53.5% (217); big favorite after a loss
+  50.8%; home team after a 21+ ATS miss 52.4%.
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
