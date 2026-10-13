@@ -216,6 +216,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(clvOf({ kind: "spread", line: 2.5, first: { line: 3.5 } }) === 1 && clvOf({ kind: "spread", line: -4, first: { line: -3 } }) === 1 && clvOf({ kind: "spread", line: 4, first: { line: 3 } }) === -1
     && clvOf({ kind: "total", side: "over", line: 46, first: { line: 44.5 } }) === 1.5 && clvOf({ kind: "total", side: "under", line: 44, first: { line: 45 } }) === 1 && clvOf({ kind: "spread", line: 3 }) === null,
     "CLV: points gained from the first number shown to the closing number, by side"); }
+{ const { noteFirstSeen, gradeFirstSeenWeek, stackRecords } = await import("../lib/stack.js"); const G = { home: "CLE", away: "BAL", key: "BAL @ CLE" };
+  await noteFirstSeen(2096, 6, G, [{ id: "movepred|total", kind: "total", side: "under", line: 42.5, hit: 61.9, pick: "Under 42.5" }], "2096-10-14T00:00:00Z");   // vanishes before kickoff: never in stack:
+  await gradeFirstSeenWeek(2096, 6, [{ key: "BAL @ CLE", home: "CLE", away: "BAL", homeScore: 17, awayScore: 20 }]); const rec = await stackRecords(2096);
+  ok(rec["movepred|total"] && rec["movepred|total"].w === 1 && rec["movepred|total"].l === 0, "a pick that vanished before kickoff is graded at the line it was first shown (Under 42.5, final 37)", rec); }
 { const { floorDogPick } = await import("../lib/stack.js"); const G = { home: "IND", away: "TEN", key: "TEN @ IND" };
   const a = floorDogPick(G, -6.5, { away: { prevPts: 3 }, home: { prevPts: 27 } }), b = floorDogPick(G, 2.5, { home: { prevPts: 0 }, away: { prevPts: 20 } });
   ok(a && a.pick === "TEN +6.5" && a.hit === 57.1 && b && b.pick === "IND +2.5" && !floorDogPick(G, 6.5, { away: { prevPts: 3 }, home: { prevPts: 27 } })

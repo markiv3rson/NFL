@@ -220,6 +220,10 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   first line each pick was SHOWN at (`stackfirst:`), and the saved kickoff picks with first line, kickoff line, CLV and result.
 - CLV FIX 10/14: picks are recorded only at kickoff, so the first line now comes from `stackfirst:<season>:<week>` (write-once, saved
   when the slate first shows each pick; `lib/stack.js noteFirstSeen`). Before the fix CLV was always 0.
+- AUDIT FIX 10/14: picks were graded only if still on the card at kickoff -- timing picks (TOTAL MOVE, INJURY, LINE MOVE) that vanished
+  because the line moved their way were never graded. Now every pick is also saved (whole pick) the first time it is shown
+  (`stackfirst:`), graded by `gradeFirstSeenWeek` (lib/grade.js), and `stackRecords` (the record next to each pick) counts each pick once
+  per week+game+rule at its FIRST-SHOWN line. Known quirk: KEY NUMBER's line is always +3.5, so its LINE VALUE is always 0.
 - CLV tracker built: each card pick keeps the line it FIRST showed at (`first` in `stack:` records, `lib/stack.js recordStack/clvOf`);
   the kickoff line is the close. Models tab -> "LINE VALUE" tile: average points gained vs the close and % of picks that beat it.
 - "Line moved with/against the model" (game model side vs the open, 2014-26, 2,578 games): moved WITH 55.1% at the open (48.1% at the
