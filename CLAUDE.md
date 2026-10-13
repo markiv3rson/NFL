@@ -209,7 +209,7 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
 - `lib/stack.js floorDogPick`, green, recorded and graded: a team that scored 3 or less last game and is the UNDERDOG now -> that team at
   the current line. Nothing fitted. Closing 1999-2025 57.1% (294; periods 52/56/60/66); 2014-26 opening line 60.6% (94); shut out + dog
   61.2% (103). Favorite version 49.0% (not a pick). Found by stacking two near-misses ("scored <=3" 54.6% + underdog); the stacking was
-  1 of 5 tried -- watch it live. Week 6: TEN (scored 3) @ IND qualifies.
+  1 of 5 tried -- watch it live. Owner 10/14 (review flagged it): keep it GREEN. Week 6: TEN (scored 3) @ IND qualifies.
 - Same batch, NOT added: INJURY widened -- 2+ front-seven out 57.1% close but 42 games, 2022-26 50% open; skill starter out 52.8%; injury
   count gap 4+ 55.9% (59, 2022-26 44%). BOUNCE BACK 14+/17+ 51-52% (21+ stays). Missed by 14+ and scored <=10 -> 52-54%. Healthy team is
   also the home dog 47.5%; KEY-3 game where the dog is the healthy team 41.4% (30).
