@@ -245,13 +245,14 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   `situationFor`: if a team's last game isn't final yet, "last game" is unknown (it used to fall back two weeks -> BOUNCE BACK misfires).
   Bets tab: positions paged past 200 (open bets were stamped closed); a bet placed after MNF on next week's game isn't marked settled;
   TD legs need the scorer on the right team (as in grade.js). Rebuild drops ambiguous replay joins (same lines + same result, same week).
-  Not fixed (small): the chooser's model-lean factors for other seasons were fitted with the held-out season (slightly optimistic %).
+  FIXED 10/14 (owner: "fix all 5"): the chooser's honest test now hides the test season from EVERY row's model leans (two-level leave-one-
+  season-out, `weekly_rebuild.py F_for`): spreads 49.7 -> 49.4%, totals 50.8 -> 50.4% (dry run passed; goes live with the next Tuesday rebuild).
 - REVIEW 3 FIXES 10/14: TD model -- injury flags loaded at start-up (were empty for 30 min after each deploy) and last week's report is
   ignored until the team's new one (stale Questionable boosted backups). Scheduler: kickoff-wave rerun window 65->25 min before kickoff
   (a running postgame rerun made it skip). Wind Under paper: opening total from the first snapshot WITH a Polymarket total. Chooser: if the
   calibrated % for its side is under 50%, it flips to the other side. Starters-out recorder ignores failed loads. Cards: the old
   "★ Tested angle: Under" (wind) and "★ home fav 9.5+ ML" notes removed (angles dropped as picks); Models "Model's pick on every game"
-  shows the CARD's pick, not the game model's own side. Left: ~150 lines of unused front-end code (harmless).
+  shows the CARD's pick, not the game model's own side. (The ~150 lines of unused front-end code were removed 10/14.)
 - FIX 10/14: books are pulled only 2x a weekday (7 AM / 3 PM PT) to save credits, so overnight they pass the 8 h limit and KEY NUMBER
   vanished from the cards ~half the day. Now, when the books are stale, the latest Pinnacle line (30-min pull, under 1.5 h old) stands in
   for "the books sit on 3" (`lib/week.js`); the reason then says "Pinnacle at ...". Pinnacle fetch retries once (occasional 403s).
@@ -402,6 +403,10 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   deploys for `claude/**` branches, so only main deploys. Batch fixes into fewer merges. A rate-limited deploy is NOT retried by Vercel:
   after the limit resets, push to main (or press Redeploy in Vercel) and check the `x-build` header on /api/slate = main's commit.
 - Pinnacle pull retries after 3 s and 10 s (10 s per try); the single 2-s retry still failed ~1 pull in 3 overnight.
+- 10/14 (owner: "fix all 5"): a Pinnacle failure is logged only on the 2nd in a row (`lib/pinnacle.js pinnacleFailed`, key `pinfail`);
+  LINE VALUE leaves KEY NUMBER out (its line is always +3.5); ~140 lines of unused page code removed (old reasons/replay/open-move/price-gap/
+  teaser-strip/TD-calibration/by-week helpers and their tests); System page pings the Railway model service (`/health`, 5 s) and the
+  watchdog warns when it isn't answering.
 - ESPN (10/14): the plain scoreboard stays on LAST week until ~Wednesday and ESPN now rejects date ranges (HTTP 400), so the moved-game
   check found 0 of 14 games (site) and nothing at all (scheduler). Both now ask by week: `?dates=<season>&seasontype=2&week=<n>`
   (`lib/espnFinals.js`, `scheduler.py _espn_kickoffs`). TD retrain needs 6 played weeks before it tests (week 6 = first real test).
