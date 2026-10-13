@@ -266,6 +266,11 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   periods 51/69/59/51 (1 of 6 cuts) -> noise. One-score-game luck: 49-51%. Polymarket leaning 52c+ at its own line (weeks 3-5 saved
   snapshots): 68.8% on only 16 games, 55c+ almost never happens -> recheck later in the season.
 
+- Line-shape batch (10/14). None added: opening spread next to 3/7 rarely moves ONTO the key (opens 2.5 -> closes 3 only 27%; 6.5 -> 7
+  21%); betting at those opens 52.5-54.7%. Big favorite + low total -> dog 44.7-49.7%; short spread + high total -> dog 46-48%.
+  Division Under 52.9% open / 51.8% close; primetime Under 53.3% / 51.4%; division+primetime Under 55.9% open (229) but 51.7% close.
+  Total key numbers: opening 46.5 Under 58.8% (114) but closing 46.5 Under only 49.4% (239) and 46-48 range 51.3% (1,092) -> chance.
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
