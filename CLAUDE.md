@@ -392,6 +392,14 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   lost by 21+ now dog 53.4%; won by 30+ now fav -> fade 52.7%; scored 40+ now fav -> fade 50.0%; a team scored <=3 -> Over 51.5% /
   Under 48.5%; both teams scored <=10 -> Over 55.1% (136, 13/27); both allowed 35+ -> Under 55.1% (89, 1999-05 33%).
 
+## Vercel deploy limit (10/14)
+
+- The free (Hobby) plan rate-limits deployments; on 10/14 merges #275-#281 hit "Deployment rate limited -- retry in 24 hours" and the
+  site stayed on #274 (Railway deployed fine). Every push to the work branch also made a PREVIEW deploy. `vercel.json` now turns off
+  deploys for `claude/**` branches, so only main deploys. Batch fixes into fewer merges. A rate-limited deploy is NOT retried by Vercel:
+  after the limit resets, push to main (or press Redeploy in Vercel) and check the `x-build` header on /api/slate = main's commit.
+- Pinnacle pull retries after 3 s and 10 s (10 s per try); the single 2-s retry still failed ~1 pull in 3 overnight.
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
