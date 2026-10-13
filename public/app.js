@@ -385,6 +385,7 @@ function tdRow(x, i) {
 }
 const earlyNote = (g) => (g && g.early ? '<span class="pill p-y" style="padding:0 6px;font-size:10px">Early estimate</span>' : "");
 // One Anytime TD section for the slate in S: price moves, then the top 3 per team, most likely first.
+const BEST_TD = 55;
 function tdBody() {
   const rows = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).map((r) => ({ r, g })))
     .filter((x) => x.r.fair != null && usable(x.r)).sort((a, b) => b.r.fair - a.r.fair);
@@ -396,10 +397,14 @@ function tdBody() {
   const gaps = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).filter((r) => r.fair != null && r.price != null && Math.abs(r.price * 100 - r.fair) >= 20))
     .sort((a, b) => Math.abs(b.price * 100 - b.fair) - Math.abs(a.price * 100 - a.fair));
   const gapBox = gaps.length ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">⚠ Market disagrees · check the news</div>${gaps.map((r) => `<div class="row"><span>${esc(r.player)} <span class="dim">${esc(r.game)}${r.bid != null && r.price - r.bid >= 0.15 ? ` · price unreliable (best bid ${Math.round(r.bid * 100)}¢)` : ""}</span></span><span>model ${Math.round(r.fair)}% · Polymarket ${Math.round(r.price * 100)}¢</span></div>`).join("")}</div></div>` : "";
+  // Best TD picks (10/14, owner: "build now"): only the players the model gives 55%+ (shown chance, after injury discounts). Graded weeks 3-5:
+  // 55%+ players scored 17 of 21 (said 65%) vs 22% for every listed player -- the model's most confident tier, not a smarter model.
+  const best = rows.filter((x) => x.r.fair >= BEST_TD);
+  const bestBox = `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Best TD picks · model ${BEST_TD}%+</div>${best.length ? best.map((x) => `<div class="row"><span>${tlogo(x.r.team)}<b>${esc(x.r.player)}</b> <span class="dim">${esc(x.r.pos || "")} · ${esc(x.g.key)}${x.r.injury ? ` · ${esc(x.r.injury)}` : ""}</span></span><b class="g">${Math.round(x.r.fair)}%</b></div>`).join("") : '<div class="s">No player at 55%+ right now.</div>'}</div></div>`;
   // Top 3 per team (10/5): beyond the three likeliest scorers the rest is noise.
   const perTeam = {}, shown = rows.filter((x) => { const k = x.r.team; perTeam[k] = (perTeam[k] || 0) + 1; return perTeam[k] <= 3; });
   if (!rows.length) return `<div class="card" style="margin-top:10px"><div class="s">${S.games.length && S.games.every((g) => g.started) ? "No games left this week." : "No players yet."}</div></div>`;
-  return gapBox + moveBox + `<div class="card tdl"><div class="tdh"><span style="flex:1;padding-left:28px">PLAYER</span><span style="width:74px;text-align:right">MODEL</span><span style="width:60px;text-align:right;white-space:nowrap">${pmLogo()}PRICE</span></div>${shown.map(tdRow).join("")}</div>`;
+  return bestBox + gapBox + moveBox + `<div class="card tdl"><div class="tdh"><span style="flex:1;padding-left:28px">PLAYER</span><span style="width:74px;text-align:right">MODEL</span><span style="width:60px;text-align:right;white-space:nowrap">${pmLogo()}PRICE</span></div>${shown.map(tdRow).join("")}</div>`;
 }
 function renderTd() {
   const wk = S.week ? ` · Week ${S.week}` : "";
