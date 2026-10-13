@@ -282,6 +282,16 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   -> Under 46-48%, both Under -> Over 49-54%; final week home 53.0% / dog 49.2% / Under 49.1%; team pitched a shutout -> fade 51.0%;
   highest total of the week Under 53.6%, lowest Over 48.1%; Sunday 1 PM / 4 PM home 48-50%; West-coast teams at 1 PM ET 50-52%.
 
+- Batch 7 (10/14). Nothing added: starting QB back after missing last week -> his team 54.6% open / 50.5% close (111); as underdog
+  56.3% (71, 6/12 seasons), as favorite 40% (40). Green picks agreeing (replay 2014-26): 2+ rules on the same side 56.6% (53) -- no premium
+  over each alone (KEY 55.5, INJURY 56.2, BOUNCE 57.2, LINE MOVE 62.9); rules point OPPOSITE ways in 88 games (card shows the higher %).
+  TD model vs Polymarket at kickoff (prelog top TD candidates, weeks 3-5, 247 players / 31 games): Brier model 0.206 vs market 0.210;
+  when 10+ pts apart (52) model 0.174 vs market 0.189 -> encouraging, too small; recheck later. TD price drift: Polymarket TD prices
+  barely move in the week (2 of 263 moved 5+ pts) -> nothing to test. Rookie QB starts 1-8: 48-52%. Season ATS record after week 6:
+  fade 70%+ 52.1%, back <=30% 53.8%. International games: favorite 60.9% (69) but 2020-26 48%; next game fade 52.3%.
+  Popular teams (DAL/KC/PHI/GB/SF) on bye: 3+ in one week never happened 2014-26; 2+ only 6 weeks; average open->close spread move
+  1.48 (0 on bye) / 1.32 (1) / 1.60 (2); LINE MOVE in 2+ weeks 65.2% (23) vs 62.8% otherwise -> no effect.
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
