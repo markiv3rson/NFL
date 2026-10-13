@@ -14,6 +14,8 @@ export default async function handler(req, res) {
       (out[game] = out[game] || {}).pinnacle = { records: n, last }; }
     for (const [f, v] of Object.entries((await r.hgetall(skey(SEASON, week))) || {})) { const p = jp(v); if (!p || p.teaser) continue;
       (out[p.game] = out[p.game] || {}).picks = [...((out[p.game] || {}).picks || []), { id: p.id, pick: p.pick, hit: p.hit, first: p.first || null, line: p.line, savedAt: p.t, clv: clvOf(p), result: p.result || null }]; }
+    for (const [f, v] of Object.entries((await r.hgetall(`stackfirst:${SEASON}:${week}`)) || {})) { const [game, ...rest] = f.split("|"); const x = jp(v);
+      ((out[game] = out[game] || {}).firstSeen = (out[game] || {}).firstSeen || []).push({ pick: rest.join("|"), line: x && x.line, t: x && x.t }); }
     res.status(200).json({ ok: true, season: SEASON, week, games: out });
   } catch (e) { res.status(200).json({ ok: false, error: String(e).slice(0, 200) }); }
 }
