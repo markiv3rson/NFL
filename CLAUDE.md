@@ -104,6 +104,9 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   Regular season 2006-25, closing line exactly 3 (793 games): dog +3.5 won 58.1% (61/56/56% by period); fav -2.5 50.9%.
   The +3.5 usually costs ~53-55c. Shown as a green PICK, recorded and graded. Books at 10 -> dog +10.5 61% but only 160 games and
   uneven (54/75/59): not added. Books at 7 -> dog +7.5 51%: no.
+- Also tested 10/13, not added: half point on totals (finals land on any one total only 2-5%; Under 47.5 at books 47 won 58% on
+  205 but that's 1 of 10 numbers tried -- likely chance); moneyline vs spread disagreement 48-51%; unit vs unit matchups = the fixed
+  stat features below (no gain vs the spread).
 - Also tested 10/13, not added: a second model that learns when the chooser is wrong and switches sides (spreads 51.1% -> 49.0%,
   totals 52.6% -> 48.9% on unseen seasons); boosted-tree chooser (spreads 52%, totals 52-54%).
 
