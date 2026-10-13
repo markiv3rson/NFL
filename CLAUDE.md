@@ -271,6 +271,14 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   Division Under 52.9% open / 51.8% close; primetime Under 53.3% / 51.4%; division+primetime Under 55.9% open (229) but 51.7% close.
   Total key numbers: opening 46.5 Under 58.8% (114) but closing 46.5 Under only 49.4% (239) and 46-48 range 51.3% (1,092) -> chance.
 
+- Batch 6 (10/14, closing 1999-2025, open 2014+). Nothing added to the app:
+  OFFENSIVE FLOOR (watch list, paper candidate): team scored 0 last week -> bet it 64.2% open (53) / 57.4% close (155), periods
+  99-05/06-12/13-19/20-25 = 60/44/66/63, only 14/27 seasons over 50; scored <=3 -> 60.6% open (137) / 54.6% close (423), periods
+  53/52/54/61; <=6 52.8%; <=7 51.5%; <=10 51.5% (steady decline = likely real but small). Shut out, on the road 61.9% close (63).
+  No edge: line jumped 3/4/5+ toward a team vs last week's lines -> fade 51.9-52.0% close, 49% open; both teams Over by 10+/14+ last week
+  -> Under 46-48%, both Under -> Over 49-54%; final week home 53.0% / dog 49.2% / Under 49.1%; team pitched a shutout -> fade 51.0%;
+  highest total of the week Under 53.6%, lowest Over 48.1%; Sunday 1 PM / 4 PM home 48-50%; West-coast teams at 1 PM ET 50-52%.
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
