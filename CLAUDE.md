@@ -83,6 +83,17 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   road dogs, big dogs, +3/+3.5 dogs, division dogs, home dogs +3 or less (48-51.5%).
 - Picks are recorded at the same line the card shows (Polymarket first). Before 10/12 the recorder used the books' line first.
 
+## LINE MOVE on totals + edge hunt (Oct 13, 2026)
+
+- Added (`lib/stack.js lineMoveTotalPick`, nothing fitted): books' total 3+ off Polymarket's -> books' direction at Polymarket's
+  number. History 2014-26 at the opening total: moved 3+ 67.0% (376, 12/13 seasons); Action Network opener vs close 2023-25: 66.1%
+  (322). NOT picks: 2-2.9 56.1% (AN 2025 48%), 1-1.9 51-53%.
+- BIG CAVEAT: in 2026 weeks 3-5 Polymarket's total was never more than 1 point off the books (597 readings), and its spread never more
+  than 1.5. Polymarket follows the books, so both LINE MOVE rules rarely fire. The history edge is "bet the opener before the move";
+  the open problem is predicting the move early. Pinnacle (moves first) is being saved for exactly that test.
+- Tested, not added: model vs OPEN total 51-54% (56.2% only at 5+ apart, 8/13 seasons); wind 10+ Under at close 58.7% but 2024 42%,
+  2025 48% (market caught up; also uses game-time wind, not the forecast); open total 50+ Under 54.7%; open total <=38 Over 53.5%.
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's

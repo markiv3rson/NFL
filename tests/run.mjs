@@ -179,6 +179,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     "line move: only when both the sportsbook and Polymarket readings are recent");
   ok(!lineMovePick(G, pm(17.5, 0.505, 0.99), pm(-11.5)) && !lineMovePick(G, pm(-2.5, 0.95, 0.06), pm(-3.5)) && lineMovePick(G, pm(-2.5, 0.53, 0.48), pm(-3.5)),
     "line move: never on a dead one-sided Polymarket book (10/4 BAL +17.5 at 0.99)"); }
+{ const { lineMoveTotalPick, gradeStackPick } = await import("../lib/stack.js"); const G = { home: "LA", away: "BUF", key: "BUF @ LA" };
+  const pt = (line, o = 0.5, u = 0.5) => ({ total: { line, over: o, under: u } }), bt = (line) => ({ total: { line } });
+  const up = lineMoveTotalPick(G, pt(44.5), bt(47.5)), dn = lineMoveTotalPick(G, pt(47.5), bt(44));
+  ok(up && up.pick === "Over 44.5" && up.hit === 67 && dn && dn.pick === "Under 47.5" && !lineMoveTotalPick(G, pt(44.5), bt(47)) && !lineMoveTotalPick(G, pt(44.5, 0.97, 0.04), bt(48))
+    && gradeStackPick({ ...up, home: "LA" }, 24, 21) === "W" && gradeStackPick({ ...dn, home: "LA" }, 30, 20) === "L",
+    "line move on totals: books 3+ off Polymarket -> the books' direction at Polymarket's number; under 3 or a dead book -> nothing"); }
 { const { parseSplits } = await import("../lib/splits.js"); const { parseBooks } = await import("../lib/books.js");
   const j = { games: [{ away_team_id: 1, home_team_id: 2, teams: [{ id: 1, abbr: "BUF", full_name: "Buffalo Bills" }, { id: 2, abbr: "LAR", full_name: "Los Angeles Rams" }],
     odds: [{ book_id: 15, spread_home: -3.5, spread_home_public: 38, spread_home_money: 61, total_over_public: 70, junk: { x: 1 } }] }] };
