@@ -230,6 +230,25 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   Box count rushing (participation 2016-25): 51.5% open, error worse. Big favorites (6+) with WEAK light-box rushing covered 60.9% at
   the open (128) but strong-rushing big favorites also 54.4% -- big favorites cover the open generally; not a rushing effect.
 
+## Untested-list batch (Oct 13-14, 2026 night) -- nothing added to the app
+
+- Unseen seasons; spreads graded at the open / close; margin error vs the line alone (~9.90). NONE cleared 56% steadily:
+  FTN charting 2022+ 48-50%, error worse (9.50 -> 9.57). Man/zone coverage fit 2018+ 47-51%, error worse. Late-season motivation:
+  winning team vs eliminated-ish team 55% open / 53% close. Salary-weighted injuries (Out/Doubtful % of cap): 10%+ gap 57.0% open but
+  51.5% close; with "line not moved 1+" 56.1% (255) but the games outside the INJURY pick only 53.3% and falling by period -> it is the
+  INJURY edge again. Books exactly 10 -> dog +10.5 (1999-2025) 58.4% (202) but periods 48/54/75/59, 16/28 seasons -> not added.
+  Spread version of TOTAL MOVE with the features the site can compute live: 51% (the earlier 55.9% used research-only inputs).
+  GDELT news timing: not testable (rate-limited, ~3-month window, no past mid-week lines) -> covered by the live recording.
+- Macro angles: road team 2nd straight road game + 2 zones -> fade 53.0% open / 50.7% close; back-to-back long trips 48.5% open;
+  spread <=2.5 with a top-5 point-differential-variance team -> favorite 56.6% close (256) but 54.4% open, 11/20 seasons (uneven);
+  divisional rematch after a 14+ win -> loser 47-49%, game-1 margin makes rematch error worse (10.184 -> 10.190).
+- Cross-asset: TOTAL MOVE predicts the total DOWN (top 20% / 10%) -> underdog at the open 49.5% / 48.4% (baseline 49.7%). Dead.
+- TD model + Next Gen Stats (walk-forward 2021-25, Brier, lower = better). FIRST run leaked (NGS lists a player only in weeks he gets
+  enough volume, so a same-week merge told the model who got the ball) -- always merge NGS with earlier weeks only (merge_asof).
+  Leak-free: base 0.15609 avg; all NGS (separation, YAC over expected, rush yards over expected) 0.15594, better 5/5 seasons;
+  rush over expected alone 0.15590, 5/5; separation+YAC alone 2/5. Gain ~0.1% (would not move a shown TD % by a point). NOT added
+  yet -- needs a weekly NGS download in td_prob.py; owner to decide.
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
