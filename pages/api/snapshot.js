@@ -90,13 +90,15 @@ export default async function handler(req, res) {
         await redis.rpush(`splits:${season}:${week}:${g.key}`, JSON.stringify({ t, src, rows })); await redis.ltrim(`splits:${season}:${week}:${g.key}`, -60, -1); n++; }
       splitsNote = `${n} games, ${sp.fields} split fields`;
     } catch (e) { splitsNote = String(e).slice(0, 120); await logError("splits", `Action Network lines pull failed: ${splitsNote}`).catch(() => {}); }
-    // Pinnacle main spread / total, 10/13: recorded the same way (Redis pinnacle:<season>:<week>:<game>, last 60). Not shown or used for
-    // picks until tested on unseen games. A failed pull is logged and never stops the snapshot.
+    // Pinnacle main spread / total, 10/13: recorded the same way (Redis pinnacle:<season>:<week>:<game>, last 60) on every snapshot, for
+    // EVERY not-started game Pinnacle lists -- next week's too, under that game's own week, so its early lines are kept (owner: "do it
+    // now"). Not shown or used for picks until tested on unseen games. A failed pull is logged and never stops the snapshot.
     let pinNote = null;
-    if (open.length && src !== "manual") try {
+    try {
       const pin = await fetchPinnacle(); let n = 0;
-      for (const g of open) { const line = pin[g.key]; if (!line) continue;
-        await redis.rpush(`pinnacle:${season}:${week}:${g.key}`, JSON.stringify({ t, src, ...line })); await redis.ltrim(`pinnacle:${season}:${week}:${g.key}`, -60, -1); n++; }
+      const seen = new Set(), ahead = (await loadGames(season)).filter((g) => !started(g) && pin[g.key] && !seen.has(g.key) && seen.add(g.key));   // next meeting only
+      for (const g of ahead) { const k = `pinnacle:${season}:${g.week}:${g.key}`;
+        await redis.rpush(k, JSON.stringify({ t, src, ...pin[g.key] })); await redis.ltrim(k, -60, -1); n++; }
       pinNote = `${n} games`;
     } catch (e) { pinNote = String(e).slice(0, 120); await logError("pinnacle", `Pinnacle lines pull failed: ${pinNote}`).catch(() => {}); }
     const model = open.length ? await loadModel(season, week).catch(() => null) : null;

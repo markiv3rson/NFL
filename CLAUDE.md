@@ -95,9 +95,9 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   splits aren't free anyway.
 - B: each sportsbook's own spread/total on every books pull (`byBook` in the books data and snapshots), for testing line moves per
   book and by time of week.
-- C (10/13): Pinnacle's free guest feed (sharpest book) -- full-game main spread/total saved on every scheduled snapshot
-  (`lib/pinnacle.js`, Redis `pinnacle:<season>:<week>:<game>`). No history exists, so it needs ~half a season before any test;
-  LINE MOVE's 63.2% was measured on the consensus line, not Pinnacle's. A failed pull is logged ("Pinnacle lines pull failed").
+- C (10/13): Pinnacle's free guest feed (sharpest book) -- full-game main spread/total saved on every snapshot for every
+  not-started game it lists, next week's included (`lib/pinnacle.js`, Redis `pinnacle:<season>:<week>:<game>`; check: `/api/pinnaclecheck`). No history exists, so it needs ~half a season before any test;
+  LINE MOVE's 63.2% was measured on the consensus line, not Pinnacle's. A failed pull shows in 9 · System → "Errors (last 2 days)".
 
 ## Game model — already tested, not added
 
