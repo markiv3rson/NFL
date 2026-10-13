@@ -404,6 +404,13 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   check found 0 of 14 games (site) and nothing at all (scheduler). Both now ask by week: `?dates=<season>&seasontype=2&week=<n>`
   (`lib/espnFinals.js`, `scheduler.py _espn_kickoffs`). TD retrain needs 6 played weeks before it tests (week 6 = first real test).
 
+## Database space (10/14, owner: "build now")
+
+- The database is Redis Cloud's FREE plan: **30 MB** (Vercel -> Storage -> Redis "redis-amber-clock"; no monthly command cap). It held
+  ~12 MB after week 5 and grew ~3-4 MB per finished week (full by ~week 10). `lib/compact.js compactOldWeeks` (run by every
+  /api/results/grade call) shrinks a week ONCE when it is over and every game is graded: `tdpxhist:` -> first + last entry, `rerunlog:` ->
+  newest 5 (marker `compacted:<s>:<w>`). Lines, picks, records, results untouched. System shows "x of 30 MB"; the watchdog warns past 80%.
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
