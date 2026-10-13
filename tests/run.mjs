@@ -535,6 +535,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const g1 = parseGame(mkts, "MIA", "MIN"), g2 = parseGame([mkts[0], mkts[2]], "MIA", "MIN"), g3 = parseGame([mkts[1]], "MIA", "MIN");
     ok(g1.spread && g1.spread.homeSpread === -10, "poly parse: the main spread wins over an unpriced alternate that sits at 50%");
     ok(g2.spread === undefined && g3.spread && g3.spread.homeSpread === -10, "poly parse: an alternate that does not fit the moneyline is never taken as the game spread; with no moneyline the one real line is used");
+    { const pk = parseGame([mk("moneyline", "Saints vs. Giants", ["New Orleans Saints", "New York Giants"], ["0.515", "0.485"]),
+        mk("spreads", "Spread: New York Giants (-1.5)", ["New York Giants", "New Orleans Saints"], ["0.48", "0.52"], { bestBid: 0.47, bestAsk: 0.49 }),
+        mk("spreads", "Spread: New Orleans Saints (-1.5)", ["New Orleans Saints", "New York Giants"], ["0.475", "0.525"], { bestBid: 0.46, bestAsk: 0.49 })], "NO", "NYG");
+      ok(pk.spread && pk.spread.homeSpread === 1.5, "poly parse: pick'em with both teams at -1.5 -> the moneyline favorite's line (NO -1.5), not the one a hair nearer 50%", pk.spread); }
     const ga = parseGame([...mkts, mk("spreads", "Spread: Minnesota Vikings (-1.5)", ["Minnesota Vikings", "Miami Dolphins"], ["0.79", "0.21"], { bestBid: 0.78, bestAsk: 0.8 })], "MIA", "MIN");
     const alt = (t, l) => (ga.alts || []).find((x) => x.team === t && x.line === l);
     ok(alt("MIN", -1.5).price === 0.8 && Math.abs(alt("MIA", 1.5).price - 0.22) < 1e-9 && alt("MIA", 10) && !alt("MIN", 19.5) && !alt("MIA", -19.5), "poly parse: alternate spreads keep both sides at the buy price; an unpriced placeholder is left out");
