@@ -17,6 +17,7 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 
 ## What the app shows (owner's layout rules)
 
+- Tab bar (10/13): at the bottom, icon over each name, plus the Alerts bell; same rose color as the Lines / Model buttons (NOT green).
 - Model card: ONE answer — the model's number (purple), then **PICK** — green at 56%+ (with its short reason, e.g. LINE MOVE), yellow
   below it with NO notes (owner 10/13: "too many notes"). Always a PICK, never LEAN. No teasers on cards; market lines only.
 - Teasers: CUT from Game Lines 10/13 (owner never bets them). The code stays; teaser legs are still recorded and graded.
@@ -190,8 +191,7 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   predicts how far the total will move from its OPENING number. While the total is within half a point of its opening number and the
   prediction is strong, take that direction at that number. Unseen seasons 2014-26, bet at the opening total: top 20% 57.4% (507 games,
   11/12 seasons), top 10% 61.9% (252). Refit weekly (`weekly_rebuild.py train_move`, published as `moveT`; dry run passed).
-- Owner 10/13: "Don't make it green" -- it shows as a YELLOW pick only (no notes), never in Best bets or parlays (`soft` in app.js
-  straightPicks). Still recorded and graded with the card picks. Same family as the early-week total that went 11-18 live: watch it.
+- Shown as a green PICK (hit 57/62 >= 56%), recorded and graded. Same family as the early-week total that went 11-18 live: watch it.
 - Same method on spreads: top 10% 55.9%, top 20% 53% -- not added. Also tested 10/13, no edge: Poisson scoring model (49.3% totals),
   538 Elo rebuilt (52.2%), MGM money vs bets splits (spreads 47.8%).
 
