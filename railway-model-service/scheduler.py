@@ -3,6 +3,7 @@ Snapshot scheduler (runs inside the Railway service, 24/7).
 Calls the site's /api/snapshot on Mark's schedule, Pacific time:
   Sunday:  6, 7, 8, 9, 10 AM, 12 PM, 3 PM   (Polymarket + sportsbooks)
   Mon-Sat: 7 AM, 12 PM, 3 PM, 7 PM           (Polymarket + sportsbooks)
+  Every 30 min (:10 and :40): Pinnacle lines + Polymarket's at the same moment (/api/pinnaclepull, recorded only)
   Every kickoff: 3 minutes before -> closing-line snapshot (Polymarket; books reused)
   Every distinct kickoff wave: ~60 min before -> model rerun (catches that wave's active/inactive news)
   Every 15 min: a new nflverse final -> model rerun (src=postgame)
@@ -197,6 +198,11 @@ def _loop():
                 # (each retry pulled again), so the month could run dry. Books are reference only; 16 a week is plenty.
                 bk = "&books=1" if (now_pt.hour in BOOK_HOURS_SUN if now_pt.weekday() == 6 else now_pt.hour in BOOK_HOURS_WK) else ""
                 if tag not in fired: fired[tag] = time.time(); _bg("snapshot", _call, "/api/snapshot?src=schedule" + bk, tries=2)   # 2 tries, not 3: a timeout usually means it DID run, and each retry appended a duplicate snapshot (and re-pulled books)
+            # Pinnacle every 30 min (10/13, owner): Pinnacle moves first; saved with Polymarket's line at the same moment so "Pinnacle moved,
+            # Polymarket hasn't" can be tested. Free feed, no credits. Recorded only.
+            if now_pt.minute % 30 >= 10 and now_pt.minute % 30 < 15:
+                tag = f"p:{now_pt:%Y-%m-%d-%H}-{now_pt.minute // 30}"
+                if tag not in fired: fired[tag] = time.time(); _bg("pinnacle", _call, "/api/pinnaclepull", tries=1, timeout=90)
             nowu = datetime.now(timezone.utc)
             due = {}
             for k, game in kicks:

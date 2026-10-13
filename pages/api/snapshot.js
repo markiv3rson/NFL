@@ -2,21 +2,21 @@
 // plus sportsbook consensus when books=1. Called by the Railway scheduler (7/12/3/7 PT, Sunday
 // 6/7/8/9/10/12/3 PT, and just before each kickoff with kickoff=<game>) and by the Refresh button.
 import { tablePicks, recordStack, lineMovePick, lineMoveTotalPick } from "../../lib/stack";
-import { venue } from "../../lib/wind";
-import { recordTeaser, recordTotalLeg, teaserLeg, totalMove, recordEarlyTotal, tkey } from "../../lib/teaser";
+import { venue, windAtKickoff } from "../../lib/wind";
+import { recordTeaser, recordTotalLeg, teaserLeg, totalMove, recordEarlyTotal, tkey, WIND_U_MPH } from "../../lib/teaser";
 import { comboFactors } from "../../lib/stack";
 import { loadComboModel } from "../../lib/combomodel";
 import { recordAltValues } from "../../lib/altfair";
 import { alertTeaser, alertsTdNo } from "../../lib/alerts";
 import { applyCalibration } from "../../lib/calibration";
 import { tdRows } from "../../lib/picks";
-import { SEASON, currentWeek, loadGames, loadSeason, started } from "../../lib/games";
+import { SEASON, currentWeek, loadGames, started } from "../../lib/games";
 import { getRedis, jparse, getJSON, setJSON, K, SLATE_CACHE } from "../../lib/redis";
 import { fetchEvents, gameLines, tdProps } from "../../lib/poly";
 import { sanePoly } from "../../lib/sane";
 import { fetchBooks } from "../../lib/books";
 import { fetchSplits } from "../../lib/splits";
-import { fetchPinnacle } from "../../lib/pinnacle";
+import { savePinnacle } from "../../lib/pinnacle";
 import { gradeRecent } from "../../lib/grade";
 import { syncAccount } from "../../lib/mybets";
 import { logError } from "../../lib/status";
@@ -95,10 +95,7 @@ export default async function handler(req, res) {
     // now"). Not shown or used for picks until tested on unseen games. A failed pull is logged and never stops the snapshot.
     let pinNote = null;
     try {
-      const pin = await fetchPinnacle(); let n = 0;
-      const seen = new Set(), ahead = (await loadSeason(season)).filter((g) => !started(g) && pin[g.key] && !seen.has(g.key) && seen.add(g.key));   // next meeting only
-      for (const g of ahead) { const k = `pinnacle:${season}:${g.week}:${g.key}`;
-        await redis.rpush(k, JSON.stringify({ t, src, ...pin[g.key] })); await redis.ltrim(k, -60, -1); n++; }
+      const n = await savePinnacle(redis, season, t, src);
       pinNote = `${n} games`;
     } catch (e) { pinNote = String(e).slice(0, 120); await logError("pinnacle", `Pinnacle lines pull failed: ${pinNote}`).catch(() => {}); }
     const model = open.length ? await loadModel(season, week).catch(() => null) : null;
@@ -131,6 +128,15 @@ export default async function handler(req, res) {
         const f0 = jparse(await redis.lindex(K.snaps(season, week, g.key), 0)), so = f0 && f0.poly && f0.poly.spread ? f0.poly.spread.homeSpread : null, to = f0 && f0.poly && f0.poly.total ? f0.poly.total.line : null;
         if (mgE && poly.spread) { const v = venue(g) || {}, c = comboFactors({ ...g, outdoor: !!v.outdoor }, mgE, poly.spread.homeSpread, poly.total.line, so, to, await situationFor(season, week, g).catch(() => null), Number(week));
           if (c) await recordEarlyTotal(season, week, g, c.early, to, poly.total.line, t); }
+      } catch {}
+      // Early-week wind Under (10/13, owner: "build both"): saved ONCE, the first time the kickoff forecast says wind 10+ at an outdoor
+      // stadium while Polymarket's total is still at its first number this week; graded at that number. Paper only (history at the
+      // opening total 60.5% 2014-26, but 2024 51% / 2025 52%, so it gets a live test first).
+      if (poly && poly.total && !snap.suspect && !(await redis.hexists(tkey(season, week), `${g.key}|windU`).catch(() => 1))) try {
+        const f0 = jparse(await redis.lindex(K.snaps(season, week, g.key), 0)), to = f0 && f0.poly && f0.poly.total ? f0.poly.total.line : null;
+        if (to != null && Math.abs(poly.total.line - to) < 0.5) { const wk = await windAtKickoff(g);
+          if (wk.outdoor && wk.wind != null && wk.wind >= WIND_U_MPH) await redis.hsetnx(tkey(season, week), `${g.key}|windU`,
+            JSON.stringify({ game: g.key, kind: "total", windU: true, side: "under", base: to, line: to, wind: wk.wind, week, t })); }
       } catch {}
       const px = await tdProps(events, g.away, g.home).catch(() => null);
       if (px) {

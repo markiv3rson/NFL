@@ -885,11 +885,12 @@ function comboRow() {
 function teaserRow() {
   const T = TEASERS; if (!T) return "";
   const ee = T.early, eRow = ee ? `<div class="arow"><span class="nm">Early-week total (at the opening number)</span><span class="dim rc">${ee.n ? `${ee.w}–${ee.l}` : ee.recorded ? `${ee.recorded} saved` : "none yet"}</span><b class="${ee.n ? (ee.hit >= 0.545 ? "g" : ee.hit >= 0.5 ? "y" : "r") : "dim"}">${ee.n ? Math.round(ee.hit * 100) + "%" : "—"}</b></div>` : "";
+  const wu = T.windU, wRow = wu ? `<div class="arow"><span class="nm">Early-week Under, wind 10+ forecast (opening number)</span><span class="dim rc">${wu.n ? `${wu.w}–${wu.l}` : wu.recorded ? `${wu.recorded} saved` : "none yet"}</span><b class="${wu.n ? (wu.hit >= 0.56 ? "g" : wu.hit >= 0.5 ? "y" : "r") : "dim"}">${wu.n ? Math.round(wu.hit * 100) + "%" : "—"}</b></div>` : "";
   const mm = T.moves, mRow = mm ? `<div class="arow"><span class="nm">Under after total fell 3+</span><span class="dim rc">${mm.n ? `${mm.w}–${mm.l}` : mm.recorded ? `${mm.recorded} saved` : "none yet"}</span><b class="${mm.n ? (mm.hit >= 0.55 ? "g" : mm.hit >= 0.5 ? "y" : "r") : "dim"}">${mm.n ? Math.round(mm.hit * 100) + "%" : "—"}</b></div>` : "";
   const tt = T.totals, tRow = tt ? `<div class="arow"><span class="nm">Total moved 6 (model's side)</span><span class="dim rc">${tt.n ? `${tt.w}–${tt.l}` : tt.recorded ? `${tt.recorded} saved` : "none yet"}</span><b class="${tt.n ? (tt.hit >= 0.67 ? "g" : tt.hit >= 0.6 ? "y" : "r") : "dim"}">${tt.n ? Math.round(tt.hit * 100) + "%" : "—"}</b></div>` : "";
   const a = T.all || {}, v = T.value || {}, pc = (x) => (x == null ? "—" : `${Math.round(x * 100)}%`);
   return `<div class="arow"><span class="nm">Underdog +1.5–2.5 teased to +7.5–8.5</span><span class="dim rc">${a.n ? `${a.w}–${a.l}` : T.recorded ? `${T.recorded} saved` : "none yet"}</span><b class="${a.n ? (a.hit >= 0.76 ? "g" : a.hit >= 0.72 ? "y" : "r") : "dim"}">${a.n ? pc(a.hit) : "—"}</b></div>` +
-    `<div class="s dim">History ${T.hist.years}: ${Math.round(T.hist.hit * 1000) / 10}% of ${T.hist.n}</div>` + tRow + mRow + eRow;
+    `<div class="s dim">History ${T.hist.years}: ${Math.round(T.hist.hit * 1000) / 10}% of ${T.hist.n}</div>` + tRow + mRow + eRow + wRow;
 }
 // Decision model (10/9): straight bets only (no teasers, no alt lines), ONE pick per game per market (spread, total): the one
 // with the best record. Two angles on opposite sides of the same total no longer both show.
