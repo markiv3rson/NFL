@@ -18,7 +18,10 @@ from zoneinfo import ZoneInfo
 PT, ET = ZoneInfo("America/Los_Angeles"), ZoneInfo("America/New_York")
 SUNDAY = [6, 7, 8, 9, 10, 12, 15]
 WEEKDAY = [7, 12, 15, 19]
-BOOK_HOURS_WK, BOOK_HOURS_SUN = {7, 15}, {7, 9, 12, 15}   # sportsbook pulls: 2 a weekday + 4 Sunday = 16/week (~210 credits/month)
+BOOK_HOURS_WK, BOOK_HOURS_SUN = {7, 15}, {7, 9, 12, 15}   # FULL sportsbook pulls (moneyline + spreads + totals, 3 credits)
+# 10/14 (owner): the books are pulled at EVERY scheduled snapshot; the hours above are full pulls, the rest skip the moneyline (&books=2,
+# 2 credits) -> 31 pulls a week, about 340 of the 500 free credits a month. The site counts a books reading as current until the next
+# scheduled pull (lib/books.js BOOK_PULLS / booksFresh -- keep it the same as WEEKDAY / SUNDAY here).
 SCHED_URL = "https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv"
 _started = False
 
@@ -195,8 +198,8 @@ def _loop():
                 tag = f"s:{now_pt:%Y-%m-%d-%H}"
                 # Sportsbook pull (3 credits of the 500/month free tier) only on some snapshots: before 9/28 every one
                 # pulled books -- 31 a week, ~405 credits a month before retries, and a slow site makes _call retry
-                # (each retry pulled again), so the month could run dry. Books are reference only; 16 a week is plenty.
-                bk = "&books=1" if (now_pt.hour in BOOK_HOURS_SUN if now_pt.weekday() == 6 else now_pt.hour in BOOK_HOURS_WK) else ""
+                # (each retry pulled again), so the month could run dry. Books feed LINE MOVE / KEY NUMBER; every snapshot again (10/14), extra ones at 2 credits.
+                bk = "&books=1" if (now_pt.hour in BOOK_HOURS_SUN if now_pt.weekday() == 6 else now_pt.hour in BOOK_HOURS_WK) else "&books=2"
                 if tag not in fired: fired[tag] = time.time(); _bg("snapshot", _call, "/api/snapshot?src=schedule" + bk, tries=2)   # 2 tries, not 3: a timeout usually means it DID run, and each retry appended a duplicate snapshot (and re-pulled books)
             # Pinnacle every 30 min (10/13, owner): Pinnacle moves first; saved with Polymarket's line at the same moment so "Pinnacle moved,
             # Polymarket hasn't" can be tested. Free feed, no credits. Recorded only.
