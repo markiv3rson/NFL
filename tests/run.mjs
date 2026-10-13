@@ -185,6 +185,14 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(up && up.pick === "Over 44.5" && up.hit === 67 && dn && dn.pick === "Under 47.5" && !lineMoveTotalPick(G, pt(44.5), bt(47)) && !lineMoveTotalPick(G, pt(44.5, 0.97, 0.04), bt(48))
     && gradeStackPick({ ...up, home: "LA" }, 24, 21) === "W" && gradeStackPick({ ...dn, home: "LA" }, 30, 20) === "L",
     "line move on totals: books 3+ off Polymarket -> the books' direction at Polymarket's number; under 3 or a dead book -> nothing"); }
+{ const { keyNumberPick, gradeStackPick } = await import("../lib/stack.js"); const G = { home: "LA", away: "BUF", key: "BUF @ LA" };
+  const sp = (hs, h = 0.5, a = 0.5, alts) => ({ spread: { homeSpread: hs, home: h, away: a }, ...(alts ? { alts } : {}) }), bk = (hs) => ({ spread: { homeSpread: hs } });
+  const main = keyNumberPick(G, sp(-3.5, 0.48, 0.53), bk(-3)), alt = keyNumberPick(G, sp(-2.5), bk(-3), [{ team: "BUF", line: 3.5, price: 0.56 }]);
+  const homeDog = keyNumberPick(G, sp(2.5), bk(3), [{ team: "LA", line: 3.5, price: 0.55 }]);
+  ok(main && main.pick === "BUF +3.5" && main.price === 0.53 && alt && alt.pick === "BUF +3.5" && alt.price === 0.56 && homeDog && homeDog.pick === "LA +3.5"
+    && !keyNumberPick(G, sp(-3.5), bk(-3.5)) && !keyNumberPick(G, sp(-2.5), bk(-3)) && !keyNumberPick(G, sp(-2.5), bk(-3), [{ team: "BUF", line: 3.5, price: 0.95 }])
+    && gradeStackPick({ ...main, home: "LA" }, 24, 21) === "W" && gradeStackPick({ ...main, home: "LA" }, 28, 21) === "L",
+    "key number: books at exactly 3 -> underdog +3.5 on Polymarket (main or alternate); wins when the favorite wins by exactly 3"); }
 { const { parseSplits } = await import("../lib/splits.js"); const { parseBooks } = await import("../lib/books.js");
   const j = { games: [{ away_team_id: 1, home_team_id: 2, teams: [{ id: 1, abbr: "BUF", full_name: "Buffalo Bills" }, { id: 2, abbr: "LAR", full_name: "Los Angeles Rams" }],
     odds: [{ book_id: 15, spread_home: -3.5, spread_home_public: 38, spread_home_money: 61, total_over_public: 70, junk: { x: 1 } }] }] };
