@@ -235,6 +235,12 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   Bets tab: positions paged past 200 (open bets were stamped closed); a bet placed after MNF on next week's game isn't marked settled;
   TD legs need the scorer on the right team (as in grade.js). Rebuild drops ambiguous replay joins (same lines + same result, same week).
   Not fixed (small): the chooser's model-lean factors for other seasons were fitted with the held-out season (slightly optimistic %).
+- REVIEW 3 FIXES 10/14: TD model -- injury flags loaded at start-up (were empty for 30 min after each deploy) and last week's report is
+  ignored until the team's new one (stale Questionable boosted backups). Scheduler: kickoff-wave rerun window 65->25 min before kickoff
+  (a running postgame rerun made it skip). Wind Under paper: opening total from the first snapshot WITH a Polymarket total. Chooser: if the
+  calibrated % for its side is under 50%, it flips to the other side. Starters-out recorder ignores failed loads. Cards: the old
+  "★ Tested angle: Under" (wind) and "★ home fav 9.5+ ML" notes removed (angles dropped as picks); Models "Model's pick on every game"
+  shows the CARD's pick, not the game model's own side. Left: ~150 lines of unused front-end code (harmless).
 - CLV tracker built: each card pick keeps the line it FIRST showed at (`first` in `stack:` records, `lib/stack.js recordStack/clvOf`);
   the kickoff line is the close. Models tab -> "LINE VALUE" tile: average points gained vs the close and % of picks that beat it.
 - "Line moved with/against the model" (game model side vs the open, 2014-26, 2,578 games): moved WITH 55.1% at the open (48.1% at the

@@ -245,7 +245,8 @@ function winnersBox(mode = "picks") {
     (W.top4 && W.top4.n ? `<div class="row"><span class="dim">MONEYLINE · each week's top 4</span><span>${W.top4.w}–${W.top4.l} · right ${pc(W.top4.hit)}</span></div>` : "") : '';
   if (mode === "records") return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Records · model's side</div>${rec}${W && W.stats && W.stats.n ? `<div class="row"><span class="dim">MONEYLINE · stats</span><span>${W.stats.w}–${W.stats.l} · right ${pc(W.stats.hit)}</span></div>` : ""}${pickRec("spread", "Spreads")}${pickRec("total", "Totals")}</div></div>`;
   return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Model's pick on every game</div>` +
-    (list.slice(0, WINALL ? 99 : 8).map((x, i) => { const g = S.games.find((y) => y.key === x.game), sides = g ? modelSide(g) : [], sp = sides.find((s) => s.market === "Spread"), tt = sides.find((s) => s.market === "Total");
+    (list.slice(0, WINALL ? 99 : 8).map((x, i) => { const g = S.games.find((y) => y.key === x.game), cp = g && !g.started ? straightPicks(g, 0) : [], sp0 = cp.find((c) => !/^(Over|Under)\b/.test(c.pick) && !/\bML\b/.test(c.pick)), tt0 = cp.find((c) => /^(Over|Under)\b/.test(c.pick)),
+        sp = sp0 ? { label: sp0.pick, gap: 99 } : null, tt = tt0 ? { label: tt0.pick, gap: 99 } : null;   // review fix 10/14: the CARD's pick (CLAUDE.md: never show the game model's own side as a pick)
       const tdp = g ? (g.td || []).filter((r) => r.fair != null && !/^(out|doubtful)$/i.test(r.injury || "")).sort((a, b) => b.fair - a.fair)[0] : null;   // the game's most likely scorer
       return `<div class="row" style="display:block"><div style="display:flex;justify-content:space-between;gap:8px"><span>${i + 1}. <b>${esc(x.team)}</b> over ${esc(x.opp)}</span><span>${Math.round(x.p * 100)}%${x.price ? ` <span class="dim">· ${Math.round(x.price * 100)}¢</span>` : ""}</span></div>` +
         `<div class="s">Spread <b>${sp ? esc(sp.label) : "—"}</b>${sp && sp.gap <= 1 ? ' <span class="dim">(agrees)</span>' : ""} · Total <b>${tt ? esc(tt.label) : "—"}</b>${tt && tt.gap <= 1 ? ' <span class="dim">(agrees)</span>' : ""} · TD <b>${tdp ? `${esc(tdp.player)} ${Math.round(tdp.fair)}%` : "—"}</b></div></div>`; }).join("") || '<div class="s">No lines yet.</div>') +
@@ -291,7 +292,7 @@ function gameCard(g, i) {
       (p.ml ? row("Moneyline", `${g.home} ${odds(toAmerican(p.ml.home))}`, !!p.spread, "mlc") + row("", `${g.away} ${odds(toAmerican(p.ml.away))}`, false, "mlc") : "") : dash) + liveTail(g, lv);
     // Tested angle (9/30): home favorites of 9.5+ on the moneyline, the one game-line angle that held up on unseen years
     const hsNow = p.spread ? p.spread.homeSpread : b.spread ? b.spread.homeSpread : null;
-    const angle = !g.final && hsNow != null && hsNow <= -9.5 ? `<div class="s g" style="margin:6px 0 0">★ ${g.home} ML · home fav 9.5+ · won 88% 2007–25</div>` : "";
+    const angle = "";   // review fix 10/14: angles were dropped as picks (CLAUDE.md) -- the card shows ONE answer
     return `<div class="card${g.final ? " fin" : ""}"><div class="inner">${headButtons(g, "l" + i)}${angle}<div class="f">${HDR}` +
       `<div><div class="k">SPORTSBOOK</div>${b.spread ? `${g.home} ${sgn(b.spread.homeSpread)} ${odds(b.spread.home.odds)}<div class="s">fair ${g.home} ${odds(toAmerican(b.spread.home.fair))} / ${g.away} ${odds(toAmerican(b.spread.away.fair))}</div>` : dash}</div>` +
       leanCell(g, "spread") +
@@ -309,7 +310,7 @@ function totalCard(g, i) {
     // Tested angle (10/1): outdoor games with 12+ mph wind went Under the closing total 56.1% of the time, 2007-25 (786 games), and it
     // beat break-even in all three periods (53.7 / 58.1 / 56.7%). The slope is real too: each mph takes ~0.18 pts off what the line allows for.
     // Model first (10/6): when the model leans Over, the angle is left off the card (the model already counts the wind); it is still tracked in Models.
-    const wd = g.model && g.model.outdoor && g.model.wind != null && g.model.wind >= 12 && !g.final && p.total && !(g.totalPick && g.totalPick.side === "over") ? `<div class="s g" style="margin:6px 0 0">★ Tested angle: Under ${p.total.line} (wind forecast ${Math.round(g.model.wind)} mph).</div>` : "";
+    const wd = "";   // review fix 10/14: the wind-Under angle at the close is "tested, not added" (2024 42%, 2025 48%); the early-week wind Under is paper only
     return `<div class="card${g.final ? " fin" : ""}"><div class="inner">${headButtons(g, "t" + i, "", true)}${wd}<div class="f">${HDR}` +
       `<div><div class="k">SPORTSBOOK</div>${b.total ? `${b.total.line}<div class="s">O ${odds(b.total.over.odds)} · U ${odds(b.total.under.odds)}</div>` : dash}</div>` +
       leanCell(g, "total") +
