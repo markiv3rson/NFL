@@ -271,6 +271,9 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   Division Under 52.9% open / 51.8% close; primetime Under 53.3% / 51.4%; division+primetime Under 55.9% open (229) but 51.7% close.
   Total key numbers: opening 46.5 Under 58.8% (114) but closing 46.5 Under only 49.4% (239) and 46-48 range 51.3% (1,092) -> chance.
 
+- OFFENSIVE FLOOR paper tracker BUILT 10/14 (owner: "build now"): `lib/teaser.js recordFloor`, saved at kickoff in the teaser hash as
+  `<game>|floor` when exactly one team scored 3 or less last week -> that team at the kickoff spread (flags `shut`, `road`); graded with the
+  teaser legs, kept OUT of the teaser record; Models -> Tracked angles row (with shut-out and road splits). Not a pick until it holds live.
 - Batch 6 (10/14, closing 1999-2025, open 2014+). Nothing added to the app:
   OFFENSIVE FLOOR (watch list, paper candidate): team scored 0 last week -> bet it 64.2% open (53) / 57.4% close (155), periods
   99-05/06-12/13-19/20-25 = 60/44/66/63, only 14/27 seasons over 50; scored <=3 -> 60.6% open (137) / 54.6% close (423), periods

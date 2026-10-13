@@ -199,6 +199,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   await recordStack(2099, 6, G, [{ id: "keynumber|spread", team: "DEN", line: 2.5, kind: "spread", hit: 58.1 }], "2099-10-16T00:00:00Z");
   const rec = JSON.parse(await getRedis().hget(skey(2099, 6), "SEA @ DEN|keynumber|spread"));
   ok(rec.first && rec.first.line === 3.5 && rec.line === 2.5, "CLV: kickoff record keeps the line first SHOWN during the week (not the kickoff line)", rec); }
+{ const { recordFloor, gradeTeasersWeek, teaserSummary, tkey } = await import("../lib/teaser.js"); const { getRedis } = await import("../lib/redis.js"); const G = { home: "ATL", away: "CHI", key: "CHI @ ATL" };
+  const n0 = await recordFloor(2098, 6, G, 3.5, { home: { prevPts: 10 }, away: { prevPts: 10 } }, "t"), n1 = await recordFloor(2098, 6, G, 3.5, { home: { prevPts: 17 }, away: { prevPts: 0 } }, "t");
+  const leg = JSON.parse(await getRedis().hget(tkey(2098, 6), "CHI @ ATL|floor"));
+  await gradeTeasersWeek(2098, 6, [{ key: "CHI @ ATL", home: "ATL", away: "CHI", homeScore: 20, awayScore: 24 }]); const s = await teaserSummary(2098);
+  ok(n0 === 0 && n1 === 1 && leg.team === "CHI" && leg.line === -3.5 && leg.shut && leg.road && s.floor && s.floor.w === 1 && s.floor.shut.w === 1 && s.all.n === 0,
+    "offensive floor paper: one team scored <=3 last week -> that team at the kickoff spread; graded; kept out of the teaser record", { leg, floor: s.floor }); }
 { const { clvOf } = await import("../lib/stack.js");
   ok(clvOf({ kind: "spread", line: 2.5, first: { line: 3.5 } }) === 1 && clvOf({ kind: "spread", line: -4, first: { line: -3 } }) === 1 && clvOf({ kind: "spread", line: 4, first: { line: 3 } }) === -1
     && clvOf({ kind: "total", side: "over", line: 46, first: { line: 44.5 } }) === 1.5 && clvOf({ kind: "total", side: "under", line: 44, first: { line: 45 } }) === 1 && clvOf({ kind: "spread", line: 3 }) === null,

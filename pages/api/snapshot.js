@@ -3,7 +3,7 @@
 // 6/7/8/9/10/12/3 PT, and just before each kickoff with kickoff=<game>) and by the Refresh button.
 import { tablePicks, recordStack, lineMovePick, lineMoveTotalPick, keyNumberPick, injuryPick, bounceBackPick } from "../../lib/stack";
 import { venue, windAtKickoff } from "../../lib/wind";
-import { recordTeaser, recordTotalLeg, teaserLeg, totalMove, tkey, WIND_U_MPH } from "../../lib/teaser";
+import { recordTeaser, recordTotalLeg, teaserLeg, totalMove, tkey, WIND_U_MPH, recordFloor } from "../../lib/teaser";
 import { comboFactors } from "../../lib/stack";
 import { loadComboModel } from "../../lib/combomodel";
 import { recordAltValues } from "../../lib/altfair";
@@ -52,7 +52,7 @@ export async function writePrelog(season, week, g, t, poly, bk, model) {
         // Before, books came first, so a recorded pick could sit on a different number than the one shown.
         const hsNow = poly && poly.spread && poly.spread.homeSpread != null ? poly.spread.homeSpread : bk && bk.spread ? bk.spread.homeSpread : null;
         const tlNow = poly && poly.total && poly.total.line != null ? poly.total.line : now;
-        try { const sitS = await situationFor(season, week, g).catch(() => null); await recordStack(season, week, g, tablePicks({ ...g, outdoor: !!v.outdoor }, mg, hsNow, tlNow, s0, open, sitS, Number(week)).concat(injuryPick(g, hsNow, s0, sitS) || [], bounceBackPick(g, hsNow, sitS) || [], lineMovePick(g, poly, bk) || [], lineMoveTotalPick(g, poly, bk) || [], keyNumberPick(g, poly, bk, poly && poly.alts ? poly.alts : ((await getJSON(`alts:${season}:${week}:${g.key}`).catch(() => null)) || {}).alts || null) || []), t); } catch {} }   // combo picks (10/9); a failure here never stops the rest
+        try { const sitS = await situationFor(season, week, g).catch(() => null); await recordFloor(season, week, g, hsNow, sitS, t).catch(() => 0); await recordStack(season, week, g, tablePicks({ ...g, outdoor: !!v.outdoor }, mg, hsNow, tlNow, s0, open, sitS, Number(week)).concat(injuryPick(g, hsNow, s0, sitS) || [], bounceBackPick(g, hsNow, sitS) || [], lineMovePick(g, poly, bk) || [], lineMoveTotalPick(g, poly, bk) || [], keyNumberPick(g, poly, bk, poly && poly.alts ? poly.alts : ((await getJSON(`alts:${season}:${week}:${g.key}`).catch(() => null)) || {}).alts || null) || []), t); } catch {} }   // combo picks (10/9); a failure here never stops the rest
       await recordTotalLeg(season, week, g, poly, bk, mv ? mv.under : mg && mg.outdoor && mg.wind != null && mg.wind >= 15 ? true : mU == null ? true : !mU, t, open, mU === true).catch(() => 0); }
     await recordAltValues(season, week, g, alts ? { ...(poly || {}), alts } : poly, bk, t).catch(() => 0); }   // alt lines under their historical rate (10/9)   // Teaser leg: underdog +1.5..+2.5 at +7.5..+8.5 (10/6)
 }
