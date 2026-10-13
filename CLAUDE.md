@@ -168,6 +168,13 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   on the Under 61.3% (93) but the Over side only 51.4% (35), seasons swing 45-75%, and it is 1 of 8 cuts tried -- NOT added. No free
   live source for these splits anyway.
 
+- More Kaggle checks (10/13): 538 Elo ratings (published rule, nothing fitted) vs the closing spread: 538's own file 2006-21 gap 3+ pts
+  54.4% (1,378 games), 6+ 56.2% -- but rebuilt from nflverse results with 538's formula it is only 52.2% at 3+ (1,706 games, 2022-26
+  50.4%, 2025 43%), 52.4% at 6+: NOT an edge (the first number came from a different line file). Elo error 10.75 vs line 10.50.
+  Player props file (andyt338, only Sep 18-29 2026, 4 yardage/reception markets): bettors' Over at the opening point wins 43.9%
+  (Pass yds 54%, reception yds 44.5%, receptions 40%, rush yds 40%); betting the way the line moved open->close at the opening point
+  56.4% on 1,170 props -- only 2 weeks, all games correlated: record only, test again when more weeks exist.
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
