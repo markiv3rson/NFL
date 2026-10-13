@@ -154,8 +154,11 @@ function lineCheck(g, kind, pick) {
   const h0 = (g.history || []).find((h) => h.poly && (kind === "total" ? h.poly.total : h.poly.spread)); if (!h0) return "";
   const m = /^(Over|Under) ([\d.]+)/.exec(pick), t = /^([A-Z]{2,3}) ([+-][\d.]+)/.exec(pick);
   let open, now, better;
-  if (kind === "total" && m) { open = h0.poly.total.line; now = Number(m[2]); better = m[1] === "Over" ? now < open : now > open; }
-  else if (kind === "spread" && t) { const hs0 = h0.poly.spread.homeSpread; open = t[1] === g.home ? hs0 : -hs0; now = Number(t[2]); better = now > open; }
+  // 10/14 fix: compare the MAIN line then vs the MAIN line now. A pick on an alternate line (KEY NUMBER's DEN +3.5 while the main line
+  // is DEN +2.5) said "Line moved: opened +2.5, now +3.5" when nothing had moved.
+  const LN = g.lineNow || {}, mainNow = kind === "total" ? (LN.tl ?? (g.poly && g.poly.total ? g.poly.total.line : null)) : (LN.hs ?? (g.poly && g.poly.spread ? g.poly.spread.homeSpread : null));
+  if (kind === "total" && m) { open = h0.poly.total.line; now = Number(m[2]); if (mainNow == null || now !== mainNow) return ""; better = m[1] === "Over" ? now < open : now > open; }
+  else if (kind === "spread" && t) { const hs0 = h0.poly.spread.homeSpread; open = t[1] === g.home ? hs0 : -hs0; now = Number(t[2]); if (mainNow == null || now !== (t[1] === g.home ? mainNow : -mainNow)) return ""; better = now > open; }
   else return "";
   if (!isFinite(open) || Math.abs(now - open) < 0.5) return "";
   const lab = (x) => (kind === "total" ? `${m[1]} ${x}` : `${t[1]} ${x > 0 ? "+" : ""}${x}`);
