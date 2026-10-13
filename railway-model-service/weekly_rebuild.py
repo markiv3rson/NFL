@@ -314,7 +314,9 @@ def scan(d, F, per):
 # Pick chooser (10/12, lib/chooser.js): one logistic model per market over every factor; its win rate is made honest by a calibration
 # fit on leave-one-season-out predictions (each game judged by a model that never saw its season). Scanned single patterns won 49.8%
 # on unseen games, so the site's picks come from this instead.
-def train_chooser(d, F):
+def train_chooser(d, F, F_for=None):
+    """F_for(s) (10/14 fix): the factors rebuilt with season s hidden from the model leans of EVERY row (two-level leave-one-season-out).
+    Before, the training rows' leans came from ridge fits that had seen the test season, so the honest % ran slightly high."""
     from sklearn.linear_model import LogisticRegression
     names = list(F); X = np.column_stack([F[n] for n in names]).astype(float)
     hs = d.km.values; homeDog = hs < 0; dm = np.where(homeDog, d.res, -d.res); sp = np.abs(hs)
@@ -324,7 +326,8 @@ def train_chooser(d, F):
         ok = y != 0; oos = np.full(len(d), np.nan)
         for s in sorted(d.season.unique()):
             tr = (d.season != s).values & ok; te = (d.season == s).values
-            oos[te] = LogisticRegression(C=0.05, max_iter=3000).fit(X[tr], (y[tr] > 0).astype(int)).predict_proba(X[te])[:, 1]
+            Xs = X if F_for is None else (lambda Fs: np.column_stack([Fs[n] for n in names]).astype(float))(F_for(s))
+            oos[te] = LogisticRegression(C=0.05, max_iter=3000).fit(Xs[tr], (y[tr] > 0).astype(int)).predict_proba(Xs[te])[:, 1]
         q = np.maximum(oos, 1 - oos); win = ((oos > 0.5) == (y > 0)).astype(int)
         cal = LogisticRegression(C=1e6).fit(lg(np.clip(q[ok], 0.5001, 0.999)).reshape(-1, 1), win[ok])
         full = LogisticRegression(C=0.05, max_iter=3000).fit(X[ok], (y[ok] > 0).astype(int))
@@ -370,6 +373,16 @@ def build(site_opens=None):
     fm, ft = Ridge(alpha=30).fit(Z, d.res), Ridge(alpha=30).fit(Z, d.tot)
     eo = d.so.notna() & d.to.notna(); ZE = design(d[eo], {k: v[eo.values] for k, v in F0.items()}, early=True); fe = Ridge(alpha=30).fit(ZE, d.tot[eo])
     F = factors(d, um, ut); rows = scan(d, F, per)
+    # 10/14 fix: for the chooser's honest test, season s is hidden from every row's model leans (two-level leave-one-season-out)
+    seasons_, cacheF = sorted(d.season.unique()), {}
+    def F_for(s):
+        if s in cacheF: return cacheF[s]
+        um_s, ut_s = um.copy(), ut.copy()
+        for t in seasons_:
+            if t == s: continue
+            te = (d.season == t).values; tr = ~d.season.isin([s, t]).values
+            um_s[te] = Ridge(alpha=30).fit(Z[tr], d.res[tr]).predict(Z[te]); ut_s[te] = Ridge(alpha=30).fit(Z[tr], d.tot[tr]).predict(Z[te])
+        cacheF[s] = factors(d, um_s, ut_s); return cacheF[s]
     err = lambda p, y: float(np.mean(np.abs(p - y)))
     checks = {"games": int(len(d)), "seasons": [int(d.season.min()), int(d.season.max())], "openLines": int(eo.sum()),
               "marginErr": round(err(um, d.res), 3), "oldMarginErr": round(err(d.mm, d.res), 3), "marketMarginErr": round(err(d.km, d.res), 3),
@@ -378,7 +391,7 @@ def build(site_opens=None):
     return {"builtAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "season": int(cur), "checks": checks,
             "upgrade": {"feat": feat, "m": [round(float(v), 6) for v in fm.coef_], "mi": round(float(fm.intercept_), 6), "t": [round(float(v), 6) for v in ft.coef_], "ti": round(float(ft.intercept_), 6)},
             "early": {"feat": list(ZE.columns), "t": [round(float(v), 6) for v in fe.coef_], "ti": round(float(fe.intercept_), 6)},
-            "table": rows, "chooser": train_chooser(d, F),
+            "table": rows, "chooser": train_chooser(d, F, F_for),
             "moveT": train_move(ZE.drop(columns=[c for c in MOVE_DROP if c in ZE.columns]), (d.kt[eo] - d.to[eo]).values, d.season[eo].values, d.tot[eo].values, d.to[eo].values)}
 
 def passes(a):

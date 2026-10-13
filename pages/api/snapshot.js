@@ -15,7 +15,7 @@ import { getRedis, jparse, getJSON, setJSON, K, SLATE_CACHE } from "../../lib/re
 import { fetchEvents, gameLines, tdProps } from "../../lib/poly";
 import { sanePoly } from "../../lib/sane";
 import { fetchBooks, booksFresh } from "../../lib/books";
-import { savePinnacle } from "../../lib/pinnacle";
+import { savePinnacle, pinnacleFailed, pinnacleOk } from "../../lib/pinnacle";
 import { gradeRecent } from "../../lib/grade";
 import { syncAccount } from "../../lib/mybets";
 import { logError } from "../../lib/status";
@@ -104,9 +104,9 @@ export default async function handler(req, res) {
     // now"). Not shown or used for picks until tested on unseen games. A failed pull is logged and never stops the snapshot.
     let pinNote = null;
     try {
-      const n = await savePinnacle(redis, season, t, src);
+      const n = await savePinnacle(redis, season, t, src); await pinnacleOk(redis);
       pinNote = `${n} games`;
-    } catch (e) { pinNote = String(e).slice(0, 120); await logError("pinnacle", `Pinnacle lines pull failed: ${pinNote}`).catch(() => {}); }
+    } catch (e) { pinNote = String(e).slice(0, 120); await pinnacleFailed(redis, pinNote, logError); }
     const model = open.length ? await loadModel(season, week).catch(() => null) : null;
     let lines = 0, props = 0;
     await Promise.all(open.map(async (g) => {

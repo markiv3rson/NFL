@@ -130,13 +130,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const ctx = { document: { getElementById: () => el(), querySelectorAll: () => [], addEventListener() {}, hidden: false }, fetch: () => Promise.reject(new Error("offline")),
     localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) }, location: { reload() {} }, window: {}, setTimeout, clearTimeout, console, Date, Math, Number, String, JSON, Promise, Set, Object, Array };
   vm.createContext(ctx);
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={slotOf,saferSide,extraBets,comboLines,parlayPicks,parlayStrip,lineCheck,recLine,bestBets,injTag,topAngle,weakLeg,anglesBox,kickLine,openMove,tdNoGap,teaserRow,teaserStrip,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,spreadReason,totalReason,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gapStrip,gameCard,totalCard,detailTop,replayBox,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByWeek,modelsByConfidence,tdCalibration,mSec,legFlipped,betSlots,openBySlot,straightPicks};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={slotOf,saferSide,extraBets,comboLines,parlayPicks,parlayStrip,lineCheck,recLine,bestBets,injTag,weakLeg,anglesBox,kickLine,tdNoGap,teaserRow,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gameCard,totalCard,detailTop,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByConfidence,mSec,legFlipped,betSlots,openBySlot,straightPicks};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
-  ok(/Model: PHI by 4\.2/.test(T.spreadReason(g)) && !/needs/.test(T.spreadReason(g)), "spread wording");
-  g.poly.spread.homeSpread = -3; ok(!/\./.test(T.spreadReason(g).replace(/\d\.\d/g, "")), "spread wording: no sentences");
   g = { away: "A", home: "H", model: { total: 44.4, fix: { dome: 2.59, pace: 0.1, div: true } }, poly: { total: { line: 45.5 } } };
-  ok(/Model: 44\.4/.test(T.totalReason(g)) && /dome \+2\.6/.test(T.totalReason(g)), "totals wording");
   g = { away: "A", home: "H", winPct: 61.2, model: { homeMargin: 3, total: 44, fix: {} }, spreadPick: { label: "H -2.5", pct: 51.1 }, poly: {} };
 { const c = T.leanCell(g, "spread"); ok(/Model: <b class="mod">H by 3\.0<\/b>/.test(c) && /No pick/.test(c) && /No tested edge/.test(c) && !/LEAN/.test(c), "model card: no tested pick -> No pick (the model's own side is a coin flip vs the line, not shown as a lean)");
   { const c2 = T.leanCell({ ...g, combos: [{ kind: "spread", pick: "A +2.5", hit: 54.4, why: "road dog" }] }, "spread"); ok(/PICK: A \+2\.5 · 54%/.test(c2) && !/road dog/.test(c2) && !/LEAN/.test(c2), "model card: below 56% the best tested pick shows as a yellow PICK with no notes"); } }
@@ -555,6 +552,15 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       ok(!before.length && after.join() === "1" && !again.length && (await RR.lrange(hk, 0, -1)).join() === "a,d" && (await RR.llen(`rerunlog:${SZ}:1`)) === 5,
         "database space: a finished, fully graded week's logs shrink once (TD prices first + last, 5 reruns); ungraded weeks untouched");
       globalThis.fetch = rf; rgc(); }
+    { // Pinnacle (10/14): one blocked pull is not an error; the 2nd in a row is; a success resets the count
+      const { pinnacleFailed, pinnacleOk } = await import("../lib/pinnacle.js"), RR = globalThis.__TEST_REDIS__, logs = []; const lg = async (w, m) => logs.push(m);
+      await pinnacleOk(RR); await pinnacleFailed(RR, "403", lg); const one = logs.length; await pinnacleFailed(RR, "403", lg); const two = logs.length;
+      await pinnacleOk(RR); await pinnacleFailed(RR, "403", lg);
+      ok(one === 0 && two === 1 && logs.length === 1 && /2 times in a row/.test(logs[0]), "pinnacle: logged only on the 2nd failure in a row"); }
+    { const { stackSummary } = await import("../lib/stack.js"), RR = globalThis.__TEST_REDIS__;   // LINE VALUE leaves KEY NUMBER out (its line never moves)
+      await RR.hset("stack:2098:6", "A @ B|keynum|spread", JSON.stringify({ id: "keynum|spread", kind: "spread", team: "A", home: "B", game: "A @ B", week: 6, hit: 58.1, line: 3.5, first: { line: 3.5 }, result: "W" }),
+        "C @ D|linemove|spread", JSON.stringify({ id: "linemove|spread", kind: "spread", team: "C", home: "D", game: "C @ D", week: 6, hit: 63.2, line: 2.5, first: { line: 3.5 }, result: "W" }));
+      const sm = await stackSummary(2098); ok(sm.card.clv.n === 1 && sm.card.clv.sum === 1, "line value: KEY NUMBER (fixed +3.5) left out; a real line move counts", sm.card.clv); await RR.del("stack:2098:6"); }
     // grading removes a bad stored pick but keeps the good one, in the result record and the Pick Lab picks
     const { gradeWeek } = await import("../lib/grade.js"); const { SEASON, resetGamesCache } = await import("../lib/games.js"); const R = globalThis.__TEST_REDIS__; const realFetch = globalThis.fetch;
     const H = "season,game_type,week,gameday,gametime,away_team,away_score,home_team,home_score,spread_line,total_line,roof,stadium,location,surface\n";
@@ -595,9 +601,6 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const wk = await R.hgetall(`winners:${SEASON}:4`);
     ok(!wk["LAC @ SEA"] && JSON.parse(wk["DEN @ SF"]).result === "W", "winners: a stored 95% road pick that doesn't fit the closing spread is removed; a real one is graded");
     globalThis.fetch = realFetch; resetGamesCache(); for (const k of await R.keys(`*${SEASON}:4*`)) await R.del(k); }
-  { const rb = ctx.T.replayBox();
-    ok(/Road dogs \+3 to \+6\.5/.test(rb) && /53\.5%/.test(rb) && /UNSTABLE/.test(rb) && /<b>YES<\/b>/.test(rb) && /3–1/.test(rb) && /2 saved/.test(rb) && /7–3/.test(rb) && /2007–25/.test(rb), "replay card: history, live record, verdict, season range", rb.slice(0, 400));
-    vm.runInContext(`REPLAY = null`, ctx); ok(ctx.T.replayBox() === "", "replay card: leaves itself out when the history is not loaded"); }
   { // Anytime TD tab: the four likeliest scorers per team, everyone one tap away
     const box = { innerHTML: "" }, hdr = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "td" ? box : id === "td-header" ? hdr : old(id));
     const pl = (team, i) => ({ player: `${team}.P${i}`, team, pos: "RB", fair: 60 - i * 5, price: 0.5, bid: 0.48, teamRank: i + 1, game: "A @ B", flags: [] });
@@ -608,8 +611,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { // touchdown row: a "+N vs price" mark only when the blended chance beats the price by 5+; calibration rows show their noise
     const mk = (fair, price) => ctx.T.tdRow({ r: { player: "X.Y", team: "A", pos: "WR", fair, price, bid: price - 0.02, game: "A @ B", flags: [] }, g: { key: "A @ B", away: "A", home: "B" } }, 0);
     ok(/\+\d+ vs price/.test(mk(60, 0.40)) && !/vs price/.test(mk(40, 0.40)), "touchdown row: marks a player only when the blend beats the price by 5+");
-    const cal = ctx.T.tdCalibration([...Array(24)].map((_, i) => ({ fair: 40, scored: i < 7 })));
-    ok(/scored 29% ±9/.test(cal) && !/too few to trust/.test(cal), "calibration rows: show the margin of error and flag small samples"); }
+    }
   ok(playedLastGame({ missed: false, pct: 88 }) && !playedLastGame({ missed: true, pct: 60 }) && !playedLastGame({ missed: false, pct: 0 }) && !playedLastGame(null), "was-out tag: a player who played his team's last game is never tagged as out");
   { const ge = { key: "A @ B", away: "A", home: "B", early: true, spreadPick: null, totalPick: null, model: { homeMargin: 5.1, total: 44.9, homeWinPct: 66.4 } };
     const sp = ctx.T.leanCell(ge, "spread"), tt = ctx.T.leanCell(ge, "total");
@@ -692,11 +694,6 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(L.map((x) => x.name).join("") === "EBAD" && L[2].shown === "DNP (practice)" && L[3].shown === "Limited (practice)" && !L[0].shown, "injuries: Out/Questionable first, then DNP and Limited (labeled); full practice left out");
     const card = ctx.T.gameCard({ ...tg, injuries: L.map((x) => ({ ...x, team: "PIT", pos: "WR", week: 5 })) }, "x");
     ok(/Injuries 4/.test(card) && /DNP \(practice\)/.test(card), "injuries: the button shows with practice-only notes"); }
-  { // opening line vs now, from the model side
-    const g = { key: "TB @ DAL", away: "TB", home: "DAL", history: [{ poly: { spread: { homeSpread: -8.5 }, total: { line: 46.5 } } }] };
-    ok(/Opened TB \+8\.5 · moved 1 toward the model/.test(ctx.T.openMove(g, "spread", { team: "TB", line: 7.5 })), "open line: TB +8.5 to +7.5 moved toward a TB pick");
-    ok(/moved 1 toward/.test(ctx.T.openMove(g, "total", { side: "over", line: 47.5 })) && /away from/.test(ctx.T.openMove(g, "total", { side: "under", line: 47.5 })), "open line: totals from the pick's side");
-    ok(ctx.T.openMove(g, "spread", { team: "TB", line: 8.5 }) === "" && ctx.T.openMove({ ...g, final: true }, "spread", { team: "TB", line: 7.5 }) === "", "open line: nothing when unmoved or final"); }
   { // ESPN kickoff overrides a stale schedule time (10/7: CHI @ GB moved to 4:25 ET; nflverse still said 1:00)
     const { overlayEspnKickoffs, kickoffsFromScoreboard, resetKickCache } = await import("../lib/espnFinals.js");
     const sb = { events: [{ date: "2026-10-11T20:25Z", competitions: [{ competitors: [{ homeAway: "home", team: { displayName: "Green Bay Packers" } }, { homeAway: "away", team: { displayName: "Chicago Bears" } }] }] },
@@ -951,10 +948,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const sm = await teaserSummary(2031);
     ok(sm.all.n === 2 && sm.all.w === 1 && sm.all.priced === 1 && Math.abs(sm.all.roi - (1 / 0.7 - 1)) < 1e-9 && sm.value.n === 1, "teaser: B +8.5 losing by 7 covers (paid 70¢), C +8 losing by 10 doesn't; return only counts priced legs", sm);
     vm.runInContext(`TEASERS = ${JSON.stringify(sm)}; S = { week: 3, games: [], teaserLegs: [${JSON.stringify(l1)}, ${JSON.stringify({ ...l2, price: null, value: false })}] }`, ctx);
-    const row = ctx.T.teaserRow(), strip = ctx.T.teaserStrip();
+    const row = ctx.T.teaserRow();
     ok(!/teased/.test(row) && /Early-week Under, wind 10\+|None yet/.test(row), "tracked angles (10/13): the teaser rows were cut; only the wind Under paper row is left");
-    ok(/Teaser legs · 2 this week · 1 priced right/.test(strip) && /B \+8\.5/.test(strip) && /70¢/.test(strip) && /✓ good price/.test(strip) && /no price yet/.test(strip), "teaser: Game Lines strip lists each leg and its price");
-    vm.runInContext(`TEASERS = null; S = { week: 3, games: [] }`, ctx); ok(ctx.T.teaserRow() === "" && ctx.T.teaserStrip() === "", "teaser: nothing shown without data");
+    vm.runInContext(`TEASERS = null; S = { week: 3, games: [] }`, ctx); ok(ctx.T.teaserRow() === "", "teaser: nothing shown without data");
     for (const k of await R.keys("teaser:2031:*")) await R.del(k); }
   { // blended touchdown chance and "agrees with the market"
     const b1 = ctx.T.tdBlend({ fair: 40, price: 0.30, bid: 0.28 }), b2 = ctx.T.tdBlend({ fair: 40, price: 0.30, bid: 0.01, thin: true });
@@ -1059,11 +1055,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(order.every((x, i) => x > 0 && (i === 0 || x > order[i - 1])) && !/Price gaps/.test(h), "models tab: eight sections, in order (Price gaps cut 10/13)");
     ok((h.match(/class="fold" data-drop="m-/g) || []).length === 8 && !/class="s dim" style="margin:2px 0 6px"/.test(h) && !/break-even/i.test(h), "models tab: eight sections, no explanation lines, no break-even talk");
     ok(!/Hit rate by week/.test(h) && /Week 3/.test(h) && /Week 4/.test(h) && /Game-by-game results|id="gbg"/.test(h) && !/Parlay scoreboard/.test(h), "models tab: every-game list present, parlay scoreboard kept out, Hit rate by week cut 10/13");
-    const bw = ctx.T.modelsByWeek(res), bc = ctx.T.modelsByConfidence(res), tc = ctx.T.tdCalibration(res.flatMap((r) => r.td));
-    ok(/Moneyline[\s\S]*50%[\s\S]*Spread[\s\S]*Total/.test(bw) && /Week 3/.test(bw), "models tab: hit rate by week");
+    const bc = ctx.T.modelsByConfidence(res);
     ok(/Said 80\+% · 1 picks/.test(bc) && /Said 60–70% · 1 picks/.test(bc) && /100%/.test(bc), "models tab: confidence buckets use the chance the model said");
-    ok(/Said 35–50% · 1 players/.test(tc) && /Said 15–25% · 1 players/.test(tc), "models tab: touchdown calibration bands");
-    ok(/None yet/.test(ctx.T.modelsByConfidence([])) && /None yet/.test(ctx.T.tdCalibration([])), "models tab: empty data says so");
+    ok(/None yet/.test(ctx.T.modelsByConfidence([])), "models tab: empty data says so");
     ctx.document.getElementById = old; }
   { // Record tab week filter: this week by default, Season shows everything, tiles recomputed from the bets shown
     const box = { innerHTML: "", onclick: null }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "record-mine" ? box : old(id));
@@ -1096,7 +1090,6 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   vm.runInContext(`LIVE = {}; LIVE_T = null`, ctx);
   const sc = ctx.T.tdTop3({ away: "PIT", home: "CLE", td: ["A", "B", "C", "D"].map((n, i) => ({ team: "PIT", player: "P." + n, pos: "RB", fair: 40 - i * 5, price: 0.3 })).concat([{ team: "CLE", player: "Q.X", pos: "WR", fair: 22, price: 0.2, two: 5, first: 4 }]) });
   ok((sc.match(/class="p"/g) || []).length === 4 && /P\.A/.test(sc) && !/P\.D/.test(sc) && /2\+ 5% · 1st 4%/.test(sc), "scorers: top 3 per team side by side, best first", sc);
-  ok(/Price gaps · 1 right now/.test(ctx.T.gapStrip()), "price-gap strip");
   vm.runInContext(`S = { games: [{ key: "TEN @ BAL", away: "TEN", home: "BAL", started: false, winPct: 84.4, model: { homeMargin: 12, total: 40 }, poly: { ml: { home: 0.82, away: 0.2 }, spread: { homeSpread: -10.5, home: 0.5, away: 0.51 }, total: { line: 41.5, over: 0.5, under: 0.51 } } },
     { key: "KC @ LV", away: "KC", home: "LV", started: false, winPct: 28, poly: { ml: { home: 0.3, away: 0.72 } } },
     { key: "X @ Y", away: "X", home: "Y", started: true, winPct: 60 }], winners: { all: { n: 10, w: 7, l: 3, hit: 0.7, said: 0.68 }, top4: { n: 4, w: 4, l: 0, hit: 1, said: 0.8 } },
