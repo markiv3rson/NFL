@@ -400,6 +400,9 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   deploys for `claude/**` branches, so only main deploys. Batch fixes into fewer merges. A rate-limited deploy is NOT retried by Vercel:
   after the limit resets, push to main (or press Redeploy in Vercel) and check the `x-build` header on /api/slate = main's commit.
 - Pinnacle pull retries after 3 s and 10 s (10 s per try); the single 2-s retry still failed ~1 pull in 3 overnight.
+- ESPN (10/14): the plain scoreboard stays on LAST week until ~Wednesday and ESPN now rejects date ranges (HTTP 400), so the moved-game
+  check found 0 of 14 games (site) and nothing at all (scheduler). Both now ask by week: `?dates=<season>&seasontype=2&week=<n>`
+  (`lib/espnFinals.js`, `scheduler.py _espn_kickoffs`). TD retrain needs 6 played weeks before it tests (week 6 = first real test).
 
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
