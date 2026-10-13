@@ -10,7 +10,7 @@ import { recordAltValues } from "../../lib/altfair";
 import { alertTeaser, alertsTdNo } from "../../lib/alerts";
 import { applyCalibration } from "../../lib/calibration";
 import { tdRows } from "../../lib/picks";
-import { SEASON, currentWeek, loadGames, started } from "../../lib/games";
+import { SEASON, currentWeek, loadGames, loadSeason, started } from "../../lib/games";
 import { getRedis, jparse, getJSON, setJSON, K, SLATE_CACHE } from "../../lib/redis";
 import { fetchEvents, gameLines, tdProps } from "../../lib/poly";
 import { sanePoly } from "../../lib/sane";
@@ -96,7 +96,7 @@ export default async function handler(req, res) {
     let pinNote = null;
     try {
       const pin = await fetchPinnacle(); let n = 0;
-      const seen = new Set(), ahead = (await loadGames(season)).filter((g) => !started(g) && pin[g.key] && !seen.has(g.key) && seen.add(g.key));   // next meeting only
+      const seen = new Set(), ahead = (await loadSeason(season)).filter((g) => !started(g) && pin[g.key] && !seen.has(g.key) && seen.add(g.key));   // next meeting only
       for (const g of ahead) { const k = `pinnacle:${season}:${g.week}:${g.key}`;
         await redis.rpush(k, JSON.stringify({ t, src, ...pin[g.key] })); await redis.ltrim(k, -60, -1); n++; }
       pinNote = `${n} games`;
