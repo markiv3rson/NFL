@@ -542,6 +542,16 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const ga = parseGame([...mkts, mk("spreads", "Spread: Minnesota Vikings (-1.5)", ["Minnesota Vikings", "Miami Dolphins"], ["0.79", "0.21"], { bestBid: 0.78, bestAsk: 0.8 })], "MIA", "MIN");
     const alt = (t, l) => (ga.alts || []).find((x) => x.team === t && x.line === l);
     ok(alt("MIN", -1.5).price === 0.8 && Math.abs(alt("MIA", 1.5).price - 0.22) < 1e-9 && alt("MIA", 10) && !alt("MIN", 19.5) && !alt("MIA", -19.5), "poly parse: alternate spreads keep both sides at the buy price; an unpriced placeholder is left out");
+    { // database space (10/14): a finished, fully graded week's TD price history shrinks to first + last; its rerun log to 5 runs; once
+      const { compactOldWeeks } = await import("../lib/compact.js"); const { SEASON: SZ, resetGamesCache: rgc } = await import("../lib/games.js"); const RR = globalThis.__TEST_REDIS__, rf = globalThis.fetch;
+      const HH = "season,game_type,week,gameday,gametime,away_team,away_score,home_team,home_score,spread_line,total_line,roof,stadium,location,surface\n";
+      rgc(); globalThis.fetch = async (u) => (String(u).includes("games.csv") ? { ok: true, text: async () => HH + `${SZ},REG,1,2020-09-13,13:00,AAA,10,BBB,20,3,40,o,s,Home,g\n${SZ},REG,2,2099-09-20,13:00,AAA,,BBB,,3,40,o,s,Home,g\n` } : { ok: false, status: 404, json: async () => ({}), text: async () => "" });
+      const hk = `tdpxhist:${SZ}:1:AAA @ BBB`; await RR.del(hk); await RR.rpush(hk, "a", "b", "c", "d"); await RR.del(`rerunlog:${SZ}:1`); for (let i = 0; i < 9; i++) await RR.lpush(`rerunlog:${SZ}:1`, String(i));
+      const before = await compactOldWeeks(SZ);   // week 1 not graded yet -> untouched
+      await RR.set(`res:${SZ}:1:AAA @ BBB`, "{}"); const after = await compactOldWeeks(SZ), again = await compactOldWeeks(SZ);
+      ok(!before.length && after.join() === "1" && !again.length && (await RR.lrange(hk, 0, -1)).join() === "a,d" && (await RR.llen(`rerunlog:${SZ}:1`)) === 5,
+        "database space: a finished, fully graded week's logs shrink once (TD prices first + last, 5 reruns); ungraded weeks untouched");
+      globalThis.fetch = rf; rgc(); }
     // grading removes a bad stored pick but keeps the good one, in the result record and the Pick Lab picks
     const { gradeWeek } = await import("../lib/grade.js"); const { SEASON, resetGamesCache } = await import("../lib/games.js"); const R = globalThis.__TEST_REDIS__; const realFetch = globalThis.fetch;
     const H = "season,game_type,week,gameday,gametime,away_team,away_score,home_team,home_score,spread_line,total_line,roof,stadium,location,surface\n";
