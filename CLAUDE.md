@@ -342,6 +342,11 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   46-53%. Underdog implied score <=17 -> dog 52.5% close / 45.3% open. Weeks 17-18 fade a 12+ win team 50.0% / 41.7%. Head coach vs a
   team he coached in the last 3 seasons 55.3% (38 games; 2020-25 38%).
 
+- Batch 9 (10/14, closing 1999-2025). Nothing added: lost by 28+ last game and now the underdog 57.1% (315) -- but outside games already
+  picked by BOUNCE BACK / BOUNCE BACK DOG only 49.1% (112): the existing rules already capture it. Allowed 40+ last game, now dog 53.6%;
+  lost by 21+ now dog 53.4%; won by 30+ now fav -> fade 52.7%; scored 40+ now fav -> fade 50.0%; a team scored <=3 -> Over 51.5% /
+  Under 48.5%; both teams scored <=10 -> Over 55.1% (136, 13/27); both allowed 35+ -> Under 55.1% (89, 1999-05 33%).
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
