@@ -8,6 +8,7 @@ import { fetchEvents, gameLines, bookDepth } from "../../lib/poly";
 import { lineMovePick, lineMoveTotalPick } from "../../lib/stack";
 import { tkey } from "../../lib/teaser";
 import { logError } from "../../lib/status";
+import { sanePoly } from "../../lib/sane";
 export const config = { maxDuration: 60 };
 // SHADOW picks (10/14, owner: "build everything now"). Recorded and graded, NOT shown, NOT picks until they hold live:
 //  1. PINNACLE LINE MOVE: the LINE MOVE rules (spread: crossed 3/7 and moved 1+, or moved 3+; total: 3+ apart) with PINNACLE in place of
@@ -32,7 +33,9 @@ export default async function handler(req, res) {
     // 10/14 (owner: "go"): plus each main market's order book -- dollars within 5c of the best bid (bd) / ask (ad), best bid/ask
     // (bb/ba) -- and Polymarket's running volume / liquidity (vol/liq; volume per 30 min = difference between records). Spread book =
     // home side, total book = Over side. Recorded only.
-    const polyFor = async (g, pin) => { const p = await gameLines(events, g.away, g.home); if (!p) return null;
+    // 10/14 fix: same sanity check as the snapshots (a line 6+ from the schedule's sportsbook line is an alternate read as the main one)
+    const polyFor = async (g, pin) => { const raw = await gameLines(events, g.away, g.home); if (!raw) return null; const p = sanePoly(raw, g.nvSpread, g.nvTotal).poly;
+      if (raw._mkt) Object.defineProperty(p, "_mkt", { value: { ...(raw._mkt.spread && p.spread ? { spread: raw._mkt.spread } : {}), ...(raw._mkt.total && p.total ? { total: raw._mkt.total } : {}) }, enumerable: false });
       const M = p._mkt || {}, mk = async (x) => (x ? { ...((await bookDepth(x.tok).catch(() => null)) || {}), vol: x.vol, liq: x.liq } : null);
       const [sb, tb] = await Promise.all([mk(M.spread), mk(M.total)]);
       await recordShadow(getRedis(), SEASON, g, p, pin, sb, tb, t).catch(() => 0);

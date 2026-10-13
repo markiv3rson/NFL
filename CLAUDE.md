@@ -269,6 +269,10 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   (8) Scheduler: a scheduled snapshot (and its books pull) skipped for good if the previous one was still running -- now retried in its
   5-minute window; same for the Pinnacle pull. (9) First-shown picks were saved only when someone had the app open -- the scheduler now
   builds the slate every 30 min (:15 / :45) so every pick shown gets recorded and graded.
+  (10) Model Picks "Best bets" parlays: a KEY NUMBER leg (+3.5 alternate) was saved at the MAIN line's price (+2.5) -- now a pick off the
+  main line uses its own price. (11) Parlay Lab hit rates counted a pushed parlay as a miss -- pushes now out (return still counts).
+  (12) A Polymarket reading that failed the data check (line jumped 3+ / total 4+) still fed every pick -- now skipped until confirmed;
+  the 30-min reading gets the same jump check and the 6-point sanity check vs the schedule's line (`pages/api/pinnaclepull.js`).
 - CLV tracker built: each card pick keeps the line it FIRST showed at (`first` in `stack:` records, `lib/stack.js recordStack/clvOf`);
   the kickoff line is the close. Models tab -> "LINE VALUE" tile: average points gained vs the close and % of picks that beat it.
 - "Line moved with/against the model" (game model side vs the open, 2014-26, 2,578 games): moved WITH 55.1% at the open (48.1% at the

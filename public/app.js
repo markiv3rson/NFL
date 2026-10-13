@@ -977,7 +977,7 @@ function replayBox() {
   const P = PICKS || {}, W = (S && S.winners && S.winners.all) || {}, hf = PAPER && PAPER.board && PAPER.board.home_fav_95_single;
   const live = (r) => { let w, l, hit, saved;
     if (r.id === "favorite") { w = W.w; l = W.l; hit = W.n ? W.hit : null; }
-    else if (r.id === "homefav") { if (hf && hf.graded) { w = hf.hits; l = hf.graded - hf.hits; hit = hf.hitRate; } }
+    else if (r.id === "homefav") { if (hf && hf.graded) { w = hf.hits; l = (hf.decided ?? hf.graded) - hf.hits; hit = hf.hitRate; } }
     else { const x = P[r.id === "spread_model" ? "spread" : r.id === "total_model" ? "total" : r.id]; if (x) { if (x.graded) { w = x.w; l = x.l; hit = x.hit; } else saved = x.recorded; } }
     return hit != null ? `<span>${w}–${l}</span><span class="dim"> · ${Math.round(hit * 100)}%</span>` : saved ? `<span class="dim">${saved} saved</span>` : '<span class="dim">—</span>'; };
   const cls = { YES: "g", UNSTABLE: "y", "NO EDGE": "r", "TOO FEW": "dim", INFO: "dim" };
@@ -1020,7 +1020,7 @@ function renderLab() {
     ["ANGLES", ["angles_2", "angles_3", "angles_fav_3", "alt_2", "alt_pick_3"]], ["MIXED", ["model_best_4", "right_now_3", "same_game_3", "linked_sgp_3"]]];
   const seen = new Set(GROUPS.flatMap((g) => g[1])), extra = Object.keys(names).filter((k) => !seen.has(k)); if (extra.length) GROUPS.push(["OTHER", extra]);
   const hist = (k) => { const h = REPLAY && REPLAY.parlays && REPLAY.parlays.find((x) => x.id === k); return h && h.n ? `${Math.round(h.hit * 100)}% · ${cPct(h.roi)}` : "—"; };
-  const now = (k) => { const b = board[k]; if (!b || !b.graded) return "—"; const l = b.graded - b.hits; return `${b.hits}–${l} · ${b.roi == null ? "—" : cPct(b.roi)}`; };
+  const now = (k) => { const b = board[k]; if (!b || !b.graded) return "—"; const l = (b.decided ?? b.graded) - b.hits; return `${b.hits}–${l} · ${b.roi == null ? "—" : cPct(b.roi)}`; };
   const tag = (k) => { const rv = board[k] && board[k].review; if (!rv || /TOO FEW/i.test(rv.verdict)) return ""; const c = { HOLDS: "g", UNDERSTATED: "g", PAYING: "g", OVERSTATED: "r", LOSING: "r" }[rv.verdict] || "dim"; return ` <b class="${c}" style="font-size:10px">${esc(rv.verdict)}</b>`; };
   const grid = "display:grid;grid-template-columns:1fr auto auto;gap:4px 14px;align-items:baseline";
   const rows = `<div style="${grid};margin-bottom:6px"><span></span><span class="dim" style="font-size:11px;text-align:right">THIS SEASON</span><span class="dim" style="font-size:11px;text-align:right">2007–25</span></div>` +
