@@ -222,6 +222,14 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   nothing. 1+ OL vs top-10 rush 47.0% / 44.3% (234); 2+ DB vs top-10 pass offense 50.0% / 44.4% (36). Margin error line 9.871, + cluster
   matchups 9.901 (worse). Closed: don't add defensive-matchup overlays to injuries.
 
+- Special teams / steady-vs-big-play / box count (10/13, unseen seasons). NOT added -- don't retest without a new idea:
+  Special teams EPA as a model input: 51.0% open, 51.6% close, margin error 9.923 -> 9.920 (no real change). Rule "top-8 ST unit vs
+  bottom-8 -> better ST team": 56.8% open (292, 10/13) but 54.1% close; 2018-21 only 50% open / 48% close; works only when the better
+  ST team is also the favorite (62-68% open) -- found after looking, so likely a favorites-at-the-open effect. Owner: keep it out.
+  Success rate vs explosive-play split: 51.9% open, error worse (9.930); "steady vs boom-or-bust" 60% on only 20 games.
+  Box count rushing (participation 2016-25): 51.5% open, error worse. Big favorites (6+) with WEAK light-box rushing covered 60.9% at
+  the open (128) but strong-rushing big favorites also 54.4% -- big favorites cover the open generally; not a rushing effect.
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
