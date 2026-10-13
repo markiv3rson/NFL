@@ -792,19 +792,18 @@ function renderModelNow() {
     "" : '<div class="s">None yet.</div>') + recapTd;
   $("models").innerHTML = labStats() +
     mSec("m-score", `1 · Scoreboard · Week ${lw ?? S.week}`, "How every model did on the latest week with graded games, and whether this week's data is loaded.", recapRows + wcRows, (wc.watch || []).length, true) +
-    mSec("m-win", "2 · Winners · moneyline", "Who wins each game: the model's pick on every game, saved at kickoff and graded after, with its season record.", winnersBox("picks") + winnersBox("records")) +
+    mSec("m-win", "2 · Winners · moneyline", "Who wins each game: the model's pick on every game, saved at kickoff and graded after, with its season record.", winnersBox("picks")) +
     mSec("m-line", "3 · Spreads and totals", "Which side of the line to take. The model has no measured edge here, so about 50% is expected. Past seasons are shown for comparison.", clvSummary(res) + replayBox() + pastBox()) +
     mSec("m-td", "4 · Touchdowns", "Players' chances to score. The check shows whether the chances match reality; the picks show how the top scorers per team did.", `<div class="s"><b>Said vs scored</b></div>` + (tdWaiting ? `<div class="s y">${tdWaiting} waiting for snap counts</div>` : "") + (buckets || '<div class="s">None yet.</div>') + `<div class="s" style="margin-top:8px"><b>Top picks per team</b></div>` + topTd + `<div class="s" style="margin-top:8px"><b>Against Polymarket's price</b></div>` + (vsMkt || '<div class="s">None yet.</div>')) +
     mSec("m-ang", "5 · Tracked angles", "Betting rules tested on paper, each with its record and whether it holds up in past seasons.", pickLabBox()) +
-    mSec("m-gap", "6 · Price gaps", "Spots where Polymarket was cheaper than the sportsbooks, and how they turned out.", edgeRows) +
-    mSec("m-trend", "7 · Trends and analysis", "How the models are changing week to week, whether higher confidence really wins more, and where the touchdown chances run high or low.",
+    mSec("m-trend", "6 · Trends and analysis", "How the models are changing week to week, whether higher confidence really wins more, and where the touchdown chances run high or low.",
       `<div class="s"><b>Hit rate by week</b></div>` + (modelsByWeek(res) || '<div class="s">None yet.</div>') +
       `<div class="s" style="margin-top:8px"><b>By confidence · moneyline</b></div>` + modelsByConfidence(res) +
       (() => { const pl = tdPlayersWithDefense(res); return `<div class="s" style="margin-top:8px"><b>By position</b></div>` + tdByPosition(pl) + `<div class="s" style="margin-top:8px"><b>By opponent defense</b></div>` + tdByDefense(pl); })()) +
-    mSec("m-miss", "8 · Misses and every game", "Where the model keeps getting it wrong, and each graded game by week.", `<div class="s"><b>Miss finder</b></div>` + ((S.missFinder && S.missFinder.misses && S.missFinder.misses.length) ?
+    mSec("m-miss", "7 · Misses and every game", "Where the model keeps getting it wrong, and each graded game by week.", `<div class="s"><b>Miss finder</b></div>` + ((S.missFinder && S.missFinder.misses && S.missFinder.misses.length) ?
       S.missFinder.misses.map((m) => `<div class="row" style="display:block"><b>${esc(m.pattern)}</b><div class="s">${esc(String(m.note).split(" — ")[0])}</div></div>`).join("") :
       '<div class="s">None yet.</div>') + `<div class="s" style="margin-top:8px"><b>Game-by-game results</b></div><div id="gbg">${games || '<div class="s">None yet.</div>'}</div>`) +
-    mSec("m-sys", "9 · System", "Is everything running: the last automatic run, what was saved for each game, the last retrain, and any errors.", stRows, 0, !stOk) +
+    mSec("m-sys", "8 · System", "Is everything running: the last automatic run, what was saved for each game, the last retrain, and any errors.", stRows, 0, !stOk) +
     `<div class="center"><button class="btn" id="export-btn">Export data</button></div>`;
   paintBox($("models"));
   $("export-btn").onclick = () => (window.location.href = "/api/results/export");
@@ -876,14 +875,8 @@ function labStats() {
   return `<div class="stats">${statTile("MONEYLINE", W.w, W.l, W.n ? W.hit : null, "right")}${statTile("SPREAD PICKS", cs.w, cs.l, ch(cs), "covered")}${statTile("TOTAL PICKS", ct.w, ct.l, ch(ct), "right")}</div>`;
 }
 function pickLabBox() {
-  const pc = (x) => (x == null ? "—" : `${(x * 100).toFixed(1)}%`), P = PICKS || {};
-  const arow = (m, name) => { const x = P[m];
-    return `<div class="arow"><span class="nm">${name}</span><span class="dim rc">${x && x.graded ? `${x.w}–${x.l}` : x && x.recorded ? `${x.recorded} saved` : "none yet"}</span><b class="${hitCls(x && x.graded ? x.hit : null)}">${x && x.graded ? Math.round(x.hit * 100) + "%" : "—"}</b></div>`; };
-  const bands = ["spread", "total"].map((m) => (P[m] && P[m].bands || []).filter((b) => b.graded).map((b) => `<div class="row"><span class="dim">${m === "spread" ? "Spread" : "Total"} · model differs by ${b.label}</span><span>${b.w}–${b.l} · ${pc(b.hit)}</span></div>`).join("")).join("");
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Tracked angles</div>` +
-    arow("dog", "Road dogs +3 to +6.5") + arow("away3", "Road team, spread 3 or less") + arow("wind", "Under, wind 12+ mph") + arow("lowloss", "Underdog off a loss scoring 10 or fewer") + arow("prebye", "Home team before its bye (wk 8+)") + arow("dogblow", "Road dog +3 to +6.5 after a blowout") + arow("streakfade", "Road team off a loss vs 3-game win streak") + arow("winddiv", "Under, division game, wind 10+ mph") + arow("roadml3", "Road ML, spread ~3, total 48+") + arow("coachfade", "Road team vs a cold home coach (ATS)") + arow("mlgap", "ML cheaper than its spread (3+ pts)") + arow("booksmove", "Books moved, Polymarket lagged") +
-    teaserRow() + altRow() + comboRow() +
-    (bands ? `<div class="fold" data-drop="labbands"><span>By model gap</span><span>▾</span></div><div class="drop" id="labbands">${bands}</div>` : "") + `</div></div>`;
+  // 10/13 (owner): the old angle rows, teaser rows, combo record and early-week row were cut; only the live paper tests that matter stay.
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Tracked angles</div>${teaserRow()}</div></div>`;
 }
 // Teaser legs (10/6): underdog +1.5..+2.5 bought at +7.5..+8.5 on Polymarket's alternate spread; record, return at the price paid, history.
 function altRow() {
@@ -896,13 +889,8 @@ function comboRow() {
 }
 function teaserRow() {
   const T = TEASERS; if (!T) return "";
-  const ee = T.early, eRow = ee ? `<div class="arow"><span class="nm">Early-week total (at the opening number)</span><span class="dim rc">${ee.n ? `${ee.w}–${ee.l}` : ee.recorded ? `${ee.recorded} saved` : "none yet"}</span><b class="${ee.n ? (ee.hit >= 0.545 ? "g" : ee.hit >= 0.5 ? "y" : "r") : "dim"}">${ee.n ? Math.round(ee.hit * 100) + "%" : "—"}</b></div>` : "";
   const wu = T.windU, wRow = wu ? `<div class="arow"><span class="nm">Early-week Under, wind 10+ forecast (opening number)</span><span class="dim rc">${wu.n ? `${wu.w}–${wu.l}` : wu.recorded ? `${wu.recorded} saved` : "none yet"}</span><b class="${wu.n ? (wu.hit >= 0.56 ? "g" : wu.hit >= 0.5 ? "y" : "r") : "dim"}">${wu.n ? Math.round(wu.hit * 100) + "%" : "—"}</b></div>` : "";
-  const mm = T.moves, mRow = mm ? `<div class="arow"><span class="nm">Under after total fell 3+</span><span class="dim rc">${mm.n ? `${mm.w}–${mm.l}` : mm.recorded ? `${mm.recorded} saved` : "none yet"}</span><b class="${mm.n ? (mm.hit >= 0.55 ? "g" : mm.hit >= 0.5 ? "y" : "r") : "dim"}">${mm.n ? Math.round(mm.hit * 100) + "%" : "—"}</b></div>` : "";
-  const tt = T.totals, tRow = tt ? `<div class="arow"><span class="nm">Total moved 6 (model's side)</span><span class="dim rc">${tt.n ? `${tt.w}–${tt.l}` : tt.recorded ? `${tt.recorded} saved` : "none yet"}</span><b class="${tt.n ? (tt.hit >= 0.67 ? "g" : tt.hit >= 0.6 ? "y" : "r") : "dim"}">${tt.n ? Math.round(tt.hit * 100) + "%" : "—"}</b></div>` : "";
-  const a = T.all || {}, v = T.value || {}, pc = (x) => (x == null ? "—" : `${Math.round(x * 100)}%`);
-  return `<div class="arow"><span class="nm">Underdog +1.5–2.5 teased to +7.5–8.5</span><span class="dim rc">${a.n ? `${a.w}–${a.l}` : T.recorded ? `${T.recorded} saved` : "none yet"}</span><b class="${a.n ? (a.hit >= 0.76 ? "g" : a.hit >= 0.72 ? "y" : "r") : "dim"}">${a.n ? pc(a.hit) : "—"}</b></div>` +
-    `<div class="s dim">History ${T.hist.years}: ${Math.round(T.hist.hit * 1000) / 10}% of ${T.hist.n}</div>` + tRow + mRow + eRow + wRow;
+  return wRow || '<div class="s dim">None yet.</div>';
 }
 // Decision model (10/9): straight bets only (no teasers, no alt lines), ONE pick per game per market (spread, total): the one
 // with the best record. Two angles on opposite sides of the same total no longer both show.
@@ -1011,7 +999,8 @@ function parlayHistLine(id) {
 function renderLab() {
   if (!$("lab")) return;
   if (!PAPER) { $("lab").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }
-  const names = PAPER.names || {}, wk = PAPER.week, board = PAPER.board || {};
+  const CUT_PARLAYS = new Set(["angles_2", "angles_3", "angles_fav_3", "alt_2", "alt_pick_3", "right_now_3", "same_game_3", "linked_sgp_3"]);   // 10/13 (owner): teaser / angle / price-gap / coin-flip-side parlays cut
+  const names = Object.fromEntries(Object.entries(PAPER.names || {}).filter(([k]) => !CUT_PARLAYS.has(k))), wk = PAPER.week, board = PAPER.board || {};
   const pct = (x) => (x == null ? "—" : `${(x * 100).toFixed(0)}%`);
   const intro = "";
   // One plain line per parlay type: who chose the legs. Every one is a fixed rule applied to the model's numbers (nobody hand-picks).
@@ -1197,7 +1186,7 @@ function renderLines() {
   if (DETAIL) { const g = S.games.find((x) => x.key === DETAIL); if (g) return renderDetail(g); DETAIL = null; }
   setBg(null);
   $("detail").style.display = "none"; $("lines").style.display = "";
-  $("lines").innerHTML = bestStrip() + parlayStrip() + extraStrip() + changedBox() + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
+  $("lines").innerHTML = bestStrip() + parlayStrip() + changedBox() + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
 
     '';
 }
