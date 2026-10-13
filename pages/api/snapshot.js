@@ -122,6 +122,12 @@ export default async function handler(req, res) {
           if (wk.outdoor && wk.wind != null && wk.wind >= WIND_U_MPH) await redis.hsetnx(tkey(season, week), `${g.key}|windU`,
             JSON.stringify({ game: g.key, kind: "total", windU: true, side: "under", base: to, line: to, wind: wk.wind, week, t })); }
       } catch {}
+      // Recording for future tests (10/13, not shown): kickoff-hour forecast and Out/Doubtful starter counts, each saved with its time
+      // (forecast every snapshot, injuries only when they change). Later tests can ask "who knew first, the forecast/news or the line?".
+      try { const wf = await windAtKickoff(g); if (wf.outdoor && wf.wind != null) { const fk = `fcst:${season}:${week}:${g.key}`; await redis.rpush(fk, JSON.stringify({ t, wind: wf.wind, temp: wf.temp == null ? null : wf.temp })); await redis.ltrim(fk, -120, -1); }
+        const sj = await situationFor(season, week, g).catch(() => null), ik = `inj:${season}:${week}:${g.key}`;
+        if (sj) { const cur = JSON.stringify({ h: sj.home && sj.home.inj || null, a: sj.away && sj.away.inj || null }), last = await redis.lindex(ik, -1), lj = last ? jparse(last) : null;
+          if (!lj || JSON.stringify(lj.s) !== cur) { await redis.rpush(ik, JSON.stringify({ t, s: JSON.parse(cur) })); await redis.ltrim(ik, -60, -1); } } } catch {}
       const px = await tdProps(events, g.away, g.home).catch(() => null);
       if (px) {
         // TD guard. A feed glitch (e.g. the 2+ market read as anytime) halves prices for BOTH teams at once; real news

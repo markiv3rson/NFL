@@ -147,6 +147,43 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   model + injuries vs the opening line 53.4% (50.6% without) -- noted, under 56%.
 - Sign check: `d.km` / `d.so` are HOME-FAVORED margins (home -3.5 spread = +3.5), so the line's margin is +km, not -km.
 
+## Tests after PR #232 + access check (Oct 13, 2026 night) -- nothing new passed
+
+- Tested on unseen seasons, no pick found: team turnover luck, league scoring trend, week-1 Under, clean backup-QB retest (first week
+  with a backup 59.2% at the open but 51.3% at the close; later weeks 52-53% -- an earlier 61.3% claim did NOT replicate, retracted),
+  WR / CB starters out, late-season rest, training-window length. TD model vs Polymarket prices: about tied.
+- Polymarket price history only goes back to Aug 2026 (preseason + weeks 1-5). NFL.com daily injury feed is not reachable.
+- RECORDING (not shown, `pages/api/snapshot.js`): kickoff-hour forecast every snapshot (Redis `fcst:<season>:<week>:<game>`, last 120)
+  and starters-out counts whenever they change (`inj:<season>:<week>:<game>`, last 60), each with a time, to test later who knew
+  first -- the forecast/news or the line. Past forecasts/news times can't be rebuilt, so this is the only way to get them.
+- Access check (about 240 hosts): api.the-odds-api.com reachable but needs a key (not in the sandbox; past odds by timestamp would
+  fix the "past hourly lines" gap). Open-Meteo and Kalshi were rate-limited. Pro-Football-Reference, Reddit, many books block us.
+
+## Kaggle free data (Oct 13, 2026 night) -- sandbox can download public Kaggle datasets
+
+- Works: `https://www.kaggle.com/api/v1/datasets/download/<owner>/<name>` (no login) and `/api/v1/datasets/list?search=`.
+- Checked: "NFL Timestamped Odds" (oliviersportsdata) = only 18 games, too few. "NFL Injury Reports 2009-2025" = just the nflverse file
+  we already use (no posting times). "MGM Grand NFL betting data" (caseydurfee, 1,360 games 2021-26) has REAL bets % and money % per side.
+- Tested on it: spreads, money% minus bets% 20+ -> follow money 47.8% (92 games), 10+ 51.2%: no edge. Totals: 20+ more money than bets
+  on the Under 61.3% (93) but the Over side only 51.4% (35), seasons swing 45-75%, and it is 1 of 8 cuts tried -- NOT added. No free
+  live source for these splits anyway.
+
+- More Kaggle checks (10/13): 538 Elo ratings (published rule, nothing fitted) vs the closing spread: 538's own file 2006-21 gap 3+ pts
+  54.4% (1,378 games), 6+ 56.2% -- but rebuilt from nflverse results with 538's formula it is only 52.2% at 3+ (1,706 games, 2022-26
+  50.4%, 2025 43%), 52.4% at 6+: NOT an edge (the first number came from a different line file). Elo error 10.75 vs line 10.50.
+  Player props file (andyt338, only Sep 18-29 2026, 4 yardage/reception markets): bettors' Over at the opening point wins 43.9%
+  (Pass yds 54%, reception yds 44.5%, receptions 40%, rush yds 40%); betting the way the line moved open->close at the opening point
+  56.4% on 1,170 props -- only 2 weeks, all games correlated: record only, test again when more weeks exist.
+
+- Poisson scoring model (soccer-style, walk-forward 2014-25, 2,932 games): total error 11.02 vs line 10.48; over/under 49.3%, spreads 49.9%.
+  NOT an edge.
+- PREDICT THE LINE MOVE (10/13, ridge, each season unseen, bet the OPENING number in the predicted direction, features known at the
+  open only: rest, travel, stats, model-vs-open gaps, coaches...): predicted vs actual move correlation spread 0.41, total 0.49.
+  Spreads 53-54.6% (878-2,043 games, 10/12 seasons above 50), totals 53-55.2% (697-1,984 games, 9/12). With game-week info (injuries,
+  wind) added: spreads up to 55.5% at the strongest cut, totals 55.7% (609 games, 8/12 seasons). Model-vs-open-total gap alone: 3+ off
+  53.9%, 4+ 54.1%. Best cuts still under 56% and need the OPENING number early in the week (Polymarket may lag it) -- candidate,
+  NOT a pick. Needs the live opening-vs-Polymarket record (Pinnacle + pin30 data) to confirm.
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
