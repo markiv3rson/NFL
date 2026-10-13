@@ -265,6 +265,10 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   `stackSummary`). (4) `situationFor`: while a team's last game is still being played, its 3-game streak and two-games-back are unknown too.
   (5) Site's 2+ TD formula used 1.035 while the model service moved to 1.044 on 10/1 -> site 2+ TD numbers ran ~1% low; now 1.044
   (`lib/calibration.js twoPlus`). (6) Model card number, win % and every pick now use the same newest line (`FR` in `lib/week.js`).
+  (7) Bets tab: a sold bet's profit is saved once (only the last 100 trades are read; later syncs re-summed a smaller number).
+  (8) Scheduler: a scheduled snapshot (and its books pull) skipped for good if the previous one was still running -- now retried in its
+  5-minute window; same for the Pinnacle pull. (9) First-shown picks were saved only when someone had the app open -- the scheduler now
+  builds the slate every 30 min (:15 / :45) so every pick shown gets recorded and graded.
 - CLV tracker built: each card pick keeps the line it FIRST showed at (`first` in `stack:` records, `lib/stack.js recordStack/clvOf`);
   the kickoff line is the close. Models tab -> "LINE VALUE" tile: average points gained vs the close and % of picks that beat it.
 - "Line moved with/against the model" (game model side vs the open, 2014-26, 2,578 games): moved WITH 55.1% at the open (48.1% at the
