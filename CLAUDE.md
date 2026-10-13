@@ -120,6 +120,18 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
 - Checked 10/13 and found consistent: the site sends the line to the model with the right sign; the site's chooser inputs (upgraded
   model leans, line move, stats leans) match how the rebuild trains them; books' consensus line is the most common number (not an average).
 
+## Full check (Oct 13, 2026 night) -- nothing cut, nothing new passed
+
+- Removing signal groups from the chooser (weather, calendar, line shape, model leans, stats leans, line moves, last game,
+  coach/age/QB, travel/rest, injuries, schedule spots), fair test (groups chosen without the test season): spreads 49.2% vs 49.7%
+  with all; totals 50.5% vs 50.8%. The "best" groups to drop changed every season -- no group is reliably bad. Kept all.
+- Loss review weeks 3-5 (card picks 21-17 spreads, 25-19 totals): every loss was an old scanned combo (retired 10/12). KEY NUMBER
+  would have flipped ~3 (CAR @ CLE, NYG @ WAS, BAL @ ATL).
+- Teasers still hold: dog +1.5-2.5 teased +6 75.7% (74/75/77 by period); totals +-6 67% every period.
+- TD model calibrated this season (787 players): said 14% -> 16% scored, 24% -> 28%, 35% -> 36%.
+- Research: most studies find the NFL spread market efficient; post-bye road teams 53.6% overall but 47% 2020-25; half point on 3
+  confirmed as the most valuable half point (9-15% of games land on 3; we measured 9.1%).
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
