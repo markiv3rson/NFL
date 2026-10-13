@@ -115,15 +115,17 @@ def _rebuild_combos():
 
 ESPN_SB = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
 ESPN_ABBR = {"WSH": "WAS", "LAR": "LA"}   # ESPN -> nflverse team codes where they differ
-def _espn_kickoffs():
-    """{ "AWAY @ HOME": kickoff UTC } from ESPN for the next ~9 days (10/7: nflverse still had CHI @ GB at 1:00 PM ET after the game
-    moved to 4:25 PM ET, so the closing-line snapshot and the kickoff-wave rerun would have fired hours early). Empty on any failure."""
+def _espn_kickoffs(weeks=()):
+    """{ "AWAY @ HOME": kickoff UTC } from ESPN for the given (season, week) pairs (10/7: nflverse still had CHI @ GB at 1:00 PM ET after
+    the game moved to 4:25 PM ET, so the closing-line snapshot and the kickoff-wave rerun would have fired hours early). Empty on any failure.
+    10/14 fix: ESPN now rejects date ranges (HTTP 400) -- this had silently returned nothing -- so it asks by week (regular season)."""
     try:
-        now = datetime.now(timezone.utc)
-        url = f"{ESPN_SB}?dates={(now - timedelta(days=1)):%Y%m%d}-{(now + timedelta(days=9)):%Y%m%d}&limit=100"
-        with urllib.request.urlopen(url, timeout=20) as r: d = json.loads(r.read().decode())
+        evs = []
+        for season, week in sorted(set(weeks)) or [(None, None)]:
+            url = f"{ESPN_SB}?dates={season}&seasontype=2&week={week}" if season and week and 1 <= week <= 18 else ESPN_SB
+            with urllib.request.urlopen(url, timeout=20) as r: evs += json.loads(r.read().decode()).get("events", [])
         out = {}
-        for ev in d.get("events", []):
+        for ev in evs:
             c = (ev.get("competitions") or [{}])[0]; by = {}
             for t in c.get("competitors", []):
                 ab = (t.get("team") or {}).get("abbreviation"); by[t.get("homeAway")] = ESPN_ABBR.get(ab, ab)
@@ -138,8 +140,14 @@ def _kickoffs():
         with urllib.request.urlopen(SCHED_URL, timeout=60) as r: rows = list(csv.DictReader(io.StringIO(r.read().decode())))
     except Exception as e:
         print(f"[scheduler] schedule load failed: {e}", flush=True); return []
-    espn = _espn_kickoffs()
     now, out = datetime.now(timezone.utc), []
+    wk = set()
+    for x in rows:   # the weeks with games in the next 8 days, for the ESPN check
+        try:
+            k = datetime.strptime(f"{x['gameday']} {x['gametime']}", "%Y-%m-%d %H:%M").replace(tzinfo=ET).astimezone(timezone.utc)
+            if x.get("game_type") == "REG" and now - timedelta(days=1) < k < now + timedelta(days=8): wk.add((int(x["season"]), int(x["week"])))
+        except (ValueError, KeyError, TypeError): pass
+    espn = _espn_kickoffs(wk)
     for x in rows:
         if x.get("game_type") not in ("REG", "WC", "DIV", "CON", "SB") or not x.get("gameday") or not x.get("gametime"): continue   # + playoffs (9/30)
         try: k = datetime.strptime(f"{x['gameday']} {x['gametime']}", "%Y-%m-%d %H:%M").replace(tzinfo=ET).astimezone(timezone.utc)
