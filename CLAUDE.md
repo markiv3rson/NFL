@@ -159,6 +159,15 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
 - Access check (about 240 hosts): api.the-odds-api.com reachable but needs a key (not in the sandbox; past odds by timestamp would
   fix the "past hourly lines" gap). Open-Meteo and Kalshi were rate-limited. Pro-Football-Reference, Reddit, many books block us.
 
+## Kaggle free data (Oct 13, 2026 night) -- sandbox can download public Kaggle datasets
+
+- Works: `https://www.kaggle.com/api/v1/datasets/download/<owner>/<name>` (no login) and `/api/v1/datasets/list?search=`.
+- Checked: "NFL Timestamped Odds" (oliviersportsdata) = only 18 games, too few. "NFL Injury Reports 2009-2025" = just the nflverse file
+  we already use (no posting times). "MGM Grand NFL betting data" (caseydurfee, 1,360 games 2021-26) has REAL bets % and money % per side.
+- Tested on it: spreads, money% minus bets% 20+ -> follow money 47.8% (92 games), 10+ 51.2%: no edge. Totals: 20+ more money than bets
+  on the Under 61.3% (93) but the Over side only 51.4% (35), seasons swing 45-75%, and it is 1 of 8 cuts tried -- NOT added. No free
+  live source for these splits anyway.
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
