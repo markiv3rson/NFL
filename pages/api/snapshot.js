@@ -43,11 +43,12 @@ export async function writePrelog(season, week, g, t, poly, bk, model) {
   await recordWinner(season, week, g, poly, t, mg).catch(() => 0);      // Most likely winners: the favorite at kickoff (9/30)
   { const alts = poly && poly.alts ? poly.alts : ((await getJSON(`alts:${season}:${week}:${g.key}`).catch(() => null)) || {}).alts || null;   // late close: the saved latest copy
     await recordTeaser(season, week, g, alts ? { ...(poly || {}), alts } : poly, bk, t).catch(() => 0);
-    { const first = jparse(await getRedis().lindex(K.snaps(season, week, g.key), 0).catch(() => null)), open = first && first.poly && first.poly.total ? first.poly.total.line : null;
+    { const allS = ((await getRedis().lrange(K.snaps(season, week, g.key), 0, -1).catch(() => [])) || []).map(jparse).filter(Boolean);   // review fix: first reading WITH a Polymarket line, like the card
+      const first = allS.find((x) => x.poly && x.poly.total) || null, firstS = allS.find((x) => x.poly && x.poly.spread) || null, open = first ? first.poly.total.line : null;
       const now = bk && bk.total && bk.total.line != null ? bk.total.line : poly && poly.total ? poly.total.line : null, mv = totalMove(open, now);
       // Total moved 6 (10/9, model replayed 2014-25): the line's 3+ move first, then wind 15+ Under, else AGAINST the model's side
       const mU = mg && mg.calUnder != null ? mg.calUnder >= 50 : null;
-      { const s0 = first && first.poly && first.poly.spread ? first.poly.spread.homeSpread : null, v = venue(g) || {};
+      { const s0 = firstS ? firstS.poly.spread.homeSpread : null, v = venue(g) || {};
         // 10/12: recorded at the SAME line the card shows -- Polymarket first (where the bet is placed), books only as a fallback.
         // Before, books came first, so a recorded pick could sit on a different number than the one shown.
         const hsNow = poly && poly.spread && poly.spread.homeSpread != null ? poly.spread.homeSpread : bk && bk.spread ? bk.spread.homeSpread : null;

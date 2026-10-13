@@ -224,6 +224,11 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   because the line moved their way were never graded. Now every pick is also saved (whole pick) the first time it is shown
   (`stackfirst:`), graded by `gradeFirstSeenWeek` (lib/grade.js), and `stackRecords` (the record next to each pick) counts each pick once
   per week+game+rule at its FIRST-SHOWN line. Known quirk: KEY NUMBER's line is always +3.5, so its LINE VALUE is always 0.
+- REVIEW FIXES 10/14: stackRecords keeps pushes in its de-dup (a first-shown push no longer lets the kickoff row count a win);
+  Models-tab card record (stackSummary) also counts graded first-shown picks; the kickoff recorder's opening lines = first snapshot WITH a
+  Polymarket line (same as the card -- INJURY / TOTAL MOVE were lost when the week's first snapshot had no Polymarket line); BOUNCE BACK DOG
+  has its own label; order-book TILT ignores dead/placeholder books; Pinnacle pull runs 6 games at a time with a 15 s cap per game's
+  Polymarket part (it could pass Vercel's 60 s limit); first-seen saves use one hmget per game; situationFor runs once per game per build.
 - CLV tracker built: each card pick keeps the line it FIRST showed at (`first` in `stack:` records, `lib/stack.js recordStack/clvOf`);
   the kickoff line is the close. Models tab -> "LINE VALUE" tile: average points gained vs the close and % of picks that beat it.
 - "Line moved with/against the model" (game model side vs the open, 2014-26, 2,578 games): moved WITH 55.1% at the open (48.1% at the
