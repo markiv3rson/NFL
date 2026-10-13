@@ -247,7 +247,7 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   enough volume, so a same-week merge told the model who got the ball) -- always merge NGS with earlier weeks only (merge_asof).
   Leak-free: base 0.15609 avg; all NGS (separation, YAC over expected, rush yards over expected) 0.15594, better 5/5 seasons;
   rush over expected alone 0.15590, 5/5; separation+YAC alone 2/5. Gain ~0.1% (would not move a shown TD % by a point). NOT added
-  yet -- needs a weekly NGS download in td_prob.py; owner to decide.
+  -- owner 10/14: leave it out (gain too small for a weekly NGS download in td_prob.py).
 
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
