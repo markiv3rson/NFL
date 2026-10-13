@@ -16,6 +16,7 @@ import { fetchEvents, gameLines, tdProps } from "../../lib/poly";
 import { sanePoly } from "../../lib/sane";
 import { fetchBooks } from "../../lib/books";
 import { fetchSplits } from "../../lib/splits";
+import { fetchPinnacle } from "../../lib/pinnacle";
 import { gradeRecent } from "../../lib/grade";
 import { syncAccount } from "../../lib/mybets";
 import { logError } from "../../lib/status";
@@ -89,6 +90,15 @@ export default async function handler(req, res) {
         await redis.rpush(`splits:${season}:${week}:${g.key}`, JSON.stringify({ t, src, rows })); await redis.ltrim(`splits:${season}:${week}:${g.key}`, -60, -1); n++; }
       splitsNote = `${n} games, ${sp.fields} split fields`;
     } catch (e) { splitsNote = String(e).slice(0, 120); await logError("splits", `Action Network lines pull failed: ${splitsNote}`).catch(() => {}); }
+    // Pinnacle main spread / total, 10/13: recorded the same way (Redis pinnacle:<season>:<week>:<game>, last 60). Not shown or used for
+    // picks until tested on unseen games. A failed pull is logged and never stops the snapshot.
+    let pinNote = null;
+    if (open.length && src !== "manual") try {
+      const pin = await fetchPinnacle(); let n = 0;
+      for (const g of open) { const line = pin[g.key]; if (!line) continue;
+        await redis.rpush(`pinnacle:${season}:${week}:${g.key}`, JSON.stringify({ t, src, ...line })); await redis.ltrim(`pinnacle:${season}:${week}:${g.key}`, -60, -1); n++; }
+      pinNote = `${n} games`;
+    } catch (e) { pinNote = String(e).slice(0, 120); await logError("pinnacle", `Pinnacle lines pull failed: ${pinNote}`).catch(() => {}); }
     const model = open.length ? await loadModel(season, week).catch(() => null) : null;
     let lines = 0, props = 0;
     await Promise.all(open.map(async (g) => {
@@ -196,6 +206,6 @@ export default async function handler(req, res) {
     }
     const graded = src === "manual" ? 0 : await gradeRecent(season).catch(() => 0);
     const acct = src === "manual" ? { ok: false, note: "skipped on manual refresh" } : await syncAccount().catch((e) => ({ ok: false, note: String(e) }));  // auto-sync My Bets
-    res.status(200).json({ ok: true, week, upcoming: open.length, locked: games.length - open.length, lines, props, books: booksNote, splits: splitsNote, closedLate, graded, edges, paper, account: acct.ok ? `synced ${acct.positions} positions` : acct.note });
+    res.status(200).json({ ok: true, week, upcoming: open.length, locked: games.length - open.length, lines, props, books: booksNote, splits: splitsNote, pinnacle: pinNote, closedLate, graded, edges, paper, account: acct.ok ? `synced ${acct.positions} positions` : acct.note });
   } catch (err) { await logError("snapshot", err).catch(() => {}); res.status(500).json({ ok: false, error: String(err) }); }
 }
