@@ -260,6 +260,12 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   close; fade the team the week after playing AT Denver 43.5% open / 50.0% close. In-season trade within 8 days: buyer 55.0% open /
   51.1% close; fade the seller 49.2% close. Referee crews stay removed (owner).
 
+- Four more (10/14, closing line 1999-2025, open 2014+). None added:
+  Last season's record in weeks 1-4 (fade last year's good teams / back bad ones): 50-52% close, 33-48% open. Cover streaks: fade 3/4/5+
+  straight covers 50.6-51.3%; back a team that failed to cover 5+ straight 56.9% close (246, 18/27 seasons) but 49.1% at the open and
+  periods 51/69/59/51 (1 of 6 cuts) -> noise. One-score-game luck: 49-51%. Polymarket leaning 52c+ at its own line (weeks 3-5 saved
+  snapshots): 68.8% on only 16 games, 55c+ almost never happens -> recheck later in the season.
+
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
