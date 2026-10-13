@@ -263,6 +263,8 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   below green the % now rounds DOWN, colors use the real rate. (3) Records: a first-shown pick replaces the kickoff record only when it is
   GREEN (timing picks); the chooser's yellow side can flip midweek, so its record is the side locked at kickoff (`stackRecords`,
   `stackSummary`). (4) `situationFor`: while a team's last game is still being played, its 3-game streak and two-games-back are unknown too.
+  (5) Site's 2+ TD formula used 1.035 while the model service moved to 1.044 on 10/1 -> site 2+ TD numbers ran ~1% low; now 1.044
+  (`lib/calibration.js twoPlus`). (6) Model card number, win % and every pick now use the same newest line (`FR` in `lib/week.js`).
 - CLV tracker built: each card pick keeps the line it FIRST showed at (`first` in `stack:` records, `lib/stack.js recordStack/clvOf`);
   the kickoff line is the close. Models tab -> "LINE VALUE" tile: average points gained vs the close and % of picks that beat it.
 - "Line moved with/against the model" (game model side vs the open, 2014-26, 2,578 games): moved WITH 55.1% at the open (48.1% at the

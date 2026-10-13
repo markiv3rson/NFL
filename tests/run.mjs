@@ -36,7 +36,7 @@ ok(near(winPctAt({ homeMargin: 5 }, -3), 100 / (1 + Math.exp(-(-0.0452 + 0.1464 
 { const b = gameBets("A @ H", "A", "H", { spread: { homeSpread: -3, home: 0.48, away: 0.53 } }, { spread: { homeSpread: -3, home: { fair: 0.5 }, away: { fair: 0.5 } } }, null, null, null);
   ok(near(b[0].fair, 0.5, 1e-6) && near(b[0].ev, 0.5 / 0.48 - 1, 1e-5), "book fair + EV"); }
 // ---------- TD math (same as td_prob.py)
-{ const lam = -Math.log(0.6); ok(near(twoPlus(40), Math.min(0.6, 1.035 * (1 - Math.exp(-lam) * (1 + lam))) * 100, 1e-9), "twoPlus == td_prob.two_plus"); }
+{ const lam = -Math.log(0.6); ok(near(twoPlus(40), Math.min(0.6, 1.044 * (1 - Math.exp(-lam) * (1 + lam))) * 100, 1e-9), "twoPlus == td_prob.two_plus"); }
 { const sh = firstTdShares([{ fair: 40 }, { fair: 20 }]), l1 = -Math.log(0.6), l2 = -Math.log(0.8), T = l1 + l2 + 0.4; ok(near(sh[0], l1 / T * (1 - Math.exp(-T)) * 100, 1e-9), "firstTdShares == td_prob.first_td"); }
 { const recs = [{ td: [...Array(60)].map((_, i) => ({ fair: 10 + (i % 10), scored: i % 3 === 0 })).concat([...Array(60)].map((_, i) => ({ fair: 38 + (i % 6), scored: i % 5 === 0 }))) }];
   const cal = buildCalibration(recs); let prev = -1, mono = true; for (let f = 1; f <= 90; f += 0.1) { const v = applyCalibration(f, cal); if (v < prev - 1e-9) mono = false; prev = v; } ok(mono, "calibration keeps order"); }
