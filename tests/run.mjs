@@ -194,6 +194,19 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     { key: "fanduel", markets: [{ key: "spreads", outcomes: [{ name: "Los Angeles Rams", point: -3, price: -120 }, { name: "Buffalo Bills", point: 3, price: 100 }] }] }] }];
   const b = parseBooks(ev)["BUF @ LA"]; ok(b && b.byBook.draftkings.hs === -3.5 && b.byBook.draftkings.tl === 54.5 && b.byBook.fanduel.hs === -3 && b.spread && b.spread.n === 1,
     "books: each sportsbook's own line is kept on every pull (consensus unchanged)"); }
+{ const { parsePinnacle } = await import("../lib/pinnacle.js");   // shapes as pasted from Pinnacle's guest feed 10/13
+  const mu = [{ id: 1637432964, startTime: "2026-10-13T00:15:00Z", participants: [{ alignment: "home", name: "Los Angeles Rams" }, { alignment: "away", name: "Buffalo Bills" }] },
+    { id: 1638113662, parentId: 1637432964, special: { category: "Player Props" }, participants: [{ alignment: "neutral", name: "Over" }],
+      parent: { id: 1637497657, participants: [{ alignment: "home", name: "Denver Broncos" }, { alignment: "away", name: "Seattle Seahawks" }] } }];
+  const mk = [{ matchupId: 1637432964, period: 0, isAlternate: false, status: "open", type: "spread", prices: [{ designation: "home", points: -3.5, price: 103 }, { designation: "away", points: 3.5, price: -113 }] },
+    { matchupId: 1637432964, period: 0, isAlternate: true, status: "open", type: "spread", prices: [{ designation: "home", points: -1, price: -166 }, { designation: "away", points: 1, price: 144 }] },
+    { matchupId: 1637432964, period: 1, isAlternate: false, status: "open", type: "spread", prices: [{ designation: "home", points: -1.5, price: -115 }, { designation: "away", points: 1.5, price: 102 }] },
+    { matchupId: 1637432964, period: 0, isAlternate: false, status: "open", type: "total", prices: [{ designation: "over", points: 55.5, price: 100 }, { designation: "under", points: 55.5, price: -113 }] },
+    { matchupId: 1637497657, period: 0, isAlternate: false, status: "open", type: "spread", prices: [{ designation: "home", points: 3, price: -112 }, { designation: "away", points: -3, price: -101 }] },
+    { matchupId: 1638113662, period: 0, key: "s;0;ou", type: "total", prices: [{ participantId: 1, points: 0.5, price: -135 }] }];
+  const r = parsePinnacle(mu, mk), b = r["BUF @ LA"] || {}, s = r["SEA @ DEN"] || {};
+  ok(b.hs === -3.5 && b.hp === 103 && b.ap === -113 && b.tl === 55.5 && s.hs === 3 && s.tl == null && Object.keys(r).length === 2 && Object.keys(parsePinnacle(null, null)).length === 0,
+    "Pinnacle: full-game main spread + total per game (alt lines, halves and player props skipped)"); }
 { const { tdCodeName } = await import("../lib/mybets.js"); const N = ["D'Andre Swift", "Cam Skattebo", "Jacory Croskey-Merritt", "Caleb Williams", "Darnell Mooney", "Dan Moore"];
   ok(tdCodeName("dswi", N) === "D'Andre Swift" && tdCodeName("camska", N) === "Cam Skattebo" && tdCodeName("jacomer", N) === "Jacory Croskey-Merritt" && tdCodeName("dmoo", N) === null && tdCodeName("darmoo", N) === "Darnell Mooney",
     "bets: Polymarket TD codes map to names (1-letter first names too); a tie keeps the code"); }
