@@ -91,6 +91,10 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
 - BIG CAVEAT: in 2026 weeks 3-5 Polymarket's total was never more than 1 point off the books (597 readings), and its spread never more
   than 1.5. Polymarket follows the books, so both LINE MOVE rules rarely fire. The history edge is "bet the opener before the move";
   the open problem is predicting the move early. Pinnacle (moves first) is being saved for exactly that test.
+- Early-week wind Under (paper, 10/13): first time the kickoff forecast says wind 10+ (outdoor) while Polymarket's total is still at
+  its first number, Under at that number is saved once and graded (teaser hash `|windU`; Models -> tracked row). History at the opening
+  total 60.5% (2014-26) but 2024 51% / 2025 52%, so live test first. Clean re-test 10/13: a cut-down chooser betting the opening total
+  hit 58% on its top 25%, but it was mostly this wind signal.
 - Tested, not added: model vs OPEN total 51-54% (56.2% only at 5+ apart, 8/13 seasons); wind 10+ Under at close 58.7% but 2024 42%,
   2025 48% (market caught up; also uses game-time wind, not the forecast); open total 50+ Under 54.7%; open total <=38 Over 53.5%.
 
@@ -108,7 +112,9 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   book and by time of week.
 - C (10/13): Pinnacle's free guest feed (sharpest book) -- full-game main spread/total saved on every snapshot for every
   not-started game it lists, next week's included (`lib/pinnacle.js`, Redis `pinnacle:<season>:<week>:<game>`; check: `/api/pinnaclecheck`). No history exists, so it needs ~half a season before any test;
-  LINE MOVE's 63.2% was measured on the consensus line, not Pinnacle's. A failed pull shows in 9 · System → "Errors (last 2 days)".
+  LINE MOVE's 63.2% was measured on the consensus line, not Pinnacle's.
+  Also every 30 min (Railway scheduler :10/:40 -> `/api/pinnaclepull`, src "pin30") with Polymarket's main line read at the same moment
+  (`poly` in each record), to test "Pinnacle moved first, Polymarket hasn't caught up". A failed pull shows in 9 · System → "Errors (last 2 days)".
 
 ## Game model — already tested, not added
 
