@@ -329,6 +329,27 @@ def train_chooser(d, F):
         out["oos"][mk] = {"games": int(ok.sum()), "hit": round(float(win[ok].mean()) * 100, 1)}
     return out
 
+
+# Total-move model (10/13): predicts how far the total will move from the OPENING number to the close, using only what is known at the
+# open (same early features as the early-week total). Ridge on standardized features. Tested leave-one-season-out on 2014-26 (2,5xx games):
+# betting the opening total in the predicted direction on its 20% most confident games won 58-59% (11/12 seasons), top 10% 60-61%.
+# thr20 / thr10 = the 80th / 90th percentile of |prediction| (honest: from leave-one-season-out predictions).
+def train_move(ZE, mv, seasons, tot, op):
+    from sklearn.linear_model import Ridge
+    from sklearn.preprocessing import StandardScaler
+    X = ZE.values.astype(float); mu, sd = X.mean(0), X.std(0) + 1e-9; Xs = (X - mu) / sd; pr = np.full(len(X), np.nan)
+    for s_ in sorted(set(seasons)):
+        te = np.asarray(seasons) == s_
+        if te.sum() < 50: continue
+        sc = StandardScaler().fit(X[~te]); pr[te] = Ridge(alpha=1000).fit(sc.transform(X[~te]), mv[~te]).predict(sc.transform(X[te]))
+    ok = ~np.isnan(pr); a = np.abs(pr[ok]); out = {}
+    for nm, q in (("20", .8), ("10", .9)):
+        thr = float(np.quantile(a, q)); sel = ok & (np.abs(np.nan_to_num(pr)) >= thr) & (tot != op)
+        w = ((pr > 0) & (tot > op)) | ((pr < 0) & (tot < op)); out["thr" + nm] = round(thr, 4); out["hit" + nm] = round(float(w[sel].mean()) * 100, 1); out["n" + nm] = int(sel.sum())
+    m = Ridge(alpha=1000).fit(Xs, mv)
+    return {"feat": list(ZE.columns), "mean": [round(float(v), 6) for v in mu], "sd": [round(float(v), 6) for v in sd], "coef": [round(float(v), 6) for v in m.coef_],
+            "b0": round(float(m.intercept_), 6), **out}
+
 def build(site_opens=None):
     from sklearn.linear_model import Ridge
     t0 = time.time(); d, cur = assemble(site_opens)
@@ -350,7 +371,8 @@ def build(site_opens=None):
     return {"builtAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "season": int(cur), "checks": checks,
             "upgrade": {"feat": feat, "m": [round(float(v), 6) for v in fm.coef_], "mi": round(float(fm.intercept_), 6), "t": [round(float(v), 6) for v in ft.coef_], "ti": round(float(ft.intercept_), 6)},
             "early": {"feat": list(ZE.columns), "t": [round(float(v), 6) for v in fe.coef_], "ti": round(float(fe.intercept_), 6)},
-            "table": rows, "chooser": train_chooser(d, F)}
+            "table": rows, "chooser": train_chooser(d, F),
+            "moveT": train_move(ZE, (d.kt[eo] - d.to[eo]).values, d.season[eo].values, d.tot[eo].values, d.to[eo].values)}
 
 def passes(a):
     c = a["checks"]

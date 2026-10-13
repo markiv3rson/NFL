@@ -193,6 +193,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     && !keyNumberPick(G, sp(-3.5), bk(-3.5)) && !keyNumberPick(G, sp(-2.5), bk(-3)) && !keyNumberPick(G, sp(-2.5), bk(-3), [{ team: "BUF", line: 3.5, price: 0.95 }])
     && gradeStackPick({ ...main, home: "LA" }, 24, 21) === "W" && gradeStackPick({ ...main, home: "LA" }, 28, 21) === "L",
     "key number: books at exactly 3 -> underdog +3.5 on Polymarket (main or alternate); wins when the favorite wins by exactly 3"); }
+{ const { totalMovePick } = await import("../lib/stack.js"), { predictTotalMove, UP_MOVE } = await import("../lib/upgrade.js"); const G = { home: "LA", away: "BUF", key: "BUF @ LA" };
+  const mv = (move) => ({ move, thr20: 0.72, thr10: 0.97, hit20: 56.8, n20: 507, hit10: 61.9, n10: 252 });
+  const a = totalMovePick(G, mv(1.2), 47.5, 47.5), b = totalMovePick(G, mv(-0.8), 47.5, 47.5), c = totalMovePick(G, mv(0.5), 47.5, 47.5), d = totalMovePick(G, mv(1.2), 48.5, 47.5);
+  ok(a.length === 1 && a[0].pick === "Over 47.5" && a[0].hit === 61.9 && b.length === 1 && b[0].pick === "Under 47.5" && b[0].hit === 56.8 && !c.length && !d.length
+    && !totalMovePick(G, null, 47.5, 47.5).length && !totalMovePick(G, mv(1.2), 47.5, null).length, "total move pick: strong/weak/moved/none", [a, b, c, d]);
+  const p = predictTotalMove(Object.fromEntries(UP_MOVE.feat.map((f, i) => [f, UP_MOVE.mean[i]])));
+  ok(Math.abs(p.move - UP_MOVE.b0) < 0.01 && p.thr20 === UP_MOVE.thr20, "total move model: average game predicts the intercept", p); }
 { const { injuryPick } = await import("../lib/stack.js"); const G = { home: "LA", away: "BUF", key: "BUF @ LA" };
   const inj = (o) => ({ qb: 0, sk: 0, ol: 0, db: 0, f7: 0, ...o }), sit = (h, a) => ({ home: { inj: inj(h) }, away: { inj: inj(a) } });
   const a = injuryPick(G, -3.5, -3.5, sit({ qb: 1 }, {})), b = injuryPick(G, -3.5, -3.5, sit({}, { db: 2 })), c = injuryPick(G, -2.5, -3.5, sit({ ol: 2 }, {}));
