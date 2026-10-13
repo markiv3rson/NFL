@@ -1,8 +1,8 @@
 """
 Snapshot scheduler (runs inside the Railway service, 24/7).
 Calls the site's /api/snapshot on Mark's schedule, Pacific time:
-  Sunday:  6, 7, 8, 9, 10 AM, 12 PM, 3 PM   (Polymarket; sportsbooks at 6, 7, 9 AM, 12, 3 PM)
-  Mon-Sat: 7 AM, 12 PM, 3 PM, 7 PM           (Polymarket; sportsbooks at 7 AM, 3 PM, 7 PM)
+  Sunday:  6, 7, 8, 9, 10 AM, 12 PM, 3 PM   (Polymarket + sportsbooks)
+  Mon-Sat: 7 AM, 12 PM, 3 PM, 7 PM           (Polymarket + sportsbooks)
   Every 30 min (:10 and :40): Pinnacle lines + Polymarket's at the same moment (/api/pinnaclepull, recorded only)
   Every kickoff: 3 minutes before -> closing-line snapshot (Polymarket; books reused)
   Every distinct kickoff wave: ~60 min before -> model rerun (catches that wave's active/inactive news)
@@ -18,9 +18,10 @@ from zoneinfo import ZoneInfo
 PT, ET = ZoneInfo("America/Los_Angeles"), ZoneInfo("America/New_York")
 SUNDAY = [6, 7, 8, 9, 10, 12, 15]
 WEEKDAY = [7, 12, 15, 19]
-BOOK_HOURS_WK, BOOK_HOURS_SUN = {7, 15, 19}, {6, 7, 9, 12, 15}   # sportsbook pulls: 3 a weekday + 5 Sunday = 23/week (~300 credits/month)
-# 10/14: LINE MOVE / KEY NUMBER need the books under 8 h old (3 h within a day of kickoff). With only 7 AM / 3 PM they vanished from 11 PM;
-# the 7 PM pull keeps them up to 3 AM, and 6 AM Sunday covers London kickoffs (6:30 AM PT) at the kickoff recorder.
+BOOK_HOURS_WK, BOOK_HOURS_SUN = {7, 15}, {7, 9, 12, 15}   # FULL sportsbook pulls (moneyline + spreads + totals, 3 credits)
+# 10/14 (owner): the books are pulled at EVERY scheduled snapshot; the hours above are full pulls, the rest skip the moneyline (&books=2,
+# 2 credits) -> 31 pulls a week, about 340 of the 500 free credits a month. The site counts a books reading as current until the next
+# scheduled pull (lib/books.js BOOK_PULLS / booksFresh -- keep it the same as WEEKDAY / SUNDAY here).
 SCHED_URL = "https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv"
 _started = False
 
@@ -197,8 +198,8 @@ def _loop():
                 tag = f"s:{now_pt:%Y-%m-%d-%H}"
                 # Sportsbook pull (3 credits of the 500/month free tier) only on some snapshots: before 9/28 every one
                 # pulled books -- 31 a week, ~405 credits a month before retries, and a slow site makes _call retry
-                # (each retry pulled again), so the month could run dry. Books feed LINE MOVE / KEY NUMBER; 23 a week (10/14).
-                bk = "&books=1" if (now_pt.hour in BOOK_HOURS_SUN if now_pt.weekday() == 6 else now_pt.hour in BOOK_HOURS_WK) else ""
+                # (each retry pulled again), so the month could run dry. Books feed LINE MOVE / KEY NUMBER; every snapshot again (10/14), extra ones at 2 credits.
+                bk = "&books=1" if (now_pt.hour in BOOK_HOURS_SUN if now_pt.weekday() == 6 else now_pt.hour in BOOK_HOURS_WK) else "&books=2"
                 if tag not in fired: fired[tag] = time.time(); _bg("snapshot", _call, "/api/snapshot?src=schedule" + bk, tries=2)   # 2 tries, not 3: a timeout usually means it DID run, and each retry appended a duplicate snapshot (and re-pulled books)
             # Pinnacle every 30 min (10/13, owner): Pinnacle moves first; saved with Polymarket's line at the same moment so "Pinnacle moved,
             # Polymarket hasn't" can be tested. Free feed, no credits. Recorded only.

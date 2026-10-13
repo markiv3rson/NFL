@@ -14,7 +14,7 @@ import { SEASON, currentWeek, loadGames, started } from "../../lib/games";
 import { getRedis, jparse, getJSON, setJSON, K, SLATE_CACHE } from "../../lib/redis";
 import { fetchEvents, gameLines, tdProps } from "../../lib/poly";
 import { sanePoly } from "../../lib/sane";
-import { fetchBooks } from "../../lib/books";
+import { fetchBooks, booksFresh } from "../../lib/books";
 import { savePinnacle } from "../../lib/pinnacle";
 import { gradeRecent } from "../../lib/grade";
 import { syncAccount } from "../../lib/mybets";
@@ -30,12 +30,11 @@ export const config = { maxDuration: 120 };
 
 // Automatic pre-log (protocol 3.3): model vs Polymarket frozen at kickoff for every game. Used by the kickoff snapshot
 // AND the late-closing safety net below (added 9/29), so a missed kickoff (e.g. the scheduler down) still gets one.
-// LINE MOVE / KEY NUMBER at kickoff (10/14 fix): the kickoff snapshot reuses the last books pull, which can be many hours old (a London
-// kickoff used Saturday's) -- an old books line next to a fresh Polymarket line fakes a move. Same limit as the card: books within 3 h of
-// kickoff, else no LINE MOVE; KEY NUMBER then uses the newest Pinnacle line (under 1.5 h), as the card does.
+// LINE MOVE / KEY NUMBER at kickoff (10/14 fix): the kickoff snapshot reuses the last books pull. Same rule as the card: that reading must
+// be current (taken before the next scheduled pull is due), else no LINE MOVE; KEY NUMBER then uses the newest Pinnacle line (under 1.5 h).
 async function timingAtKickoff(season, week, g, t, poly, bk) {
   const bkT = ((await getJSON(K.books(season, week)).catch(() => null)) || {}).t, hrs = (x) => (new Date(t) - new Date(x)) / 3600e3;
-  const fresh = !!bkT && hrs(bkT) <= 3;
+  const fresh = booksFresh(bkT, new Date(t));   // current until the owner's next scheduled pull (10/14)
   const alts = poly && poly.alts ? poly.alts : ((await getJSON(`alts:${season}:${week}:${g.key}`).catch(() => null)) || {}).alts || null;
   let B = fresh ? bk : null;
   if (!fresh) { const raws = (await getRedis().lrange(`pinnacle:${season}:${week}:${g.key}`, -6, -1).catch(() => null)) || [];
@@ -82,10 +81,15 @@ export default async function handler(req, res) {
     // Manual "Lines + injuries" refresh pulls sportsbooks too when this week has none or they're 6+ hours old
     // (before, only the scheduler's 2-a-day pulls ever fetched them, so a missed pull left "Books —" for hours).
     if (req.query.books !== "1" && src === "manual") { const bk = await getJSON(K.books(season, week)); if (!bk || Date.now() - new Date(bk.t) > 6 * 3600e3) req.query.books = "1"; }
+    const liteBooks = req.query.books === "2";   // 10/14: scheduler's extra pulls skip the moneyline (2 credits, not 3)
+    if (liteBooks) req.query.books = "1";
     if (req.query.books === "1") {
       if (!process.env.ODDS_API_KEY) { booksNote = "ODDS_API_KEY not set"; await logError("books", "ODDS_API_KEY not set in Vercel"); }
       else {
-        try { const b = await fetchBooks(process.env.ODDS_API_KEY); books = b.games; await setJSON(K.books(season, week), { t, games: books, remaining: b.remaining }); booksNote = `credits left ${b.remaining}`; }
+        try { const b = await fetchBooks(process.env.ODDS_API_KEY, liteBooks); books = b.games;
+          if (liteBooks) { const prev = ((await getJSON(K.books(season, week)).catch(() => null)) || {}).games || {};   // keep the last moneyline
+            for (const k of Object.keys(books)) if (!books[k].ml && prev[k] && prev[k].ml) books[k].ml = prev[k].ml; }
+          await setJSON(K.books(season, week), { t, games: books, remaining: b.remaining }); booksNote = `credits left ${b.remaining}`; }
         catch (e) { booksNote = String(e); await logError("books", `Sportsbook pull failed: ${String(e).slice(0, 160)}`); }   // was silent: only the scheduler's log saw it
       }
     }
