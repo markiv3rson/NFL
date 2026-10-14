@@ -640,3 +640,9 @@ Tested and NOT added (made it worse):
   smooth" was mostly the shape of NFL margins, not an advantage.
 - NOT wired into the app yet: BUY_TIERS still has the 9 tested tiers. The matrix shows more passing cells (books 5 / 7 / 7.5 favorites at -2.5, books 4 / 4.5 / 5.5 ...);
   adding any is the owner's call.
+
+## CAP AT 2 POINTS (10/14, owner: "cap it at 2 points ... use fewer points when that is enough")
+
+- No pick ever buys more than 2 points (`BUY_TIERS`; a test checks it). Removed: books 1 -> dog +3.5 (buys 2.5) and books 6.5 -> fav -2.5 (buys 4). Kept: books 1.5, 2.5, 3, 3.5, 4.5,
+  5.5, 13.5. Each kept tier is already the fewest points that passed (books 1.5 +2.5 54%, 4.5 -3.5 53%, 5.5 +6.5 56% not steady). The line matrix passes a few more cells within 2
+  points (books 4 fav -2.5 64%, 6 dog +7.5 58%, 6.5 dog +8.5 62%, 7.5 fav -5.5 59%) but its bar (every period 52%+) is looser than the one the tiers were added under -- not added.

@@ -199,22 +199,22 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     && gradeStackPick({ ...k35, home: "LA" }, 24, 21) === "W" && gradeStackPick({ ...k35, home: "LA" }, 23, 21) === "L" && gradeStackPick({ ...k15, home: "LA" }, 23, 21) === "W",
     "BEAT THE 3: books 1.5 -> dog +3.5 at 62.1%; books 3.5 -> favorite -2.5 at 51.9% (opening-line rate) (main line or alternate)");
   const k1 = keyNumberPick(G, sp(-1.5), bk(-1), [{ team: "BUF", line: 3.5, price: 0.7 }]);
-  ok(k1 && k1.pick === "BUF +3.5" && k1.hit === 60.7 && !keyNumberPick(G, sp(-1.5), bk(-2), [{ team: "BUF", line: 3.5, price: 0.6 }]) && !keyNumberPick(G, sp(-3.5), bk(-4), [{ team: "LA", line: -2.5, price: 0.6 }]),
-    "BEAT THE 3: books 1 -> dog +3.5 at 60.7%; books 2 and 4 are not picks");
+  ok(!k1 && !keyNumberPick(G, sp(-1.5), bk(-2), [{ team: "BUF", line: 3.5, price: 0.6 }]) && !keyNumberPick(G, sp(-3.5), bk(-4), [{ team: "LA", line: -2.5, price: 0.6 }]),
+    "BEAT THE 3: books 1 (would buy 2.5 points), 2 and 4 are not picks");
   // 10/14: new tested tiers (day and night rates) and the MIDDLE check
   const { isNightGame, middleCheck, BUY_TIERS } = await import("../lib/stack.js");
   const day = { ...G, kickoff: "2026-10-18T17:00:00Z" }, thu = { ...G, kickoff: "2026-10-16T00:15:00Z" }, snf = { ...G, kickoff: "2026-10-19T00:20:00Z" }, mon = { ...G, kickoff: "2026-10-20T00:15:00Z" };
   ok(!isNightGame(day.kickoff) && isNightGame(thu.kickoff) && isNightGame(snf.kickoff) && isNightGame(mon.kickoff) && !isNightGame(null), "night games: Thursday, Sunday 7 PM ET+, Monday");
   { const kd = keyNumberPick(day, sp(-2.5), bk(-2.5), [{ team: "BUF", line: 3.5, price: 0.6 }]), kt = keyNumberPick(thu, sp(-2.5), bk(-2.5), [{ team: "BUF", line: 3.5, price: 0.6 }]),
-      ks = keyNumberPick(snf, sp(-6.5), bk(-6.5), [{ team: "LA", line: -2.5, price: 0.7 }]);
-    ok(kd && kd.hit === 58.6 && !kd.night && kt && kt.hit === 51.1 && kt.night && /night game \(60¢\)$/.test(kt.why) && ks && ks.hit === 66.7 && ks.n === 66,
-      "BEAT THE 3: night games show the NIGHT win rate (books 2.5: 58.6% day, 51.1% night; books 6.5 night 66.7%)", { kt, ks }); }
-  const t45 = keyNumberPick(day, sp(-4.5), bk(-4.5), [{ team: "LA", line: -2.5, price: 0.66 }]), t65 = keyNumberPick(day, sp(-6.5), bk(-6.5), [{ team: "LA", line: -2.5, price: 0.7 }]);
+      ks = keyNumberPick(snf, sp(-1.5), bk(-1.5), [{ team: "BUF", line: 3.5, price: 0.7 }]);
+    ok(kd && kd.hit === 58.6 && !kd.night && kt && kt.hit === 51.1 && kt.night && /night game \(60¢\)$/.test(kt.why) && ks && ks.hit === 69.7 && ks.n === 33,
+      "BEAT THE 3: night games show the NIGHT win rate (books 2.5: 58.6% day, 51.1% night; books 1.5 night 69.7%)", { kt, ks }); }
+  const t45 = keyNumberPick(day, sp(-4.5), bk(-4.5), [{ team: "LA", line: -2.5, price: 0.66 }]), t65 = keyNumberPick(day, sp(-6.5), bk(-6.5), [{ team: "LA", line: -2.5, price: 0.7 }]);   // 6.5 would buy 4 points: removed (owner: cap at 2)
   const t55 = keyNumberPick(day, sp(-5.5), bk(-5.5), [{ team: "BUF", line: 7.5, price: 0.64 }]), t135 = keyNumberPick(day, sp(-13.5), bk(-13.5), [{ team: "BUF", line: 14.5, price: 0.6 }]);
-  ok(t45 && t45.pick === "LA -2.5" && t45.hit === 65.6 && t65 && t65.pick === "LA -2.5" && t65.hit === 64.3 && t55 && t55.pick === "BUF +7.5" && t55.hit === 58.7 && /BEAT THE 7/.test(t55.why)
+  ok(t45 && t45.pick === "LA -2.5" && t45.hit === 65.6 && !t65 && t55 && t55.pick === "BUF +7.5" && t55.hit === 58.7 && /BEAT THE 7/.test(t55.why)
     && t135 && t135.pick === "BUF +14.5" && t135.hit === 68 && /BEAT THE 14/.test(t135.why) && !keyNumberPick(day, sp(-7.5), bk(-7.5), [{ team: "LA", line: -6.5, price: 0.6 }])
-    && !keyNumberPick(day, sp(-6), bk(-6), [{ team: "BUF", line: 7.5, price: 0.6 }]) && Object.keys(BUY_TIERS).length === 9,
-    "bought points: books 4.5 / 6.5 -> fav -2.5, 5.5 -> dog +7.5, 13.5 -> dog +14.5; books 7.5 / 6 are not picks", { t45, t55 });
+    && !keyNumberPick(day, sp(-6), bk(-6), [{ team: "BUF", line: 7.5, price: 0.6 }]) && Object.keys(BUY_TIERS).length === 7 && Object.entries(BUY_TIERS).every(([A, T]) => (T.side === "fav" ? +A - Math.abs(T.line) : T.line - +A) <= 2),
+    "bought points (never more than 2): books 4.5 -> fav -2.5, 6.5 / 1 removed, 5.5 -> dog +7.5, 13.5 -> dog +14.5; books 7.5 / 6 are not picks", { t45, t55 });
   { const { ruleRecords, ruleFlag } = await import("../lib/stack.js"), mk = (g, res, t, o = {}) => ({ id: "keynum|spread", tier: 3, hit: 55.6, week: 6, game: g, result: res, t, ...o });
     const rows = Array.from({ length: 16 }, (_, i) => mk(`G${i}`, i < 4 ? "W" : "L", "2"));   // 4-12 = 25%
     const seen = [mk("G0", "L", "1", { id: "chooser|spread" })];   // chooser picks are not green rules -> ignored
