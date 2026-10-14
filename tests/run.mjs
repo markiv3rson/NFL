@@ -462,6 +462,15 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(s3.n === 1 && s3.hit === 0 && s3.roi === -1 && t3.n === 0 && t3.hit === null, "parlay history: a lost leg loses the parlay; top-3 needs three games at 75%+ no-vig");
     ok(s1.periods.length === 3 && s1.periods[0].n === 3 && s1.periods[1].n === 0 && s1.periods[2].n === 0, "parlay history: split into the three periods");
     ok(parlayHistory([]).every((p) => p.n === 0), "parlay history: empty schedule gives empty rows"); }
+  { // old combo legs (10/14): legs found anywhere in a reply; legs saved at sync are used after Polymarket drops them
+    const { findLegs } = await import("../pages/api/combolegs.js"); const { saveComboLegs, comboPicks } = await import("../lib/mybets.js"); const { getJSON } = await import("../lib/redis.js"); const R = globalThis.__TEST_REDIS__;
+    const legs = [{ slug: "asc-nfl-sea-den-2026-10-15-neg-3pt5", eventSlug: "nfl-sea-den-2026-10-15", outcome: "+3.50", team: { abbreviation: "den", logo: "x" }, state: "" }, { slug: "tsc-nfl-sea-den-2026-10-15-total-40pt5", eventSlug: "nfl-sea-den-2026-10-15", outcome: "Under", state: "MARKET_STATE_WON" }];
+    ok(findLegs({ market: { combo: { legs } } }).length === 2 && findLegs({ market: { slug: "caoc-1", outcomes: ["Yes"] } }) === null, "old combos: legs found deep in a reply; a plain market is not legs");
+    await saveComboLegs({ "caoc-t1": { comboLegDetails: legs }, "plain-mkt": { comboLegDetails: legs } });
+    const saved = await getJSON("combolegs:caoc-t1"); ok(saved && saved.length === 2 && !saved[0].team.logo && !(await getJSON("combolegs:plain-mkt")), "old combos: account sync saves each combo's legs (slimmed), combos only");
+    const ps = await comboPicks({ positions: {} }, "caoc-t1", 2026, 6, saved);
+    ok(ps && ps[0].label === "DEN +3.5" && ps[0].kind === "spread" && ps[1].label === "Under 40.5 · SEA @ DEN" && ps[1].result === "W" && ps[1].game === "SEA @ DEN", "old combos: saved legs become picks after Polymarket drops them");
+    await R.del("combolegs:caoc-t1"); }
   { // bets analysis: hand-worked numbers
     const L = (kind, result, price) => ({ kind, result, price });
     const bets = [ { source: "preloaded", cost: 10, result: "L", pl: -10, legs: [L("td", "W", 0.4), L("td", "L", 0.4), L("spread", "W", 0.5)] },
@@ -469,8 +478,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       { source: "preloaded", cost: 8, result: "pending", legs: [L("td", "pending", 0.3), L("spread", "L", 0.5)] },
       { source: "account", cost: 99, result: "L", pl: -99, legs: [] } ];
     const h = ctx.T.betsAnalysis(bets);
-    ok(/Touchdowns <span class="dim">· 3 legs<\/span>[\s\S]*hit <b>33%<\/b> · paid 43¢ · <b class="r">−10 pts/.test(h), "bets analysis: touchdown legs hit 1 of 3 against an average 43¢ price = −10 points");
-    ok(/Spreads <span class="dim">· 2 legs/.test(h) && /Totals <span class="dim">· 1 legs/.test(h) && !/99/.test(h), "bets analysis: legs of unfinished combos count once graded; account bets are left out");
+    ok(/Touchdowns <span class="dim">· 1–2<\/span>[\s\S]*hit <b>33%<\/b> · paid 43¢ · <b class="r">−10 pts/.test(h), "bets analysis: touchdown legs hit 1 of 3 against an average 43¢ price = −10 points");
+    ok(/Spreads <span class="dim">· 1–1/.test(h) && /Totals <span class="dim">· 1–0/.test(h) && !/99/.test(h), "bets analysis: legs of unfinished combos count once graded; an account bet without saved legs is left out");
+    const h2 = ctx.T.betsAnalysis([...bets, { source: "account", cost: 10, result: "L", pl: -10, legs: [], picks: [{ label: "DEN +3.5", result: "W" }, { label: "Emanuel Wilson 1+ TD", result: "L" }, { label: "Under 40.5 · SEA @ DEN", result: "W" }] }]);
+    ok(/Touchdowns <span class="dim">· 1–3/.test(h2) && /Spreads <span class="dim">· 2–1/.test(h2) && /Totals <span class="dim">· 2–0/.test(h2) && /3-leg combos <span class="dim">· 2<\/span>/.test(h2), "bets analysis: Polymarket account combos count from their saved legs");
     ok(/3-leg combos <span class="dim">· 1<\/span>/.test(h) && /2-leg combos <span class="dim">· 1<\/span>/.test(h) && !/settled legs of your typed-in combos/.test(h), "bets analysis: by combo size, no explanation footnote");
     ok(/None yet/.test(ctx.T.betsAnalysis([])) && /None yet/.test(ctx.T.betsAnalysis([{ source: "preloaded", legs: [L("td", "pending", 0.4)], result: "pending" }])), "bets analysis: says so when nothing has settled"); }
   { // closing-line value: hand-worked, and the grading helper
