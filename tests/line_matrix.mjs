@@ -65,6 +65,12 @@ for (const ver of ["close", "open"]) {
   for (const x of passes.filter((y) => y.bought > 0).sort((a, b) => b.z.rate - a.z.rate).slice(0, 120))
     say(`  books ${String(x.B).padEnd(4)} ${x.team.padEnd(8)} ${sgn(x.line).padEnd(6)} buys ${String(x.bought).padEnd(3)} ${x.dn.padEnd(5)} wins ${x.z.rate.toFixed(1)}% (${x.n}) periods ${x.z.per.map((p) => p.toFixed(0)).join("/")}`);
 }
+// RARE 2.5-3 POINT BUYS (owner 10/14: "3 should be the max but only on rare situations"): a 2.5 or 3 point buy is listed only when it wins 60%+ on
+// BOTH the closing and the opening numbers (100+ games each) and every period wins 56%+. Day and night games together.
+{ const C = build(recs.close, "spread"), O = build(recs.open, "spread"); say("\nRARE 2.5-3 POINT BUYS (60%+ at the close AND the open, every period 56%+):");
+  for (const k of Object.keys(C)) { const [B, L, dn] = k.split("|"); if (dn !== "all" || !O[k]) continue; const jc = judge(C[k]), jo = judge(O[k]); if (!jc || !jo) continue; const s2 = +L + +B; if (Math.abs(s2) < 2.5 || Math.abs(s2) > 3) continue;
+    const z = (j, c) => (s2 > 0 ? j.fav : j.dog); const a = z(jc), b = z(jo); if (a.rate >= 60 && b.rate >= 60 && a.per.every((p) => p >= 56) && b.per.every((p) => p >= 56))
+      say(`  books ${B}: ${s2 > 0 ? "favorite" : "underdog"} at ${sgn(s2 > 0 ? +L : -L)} buys ${Math.abs(s2)} · close ${a.rate.toFixed(1)}% (${jc.n}) ${a.per.map((p) => p.toFixed(0)).join("/")} · open ${b.rate.toFixed(1)}% (${jo.n}) ${b.per.map((p) => p.toFixed(0)).join("/")}`); } }
 // TOTALS: Over / Under at the books total plus or minus points, by total size
 for (const ver of ["close", "open"]) {
   const list = recs[ver].filter((x) => x.T != null), cells = build(list, "total"), rowsT = [];
