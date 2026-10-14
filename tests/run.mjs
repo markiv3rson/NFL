@@ -186,7 +186,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     "key number: books at exactly 3 -> underdog +3.5 on Polymarket (main or alternate); wins when the favorite wins by exactly 3");
   const k25 = keyNumberPick(G, sp(-2.5), bk(-2.5), [{ team: "BUF", line: 3.5, price: 0.6 }]);
   ok(k25 && k25.pick === "BUF +3.5" && k25.hit === 60.9 && /books at BUF \+2\.5/.test(k25.why) && main.hit === 57.9 && !keyNumberPick(G, sp(-2.5), bk(-2)),
-    "key number: books at 2.5 -> underdog +3.5 at 60.9% (books at 3: 57.9%; day games; books at 2 is not a pick)");
+    "key number: books at 2.5 -> underdog +3.5 at 60.9% (books at 3: 57.9%; books at 2 is not a pick)");
   const k15 = keyNumberPick(G, sp(-1.5), bk(-1.5), [{ team: "BUF", line: 3.5, price: 0.66 }]), k35 = keyNumberPick(G, sp(-3.5), bk(-3.5), [{ team: "LA", line: -2.5, price: 0.58 }]);
   const k35main = keyNumberPick(G, sp(2.5, 0.45, 0.57), bk(3.5));   // road favorite BUF -3.5 at the books, Polymarket main line BUF -2.5
   ok(k15 && k15.pick === "BUF +3.5" && k15.hit === 62.1 && k15.price === 0.66 && k35 && k35.pick === "LA -2.5" && k35.hit === 59.8 && k35.line === -2.5 && k35.price === 0.58
@@ -196,7 +196,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const k1 = keyNumberPick(G, sp(-1.5), bk(-1), [{ team: "BUF", line: 3.5, price: 0.7 }]);
   ok(k1 && k1.pick === "BUF +3.5" && k1.hit === 60.7 && !keyNumberPick(G, sp(-1.5), bk(-2), [{ team: "BUF", line: 3.5, price: 0.6 }]) && !keyNumberPick(G, sp(-3.5), bk(-4), [{ team: "LA", line: -2.5, price: 0.6 }]),
     "BEAT THE 3: books 1 -> dog +3.5 at 60.7%; books 2 and 4 are not picks");
-  // 10/14: new tested tiers, day games only, and the MIDDLE check
+  // 10/14: new tested tiers (day and night rates) and the MIDDLE check
   const { isNightGame, middleCheck, BUY_TIERS } = await import("../lib/stack.js");
   const day = { ...G, kickoff: "2026-10-18T17:00:00Z" }, thu = { ...G, kickoff: "2026-10-16T00:15:00Z" }, snf = { ...G, kickoff: "2026-10-19T00:20:00Z" }, mon = { ...G, kickoff: "2026-10-20T00:15:00Z" };
   ok(!isNightGame(day.kickoff) && isNightGame(thu.kickoff) && isNightGame(snf.kickoff) && isNightGame(mon.kickoff) && !isNightGame(null), "night games: Thursday, Sunday 7 PM ET+, Monday");

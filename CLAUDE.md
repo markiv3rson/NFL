@@ -112,18 +112,18 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 
 ## BUY THE POINTS + fixes A-D (10/14 late, owner: "build now")
 
-- BEAT THE 3 is now a table of tested tiers (`lib/stack.js BUY_TIERS`, DAY GAMES ONLY, 1999-2025 closing line): books 1 / 1.5 / 2.5 / 3 ->
+- BEAT THE 3 is now a table of tested tiers (`lib/stack.js BUY_TIERS`, 1999-2025 closing line, DAY rates): books 1 / 1.5 / 2.5 / 3 ->
   dog +3.5 (60.7 / 62.1 / 60.9 / 57.9%); books 3.5 / 4.5 / 6.5 -> fav -2.5 (59.8 / 65.6 / 66.9%); books 5.5 -> dog +7.5 (61.7%, "BEAT THE
   7"); books 13.5 -> dog +14.5 (68.0% on 50, "BEAT THE 14"). NOT picks (tested 10/14): fav -6.5 at 7/7.5/8, dog +7.5 at 5/6/6.5, fav -9.5
   at 10.5/11, dog +10.5 at 9/9.5/10, dog +14.5 at 13/14, books 2, books 4. Books 4.5 dog +7.5 also passed (60.8%) -- only the fav side
   is shown. Polymarket alternate lines now read up to 15 points (`lib/poly.js`). Buying more points always raises the win rate; the price
   rises too.
-- B (CHANGED same day, owner: "I want night games too"): BEAT THE 3, BOUNCE BACK, BOUNCE BACK DOG fire in night games too (`isNightGame`:
-  Thursday, Sunday 7 PM ET+, Monday) but the card shows the NIGHT rate (`BUY_TIERS[..].night`, 1999-2025): books 1 55.8%, 1.5 69.7% (33),
-  2.5 51.1%, 3 51.8%, 3.5 fav 55.6%, 4.5 fav 54.2%, 6.5 fav 66.7%, 5.5 dog +7.5 60.0%, 13.5 45.5% (11); BOUNCE BACK 48.3% (58), DOG 53.1% (32);
-  middle uses the night exact-3 share (3.3 / 9.4 / 7.3%). Below 56% they show light green / yellow. Day picks keep the day rates. Night: BEAT THE 3
-  53-56% every period vs day 58-61%; BOUNCE BACK 50.9% vs 58.8%; DOG 53.1% vs 56.9% (app's own replay). Underdogs cover less at night
-  (Thu 46.7%, SNF 49.9%, Sun day 51.6%) and fewer night games land on 3. Card %: BOUNCE BACK 58.8% (318), DOG 56.9% (253).
+- B: night games (`isNightGame`: Thursday, Sunday 7 PM ET+, Monday; Thanksgiving-day Thursday games count as night too, as in the history).
+  First built as "day games only" (BEAT THE 3 night 53-56% every period vs day 58-61%; BOUNCE BACK 48-51% vs 58.8%; DOG 53.1% vs 56.9%;
+  underdogs cover less at night: Thu 46.7%, SNF 49.9%, Sun day 51.6%); owner: "I want night games too" -> the rules fire at night with
+  the NIGHT rate on the card (`BUY_TIERS[..].night`, 1999-2025): books 1 55.8%, 1.5 69.7% (33), 2.5 51.1%, 3 51.8%, 3.5 fav 55.6%, 4.5 fav
+  54.2%, 6.5 fav 66.7%, 5.5 dog +7.5 60.0%, 13.5 45.5% (11); BOUNCE BACK 48.3% (58), DOG 53.1% (32). Day card %: BOUNCE BACK 58.8% (318),
+  DOG 56.9% (253). Under 56% the card shows light green / yellow. `npm run accuracy` replays day AND night against each card number.
 - A: same-game parlays -- `lib/combo.js pairLift` treats two side bets in one game as linked (same team = the less likely leg; opposite
   teams = pA + pB - 1, the window between them). DEN +3.5 + SEA ML showed 34%, real ~13-17%. The 2-leg filler (`lib/sgp.js`) never adds
   a leg that works against one already in (link < 1x); same-team TD first.
@@ -134,8 +134,8 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   a published model that still has "w" is ignored by `useMoveModel` and the status `moveCheck`).
 - D: card warns "⚠ Costs X¢ but wins Y%" when the pick's price (its own bought-line price or the main line's) is above its win rate
   (`public/app.js costNote`).
-- MIDDLE (owner: "only if it looks like a good edge"): books 2.5 / 3 / 3.5, day games -> favorite -2.5 + underdog +3.5 shown as a note on the
-  spread card only when the two prices add up to less than 1 + the exact-3 share (8.8 / 9.3 / 10.1%) (`lib/stack.js middleCheck`).
+- MIDDLE (owner: "only if it looks like a good edge"): books 2.5 / 3 / 3.5 -> favorite -2.5 + underdog +3.5 shown as a note on the
+  spread card only when the two prices add up to less than 1 + the exact-3 share (day 8.8 / 9.3 / 10.1%, night 3.3 / 9.4 / 7.3%) (`lib/stack.js middleCheck`).
   Saved once (`|middle` in `lib/tracked.js`), graded (W = favorite by exactly 3, both won), Models -> Tracked angles row with money.
   The Polymarket COMBO version (ML + spread as one parlay, 6.39x for SEA ML + DEN +3.5) can't be judged: the app can't see combo prices.
 
