@@ -446,7 +446,11 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     let calls = 0; ok((await overlayEspnFinals(rows.map((r) => ({ ...r, final: false })), now, async () => { calls++; return { ok: true, json: async () => ({ events: [] }) }; })) === 0 && calls === 0, "espn finals: after a failure ESPN is left alone for a minute"); resetEspnFailure();
     const { getStatus } = await import("../lib/status.js"); const R = globalThis.__TEST_REDIS__; await R.del("errors");
     await R.lpush("errors", JSON.stringify({ t: new Date(now - 4 * 86400e3).toISOString(), where: "old", msg: "x" })); await R.lpush("errors", JSON.stringify({ t: new Date(now - 3600e3).toISOString(), where: "new", msg: "y" }));
-    const stt = await getStatus(2026, 4, {}, null); ok(stt.errors.length === 1 && stt.errors[0].where === "new" && stt.ok === false, "status: only errors from the last 48 hours are listed"); await R.del("errors"); }
+    const stt = await getStatus(2026, 4, {}, null); ok(stt.errors.length === 1 && stt.errors[0].where === "new" && stt.ok === false, "status: only errors from the last 48 hours are listed"); await R.del("errors");
+    await R.lpush("errors", JSON.stringify({ t: new Date(now - 5 * 3600e3).toISOString(), where: "pinnacle", msg: "403" })); await R.lpush("errors", JSON.stringify({ t: new Date(now - 3600e3).toISOString(), where: "books", msg: "z" }));
+    const { pinnacleOk } = await import("../lib/pinnacle.js"); await pinnacleOk(R);
+    const st2 = await getStatus(2026, 4, {}, null); ok(st2.errors.length === 1 && st2.errors[0].where === "books", "status: an error is hidden once the same job worked again after it (Pinnacle)", st2.errors);
+    await R.del("errors"); await R.del("ok:pinnacle"); }
   { // parlay history: hand-worked week of three home favorites (A -400 wins, B -500 wins, C -300 loses)
     const { parlayHistory } = await import("../lib/replay.js");
     const gm = (home, spread, hml, aml, hs, as) => ({ season: 2010, week: 1, home, away: "Z", spread, hml, aml, hs, as });
