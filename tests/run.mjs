@@ -190,14 +190,14 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     && gradeStackPick({ ...main, home: "LA" }, 24, 21) === "W" && gradeStackPick({ ...main, home: "LA" }, 28, 21) === "L",
     "key number: books at exactly 3 -> underdog +3.5 on Polymarket (main or alternate); wins when the favorite wins by exactly 3");
   const k25 = keyNumberPick(G, sp(-2.5), bk(-2.5), [{ team: "BUF", line: 3.5, price: 0.6 }]);
-  ok(k25 && k25.pick === "BUF +3.5" && k25.hit === 60.9 && /books at BUF \+2\.5/.test(k25.why) && main.hit === 57.9 && !keyNumberPick(G, sp(-2.5), bk(-2)),
-    "key number: books at 2.5 -> underdog +3.5 at 60.9% (books at 3: 57.9%; books at 2 is not a pick)");
+  ok(k25 && k25.pick === "BUF +3.5" && k25.hit === 58.6 && /books at BUF \+2\.5/.test(k25.why) && main.hit === 55.6 && !keyNumberPick(G, sp(-2.5), bk(-2)),
+    "key number: books at 2.5 -> underdog +3.5 at 58.6% (books at 3: 55.6%, opening-line rates; books at 2 is not a pick)");
   const k15 = keyNumberPick(G, sp(-1.5), bk(-1.5), [{ team: "BUF", line: 3.5, price: 0.66 }]), k35 = keyNumberPick(G, sp(-3.5), bk(-3.5), [{ team: "LA", line: -2.5, price: 0.58 }]);
   const k35main = keyNumberPick(G, sp(2.5, 0.45, 0.57), bk(3.5));   // road favorite BUF -3.5 at the books, Polymarket main line BUF -2.5
-  ok(k15 && k15.pick === "BUF +3.5" && k15.hit === 62.1 && k15.price === 0.66 && k35 && k35.pick === "LA -2.5" && k35.hit === 59.8 && k35.line === -2.5 && k35.price === 0.58
+  ok(k15 && k15.pick === "BUF +3.5" && k15.hit === 62.1 && k15.price === 0.66 && k35 && k35.pick === "LA -2.5" && k35.hit === 51.9 && k35.line === -2.5 && k35.price === 0.58
     && k35main && k35main.pick === "BUF -2.5" && k35main.price === 0.57 && !keyNumberPick(G, sp(-3.5), bk(-3.5), [{ team: "BUF", line: 3.5, price: 0.4 }])
     && gradeStackPick({ ...k35, home: "LA" }, 24, 21) === "W" && gradeStackPick({ ...k35, home: "LA" }, 23, 21) === "L" && gradeStackPick({ ...k15, home: "LA" }, 23, 21) === "W",
-    "BEAT THE 3: books 1.5 -> dog +3.5 at 62.1%; books 3.5 -> favorite -2.5 at 59.8% (main line or alternate)");
+    "BEAT THE 3: books 1.5 -> dog +3.5 at 62.1%; books 3.5 -> favorite -2.5 at 51.9% (opening-line rate) (main line or alternate)");
   const k1 = keyNumberPick(G, sp(-1.5), bk(-1), [{ team: "BUF", line: 3.5, price: 0.7 }]);
   ok(k1 && k1.pick === "BUF +3.5" && k1.hit === 60.7 && !keyNumberPick(G, sp(-1.5), bk(-2), [{ team: "BUF", line: 3.5, price: 0.6 }]) && !keyNumberPick(G, sp(-3.5), bk(-4), [{ team: "LA", line: -2.5, price: 0.6 }]),
     "BEAT THE 3: books 1 -> dog +3.5 at 60.7%; books 2 and 4 are not picks");
@@ -207,14 +207,21 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(!isNightGame(day.kickoff) && isNightGame(thu.kickoff) && isNightGame(snf.kickoff) && isNightGame(mon.kickoff) && !isNightGame(null), "night games: Thursday, Sunday 7 PM ET+, Monday");
   { const kd = keyNumberPick(day, sp(-2.5), bk(-2.5), [{ team: "BUF", line: 3.5, price: 0.6 }]), kt = keyNumberPick(thu, sp(-2.5), bk(-2.5), [{ team: "BUF", line: 3.5, price: 0.6 }]),
       ks = keyNumberPick(snf, sp(-6.5), bk(-6.5), [{ team: "LA", line: -2.5, price: 0.7 }]);
-    ok(kd && kd.hit === 60.9 && !kd.night && kt && kt.hit === 51.1 && kt.night && /night game \(60¢\)$/.test(kt.why) && ks && ks.hit === 66.7 && ks.n === 66,
-      "BEAT THE 3: night games show the NIGHT win rate (books 2.5: 60.9% day, 51.1% night; books 6.5 night 66.7%)", { kt, ks }); }
+    ok(kd && kd.hit === 58.6 && !kd.night && kt && kt.hit === 51.1 && kt.night && /night game \(60¢\)$/.test(kt.why) && ks && ks.hit === 66.7 && ks.n === 66,
+      "BEAT THE 3: night games show the NIGHT win rate (books 2.5: 58.6% day, 51.1% night; books 6.5 night 66.7%)", { kt, ks }); }
   const t45 = keyNumberPick(day, sp(-4.5), bk(-4.5), [{ team: "LA", line: -2.5, price: 0.66 }]), t65 = keyNumberPick(day, sp(-6.5), bk(-6.5), [{ team: "LA", line: -2.5, price: 0.7 }]);
   const t55 = keyNumberPick(day, sp(-5.5), bk(-5.5), [{ team: "BUF", line: 7.5, price: 0.64 }]), t135 = keyNumberPick(day, sp(-13.5), bk(-13.5), [{ team: "BUF", line: 14.5, price: 0.6 }]);
-  ok(t45 && t45.pick === "LA -2.5" && t45.hit === 65.6 && t65 && t65.pick === "LA -2.5" && t65.hit === 66.9 && t55 && t55.pick === "BUF +7.5" && t55.hit === 61.7 && /BEAT THE 7/.test(t55.why)
+  ok(t45 && t45.pick === "LA -2.5" && t45.hit === 65.6 && t65 && t65.pick === "LA -2.5" && t65.hit === 64.3 && t55 && t55.pick === "BUF +7.5" && t55.hit === 58.7 && /BEAT THE 7/.test(t55.why)
     && t135 && t135.pick === "BUF +14.5" && t135.hit === 68 && /BEAT THE 14/.test(t135.why) && !keyNumberPick(day, sp(-7.5), bk(-7.5), [{ team: "LA", line: -6.5, price: 0.6 }])
     && !keyNumberPick(day, sp(-6), bk(-6), [{ team: "BUF", line: 7.5, price: 0.6 }]) && Object.keys(BUY_TIERS).length === 9,
     "bought points: books 4.5 / 6.5 -> fav -2.5, 5.5 -> dog +7.5, 13.5 -> dog +14.5; books 7.5 / 6 are not picks", { t45, t55 });
+  { const { ruleRecords, ruleFlag } = await import("../lib/stack.js"), mk = (g, res, t, o = {}) => ({ id: "keynum|spread", tier: 3, hit: 55.6, week: 6, game: g, result: res, t, ...o });
+    const rows = Array.from({ length: 16 }, (_, i) => mk(`G${i}`, i < 4 ? "W" : "L", "2"));   // 4-12 = 25%
+    const seen = [mk("G0", "L", "1")];   // first-shown wins over the kickoff row for G0 (but is green? hit 55.6 < 56 -> ignored)
+    const green = Array.from({ length: 16 }, (_, i) => mk(`H${i}`, i < 4 ? "W" : "L", "2", { hit: 60 })), r = ruleRecords(green, [mk("H0", "L", "1", { hit: 60 })]);
+    ok(ruleFlag(4, 12, 60) === "BELOW" && ruleFlag(9, 7, 60) === "OK" && ruleFlag(1, 5, 60) === "TOO FEW" && Object.keys(ruleRecords(rows, seen)).length === 0
+      && r["BEAT THE 3 · books 3"] && r["BEAT THE 3 · books 3"].w + r["BEAT THE 3 · books 3"].l === 16 && r["BEAT THE 3 · books 3"].w === 3 && r["BEAT THE 3 · books 3"].flag === "BELOW",
+      "live rule records: each pick once at its first-shown line, flagged BELOW only with 15+ graded and 10+ points under the card", r); }
   const cheap = middleCheck(day, sp(-2.5, 0.50, 0.50), bk(-3), [{ team: "BUF", line: 3.5, price: 0.56 }]), dear = middleCheck(day, sp(-2.5, 0.54, 0.46), bk(-3), [{ team: "BUF", line: 3.5, price: 0.58 }]);
   ok(cheap && cheap.fav === "LA" && cheap.dog === "BUF" && Math.abs(cheap.cost - 1.06) < 1e-9 && Math.abs(cheap.back - 1.093) < 1e-9 && !dear && middleCheck(thu, sp(-2.5, 0.5, 0.5), bk(-3), [{ team: "BUF", line: 3.5, price: 0.56 }]).exact3 === 0.094
     && !middleCheck(day, sp(-6.5, 0.5, 0.5), bk(-6.5), []), "middle: fav -2.5 + dog +3.5 shown only when the two prices add up to less than the history payback (1 + exact-3 share, night share at night); books 2.5-3.5 only");

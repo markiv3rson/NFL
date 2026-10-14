@@ -62,6 +62,17 @@ if (games) {
     if (fail) bad++;
     console.log(`${fail ? "FAIL" : "ok  "} ${name.padEnd(20)} ${w}-${l}${p ? ` (${p} push)` : ""} = ${hit == null ? "—" : hit.toFixed(1) + "%"} ${R.from}-${String(R.to).slice(2)} · ${tierTxt}`);
   }
+  // AT THE OPENING LINE (10/14, owner: "build 1"): the same rules, but the books' number is the week's OPENING spread (2014-26). Picks that
+  // fire early in the week meet this number, not the close. Day / night shown apart; the card shows the lower of the two rates.
+  { const out = {};
+    for (const G of games) { if (G.season < 2014) continue; const o = opens[G.id]; if (!o || !isFinite(o.so)) continue;
+      const g = { key: `${G.away} @ ${G.home}`, away: G.away, home: G.home, kickoff: G.kickoff }, hs = -o.so, T = BUY_TIERS[Math.abs(hs)]; if (!T) continue;
+      const fav = hs < 0 ? g.home : g.away, dog = hs < 0 ? g.away : g.home, team = T.side === "fav" ? fav : dog, main = team === g.home ? T.line : -T.line;
+      const x = keyNumberPick(g, { spread: { homeSpread: main, home: 0.5, away: 0.5 } }, { spread: { homeSpread: hs } }); if (!x) continue;
+      const res = gradeStackPick({ ...x, home: G.home }, G.hs, G.as), k = `${Math.abs(hs)}|${x.night ? "night" : "day"}`, t = (out[k] = out[k] || { w: 0, l: 0 });
+      if (res === "W") t.w++; else if (res === "L") t.l++; }
+    console.log("\nOPENING-LINE replay of BEAT THE 3 tiers (books' number = the week's opening spread, 2014-26):");
+    for (const [k, t] of Object.entries(out).sort()) console.log(`     books ${k.padEnd(9)} ${t.w}-${t.l} = ${pct(t.w, t.l) == null ? "—" : pct(t.w, t.l).toFixed(1)}% (${t.w + t.l})`); }
   // INJURY (10/14): starters out rebuilt per team-week from nflverse's injury reports + snap counts with the app's own startersOut(), then
   // the app's own injuryPick(): line not yet moved 1+ toward the healthy team between the opening line and the close, graded at the close.
   { let w = 0, l = 0, p = 0, seasons = 0;
@@ -102,6 +113,10 @@ try {
   console.log("\nLIVE this season (graded picks):");
   for (const c of Object.values(seen)) { const w = (c.rec || {}).w || 0, l = (c.rec || {}).l || 0;
     console.log(`     ${c.id.padEnd(20)} ${w}-${l}${w + l ? ` = ${pct(w, l).toFixed(1)}%` : " (none graded yet)"} · card says ${c.hit}%`); }
+  const R = L && L.combos && L.combos.rules;
+  if (R && Object.keys(R).length) { console.log("\nLIVE per green rule (each pick once, at the line first shown; BELOW = 15+ graded and 10+ points under the card -- a flag, nothing is cut):");
+    for (const [k, r] of Object.entries(R).sort()) console.log(`     ${r.flag === "BELOW" ? "BELOW" : "     "} ${k.padEnd(34)} ${r.w}-${r.l}${r.w + r.l ? ` = ${pct(r.w, r.l).toFixed(1)}%` : ""} · card says ${r.say}% · ${r.flag}`); }
+  else console.log("\nLIVE per green rule: none graded yet");
   if (card) console.log(`     card picks (all rules) spread ${card.spread.w}-${card.spread.l} = ${(pct(card.spread.w, card.spread.l) || 0).toFixed(1)}% · total ${card.total.w}-${card.total.l} = ${(pct(card.total.w, card.total.l) || 0).toFixed(1)}%`);
 } catch (e) { console.log(`\nLIVE: site not reachable (${String(e).slice(0, 80)})`); }
 
