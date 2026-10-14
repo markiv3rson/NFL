@@ -629,3 +629,14 @@ Tested and NOT added (made it worse):
   books 3 day 57.9 -> 55.6 (light green), 2.5 day 60.9 -> 58.6, 5.5 day 61.7 -> 58.7, 6.5 day 66.9 -> 64.3; the rest unchanged.
 - 3: live record per green rule (each BEAT THE tier day/night apart), each pick once at its first-shown line (`ruleRecords` in `stackSummary` -> `combos.rules`);
   `npm run accuracy` prints it with a BELOW flag (15+ graded and 10+ points under the card). Flag only, nothing is cut.
+
+## LINE MATRIX (10/14, owner: "I want all the lines measured so we can always find the advantage")
+
+- `tests/line_matrix.mjs` -> `tests/line_matrix_results.txt`: win rate of EVERY half-point line (up to 6 points bought) for every books number, favorite and
+  underdog, day / night / all, closing 1999-2025 and opening 2014-26; totals (Over / Under at books -/+ x, by total size). Passing = 56%+, 100+ games, every
+  period 52%+. Re-run: `node --import ./tests/register.mjs tests/line_matrix.mjs`. Win rate always rises with points bought (and so does the price) -- the
+  steep jumps are at 3 and 7 (books 4.5 favorite: -3.5 wins 53-58%, -2.5 wins 63-66%, -4.5 itself ~50%). Prices are not judged (owner rule: win rate).
+  A smooth-bell-curve "price" benchmark was tried and dropped: it is not what Polymarket charges (alternate lines are priced close to their history), so "edge vs
+  smooth" was mostly the shape of NFL margins, not an advantage.
+- NOT wired into the app yet: BUY_TIERS still has the 9 tested tiers. The matrix shows more passing cells (books 5 / 7 / 7.5 favorites at -2.5, books 4 / 4.5 / 5.5 ...);
+  adding any is the owner's call.
