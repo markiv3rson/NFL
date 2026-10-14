@@ -97,6 +97,12 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   Under). Before, heavy refreshing -- and the 30-min Pinnacle pull after ~4 days -- pushed the opening readings out. The lever buys
   sportsbook odds only when the saved ones are 6+ h old (3 credits); Polymarket reads are free.
 
+- 10/14 (owner, latest look): no red anywhere -- purple / blue / white theme (old rose values remapped in `public/index.html`; red stays
+  only for losses, MISS and LIVE games). Header = sketch 6: no box, green "LINES LIVE · WEEK n · dates" line, countdown in a white-to-purple
+  gradient, "until <next game>", slim lever on the right with the MODEL time under it. THE LEVER ONLY RERUNS THE MODEL (`rerunModel` ->
+  POST /api/rerun); Polymarket / sportsbook lines and injuries refresh on their own (schedule + 30-min pull). Bottom tab bar has no box: a
+  dark fade with a purple-to-blue hairline. Every tab change scrolls to the top.
+
 ## Where things live
 
 - Site (Next.js on Vercel, nfl-nfl9.vercel.app): `pages/api/*`, `lib/*`, front end `public/app.js`.
