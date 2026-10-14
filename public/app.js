@@ -67,51 +67,6 @@ function injLine(g, kind) {
   return `Injuries: ${one(g.home, inj.home)} · ${one(g.away, inj.away)}`;
 }
 const injApplied = (g, kind) => !!(g.model && g.model.inj && (kind === "total" ? Math.abs(g.model.inj.total || 0) >= 0.05 : (g.model.inj.home.players.length || g.model.inj.away.players.length)));
-// Line moved 6 points in our favor (10/9): the only spread/total sides that beat a coin flip in every period.
-// Rates: nflverse closing lines 2007-25, aussportsbetting opening lines 2014-26, and this app's game model replayed 2014-25.
-// Spread: underdog +1.5..+2.5 at +7.5..+8.5: 83% in wind 15+, 78% on turf, 77% when our model likes the dog, 73% when it likes the favorite.
-function saferRate(g, t) {
-  const m = g.model || {}, tl = (g.books && g.books.total && g.books.total.line) ?? (g.poly && g.poly.total && g.poly.total.line);
-  if (m.outdoor && m.wind != null && m.wind >= 15) return 83;
-  if (m.turf) return 78;   // artificial turf: 78.5% (80/78/78 by period); grass 74%
-  const sp = g.spreadPick; if (t && sp && sp.team) return sp.team === t.team ? 77 : 73;
-  return tl != null && tl >= 47 ? 70 : 76;
-}
-function totalMoved(g) {
-  const h0 = (g.history || []).find((h) => h.poly && h.poly.total), tl = (g.books && g.books.total && g.books.total.line) ?? (g.poly && g.poly.total && g.poly.total.line);
-  if (!h0 || tl == null) return null; const open = h0.poly.total.line;
-  return Math.abs(tl - open) >= 3 ? { under: tl < open, open, now: tl } : null;
-}
-// Total moved 6 (replayed 2014-25): first the line's own move (3+ since open: that way, 75%); wind 15+: Under (75%, 86% when our
-// model says Over); otherwise AGAINST our model's side (70%; with the model 67%) - its total leans too far when teased.
-function saferTotal(g, p) {
-  const m = g.model || {}, mv = totalMoved(g), modelOver = p && p.side === "over";
-  if (mv) return { under: mv.under, pct: 75 };
-  if (m.outdoor && m.wind != null && m.wind >= 15) return { under: true, pct: modelOver ? 86 : 75 };
-  if (!p) return { under: true, pct: 68 };
-  return { under: modelOver, pct: 70 };
-}
-// Combo picks under the model card (10/9): every tested combination that fits this game, best 3 per market, MARKET LINES ONLY
-// (teasers live in the Teasers & alt lines list on Game Lines).
-// Purple when our model is part of the rule, green when it's history alone.
-function comboLines(g, kind) {
-  if (g.final) return "";
-  const cs = (g.combos || []).filter((c) => c.kind === kind && !c.teaser && c.hit >= 55).sort((a, b) => b.hit - a.hit).slice(0, 3); if (!cs.length) return "";   // weak ones hidden (10/9)
-  return `<div class="s" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">` + cs.map((c) => `<div class="${c.model ? "mod" : "g"}"><b>${esc(c.pick)}</b> · wins ${Math.round(c.hit)}%<div class="dim">${esc(c.why)}</div></div>`).join("") + `</div>`;
-}
-function saferSide(g, kind, p) {
-  if (g.final) return "";
-  return saferOne(g, kind, p) + comboLines(g, kind);
-}
-function saferOne(g, kind, p) {
-  if (kind === "spread") { const t = g.teaser; return t ? `<div class="s g" style="margin-top:6px">Safer: <b>${esc(t.team)} +${t.line}</b> · wins ${saferRate(g, t)}%</div>` +
-    ((t.ladder || []).length ? `<div class="s dim">${t.ladder.map((x) => `+${x.line} ${Math.round(x.hist * 100)}%`).join(" · ")}</div>` : "") : ""; }
-  const tl = (g.books && g.books.total && g.books.total.line) ?? (g.poly && g.poly.total && g.poly.total.line); if (tl == null) return "";
-  const s = saferTotal(g, p);
-  const mv = totalMoved(g);
-  return `<div class="s g" style="margin-top:6px">Safer: <b>${s.under ? `Under ${tl + 6}` : `Over ${tl - 6}`}</b> · wins ${s.pct}%</div>` +
-    (mv && mv.under && p && p.side === "under" ? `<div class="s g">Total fell ${mv.open} → ${mv.now}: <b>Under ${mv.now}</b> · wins 64%</div>` : "");
-}
 // This season's record for the pick's type (10/9).
 function recLine(r) { return r && r.w + r.l ? `<div class="s" style="margin-top:6px">This season: <b>${r.w}–${r.l}</b></div>` : ""; }   // nothing until a pick of this kind is graded (10/12: "0–0" was noise)
 // Line check (10/9): the pick's line vs the week's first saved line for the same side; better or worse number since it opened.
@@ -228,17 +183,6 @@ function winnersBox(mode = "picks") {
         `<div class="s">Spread <b>${sp ? esc(sp.label) : "—"}</b>${sp && sp.gap <= 1 ? ' <span class="dim">(agrees)</span>' : ""} · Total <b>${tt ? esc(tt.label) : "—"}</b>${tt && tt.gap <= 1 ? ' <span class="dim">(agrees)</span>' : ""} · TD <b>${tdp ? `${esc(tdp.player)} ${Math.round(tdp.fair)}%` : "—"}</b></div></div>`; }).join("") || '<div class="s">No lines yet.</div>') +
     (list.length > 8 ? `<div class="center" style="margin-top:6px"><button class="btn" id="win-all">${WINALL ? "Show top 8 only" : `Show all ${list.length} games`}</button></div>` : "") + `</div></div>`;
 }
-// "Right now" (9/30): Polymarket prices 3%+ better than fresh sportsbook fair prices -- the one realistic edge source.
-function rightNowBox() {
-  const E = S.edgesNow || [], R = S.edgeRule || {};
-  const lim = R.booksMaxAgeEarlyH || R.booksMaxAgeH;
-  const why = R.booksAgeH == null ? "no book odds" : R.booksAgeH > lim ? `book odds ${Math.round(R.booksAgeH)}h old` : "none right now";
-  const fee = R.feePct ? `after a ${R.feePct}% fee` : "before fees";
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Right now</div>` +
-    (E.length ? E.map((b) => `<div class="row"><span>${esc(b.label)} <span class="dim">${esc(b.game)}</span>${b.held ? ` <span class="y">(${esc(b.held)} — hold)</span>` : ""}</span>` +
-      `<span>${Math.round(b.price * 100)}¢ vs fair ${Math.round(b.fair * 100)}¢ · <span class="g">+${(b.evNet * 100).toFixed(1)}%</span></span></div>`).join("") : `<div class="s">None.</div>`) +
-    "</div></div>";
-}
 // "What changed" (9/30): Polymarket line moves since your last visit on this device.
 let LAST_SEEN = null;
 try { LAST_SEEN = localStorage.getItem("lastSeen"); } catch {}
@@ -252,11 +196,11 @@ function changedBox() {
     if (a.spread && now.spread && a.spread.homeSpread !== now.spread.homeSpread) bits.push(`spread ${g.home} ${sgn(a.spread.homeSpread)} → ${sgn(now.spread.homeSpread)}`);
     if (a.total && now.total && a.total.line !== now.total.line) bits.push(`total ${a.total.line} → ${now.total.line}`);
     if (a.ml && now.ml && Math.abs(a.ml.home - now.ml.home) >= 0.05) bits.push(`${g.home} moneyline ${Math.round(a.ml.home * 100)}¢ → ${Math.round(now.ml.home * 100)}¢`);
-    if (bits.length) out.push(`<div class="row"><span>${esc(g.key)}</span><span>${bits.join(" · ")}</span></div>`);
+    if (bits.length) out.push(`<span class="mv"><b>${esc(g.key)}</b> ${bits.map(esc).join(" · ")}</span>`);
   }
-  if (!out.length && !newWeek) return "";   // nothing to say: no card
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Changed since ${hm(LAST_SEEN)}</div>` +
-    (out.join("") || `<div class="s">${newWeek} new game line${newWeek === 1 ? "" : "s"} opened</div>`) + `</div></div>`;
+  if (!out.length && !newWeek) return "";   // nothing to say: no strip
+  // 10/14 redesign: a strip of chips, one per game whose line moved since your last visit
+  return `<div class="moves"><div class="mvl">LINE MOVES <span>since ${hm(LAST_SEEN)}</span></div><div class="mvs">${out.join("") || `<span class="mv">${newWeek} new game line${newWeek === 1 ? "" : "s"} opened</span>`}</div></div>`;
 }
 function gameCard(g, i) {
   {
@@ -268,8 +212,7 @@ function gameCard(g, i) {
       (p.ml ? row("Moneyline", `${g.home} ${odds(toAmerican(p.ml.home))}`, !!p.spread, "mlc") + row("", `${g.away} ${odds(toAmerican(p.ml.away))}`, false, "mlc") : "") : dash) + liveTail(g, lv);
     // Tested angle (9/30): home favorites of 9.5+ on the moneyline, the one game-line angle that held up on unseen years
     const hsNow = p.spread ? p.spread.homeSpread : b.spread ? b.spread.homeSpread : null;
-    const angle = "";   // review fix 10/14: angles were dropped as picks (CLAUDE.md) -- the card shows ONE answer
-    return `<div class="card${g.final ? " fin" : ""}"><div class="inner">${headButtons(g, "l" + i)}${angle}<div class="f">${HDR}` +
+    return `<div class="card${g.final ? " fin" : ""}"><div class="inner">${headButtons(g, "l" + i)}<div class="f">${HDR}` +
       `<div><div class="k">SPORTSBOOK</div>${b.spread ? `${g.home} ${sgn(b.spread.homeSpread)} ${odds(b.spread.home.odds)}<div class="s">fair ${g.home} ${odds(toAmerican(b.spread.home.fair))} / ${g.away} ${odds(toAmerican(b.spread.away.fair))}</div>` : dash}</div>` +
       leanCell(g, "spread") +
       `<div><div class="k">${pmLogo()}POLYMARKET</div>${poly}</div>` +
@@ -286,8 +229,7 @@ function totalCard(g, i) {
     // Tested angle (10/1): outdoor games with 12+ mph wind went Under the closing total 56.1% of the time, 2007-25 (786 games), and it
     // beat break-even in all three periods (53.7 / 58.1 / 56.7%). The slope is real too: each mph takes ~0.18 pts off what the line allows for.
     // Model first (10/6): when the model leans Over, the angle is left off the card (the model already counts the wind); it is still tracked in Models.
-    const wd = "";   // review fix 10/14: the wind-Under angle at the close is "tested, not added" (2024 42%, 2025 48%); the early-week wind Under is paper only
-    return `<div class="card${g.final ? " fin" : ""}"><div class="inner">${headButtons(g, "t" + i, "", true)}${wd}<div class="f">${HDR}` +
+    return `<div class="card${g.final ? " fin" : ""}"><div class="inner">${headButtons(g, "t" + i, "", true)}<div class="f">${HDR}` +
       `<div><div class="k">SPORTSBOOK</div>${b.total ? `${b.total.line}<div class="s">O ${odds(b.total.over.odds)} · U ${odds(b.total.under.odds)}</div>` : dash}</div>` +
       leanCell(g, "total") +
       `<div><div class="k">${pmLogo()}POLYMARKET</div>${poly}</div>` +
@@ -350,10 +292,16 @@ function injTag(r) {
   const k = /^out/i.test(st) ? ["OUT", "var(--red)"] : /^doubt/i.test(st) ? ["D", "#ff9f43"] : ["Q", "var(--yellow)"];
   return ` <span class="pill" style="padding:0 6px;font-size:10px;font-weight:800;color:${k[1]};border:1px solid ${k[1]}">${k[0]}</span>`;
 }
+// 10/14 (owner): "Market disagrees" is a warning on the player's own row (Polymarket 20+ points from the model -- check the news)
+function mktWarn(r) {
+  if (!r || r.fair == null || r.price == null || Math.abs(r.price * 100 - r.fair) < 20) return "";
+  const thin = r.bid != null && r.price - r.bid >= 0.15;
+  return `<div class="mwarn">⚠ Market disagrees: Polymarket ${Math.round(r.price * 100)}¢ vs model ${Math.round(r.fair)}% · ${thin ? `price unreliable (best bid ${Math.round(r.bid * 100)}¢)` : "check the news"}</div>`;
+}
 function tdRow(x, i) {
   const r = x.r, g = x.g;
   return `<div class="tdr"><img class="wmc" loading="lazy" decoding="async" src="${logoUrl(r.team)}" alt="" onerror="this.style.display='none'"><div class="in"><span class="rk">${i + 1}</span>` +
-    `<div class="nmx"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos)}</span>${injTag(r)}${retPill(r)}<div class="g2">${esc(r.game)}</div></div>` +
+    `<div class="nmx"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos)}</span>${injTag(r)}${retPill(r)}<div class="g2">${esc(r.game)}</div>${mktWarn(r)}</div>` +
     `<div class="mp"><em>${Math.round(r.fair)}%</em><div class="bar"><i style="width:${Math.min(100, r.fair)}%"></i></div></div><div class="pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${(() => { const b = tdBlend(r); if (b && b.blend - r.price * 100 >= 5) return `<div class="g" style="font-size:10px">+${Math.round(b.blend - r.price * 100)} vs price</div>`;
       return tdNoGap(r) != null ? `<div class="r" style="font-size:10px">No · ${tdNoGap(r)} under</div>` : ""; })()}</div></div>` +
     `<div class="more" style="--tc:${TEAM_COLOR[r.team] || "#444"};--logo:url(${logoUrl(r.team)})">${prow(r, g, true)}</div></div>`;
@@ -366,24 +314,19 @@ function tdBody() {
     .filter((x) => x.r.fair != null && usable(x.r)).sort((a, b) => b.r.fair - a.r.fair);
   const moves = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).filter((r) => r.move).map((r) => r)).sort((a, b) => Math.abs(b.move) - Math.abs(a.move)).slice(0, 10);
   const moveBox = moves.length ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Price moves (5¢+, real markets)</div>${moves.map((r) => `<div class="row"><span>${esc(r.player)} <span class="dim">${esc(r.game)}</span></span><span class="${r.move > 0 ? "g" : "r"}">${r.move > 0 ? "▲ +" : "▼ "}${r.move}¢</span></div>`).join("")}</div></div>` : "";
-  // Market disagrees (10/10): Polymarket 20+ points from the model, any player (also below the top 3). Usually news the model
-  // can't see yet (a role change, a starter likely to sit). A warning to check the news, not a bet. Nearly every TD market is 'thin',
-  // so the label is kept for prices that are just the middle of an empty book: best bid 15c+ under the price (Washington 50c, bid 6c).
-  const gaps = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).filter((r) => r.fair != null && r.price != null && Math.abs(r.price * 100 - r.fair) >= 20))
-    .sort((a, b) => Math.abs(b.price * 100 - b.fair) - Math.abs(a.price * 100 - a.fair));
-  const gapBox = gaps.length ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">⚠ Market disagrees · check the news</div>${gaps.map((r) => `<div class="row"><span>${esc(r.player)} <span class="dim">${esc(r.game)}${r.bid != null && r.price - r.bid >= 0.15 ? ` · price unreliable (best bid ${Math.round(r.bid * 100)}¢)` : ""}</span></span><span>model ${Math.round(r.fair)}% · Polymarket ${Math.round(r.price * 100)}¢</span></div>`).join("")}</div></div>` : "";
   // Best TD picks (10/14, owner: "build now"): only the players the model gives 55%+ (shown chance, after injury discounts). Graded weeks 3-5:
   // 55%+ players scored 17 of 21 (said 65%) vs 22% for every listed player -- the model's most confident tier, not a smarter model.
   const best = rows.filter((x) => x.r.fair >= BEST_TD);
-  const bestBox = `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Best TD picks · model ${BEST_TD}%+</div>${best.length ? best.map((x) => `<div class="row"><span>${tlogo(x.r.team)}<b>${esc(x.r.player)}</b> <span class="dim">${esc(x.r.pos || "")} · ${esc(x.g.key)}${x.r.injury ? ` · ${esc(x.r.injury)}` : ""}</span></span><b class="g">${Math.round(x.r.fair)}%</b></div>`).join("") : '<div class="s">No player at 55%+ right now.</div>'}</div></div>`;
+  const bestBox = `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Best TD picks · model ${BEST_TD}%+</div>${best.length ? best.map((x) => `<div class="row"><span>${tlogo(x.r.team)}<b>${esc(x.r.player)}</b> <span class="dim">${esc(x.r.pos || "")} · ${esc(x.g.key)}${x.r.injury ? ` · ${esc(x.r.injury)}` : ""}</span>${mktWarn(x.r)}</span><b class="g">${Math.round(x.r.fair)}%</b></div>`).join("") : '<div class="s">No player at 55%+ right now.</div>'}</div></div>`;
   // Top 3 per team (10/5): beyond the three likeliest scorers the rest is noise.
-  const perTeam = {}, shown = rows.filter((x) => { const k = x.r.team; perTeam[k] = (perTeam[k] || 0) + 1; return perTeam[k] <= 3; });
+  // 10/14 (owner): players already in Best TD picks are left out of this list (no repeats)
+  const perTeam = {}, shown = rows.filter((x) => { const k = x.r.team; perTeam[k] = (perTeam[k] || 0) + 1; return perTeam[k] <= 3; }).filter((x) => x.r.fair < BEST_TD);
   if (!rows.length) return `<div class="card" style="margin-top:10px"><div class="s">${S.games.length && S.games.every((g) => g.started) ? "No games left this week." : "No players yet."}</div></div>`;
-  return bestBox + gapBox + moveBox + `<div class="card tdl"><div class="tdh"><span style="flex:1;padding-left:28px">PLAYER</span><span style="width:74px;text-align:right">MODEL</span><span style="width:60px;text-align:right;white-space:nowrap">${pmLogo()}PRICE</span></div>${shown.map(tdRow).join("")}</div>`;
+  return bestBox + moveBox + `<div class="card tdl"><div class="tdh"><span style="flex:1;padding-left:28px">PLAYER</span><span style="width:74px;text-align:right">MODEL</span><span style="width:60px;text-align:right;white-space:nowrap">${pmLogo()}PRICE</span></div>${shown.map(tdRow).join("")}</div>`;
 }
 function renderTd() {
   const wk = S.week ? ` · Week ${S.week}` : "";
-  $("td-header").innerHTML = `<b style="color:#d3d8e0">Anytime TD${wk}</b> · top 3 per team · most likely first` + (S.games.some((g) => g.early) ? ` · ${earlyNote({ early: true })}` : "");
+  $("td-header").textContent = `${wk ? wk.replace(/^\s*·\s*/, "") + " · " : ""}top 3 per team · most likely first` + (S.games.some((g) => g.early) ? " · early-week estimates" : "");
   let html = tdBody();
   $("td").innerHTML = html + '';
 }
@@ -419,7 +362,24 @@ function rollReels(root) {   // the green pick's % spins and lands (runs when a 
       const seq = []; for (let k = 0; k < 16 + i * 6; k++) seq.push(k % 10); seq.push(+ch);
       d.innerHTML = `<span>${seq.map((x) => `<b>${x}</b>`).join("")}</span>`; el.appendChild(d);
       const inner = d.firstChild; requestAnimationFrame(() => requestAnimationFrame(() => { inner.style.transform = `translateY(-${(seq.length - 1) * 1.25}em)`; })); });
+    setTimeout(() => { el.textContent = v; }, 1700);   // back to plain text once it lands (keeps the line's normal spacing)
   });
+}
+// 10/14 (owner): numbers across the app roll in like slot machine reels when a page opens (not on the 2-minute background refresh)
+const SLOT_SKIP = ".reelpct,.cdn,.stamp,.mreel,script,style,input,textarea,select,svg,.lever";
+function slotify(root, max = 250) {
+  if (REDUCE || !root || typeof document === "undefined" || !document.createTreeWalker) return;
+  const walk = document.createTreeWalker(root, 4), nodes = [];
+  while (walk.nextNode()) { const n = walk.currentNode; if (/\d/.test(n.nodeValue) && n.parentElement && !n.parentElement.closest(SLOT_SKIP)) nodes.push(n); }
+  let used = 0;
+  for (const n of nodes) {
+    if (used >= max) break;
+    const parts = n.nodeValue.split(/(\d+(?:\.\d+)?)/); if (parts.length < 2) continue;
+    const frag = document.createDocumentFragment();
+    parts.forEach((t, i) => { if (i % 2 && used < max) { const sp = document.createElement("span"); sp.className = "reelpct"; sp.dataset.v = t; sp.textContent = t; frag.appendChild(sp); used++; } else frag.appendChild(document.createTextNode(t)); });
+    n.parentNode.replaceChild(frag, n);
+  }
+  rollReels(root);
 }
 function coinBurst(el) {   // gold coins fly from a winning bet's stamp
   if (REDUCE || !el || !el.getBoundingClientRect) return;
@@ -885,19 +845,6 @@ function bestBets() {
   for (const g of (S && S.games) || []) for (const x of straightPicks(g)) out.push({ ...x, slot: slotOf(g) });
   return out.sort((a, b) => (isSmall(a) - isSmall(b)) || b.p - a.p).slice(0, BEST_MAX);   // tested picks first (10/11)
 }
-// Teasers & alt lines (10/9): every bet that moves the line in our favor. Kept off the game cards; listed only on Game Lines.
-function extraBets() {
-  const out = [], ko = {};
-  for (const g of (S && S.games) || []) { ko[g.key] = g; if (g.started || g.final) continue;
-    for (const c of g.combos || []) if (c.teaser) out.push({ pick: c.pick, game: g.key, why: c.why, p: c.hit / 100 });
-    for (const x of g.altValue || []) out.push({ pick: `${x.team} ${x.line > 0 ? "+" : ""}${x.line}`, game: g.key, why: "Line moved · since 2007", p: x.hist });
-    const tl = (g.books && g.books.total && g.books.total.line) ?? (g.poly && g.poly.total && g.poly.total.line);
-    if (tl != null) { const st = saferTotal(g, g.totalPick), mv = totalMoved(g); out.push({ pick: st.under ? `Under ${tl + 6}` : `Over ${tl - 6}`, game: g.key, why: mv ? `Total moved ${mv.open} → ${mv.now}, +6` : "Total +6", p: st.pct / 100 }); }
-  }
-  for (const x of (S && S.teaserLegs) || []) if (ko[x.game] && !ko[x.game].started) out.push({ pick: `${x.team} +${x.line}`, game: x.game, why: "Underdog +6", p: saferRate(ko[x.game], x) / 100 });
-  const seen = new Set();
-  return out.sort((a, b) => b.p - a.p).filter((x) => !seen.has(x.pick + x.game) && seen.add(x.pick + x.game)).slice(0, 5);
-}
 // Parlay of the week (10/9): the strongest green picks, one per game (up to 4), and the chance all of them hit.
 function parlayPicks() {
   const seen = new Set(), out = [];
@@ -908,7 +855,7 @@ function parlayStrip() {
   const P = parlayPicks(); if (!P.length) return "";
   const ch = P.reduce((a, x) => a * x.p, 1);
   const rows = P.map((x) => `<div class="bb"><div class="t1"><b class="g">${esc(x.pick)}</b><span style="white-space:nowrap">${Math.round(x.p * 100)}%</span></div><div class="t2">${esc(x.game)}</div></div>`).join("");
-  return `<div class="gapstrip" data-drop="parlaylist"><div class="t">Parlay of the week · ${P.length} picks ›</div></div><div class="drop" id="parlaylist"><div class="card modelglow"><div class="inner">${rows}<div class="s" style="margin-top:8px">Chance all ${P.length} hit: <b>${Math.round(ch * 100)}%</b> · one pick per game</div></div></div></div>`;
+  return `<div class="drop" id="parlaylist"><div class="card modelglow"><div class="inner">${rows}<div class="s" style="margin-top:8px">Chance all ${P.length} hit: <b>${Math.round(ch * 100)}%</b> · one pick per game</div></div></div></div>`;
 }
 // Morning / afternoon / primetime (10/9): TNF/SNF/MNF and anything starting 5 PM or later (your time) is primetime.
 function slotOf(g) {
@@ -920,44 +867,42 @@ function slotOf(g) {
 // Remembered open/closed (10/9): the page redraws every few seconds during games, which kept reopening the list.
 let GAMEBEST_OPEN = (() => { try { return localStorage.getItem("gameBestOpen") !== "0"; } catch { return true; } })();
 let BEST_OPEN = (() => { try { return localStorage.getItem("bestOpen") !== "0"; } catch { return true; } })();
+// 10/14 (owner: "come up with a better design"): Best bets and Parlay of the week as two casino tickets side by side; tap one to open its list
+function ticketRow() {
+  const B = bestBets(), P = parlayPicks(); if (!B.length && !P.length) return "";
+  const ch = P.length ? Math.round(P.reduce((a, x) => a * x.p, 1) * 100) : null;
+  const t = (drop, k, big, sub) => `<button class="ticket" data-drop="${drop}"><span class="tk">${k}</span><b class="tb">${big}</b><span class="ts">${sub}</span></button>`;
+  return `<div class="jrow">${B.length ? t("bestlist", "BEST BETS", B.length, `green pick${B.length === 1 ? "" : "s"} · tap to open`) : ""}${P.length ? t("parlaylist", "PARLAY OF THE WEEK", `${ch}%`, `chance all ${P.length} hit · tap to open`) : ""}</div>`;
+}
 function bestStrip() {
   const B = bestBets(); if (!B.length) return "";
   const row = (x) => `<div class="bb"><div class="t1"><b class="g">${esc(x.pick)}</b><span style="white-space:nowrap">wins <b class="g">${Math.round(x.p * 100)}%</b></span></div><div class="t2">${esc(x.game)} · ${esc(x.why)}</div></div>`;
   const rows = ["Morning", "Afternoon", "Primetime"].map((sl) => { const xs = B.filter((x) => x.slot === sl); return xs.length ? `<div class="sh" style="margin:8px 0 4px">${sl.toUpperCase()}</div>${xs.map(row).join("")}` : ""; }).join("");
-  return `<div class="gapstrip" data-drop="bestlist"><div class="t">Best bets · ${B.length} ›</div></div><div class="drop${BEST_OPEN ? " open" : ""}" id="bestlist"><div class="card"><div class="inner">${rows}</div></div></div>`;
+  return `<div class="drop${BEST_OPEN ? " open" : ""}" id="bestlist"><div class="card"><div class="inner">${rows}</div></div></div>`;
 }
 let LAB_SB = "", REPLAY = null;
 function renderLab() {
   if (!$("lab")) return;
   if (!PAPER) { $("lab").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }
-  const CUT_PARLAYS = new Set(["angles_2", "angles_3", "angles_fav_3", "alt_2", "alt_pick_3", "right_now_3", "same_game_3", "linked_sgp_3"]);   // 10/13 (owner): teaser / angle / price-gap / coin-flip-side parlays cut
-  const names = Object.fromEntries(Object.entries(PAPER.names || {}).filter(([k]) => !CUT_PARLAYS.has(k))), wk = PAPER.week, board = PAPER.board || {};
-  const pct = (x) => (x == null ? "—" : `${(x * 100).toFixed(0)}%`);
-  const intro = "";
-  // One plain line per parlay type: who chose the legs. Every one is a fixed rule applied to the model's numbers (nobody hand-picks).
-  // Teaser legs say TEASER (owner's rule); older saved weeks have no flag, so the alt-line legs of the teaser parlays are matched by type.
-  const legLine = (l, k) => `${l.teaser || (/^alt_/.test(k || "") && !l.rule) ? "<b>TEASER</b> " : ""}${esc(l.label)} <span class="dim">${esc(l.game)}${l.thin ? " · thin" : ""}</span> · ${Math.round(l.price * 100)}¢${l.result ? ` <span class="${l.result === "W" ? "g" : l.result === "L" ? "r" : "dim"}">${l.result}</span>` : ""}`;
-  const thisWeek = !wk ? '<div class="s dim">Not recorded yet.</div>' :
-    Object.keys(names).filter((k) => !/^(sgp_|leg4_)/.test(k)).map((k) => { const ps = wk.parlays.filter((p) => p.strategy === k);
-      return `<div class="sec"><div class="sh">${esc(names[k])}</div>` + (ps.length ? ps.map((p) =>
-        `<div class="row" style="display:block"><div>${p.legs.map((l) => legLine(l, k)).join("<br>")}</div><div class="s">pays ${p.pay.toFixed(2)}x · market chance ${pct(1 / p.pay)}${p.prob != null ? ` · model ${pct(p.prob)}` : ""}${p.result ? ` · <b class="${p.result === "W" ? "g" : p.result === "L" ? "r" : ""}">${p.result === "W" ? "HIT" : p.result === "L" ? "missed" : "push"}</b>` : ""}</div></div>`).join("") :
-        '<div class="s">None this week.</div>') + `</div>`; }).join("");
-  // Scoreboard (10/9): one line per parlay, grouped; this season (W-L, return) and the 2007-25 replay (hit, return).
-  const SHORT = { home_fav_95_single: "Home fav 9.5+ · single", home_fav_95_2: "Home fav 9.5+ · 2 legs", home_fav_95_3: "Home fav 9.5+ · 3 legs", top3_home_75: "Top 3 home favs (75%+)",
-    td_edge_3: "3 TD value picks", td_likely_2: "2 likeliest TD scorers", td_likely_3: "3 likeliest TD scorers",
-    angles_2: "2 angles", angles_3: "3 angles", angles_fav_3: "Angle + 2 home favs", alt_2: "2 TEASERS", alt_pick_3: "2 TEASERS + 1 pick", model_best_4: "Model's 4 best legs", right_now_3: "3 Right now legs", same_game_3: "Same game + TD", linked_sgp_3: "Fav covers + Over + scorer", best_2: "Best bets · 2", best_3: "Best bets · 3", best_4: "Best bets · 4 (Parlay of the week)", sgp_best: "Same game · best", sgp_best_fill: "Same game · best, filled", sgp_style: "Same game · your style", sgp_linked: "Same game · linked 4", leg4_fav: "4 biggest favorites", leg4_green_fav: "Green pick + 3 favorites", leg4_fav_td: "3 favorites + top TD" };
-  const GROUPS = [["BEST BETS", ["best_2", "best_3", "best_4"]], ["4-LEG PARLAYS", ["leg4_fav", "leg4_green_fav", "leg4_fav_td"]], ["SAME-GAME PARLAYS", ["sgp_best", "sgp_best_fill", "sgp_style", "sgp_linked"]], ["MONEYLINE FAVORITES", ["home_fav_95_single", "home_fav_95_2", "home_fav_95_3", "top3_home_75"]], ["TOUCHDOWNS", ["td_edge_3", "td_likely_2", "td_likely_3"]],
-    ["ANGLES", ["angles_2", "angles_3", "angles_fav_3", "alt_2", "alt_pick_3"]], ["MIXED", ["model_best_4", "right_now_3", "same_game_3", "linked_sgp_3"]]];
-  const seen = new Set(GROUPS.flatMap((g) => g[1])), extra = Object.keys(names).filter((k) => !seen.has(k)); if (extra.length) GROUPS.push(["OTHER", extra]);
-  const hist = (k) => { const h = REPLAY && REPLAY.parlays && REPLAY.parlays.find((x) => x.id === k); return h && h.n ? `${Math.round(h.hit * 100)}% · ${cPct(h.roi)}` : "—"; };
-  const now = (k) => { const b = board[k]; if (!b || !b.graded) return "—"; const l = (b.decided ?? b.graded) - b.hits; return `${b.hits}–${l} · ${b.roi == null ? "—" : cPct(b.roi)}`; };
-  const tag = (k) => { const rv = board[k] && board[k].review; if (!rv || /TOO FEW/i.test(rv.verdict)) return ""; const c = { HOLDS: "g", UNDERSTATED: "g", PAYING: "g", OVERSTATED: "r", LOSING: "r" }[rv.verdict] || "dim"; return ` <b class="${c}" style="font-size:10px">${esc(rv.verdict)}</b>`; };
+  const names = PAPER.names || {}, board = PAPER.board || {};
+  // Scoreboard (10/14, owner: "organize it"): the parlays still built, grouped; this season W-L and hit %, then the tested history.
+  const GROUPS = [["SAME GAME", [["sgp_best", "2 legs"], ["sgp_best_fill", "2 legs · filled"], ["sgp_3", "3 legs"], ["sgp_linked", "4 legs"], ["sgp_style", "4 legs · my style"]]],
+    ["4 LEGS · DIFFERENT GAMES", [["leg4_fav", "4 biggest favorites"], ["leg4_green_fav", "Green pick + 3 favorites"], ["leg4_fav_td", "3 favorites + top TD"]]],
+    ["BEST BETS", [["best_2", "Top 2 picks"], ["best_3", "Top 3 picks"], ["best_4", "Top 4 (Parlay of the week)"]]],
+    ["FAVORITES", [["home_fav_95_single", "Home fav 9.5+ · single"], ["home_fav_95_2", "Home fav 9.5+ · 2 legs"], ["home_fav_95_3", "Home fav 9.5+ · 3 legs"], ["top3_home_75", "Top 3 home favs (75%+)"]]],
+    ["TOUCHDOWNS", [["td_edge_3", "3 TD value picks"], ["td_likely_2", "2 likeliest scorers"], ["td_likely_3", "3 likeliest scorers"], ["model_best_4", "4 most likely legs"]]]];
+  const TESTED = { sgp_3: 18.8, sgp_linked: 7.9, leg4_fav: 42.5, leg4_green_fav: 32.2, leg4_fav_td: 31.4 };   // 2014-25 research (CLAUDE.md)
+  const hist = (k) => { if (TESTED[k] != null) return `${TESTED[k]}%`; const h = REPLAY && REPLAY.parlays && REPLAY.parlays.find((x) => x.id === k); return h && h.n ? `${Math.round(h.hit * 100)}%` : "—"; };
+  const now = (k) => { const b = board[k]; if (!b || !b.decided) return '<span class="dim">waiting</span>'; const l = b.decided - b.hits; return `${b.hits}–${l} · ${Math.round((b.hits / b.decided) * 100)}%`; };
+  const tag = (k) => { const rv = board[k] && board[k].review; if (!rv || /TOO FEW|WAITING/i.test(rv.verdict)) return ""; const c = { HOLDS: "g", UNDERSTATED: "g", PAYING: "g", OVERSTATED: "r", LOSING: "r" }[rv.verdict] || "dim"; return ` <b class="${c}" style="font-size:10px">${esc(rv.verdict)}</b>`; };
   const grid = "display:grid;grid-template-columns:1fr auto auto;gap:4px 14px;align-items:baseline";
-  const rows = `<div style="${grid};margin-bottom:6px"><span></span><span class="dim" style="font-size:11px;text-align:right">THIS SEASON</span><span class="dim" style="font-size:11px;text-align:right">2007–25</span></div>` +
-    GROUPS.map(([title, ks]) => `<div class="dim" style="font-size:11px;letter-spacing:.06em;margin:10px 0 4px">${title}</div><div style="${grid}">` +
-      ks.filter((k) => names[k]).map((k) => `<span>${esc(SHORT[k] || names[k])}${tag(k)}</span><span style="text-align:right">${now(k)}</span><span class="dim" style="text-align:right">${hist(k)}</span>`).join("") + `</div>`).join("");
-  LAB_SB = `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Parlay scoreboard · this season</div>${rows}</div></div>`;
-  $("lab").innerHTML = intro + fourLegCard() + sgpRanked() + `<div class="card modelglow" style="margin-top:10px"><div class="inner"><div class="sh">Your model's parlays · week ${wk ? wk.week : S ? S.week : ""}</div>${thisWeek}</div></div>` + LAB_SB;
+  const rows = `<div style="${grid};margin-bottom:6px"><span></span><span class="dim" style="font-size:11px;text-align:right">THIS SEASON</span><span class="dim" style="font-size:11px;text-align:right">PAST SEASONS</span></div>` +
+    GROUPS.map(([title, ks]) => { const live = ks.filter(([k]) => names[k]); return live.length ? `<div class="dim" style="font-size:11px;letter-spacing:.06em;margin:10px 0 4px">${title}</div><div style="${grid}">` +
+      live.map(([k, label]) => `<span>${esc(label)}${tag(k)}</span><span style="text-align:right">${now(k)}</span><span class="dim" style="text-align:right">${hist(k)}</span>`).join("") + `</div>` : ""; }).join("");
+  LAB_SB = `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Parlay scoreboard · this season</div>${rows}<div class="s dim" style="margin-top:8px">Hit % = share of graded parlays where every leg won (pushes left out).</div></div></div>`;
+  const open = [...document.querySelectorAll("#lab .drop.open")].map((e) => e.id);   // keep your open cards on refresh
+  $("lab").innerHTML = sgpCards() + LAB_SB;
+  for (const id of open) { const e = $(id); if (e && e.classList) e.classList.add("open"); }
   if (MB && RES) renderModel();   // the Models tab reads the same data
 }
 
@@ -991,8 +936,6 @@ let DETAIL = null, LASTY = 0, ALERTS = [], ALFILTER = "all", ALPREV = null;
 const pmLogo = () => '<span class="pm"><img src="https://polymarket.com/favicon.ico" alt="" onerror="this.parentNode.textContent=\'P\'"></span>';
 const injBadge = (team) => `<span class="injb"><img src="${logoUrl(team)}" alt="" onerror="this.style.visibility='hidden'"><u>+</u></span>`;
 const injBadgeFor = (g) => { const inj = g.model && g.model.inj; if (!inj) return ""; const t = inj.home.players.length ? g.home : inj.away.players.length ? g.away : null; return t ? injBadge(t) : ""; };
-const ord = (n) => n + (n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th");
-const sosOf = (g, t) => (g.sos && g.sos[t] ? `<small class="rec">SOS ${ord(g.sos[t].rank)}</small>` : "");   // schedule so far, 1st = hardest (10/8)
 const recOf = (g, t) => (g.rec && g.rec[t] ? `<small class="rec">${esc(g.rec[t])}</small>` : "");   // season record under the team code (10/8)
 function tile(g) {
   const sc = g.started && !g.final ? LIVE_SC[g.key] : null;   // live score from ESPN (display only)
@@ -1004,7 +947,7 @@ function tile(g) {
     : hp == null ? '<span class="mid dim">—</span>' : `<span class="mid"><span class="${lead(ap, hp)}">${Math.round(ap)}</span><span class="dim"> · </span><span class="${lead(hp, ap)}">${100 - Math.round(ap)}</span><span class="dim" style="font-size:11px">%</span></span>`;
   const mid2 = sc ? `<span class="mid lvmid"><span class="sr"><span class="${sc.a > sc.h ? "g" : "dim"}">${sc.a}</span><span class="dim"> – </span><span class="${sc.h > sc.a ? "g" : "dim"}">${sc.h}</span></span><span class="lv ${sc.st === "post" ? "dim" : "r"}">${sc.st === "post" ? "FINAL" : "● LIVE · " + esc(sc.lbl)}</span></span>` : mid;
   const foot = g.final ? "Final" : g.started ? "In progress" : tm(g.kickoff);
-  return `<button class="tile" data-game="${esc(g.key)}"><img class="wmk l" loading="lazy" decoding="async" src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img class="wmk r" loading="lazy" decoding="async" src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'">` +
+  return `<button class="tile${g.started && !g.final ? " live" : ""}" data-game="${esc(g.key)}"><img class="wmk l" loading="lazy" decoding="async" src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img class="wmk r" loading="lazy" decoding="async" src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'">` +
     `<div class="in"><div class="nm"><span class="t">${g.away}${recOf(g, g.away)}</span>${mid2}<span class="t hm">${g.home}${recOf(g, g.home)}</span></div><div class="ft"><span>${foot}</span><span>${chips}</span></div>${g.final || hp == null ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
 }
 // Graded touchdown results for a finished game (same records the Models tab uses). Loaded once, only when a finished game page opens.
@@ -1073,19 +1016,12 @@ function startsIn(g) {
   return d ? `starts in ${d}d ${h}h` : h ? `starts in ${h}h ${m}m` : `starts in ${m}m`;
 }
 const TEAM_COLOR = { ARI: "#97233f", ATL: "#a71930", BAL: "#5c2d91", BUF: "#00338d", CAR: "#0085ca", CHI: "#e64100", CIN: "#fb4f14", CLE: "#ff3c00", DAL: "#2a5db0", DEN: "#fb4f14", DET: "#0076b6", GB: "#2f7d4f", HOU: "#c8102e", IND: "#2a6ebb", JAX: "#00a3b5", KC: "#e31837", LV: "#a5acaf", LAC: "#0080c6", LA: "#2a6ebb", LAR: "#2a6ebb", MIA: "#00a6a6", MIN: "#6a3fb0", NE: "#2a5db0", NO: "#d3bc8d", NYG: "#2a5db0", NYJ: "#2f7d4f", PHI: "#00898a", PIT: "#ffb612", SF: "#c8102e", SEA: "#4a8f2a", TB: "#d50a0a", TEN: "#4b92db", WAS: "#7a2236" };
-// Proven angles on this game (10/8): rules that beat break-even in every period of 2007-25, with their record.
-// 10/14 (owner): no longer on the game page -- it repeated the Model cards' picks (kept for the tests / reuse)
-function anglesBox(g) {
-  const P = straightPicks(g); if (!P.length) return "";
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="fold" data-drop="gamebest" style="border-top:0;padding:0"><span class="sh" style="margin:0">Best pick · this game</span><span>▾</span></div><div class="drop${GAMEBEST_OPEN ? " open" : ""}" id="gamebest" style="border-top:0;margin-top:4px;padding-top:0">` +
-    P.map((x) => `<div class="bb"><div class="t1"><b class="g">${esc(x.pick)}</b><span style="white-space:nowrap">wins ${Math.round(x.p * 1000) / 10}%</span></div><div class="t2">${esc(x.why)}</div></div>`).join("") + `</div></div></div>`;
-}
 function detailTop(g) {
   const dsc = g.started && !g.final ? LIVE_SC[g.key] : null;
   const hp = g.winPct != null && isFinite(g.winPct) ? Number(g.winPct) : null, ap = hp == null ? null : Math.round(100 - hp), hr = ap == null ? null : 100 - ap;
   const st = g.final ? `Final ${g.awayScore != null && g.homeScore != null ? `${g.awayScore}–${g.homeScore}` : ""}` : g.started ? '<span class="r">Live · locked</span>' : startsIn(g);
   const ca = TEAM_COLOR[g.away] || "#444", ch = TEAM_COLOR[g.home] || "#444";
-  return `<div class="card dtop" style="background:linear-gradient(90deg,${ca}40 0%,${ca}14 50%,${ch}14 50%,${ch}40 100%),var(--card)"><img class="dwm l" src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img class="dwm r" src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'"><div class="inner"><div class="nm"><span class="t">${tlogo(g.away)}${g.away}${recOf(g, g.away)}${sosOf(g, g.away)}</span><div class="mid">${g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : ""}${dsc ? `<div class="s2"><b>${dsc.a} – ${dsc.h}</b></div><div class="s3 r">${dsc.st === "post" ? "FINAL" : "● LIVE · " + esc(dsc.lbl)}</div>` : `<div class="s2">${tm(g.kickoff)}</div><div class="s3">${st}</div>`}</div><span class="t hm">${g.home}${tlogo(g.home)}${recOf(g, g.home)}${sosOf(g, g.home)}</span></div>` +
+  return `<div class="card dtop" style="background:linear-gradient(90deg,${ca}40 0%,${ca}14 50%,${ch}14 50%,${ch}40 100%),var(--card)"><img class="dwm l" src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img class="dwm r" src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'"><div class="inner"><div class="nm"><span class="t">${tlogo(g.away)}${g.away}${recOf(g, g.away)}</span><div class="mid">${g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : ""}${dsc ? `<div class="s2"><b>${dsc.a} – ${dsc.h}</b></div><div class="s3 r">${dsc.st === "post" ? "FINAL" : "● LIVE · " + esc(dsc.lbl)}</div>` : `<div class="s2">${tm(g.kickoff)}</div><div class="s3">${st}</div>`}</div><span class="t hm">${g.home}${tlogo(g.home)}${recOf(g, g.home)}</span></div>` +
     (hp == null || g.final ? "" : `<div class="wc"><div class="wl"><b class="mkt">${ap}%</b><span class="mkt">MARKET’S WIN CHANCE</span><span class="dim">${hr}%</span></div><div class="bar"><i style="width:${ap}%"></i></div></div>`) + `</div></div>`;
 }
 // page background on a game page only: team colors in halves with the split logos (away left, home right)
@@ -1100,39 +1036,54 @@ function setBg(g) {
 // Same-game parlays (10/14, owner): at the bottom of the game page, below the touchdowns (owner 10/14). Built on the server (lib/sgp.js): "Best" = strong legs only, "Your style" =
 // spread + total + a TD each team. Chance includes the same-game links (a TD helps its team cover and the Over, hurts with the Under).
 const sgpLegs = (p) => p.legs.map((l) => `${esc(l.label)}${l.rule ? ` <span class="dim">${esc(l.rule)}</span>` : ""} <span class="dim">· ${Math.round(l.prob * 100)}%</span>`).join("<br>");
-const sgpChance = (p) => (p.prob == null ? "" : `<b class="${p.prob >= 0.3 ? "g" : p.prob >= 0.15 ? "lg" : "y"}">hits ~${Math.round(p.prob * 100)}%</b> <span class="dim">(about 1 in ${Math.max(1, Math.round(1 / p.prob))})</span>`);
+const sgpChance = (p) => (p.prob == null ? "" : `<b class="${p.prob >= 0.3 ? "g" : p.prob >= 0.15 ? "lg" : "y"}">hits ~${Math.round(p.prob * 100)}%</b> <span class="dim">(about 1 in ${Math.max(1, Math.round(1 / p.prob))})</span>`) + payLine(p);
+// 10/14 (owner): what the parlay pays on Polymarket -- the legs' current prices multiplied (1 / price each), and what $10 returns.
+// Rebuilt with every slate load, so it follows the lines. Polymarket's own combo price can differ a little; a leg with no price yet says so.
+function payLine(p) {
+  if (!p || !p.legs || !p.legs.length) return "";
+  if (!p.legs.every((l) => l.price > 0 && l.price < 1)) return ' <span class="pay dim">· Polymarket price not posted yet</span>';
+  const x = p.legs.reduce((a, l) => a / l.price, 1);
+  return ` <span class="pay">· Polymarket ${x >= 10 ? Math.round(x) : x.toFixed(1)}x · $10 → $${Math.round(10 * x)}</span>`;
+}
 function sgpBox(g) {
   const x = g.sgp; if (!x || g.started || g.final) return "";
-  const best = x.best ? `<div class="sh" style="margin:4px 0">BEST${x.filled ? " · FILLED" : ""} · ${x.best.legs.length} legs · ${sgpChance(x.best)}</div><div class="s">${sgpLegs(x.best)}</div>${x.filled ? '<div class="s dim" style="margin-top:4px">Fewer than 2 strong legs, so the next-strongest were added. Graded as its own record.</div>' : ""}`
-    : `<div class="sh" style="margin:4px 0">BEST</div><div class="s dim">Not enough legs in this game.</div>`;
-  // 10/14 research: in the owner's 4-leg style an Under cuts the chance about in half (1.8-2.4% vs 4.6-5.7% with the Over, 2014-25)
-  const under = x.style && x.style.legs.some((l) => l.kind === "total" && /^Under/.test(l.label)) && x.style.legs.filter((l) => l.kind === "td").length;
-  const style = x.style ? `<div class="sh" style="margin:12px 0 4px">YOUR STYLE · ${x.style.legs.length} legs · ${sgpChance(x.style)}</div><div class="s">${sgpLegs(x.style)}</div>${under ? '<div class="s y" style="margin-top:4px">With TDs, the Over hits about twice as often as the Under.</div>' : ""}` : "";
-  const linked = x.linked ? `<div class="sh" style="margin:12px 0 4px">LINKED 4 · ${sgpChance(x.linked)}</div><div class="s">${sgpLegs(x.linked)}</div><div class="s dim" style="margin-top:4px">Favorite wins + Over + its top 2 scorers. Best same-game 4-leg in 2014-25: hit 7.9%.</div>` : "";
-  return `<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAY</div><div class="card modelglow" style="margin-top:6px"><div class="inner">${best}${style}${linked}</div></div>`;
+  const sec = (title, p, note) => (p ? `<div class="sh" style="margin:${title.startsWith("2") ? 4 : 12}px 0 4px">${title} · ${sgpChance(p)}</div><div class="s">${sgpLegs(p)}</div>${note ? `<div class="s dim" style="margin-top:4px">${note}</div>` : ""}` : "");
+  const under = x.style && x.style.legs.some((l) => l.kind === "total" && /^Under/.test(l.label)) && x.style.legs.some((l) => l.kind === "td");
+  return `<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAYS</div><div class="card modelglow" style="margin-top:6px"><div class="inner">` +
+    sec(`2 LEGS${x.filled ? " · FILLED" : ""}`, x.best, x.filled ? "Fewer than 2 strong legs, so favorite wins + its top TD were used. Graded separately." : "") +
+    sec("3 LEGS", x.three, "Favorite wins + Over + its top scorer (hit 18.8% in 2014-25).") +
+    sec("4 LEGS", x.linked, "Favorite wins + Over + its top 2 scorers (hit 7.9% in 2014-25).") +
+    sec("4 LEGS · MY STYLE", x.style, under ? "With TDs, the Over hits about twice as often as the Under." : "") + `</div></div>`;
 }
-// Model Picks tab (10/14): this week's 4-leg parlays from the tested rules, with how often each rule hit in 2014-25
+// Model Picks tab (10/14, owner): one drop-down card per parlay type -- same game 2 / 3 / 4 legs, my style, 4 legs across games.
+// Each starts closed and shows how many games and the best chance; tap to open. Every one is saved before kickoff and graded.
 const FOUR_NAMES = { leg4_fav: "4 biggest favorites", leg4_green_fav: "Best green pick + 3 favorites", leg4_fav_td: "3 favorites + top TD scorer" };
-function fourLegCard() {
-  const F = (S && S.fourLeg) || []; if (!F.length) return "";
+function ddCard(id, title, note, rows, top) {
+  if (!rows.length) return "";
+  return `<div class="card dd"><button class="ddh" data-drop="${id}"><span class="ddt">${title}</span><span class="ddm">${rows.length} · best ${top}% ›</span></button>` +
+    `<div class="drop" id="${id}"><div class="inner">${note ? `<div class="s dim" style="margin-bottom:6px">${note}</div>` : ""}${rows.join("")}</div></div></div>`;
+}
+function sgpCards() {
+  const gs = (S && S.games ? S.games : []).filter((g) => g.sgp && !g.started && !g.final);
+  const row = (g, p, tag) => `<div class="row" style="display:block"><div><b>${esc(g.key)}</b>${tag ? ` <span class="dim">· ${tag}</span>` : ""} · ${sgpChance(p)}</div><div class="s">${sgpLegs(p)}</div></div>`;
+  const list = (pick, tag) => gs.map((g) => ({ g, p: pick(g) })).filter((x) => x.p && x.p.prob != null).sort((a, b) => b.p.prob - a.p.prob);
+  const top = (xs) => (xs.length ? Math.round(xs[0].p.prob * 100) : 0);
+  const two = list((g) => g.sgp.best), three = list((g) => g.sgp.three), four = list((g) => g.sgp.linked), mine = list((g) => g.sgp.style);
+  const F = (S && S.fourLeg) || [];
   const strong = (p) => (p.strong == null ? "" : p.strong ? '<div class="s g" style="margin-top:4px">STRONG WEEK: all 4 favorites at 70%+. Weeks like this hit 49% (146 weeks), and 3 of 4 won 82%.</div>'
     : '<div class="s y" style="margin-top:4px">Not all 4 favorites at 70%+. Weeks like this hit 30% (63 weeks), 3 of 4 won 62%.</div>');
-  const row = (p) => `<div class="row" style="display:block"><div><b>${esc(FOUR_NAMES[p.strategy] || p.strategy)}</b> · ${sgpChance(p)} <span class="dim">· history ${p.hist}% of weeks</span></div><div class="s">${p.legs.map((l) => `${esc(l.label)} <span class="dim">${esc(l.game)} · ${Math.round(l.prob * 100)}%</span>`).join("<br>")}</div>${strong(p)}</div>`;
-  return `<div class="card modelglow" style="margin-top:10px"><div class="inner"><div class="sh">4-leg parlays · this week</div>${F.map(row).join("")}<div class="s dim" style="margin-top:6px">History = share of weeks all 4 legs won, 2014-25 (214 weeks). The 4 favorites also got 3 of 4 right 77% of weeks.</div></div></div>`;
-}
-// Model Picks tab: every game's same-game parlays, highest chance first
-function sgpRanked() {
-  const gs = (S && S.games ? S.games : []).filter((g) => g.sgp && !g.started && !g.final); if (!gs.length) return "";
-  const row = (g, p, tag) => `<div class="row" style="display:block"><div><b>${esc(g.key)}</b> <span class="dim">· ${tag} · ${p.legs.length} legs</span> · ${sgpChance(p)}</div><div class="s">${sgpLegs(p)}</div></div>`;
-  const best = gs.filter((g) => g.sgp.best).sort((a, b) => (!!a.sgp.filled - !!b.sgp.filled) || b.sgp.best.prob - a.sgp.best.prob).map((g) => row(g, g.sgp.best, g.sgp.filled ? "Best · filled" : "Best")).join("");
-  const style = gs.filter((g) => g.sgp.style).sort((a, b) => b.sgp.style.prob - a.sgp.style.prob).map((g) => row(g, g.sgp.style, "Your style")).join("");
-  return `<div class="card modelglow" style="margin-top:10px"><div class="inner"><div class="sh">Same-game parlays · ranked</div>${best || '<div class="s dim">No game has 2+ strong legs right now.</div>'}<div class="sh" style="margin-top:12px">Your style · ranked</div>${style}</div></div>`;
+  const frow = (p) => `<div class="row" style="display:block"><div><b>${esc(FOUR_NAMES[p.strategy] || p.strategy)}</b> · ${sgpChance(p)} <span class="dim">· history ${p.hist}% of weeks</span></div><div class="s">${p.legs.map((l) => `${esc(l.label)} <span class="dim">· ${esc(l.game)} · ${Math.round(l.prob * 100)}%</span>`).join("<br>")}</div>${strong(p)}</div>`;
+  return ddCard("dd-sg2", "Same game · 2 legs", "The 2 strongest legs in each game. Games without 2 strong legs get favorite wins + its top TD (33% of games in 2014-25) and are graded separately.", two.map((x) => row(x.g, x.p, x.g.sgp.filled ? "filled" : "")), top(two)) +
+    ddCard("dd-sg3", "Same game · 3 legs", "Favorite wins + Over + its top TD scorer. Best same-game 3-leg in 2014-25: hit 18.8% (25% when that player is 50%+).", three.map((x) => row(x.g, x.p)), top(three)) +
+    ddCard("dd-sg4", "Same game · 4 legs", "Favorite wins + Over + its top 2 TD scorers. Best same-game 4-leg in 2014-25: hit 7.9%.", four.map((x) => row(x.g, x.p)), top(four)) +
+    ddCard("dd-mine", "4 legs · my style", "Spread + total + the top TD scorer on each team. With TDs, the Over hits about twice as often as the Under.", mine.map((x) => row(x.g, x.p)), top(mine)) +
+    ddCard("dd-four", "4 legs · different games", "History = share of weeks all 4 legs won, 2014-25 (214 weeks).", F.map(frow), F.length ? Math.round(Math.max(...F.map((p) => p.prob)) * 100) : 0);
 }
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = "";
   $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : ""}<div class="sh" style="margin:16px 2px 0">SPREAD &amp; ML</div><div class="grid">${gameCard(g, "x")}</div><div class="sh" style="margin:16px 2px 0">TOTALS</div><div class="grid">${totalCard(g, "x")}</div>${tdTop3(g)}${sgpBox(g)}`;
   $("back-btn").onclick = closeGame;
-  if (ROLL_ON_OPEN) { ROLL_ON_OPEN = false; rollReels($("detail")); }   // 10/14: % rolls in when you open a game
+  if (ROLL_ON_OPEN) { ROLL_ON_OPEN = false; slotify($("detail")); }   // 10/14: numbers roll in when you open a game
   if (g.final) ensureGrades();
   setBg($("panel-lines").classList.contains("on") ? g : null);   // 10/14 fix: the background redraw ran while another tab was showing (SEA/DEN logos on Models)
 }
@@ -1140,7 +1091,7 @@ function renderLines() {
   if (DETAIL) { const g = S.games.find((x) => x.key === DETAIL); if (g) return renderDetail(g); DETAIL = null; }
   setBg(null);
   $("detail").style.display = "none"; $("lines").style.display = "";
-  $("lines").innerHTML = bestStrip() + parlayStrip() + changedBox() + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
+  $("lines").innerHTML = ticketRow() + bestStrip() + parlayStrip() + changedBox() + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
 
     '';
 }
@@ -1194,6 +1145,7 @@ async function loadSlate() {
   const open = [...document.querySelectorAll(".drop.open")].map((e) => e.id).filter(Boolean);   // keep your open dropdowns
   const openTd = [...document.querySelectorAll(".tdr")].map((e, i) => (e.classList.contains("open") ? i : -1)).filter((i) => i >= 0);   // and open player rows
   renderAll(); for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
+  if (!loadSlate._rolled) { loadSlate._rolled = true; setTimeout(() => slotify($("panel-lines")), 60); }   // 10/14: numbers roll in on first open
   if (openTd.length) { const rows = document.querySelectorAll(".tdr"); for (const i of openTd) if (rows[i]) rows[i].classList.add("open"); }
   try { localStorage.setItem("lastSeen", new Date().toISOString()); } catch {} }   // next visit's "What changed" starts from now
 $("refresh-btn").onclick = async () => {
@@ -1229,6 +1181,7 @@ function showPanel(name) {
   document.querySelectorAll(".panel").forEach((p) => p.classList.remove("on")); $("panel-" + name).classList.add("on");
   if (name === "record" || name === "lab" || name === "models") loadRecord();
   if (name === "record") setTimeout(playStamps, 50);
+  setTimeout(() => slotify($("panel-" + name)), 60);   // 10/14: numbers roll in when you open a tab
   if (S && S.games) setBg(name === "lines" && DETAIL ? S.games.find((x) => x.key === DETAIL) : null);   // game background only on an open game page
 }
 document.querySelectorAll(".tabs button[data-tab]").forEach((btn) => btn.addEventListener("click", () => {

@@ -22,7 +22,7 @@ import { logError } from "../../lib/status";
 import { loadModel } from "../../lib/week";
 import { isThinMarket } from "../../lib/odds";
 import { nameMatches } from "../../lib/picks";
-import { recordPaper, recordSameGame, recordWinner, tdTotal, situationFor } from "../../lib/paper";
+import { recordPaper, recordWinner, tdTotal, situationFor } from "../../lib/paper";
 import { buildWeek } from "../../lib/week";
 import { loadInjuriesMeta } from "../../lib/injuries";
 import { alertsFromLines } from "../../lib/alerts";
@@ -216,10 +216,6 @@ export default async function handler(req, res) {
         const inj = await loadInjuriesMeta().catch(() => null);
         paper = await recordPaper(season, week, await buildWeek({ season, week, injuries: inj ? inj.teams : null })).catch((e) => { logError("paper", e); return 0; });
       }
-    }
-    // Same-game paper parlay for every game, once per game, ~26 h before its kickoff.
-    if (src !== "manual") {
-      await recordSameGame(season, week, games, async () => { const inj = await loadInjuriesMeta().catch(() => null); return buildWeek({ season, week, injuries: inj ? inj.teams : null }); }).catch((e) => { logError("paper-sg", e); return 0; });
     }
     const graded = src === "manual" ? 0 : await gradeRecent(season).catch(() => 0);
     const acct = src === "manual" ? { ok: false, note: "skipped on manual refresh" } : await syncAccount().catch((e) => ({ ok: false, note: String(e) }));  // auto-sync My Bets

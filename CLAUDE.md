@@ -73,6 +73,23 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   scoreboard group 4-LEG PARLAYS (leg4_fav, leg4_green_fav, leg4_fav_td, recorded weekly in buildPaper, graded); same-game box adds
   LINKED 4 (`sgp_linked`, saved per game) and a note when "your style" uses an Under with TDs.
 
+- PAGE CLEANUP (10/14, owner: "build everything now"):
+  * Same game, every game every week, saved before kickoff and graded: 2 legs (`sgp_best`, filled `sgp_best_fill` = favorite wins + its top
+    TD, 33% in 2014-25), 3 legs (`sgp_3` = favorite wins + Over + its top TD, best same-game 3-leg 18.8%, 25.3% when that player is 50%+),
+    4 legs (`sgp_linked`, 7.9%), 4 legs · my style (`sgp_style`). Research 2,659 games: best 2-legs fav ML + Under 33.8%, fav ML + top TD
+    33.0%, fav ML + Over 32.3%; best 3-legs fav ML + Over + top TD 18.8%, fav ML + Over + 2nd TD 14.7%, fav covers + Over + top TD 14.2%.
+  * Every parlay shows its Polymarket payout: legs' prices multiplied (1/price each) and what $10 returns (`payLine`); legs without a price say so.
+  * Model Picks: page header + drop-down cards (Same game 2 / 3 / 4 legs, 4 legs · my style, 4 legs · different games), no purple on its cards;
+    the old "Your model's parlays · week" list removed; scoreboard grouped (Same game, 4 legs, Best bets, Favorites, Touchdowns) with W-L and
+    hit % and past-season hit %. Old cut parlays (angles, teasers, right now, linked_sgp_3, same_game_3) no longer built; their code removed.
+  * Game Lines: Best bets / Parlay of the week as two gold tickets; line changes as a chip strip; live game tiles glow red.
+  * Every tab has a rose header like the tab bar; numbers roll in like slot reels when a tab or game opens (`slotify`).
+  * Anytime TD: Best TD picks players are not repeated in the list below; "Market disagrees" is a ⚠ line on the player's row.
+  * Alerts: wind alert says "Strong wind can lower scoring" (the old "Windy under" angle is not a pick). SOS removed from the screen
+    (strength of schedule is still computed in `lib/week.js schedStrength` as `g.sos`, just not shown).
+  * Dead page code removed: anglesBox, extraBets, rightNowBox, saferSide/saferOne/saferRate/saferTotal/totalMoved, comboLines, ord; the
+    unused `angles` field on games.
+
 ## Where things live
 
 - Site (Next.js on Vercel, nfl-nfl9.vercel.app): `pages/api/*`, `lib/*`, front end `public/app.js`.
