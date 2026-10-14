@@ -175,7 +175,8 @@ function leanCell(g, kind) {
     }
     else {
       const pc = Math.round(P.p * 100);
-      body = `<div style="margin-top:6px"><b class="g" style="font-size:16px">PICK: ${esc(P.pick)} · ${pc}%</b></div>` +
+      // 10/14 casino look (owner): the green pick pulses at normal size, glows brighter the stronger it is, and its % rolls in like a slot reel
+      body = `<div style="margin-top:6px"><b class="g pulse" style="font-size:16px;--gl:${glowOf(P.p)}">PICK: ${esc(P.pick)} · <span class="reelpct" data-v="${pc}%">${pc}%</span></b></div>` +
         // 10/13 (owner: fewer notes): just the green pick's own reason (e.g. the LINE MOVE numbers)
         `<div class="s" style="margin-top:4px">${esc(P.why)}</div>` +
         recLine(P.rec) + lineCheck(g, kind, P.pick) + splitNote(g, kind, P.pick);
@@ -406,7 +407,40 @@ function legFlipped(label) {
     const t = straightPicks(g).find((x) => !/^(Over|Under)\b/.test(x.pick) && !/\bML\b/.test(x.pick)); return !!t && !t.pick.startsWith(sp[1] + " "); }
   return false;
 }
-function betRow(b) {
+// ---------- casino look (10/14, owner) ----------
+const glowOf = (p) => (p >= 0.61 ? 1 : p >= 0.58 ? 0.75 : 0.45);   // stronger pick -> brighter glow
+const REDUCE = (() => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } })();
+function rollReels(root) {   // the green pick's % spins and lands (runs when a game page opens)
+  if (!root || !root.querySelectorAll || REDUCE) return;
+  root.querySelectorAll(".reelpct[data-v]").forEach((el) => {
+    const v = el.dataset.v; el.innerHTML = "";
+    [...v].forEach((ch, i) => { const d = document.createElement("span"); d.className = "rd";
+      if (!/\d/.test(ch)) { d.innerHTML = `<span><b>${ch}</b></span>`; el.appendChild(d); return; }
+      const seq = []; for (let k = 0; k < 16 + i * 6; k++) seq.push(k % 10); seq.push(+ch);
+      d.innerHTML = `<span>${seq.map((x) => `<b>${x}</b>`).join("")}</span>`; el.appendChild(d);
+      const inner = d.firstChild; requestAnimationFrame(() => requestAnimationFrame(() => { inner.style.transform = `translateY(-${(seq.length - 1) * 1.25}em)`; })); });
+  });
+}
+function coinBurst(el) {   // gold coins fly from a winning bet's stamp
+  if (REDUCE || !el || !el.getBoundingClientRect) return;
+  const e = el.getBoundingClientRect(), cv = document.createElement("canvas"); cv.className = "coinfx"; document.body.appendChild(cv);
+  const W = innerWidth, H = innerHeight, dpr = devicePixelRatio || 1; cv.width = W * dpr; cv.height = H * dpr; const cx = cv.getContext("2d"); cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const P = Array.from({ length: 30 }, () => ({ x: e.left + e.width / 2, y: e.top + e.height / 2, vx: (Math.random() - .5) * 8, vy: -Math.random() * 7 - 2, s: 4 + Math.random() * 4 })); let t = 0;
+  (function f() { cx.clearRect(0, 0, W, H); P.forEach((q) => { q.x += q.vx; q.y += q.vy; q.vy += .35; cx.fillStyle = "#ffcf4a"; cx.beginPath(); cx.ellipse(q.x, q.y, q.s, q.s * Math.abs(Math.cos(t / 4 + q.s)), 0, 0, 7); cx.fill(); });
+    if (++t < 60) requestAnimationFrame(f); else cv.remove(); })();
+}
+// HIT / MISS stamps on settled bets (Bets tab only): the slam + coins play once per bet, the first time you see it settled
+function playStamps() {
+  try { if (!$("panel-record").classList.contains("on")) return; } catch { return; }
+  let seen = []; try { seen = JSON.parse(localStorage.getItem("stampSeen") || "[]"); } catch {}
+  const set = new Set(seen); let added = false;
+  document.querySelectorAll("#record-mine .stamp[data-sid]").forEach((st) => { const id = st.dataset.sid; if (set.has(id)) return;
+    set.add(id); added = true; st.classList.add("go"); if (st.classList.contains("hit")) setTimeout(() => coinBurst(st), 250); });
+  if (added) { try { localStorage.setItem("stampSeen", JSON.stringify([...set].slice(-500))); } catch {} }
+}
+const stampFor = (b) => (b.sold || (b.result !== "W" && b.result !== "L") ? "" : `<span class="stamp ${b.result === "W" ? "hit" : "miss"}" data-sid="${esc(String(b.id || ""))}">${b.result === "W" ? "HIT!" : "MISS"}</span>`);
+function betRow(b) { return `<div class="betwrap">${betRowInner(b)}${stampFor(b)}</div>`; }
+function betRowInner(b) {
   if (b.source === "account") {   // bet recorded automatically from your Polymarket account
     const st = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Even" : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : (b.waiting ? '<span class="y">waiting for TD results</span>' : '<span class="dim">open</span>');
     const name = b.picks && b.picks.length ? `Combo · ${b.picks.length} picks` : `${esc(b.title)}${b.outcome ? ` — ${esc(b.outcome)}` : ""}`;
@@ -771,7 +805,7 @@ function kickLine(k) {
   const mv = (k.moved || []).map((m) => `${esc(m.game)} ${tm(m.was)} → ${tm(m.now)}`).join(" · ");
   return `${hm(k.t)} · ${k.espnGames} games from ESPN · ${mv ? `<span class="y">moved: ${mv}</span>` : "OK"}`;
 }
-function renderMine() { keepOpenState("record-mine", renderMineNow); }
+function renderMine() { keepOpenState("record-mine", renderMineNow); playStamps(); }
 function renderModel() { keepOpenState("models", renderModelNow); }
 function renderRecord() { renderMine(); renderModel(); }
 // "Updated" line at the top of Models and Bets, so you can tell the numbers are fresh (they reload every 2 minutes while you are on the tab).
@@ -874,7 +908,7 @@ function parlayStrip() {
   const P = parlayPicks(); if (!P.length) return "";
   const ch = P.reduce((a, x) => a * x.p, 1);
   const rows = P.map((x) => `<div class="bb"><div class="t1"><b class="g">${esc(x.pick)}</b><span style="white-space:nowrap">${Math.round(x.p * 100)}%</span></div><div class="t2">${esc(x.game)}</div></div>`).join("");
-  return `<div class="gapstrip" data-drop="parlaylist"><div class="t">Parlay of the week · ${P.length} picks ›</div></div><div class="drop" id="parlaylist"><div class="card"><div class="inner">${rows}<div class="s" style="margin-top:8px">Chance all ${P.length} hit: <b>${Math.round(ch * 100)}%</b> · one pick per game</div></div></div></div>`;
+  return `<div class="gapstrip" data-drop="parlaylist"><div class="t">Parlay of the week · ${P.length} picks ›</div></div><div class="drop" id="parlaylist"><div class="card modelglow"><div class="inner">${rows}<div class="s" style="margin-top:8px">Chance all ${P.length} hit: <b>${Math.round(ch * 100)}%</b> · one pick per game</div></div></div></div>`;
 }
 // Morning / afternoon / primetime (10/9): TNF/SNF/MNF and anything starting 5 PM or later (your time) is primetime.
 function slotOf(g) {
@@ -923,7 +957,7 @@ function renderLab() {
     GROUPS.map(([title, ks]) => `<div class="dim" style="font-size:11px;letter-spacing:.06em;margin:10px 0 4px">${title}</div><div style="${grid}">` +
       ks.filter((k) => names[k]).map((k) => `<span>${esc(SHORT[k] || names[k])}${tag(k)}</span><span style="text-align:right">${now(k)}</span><span class="dim" style="text-align:right">${hist(k)}</span>`).join("") + `</div>`).join("");
   LAB_SB = `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Parlay scoreboard · this season</div>${rows}</div></div>`;
-  $("lab").innerHTML = intro + sgpRanked() + `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Your model's parlays · week ${wk ? wk.week : S ? S.week : ""}</div>${thisWeek}</div></div>` + LAB_SB;
+  $("lab").innerHTML = intro + sgpRanked() + `<div class="card modelglow" style="margin-top:10px"><div class="inner"><div class="sh">Your model's parlays · week ${wk ? wk.week : S ? S.week : ""}</div>${thisWeek}</div></div>` + LAB_SB;
   if (MB && RES) renderModel();   // the Models tab reads the same data
 }
 
@@ -1073,7 +1107,7 @@ function sgpBox(g) {
     : x.single ? `<div class="sh" style="margin:4px 0">BEST</div><div class="s">Only one strong leg: <b>${esc(x.single.label)}</b> · ${Math.round(x.single.prob * 100)}% (bet it alone)</div>`
     : `<div class="sh" style="margin:4px 0">BEST</div><div class="s dim">No strong legs in this game.</div>`;
   const style = x.style ? `<div class="sh" style="margin:12px 0 4px">YOUR STYLE · ${x.style.legs.length} legs · ${sgpChance(x.style)}</div><div class="s">${sgpLegs(x.style)}</div>` : "";
-  return `<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAY</div><div class="card" style="margin-top:6px"><div class="inner">${best}${style}</div></div>`;
+  return `<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAY</div><div class="card modelglow" style="margin-top:6px"><div class="inner">${best}${style}</div></div>`;
 }
 // Model Picks tab: every game's same-game parlays, highest chance first
 function sgpRanked() {
@@ -1081,12 +1115,13 @@ function sgpRanked() {
   const row = (g, p, tag) => `<div class="row" style="display:block"><div><b>${esc(g.key)}</b> <span class="dim">· ${tag} · ${p.legs.length} legs</span> · ${sgpChance(p)}</div><div class="s">${sgpLegs(p)}</div></div>`;
   const best = gs.filter((g) => g.sgp.best).sort((a, b) => b.sgp.best.prob - a.sgp.best.prob).map((g) => row(g, g.sgp.best, "Best")).join("");
   const style = gs.filter((g) => g.sgp.style).sort((a, b) => b.sgp.style.prob - a.sgp.style.prob).map((g) => row(g, g.sgp.style, "Your style")).join("");
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Same-game parlays · ranked</div>${best || '<div class="s dim">No game has 2+ strong legs right now.</div>'}<div class="sh" style="margin-top:12px">Your style · ranked</div>${style}</div></div>`;
+  return `<div class="card modelglow" style="margin-top:10px"><div class="inner"><div class="sh">Same-game parlays · ranked</div>${best || '<div class="s dim">No game has 2+ strong legs right now.</div>'}<div class="sh" style="margin-top:12px">Your style · ranked</div>${style}</div></div>`;
 }
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = "";
   $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : ""}<div class="sh" style="margin:16px 2px 0">SPREAD &amp; ML</div><div class="grid">${gameCard(g, "x")}</div><div class="sh" style="margin:16px 2px 0">TOTALS</div><div class="grid">${totalCard(g, "x")}</div>${tdTop3(g)}${sgpBox(g)}`;
   $("back-btn").onclick = closeGame;
+  if (ROLL_ON_OPEN) { ROLL_ON_OPEN = false; rollReels($("detail")); }   // 10/14: % rolls in when you open a game
   if (g.final) ensureGrades();
   setBg($("panel-lines").classList.contains("on") ? g : null);   // 10/14 fix: the background redraw ran while another tab was showing (SEA/DEN logos on Models)
 }
@@ -1098,13 +1133,15 @@ function renderLines() {
 
     '';
 }
-function openGame(key) { LASTY = (typeof window !== "undefined" && window.scrollY) || 0; DETAIL = key; renderLines(); if (window.scrollTo) window.scrollTo(0, 0); const g = S.games.find((x) => x.key === key); if (g && g.started && !g.final) liveLoop(); }
+let ROLL_ON_OPEN = false;
+function openGame(key) { ROLL_ON_OPEN = true; LASTY = (typeof window !== "undefined" && window.scrollY) || 0; DETAIL = key; renderLines(); if (window.scrollTo) window.scrollTo(0, 0); const g = S.games.find((x) => x.key === key); if (g && g.started && !g.final) liveLoop(); }
 function closeGame() { DETAIL = null; renderLines(); if (window.scrollTo) window.scrollTo(0, LASTY); }
 // countdown to the next game that has not started
 function tickCd() {
   clearTimeout(tickCd._h);
   if (!S) return;
-  const set = (id, v) => { $(id).textContent = v; }, p2 = (n) => String(n).padStart(2, "0");
+  const set = (id, v) => { const e = $(id); if (e.textContent === v) return; const was = e.textContent; e.textContent = v;   // 10/14: digits flip like a casino clock
+    if (!REDUCE && was !== "--" && e.classList) { e.classList.remove("flip"); void e.offsetWidth; e.classList.add("flip"); } }, p2 = (n) => String(n).padStart(2, "0");
   const nxt = S.games.filter((g) => !g.started && g.kickoff && new Date(g.kickoff) > Date.now()).sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff))[0];   // by the clock, so it moves on at kickoff even before the next data load
   if (!nxt) { ["d", "h", "m", "s"].forEach((k) => set("cd-" + k, "--")); set("cd-g", "No upcoming games this week"); tickCd._cur = null; return; }
   const ms = Math.max(0, new Date(nxt.kickoff) - Date.now());
@@ -1155,6 +1192,18 @@ $("refresh-btn").onclick = async () => {
   } catch (e) { toast("Refresh failed: " + e.message, 10000); }
   b.disabled = false;
 };
+// 10/14 casino look: the slot lever next to "Updated" pulls new lines (same as the Lines button); the time spins like reels until it lands
+if ($("lever")) {
+  const lv = $("lever");
+  const pull = async () => {
+    if (lv.disabled || $("refresh-btn").disabled) return; lv.disabled = true; lv.classList.add("pull"); setTimeout(() => lv.classList.remove("pull"), 260);
+    const hu = $("hero-upd"); hu.innerHTML = `Updated <span class="mreel">7</span><span class="mreel">7</span>:<span class="mreel">7</span><span class="mreel">7</span>`;
+    const iv = setInterval(() => hu.querySelectorAll(".mreel").forEach((m) => { m.textContent = Math.floor(Math.random() * 10); }), 70);
+    try { await $("refresh-btn").onclick(); } finally { clearInterval(iv); if (S) weekline(); lv.disabled = false; }
+  };
+  lv.onclick = pull; let y0 = null;
+  lv.addEventListener("pointerdown", (e) => { y0 = e.clientY; }); lv.addEventListener("pointermove", (e) => { if (y0 != null && e.clientY - y0 > 25) { y0 = null; pull(); } }); lv.addEventListener("pointerup", () => { y0 = null; });
+}
 $("rerun-btn").onclick = async () => {
   const b = $("rerun-btn"); b.disabled = true; toast("Rerunning…", 0);
   try { const d = await (await fetch("/api/rerun", { method: "POST" })).json(); if (!d.ok) throw new Error(d.error);
@@ -1168,6 +1217,7 @@ function showPanel(name) {
   $("bell").classList.toggle("on", name === "alerts");
   document.querySelectorAll(".panel").forEach((p) => p.classList.remove("on")); $("panel-" + name).classList.add("on");
   if (name === "record" || name === "lab" || name === "models") loadRecord();
+  if (name === "record") setTimeout(playStamps, 50);
   if (S && S.games) setBg(name === "lines" && DETAIL ? S.games.find((x) => x.key === DETAIL) : null);   // game background only on an open game page
 }
 document.querySelectorAll(".tabs button[data-tab]").forEach((btn) => btn.addEventListener("click", () => {
