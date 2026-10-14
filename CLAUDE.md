@@ -42,6 +42,11 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 - Sign-in (10/14, owner chose B): one good sign-in sets a 1-year "remember this phone" cookie (`middleware.ts`, `nfl_remember` = hash of
   username + password); changing SITE_PASSWORD in Vercel signs every phone out. Cross-site guard kept.
 
+- Polymarket combo legs (10/14, owner): Polymarket drops a combo's legs once it settles. Now every account sync saves each open combo's
+  legs (`lib/mybets.js saveComboLegs` -> `combolegs:<id>`), the Bets tab uses them after Polymarket drops them, 1+ TD legs with no mark are
+  graded from the official scorers, and Bets -> analysis counts account combos' legs too. `/api/combolegs` = one-time lookup that tries to
+  get OLD settled combos' legs back from Polymarket by id (`?raw=1` shows a sample reply).
+
 ## Where things live
 
 - Site (Next.js on Vercel, nfl-nfl9.vercel.app): `pages/api/*`, `lib/*`, front end `public/app.js`.
