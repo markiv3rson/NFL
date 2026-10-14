@@ -153,7 +153,7 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   a NaN / non-number line could become a pick labeled "A NaN" (`lib/picks.js` now returns no pick).
 - Checked and fine: parlay grading of the new -2.5 / +7.5 / +14.5 labels, read-only API endpoints with bad input, the TD tab header
   ("Week 7 / top 7" in a screenshot was the digit animation mid-roll; it lands on "Week 6 · top 3"). NFL app credits 349 after the 10/14
-  7 AM pull (352 - 3) vs the NBA app's 490 -> two separate Odds API subscriptions.
+  7 AM pull (352 - 3); the sandbox key read 490 -> a different Odds API subscription.
 - Not testable here: the model service HTTP endpoints (importing it downloads the model data), Polymarket / Pinnacle live feeds.
 
 ## CLEANUP (10/14, owner: "delete all 8", teasers too)
@@ -414,8 +414,8 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   BOOKS AT THE OWNER'S TIMES (10/14 late, owner): pulled at EVERY scheduled snapshot -- Mon-Sat 7 AM, 3 PM, 7 PM; Sunday 5 AM, 8 AM,
   9:30 AM, 12 PM, 4 PM (Pacific; scheduler SUNDAY / WEEKDAY are (hour, minute) slots). Full pulls (with moneyline, 3 credits) at weekday
   7 AM and every Sunday pull; the rest skip the moneyline (`&books=2`, 2 credits, last moneyline kept) -> 23 pulls / 57 credits a week,
-  ~250 a month. The sandbox's ODDS_API_KEY read 490 left / 10 used on 10/14 (= the owner's NBA app reading); the NFL app (Vercel key)
-  read 352 the evening before -> most likely two different keys. A books reading counts as current until the next scheduled pull (+45 min)
+  ~250 a month. The sandbox's ODDS_API_KEY read 490 left / 10 used on 10/14 and the NFL app (Vercel key) read 352 the evening before, 349 after the
+  7 AM pull -> the sandbox key is a different Odds API subscription from the NFL app's. A books reading counts as current until the next scheduled pull (+45 min)
   (`lib/books.js BOOK_PULLS / booksFresh`; keep it the same as scheduler.py WEEKDAY / SUNDAY). This replaced the 3 h / 8 h limit, so
   LINE MOVE / KEY NUMBER no longer drop off between pulls. Kickoff recorder uses the same rule; if the books aren't current, no LINE MOVE
   is saved and KEY NUMBER uses the newest Pinnacle line. Risk: a books move after the last pull (most likely overnight) isn't seen until
@@ -621,13 +621,3 @@ Tested and NOT added (made it worse):
 
 - Bet Sunday morning after inactives (~90 min before kickoff) and a Model rerun; lines and weather move picks during the week.
 - A TEASER pick only works at the teased line.
-
-## Next project: NBA app (discussed Oct 10, 2026 — not started)
-
-Same concept as the NFL app: game model (spread/total/moneyline), tested combo patterns, best bets at 56%+, teasers, player props, Polymarket lines and bet sync, automatic rebuilds.
-- NBA differences: ~1,230 games, daily updates; injuries/rest/late scratches matter most; back-to-backs and travel; pace for totals; props (points, rebounds, assists, 3s) depend on minutes.
-- Plan: phase 1 game model (~1–2 weeks), phase 2 combos + best bets (~1 week), phase 3 props (~1–2 weeks).
-- Open questions for the owner: separate app or a tab in this one? Check which free NBA data sources work from the cloud before promising.
-- Wait for "build now".
-
-- Vercel redeploy retry (owner: "deploy it"): #316 and #317 were rate limited 10/14; retried this commit.
