@@ -1040,6 +1040,7 @@ function startsIn(g) {
 }
 const TEAM_COLOR = { ARI: "#97233f", ATL: "#a71930", BAL: "#5c2d91", BUF: "#00338d", CAR: "#0085ca", CHI: "#e64100", CIN: "#fb4f14", CLE: "#ff3c00", DAL: "#2a5db0", DEN: "#fb4f14", DET: "#0076b6", GB: "#2f7d4f", HOU: "#c8102e", IND: "#2a6ebb", JAX: "#00a3b5", KC: "#e31837", LV: "#a5acaf", LAC: "#0080c6", LA: "#2a6ebb", LAR: "#2a6ebb", MIA: "#00a6a6", MIN: "#6a3fb0", NE: "#2a5db0", NO: "#d3bc8d", NYG: "#2a5db0", NYJ: "#2f7d4f", PHI: "#00898a", PIT: "#ffb612", SF: "#c8102e", SEA: "#4a8f2a", TB: "#d50a0a", TEN: "#4b92db", WAS: "#7a2236" };
 // Proven angles on this game (10/8): rules that beat break-even in every period of 2007-25, with their record.
+// 10/14 (owner): no longer on the game page -- it repeated the Model cards' picks (kept for the tests / reuse)
 function anglesBox(g) {
   const P = straightPicks(g); if (!P.length) return "";
   return `<div class="card" style="margin-top:10px"><div class="inner"><div class="fold" data-drop="gamebest" style="border-top:0;padding:0"><span class="sh" style="margin:0">Best pick · this game</span><span>▾</span></div><div class="drop${GAMEBEST_OPEN ? " open" : ""}" id="gamebest" style="border-top:0;margin-top:4px;padding-top:0">` +
@@ -1084,7 +1085,7 @@ function sgpRanked() {
 }
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = "";
-  $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}${anglesBox(g)}${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : ""}<div class="sh" style="margin:16px 2px 0">SPREAD &amp; ML</div><div class="grid">${gameCard(g, "x")}</div><div class="sh" style="margin:16px 2px 0">TOTALS</div><div class="grid">${totalCard(g, "x")}</div>${tdTop3(g)}${sgpBox(g)}`;
+  $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : ""}<div class="sh" style="margin:16px 2px 0">SPREAD &amp; ML</div><div class="grid">${gameCard(g, "x")}</div><div class="sh" style="margin:16px 2px 0">TOTALS</div><div class="grid">${totalCard(g, "x")}</div>${tdTop3(g)}${sgpBox(g)}`;
   $("back-btn").onclick = closeGame;
   if (g.final) ensureGrades();
   setBg($("panel-lines").classList.contains("on") ? g : null);   // 10/14 fix: the background redraw ran while another tab was showing (SEA/DEN logos on Models)
