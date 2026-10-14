@@ -222,6 +222,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(ruleFlag(4, 12, 60) === "BELOW" && ruleFlag(9, 7, 60) === "OK" && ruleFlag(1, 5, 60) === "TOO FEW" && Object.keys(ruleRecords(rows.slice(0, 4).concat(seen), seen)).length === 1 && ruleRecords(rows, seen)["BEAT THE 3 · books 3"].say === 55.6
       && r["BEAT THE 3 · books 3"] && r["BEAT THE 3 · books 3"].w + r["BEAT THE 3 · books 3"].l === 16 && r["BEAT THE 3 · books 3"].w === 3 && r["BEAT THE 3 · books 3"].flag === "BELOW",
       "live rule records: each pick once at its first-shown line, flagged BELOW only with 15+ graded and 10+ points under the card", r); }
+  { const { mode } = await import("../lib/books.js");
+    ok(mode([-1.5, -1.5, -1, -1, -1, 0, 0, 0, 1]) === -1 && mode([4.5, 4.5, 4.5, 5.5, 5.5]) === 4.5 && mode([3, 3, 2.5]) === 3 && mode([-3, -3.5]) === -3 && mode([7]) === 7,
+      "books consensus: most common number; a tie goes to the number nearest the middle of all books (CAR @ PHI 0 vs -1)"); }
   const cheap = middleCheck(day, sp(-2.5, 0.50, 0.50), bk(-3), [{ team: "BUF", line: 3.5, price: 0.56 }]), dear = middleCheck(day, sp(-2.5, 0.54, 0.46), bk(-3), [{ team: "BUF", line: 3.5, price: 0.58 }]);
   ok(cheap && cheap.fav === "LA" && cheap.dog === "BUF" && Math.abs(cheap.cost - 1.06) < 1e-9 && Math.abs(cheap.back - 1.093) < 1e-9 && !dear && middleCheck(thu, sp(-2.5, 0.5, 0.5), bk(-3), [{ team: "BUF", line: 3.5, price: 0.56 }]).exact3 === 0.094
     && !middleCheck(day, sp(-6.5, 0.5, 0.5), bk(-6.5), []), "middle: fav -2.5 + dog +3.5 shown only when the two prices add up to less than the history payback (1 + exact-3 share, night share at night); books 2.5-3.5 only");
