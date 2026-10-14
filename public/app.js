@@ -362,7 +362,7 @@ function rollReels(root) {   // the green pick's % spins and lands (runs when a 
       const seq = []; for (let k = 0; k < 16 + i * 6; k++) seq.push(k % 10); seq.push(+ch);
       d.innerHTML = `<span>${seq.map((x) => `<b>${x}</b>`).join("")}</span>`; el.appendChild(d);
       const inner = d.firstChild; requestAnimationFrame(() => requestAnimationFrame(() => { inner.style.transform = `translateY(-${(seq.length - 1) * 1.25}em)`; })); });
-    setTimeout(() => { el.textContent = v; }, 1700);   // back to plain text once it lands (keeps the line's normal spacing)
+    setTimeout(() => { if (el.parentNode && el.dataset.keep == null && el.replaceWith) el.replaceWith(document.createTextNode(v)); else el.textContent = v; }, 1700);   // back to plain text once it lands (no odd line breaks)
   });
 }
 // 10/14 (owner): numbers across the app roll in like slot machine reels when a page opens (not on the 2-minute background refresh)
@@ -1047,7 +1047,7 @@ function payLine(p) {
 }
 function sgpBox(g) {
   const x = g.sgp; if (!x || g.started || g.final) return "";
-  const sec = (title, p, note) => (p ? `<div class="sh" style="margin:${title.startsWith("2") ? 4 : 12}px 0 4px">${title} · ${sgpChance(p)}</div><div class="s">${sgpLegs(p)}</div>${note ? `<div class="s dim" style="margin-top:4px">${note}</div>` : ""}` : "");
+  const sec = (title, p, note) => (p ? `<div class="sh" style="margin:${title.startsWith("2") ? 4 : 14}px 0 2px">${title}</div><div class="s" style="margin-bottom:3px">${sgpChance(p)}</div><div class="s">${sgpLegs(p)}</div>${note ? `<div class="s dim" style="margin-top:4px">${note}</div>` : ""}` : "");
   const under = x.style && x.style.legs.some((l) => l.kind === "total" && /^Under/.test(l.label)) && x.style.legs.some((l) => l.kind === "td");
   return `<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAYS</div><div class="card modelglow" style="margin-top:6px"><div class="inner">` +
     sec(`2 LEGS${x.filled ? " · FILLED" : ""}`, x.best, x.filled ? "Fewer than 2 strong legs, so favorite wins + its top TD were used. Graded separately." : "") +
