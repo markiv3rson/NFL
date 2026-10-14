@@ -393,6 +393,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     { // 10/14 fix: the filler never adds a leg that works against one already in (DEN +3.5 + SEA to win = SEA by 1-3 only)
       const d = sameGameParlays({ key: "SEA @ DEN", away: "SEA", home: "DEN", started: false, final: false, poly: { spread: { homeSpread: 2.5, home: 0.53, away: 0.47 }, ml: { home: 0.43, away: 0.5725 }, total: { line: 40.5, over: 0.5, under: 0.5 } },
         combos: [{ pick: "DEN +3.5", hit: 59.6, line: 3.5, price: 0.585, why: "BEAT THE 3: x" }], td: [{ player: "J.Smith-Njigba", team: "SEA", fair: 45 }, { player: "J.Dobbins", team: "DEN", fair: 38 }] });
+      const e2 = sameGameParlays({ key: "BAL @ CLE", away: "BAL", home: "CLE", started: false, final: false, poly: { spread: { homeSpread: 4.5, home: 0.5, away: 0.5 }, ml: { home: 0.3, away: 0.72 }, total: { line: 44.5, over: 0.5, under: 0.5 } },
+        combos: [{ pick: "BAL -2.5", hit: 65.6, line: -2.5, price: 0.62, why: "BEAT THE 3: x" }], td: [{ player: "D.Henry", team: "BAL", fair: 55 }] });
+      ok(e2.best && e2.best.legs.map((l) => l.label).join() === "BAL -2.5,D.Henry TD", "same-game: no second bet on the same game's result (BAL -2.5 + BAL ML adds nothing)", e2.best && e2.best.legs.map((l) => l.label));
       ok(d.best && d.best.legs.map((l) => l.label).join() === "DEN +3.5,J.Dobbins TD" && !d.best.legs.some((l) => l.label === "SEA ML"), "same-game: DEN +3.5 is filled with DEN's own top TD, never SEA to win", d.best && d.best.legs.map((l) => l.label));
       { const G2 = { key: "NO @ NYG", home: "NYG", away: "NO", poly: { spread: { homeSpread: 1.5, home: 0.5, away: 0.5 }, total: { line: 46.5, over: 0.5, under: 0.5 } } };
         ok(/Costs 63¢ but wins 59\.9%/.test(ctx.T.costNote(G2, { pick: "NYG +3.5", p: 0.599, price: 0.63 })) && ctx.T.costNote(G2, { pick: "NYG +3.5", p: 0.599, price: 0.59 }) === ""
