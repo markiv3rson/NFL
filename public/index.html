@@ -181,6 +181,10 @@
   .hero.h6 .lever .lmount { left:3px; width:16px; height:16px; border-radius:5px; background:linear-gradient(90deg,#3a3f49,#9aa3b2,#3a3f49); }
   .hero.h6 .lever .larm { left:9px; bottom:12px; width:4px; height:42px; background:linear-gradient(90deg,#6b7280,#e5e7eb,#6b7280); }
   .hero.h6 .lever .lknob { width:16px; height:16px; margin-left:-8px; top:-8px; background:radial-gradient(circle at 35% 30%,#e4e7ff,#8f9bff 55%,#33358f); }
+  /* 10/14 (owner, phone): a page's filter chips (Bets weeks, Alerts kinds) sit right above the bottom tabs, where the thumb is */
+  .chips.dock { position:fixed; left:0; right:0; bottom:calc(max(8px,env(safe-area-inset-bottom,0px)) + 66px); z-index:54; margin:0; flex-wrap:nowrap; overflow-x:auto;
+    padding:8px max(12px,env(safe-area-inset-right)) 6px max(12px,env(safe-area-inset-left)); background:linear-gradient(to top,rgba(8,9,14,.94),rgba(8,9,14,.75)); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); scrollbar-width:none; }
+  .chips.dock::-webkit-scrollbar { display:none; } .chips.dock button { flex:0 0 auto; }
   .gapstrip { margin-top:10px; border-radius:14px; padding:7px 12px; min-height:32px; background:rgba(79,227,208,.08); border:1px solid rgba(79,227,208,.35); cursor:pointer; }
   .gapstrip .t { font-size:12.5px; font-weight:800; color:var(--cyan); }
   .scorers { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:10px; }
@@ -323,7 +327,7 @@
   </div>
   <div class="panel" id="panel-alerts">
     <div class="phead"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><div class="pt"><b>Alerts</b><span>News that can move a pick</span></div><button class="phbtn" id="al-read">Mark all read</button></div>
-    <div class="chips" id="al-chips"></div>
+    <div class="chips dock" id="al-chips"></div>
     <div id="alerts"></div>
   </div>
 </div>

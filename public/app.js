@@ -505,7 +505,7 @@ function renderMineNow() {
   const shown = MB.bets.filter((b) => sel === "all" || Number(b.week) === Number(sel));
   const open = shown.filter((b) => b.result === "pending"), done = shown.filter((b) => b.result !== "pending");   // includes auto-recorded account bets
   const s = betsSummary(shown);
-  const wkChips = `<div class="chips" id="mb-chips">${wks.map((w) => `<button data-mbw="${w}" class="${String(sel) === String(w) ? "on" : ""}">Week ${w}</button>`).join("")}<button data-mbw="all" class="${sel === "all" ? "on" : ""}">Season</button></div>`;
+  const wkChips = `<div class="chips dock" id="mb-chips">${wks.map((w) => `<button data-mbw="${w}" class="${String(sel) === String(w) ? "on" : ""}">Week ${w}</button>`).join("")}<button data-mbw="all" class="${sel === "all" ? "on" : ""}">Season</button></div>`;
   const settledPl = done.reduce((a, b) => a + (b.pl || 0), 0);
   const synced = MB.synced && MB.synced.list ? MB.synced.list : [];
   const syncedRows = synced.map((p) => {
@@ -869,13 +869,12 @@ function slotOf(g) {
 let GAMEBEST_OPEN = (() => { try { return localStorage.getItem("gameBestOpen") !== "0"; } catch { return true; } })();
 let BEST_OPEN = (() => { try { return localStorage.getItem("bestOpen") !== "0"; } catch { return true; } })();
 // 10/14 (owner: "come up with a better design"): Best bets and Parlay of the week as two casino tickets side by side; tap one to open its list
-function ticketRow() {   // 10/14 (owner): one combined ticket at the top of the Bets tab -- tap it to open both lists
+function ticketRow() {   // 10/14 (owner): two tickets side by side at the top of the Bets tab -- tap one to open its list
   const B = bestBets(), P = parlayPicks(); if (!B.length && !P.length) return "";
   const ch = P.length ? Math.round(P.reduce((a, x) => a * x.p, 1) * 100) : null;
-  return `<button class="ticket one" data-drop="picklists"><span class="tk">THIS WEEK'S PICKS</span><span class="tpair">` +
-    (B.length ? `<span><b class="tb">${B.length}</b><span class="ts">best bets</span></span>` : "") +
-    (P.length ? `<span><b class="tb">${ch}%</b><span class="ts">parlay of the week · ${P.length} picks</span></span>` : "") +
-    `</span><span class="ts">tap to open</span></button><div class="drop" id="picklists">${B.length ? `<div class="sh" style="margin:12px 2px 0">BEST BETS</div>${bestStrip()}` : ""}${P.length ? `<div class="sh" style="margin:12px 2px 0">PARLAY OF THE WEEK</div>${parlayStrip()}` : ""}</div>`;
+  const t = (drop, k, big, sub) => `<button class="ticket" data-drop="${drop}"><span class="tk">${k}</span><b class="tb">${big}</b><span class="ts">${sub}</span></button>`;
+  return `<div class="jrow">${B.length ? t("bestdrop", "BEST BETS", B.length, `green pick${B.length === 1 ? "" : "s"} · tap to open`) : ""}${P.length ? t("parlaydrop", "PARLAY OF THE WEEK", `${ch}%`, `chance all ${P.length} hit · tap to open`) : ""}</div>` +
+    (B.length ? `<div class="drop" id="bestdrop">${bestStrip()}</div>` : "") + (P.length ? `<div class="drop" id="parlaydrop">${parlayStrip()}</div>` : "");
 }
 function bestStrip() {
   const B = bestBets(); if (!B.length) return "";
