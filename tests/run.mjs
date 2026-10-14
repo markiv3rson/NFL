@@ -217,9 +217,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     "bought points: books 4.5 / 6.5 -> fav -2.5, 5.5 -> dog +7.5, 13.5 -> dog +14.5; books 7.5 / 6 are not picks", { t45, t55 });
   { const { ruleRecords, ruleFlag } = await import("../lib/stack.js"), mk = (g, res, t, o = {}) => ({ id: "keynum|spread", tier: 3, hit: 55.6, week: 6, game: g, result: res, t, ...o });
     const rows = Array.from({ length: 16 }, (_, i) => mk(`G${i}`, i < 4 ? "W" : "L", "2"));   // 4-12 = 25%
-    const seen = [mk("G0", "L", "1")];   // first-shown wins over the kickoff row for G0 (but is green? hit 55.6 < 56 -> ignored)
+    const seen = [mk("G0", "L", "1", { id: "chooser|spread" })];   // chooser picks are not green rules -> ignored
     const green = Array.from({ length: 16 }, (_, i) => mk(`H${i}`, i < 4 ? "W" : "L", "2", { hit: 60 })), r = ruleRecords(green, [mk("H0", "L", "1", { hit: 60 })]);
-    ok(ruleFlag(4, 12, 60) === "BELOW" && ruleFlag(9, 7, 60) === "OK" && ruleFlag(1, 5, 60) === "TOO FEW" && Object.keys(ruleRecords(rows, seen)).length === 0
+    ok(ruleFlag(4, 12, 60) === "BELOW" && ruleFlag(9, 7, 60) === "OK" && ruleFlag(1, 5, 60) === "TOO FEW" && Object.keys(ruleRecords(rows.slice(0, 4).concat(seen), seen)).length === 1 && ruleRecords(rows, seen)["BEAT THE 3 · books 3"].say === 55.6
       && r["BEAT THE 3 · books 3"] && r["BEAT THE 3 · books 3"].w + r["BEAT THE 3 · books 3"].l === 16 && r["BEAT THE 3 · books 3"].w === 3 && r["BEAT THE 3 · books 3"].flag === "BELOW",
       "live rule records: each pick once at its first-shown line, flagged BELOW only with 15+ graded and 10+ points under the card", r); }
   const cheap = middleCheck(day, sp(-2.5, 0.50, 0.50), bk(-3), [{ team: "BUF", line: 3.5, price: 0.56 }]), dear = middleCheck(day, sp(-2.5, 0.54, 0.46), bk(-3), [{ team: "BUF", line: 3.5, price: 0.58 }]);
