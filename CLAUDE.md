@@ -118,7 +118,10 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   at 10.5/11, dog +10.5 at 9/9.5/10, dog +14.5 at 13/14, books 2, books 4. Books 4.5 dog +7.5 also passed (60.8%) -- only the fav side
   is shown. Polymarket alternate lines now read up to 15 points (`lib/poly.js`). Buying more points always raises the win rate; the price
   rises too.
-- B: BEAT THE 3, BOUNCE BACK, BOUNCE BACK DOG fire in DAY games only (`isNightGame`: Thursday, Sunday 7 PM ET+, Monday). Night: BEAT THE 3
+- B (CHANGED same day, owner: "I want night games too"): BEAT THE 3, BOUNCE BACK, BOUNCE BACK DOG fire in night games too (`isNightGame`:
+  Thursday, Sunday 7 PM ET+, Monday) but the card shows the NIGHT rate (`BUY_TIERS[..].night`, 1999-2025): books 1 55.8%, 1.5 69.7% (33),
+  2.5 51.1%, 3 51.8%, 3.5 fav 55.6%, 4.5 fav 54.2%, 6.5 fav 66.7%, 5.5 dog +7.5 60.0%, 13.5 45.5% (11); BOUNCE BACK 48.3% (58), DOG 53.1% (32);
+  middle uses the night exact-3 share (3.3 / 9.4 / 7.3%). Below 56% they show light green / yellow. Day picks keep the day rates. Night: BEAT THE 3
   53-56% every period vs day 58-61%; BOUNCE BACK 50.9% vs 58.8%; DOG 53.1% vs 56.9% (app's own replay). Underdogs cover less at night
   (Thu 46.7%, SNF 49.9%, Sun day 51.6%) and fewer night games land on 3. Card %: BOUNCE BACK 58.8% (318), DOG 56.9% (253).
 - A: same-game parlays -- `lib/combo.js pairLift` treats two side bets in one game as linked (same team = the less likely leg; opposite
