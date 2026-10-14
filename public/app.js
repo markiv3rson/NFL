@@ -945,8 +945,8 @@ function renderLab() {
   // Scoreboard (10/9): one line per parlay, grouped; this season (W-L, return) and the 2007-25 replay (hit, return).
   const SHORT = { home_fav_95_single: "Home fav 9.5+ · single", home_fav_95_2: "Home fav 9.5+ · 2 legs", home_fav_95_3: "Home fav 9.5+ · 3 legs", top3_home_75: "Top 3 home favs (75%+)",
     td_edge_3: "3 TD value picks", td_likely_2: "2 likeliest TD scorers", td_likely_3: "3 likeliest TD scorers",
-    angles_2: "2 angles", angles_3: "3 angles", angles_fav_3: "Angle + 2 home favs", alt_2: "2 TEASERS", alt_pick_3: "2 TEASERS + 1 pick", model_best_4: "Model's 4 best legs", right_now_3: "3 Right now legs", same_game_3: "Same game + TD", linked_sgp_3: "Fav covers + Over + scorer", best_2: "Best bets · 2", best_3: "Best bets · 3", best_4: "Best bets · 4 (Parlay of the week)", sgp_best: "Same game · best", sgp_style: "Same game · your style", sgp_linked: "Same game · linked 4", leg4_fav: "4 biggest favorites", leg4_green_fav: "Green pick + 3 favorites", leg4_fav_td: "3 favorites + top TD" };
-  const GROUPS = [["BEST BETS", ["best_2", "best_3", "best_4"]], ["4-LEG PARLAYS", ["leg4_fav", "leg4_green_fav", "leg4_fav_td"]], ["SAME-GAME PARLAYS", ["sgp_best", "sgp_style", "sgp_linked"]], ["MONEYLINE FAVORITES", ["home_fav_95_single", "home_fav_95_2", "home_fav_95_3", "top3_home_75"]], ["TOUCHDOWNS", ["td_edge_3", "td_likely_2", "td_likely_3"]],
+    angles_2: "2 angles", angles_3: "3 angles", angles_fav_3: "Angle + 2 home favs", alt_2: "2 TEASERS", alt_pick_3: "2 TEASERS + 1 pick", model_best_4: "Model's 4 best legs", right_now_3: "3 Right now legs", same_game_3: "Same game + TD", linked_sgp_3: "Fav covers + Over + scorer", best_2: "Best bets · 2", best_3: "Best bets · 3", best_4: "Best bets · 4 (Parlay of the week)", sgp_best: "Same game · best", sgp_best_fill: "Same game · best, filled", sgp_style: "Same game · your style", sgp_linked: "Same game · linked 4", leg4_fav: "4 biggest favorites", leg4_green_fav: "Green pick + 3 favorites", leg4_fav_td: "3 favorites + top TD" };
+  const GROUPS = [["BEST BETS", ["best_2", "best_3", "best_4"]], ["4-LEG PARLAYS", ["leg4_fav", "leg4_green_fav", "leg4_fav_td"]], ["SAME-GAME PARLAYS", ["sgp_best", "sgp_best_fill", "sgp_style", "sgp_linked"]], ["MONEYLINE FAVORITES", ["home_fav_95_single", "home_fav_95_2", "home_fav_95_3", "top3_home_75"]], ["TOUCHDOWNS", ["td_edge_3", "td_likely_2", "td_likely_3"]],
     ["ANGLES", ["angles_2", "angles_3", "angles_fav_3", "alt_2", "alt_pick_3"]], ["MIXED", ["model_best_4", "right_now_3", "same_game_3", "linked_sgp_3"]]];
   const seen = new Set(GROUPS.flatMap((g) => g[1])), extra = Object.keys(names).filter((k) => !seen.has(k)); if (extra.length) GROUPS.push(["OTHER", extra]);
   const hist = (k) => { const h = REPLAY && REPLAY.parlays && REPLAY.parlays.find((x) => x.id === k); return h && h.n ? `${Math.round(h.hit * 100)}% · ${cPct(h.roi)}` : "—"; };
@@ -1103,9 +1103,8 @@ const sgpLegs = (p) => p.legs.map((l) => `${esc(l.label)}${l.rule ? ` <span clas
 const sgpChance = (p) => (p.prob == null ? "" : `<b class="${p.prob >= 0.3 ? "g" : p.prob >= 0.15 ? "lg" : "y"}">hits ~${Math.round(p.prob * 100)}%</b> <span class="dim">(about 1 in ${Math.max(1, Math.round(1 / p.prob))})</span>`);
 function sgpBox(g) {
   const x = g.sgp; if (!x || g.started || g.final) return "";
-  const best = x.best ? `<div class="sh" style="margin:4px 0">BEST · ${x.best.legs.length} legs · ${sgpChance(x.best)}</div><div class="s">${sgpLegs(x.best)}</div>`
-    : x.single ? `<div class="sh" style="margin:4px 0">BEST</div><div class="s">Only one strong leg: <b>${esc(x.single.label)}</b> · ${Math.round(x.single.prob * 100)}% (bet it alone)</div>`
-    : `<div class="sh" style="margin:4px 0">BEST</div><div class="s dim">No strong legs in this game.</div>`;
+  const best = x.best ? `<div class="sh" style="margin:4px 0">BEST${x.filled ? " · FILLED" : ""} · ${x.best.legs.length} legs · ${sgpChance(x.best)}</div><div class="s">${sgpLegs(x.best)}</div>${x.filled ? '<div class="s dim" style="margin-top:4px">Fewer than 2 strong legs, so the next-strongest were added. Graded as its own record.</div>' : ""}`
+    : `<div class="sh" style="margin:4px 0">BEST</div><div class="s dim">Not enough legs in this game.</div>`;
   // 10/14 research: in the owner's 4-leg style an Under cuts the chance about in half (1.8-2.4% vs 4.6-5.7% with the Over, 2014-25)
   const under = x.style && x.style.legs.some((l) => l.kind === "total" && /^Under/.test(l.label)) && x.style.legs.filter((l) => l.kind === "td").length;
   const style = x.style ? `<div class="sh" style="margin:12px 0 4px">YOUR STYLE · ${x.style.legs.length} legs · ${sgpChance(x.style)}</div><div class="s">${sgpLegs(x.style)}</div>${under ? '<div class="s y" style="margin-top:4px">With TDs, the Over hits about twice as often as the Under.</div>' : ""}` : "";
@@ -1125,7 +1124,7 @@ function fourLegCard() {
 function sgpRanked() {
   const gs = (S && S.games ? S.games : []).filter((g) => g.sgp && !g.started && !g.final); if (!gs.length) return "";
   const row = (g, p, tag) => `<div class="row" style="display:block"><div><b>${esc(g.key)}</b> <span class="dim">· ${tag} · ${p.legs.length} legs</span> · ${sgpChance(p)}</div><div class="s">${sgpLegs(p)}</div></div>`;
-  const best = gs.filter((g) => g.sgp.best).sort((a, b) => b.sgp.best.prob - a.sgp.best.prob).map((g) => row(g, g.sgp.best, "Best")).join("");
+  const best = gs.filter((g) => g.sgp.best).sort((a, b) => (!!a.sgp.filled - !!b.sgp.filled) || b.sgp.best.prob - a.sgp.best.prob).map((g) => row(g, g.sgp.best, g.sgp.filled ? "Best · filled" : "Best")).join("");
   const style = gs.filter((g) => g.sgp.style).sort((a, b) => b.sgp.style.prob - a.sgp.style.prob).map((g) => row(g, g.sgp.style, "Your style")).join("");
   return `<div class="card modelglow" style="margin-top:10px"><div class="inner"><div class="sh">Same-game parlays · ranked</div>${best || '<div class="s dim">No game has 2+ strong legs right now.</div>'}<div class="sh" style="margin-top:12px">Your style · ranked</div>${style}</div></div>`;
 }

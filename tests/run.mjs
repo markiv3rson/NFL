@@ -428,7 +428,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(x.best && x.best.legs.map((l) => l.label).join() === "Bi.Robinson TD,ATL +3.5" && Math.abs(x.best.prob - 0.429) < 0.002, "same-game: best = Bijan TD + ATL +3.5 (they help each other: 62% x 58.1% x 1.19)");
     ok(x.style && x.style.legs.map((l) => l.label).join() === "ATL +3.5,Under 49.5,D.Swift TD,Bi.Robinson TD" && x.style.pay == null, "same-game: your style = spread + total + top TD each team (a Questionable player skipped; unpriced TD -> no payout shown)");
     const y = sameGameParlays({ ...g, combos: [{ pick: "Under 49.5", hit: 62, line: 49.5, why: "TOTAL MOVE: t" }], td: [{ player: "Bi.Robinson", team: "ATL", fair: 64 }] });
-    ok(!y.best && y.single && y.single.label === "Bi.Robinson TD", "same-game: a TD and the Under work against each other -> the stronger leg alone (bet it alone)");
+    ok(y.best && y.best.strategy === "sgp_best" && y.best.legs.map((l) => l.label).join() === "Bi.Robinson TD,Under 49.5" && Math.abs(y.best.prob - 0.64 * 0.62 * 0.77) < 0.002, "same-game: a TD with the Under is kept (owner: test everything); the chance counts the 0.77 link");
+    const z = sameGameParlays({ ...g, combos: [{ pick: "ATL +2.5", hit: 51, line: 2.5, why: "x" }, { pick: "Under 49.5", hit: 52, line: 49.5, why: "y" }], td: [{ player: "Bi.Robinson", team: "ATL", fair: 48 }] });
+    ok(z.best && z.best.strategy === "sgp_best_fill" && z.filled && z.best.legs.map((l) => l.label).join() === "Under 49.5,ATL +2.5", "same-game: no strong legs -> best filled with the 2 strongest legs, its own record");
     ok(sameGameParlays({ ...g, started: true }) === null, "same-game: none once the game has started");
     const data = { season: 2099, week: 6, games: [{ ...g, sgp: x }, { key: "OLD @ GAME", started: true, sgp: x }] };
     ok(await recordSgp(data, setJSON) === 1, "same-game: saved for games not yet started only");
