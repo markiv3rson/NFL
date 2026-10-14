@@ -75,6 +75,11 @@ ok(set(ns3["QB_LG"]) == {"car", "rz", "i5", "rtd"} and len(ns3["QB_COEF"]) == 6,
 
 # Scheduler: ESPN kickoff replaces a stale schedule time (10/7, CHI @ GB 1:00 -> 4:25 PM ET)
 import io as _io, json as _json, scheduler as _sch
+# sportsbook pull times (owner): Mon-Sat 7 AM, 3 PM, 7 PM; Sunday 5, 8, 9:30 AM, 12, 4 PM (Pacific); full pulls = weekday 7 AM + every Sunday pull
+ok(_sch.WEEKDAY == [(7, 0), (15, 0), (19, 0)] and _sch.SUNDAY == [(5, 0), (8, 0), (9, 30), (12, 0), (16, 0)], "scheduler: owner's pull times")
+_wk_full, _wk_lite = len(_sch.BOOK_HOURS_WK) * 6 + len(_sch.BOOK_HOURS_SUN), (len(_sch.WEEKDAY) - len(_sch.BOOK_HOURS_WK)) * 6 + len(_sch.SUNDAY) - len(_sch.BOOK_HOURS_SUN)
+ok(_sch.BOOK_HOURS_SUN <= set(_sch.SUNDAY) and _sch.BOOK_HOURS_WK <= set(_sch.WEEKDAY) and 230 <= (3 * _wk_full + 2 * _wk_lite) * 52 / 12 <= 270,
+   f"scheduler: about 250 sportsbook credits a month ({_wk_full} full + {_wk_lite} lite pulls a week)")
 _sb = {"events": [{"date": "2026-10-11T20:25Z", "competitions": [{"competitors": [{"homeAway": "home", "team": {"abbreviation": "GB"}}, {"homeAway": "away", "team": {"abbreviation": "CHI"}}]}]},
                   {"date": "2026-10-12T00:15Z", "competitions": [{"competitors": [{"homeAway": "home", "team": {"abbreviation": "LAR"}}, {"homeAway": "away", "team": {"abbreviation": "WSH"}}]}]}]}
 class _R(_io.BytesIO):

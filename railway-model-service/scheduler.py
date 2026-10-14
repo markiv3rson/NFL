@@ -1,8 +1,8 @@
 """
 Snapshot scheduler (runs inside the Railway service, 24/7).
 Calls the site's /api/snapshot on Mark's schedule, Pacific time:
-  Sunday:  6, 7, 8, 9, 10 AM, 12 PM, 3 PM   (Polymarket + sportsbooks)
-  Mon-Sat: 7 AM, 12 PM, 3 PM, 7 PM           (Polymarket + sportsbooks)
+  Sunday:  5 AM, 8 AM, 9:30 AM, 12 PM, 4 PM   (Polymarket + sportsbooks)
+  Mon-Sat: 7 AM, 3 PM, 7 PM                   (Polymarket + sportsbooks)
   Every 30 min (:10 and :40): Pinnacle lines + Polymarket's at the same moment (/api/pinnaclepull, recorded only)
   Every 30 min (:15 and :45): build the slate so every pick shown gets its first-shown record (/api/slate)
   Every kickoff: 3 minutes before -> closing-line snapshot (Polymarket; books reused)
@@ -17,12 +17,12 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 PT, ET = ZoneInfo("America/Los_Angeles"), ZoneInfo("America/New_York")
-SUNDAY = [6, 7, 8, 9, 10, 12, 15]
-WEEKDAY = [7, 12, 15, 19]
-BOOK_HOURS_WK, BOOK_HOURS_SUN = {7, 15}, {7, 9, 12, 15}   # FULL sportsbook pulls (moneyline + spreads + totals, 3 credits)
-# 10/14 (owner): the books are pulled at EVERY scheduled snapshot; the hours above are full pulls, the rest skip the moneyline (&books=2,
-# 2 credits) -> 31 pulls a week, about 340 of the 500 free credits a month. The site counts a books reading as current until the next
-# scheduled pull (lib/books.js BOOK_PULLS / booksFresh -- keep it the same as WEEKDAY / SUNDAY here).
+SUNDAY = [(5, 0), (8, 0), (9, 30), (12, 0), (16, 0)]     # (hour, minute), Pacific
+WEEKDAY = [(7, 0), (15, 0), (19, 0)]
+BOOK_HOURS_WK, BOOK_HOURS_SUN = {(7, 0)}, set(SUNDAY)   # FULL sportsbook pulls (moneyline + spreads + totals, 3 credits)
+# 10/14 (owner): the books are pulled at EVERY scheduled snapshot; the times above are full pulls, the rest skip the moneyline (&books=2,
+# 2 credits) -> 23 pulls a week (11 full + 12 lite = 57 credits), about 250 credits a month. The site counts a books reading as current
+# until the next scheduled pull (lib/books.js BOOK_PULLS / booksFresh -- keep it the same as WEEKDAY / SUNDAY here).
 SCHED_URL = "https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv"
 _started = False
 
@@ -202,12 +202,13 @@ def _loop():
                     if new_games and _bg("rerun", _call, "/api/rerun?src=postgame"): print(f"[scheduler] new final(s) {new_games} -> postgame rerun", flush=True)
                     elif new_games: fin = seen_finals   # a rerun was already busy: look again next time
                     seen_finals = fin
-            hours = SUNDAY if now_pt.weekday() == 6 else WEEKDAY
-            if now_pt.hour in hours and now_pt.minute < 5:
-                tag = f"s:{now_pt:%Y-%m-%d-%H}"
+            slots = SUNDAY if now_pt.weekday() == 6 else WEEKDAY
+            slot = next(((h, m) for h, m in slots if now_pt.hour == h and m <= now_pt.minute < m + 5), None)
+            if slot:
+                tag = f"s:{now_pt:%Y-%m-%d}-{slot[0]:02d}{slot[1]:02d}"
                 # Sportsbook pull at every scheduled snapshot (10/14): full pulls (3 credits) at the BOOK_HOURS, the rest skip the
                 # moneyline (2 credits). Books feed LINE MOVE / KEY NUMBER.
-                bk = "&books=1" if (now_pt.hour in BOOK_HOURS_SUN if now_pt.weekday() == 6 else now_pt.hour in BOOK_HOURS_WK) else "&books=2"
+                bk = "&books=1" if slot in (BOOK_HOURS_SUN if now_pt.weekday() == 6 else BOOK_HOURS_WK) else "&books=2"
                 # 10/14 fix: marked done only once it actually started -- a snapshot still running from before used to make this slot
                 # (and its books pull) skip for good; now it retries every 30 s inside the 5-minute window.
                 # 2 tries, not 3: a timeout usually means it DID run, and each retry appended a duplicate snapshot (and re-pulled books)

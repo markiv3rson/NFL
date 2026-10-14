@@ -156,7 +156,15 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(!a && !b && !c && !d && !f && !k && e && e.pick === "LA -1" && e.hit === 63.2 && /crossed 3/.test(e.why) && h && h.pick === "LA -2.5" && h.hit === 63.2 && j && j.pick === "LA -4.5" && j.hit === 63.2 && lineMovePick(G, pm(-8.5), pm(-11.5)).hit === 58.5,
     "line move: only crossing 3 or 7 by 1+ point (63.2%) or a 3+ point move (58.5%); half-point rounding (books 7 vs Polymarket 6.5) and small moves are nothing");
   { const { nextBooksPull, booksFresh } = await import("../lib/books.js"), pt = (d) => new Date(d).toLocaleString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", hour12: false });
-    ok(pt(nextBooksPull("2026-10-14T02:00:00Z")) === "07" && pt(nextBooksPull("2026-10-18T02:00:00Z")) === "06", "books: next pull follows the owner's times (Tue 7 PM -> 7 AM, Sat 7 PM -> Sun 6 AM)");
+    const ptm = (d) => new Date(d).toLocaleString("en-US", { timeZone: "America/Los_Angeles", weekday: "short", hour: "numeric", minute: "2-digit", hour12: false });
+    ok(ptm(nextBooksPull("2026-10-14T02:00:00Z")) === "Wed 07:00" && ptm(nextBooksPull("2026-10-14T14:10:00Z")) === "Wed 15:00" && ptm(nextBooksPull("2026-10-14T22:30:00Z")) === "Wed 19:00"
+      && ptm(nextBooksPull("2026-10-18T02:00:00Z")) === "Sun 05:00" && ptm(nextBooksPull("2026-10-18T15:05:00Z")) === "Sun 09:30" && ptm(nextBooksPull("2026-10-18T16:30:00Z")) === "Sun 12:00"
+      && ptm(nextBooksPull("2026-10-18T19:10:00Z")) === "Sun 16:00" && ptm(nextBooksPull("2026-10-18T23:00:00Z")) === "Mon 07:00",
+      "books: next pull follows the owner's times (Mon-Sat 7 AM, 3 PM, 7 PM; Sun 5, 8, 9:30 AM, 12, 4 PM)");
+    { const { BOOK_PULLS } = await import("../lib/books.js"), py = readFileSync(new URL("../railway-model-service/scheduler.py", import.meta.url), "utf8");
+      const mins = (name) => [...(py.match(new RegExp("^" + name + " = \\[(.*)\\]", "m")) || ["", ""])[1].matchAll(/\((\d+), (\d+)\)/g)].map((m) => +m[1] * 60 + +m[2]);
+      ok(JSON.stringify(mins("SUNDAY")) === JSON.stringify(BOOK_PULLS.sun) && JSON.stringify(mins("WEEKDAY")) === JSON.stringify(BOOK_PULLS.wk),
+        "books: the site's pull times match the scheduler's SUNDAY / WEEKDAY", { py: [mins("SUNDAY"), mins("WEEKDAY")], site: BOOK_PULLS }); }
     ok(booksFresh("2026-10-14T02:00:00Z", Date.parse("2026-10-14T14:30:00Z")) && !booksFresh("2026-10-14T02:00:00Z", Date.parse("2026-10-14T15:00:00Z")), "books: current until the next pull (+45 min)"); }
   ok(lineMovePick(G, pm(-2.5), pm(-3.5), { booksT: now, polyT: now }) && !lineMovePick(G, pm(-2.5), pm(-3.5), { booksT: old, polyT: now }) && !lineMovePick(G, pm(-2.5), pm(-3.5), { booksT: now, polyT: old }),
     "line move: only when both the sportsbook and Polymarket readings are recent");
