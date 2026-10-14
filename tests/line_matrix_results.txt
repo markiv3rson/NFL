@@ -1,0 +1,398 @@
+
+=== SPREAD WIN RATES · CLOSING books number (1999-2025) · 7016 games · 473 cells with 100+ games ===
+Passing cells (56%+, 100+ games, every period 52%+, up to 6 points bought or given up): 270. Cells that BUY points (the useful kind): 270.
+
+LADDER, all games: for each books number, the favorite's win rate and the underdog's, at each line (points bought -> win %). * = passes the bar
+  books 1    (536 games)  favorite buys: 0.5:51 1.5:51 2.5:54 3.5:56 4.5:61* 5.5:65*
+                          underdog buys: 0.5:50 1.5:52 2.5:60* 3.5:63* 4.5:65* 5.5:69*
+  books 1.5  (202 games)  favorite buys: 1:53 2:53 3:55 4:58 5:66* 6:69*
+                          underdog buys: 1:54 2:63* 3:66* 4:69* 5:73* 6:79*
+  books 2    (160 games)  favorite buys: 0.5:56 1.5:58 2.5:59 3.5:60* 4.5:61* 5.5:70*
+                          underdog buys: 0.5:46 1.5:55 2.5:56 3.5:59 4.5:63 5.5:68*
+  books 2.5  (514 games)  favorite buys: 1:51 2:54 3:54 4:57* 5:58* 6:65*
+                          underdog buys: 1:59* 2:61* 3:64* 4:67* 5:72* 6:75*
+  books 3    (1125 games)  favorite buys: 0.5:53 1.5:56 2.5:58* 3.5:58* 4.5:61* 5.5:62*
+                          underdog buys: 0.5:57* 1.5:60* 2.5:62* 3.5:65* 4.5:70* 5.5:72*
+  books 3.5  (671 games)  favorite buys: 1:59* 2:60* 3:63* 4:63* 5:65* 6:68*
+                          underdog buys: 1:53 2:57* 3:61* 4:66* 5:68* 6:69*
+  books 4    (324 games)  favorite buys: 0.5:53 1.5:64* 2.5:65* 3.5:66* 4.5:66* 5.5:69*
+                          underdog buys: 0.5:50 1.5:52 2.5:56 3.5:64* 4.5:67* 5.5:69*
+  books 4.5  (260 games)  favorite buys: 1:53 2:63* 3:65* 4:66* 5:66* 6:67*
+                          underdog buys: 1:52 2:56 3:61* 4:65* 5:66* 6:70*
+  books 5    (160 games)  favorite buys: 0.5:51 1.5:54 2.5:66* 3.5:68* 4.5:71* 5.5:71*
+                          underdog buys: 0.5:50 1.5:54 2.5:58* 3.5:61* 4.5:63* 5.5:69*
+  books 5.5  (277 games)  favorite buys: 1:48 2:52 3:61* 4:62* 5:65* 6:66*
+                          underdog buys: 1:56 2:61* 3:64* 4:65* 5:70* 6:70*
+  books 6    (340 games)  favorite buys: 0.5:51 1.5:53 2.5:56 3.5:63* 4.5:65* 5.5:68*
+                          underdog buys: 0.5:53 1.5:58* 2.5:61* 3.5:61* 4.5:66* 5.5:68*
+  books 6.5  (329 games)  favorite buys: 1:51 2:54 3:58 4:67* 5:69* 6:72*
+                          underdog buys: 1:59 2:62* 3:63* 4:66* 5:67* 6:68*
+  books 7    (476 games)  favorite buys: 0.5:54 1.5:57 2.5:59* 3.5:62* 4.5:71* 5.5:73*
+                          underdog buys: 0.5:53 1.5:55 2.5:55 3.5:58* 4.5:60* 5.5:62*
+  books 7.5  (277 games)  favorite buys: 1:54 2:59* 3:61* 4:64* 5:70* 6:74*
+                          underdog buys: 1:55 2:56 3:59 4:61 5:62* 6:65*
+  books 9    (148 games)  favorite buys: 0.5:42 1.5:43 2.5:52 3.5:54 4.5:55 5.5:61
+                          underdog buys: 0.5:58 1.5:62* 2.5:65* 3.5:65* 4.5:67* 5.5:70*
+  books 9.5  (155 games)  favorite buys: 1:48 2:54 3:58 4:62 5:63 6:65
+                          underdog buys: 1:57* 2:58* 3:59* 4:63* 5:69* 6:69*
+  books 10   (202 games)  favorite buys: 0.5:49 1.5:51 2.5:55 3.5:59 4.5:63* 5.5:65*
+                          underdog buys: 0.5:58 1.5:59 2.5:60 3.5:63 4.5:68* 5.5:68*
+  books 10.5 (131 games)  favorite buys: 1:53 2:54 3:56 4:63* 5:66* 6:69*
+                          underdog buys: 1:51 2:53 3:55 4:63* 5:64*
+
+PASSING CELLS that buy points, best first (day / night / all shown as separate rows):
+  books 1.5  underdog +7.5   buys 6   all   wins 78.7% (202) periods 79/73/83/78
+  books 1.5  underdog +7.5   buys 6   day   wins 77.5% (169) periods 79/75/81/75
+  books 2.5  underdog +8.5   buys 6   day   wins 76.5% (422) periods 73/78/75/79
+  books 2.5  underdog +8.5   buys 6   all   wins 75.3% (514) periods 71/77/75/77
+  books 7.5  favorite -1.5   buys 6   day   wins 74.1% (232) periods 78/69/79/71
+  books 7.5  favorite -1.5   buys 6   all   wins 74.0% (277) periods 79/71/78/70
+  books 3    underdog +8.5   buys 5.5 day   wins 73.7% (901) periods 69/80/73/73
+  books 2.5  underdog +7.5   buys 5   day   wins 73.5% (422) periods 70/77/69/77
+  books 1.5  underdog +6.5   buys 5   all   wins 73.3% (202) periods 75/73/71/73
+  books 7    favorite -1.5   buys 5.5 all   wins 73.1% (476) periods 72/76/75/68
+  books 7    favorite -1.5   buys 5.5 day   wins 72.9% (391) periods 73/73/75/71
+  books 2.5  underdog +7.5   buys 5   all   wins 72.4% (514) periods 68/76/70/74
+  books 3    underdog +8.5   buys 5.5 all   wins 72.2% (1125) periods 68/76/72/72
+  books 6.5  favorite -0.5   buys 6   all   wins 72.0% (329) periods 72/61/81/78
+  books 3    underdog +7.5   buys 4.5 day   wins 72.0% (901) periods 67/77/72/72
+  books 1.5  underdog +6.5   buys 5   day   wins 71.0% (169) periods 74/75/67/69
+  books 7    favorite -2.5   buys 4.5 day   wins 70.8% (391) periods 72/70/71/70
+  books 7    favorite -2.5   buys 4.5 all   wins 70.8% (476) periods 70/74/72/66
+  books 6.5  favorite -0.5   buys 6   day   wins 70.7% (263) periods 71/60/81/76
+  books 5    underdog +10.5  buys 5.5 day   wins 70.7% (133) periods 70/65/81
+  books 5    favorite -0.5   buys 4.5 all   wins 70.6% (160) periods 72/67/67/85
+  books 5    favorite +0.5   buys 5.5 all   wins 70.6% (160) periods 72/67/67/85
+  books 5.5  underdog +11.5  buys 6   day   wins 70.5% (227) periods 67/67/74/73
+  books 5.5  underdog +10.5  buys 5   day   wins 70.5% (227) periods 67/67/74/73
+  books 3    underdog +7.5   buys 4.5 all   wins 70.4% (1125) periods 66/74/71/71
+  books 5.5  underdog +11.5  buys 6   all   wins 70.4% (277) periods 67/64/72/78
+  books 5.5  underdog +10.5  buys 5   all   wins 70.4% (277) periods 67/64/72/78
+  books 7.5  favorite -2.5   buys 5   all   wins 70.4% (277) periods 79/69/74/63
+  books 2    favorite +3.5   buys 5.5 day   wins 70.3% (138) periods 78/79/62/61
+  books 7.5  favorite -2.5   buys 5   day   wins 70.3% (232) periods 78/69/74/63
+  books 4.5  underdog +10.5  buys 6   all   wins 70.0% (260) periods 67/67/73/75
+  books 2    favorite +3.5   buys 5.5 all   wins 70.0% (160) periods 77/71/67/63
+  books 4.5  favorite +1.5   buys 6   day   wins 69.8% (212) periods 73/72/61/70
+  books 4    underdog +9.5   buys 5.5 day   wins 69.7% (261) periods 62/65/72/85
+  books 9    underdog +14.5  buys 5.5 all   wins 69.6% (148) periods 79/61
+  books 1    underdog +6.5   buys 5.5 day   wins 69.6% (450) periods 75/68/66/74
+  books 9.5  underdog +15.5  buys 6   day   wins 69.5% (128) periods 76/71/56
+  books 9.5  underdog +14.5  buys 5   day   wins 69.5% (128) periods 76/71/56
+  books 1.5  favorite +4.5   buys 6   all   wins 69.3% (202) periods 63/73/63/76
+  books 3.5  underdog +9.5   buys 6   day   wins 69.3% (547) periods 67/68/70/73
+  books 1.5  favorite +4.5   buys 6   day   wins 69.2% (169) periods 60/71/70/75
+  books 1    underdog +6.5   buys 5.5 all   wins 69.2% (536) periods 77/68/64/74
+  books 2.5  underdog +6.5   buys 4   day   wins 69.2% (422) periods 67/70/67/72
+  books 10.5 favorite -4.5   buys 6   day   wins 69.2% (107) periods 73/70/71/63
+  books 4    favorite +1.5   buys 5.5 all   wins 69.1% (324) periods 80/70/62/63
+  books 9.5  underdog +15.5  buys 6   all   wins 69.0% (155) periods 77/69/69/62
+  books 9.5  underdog +14.5  buys 5   all   wins 69.0% (155) periods 77/69/69/62
+  books 6.5  favorite -1.5   buys 5   all   wins 69.0% (329) periods 69/60/77/73
+  books 6    favorite -0.5   buys 5.5 day   wins 68.9% (270) periods 66/69/65/77
+  books 4.5  favorite -0.5   buys 4   day   wins 68.9% (212) periods 73/69/61/70
+  books 4.5  favorite +0.5   buys 5   day   wins 68.9% (212) periods 73/69/61/70
+  books 3.5  underdog +9.5   buys 6   all   wins 68.9% (671) periods 67/67/69/73
+  books 2    underdog +7.5   buys 5.5 day   wins 68.8% (138) periods 65/63/70/77
+  books 4    underdog +9.5   buys 5.5 all   wins 68.8% (324) periods 59/65/73/81
+  books 6.5  favorite -1.5   buys 5   day   wins 68.8% (263) periods 68/59/81/74
+  books 1.5  underdog +5.5   buys 4   all   wins 68.8% (202) periods 67/69/71/69
+  books 5    underdog +10.5  buys 5.5 all   wins 68.8% (160) periods 70/63/76/65
+  books 10.5 favorite -4.5   buys 6   all   wins 68.7% (131) periods 73/66/68/70
+  books 4    underdog +8.5   buys 4.5 day   wins 68.6% (261) periods 61/64/72/83
+  books 3.5  underdog +8.5   buys 5   day   wins 68.4% (547) periods 66/67/69/73
+  books 3.5  favorite +2.5   buys 6   day   wins 68.4% (547) periods 68/65/68/73
+  books 6    favorite -0.5   buys 5.5 all   wins 68.2% (340) periods 66/68/64/76
+  books 5    favorite -1.5   buys 3.5 all   wins 68.1% (160) periods 70/67/63/80
+  books 2    underdog +7.5   buys 5.5 all   wins 68.1% (160) periods 63/67/69/76
+  books 6.5  underdog +12.5  buys 6   all   wins 68.1% (329) periods 70/72/61/67
+  books 1.5  underdog +5.5   buys 4   day   wins 68.0% (169) periods 70/71/67/66
+  books 3.5  underdog +8.5   buys 5   all   wins 68.0% (671) periods 66/66/68/72
+  books 10   underdog +15.5  buys 5.5 all   wins 67.8% (202) periods 52/68/79/71
+  books 10   underdog +14.5  buys 4.5 all   wins 67.8% (202) periods 52/68/79/71
+  books 4    favorite +1.5   buys 5.5 day   wins 67.8% (261) periods 80/72/58/58
+  books 6.5  underdog +12.5  buys 6   day   wins 67.7% (263) periods 68/70/65/66
+  books 3.5  favorite +2.5   buys 6   all   wins 67.7% (671) periods 68/67/68/68
+  books 6    underdog +11.5  buys 5.5 all   wins 67.6% (340) periods 67/67/76/61
+  books 6.5  underdog +11.5  buys 5   all   wins 67.5% (329) periods 70/70/61/67
+  books 9    underdog +14.5  buys 5.5 day   wins 67.5% (126) periods 76/61
+  books 4.5  underdog +10.5  buys 6   day   wins 67.5% (212) periods 65/62/74/72
+  books 4.5  favorite -1.5   buys 3   day   wins 67.5% (212) periods 73/66/58/70
+  books 6    underdog +11.5  buys 5.5 day   wins 67.4% (270) periods 68/69/76/55
+  books 2.5  underdog +6.5   buys 4   all   wins 67.3% (514) periods 64/70/66/68
+  books 10.5 favorite -5.5   buys 5   day   wins 67.3% (107) periods 73/70/68/58
+  books 4    underdog +8.5   buys 4.5 all   wins 67.3% (324) periods 58/63/72/80
+  books 10   underdog +15.5  buys 5.5 day   wins 67.1% (167) periods 57/65/78/70
+  books 10   underdog +14.5  buys 4.5 day   wins 67.1% (167) periods 57/65/78/70
+  books 10   favorite -4.5   buys 5.5 day   wins 67.1% (167) periods 70/68/61/70
+  books 3    favorite +2.5   buys 5.5 night wins 67.0% (224) periods 76/61/63/72
+  books 3.5  underdog +9.5   buys 6   night wins 66.9% (124) periods 61/66/71
+  books 3    underdog +6.5   buys 3.5 day   wins 66.9% (901) periods 62/72/65/68
+  books 4.5  favorite +1.5   buys 6   all   wins 66.9% (260) periods 71/68/62/65
+  books 6.5  underdog +11.5  buys 5   day   wins 66.9% (263) periods 68/67/65/66
+  books 6.5  favorite -2.5   buys 4   day   wins 66.9% (263) periods 65/58/81/71
+  books 5    favorite -0.5   buys 4.5 day   wins 66.9% (133) periods 73/63/58
+  books 5    favorite +0.5   buys 5.5 day   wins 66.9% (133) periods 73/63/58
+  books 9    underdog +13.5  buys 4.5 all   wins 66.9% (148) periods 79/59
+  books 6.5  favorite -2.5   buys 4   all   wins 66.9% (329) periods 65/59/76/71
+  books 6    underdog +10.5  buys 4.5 all   wins 66.5% (340) periods 65/66/74/61
+  books 1.5  underdog +4.5   buys 3   all   wins 66.3% (202) periods 67/65/69/65
+  books 1.5  favorite +3.5   buys 5   all   wins 66.3% (202) periods 60/69/63/72
+  books 6    underdog +10.5  buys 4.5 day   wins 66.3% (270) periods 65/69/74/55
+  books 6.5  underdog +10.5  buys 4   all   wins 66.3% (329) periods 69/69/60/66
+  books 5    favorite -2.5   buys 2.5 all   wins 66.3% (160) periods 65/67/63/75
+  books 3.5  favorite +1.5   buys 5   day   wins 66.2% (547) periods 65/63/66/71
+  books 6.5  underdog +10.5  buys 4   day   wins 66.2% (263) periods 68/67/63/65
+  books 4.5  underdog +9.5   buys 5   all   wins 66.2% (260) periods 67/63/71/66
+  books 4.5  favorite -0.5   buys 4   all   wins 66.2% (260) periods 71/65/62/65
+  books 4.5  favorite +0.5   buys 5   all   wins 66.2% (260) periods 71/65/62/65
+  books 3.5  underdog +8.5   buys 5   night wins 66.1% (124) periods 61/66/69
+  books 2.5  underdog +5.5   buys 3   day   wins 66.1% (422) periods 63/68/63/69
+  books 3    underdog +8.5   buys 5.5 night wins 66.1% (224) periods 65/64/68/67
+  books 4    favorite -0.5   buys 3.5 all   wins 66.0% (324) periods 79/67/59/56
+  books 4    favorite +0.5   buys 4.5 all   wins 66.0% (324) periods 79/67/59/56
+  books 3.5  underdog +7.5   buys 4   day   wins 66.0% (547) periods 65/65/66/69
+  books 6    favorite -1.5   buys 4.5 day   wins 65.9% (270) periods 66/65/62/72
+  books 2.5  favorite +3.5   buys 6   day   wins 65.9% (422) periods 63/71/63/67
+  books 9    underdog +13.5  buys 4.5 day   wins 65.9% (126) periods 76/59
+  books 3.5  underdog +7.5   buys 4   all   wins 65.7% (671) periods 66/64/65/68
+  books 5.5  favorite +0.5   buys 6   all   wins 65.7% (277) periods 66/67/73/59
+  books 1.5  favorite +3.5   buys 5   day   wins 65.7% (169) periods 57/67/70/71
+  books 10.5 favorite -5.5   buys 5   all   wins 65.6% (131) periods 69/63/65/67
+  books 5.5  underdog +9.5   buys 4   day   wins 65.6% (227) periods 60/63/69/70
+  books 4.5  favorite -2.5   buys 2   day   wins 65.6% (212) periods 70/66/55/68
+
+=== SPREAD WIN RATES · OPENING books number (2014-26) · 3159 games · 290 cells with 100+ games ===
+Passing cells (56%+, 100+ games, every period 52%+, up to 6 points bought or given up): 207. Cells that BUY points (the useful kind): 207.
+
+LADDER, all games: for each books number, the favorite's win rate and the underdog's, at each line (points bought -> win %). * = passes the bar
+  books 1    (187 games)  favorite buys: 0.5:49 1.5:49 2.5:52 3.5:56 4.5:60* 5.5:63*
+                          underdog buys: 0.5:51 1.5:53 2.5:61* 3.5:66* 4.5:70* 5.5:71*
+  books 1.5  (199 games)  favorite buys: 1:53 2:54 3:56* 4:58* 5:64* 6:67*
+                          underdog buys: 1:52 2:63* 3:66* 4:69* 5:71* 6:74*
+  books 2.5  (339 games)  favorite buys: 1:54 2:57* 3:58* 4:60* 5:63* 6:68*
+                          underdog buys: 1:58* 2:60* 3:62* 4:65* 5:70* 6:73*
+  books 3    (387 games)  favorite buys: 0.5:53 1.5:54 2.5:56 3.5:56 4.5:58* 5.5:61*
+                          underdog buys: 0.5:55 1.5:59* 2.5:63* 3.5:66* 4.5:71* 5.5:74*
+  books 3.5  (296 games)  favorite buys: 1:54 2:55 3:60* 4:60* 5:63* 6:66*
+                          underdog buys: 1:56* 2:60* 3:65* 4:71* 5:73* 6:74*
+  books 4    (161 games)  favorite buys: 0.5:48 1.5:58* 2.5:61* 3.5:63* 4.5:63* 5.5:66*
+                          underdog buys: 0.5:55 1.5:59* 2.5:63* 3.5:66* 4.5:70* 5.5:70*
+  books 4.5  (170 games)  favorite buys: 1:58* 2:66* 3:69* 4:71* 5:71* 6:72*
+                          underdog buys: 1:48 2:53 3:61* 4:64* 5:65* 6:69*
+  books 5.5  (149 games)  favorite buys: 1:53 2:56 3:67* 4:68* 5:70* 6:71*
+                          underdog buys: 1:50 2:56 3:60* 4:62* 5:65* 6:65*
+  books 6    (120 games)  favorite buys: 0.5:50 1.5:53 2.5:56 3.5:64* 4.5:67* 5.5:73*
+                          underdog buys: 0.5:54 1.5:61* 2.5:63* 3.5:65* 4.5:70* 5.5:73*
+  books 6.5  (166 games)  favorite buys: 1:52 2:52 3:56 4:63* 5:67* 6:70*
+                          underdog buys: 1:58* 2:64* 3:64* 4:67* 5:67* 6:70*
+  books 7    (160 games)  favorite buys: 0.5:51 1.5:63* 2.5:66* 3.5:68* 4.5:76* 5.5:79*
+                          underdog buys: 0.5:55 1.5:58* 2.5:61* 3.5:67* 4.5:68* 5.5:69*
+  books 7.5  (161 games)  favorite buys: 1:55 2:58* 3:61* 4:63* 5:70* 6:71*
+                          underdog buys: 1:56 2:56 3:60* 4:62* 5:64* 6:64*
+
+PASSING CELLS that buy points, best first (day / night / all shown as separate rows):
+  books 7    favorite -1.5   buys 5.5 day   wins 79.8% (124) periods 82/76
+  books 7    favorite -1.5   buys 5.5 all   wins 79.4% (160) periods 82/75
+  books 1.5  underdog +7.5   buys 6   day   wins 77.1% (166) periods 69/79
+  books 3.5  underdog +9.5   buys 6   day   wins 75.9% (212) periods 76/76
+  books 7    favorite -2.5   buys 4.5 day   wins 75.8% (124) periods 78/73
+  books 7    favorite -2.5   buys 4.5 all   wins 75.6% (160) periods 78/72
+  books 3.5  underdog +8.5   buys 5   day   wins 75.5% (212) periods 75/76
+  books 2.5  underdog +8.5   buys 6   day   wins 74.9% (263) periods 73/77
+  books 1.5  underdog +6.5   buys 5   day   wins 74.7% (166) periods 69/76
+  books 1.5  underdog +7.5   buys 6   all   wins 74.4% (199) periods 65/77
+  books 3    underdog +8.5   buys 5.5 all   wins 73.9% (387) periods 69/80
+  books 3    underdog +8.5   buys 5.5 day   wins 73.7% (293) periods 68/80
+  books 3.5  underdog +9.5   buys 6   all   wins 73.6% (296) periods 72/75
+  books 4.5  favorite +1.5   buys 6   day   wins 73.5% (136) periods 74/73
+  books 6    underdog +11.5  buys 5.5 all   wins 73.3% (120) periods 80/66
+  books 3.5  underdog +7.5   buys 4   day   wins 73.1% (212) periods 72/74
+  books 3.5  underdog +8.5   buys 5   all   wins 73.0% (296) periods 71/75
+  books 2.5  underdog +8.5   buys 6   all   wins 72.9% (339) periods 71/74
+  books 4.5  favorite -0.5   buys 4   day   wins 72.8% (136) periods 72/73
+  books 4.5  favorite +0.5   buys 5   day   wins 72.8% (136) periods 72/73
+  books 6    favorite -0.5   buys 5.5 all   wins 72.5% (120) periods 69/76
+  books 4.5  favorite +1.5   buys 6   all   wins 72.4% (170) periods 71/73
+  books 1.5  underdog +5.5   buys 4   day   wins 72.3% (166) periods 66/74
+  books 2.5  underdog +7.5   buys 5   day   wins 71.5% (263) periods 70/73
+  books 1.5  underdog +6.5   buys 5   all   wins 71.4% (199) periods 65/73
+  books 3    underdog +7.5   buys 4.5 all   wins 71.3% (387) periods 67/77
+  books 5.5  favorite +0.5   buys 6   all   wins 71.1% (149) periods 61/78
+  books 3    underdog +7.5   buys 4.5 day   wins 71.0% (293) periods 66/77
+  books 7.5  favorite -1.5   buys 6   all   wins 70.8% (161) periods 73/69
+  books 3.5  underdog +7.5   buys 4   all   wins 70.6% (296) periods 68/73
+  books 4.5  favorite -1.5   buys 3   day   wins 70.6% (136) periods 72/70
+  books 4.5  favorite -0.5   buys 4   all   wins 70.6% (170) periods 70/71
+  books 4.5  favorite +0.5   buys 5   all   wins 70.6% (170) periods 70/71
+  books 1    underdog +6.5   buys 5.5 all   wins 70.6% (187) periods 76/65
+  books 5.5  favorite -0.5   buys 5   all   wins 70.5% (149) periods 60/78
+  books 5.5  favorite +0.5   buys 6   day   wins 70.2% (121) periods 59/79
+  books 4    underdog +9.5   buys 5.5 all   wins 70.2% (161) periods 72/68
+  books 4    underdog +8.5   buys 4.5 all   wins 70.2% (161) periods 72/68
+  books 6    underdog +10.5  buys 4.5 all   wins 70.0% (120) periods 75/64
+  books 6.5  underdog +12.5  buys 6   all   wins 69.9% (166) periods 67/72
+  books 6.5  favorite -0.5   buys 6   all   wins 69.9% (166) periods 74/67
+  books 6.5  favorite -0.5   buys 6   day   wins 69.8% (129) periods 75/65
+  books 2.5  underdog +7.5   buys 5   all   wins 69.6% (339) periods 69/70
+  books 7.5  favorite -2.5   buys 5   all   wins 69.6% (161) periods 71/68
+  books 1    underdog +5.5   buys 4.5 all   wins 69.5% (187) periods 74/65
+  books 5.5  favorite -0.5   buys 5   day   wins 69.4% (121) periods 57/79
+  books 1.5  underdog +5.5   buys 4   all   wins 69.3% (199) periods 62/71
+  books 1    underdog +6.5   buys 5.5 day   wins 69.2% (159) periods 75/64
+  books 4.5  underdog +10.5  buys 6   day   wins 69.1% (136) periods 69/70
+  books 6.5  underdog +12.5  buys 6   day   wins 69.0% (129) periods 70/68
+  books 4.5  underdog +10.5  buys 6   all   wins 68.8% (170) periods 67/70
+  books 4.5  favorite -1.5   buys 3   all   wins 68.8% (170) periods 70/68
+  books 7    underdog +12.5  buys 5.5 all   wins 68.8% (160) periods 68/70
+  books 1.5  underdog +4.5   buys 3   day   wins 68.7% (166) periods 62/70
+  books 7    underdog +12.5  buys 5.5 day   wins 68.5% (124) periods 67/71
+  books 7.5  favorite -1.5   buys 6   day   wins 68.5% (124) periods 66/71
+  books 4    underdog +9.5   buys 5.5 day   wins 68.5% (127) periods 71/64
+  books 4    underdog +8.5   buys 4.5 day   wins 68.5% (127) periods 71/64
+  books 2.5  favorite +3.5   buys 6   all   wins 68.1% (339) periods 70/67
+  books 7    underdog +11.5  buys 4.5 all   wins 68.1% (160) periods 67/70
+  books 1    underdog +5.5   buys 4.5 day   wins 67.9% (159) periods 72/64
+  books 3.5  underdog +6.5   buys 3   day   wins 67.9% (212) periods 69/67
+  books 5.5  favorite -1.5   buys 4   all   wins 67.8% (149) periods 55/77
+  books 5.5  underdog +11.5  buys 6   day   wins 67.8% (121) periods 81/57
+  books 5.5  underdog +10.5  buys 5   day   wins 67.8% (121) periods 81/57
+  books 7    underdog +11.5  buys 4.5 day   wins 67.7% (124) periods 66/71
+  books 7    favorite -3.5   buys 3.5 day   wins 67.7% (124) periods 67/69
+  books 4    favorite +1.5   buys 5.5 day   wins 67.7% (127) periods 58/82
+  books 4.5  favorite -2.5   buys 2   day   wins 67.6% (136) periods 69/67
+  books 7    favorite -3.5   buys 3.5 all   wins 67.5% (160) periods 68/67
+  books 1.5  favorite +4.5   buys 6   day   wins 67.5% (166) periods 62/69
+  books 6.5  underdog +11.5  buys 5   all   wins 67.5% (166) periods 64/70
+  books 6.5  favorite -1.5   buys 5   day   wins 67.4% (129) periods 75/61
+  books 1.5  favorite +4.5   buys 6   all   wins 67.3% (199) periods 62/69
+  books 2.5  underdog +6.5   buys 4   day   wins 67.3% (263) periods 65/69
+  books 5.5  favorite -2.5   buys 3   all   wins 67.1% (149) periods 55/76
+  books 5.5  favorite -2.5   buys 3   day   wins 66.9% (121) periods 54/78
+  books 5.5  favorite -1.5   buys 4   day   wins 66.9% (121) periods 54/78
+  books 7.5  favorite -2.5   buys 5   day   wins 66.9% (124) periods 64/69
+  books 7    underdog +10.5  buys 3.5 all   wins 66.9% (160) periods 66/68
+  books 6.5  underdog +10.5  buys 4   all   wins 66.9% (166) periods 64/69
+  books 6.5  favorite -1.5   buys 5   all   wins 66.9% (166) periods 74/61
+  books 6    favorite -1.5   buys 4.5 all   wins 66.7% (120) periods 61/73
+  books 3    underdog +6.5   buys 3.5 day   wins 66.6% (293) periods 59/75
+  books 4    underdog +7.5   buys 3.5 all   wins 66.5% (161) periods 70/62
+  books 4    favorite +1.5   buys 5.5 all   wins 66.5% (161) periods 60/75
+  books 3    underdog +6.5   buys 3.5 all   wins 66.4% (387) periods 61/74
+  books 1.5  underdog +4.5   buys 3   all   wins 66.3% (199) periods 59/68
+  books 2.5  favorite +3.5   buys 6   day   wins 66.2% (263) periods 71/63
+  books 4    underdog +7.5   buys 3.5 day   wins 66.1% (127) periods 69/62
+  books 7    underdog +10.5  buys 3.5 day   wins 66.1% (124) periods 64/69
+  books 7    favorite -4.5   buys 2.5 day   wins 66.1% (124) periods 64/69
+  books 6.5  underdog +11.5  buys 5   day   wins 65.9% (129) periods 67/65
+  books 6.5  underdog +10.5  buys 4   day   wins 65.9% (129) periods 67/65
+  books 4.5  favorite -2.5   buys 2   all   wins 65.9% (170) periods 67/65
+  books 3.5  favorite +2.5   buys 6   all   wins 65.9% (296) periods 63/68
+  books 1    underdog +4.5   buys 3.5 all   wins 65.8% (187) periods 72/60
+  books 7    favorite -4.5   buys 2.5 all   wins 65.6% (160) periods 66/65
+  books 4.5  underdog +9.5   buys 5   day   wins 65.4% (136) periods 63/67
+  books 1    underdog +4.5   buys 3.5 day   wins 65.4% (159) periods 70/61
+  books 4.5  underdog +9.5   buys 5   all   wins 65.3% (170) periods 63/67
+  books 3.5  underdog +6.5   buys 3   all   wins 65.2% (296) periods 65/66
+  books 2.5  underdog +6.5   buys 4   all   wins 65.2% (339) periods 65/65
+  books 5.5  underdog +11.5  buys 6   all   wins 65.1% (149) periods 79/55
+  books 5.5  underdog +10.5  buys 5   all   wins 65.1% (149) periods 79/55
+  books 6    underdog +9.5   buys 3.5 all   wins 65.0% (120) periods 72/58
+  books 4.5  underdog +8.5   buys 4   day   wins 64.7% (136) periods 61/67
+  books 4    favorite -0.5   buys 3.5 day   wins 64.6% (127) periods 56/78
+  books 4    favorite +0.5   buys 4.5 day   wins 64.6% (127) periods 56/78
+  books 7.5  underdog +13.5  buys 6   day   wins 64.5% (124) periods 68/62
+  books 7.5  underdog +12.5  buys 5   day   wins 64.5% (124) periods 68/62
+  books 5.5  underdog +9.5   buys 4   day   wins 64.5% (121) periods 76/55
+  books 1.5  underdog +3.5   buys 2   day   wins 64.5% (166) periods 62/65
+  books 6.5  underdog +9.5   buys 3   all   wins 64.5% (166) periods 61/68
+  books 6.5  underdog +8.5   buys 2   all   wins 64.5% (166) periods 61/68
+  books 1.5  favorite +3.5   buys 5   day   wins 64.5% (166) periods 59/66
+  books 6.5  favorite -2.5   buys 4   day   wins 64.3% (129) periods 73/57
+  books 1.5  favorite +3.5   buys 5   all   wins 64.3% (199) periods 59/65
+  books 6    favorite -2.5   buys 3.5 all   wins 64.2% (120) periods 56/73
+  books 1    favorite +4.5   buys 5.5 day   wins 64.2% (159) periods 58/70
+
+=== TOTALS WIN RATES · CLOSING (1999-2025) · 7016 games · passing cells: 49 (Over at books -x = buys x points; Under at books +x = buys x points) ===
+  total 48+    Over at books -6    buys 6 wins 68.2% (626) periods 66/70/67/69
+  total 42-47  Under at books +6    buys 6 wins 68.0% (1571) periods 65/67/70/68
+  total 48+    Under at books +5.5  buys 5.5 wins 67.5% (664) periods 67/67/69/66
+  total <=41   Over at books -6    buys 6 wins 67.2% (1288) periods 65/68/75/67
+  total 42-47  Over at books -6    buys 6 wins 66.8% (1571) periods 64/69/65/68
+  total <=41   Over at books -5.5  buys 5.5 wins 66.8% (1273) periods 65/71/64/66
+  total <=41   Under at books +5.5  buys 5.5 wins 66.6% (1273) periods 68/64/73/63
+  total 42-47  Over at books -5.5  buys 5.5 wins 66.4% (1594) periods 69/67/65/65
+  total 42-47  Under at books +5.5  buys 5.5 wins 66.3% (1594) periods 62/66/68/69
+  total <=41   Under at books +6    buys 6 wins 66.1% (1288) periods 66/64/63/72
+  total 48+    Over at books -5    buys 5 wins 66.0% (626) periods 66/68/64/67
+  total 48+    Over at books -5.5  buys 5.5 wins 65.8% (664) periods 62/69/66/65
+  total 48+    Under at books +4.5  buys 4.5 wins 65.8% (664) periods 67/67/66/65
+  total 42-47  Under at books +5    buys 5 wins 65.6% (1571) periods 64/65/68/66
+  total <=41   Over at books -5    buys 5 wins 64.8% (1288) periods 62/66/72/65
+  total 42-47  Over at books -5    buys 5 wins 64.2% (1571) periods 60/66/61/67
+  total 42-47  Over at books -4.5  buys 4.5 wins 64.1% (1594) periods 68/65/63/61
+  total <=41   Under at books +4.5  buys 4.5 wins 64.1% (1273) periods 64/62/71/62
+  total 48+    Under at books +3.5  buys 3.5 wins 63.7% (664) periods 64/64/63/64
+  total 48+    Under at books +6    buys 6 wins 63.6% (626) periods 55/64/65/64
+  total <=41   Under at books +5    buys 5 wins 63.4% (1288) periods 63/61/61/70
+  total 42-47  Under at books +4.5  buys 4.5 wins 63.4% (1594) periods 62/63/64/65
+  total <=41   Over at books -4.5  buys 4.5 wins 63.2% (1273) periods 61/67/60/63
+  total 42-47  Under at books +4    buys 4 wins 63.0% (1571) periods 62/61/66/63
+  total 48+    Over at books -4    buys 4 wins 62.8% (626) periods 66/63/60/64
+  total <=41   Over at books -4    buys 4 wins 62.4% (1288) periods 60/63/71/62
+  total 48+    Over at books -4.5  buys 4.5 wins 62.0% (664) periods 55/66/63/61
+  total 42-47  Over at books -4    buys 4 wins 61.4% (1571) periods 58/65/58/63
+  total 42-47  Over at books -3.5  buys 3.5 wins 61.2% (1594) periods 64/63/59/58
+  total <=41   Under at books +3.5  buys 3.5 wins 61.0% (1273) periods 61/59/69/58
+  total 48+    Under at books +5    buys 5 wins 60.9% (626) periods 55/61/62/61
+  total 48+    Over at books -3    buys 3 wins 60.7% (626) periods 66/59/57/63
+  total 48+    Under at books +2.5  buys 2.5 wins 60.5% (664) periods 64/58/61/60
+  total <=41   Under at books +4    buys 4 wins 60.4% (1288) periods 61/58/56/66
+  total 42-47  Under at books +3.5  buys 3.5 wins 60.4% (1594) periods 58/60/60/64
+  total <=41   Over at books -3.5  buys 3.5 wins 60.1% (1273) periods 58/64/55/61
+  total 42-47  Under at books +3    buys 3 wins 60.0% (1571) periods 60/57/63/60
+  total 48+    Under at books +4    buys 4 wins 59.9% (626) periods 55/60/61/60
+  total <=41   Over at books -3    buys 3 wins 58.9% (1288) periods 56/60/66/58
+  total 48+    Over at books -2    buys 2 wins 58.5% (626) periods 66/56/55/60
+
+=== TOTALS WIN RATES · OPENING (2014-26) · 3159 games · passing cells: 53 (Over at books -x = buys x points; Under at books +x = buys x points) ===
+  total <=41   Over at books -5.5  buys 5.5 wins 72.5% (204) periods 73/72
+  total <=41   Over at books -4.5  buys 4.5 wins 70.1% (204) periods 72/68
+  total 42-47  Under at books +5.5  buys 5.5 wins 69.5% (745) periods 68/71
+  total 48+    Under at books +5.5  buys 5.5 wins 69.3% (443) periods 69/69
+  total 42-47  Under at books +6    buys 6 wins 68.8% (1001) periods 70/68
+  total <=41   Over at books -3.5  buys 3.5 wins 68.6% (204) periods 70/67
+  total <=41   Over at books -6    buys 6 wins 68.4% (370) periods 62/72
+  total 42-47  Under at books +5    buys 5 wins 67.5% (1001) periods 68/67
+  total <=41   Under at books +6    buys 6 wins 67.3% (370) periods 69/67
+  total 42-47  Under at books +4.5  buys 4.5 wins 67.0% (745) periods 66/68
+  total 42-47  Over at books -6    buys 6 wins 66.3% (1001) periods 65/67
+  total 48+    Under at books +6    buys 6 wins 66.2% (396) periods 64/67
+  total 48+    Under at books +4.5  buys 4.5 wins 66.1% (443) periods 65/67
+  total <=41   Over at books -5    buys 5 wins 64.9% (370) periods 61/67
+  total <=41   Over at books -2.5  buys 2.5 wins 64.7% (204) periods 65/65
+  total 48+    Under at books +5    buys 5 wins 64.6% (396) periods 62/66
+  total <=41   Under at books +5    buys 5 wins 64.6% (370) periods 68/63
+  total 42-47  Under at books +3.5  buys 3.5 wins 64.4% (745) periods 64/65
+  total 48+    Over at books -5.5  buys 5.5 wins 64.3% (443) periods 62/67
+  total 48+    Over at books -6    buys 6 wins 63.9% (396) periods 68/61
+  total 48+    Under at books +3.5  buys 3.5 wins 63.9% (443) periods 62/66
+  total 42-47  Under at books +4    buys 4 wins 63.7% (1001) periods 64/63
+  total <=41   Under at books +5.5  buys 5.5 wins 63.7% (204) periods 63/65
+  total 42-47  Over at books -5    buys 5 wins 63.0% (1001) periods 63/63
+  total 48+    Under at books +4    buys 4 wins 62.6% (396) periods 60/64
+  total <=41   Under at books +4    buys 4 wins 62.4% (370) periods 66/60
+  total 42-47  Over at books -5.5  buys 5.5 wins 62.1% (745) periods 61/64
+  total 48+    Over at books -5    buys 5 wins 62.1% (396) periods 66/60
+  total 42-47  Under at books +2.5  buys 2.5 wins 61.7% (745) periods 61/63
+  total <=41   Over at books -4    buys 4 wins 61.6% (370) periods 59/63
+  total <=41   Over at books -1.5  buys 1.5 wins 61.3% (204) periods 61/62
+  total 48+    Under at books +2.5  buys 2.5 wins 61.2% (443) periods 61/62
+  total 42-47  Under at books +3    buys 3 wins 61.0% (1001) periods 61/61
+  total <=41   Under at books +3    buys 3 wins 60.5% (370) periods 64/59
+  total 48+    Over at books -4.5  buys 4.5 wins 60.3% (443) periods 60/61
+  total 48+    Under at books +3    buys 3 wins 60.1% (396) periods 58/62
+  total 42-47  Over at books -4.5  buys 4.5 wins 60.0% (745) periods 59/62
+  total <=41   Over at books -3    buys 3 wins 60.0% (370) periods 57/62
+  total 48+    Over at books -4    buys 4 wins 59.6% (396) periods 62/58
+  total 42-47  Over at books -4    buys 4 wins 59.5% (1001) periods 60/59
