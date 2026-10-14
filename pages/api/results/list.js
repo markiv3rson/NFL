@@ -1,11 +1,9 @@
 import { getRedis, getJSON, K } from "../../../lib/redis";
 import { SEASON } from "../../../lib/games";
-import { edgeSummary } from "../../../lib/edges";
-import { paperSummary, picksSummary } from "../../../lib/paper";
+import { paperSummary } from "../../../lib/paper";
 import { currentWeek } from "../../../lib/games";
-import { teaserSummary } from "../../../lib/teaser";
+import { trackedSummary } from "../../../lib/tracked";
 import { stackSummary } from "../../../lib/stack";
-import { altSummary } from "../../../lib/altfair";
 export default async function handler(req, res) {
   try {
     const redis = getRedis();
@@ -19,9 +17,9 @@ export default async function handler(req, res) {
       const mt = models[mk] && models[mk].td && models[mk].td[r.game]; if (!mt) continue;
       const by = new Map([...(mt.away || []), ...(mt.home || [])].map((x) => [String(x.name), x.pos]));
       for (const p of r.td) if (!p.pos && by.get(String(p.player))) p.pos = by.get(String(p.player)); }
-    // This season only (9/30: after a rollover the Record tab mixed seasons); edge stats computed live, not from the last grading
-    res.status(200).json({ ok: true, results: results.filter((r) => Number(r.season) === SEASON), edges: await edgeSummary(SEASON).catch(() => null),
+    // This season only (9/30: after a rollover the Record tab mixed seasons)
+    res.status(200).json({ ok: true, results: results.filter((r) => Number(r.season) === SEASON),
       paper: await paperSummary(SEASON, await currentWeek(SEASON).catch(() => null)).catch(() => null),
-      picks: await picksSummary(SEASON).catch(() => null), teasers: await teaserSummary(SEASON).catch(() => null), combos: await stackSummary(SEASON).catch(() => null), alts: await altSummary(SEASON).catch(() => null) });
+      tracked: await trackedSummary(SEASON).catch(() => null), combos: await stackSummary(SEASON).catch(() => null) });
   } catch (err) { res.status(500).json({ ok: false, error: String(err) }); }
 }
