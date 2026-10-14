@@ -34,6 +34,12 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   slate build until kickoff (`paper:<s>:<w>:sgp|<game>`, last save before kickoff counts), graded by gradePaper, no bell alert (`noAlert`).
   Legs without a Polymarket price yet (TD markets post late in the week) still count; such parlays get win/loss only (no return).
 - Game page (10/14, owner): the "BEST PICK · THIS GAME" box at the top was removed (it repeated the Model cards; `anglesBox` code kept).
+- CASINO LOOK (10/14, owner picked sketches 1/3/5/14/15/17 + purple parlay glow; sketches: claude.ai/artifact/6AwTJ5nR4pz7dgKLDkqYqk): green
+  PICK pulses at normal size and glows brighter for stronger picks (`glowOf`: 56-57% soft, 58-60% mid, 61%+ bright); its % rolls in like a
+  slot reel when a game page opens (`rollReels`); Bets tab only: settled bets get a gold HIT! (coins, once per bet via localStorage
+  `stampSeen`) or red MISS stamp (`stampFor`, not on cashed-out bets); header countdown digits flip; a small slot lever next to "Updated"
+  pulls new lines (same as the Lines button, time spins until it lands); the model's parlay cards (same-game box, Model Picks, Parlay of the
+  week) glow purple (`.modelglow`). KEY NUMBER is shown as "BEAT THE 3" (rule id stays `keynum|spread`).
 - Bets tab: an open leg says "⚠ app now picks the other side" when the app has a 56%+ pick against it.
 - Early-week total edge: TURNED OFF on cards 10/11 (11-18 live); recording CUT 10/13 (old rows still grade).
 - Anytime TD tab: "Best TD picks" box at the top (10/14, owner: only the model's 55%+ players; graded weeks 3-5 they scored 17 of 21
