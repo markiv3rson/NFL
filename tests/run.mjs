@@ -470,6 +470,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const saved = await getJSON("combolegs:caoc-t1"); ok(saved && saved.length === 2 && !saved[0].team.logo && !(await getJSON("combolegs:plain-mkt")), "old combos: account sync saves each combo's legs (slimmed), combos only");
     const ps = await comboPicks({ positions: {} }, "caoc-t1", 2026, 6, saved);
     ok(ps && ps[0].label === "DEN +3.5" && ps[0].kind === "spread" && ps[1].label === "Under 40.5 · SEA @ DEN" && ps[1].result === "W" && ps[1].game === "SEA @ DEN", "old combos: saved legs become picks after Polymarket drops them");
+    { const { markFromFinals } = await import("../lib/mybets.js"); const { resetGamesCache } = await import("../lib/games.js"); const realFetch = globalThis.fetch;
+      const H = "season,game_type,week,gameday,gametime,away_team,away_score,home_team,home_score,roof,stadium,location,surface\n";
+      resetGamesCache(); globalThis.fetch = async (u) => (String(u).includes("games.csv") ? { ok: true, text: async () => H + "2026,REG,5,2026-10-05,13:00,BAL,20,ATL,27,dome,X,Home,turf\n" } : { ok: false, status: 404, json: async () => ({}), text: async () => "" });
+      await R.set("tdscorers:2026:5", JSON.stringify({ t: new Date().toISOString(), games: { "BAL @ ATL": ["D.London", "B.Robinson"] }, teams: null }));
+      const m = await markFromFinals([{ label: "Drake London 1+ TD", result: null }, { label: "Zay Flowers 1+ TD", result: null }, { label: "BAL +3.5", result: null }], 2026, 5);
+      ok(m[0].result === "W" && m[1].result === "L" && m[2].result === "L", "old combos: TD legs saved without a game are graded from that week's scorers (whole week over)");
+      globalThis.fetch = realFetch; resetGamesCache(); await R.del("tdscorers:2026:5"); }
     await R.del("combolegs:caoc-t1"); }
   { // bets analysis: hand-worked numbers
     const L = (kind, result, price) => ({ kind, result, price });
