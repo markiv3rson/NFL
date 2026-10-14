@@ -101,6 +101,11 @@ function middleNote(g) {
   return `<div class="s" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px"><b class="lg">MIDDLE:</b> ${esc(m.fav)} -2.5 (${Math.round(m.favPrice * 100)}¢) + ${esc(m.dog)} +3.5 (${Math.round(m.dogPrice * 100)}¢). ` +
     `One side always wins; both win if ${esc(m.fav)} wins by exactly 3 (${Math.round(m.exact3 * 100)}% of games like this). Costs ${Math.round(m.cost * 100)}¢, pays back ${Math.round(m.back * 100)}¢ on average.</div>`;
 }
+// 10/14 (owner: "show it"): on a green bought-point pick, how often the same side wins WITHOUT the extra points (the books' own number)
+function plainNote(P) {
+  if (P.plain == null || !(P.p * 100 - P.plain >= 2)) return "";
+  return `<div class="s" style="margin-top:4px">Without the extra points it wins about ${Math.round(P.plain)}% · with them ${Math.floor(P.p * 100)}%.</div>`;
+}
 function costNote(g, P) {
   const pr = pickPrice(g, P); if (!(pr > 0 && pr < 1) || pr * 100 <= P.p * 100) return "";
   return `<div class="s y" style="margin-top:4px">⚠ Costs ${Math.round(pr * 100)}¢ but wins ${(P.p * 100).toFixed(1)}%. Over time this loses money.</div>`;
@@ -154,7 +159,7 @@ function leanCell(g, kind) {
       body = `<div style="margin-top:6px"><b class="g pulse" style="--gl:${glowOf(P.p)}">PICK: ${esc(P.pick)} · <span class="reelpct" data-v="${pc}%">${pc}%</span></b></div>` +
         // 10/13 (owner: fewer notes): just the green pick's own reason (e.g. the LINE MOVE numbers)
         `<div class="s" style="margin-top:4px">${esc(P.why)}</div>` +
-        recLine(P.rec) + lineCheck(g, kind, P.pick) + splitNote(g, kind, P.pick) + costNote(g, P);
+        plainNote(P) + recLine(P.rec) + lineCheck(g, kind, P.pick) + splitNote(g, kind, P.pick) + costNote(g, P);
     }
   }
   // 10/12 (owner: the number must be honest). Tested on 2,578 games 2014-26, each season predicted without it: margin off by 9.99
@@ -843,7 +848,7 @@ function straightPicks(g, min = BEST_MIN) {
   const out = [], games = (n) => (n != null && n < SMALL_N ? ` · ${n} game${n === 1 ? "" : "s"}` : "");
   // 10/12: picks come only from the combined chooser (g.combos, honest win rates on unseen games). Angles and the "total fell" rule
   // were dropped as picks: their rates were measured on the same games they were chosen from.
-  for (const c of g.combos || []) if (!c.teaser) out.push({ pick: c.pick, game: g.key, why: c.why + games(c.n), p: c.hit / 100, rec: c.rec, n: c.n ?? null, price: c.price ?? null });
+  for (const c of g.combos || []) if (!c.teaser) out.push({ pick: c.pick, game: g.key, why: c.why + games(c.n), p: c.hit / 100, rec: c.rec, n: c.n ?? null, price: c.price ?? null, plain: c.plain ?? null });
   const best = {}, better = (x, y) => (isSmall(x) !== isSmall(y) ? !isSmall(x) : x.p > y.p);
   for (const x of out) { const k = /^(Over|Under)\b/.test(x.pick) ? "total" : /\bML\b/.test(x.pick) ? "ml" : "spread"; if (!best[k] || better(x, best[k])) best[k] = x; }
   return Object.values(best).filter((x) => x.p >= min).sort((a, b) => (isSmall(a) - isSmall(b)) || b.p - a.p);

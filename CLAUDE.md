@@ -660,3 +660,11 @@ Tested and NOT added (made it worse):
   cells (books 3 dog +5.5, 2.5 dog +5.5, 4.5 dog +7.5, 4.5 fav -1.5, 1.5 dog +4.5) already have a cheaper tier on that books number -- not added.
 - FINAL CAP 10/14 (owner: "cap it at 3.5"): no tier buys more than 3.5 points (test checks it). Books 1 -> dog +3.5 (buys 2.5) is BACK; the old books 6.5 -> fav -2.5 (buys 4) stays out. 9 tiers: books 1, 1.5, 2.5, 3,
   3.5 (dog +6.5), 4.5, 5.5, 6.5 (dog +9.5), 13.5.
+
+## "Without the extra points" line (10/14, owner: "yes show it, build now")
+
+- A green bought-point pick now says "Without the extra points it wins about X% · with them Y%." (`public/app.js plainNote`; shown only when the points add 2+ points; not on light-green /
+  yellow cards -- owner's no-notes rule). `BUY_TIERS[..].plain` = [day, night] win rate of the same side at the books' own number, 1999-2025 closing, pushes left out:
+  books 1 49.3/48.2, 1.5 47.2/58.1 (31 night games), 2.5 52.4/47.8, 3 53.8/46.5, 3.5 50.6/50.0, 4.5 51.4/43.5, 5.5 55.3/51.0, 6.5 53.5/53.8, 13.5 68.0/45.5.
+- Chooser side test (10/14, 2,604 games 2014-26, every season unseen): the chooser picking the side then buying points wins no more than always-favorite / always-underdog
+  (0 pts 48.5%, 1 pt 53.5%, 2 pts 57.6%, 3 pts 60.5%; books 3.5 + 1 pt: chooser 53.7% vs favorite 60.4%). The points do the work, not the side -> key-number rules decide the side (owner agreed).
