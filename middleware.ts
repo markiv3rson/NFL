@@ -11,7 +11,16 @@ function safeEqual(a: string, b: string) {
   return diff === 0;
 }
 
-export function middleware(req: NextRequest) {
+// Remember this phone (10/14, owner chose B): after one good sign-in the site sets a 1-year cookie, so the home-screen app stops asking
+// every time (iPhone home-screen apps don't keep the Basic login). The cookie holds a hash of the username + password, never the
+// password itself; changing the password in Vercel signs every phone out.
+const REMEMBER = "nfl_remember", YEAR = 365 * 24 * 3600;
+async function rememberToken(user: string, pass: string) {
+  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`nfl-remember|${user}|${pass}`));
+  return Array.from(new Uint8Array(d)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+export async function middleware(req: NextRequest) {
   // Cross-site guard: browsers resend the saved Basic login on requests from ANY site, so another page could make
   // your browser hit /api/rerun or /api/snapshot?books=1 (burning Odds API credits). Browsers label those requests
   // Sec-Fetch-Site: cross-site; the Railway scheduler and your own page never do.
@@ -23,6 +32,11 @@ export function middleware(req: NextRequest) {
   const validUser = (process.env.SITE_USERNAME || "").trim();
   const validPass = (process.env.SITE_PASSWORD || "").trim();
 
+  if (validUser && validPass) {
+    const c = req.cookies.get(REMEMBER)?.value;
+    if (c && safeEqual(c, await rememberToken(validUser, validPass))) return NextResponse.next();
+  }
+
   if (auth && validUser && validPass) {
     const [scheme, encoded] = auth.split(" ");
     if (scheme === "Basic" && encoded) {
@@ -32,7 +46,11 @@ export function middleware(req: NextRequest) {
       if (i > 0) {
         const user = decoded.slice(0, i).trim(), pass = decoded.slice(i + 1).trim();   // passwords may contain ":"
         const okUser = safeEqual(user, validUser), okPass = safeEqual(pass, validPass);   // both always run
-        if (okUser && okPass) return NextResponse.next();
+        if (okUser && okPass) {
+          const res = NextResponse.next();
+          res.cookies.set(REMEMBER, await rememberToken(validUser, validPass), { maxAge: YEAR, httpOnly: true, secure: true, sameSite: "lax", path: "/" });
+          return res;
+        }
       }
     }
   }

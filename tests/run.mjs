@@ -65,7 +65,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const man = JSON.parse(fs.readFileSync(new URL("manifest.webmanifest", root), "utf8")), html = fs.readFileSync(new URL("index.html", root), "utf8"), mw = fs.readFileSync(new URL("../middleware.ts", import.meta.url), "utf8");
   ok(man.display === "standalone" && man.icons.length >= 2 && man.icons.every((i) => fs.existsSync(new URL("." + i.src, root))), "phone: manifest is standalone and every icon file exists");
   ok(/apple-touch-icon/.test(html) && /apple-mobile-web-app-capable/.test(html) && /viewport-fit=cover/.test(html) && /rel="manifest"/.test(html) && /safe-area-inset-top/.test(html), "phone: home-screen meta tags, full-screen viewport and safe areas");
-  ok(["manifest.webmanifest", "apple-touch-icon.png", "icon-192.png", "icon-512.png"].every((f) => mw.includes(f)), "phone: icon and manifest are reachable before login"); }
+  ok(["manifest.webmanifest", "apple-touch-icon.png", "icon-192.png", "icon-512.png"].every((f) => mw.includes(f)), "phone: icon and manifest are reachable before login");
+  ok(/nfl_remember/.test(mw) && /maxAge: YEAR/.test(mw) && /httpOnly: true/.test(mw) && /sameSite: "lax"/.test(mw) && /cross-site/.test(mw), "phone: one sign-in is remembered for a year (hashed cookie), cross-site guard kept"); }
 // ---------- live lines (display only)
 { const { liveLines } = await import("../lib/live.js");
   const mk = (t, q, o, px, line) => ({ sportsMarketType: t, question: q, outcomes: JSON.stringify(o), outcomePrices: JSON.stringify(px), bestAsk: px[0] + 0.01, bestBid: px[0] - 0.01, ...(line != null ? { line } : {}) });
