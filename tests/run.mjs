@@ -130,7 +130,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const ctx = { document: { getElementById: () => el(), querySelectorAll: () => [], addEventListener() {}, hidden: false }, fetch: () => Promise.reject(new Error("offline")),
     localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) }, location: { reload() {} }, window: {}, setTimeout, clearTimeout, console, Date, Math, Number, String, JSON, Promise, Set, Object, Array };
   vm.createContext(ctx);
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={slotOf,saferSide,extraBets,comboLines,parlayPicks,parlayStrip,lineCheck,recLine,bestBets,injTag,weakLeg,anglesBox,kickLine,tdNoGap,teaserRow,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gameCard,totalCard,detailTop,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByConfidence,mSec,legFlipped,betSlots,openBySlot,straightPicks,splitNote};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={slotOf,saferSide,extraBets,comboLines,parlayPicks,parlayStrip,lineCheck,recLine,bestBets,injTag,weakLeg,anglesBox,kickLine,tdNoGap,teaserRow,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,leanCell,prow,betRow,changedBox,rightNowBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gameCard,totalCard,detailTop,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByConfidence,mSec,legFlipped,betSlots,openBySlot,straightPicks,splitNote,sgpBox};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   g = { away: "A", home: "H", model: { total: 44.4, fix: { dome: 2.59, pace: 0.1, div: true } }, poly: { total: { line: 45.5 } } };
@@ -417,6 +417,24 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     await gradePaper(2099, 4, [{ key: "PIT @ CLE", homeScore: 27, awayScore: 24 }], async () => null);
     const sm = await paperSummary(2099, 4); const ps = sm.week.parlays;
     ok(ps.length === 1 && ps[0].strategy === "same_game_3" && ps[0].result === "W" && sm.board.same_game_3.graded === 1 && sm.board.same_game_3.review.verdict === "TOO FEW", "same-game record: graded, listed in the week, reviewed");
+    for (const k of await R.keys("paper:2099:*")) await R.del(k); }
+  { // same-game parlays (10/14): best = strong legs that don't work against each other; your style = spread + total + a TD each team; saved, graded, no bell
+    const { sameGameParlays, recordSgp } = await import("../lib/sgp.js"); const { gradePaper, paperSummary } = await import("../lib/paper.js"); const { listAlerts } = await import("../lib/alerts.js"); const { setJSON } = await import("../lib/redis.js"); const R = globalThis.__TEST_REDIS__;
+    const g = { key: "CHI @ ATL", away: "CHI", home: "ATL", started: false, final: false, poly: { spread: { homeSpread: 2.5, home: 0.47, away: 0.54 }, total: { line: 49.5, over: 0.5, under: 0.5 } },
+      combos: [{ pick: "ATL +3.5", hit: 58.1, line: 3.5, price: 0.56, why: "KEY NUMBER: x" }, { pick: "CHI -2.5", hit: 57, line: -2.5, why: "BOUNCE BACK: y" }, { pick: "Under 49.5", hit: 52.1, line: 49.5, why: "z" }],
+      td: [{ player: "Bi.Robinson", team: "ATL", fair: 62, price: null }, { player: "D.Swift", team: "CHI", fair: 49, price: 0.45 }, { player: "Hurt Guy", team: "CHI", fair: 70, injury: "Questionable" }] };
+    const x = sameGameParlays(g);
+    ok(x.best && x.best.legs.map((l) => l.label).join() === "Bi.Robinson TD,ATL +3.5" && Math.abs(x.best.prob - 0.429) < 0.002, "same-game: best = Bijan TD + ATL +3.5 (they help each other: 62% x 58.1% x 1.19)");
+    ok(x.style && x.style.legs.map((l) => l.label).join() === "ATL +3.5,Under 49.5,D.Swift TD,Bi.Robinson TD" && x.style.pay == null, "same-game: your style = spread + total + top TD each team (a Questionable player skipped; unpriced TD -> no payout shown)");
+    const y = sameGameParlays({ ...g, combos: [{ pick: "Under 49.5", hit: 62, line: 49.5, why: "TOTAL MOVE: t" }], td: [{ player: "Bi.Robinson", team: "ATL", fair: 64 }] });
+    ok(!y.best && y.single && y.single.label === "Bi.Robinson TD", "same-game: a TD and the Under work against each other -> the stronger leg alone (bet it alone)");
+    ok(sameGameParlays({ ...g, started: true }) === null, "same-game: none once the game has started");
+    const data = { season: 2099, week: 6, games: [{ ...g, sgp: x }, { key: "OLD @ GAME", started: true, sgp: x }] };
+    ok(await recordSgp(data, setJSON) === 1, "same-game: saved for games not yet started only");
+    await gradePaper(2099, 6, [{ key: "CHI @ ATL", homeScore: 24, awayScore: 21 }], async () => ["Bi.Robinson"]);
+    const sm = await paperSummary(2099, 6), b = sm.week.parlays.find((p) => p.strategy === "sgp_best"), st = sm.week.parlays.find((p) => p.strategy === "sgp_style");
+    ok(b.result === "W" && b.ret === null && st.result === "L" && sm.board.sgp_best.hits === 1 && sm.board.sgp_best.roi === null && sm.board.sgp_style.graded === 1, "same-game: graded (ATL +3.5 and Bijan hit; your style lost on the Under/Swift), unpriced legs -> win/loss only");
+    ok(!(await listAlerts(2099)).some((a) => /Same game · (best \(strong|your style)/.test(a.title || "")), "same-game: no bell alert");
     for (const k of await R.keys("paper:2099:*")) await R.del(k); }
   { // ESPN final scores for games nflverse has not posted; waiting label on bets; only recent errors listed
     const { finalsFromScoreboard, overlayEspnFinals } = await import("../lib/espnFinals.js");
@@ -961,6 +979,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const sp = ctx.T.leanCell(G, "spread"), to = ctx.T.leanCell(G, "total");
     ok(/Model: <b class="mod">CHI by 5\.6<\/b>/.test(sp) && /PICK: GB \+1\.5 · 62%/.test(sp) && !/Goes against/.test(sp) && !/Less accurate/.test(sp) && (sp.match(/PICK:/g) || []).length === 1, "model card: one pick, no extra notes");
     ok(/This season: <b>3–1<\/b>/.test(sp) && /Line moved: opened GB \+2\.5, now GB \+1\.5 · worse number now/.test(sp) && /Line moved: opened Under 45\.5, now Under 46\.5 · better number now/.test(to) && ctx.T.recLine({ w: 0, l: 0 }) === "", "model card: this season's record and the line check");
+    { const p = { legs: [{ label: "Bi.Robinson TD", prob: 0.62 }, { label: "ATL +3.5", prob: 0.581, rule: "KEY NUMBER" }], prob: 0.43 };
+      const h = ctx.T.sgpBox({ key: "CHI @ ATL", sgp: { best: p, style: { ...p, prob: 0.05 } } });
+      ok(h.includes("SAME-GAME PARLAY") && h.includes("BEST · 2 legs") && h.includes("hits ~43%") && h.includes("1 in 20") && h.includes("KEY NUMBER"), "same-game box: best and your style with their chance");
+      ok(ctx.T.sgpBox({ key: "X @ Y", started: true, sgp: { best: p } }) === "", "same-game box: hidden once the game starts"); }
     { const g = { combos: [{ pick: "ATL +3.5", hit: 58.1, why: "KEY NUMBER: books at ATL +3" }, { pick: "CHI -2.5", hit: 57, why: "BOUNCE BACK: CHI missed" }, { pick: "ATL +2.5", hit: 50.2, why: "x" }, { pick: "Over 49.5", hit: 60, why: "y" }] };
       const n = ctx.T.splitNote(g, "spread", "ATL +3.5");
       ok(n.includes("CHI -2.5") && n.includes("BOUNCE BACK") && n.includes("57%"), "rules split: a green rule on the other side is named on the card");

@@ -26,6 +26,13 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   when the first game is London) and graded. Includes "Best bets · 2/3/4" (= the Parlay of the week). Alt-line parlays are labeled
   TEASER. TD parlays may use thin markets (leg says "thin"); the price shown is the ask.
 - Model card (10/14, owner): when another green rule takes the OTHER side of the same market, the green pick adds "⚠ Rules split: <pick> (<rule>, <%>) is green too. Pick one side." (`public/app.js splitNote`).
+- SAME-GAME PARLAYS (10/14, owner: "build now, all three"; `lib/sgp.js`): every game page shows a "SAME-GAME PARLAY" box under the
+  TOTALS card -- BEST (only strong legs: green spread/total 56%+ and TD players 55%+, one per team; a leg that works AGAINST a stronger
+  one is dropped -- TD + Under 0.77x, TD + other team covers 0.81x; 1 strong leg -> "bet it alone") and YOUR STYLE (card's spread + total
+  pick + the top TD scorer on each team, Out/Doubtful/Questionable skipped). Chance = legs x same-game links (`lib/combo.js comboChance`).
+  Model Picks tab: "Same-game parlays · ranked" card at the top + scoreboard group SAME-GAME PARLAYS (sgp_best / sgp_style). Saved on every
+  slate build until kickoff (`paper:<s>:<w>:sgp|<game>`, last save before kickoff counts), graded by gradePaper, no bell alert (`noAlert`).
+  Legs without a Polymarket price yet (TD markets post late in the week) still count; such parlays get win/loss only (no return).
 - Bets tab: an open leg says "⚠ app now picks the other side" when the app has a 56%+ pick against it.
 - Early-week total edge: TURNED OFF on cards 10/11 (11-18 live); recording CUT 10/13 (old rows still grade).
 - Anytime TD tab: "Best TD picks" box at the top (10/14, owner: only the model's 55%+ players; graded weeks 3-5 they scored 17 of 21
