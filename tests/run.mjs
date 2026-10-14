@@ -984,7 +984,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     { const p = { legs: [{ label: "Bi.Robinson TD", prob: 0.62 }, { label: "ATL +3.5", prob: 0.581, rule: "KEY NUMBER" }], prob: 0.43 };
       const h = ctx.T.sgpBox({ key: "CHI @ ATL", sgp: { best: p, style: { ...p, prob: 0.05 } } });
       const h3 = ctx.T.sgpBox({ key: "CHI @ ATL", sgp: { best: p, three: { ...p, prob: 0.2 }, linked: { ...p, prob: 0.08 }, style: { ...p, prob: 0.05 } } });
-      ok(h.includes("SAME-GAME PARLAYS") && /2 LEGS · <b class="g">hits ~43%/.test(h) && h.includes("4 LEGS · MY STYLE") && h.includes("1 in 20") && h.includes("KEY NUMBER") && /3 LEGS[\s\S]*4 LEGS ·[\s\S]*MY STYLE/.test(h3), "same-game box: 2 / 3 / 4 legs and my style, each with its chance");
+      ok(h.includes("SAME-GAME PARLAYS") && /2 LEGS<\/div><div class="s" style="margin-bottom:3px"><b class="g">hits ~43%/.test(h) && h.includes("4 LEGS · MY STYLE") && h.includes("1 in 20") && h.includes("KEY NUMBER") && /3 LEGS[\s\S]*4 LEGS ·[\s\S]*MY STYLE/.test(h3), "same-game box: 2 / 3 / 4 legs and my style, each with its chance");
       ok(ctx.T.sgpBox({ key: "X @ Y", started: true, sgp: { best: p } }) === "", "same-game box: hidden once the game starts"); }
     { const g = { combos: [{ pick: "ATL +3.5", hit: 58.1, why: "KEY NUMBER: books at ATL +3" }, { pick: "CHI -2.5", hit: 57, why: "BOUNCE BACK: CHI missed" }, { pick: "ATL +2.5", hit: 50.2, why: "x" }, { pick: "Over 49.5", hit: 60, why: "y" }] };
       const n = ctx.T.splitNote(g, "spread", "ATL +3.5");
