@@ -1148,33 +1148,27 @@ async function loadSlate() {
   if (!loadSlate._rolled) { loadSlate._rolled = true; setTimeout(() => slotify($("panel-lines")), 60); }   // 10/14: numbers roll in on first open
   if (openTd.length) { const rows = document.querySelectorAll(".tdr"); for (const i of openTd) if (rows[i]) rows[i].classList.add("open"); }
   try { localStorage.setItem("lastSeen", new Date().toISOString()); } catch {} }   // next visit's "What changed" starts from now
-$("refresh-btn").onclick = async () => {
-  const b = $("refresh-btn"); b.disabled = true; toast("Updating lines…", 0);
+// Pull new lines (the lever): a manual snapshot, then reload the page data. Sportsbook odds are bought only when the saved ones are 6+ h old.
+let REFRESHING = false;
+async function refreshLines() {
+  if (REFRESHING) return; REFRESHING = true; toast("Updating lines…", 0);
   try { const d = await (await fetch("/api/snapshot?src=manual")).json(); if (!d.ok) throw new Error(d.error); await loadSlate();
     toast(`Updated ${d.lines} of ${d.upcoming} upcoming games${d.locked ? ` (${d.locked} locked)` : ""}, TD prices for ${d.props}.`);
   } catch (e) { toast("Refresh failed: " + e.message, 10000); }
-  b.disabled = false;
-};
+  REFRESHING = false;
+}
 // 10/14 casino look: the slot lever next to "Updated" pulls new lines (same as the Lines button); the time spins like reels until it lands
 if ($("lever")) {
   const lv = $("lever");
   const pull = async () => {
-    if (lv.disabled || $("refresh-btn").disabled) return; lv.disabled = true; lv.classList.add("pull"); setTimeout(() => lv.classList.remove("pull"), 260);
+    if (lv.disabled || REFRESHING) return; lv.disabled = true; lv.classList.add("pull"); setTimeout(() => lv.classList.remove("pull"), 260);
     const hu = $("hero-upd"); hu.innerHTML = `Updated <span class="mreel">7</span><span class="mreel">7</span>:<span class="mreel">7</span><span class="mreel">7</span>`;
     const iv = setInterval(() => hu.querySelectorAll(".mreel").forEach((m) => { m.textContent = Math.floor(Math.random() * 10); }), 70);
-    try { await $("refresh-btn").onclick(); } finally { clearInterval(iv); if (S) weekline(); lv.disabled = false; }
+    try { await refreshLines(); } finally { clearInterval(iv); if (S) weekline(); lv.disabled = false; }
   };
   lv.onclick = pull; let y0 = null;
   lv.addEventListener("pointerdown", (e) => { y0 = e.clientY; }); lv.addEventListener("pointermove", (e) => { if (y0 != null && e.clientY - y0 > 25) { y0 = null; pull(); } }); lv.addEventListener("pointerup", () => { y0 = null; });
 }
-$("rerun-btn").onclick = async () => {
-  const b = $("rerun-btn"); b.disabled = true; toast("Rerunning…", 0);
-  try { const d = await (await fetch("/api/rerun", { method: "POST" })).json(); if (!d.ok) throw new Error(d.error);
-    await loadSlate();
-    toast(d.note && !d.rerun ? `Model rerun: ${d.note}.` : `Model rerun: ${d.rerun} games, TD for ${d.td ?? 0}.${d.errors && d.errors.length ? " Errors: " + d.errors.join("; ") : ""}`, 10000);   // 10/13: said "TD for undefined" when every game had started
-  } catch (e) { toast("Rerun failed: " + e.message, 12000); }
-  b.disabled = false;
-};
 function showPanel(name) {
   document.querySelectorAll(".tabs button[data-tab]").forEach((x) => x.classList.toggle("on", x.dataset.tab === name));
   $("bell").classList.toggle("on", name === "alerts");
