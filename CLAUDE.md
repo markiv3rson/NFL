@@ -695,3 +695,11 @@ Tested and NOT added (made it worse):
   `BUY_ALT`; 59.8% close, 51.9% open): the higher card % wins**, **4 fav -2.5 (1.5 pts; 62.5% close, 59.1% open; it was falling by period 78/64/58/53 -- watch it)**, 4.5 fav -2.5, 5.5 dog +7.5,
   **6 dog +7.5 (1.5 pts; 58.1% / 56.1%)**, **6.5 dog +8.5 (2 pts; 62.4% / 63.6% -- the old +9.5 won exactly the same, the third point added nothing)**, **7.5 fav -5.5 (2 pts; 58.6% / 55.6%)**, 13.5 dog +14.5.
   Removed: books 3.5 dog +6.5 and books 6.5 dog +9.5 (3 points). Fav text now "BEAT THE <key>" with the key number (3, 6). `tests/accuracy.mjs` replays every candidate (closing and opening line).
+
+## 100% ACCURACY AUDIT (10/14, owner: "build now"; on the work branch, NOT merged until "merge now")
+
+- Every number on 14 game pages, 84 TD rows, 56 same-game parlays, cross-game parlays, Bets sums and Parlay of the week was recomputed outside the app and matched. Math library fuzz: ncdf err 2e-7, odds conversions exact, cover-shift never broke an invariant (4000 cases).
+- Fixed: stored tier numbers had drifted from real history -> regenerated from nflverse, and `npm run accuracy` now has an exact "TIER NUMBERS" check (stored hit % and n must equal the replay; 78 of 78 ok). LINE MOVE spread/total, INJURY and MIDDLE constants recomputed the same way (spread tiers 63.5/587 and 60.3/239, total 66.1/460, INJURY 56.5/260).
+- Fixed wording: "1 players" / "1 picks" (`plural`), same-game chance now "about N in 10" / "1 in N" (`sgpChance`), TD rows below 55% round down (`tdPct`), spacing between tile chips.
+- Fixed Bets tab: a lost account bet showed -111.9% because a stale cost was used; settled bets now use the resolved cost/shares (`lib/mybets.js`).
+- Known gaps (not fixed): market win % is ~2 points off in the 50-60% and 70-80% bins; BEAT THE tier "3.5 dog +5.5" shows 56.2% (borderline green); "100%" cannot be proven for predictions, only that the code does what the notes say.

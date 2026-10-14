@@ -281,7 +281,7 @@ function tdBlend(r) {
 function prow(r, g, showGame) {
   const inj = (r.injury && GAME_STATUS.test(r.injury) ? ` <span class="pill ${/out|doubt/i.test(r.injury) ? "p-r" : "p-y"}" style="padding:0 6px;font-size:10px">${esc(r.injury)}</span>` : "") + retPill(r);
   // Model's chance (big, left) and Polymarket's price (right), each with its plain label directly underneath. No verdict, no edge, no stake.
-  const chance = r.fair != null ? `${Math.round(r.fair)}%` : dash;
+  const chance = r.fair != null ? `${tdPct(r.fair)}%` : dash;
   const cents = r.price != null ? `<span class="price-link" data-market="${esc(r.market || (r.stale ? "Old price" : ""))}">${Math.round(r.price * 100)}¢</span>` : dash;
   const snap = r.snap ? ` · ${r.snap.pct}% snaps${r.snap.missed ? ` <span class="warn-t">⚠ missed last game${r.lastWeekOut ? ` · ${esc(r.lastWeekOut)}` : ""}</span>` : r.snap.early ? ` <span class="warn-t">⚠ left early last game</span>` : r.snap.trend === "up" ? ' <span class="g">↑</span>' : r.snap.trend === "down" ? ' <span class="r">↓ role shrinking</span>' : ""}` : "";
   // team code dropped from the subtitle when the logo is shown (showGame) — the logo already carries it
@@ -319,13 +319,15 @@ function tdRow(x, i) {
   const r = x.r, g = x.g;
   return `<div class="tdr"><img class="wmc" loading="lazy" decoding="async" src="${logoUrl(r.team)}" alt="" onerror="this.style.display='none'"><div class="in"><span class="rk">${i + 1}</span>` +
     `<div class="nmx"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos)}</span>${injTag(r)}${retPill(r)}<div class="g2">${esc(r.game)}</div>${mktWarn(r)}</div>` +
-    `<div class="mp"><em>${Math.round(r.fair)}%</em><div class="bar"><i style="width:${Math.min(100, r.fair)}%"></i></div></div><div class="pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${(() => { const b = tdBlend(r); if (b && b.blend - r.price * 100 >= 5) return `<div class="g" style="font-size:10px">+${Math.round(b.blend - r.price * 100)} vs price</div>`;
+    `<div class="mp"><em>${tdPct(r.fair)}%</em><div class="bar"><i style="width:${Math.min(100, r.fair)}%"></i></div></div><div class="pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${(() => { const b = tdBlend(r); if (b && b.blend - r.price * 100 >= 5) return `<div class="g" style="font-size:10px">+${Math.round(b.blend - r.price * 100)} vs price</div>`;
       return tdNoGap(r) != null ? `<div class="r" style="font-size:10px">No · ${tdNoGap(r)} under</div>` : ""; })()}</div></div>` +
     `<div class="more" style="--tc:${TEAM_COLOR[r.team] || "#444"};--logo:url(${logoUrl(r.team)})">${prow(r, g, true)}</div></div>`;
 }
 const earlyNote = (g) => (g && g.early ? '<span class="pill p-y" style="padding:0 6px;font-size:10px">Early estimate</span>' : "");
 // One Anytime TD section for the slate in S: price moves, then the top 3 per team, most likely first.
 const BEST_TD = 55;
+// 10/14 audit: a player at 54.6% is NOT a "55%+" Best TD pick, so he must not be shown as 55% either (below the line the % rounds down, like the card picks)
+const tdPct = (v) => (v < BEST_TD && Math.round(v) >= BEST_TD ? BEST_TD - 1 : Math.round(v));
 function tdBody() {
   const rows = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).map((r) => ({ r, g })))
     .filter((x) => x.r.fair != null && usable(x.r)).sort((a, b) => b.r.fair - a.r.fair);
@@ -581,7 +583,7 @@ function modelsByConfidence(res) {
   const ml = (res || []).map((r) => r.ml).filter((x) => x && x.pct != null && (x.result === "W" || x.result === "L"));
   const rows = [[50, 60], [60, 70], [70, 80], [80, 101]].map(([lo, hi]) => { const xs = ml.filter((x) => x.pct >= lo && x.pct < hi); if (!xs.length) return "";
     const w = xs.filter((x) => x.result === "W").length, said = xs.reduce((a, x) => a + x.pct, 0) / xs.length, hit = w / xs.length * 100;
-    return `<div class="row"><span class="dim">Said ${hi > 100 ? lo + "+" : lo + "–" + hi}% · ${xs.length} picks</span><span>${bar(hit, hitColor(hit, said))} <b>${Math.round(hit)}%</b> <span class="dim">hit · said ${Math.round(said)}%</span></span></div>`; }).join("");
+    return `<div class="row"><span class="dim">Said ${hi > 100 ? lo + "+" : lo + "–" + hi}% · ${plural(xs.length, "pick")}</span><span>${bar(hit, hitColor(hit, said))} <b>${Math.round(hit)}%</b> <span class="dim">hit · said ${Math.round(said)}%</span></span></div>`; }).join("");
   return rows || '<div class="s">None yet.</div>';
 }
 // Touchdown chances split by position and by opponent defense (10/5). Same rule as the calibration rows: only players who played,
@@ -590,7 +592,7 @@ function modelsByConfidence(res) {
 function tdGroupRow(label, xs) {
   if (!xs.length) return "";
   const said = xs.reduce((a, p) => a + p.fair, 0) / xs.length, hit = xs.filter((p) => p.scored).length / xs.length * 100, n = xs.length;
-  return `<div class="row" style="display:block"><div class="dim">${esc(label)} · ${n} players · scored ${Math.round(hit)}% ±${Math.round(Math.sqrt(Math.max(hit * (100 - hit), 400) / n))}${n < 30 ? "" : ""}</div><div class="s" style="display:grid;grid-template-columns:auto 1fr;gap:3px 8px;align-items:center"><span class="dim">said</span><span>${bar(said, "var(--cyan, #5ec8e5)", Math.round(said) + "%")}</span><span class="dim">scored</span><span>${bar(hit, hitColor(hit, said), Math.round(hit) + "%")}</span></div></div>`;
+  return `<div class="row" style="display:block"><div class="dim">${esc(label)} · ${plural(n, "player")} · scored ${Math.round(hit)}% ±${Math.round(Math.sqrt(Math.max(hit * (100 - hit), 400) / n))}${n < 30 ? "" : ""}</div><div class="s" style="display:grid;grid-template-columns:auto 1fr;gap:3px 8px;align-items:center"><span class="dim">said</span><span>${bar(said, "var(--cyan, #5ec8e5)", Math.round(said) + "%")}</span><span class="dim">scored</span><span>${bar(hit, hitColor(hit, said), Math.round(hit) + "%")}</span></div></div>`;
 }
 // Played players of every graded game, each with the opponent's strength attached.
 function tdPlayersWithDefense(res) {
@@ -706,7 +708,7 @@ function renderModelNow() {
       // did the closing price move toward the model? The fastest signal of real edge, long before win/loss means anything.
       (() => { const c = tdPx.filter((p) => p.openAsk > 0 && p.openBid > 0 && p.openAsk - p.openBid <= Math.min(0.05, 0.4 * p.openAsk) && mp(p) > p.openAsk)   /* opening price must be a real market too */
           .map((p) => (p.bid + p.ask) / 2 / ((p.openAsk + p.openBid) / 2) - 1);   // mid vs mid (was closing mid vs opening ASK: read negative with no move)
-        return `<div class="row"><span class="dim">Prices moved toward the model</span><span>${c.length ? `${cPct(c.reduce((a, x) => a + x, 0) / c.length)} avg · ${c.length} players` : "—"}</span></div>`; })() +
+        return `<div class="row"><span class="dim">Prices moved toward the model</span><span>${c.length ? `${cPct(c.reduce((a, x) => a + x, 0) / c.length)} avg · ${plural(c.length, "player")}` : "—"}</span></div>`; })() +
       '';
   }
   const st = S.status, wc = S.weekCheck || { games: 0, withLines: 0, modelRun: false, watch: [] };
@@ -745,7 +747,7 @@ function renderModelNow() {
       const extra = (two.length ? `<div class="row"><span class="dim">2+ TDs</span><span>${two.filter((p) => p.twoHit).length} · exp ${(two.reduce((a, p) => a + p.two, 0) / 100).toFixed(1)}</span></div>` : "") +
         (ftd.length ? `<div class="row"><span class="dim">First TD</span><span>${ftd.filter((p) => p.ftdHit).length} · exp ${(ftd.reduce((a, p) => a + p.ftd, 0) / 100).toFixed(1)}</span></div>` : "") + firstTdRecord(res);
       return t1.length ? `${line("#1 per team", t1)}${line("Top 2 per team", t2)}${extra}` : '<div class="s">None yet.</div>'; })();
-  const wcRows = `<div class="row"><span class="dim">Week ${S.week} loaded</span><span>${wc.games} games · lines ${wc.withLines}/${wc.games} · model ${wc.modelRun ? '<span class="g">✓</span>' : '<span class="y">not run yet</span>'}</span></div>` +
+  const wcRows = `<div class="row"><span class="dim">Week ${S.week} loaded</span><span>${plural(wc.games, "game")} · lines ${wc.withLines}/${wc.games} · model ${wc.modelRun ? '<span class="g">✓</span>' : '<span class="y">not run yet</span>'}</span></div>` +
     ((wc.watch || []).length ? `<div class="s" style="margin-top:6px"><b class="y">Watchdog</b>${wc.watch.map((w) => `<div class="warn">⚠ ${esc(w)}</div>`).join("")}</div>` : '<div class="s dim" style="margin-top:6px"></div>');
   const recapRows = (wk.length ? "" +
     "" : '<div class="s">None yet.</div>') + recapTd;
@@ -780,7 +782,7 @@ function kickLine(k) {
   if (!k) return '<span class="dim">not run yet</span>';
   if (!k.ok) return `<span class="r">${hm(k.t)} · failed: ${esc(k.error || "")}</span>`;
   const mv = (k.moved || []).map((m) => `${esc(m.game)} ${tm(m.was)} → ${tm(m.now)}`).join(" · ");
-  return `${hm(k.t)} · ${k.espnGames} games from ESPN · ${mv ? `<span class="y">moved: ${mv}</span>` : "OK"}`;
+  return `${hm(k.t)} · ${plural(k.espnGames, "game")} from ESPN · ${mv ? `<span class="y">moved: ${mv}</span>` : "OK"}`;
 }
 function renderMine() { keepOpenState("record-mine", renderMineNow); playStamps(); }
 function renderModel() { keepOpenState("models", renderModelNow); }
@@ -821,7 +823,7 @@ function labStats() {
   const ch = (x) => (x.w + x.l ? x.w / (x.w + x.l) : null);
   // 10/13 CLV tracker: points gained vs the closing line on graded card picks (first number shown vs the number at kickoff)
   const V = C.clv || { n: 0 }, av = V.n ? V.sum / V.n : null;
-  const clvTile = `<div class="stat" style="grid-column:1/-1"><div class="k">LINE VALUE</div><div class="v ${av == null ? "dim" : av > 0 ? "g" : av < 0 ? "r" : "y"}">${av == null ? "—" : `${av > 0 ? "+" : ""}${av.toFixed(2)}`}</div><div class="k2">${av == null ? "starts this week" : `pts vs close · beat it ${Math.round((100 * V.beat) / V.n)}% · ${V.n} picks`}</div></div>`;
+  const clvTile = `<div class="stat" style="grid-column:1/-1"><div class="k">LINE VALUE</div><div class="v ${av == null ? "dim" : av > 0 ? "g" : av < 0 ? "r" : "y"}">${av == null ? "—" : `${av > 0 ? "+" : ""}${av.toFixed(2)}`}</div><div class="k2">${av == null ? "starts this week" : `pts vs close · beat it ${Math.round((100 * V.beat) / V.n)}% · ${plural(V.n, "pick")}`}</div></div>`;
   return `<div class="stats">${statTile("MONEYLINE", W.w, W.l, W.n ? W.hit : null, "right")}${statTile("SPREAD PICKS", cs.w, cs.l, ch(cs), "covered")}${statTile("TOTAL PICKS", ct.w, ct.l, ch(ct), "right")}${clvTile}</div>`;
 }
 function pickLabBox() {
@@ -961,7 +963,7 @@ function tile(g) {
   const sc = g.started && !g.final ? LIVE_SC[g.key] : null;   // live score from ESPN (display only)
   const hp = g.winPct != null && isFinite(g.winPct) ? Number(g.winPct) : null, ap = hp == null ? null : 100 - hp;
   const lead = (v, o) => (v >= o ? "mkt" : "dim");
-  const chips = [g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : "", straightPicks(g).length ? `<span class="chip c-grn">${esc(straightPicks(g)[0].pick)}</span>` : "", g.started && !g.final && !sc ? '<span class="chip c-red">LIVE</span>' : ""].join("");
+  const chips = [g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : "", straightPicks(g).length ? `<span class="chip c-grn">${esc(straightPicks(g)[0].pick)}</span>` : "", g.started && !g.final && !sc ? '<span class="chip c-red">LIVE</span>' : ""].filter(Boolean).join('<span style="display:inline-block;width:6px"></span>');   // 10/14 audit: the "London" and pick pills touched
   const mid = g.final && g.awayScore != null && g.homeScore != null ? `<span class="mid"><span class="${g.awayScore > g.homeScore ? "g" : "dim"}">${g.awayScore}</span><span class="dim"> – </span><span class="${g.homeScore > g.awayScore ? "g" : "dim"}">${g.homeScore}</span></span>`
     : hp == null ? '<span class="mid dim">—</span>' : `<span class="mid"><span class="${lead(ap, hp)}">${Math.round(ap)}</span><span class="dim"> · </span><span class="${lead(hp, ap)}">${100 - Math.round(ap)}</span><span class="dim" style="font-size:11px">%</span></span>`;
   const mid2 = sc ? `<span class="mid lvmid"><span class="sr"><span class="${sc.a > sc.h ? "g" : "dim"}">${sc.a}</span><span class="dim"> – </span><span class="${sc.h > sc.a ? "g" : "dim"}">${sc.h}</span></span><span class="lv ${sc.st === "post" ? "dim" : "r"}">${sc.st === "post" ? "FINAL" : "● LIVE · " + esc(sc.lbl)}</span></span>` : mid;
@@ -1024,7 +1026,7 @@ function tdTop3(g) {
   const side = (team) => { const rows = (g.td || []).filter((r) => r.team === team && r.fair != null && usable(r)).sort((a, b) => b.fair - a.fair).slice(0, 3); shown.push(...rows);
     const wo = ((g.without || {})[team] || []).map((w) => `<div class="s" style="margin-top:8px"><b>Without ${esc(w.out)}</b> <span class="dim">(${w.games} game${w.games === 1 ? "" : "s"})</span>: ${w.top.length ? w.top.map((x) => `${esc(x.name)} ${x.td}`).join(" · ") : "no TDs"}</div>`).join("");
     return `<div class="sc card mcard"><div class="in"><div class="hh">${team} top scorers</div>` +
-      (rows.map((r, i) => `<div class="p"><div class="a"><span class="dim" style="font-size:11px;width:16px">#${i + 1}</span><b>${esc(r.player)}<span class="pos">${esc(r.pos)}</span></b><em class="mod">${Math.round(r.fair)}%</em></div>` +
+      (rows.map((r, i) => `<div class="p"><div class="a"><span class="dim" style="font-size:11px;width:16px">#${i + 1}</span><b>${esc(r.player)}<span class="pos">${esc(r.pos)}</span></b><em class="mod">${tdPct(r.fair)}%</em></div>` +
         `<div class="b">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${r.two != null ? ` · 2+ ${Math.round(r.two)}%` : ""}${r.first != null ? ` · 1st ${Math.round(r.first)}%` : ""}${gr && gr.found ? ` · ${tdMark(gr, r)}` : ""}</div></div>`).join("") || '<div class="s">No players yet.</div>') + wo + `</div></div>`; };
   const cards = `<div class="scorers">${side(g.away)}${side(g.home)}</div>`;
   return firstTdLine(g, gr) + (g.final ? tdGameLine(gr, shown) : "") + cards;
@@ -1055,7 +1057,8 @@ function setBg(g) {
 // Same-game parlays (10/14, owner): at the bottom of the game page, below the touchdowns (owner 10/14). Built on the server (lib/sgp.js): "Best" = strong legs only, "Your style" =
 // spread + total + a TD each team. Chance includes the same-game links (a TD helps its team cover and the Over, hurts with the Under).
 const sgpLegs = (p) => p.legs.map((l) => `${esc(l.label)}${l.rule ? ` <span class="dim">${esc(l.rule)}</span>` : ""} <span class="dim">· ${Math.round(l.prob * 100)}%</span>`).join("<br>");
-const sgpChance = (p) => (p.prob == null ? "" : `<b class="${p.prob >= 0.3 ? "g" : p.prob >= 0.15 ? "lg" : "y"}">hits ~${Math.round(p.prob * 100)}%</b> <span class="dim">(about 1 in ${Math.max(1, Math.round(1 / p.prob))})</span>`) + payLine(p);
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;   // 10/14 audit: "1 picks" / "1 players" / "1 games"
+const sgpChance = (p) => (p.prob == null ? "" : `<b class="${p.prob >= 0.3 ? "g" : p.prob >= 0.15 ? "lg" : "y"}">hits ~${Math.round(p.prob * 100)}%</b> <span class="dim">(about ${p.prob >= 0.3 ? `${Math.round(p.prob * 10)} in 10` : `1 in ${Math.round(1 / p.prob)}`})</span>`) + payLine(p);   // 10/14 audit: 67% used to read "about 1 in 1"
 // 10/14 (owner): what the parlay pays on Polymarket -- the legs' current prices multiplied (1 / price each), and what $10 returns.
 // Rebuilt with every slate load, so it follows the lines. Polymarket's own combo price can differ a little; a leg with no price yet says so.
 function payLine(p) {
@@ -1173,7 +1176,7 @@ let REFRESHING = false;
 async function rerunModel() {
   if (REFRESHING) return; REFRESHING = true; toast("Rerunning the model…", 0);
   try { const d = await (await fetch("/api/rerun", { method: "POST" })).json(); if (!d.ok) throw new Error(d.error); await loadSlate();
-    toast(d.note && !d.rerun ? `Model: ${d.note}.` : `Model updated: ${d.rerun} games, TD for ${d.td ?? 0}.${d.errors && d.errors.length ? " Errors: " + d.errors.join("; ") : ""}`, 8000);
+    toast(d.note && !d.rerun ? `Model: ${d.note}.` : `Model updated: ${plural(d.rerun, "game")}, TD for ${d.td ?? 0}.${d.errors && d.errors.length ? " Errors: " + d.errors.join("; ") : ""}`, 8000);
   } catch (e) { toast("Model rerun failed: " + e.message, 12000); }
   REFRESHING = false;
 }
