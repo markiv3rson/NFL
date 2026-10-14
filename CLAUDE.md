@@ -39,6 +39,9 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   vs 22% for all listed players), then top 3 per team (owner wants it kept), plus a "⚠ Market disagrees" box for any player 20+ points from Polymarket.
 - Referees and price-gap alerts were removed on purpose. Models tab is 8 sections (10/13: "Price gaps" cut, "Records · model's side" cut, "Tracked angles" is only the wind Under paper row). Also cut 10/13: "Hit rate by week" (Trends), the Replay box, the Pick Lab paper singles (old game model's side; `recordPicks` no longer runs), bell alerts for MODEL / PRICE GAP / TEASER, and the edge tracker (`logEdges` no longer runs; the code stays). The Action Network pull was cut 10/13 (`lib/splits.js` and `/api/splitshist` stay for reference).
 
+- Sign-in (10/14, owner chose B): one good sign-in sets a 1-year "remember this phone" cookie (`middleware.ts`, `nfl_remember` = hash of
+  username + password); changing SITE_PASSWORD in Vercel signs every phone out. Cross-site guard kept.
+
 ## Where things live
 
 - Site (Next.js on Vercel, nfl-nfl9.vercel.app): `pages/api/*`, `lib/*`, front end `public/app.js`.
