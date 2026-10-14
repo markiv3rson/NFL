@@ -4,7 +4,7 @@
 // Then prints each rule's LIVE record this season from the site. Needs the internet (nflverse schedule + the site); without it, it says so.
 // Rules that need inputs not in public history files (INJURY: weekly starters out; TOTAL MOVE: the model's early features) are live-only here.
 import { readFileSync } from "node:fs";
-import { BUY_TIERS, keyNumberPick, bounceBackPick, floorDogPick, lineMovePick, lineMoveTotalPick, injuryPick, gradeStackPick } from "../lib/stack.js";
+import { BUY_TIERS, BUY_ALT, buyCands, keyNumberPick, bounceBackPick, floorDogPick, lineMovePick, lineMoveTotalPick, injuryPick, gradeStackPick } from "../lib/stack.js";
 import { startersOut } from "../lib/snaps.js";
 import { parseCSV } from "../lib/injuries.js";
 import { kickoffISO } from "../lib/games.js";
@@ -40,6 +40,10 @@ if (games) {
     "BEAT THE 3": { claim: null, from: 1999, to: 2025, run: (g, G) => { const hs = -G.sp, T = BUY_TIERS[Math.abs(hs)]; if (!T) return null;
       const fav = hs < 0 ? g.home : g.away, dog = hs < 0 ? g.away : g.home, team = T.side === "fav" ? fav : dog, main = team === g.home ? T.line : -T.line;
       return keyNumberPick(g, { spread: { homeSpread: main, home: 0.5, away: 0.5 } }, { spread: { homeSpread: hs } }); } },
+    // the second candidates (books 3.5: the favorite at -2.5, 1 point), replayed on their own line
+    "BEAT THE 3 (alt)": { claim: null, from: 1999, to: 2025, run: (g, G) => { const hs = -G.sp, T = (BUY_ALT[Math.abs(hs)] || [])[0]; if (!T) return null;
+      const fav = hs < 0 ? g.home : g.away, dog = hs < 0 ? g.away : g.home, team = T.side === "fav" ? fav : dog, main = team === g.home ? T.line : -T.line;
+      return keyNumberPick(g, { spread: { homeSpread: main, home: 0.5, away: 0.5 } }, { spread: { homeSpread: hs } }); } },
     "BOUNCE BACK": { claim: 58.8, from: 1999, to: 2025, run: (g, G) => bounceBackPick(g, -G.sp, { away: prevOf[`${G.id}|away`], home: prevOf[`${G.id}|home`] }) },
     "BOUNCE BACK DOG": { claim: 56.9, from: 1999, to: 2025, run: (g, G) => floorDogPick(g, -G.sp, { away: prevOf[`${G.id}|away`], home: prevOf[`${G.id}|home`] }) },
     // LINE MOVE: Polymarket "still has the old number" = the opening line; the books = the close. Graded at the opening number.
@@ -66,11 +70,12 @@ if (games) {
   // fire early in the week meet this number, not the close. Day / night shown apart; the card shows the lower of the two rates.
   { const out = {};
     for (const G of games) { if (G.season < 2014) continue; const o = opens[G.id]; if (!o || !isFinite(o.so)) continue;
-      const g = { key: `${G.away} @ ${G.home}`, away: G.away, home: G.home, kickoff: G.kickoff }, hs = -o.so, T = BUY_TIERS[Math.abs(hs)]; if (!T) continue;
-      const fav = hs < 0 ? g.home : g.away, dog = hs < 0 ? g.away : g.home, team = T.side === "fav" ? fav : dog, main = team === g.home ? T.line : -T.line;
-      const x = keyNumberPick(g, { spread: { homeSpread: main, home: 0.5, away: 0.5 } }, { spread: { homeSpread: hs } }); if (!x) continue;
-      const res = gradeStackPick({ ...x, home: G.home }, G.hs, G.as), k = `${Math.abs(hs)}|${x.night ? "night" : "day"}`, t = (out[k] = out[k] || { w: 0, l: 0 });
-      if (res === "W") t.w++; else if (res === "L") t.l++; }
+      const g = { key: `${G.away} @ ${G.home}`, away: G.away, home: G.home, kickoff: G.kickoff }, hs = -o.so;
+      for (const T of buyCands(Math.abs(hs))) {   // every candidate on its own line (main-line price only for that candidate)
+        const fav = hs < 0 ? g.home : g.away, dog = hs < 0 ? g.away : g.home, team = T.side === "fav" ? fav : dog, main = team === g.home ? T.line : -T.line;
+        const x = keyNumberPick(g, { spread: { homeSpread: main, home: 0.5, away: 0.5 } }, { spread: { homeSpread: hs } }); if (!x) continue;
+        const res = gradeStackPick({ ...x, home: G.home }, G.hs, G.as), k = `${Math.abs(hs)} ${T.side} ${x.line > 0 ? "+" : ""}${x.line}|${x.night ? "night" : "day"}`, t = (out[k] = out[k] || { w: 0, l: 0 });
+        if (res === "W") t.w++; else if (res === "L") t.l++; } }
     console.log("\nOPENING-LINE replay of BEAT THE 3 tiers (books' number = the week's opening spread, 2014-26):");
     for (const [k, t] of Object.entries(out).sort()) console.log(`     books ${k.padEnd(9)} ${t.w}-${t.l} = ${pct(t.w, t.l) == null ? "—" : pct(t.w, t.l).toFixed(1)}% (${t.w + t.l})`); }
   // INJURY (10/14): starters out rebuilt per team-week from nflverse's injury reports + snap counts with the app's own startersOut(), then

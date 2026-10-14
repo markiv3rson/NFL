@@ -4,6 +4,8 @@
 
 **1. Answer every question the owner asks, all of them, in short plain words. Then STOP and wait.**
 **2. Do NOT edit, build, test, commit, push, merge or delete anything until the owner types the exact words "build now". NOTHING ELSE COUNTS: not picking an option ("I want B", "by confidence", "2 or 4"), not "yes", "continue", "do it", "fix it", not a rule, not anger, not a complaint. (Owner 10/14, after Claude built on "I want option B": "Do not build anything until I specifically say build now.") After answering, STOP and wait.**
+**2b. "BUILD NOW" and "MERGE NOW" ARE TWO SEPARATE COMMANDS (owner 10/14). "Build now" = edit, test, commit and push to the work branch ONLY. NEVER create a PR or merge to main until the owner types the exact words "merge now". After building, say what changed and wait.**
+
 **3. If it is not clear what the owner means, ASK in plain words. Never guess and build. Never "fix" something on your own.**
 **4. Never undo, redo or clean up your own changes without being told. If you made a mistake, say so and wait.**
 **5. When the owner says "build now", build the WHOLE thing in one go, then say what changed.**
@@ -685,3 +687,11 @@ Tested and NOT added (made it worse):
 - Polymarket lists 20-40 total lines per game (2-point steps, 1-point on some), `lib/poly.js` now keeps the ones within 6 points of the main total with a two-sided book and a 10-90c price as
   `talts` (stored with the spread alternates in `alts:<season>:<week>:<game>`, read by `lib/week.js` and the kickoff recorder in `pages/api/snapshot.js`; older than 3 h -> no pick).
   Tested but NOT used: choosing the side by size (Over if total <= 41), by line move, by day/night (night Under 57.7% at 2 points vs Over 54.3%; day the reverse -- small samples).
+
+## SHORTEST POINTS, EITHER SIDE (10/14, owner: options 1, 2, 4, 6, 7, 8 + "build now"; NOT merged until "merge now")
+
+- Rule (owner): take the FEWEST points that still hold up (56%+, closing and opening line), on whichever side, favorite or underdog; never more than 3.5. `BUY_TIERS` is now 12 tiers
+  (`lib/stack.js`; each carries its own day / night / opening / plain rates): books 1 dog +3.5, 1.5 dog +3.5, 2.5 dog +3.5, 3 dog +3.5, **3.5 dog +5.5 (2 pts; 55.9% close day, 63.2% open) -- OR favorite -2.5 (1 pt,
+  `BUY_ALT`; 59.8% close, 51.9% open): the higher card % wins**, **4 fav -2.5 (1.5 pts; 62.5% close, 59.1% open; it was falling by period 78/64/58/53 -- watch it)**, 4.5 fav -2.5, 5.5 dog +7.5,
+  **6 dog +7.5 (1.5 pts; 58.1% / 56.1%)**, **6.5 dog +8.5 (2 pts; 62.4% / 63.6% -- the old +9.5 won exactly the same, the third point added nothing)**, **7.5 fav -5.5 (2 pts; 58.6% / 55.6%)**, 13.5 dog +14.5.
+  Removed: books 3.5 dog +6.5 and books 6.5 dog +9.5 (3 points). Fav text now "BEAT THE <key>" with the key number (3, 6). `tests/accuracy.mjs` replays every candidate (closing and opening line).
