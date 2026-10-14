@@ -668,3 +668,8 @@ Tested and NOT added (made it worse):
   books 1 49.3/48.2, 1.5 47.2/58.1 (31 night games), 2.5 52.4/47.8, 3 53.8/46.5, 3.5 50.6/50.0, 4.5 51.4/43.5, 5.5 55.3/51.0, 6.5 53.5/53.8, 13.5 68.0/45.5.
 - Chooser side test (10/14, 2,604 games 2014-26, every season unseen): the chooser picking the side then buying points wins no more than always-favorite / always-underdog
   (0 pts 48.5%, 1 pt 53.5%, 2 pts 57.6%, 3 pts 60.5%; books 3.5 + 1 pt: chooser 53.7% vs favorite 60.4%). The points do the work, not the side -> key-number rules decide the side (owner agreed).
+
+## Card cleanup (10/14, owner: "organize the cards, too much noise"; chose A + B)
+
+- Spread / total Model card keeps only: the model number, PICK + %, one short reason, and the "Rules split" warning. The without-the-extra-points %, this rule's record, "line moved" and the
+  cost warning sit behind a "More" tap (`public/app.js moreBox`, a plain `<details>`). Light-green / yellow cards still have no notes.
