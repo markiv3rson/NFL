@@ -612,3 +612,5 @@ Same concept as the NFL app: game model (spread/total/moneyline), tested combo p
 - Plan: phase 1 game model (~1–2 weeks), phase 2 combos + best bets (~1 week), phase 3 props (~1–2 weeks).
 - Open questions for the owner: separate app or a tab in this one? Check which free NBA data sources work from the cloud before promising.
 - Wait for "build now".
+
+- Vercel redeploy retry (owner: "deploy it"): #316 and #317 were rate limited 10/14; retried this commit.
