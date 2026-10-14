@@ -159,7 +159,8 @@ def is_division_game(away, home): return DIVISIONS.get(away) is not None and DIV
 # Rechecked 9/30 against the rebuilt model (2013-25) and all games 2006-25: the model-gap term is now ~0 (+0.005 refit; it
 # was fit on the OLD model) and market-only scored better (log loss 0.6016 vs 0.6026), so the gap weight is 0. Market part
 # refit on 5,247 games 2006-25 (ties out): -0.0452 + 0.1464 x market margin.
-CAL_WIN = (-0.0452, 0.1464, 0.0)          # intercept, market home-favored margin, (model margin - market margin)
+CAL_WIN = (-0.0470, 0.1187, 0.0)          # intercept, market home-favored margin, (model margin - market margin)
+CAL_WIN_BEND = 0.0334   # 10/14: x market margin * |market margin| / 10 -- small favorites were 2-3 pts too high (same as lib/picks.js)
 CAL_WIN_MODEL_ONLY = (-0.0756, 0.1588)   # intercept, model margin (used when no market spread yet)
 CAL_COVER = (-0.0462, 0.0)      # intercept, (model margin - market margin). 9/30: flat home-cover rate 48.85% (2006-25); the gap term scored worse than flat
 CAL_UNDER = (0.0206, 0.0169)      # intercept, (market total - model total)
@@ -169,7 +170,7 @@ def _sig(x): return 1 / (1 + math.exp(-x))
 def cal_win(margin, mkt_margin=None):
     """Calibrated chance the home team wins. margin = model home margin; mkt_margin = market home-favored margin."""
     if mkt_margin is None: return _sig(CAL_WIN_MODEL_ONLY[0] + CAL_WIN_MODEL_ONLY[1] * margin)
-    return _sig(CAL_WIN[0] + CAL_WIN[1] * mkt_margin + CAL_WIN[2] * (margin - mkt_margin))
+    return _sig(CAL_WIN[0] + CAL_WIN[1] * mkt_margin + CAL_WIN_BEND * mkt_margin * abs(mkt_margin) / 10 + CAL_WIN[2] * (margin - mkt_margin))
 def cal_cover(margin, mkt_margin): return _sig(CAL_COVER[0] + CAL_COVER[1] * (margin - mkt_margin))
 def cal_under(total, mkt_total): return _sig(CAL_UNDER[0] + CAL_UNDER[1] * (mkt_total - total))
 def team_points(ph, pa, mkt_margin=None, mkt_total=None):

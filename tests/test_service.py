@@ -17,8 +17,8 @@ urllib.request.urlopen = fake(TimeoutError("t")); season._cache.clear(); ok(seas
 urllib.request.urlopen = fake(urllib.error.HTTPError("u", 503, "x", {}, None)); season._cache.clear(); ok(season.data_season(d) == 2027, "503 keeps this season")
 urllib.request.urlopen = orig
 # calibration constants the site mirrors (lib/picks.js CAL_WIN, lib/calibration.js twoPlus)
-ok(fair_line.CAL_WIN == (-0.0452, 0.1464, 0.0), "CAL_WIN matches lib/picks.js")
-ok(abs(fair_line.cal_win(0, 3) - 1 / (1 + np.exp(-(-0.0452 + 0.1464 * 3)))) < 1e-12, "cal_win formula")
+ok(fair_line.CAL_WIN == (-0.0470, 0.1187, 0.0) and fair_line.CAL_WIN_BEND == 0.0334, "CAL_WIN matches lib/picks.js")
+ok(abs(fair_line.cal_win(0, 3) - 1 / (1 + np.exp(-(-0.0470 + 0.1187 * 3 + 0.0334 * 9 / 10)))) < 1e-12, "cal_win formula")
 # predict(): removed margin terms really are gone (divisional / road bye / turnovers must not move the margin)
 M = {"mu": 0.0, "off": {"A": 0.0, "H": 0.0}, "dfn": {"A": 0.0, "H": 0.0}, "hfa": 0.0, "pts": np.array([40.0, 21.0]), "st_epa": {}, "success_rate": {}, "to_margin": {"A": 3, "H": -3}, "record": {}}
 base = fair_line.predict(M, "A", "H")

@@ -196,6 +196,13 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   books moved 3 -> 2.5): books exactly 2.5 -> underdog +3.5 too: 2006-25 59.6% (240-163; 1999-05 59.4, 06-13 62.4, 14-19 58.1, 20-25 59.2).
   Card shows 59.6% at 2.5 / 58.1% at 3; both replayed in `npm run accuracy`. Books at 3.5 -> no pick (the dog just gets the line). Books at 10 -> dog +10.5 61% but only 160 games and
   uneven (54/75/59): not added. Books at 7 -> dog +7.5 51%: no.
+- WIDENED AGAIN 10/14 (owner: "build now", "I'd rather pay more than lose" -- the bought points' higher price is NOT a gap): books exactly
+  1.5 -> underdog +3.5 63.9% (124-70, 1999-2025; 63.5/61.5/65.7/64.3); books exactly 3.5 -> FAVORITE -2.5 59.1% (388-268; 57.6/59.2/58.1/
+  61.5). Both in `keyNumberPick` (same id `keynum|spread`), replayed in `npm run accuracy` (2006-25: 64.1% / 59.6%).
+- Same day (owner: "build now"): WIN % RECALIBRATED (`lib/picks.js winX`, `fair_line.py CAL_WIN_BEND`): -0.0470 + 0.1187 m + 0.0334 m|m|/10
+  (m = market home-favored margin). Old straight line said small favorites 2-3 pts too high; unseen seasons 2006-25: 50-60% said 56.3 won
+  55.4 (was 56.7/54.0), 60-70% 63.4/62.2 (was 63.9/61.8). THURSDAY FAVORITES (+4 pts: won 71.3% vs 67.2% priced, 300 games) count 4 points
+  stronger in the 4-leg favorites parlays (`lib/sgp.js THU_BUMP`, leg flag `thu`).
 - Also tested 10/13, not added: half point on totals (finals land on any one total only 2-5%; Under 47.5 at books 47 won 58% on
   205 but that's 1 of 10 numbers tried -- likely chance); moneyline vs spread disagreement 48-51%; unit vs unit matchups = the fixed
   stat features below (no gain vs the spread).

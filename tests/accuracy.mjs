@@ -34,8 +34,10 @@ if (games) {
     for (const [t, home] of [[g.home, true], [g.away, false]]) { const pts = home ? g.hs : g.as, opp = home ? g.as : g.hs;
       last[`${g.season}|${t}`] = { prevPts: pts, prevAts: home ? pts - opp - g.sp : pts - opp + g.sp }; } }
   const rules = {
-    "BEAT THE 3": { claim: 58.1, from: 2006, to: 2025, run: (g, G) => { const hs = -G.sp; if (Math.abs(hs) !== 3 && Math.abs(hs) !== 2.5) return null;
-      return keyNumberPick(g, { spread: { homeSpread: hs > 0 ? 3.5 : -3.5, home: 0.5, away: 0.5 } }, { spread: { homeSpread: hs } }); } },
+    "BEAT THE 3": { claim: 58.1, from: 2006, to: 2025, run: (g, G) => { const hs = -G.sp, A = Math.abs(hs); if (![1.5, 2.5, 3, 3.5].includes(A)) return null;
+      // Polymarket main line = the bought number: dog +3.5 (books 1.5 / 2.5 / 3) or favorite -2.5 (books 3.5)
+      const main = A === 3.5 ? (hs < 0 ? -2.5 : 2.5) : (hs > 0 ? 3.5 : -3.5);
+      return keyNumberPick(g, { spread: { homeSpread: main, home: 0.5, away: 0.5 } }, { spread: { homeSpread: hs } }); } },
     "BOUNCE BACK": { claim: 57.0, from: 1999, to: 2025, run: (g, G) => bounceBackPick(g, -G.sp, { away: prevOf[`${G.id}|away`], home: prevOf[`${G.id}|home`] }) },
     "BOUNCE BACK DOG": { claim: 57.1, from: 1999, to: 2025, run: (g, G) => floorDogPick(g, -G.sp, { away: prevOf[`${G.id}|away`], home: prevOf[`${G.id}|home`] }) },
     // LINE MOVE: Polymarket "still has the old number" = the opening line; the books = the close. Graded at the opening number.

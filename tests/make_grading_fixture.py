@@ -29,7 +29,7 @@ for i, r in g.iterrows():
     if abs(gt) >= 0.05:
         over = gt > 0; x = tot - tl if over else tl - tot
         e["total"] = {"side": "over" if over else "under", "line": tl, "result": res(x), "price": poly["total"]["over" if over else "under"]}
-    ph = sig(-0.0452 + 0.1464 * -hs)                                         # market win chance (home)
+    ph = sig(-0.0470 + 0.1187 * -hs + 0.0334 * -hs * abs(hs) / 10)                                         # market win chance (home)
     fav_home = ph > 0.5
     e["winner"] = {"team": r.home_team if fav_home else r.away_team, "result": "P" if margin == 0 else ("W" if (margin > 0) == fav_home else "L"), "p": ph if fav_home else 1 - ph}
     e["ml"] = None if margin == 0 else {"team": r.home_team if fav_home else r.away_team, "result": "W" if (margin > 0) == fav_home else "L"}
