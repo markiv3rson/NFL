@@ -4,9 +4,10 @@
 // Then prints each rule's LIVE record this season from the site. Needs the internet (nflverse schedule + the site); without it, it says so.
 // Rules that need inputs not in public history files (INJURY: weekly starters out; TOTAL MOVE: the model's early features) are live-only here.
 import { readFileSync } from "node:fs";
-import { keyNumberPick, bounceBackPick, floorDogPick, lineMovePick, lineMoveTotalPick, injuryPick, gradeStackPick } from "../lib/stack.js";
+import { BUY_TIERS, keyNumberPick, bounceBackPick, floorDogPick, lineMovePick, lineMoveTotalPick, injuryPick, gradeStackPick } from "../lib/stack.js";
 import { startersOut } from "../lib/snaps.js";
 import { parseCSV } from "../lib/injuries.js";
+import { kickoffISO } from "../lib/games.js";
 
 const SITE = process.env.SITE_URL || "https://nfl-nfl9.vercel.app";
 import { execFileSync } from "node:child_process";
@@ -21,7 +22,8 @@ const games = await (async () => {
     const [h, ...rows] = parseCSV(await r.text()), ix = (k) => h.indexOf(k);
     return rows.filter((c) => c[ix("game_type")] === "REG" && c[ix("home_score")] !== "" && c[ix("home_score")] !== undefined && c[ix("spread_line")] !== "")
       .map((c) => ({ id: c[ix("game_id")], season: +c[ix("season")], week: +c[ix("week")], away: c[ix("away_team")], home: c[ix("home_team")],
-        as: +c[ix("away_score")], hs: +c[ix("home_score")], sp: +c[ix("spread_line")], tl: c[ix("total_line")] === "" ? null : +c[ix("total_line")] }))
+        as: +c[ix("away_score")], hs: +c[ix("home_score")], sp: +c[ix("spread_line")], tl: c[ix("total_line")] === "" ? null : +c[ix("total_line")],
+        kickoff: kickoffISO(c[ix("gameday")], c[ix("gametime")]) }))
       .sort((a, b) => a.season - b.season || a.week - b.week);
   } catch (e) { console.log(`accuracy: schedule file not reachable (${e}) -- history check skipped`); return null; }
 })();
@@ -34,12 +36,12 @@ if (games) {
     for (const [t, home] of [[g.home, true], [g.away, false]]) { const pts = home ? g.hs : g.as, opp = home ? g.as : g.hs;
       last[`${g.season}|${t}`] = { prevPts: pts, prevAts: home ? pts - opp - g.sp : pts - opp + g.sp }; } }
   const rules = {
-    "BEAT THE 3": { claim: 58.1, from: 2006, to: 2025, run: (g, G) => { const hs = -G.sp, A = Math.abs(hs); if (![1, 1.5, 2.5, 3, 3.5].includes(A)) return null;
-      // Polymarket main line = the bought number: dog +3.5 (books 1 / 1.5 / 2.5 / 3) or favorite -2.5 (books 3.5)
-      const main = A === 3.5 ? (hs < 0 ? -2.5 : 2.5) : (hs > 0 ? 3.5 : -3.5);
+    // every bought-point tier (lib/stack.js BUY_TIERS), day games only; Polymarket's line = the bought number (main or alternate)
+    "BEAT THE 3": { claim: null, from: 1999, to: 2025, run: (g, G) => { const hs = -G.sp, T = BUY_TIERS[Math.abs(hs)]; if (!T) return null;
+      const fav = hs < 0 ? g.home : g.away, dog = hs < 0 ? g.away : g.home, team = T.side === "fav" ? fav : dog, main = team === g.home ? T.line : -T.line;
       return keyNumberPick(g, { spread: { homeSpread: main, home: 0.5, away: 0.5 } }, { spread: { homeSpread: hs } }); } },
-    "BOUNCE BACK": { claim: 57.0, from: 1999, to: 2025, run: (g, G) => bounceBackPick(g, -G.sp, { away: prevOf[`${G.id}|away`], home: prevOf[`${G.id}|home`] }) },
-    "BOUNCE BACK DOG": { claim: 57.1, from: 1999, to: 2025, run: (g, G) => floorDogPick(g, -G.sp, { away: prevOf[`${G.id}|away`], home: prevOf[`${G.id}|home`] }) },
+    "BOUNCE BACK": { claim: 58.8, from: 1999, to: 2025, run: (g, G) => bounceBackPick(g, -G.sp, { away: prevOf[`${G.id}|away`], home: prevOf[`${G.id}|home`] }) },
+    "BOUNCE BACK DOG": { claim: 56.9, from: 1999, to: 2025, run: (g, G) => floorDogPick(g, -G.sp, { away: prevOf[`${G.id}|away`], home: prevOf[`${G.id}|home`] }) },
     // LINE MOVE: Polymarket "still has the old number" = the opening line; the books = the close. Graded at the opening number.
     "LINE MOVE (spread)": { claim: null, from: 2014, to: 2026, run: (g, G) => { const o = opens[G.id]; if (!o || !isFinite(o.so)) return null;
       return lineMovePick(g, { spread: { homeSpread: -o.so, home: 0.5, away: 0.5 } }, { spread: { homeSpread: -G.sp } }); } },
@@ -50,7 +52,7 @@ if (games) {
   for (const [name, R] of Object.entries(rules)) {
     let w = 0, l = 0, p = 0; const tiers = {};
     for (const G of games) { if (G.season < R.from || G.season > R.to) continue;
-      const g = { key: `${G.away} @ ${G.home}`, away: G.away, home: G.home }, x = R.run(g, G); if (!x) continue;
+      const g = { key: `${G.away} @ ${G.home}`, away: G.away, home: G.home, kickoff: G.kickoff }, x = R.run(g, G); if (!x) continue;
       const res = gradeStackPick({ ...x, home: G.home }, G.hs, G.as); if (res === "W") w++; else if (res === "L") l++; else p++;
       const t = (tiers[x.hit] = tiers[x.hit] || { w: 0, l: 0, n: x.n }); if (res === "W") t.w++; else if (res === "L") t.l++; }
     const hit = pct(w, l), tierTxt = Object.entries(tiers).map(([h, t]) => `card says ${h}% -> ${pct(t.w, t.l).toFixed(1)}% (${t.w + t.l})`).join(" · ");
@@ -89,7 +91,7 @@ if (games) {
 try { const st = (await getJSONurl(`${SITE}/api/slate`)) || {}, m = st.status && st.status.moveCheck;   // getStatus() rides on the slate
   if (m) { const fail = m.hit20 < 56; if (fail) bad++;
     console.log(`${fail ? "FAIL" : "ok  "} ${"TOTAL MOVE".padEnd(20)} top 20% ${m.hit20}% (${m.n20}) · top 10% ${m.hit10}% (${m.n10}) · unseen seasons, rebuild ${String(m.builtAt || "").slice(0, 10)}`); }
-  else console.log("     TOTAL MOVE: the site has no rebuild numbers yet (shows the built-in 59.1% / 62.7%)");
+  else console.log("     TOTAL MOVE: the site has no rebuild numbers yet (shows the built-in 57.6% / 61.3%)");
 } catch (e) { console.log(`     TOTAL MOVE: site not reachable (${String(e).slice(0, 60)})`); }
 
 // Live record this season, from the site (each pick counted once, at the line it was first shown).

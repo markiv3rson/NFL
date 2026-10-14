@@ -343,7 +343,9 @@ def train_chooser(d, F, F_for=None):
 # thr20 / thr10 = the 80th / 90th percentile of |prediction| (honest: from leave-one-season-out predictions).
 # Review fix 10/14: the 4 stats-model inputs were built from the CLOSING line, so they don't belong in a model of the move FROM the open.
 # Without them (unseen seasons 2014-26): top 20% 58.6% (497), top 10% 62.5% (253) -- the edge did not depend on them.
-MOVE_DROP = ("s_ens", "t_ens", "s_gbm", "t_gbm")
+# 10/14 (owner, "C"): wind ("w") dropped too -- it was trained on the wind MEASURED at kickoff, which nobody knows at the open; live the
+# app only has the forecast. Without it (unseen seasons 2014-26): top 20% 57.6% (507), top 10% 61.3% (253) vs 59.1% / 62.7% with it.
+MOVE_DROP = ("s_ens", "t_ens", "s_gbm", "t_gbm", "w")
 def train_move(ZE, mv, seasons, tot, op):
     from sklearn.linear_model import Ridge
     from sklearn.preprocessing import StandardScaler

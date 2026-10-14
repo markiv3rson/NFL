@@ -114,7 +114,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const ctx = { document: { getElementById: () => el(), querySelectorAll: () => [], addEventListener() {}, hidden: false }, fetch: () => Promise.reject(new Error("offline")),
     localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) }, location: { reload() {} }, window: {}, setTimeout, clearTimeout, console, Date, Math, Number, String, JSON, Promise, Set, Object, Array };
   vm.createContext(ctx);
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={slotOf,parlayPicks,parlayStrip,lineCheck,recLine,bestBets,injTag,weakLeg,kickLine,tdNoGap,trackedRows,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,leanCell,prow,betRow,changedBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gameCard,totalCard,detailTop,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByConfidence,mSec,legFlipped,betSlots,openBySlot,straightPicks,splitNote,sgpBox,glowOf,stampFor,betRow};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={slotOf,parlayPicks,parlayStrip,lineCheck,recLine,bestBets,injTag,weakLeg,kickLine,tdNoGap,trackedRows,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,leanCell,prow,betRow,changedBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gameCard,totalCard,detailTop,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByConfidence,mSec,legFlipped,betSlots,openBySlot,straightPicks,splitNote,sgpBox,glowOf,stampFor,betRow,costNote,middleNote};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   g = { away: "A", home: "H", model: { total: 44.4, fix: { dome: 2.59, pace: 0.1, div: true } }, poly: { total: { line: 45.5 } } };
@@ -185,17 +185,37 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     && gradeStackPick({ ...main, home: "LA" }, 24, 21) === "W" && gradeStackPick({ ...main, home: "LA" }, 28, 21) === "L",
     "key number: books at exactly 3 -> underdog +3.5 on Polymarket (main or alternate); wins when the favorite wins by exactly 3");
   const k25 = keyNumberPick(G, sp(-2.5), bk(-2.5), [{ team: "BUF", line: 3.5, price: 0.6 }]);
-  ok(k25 && k25.pick === "BUF +3.5" && k25.hit === 59.6 && /books at BUF \+2\.5/.test(k25.why) && main.hit === 58.1 && !keyNumberPick(G, sp(-2.5), bk(-2)),
-    "key number: books at 2.5 -> underdog +3.5 at 59.6% (books at 3 stays 58.1%; books at 2 is not a pick)");
+  ok(k25 && k25.pick === "BUF +3.5" && k25.hit === 60.9 && /books at BUF \+2\.5/.test(k25.why) && main.hit === 57.9 && !keyNumberPick(G, sp(-2.5), bk(-2)),
+    "key number: books at 2.5 -> underdog +3.5 at 60.9% (books at 3: 57.9%; day games; books at 2 is not a pick)");
   const k15 = keyNumberPick(G, sp(-1.5), bk(-1.5), [{ team: "BUF", line: 3.5, price: 0.66 }]), k35 = keyNumberPick(G, sp(-3.5), bk(-3.5), [{ team: "LA", line: -2.5, price: 0.58 }]);
   const k35main = keyNumberPick(G, sp(2.5, 0.45, 0.57), bk(3.5));   // road favorite BUF -3.5 at the books, Polymarket main line BUF -2.5
-  ok(k15 && k15.pick === "BUF +3.5" && k15.hit === 63.9 && k15.price === 0.66 && k35 && k35.pick === "LA -2.5" && k35.hit === 59.1 && k35.line === -2.5 && k35.price === 0.58
+  ok(k15 && k15.pick === "BUF +3.5" && k15.hit === 62.1 && k15.price === 0.66 && k35 && k35.pick === "LA -2.5" && k35.hit === 59.8 && k35.line === -2.5 && k35.price === 0.58
     && k35main && k35main.pick === "BUF -2.5" && k35main.price === 0.57 && !keyNumberPick(G, sp(-3.5), bk(-3.5), [{ team: "BUF", line: 3.5, price: 0.4 }])
     && gradeStackPick({ ...k35, home: "LA" }, 24, 21) === "W" && gradeStackPick({ ...k35, home: "LA" }, 23, 21) === "L" && gradeStackPick({ ...k15, home: "LA" }, 23, 21) === "W",
-    "BEAT THE 3: books 1.5 -> dog +3.5 at 63.9%; books 3.5 -> favorite -2.5 at 59.1% (main line or alternate)");
+    "BEAT THE 3: books 1.5 -> dog +3.5 at 62.1%; books 3.5 -> favorite -2.5 at 59.8% (main line or alternate)");
   const k1 = keyNumberPick(G, sp(-1.5), bk(-1), [{ team: "BUF", line: 3.5, price: 0.7 }]);
-  ok(k1 && k1.pick === "BUF +3.5" && k1.hit === 59.9 && !keyNumberPick(G, sp(-1.5), bk(-2), [{ team: "BUF", line: 3.5, price: 0.6 }]) && !keyNumberPick(G, sp(-3.5), bk(-4), [{ team: "LA", line: -2.5, price: 0.6 }]),
-    "BEAT THE 3: books 1 -> dog +3.5 at 59.9%; books 2 and 4 are not picks"); }
+  ok(k1 && k1.pick === "BUF +3.5" && k1.hit === 60.7 && !keyNumberPick(G, sp(-1.5), bk(-2), [{ team: "BUF", line: 3.5, price: 0.6 }]) && !keyNumberPick(G, sp(-3.5), bk(-4), [{ team: "LA", line: -2.5, price: 0.6 }]),
+    "BEAT THE 3: books 1 -> dog +3.5 at 60.7%; books 2 and 4 are not picks");
+  // 10/14: new tested tiers, day games only, and the MIDDLE check
+  const { isNightGame, middleCheck, BUY_TIERS } = await import("../lib/stack.js");
+  const day = { ...G, kickoff: "2026-10-18T17:00:00Z" }, thu = { ...G, kickoff: "2026-10-16T00:15:00Z" }, snf = { ...G, kickoff: "2026-10-19T00:20:00Z" }, mon = { ...G, kickoff: "2026-10-20T00:15:00Z" };
+  ok(!isNightGame(day.kickoff) && isNightGame(thu.kickoff) && isNightGame(snf.kickoff) && isNightGame(mon.kickoff) && !isNightGame(null), "night games: Thursday, Sunday 7 PM ET+, Monday");
+  ok(keyNumberPick(day, sp(-2.5), bk(-2.5), [{ team: "BUF", line: 3.5, price: 0.6 }]) && !keyNumberPick(thu, sp(-2.5), bk(-2.5), [{ team: "BUF", line: 3.5, price: 0.6 }])
+    && !keyNumberPick(snf, sp(-2.5), bk(-2.5), [{ team: "BUF", line: 3.5, price: 0.6 }]), "BEAT THE 3: day games only (Thursday / Sunday night skipped)");
+  const t45 = keyNumberPick(day, sp(-4.5), bk(-4.5), [{ team: "LA", line: -2.5, price: 0.66 }]), t65 = keyNumberPick(day, sp(-6.5), bk(-6.5), [{ team: "LA", line: -2.5, price: 0.7 }]);
+  const t55 = keyNumberPick(day, sp(-5.5), bk(-5.5), [{ team: "BUF", line: 7.5, price: 0.64 }]), t135 = keyNumberPick(day, sp(-13.5), bk(-13.5), [{ team: "BUF", line: 14.5, price: 0.6 }]);
+  ok(t45 && t45.pick === "LA -2.5" && t45.hit === 65.6 && t65 && t65.pick === "LA -2.5" && t65.hit === 66.9 && t55 && t55.pick === "BUF +7.5" && t55.hit === 61.7 && /BEAT THE 7/.test(t55.why)
+    && t135 && t135.pick === "BUF +14.5" && t135.hit === 68 && /BEAT THE 14/.test(t135.why) && !keyNumberPick(day, sp(-7.5), bk(-7.5), [{ team: "LA", line: -6.5, price: 0.6 }])
+    && !keyNumberPick(day, sp(-6), bk(-6), [{ team: "BUF", line: 7.5, price: 0.6 }]) && Object.keys(BUY_TIERS).length === 9,
+    "bought points: books 4.5 / 6.5 -> fav -2.5, 5.5 -> dog +7.5, 13.5 -> dog +14.5; books 7.5 / 6 are not picks", { t45, t55 });
+  const cheap = middleCheck(day, sp(-2.5, 0.50, 0.50), bk(-3), [{ team: "BUF", line: 3.5, price: 0.56 }]), dear = middleCheck(day, sp(-2.5, 0.54, 0.46), bk(-3), [{ team: "BUF", line: 3.5, price: 0.58 }]);
+  ok(cheap && cheap.fav === "LA" && cheap.dog === "BUF" && Math.abs(cheap.cost - 1.06) < 1e-9 && Math.abs(cheap.back - 1.093) < 1e-9 && !dear && !middleCheck(thu, sp(-2.5, 0.5, 0.5), bk(-3), [{ team: "BUF", line: 3.5, price: 0.56 }])
+    && !middleCheck(day, sp(-6.5, 0.5, 0.5), bk(-6.5), []), "middle: fav -2.5 + dog +3.5 shown only when the two prices add up to less than the history payback (1 + exact-3 share); day games; books 2.5-3.5 only");
+  { const { recordMiddle, gradeTrackedWeek, trackedSummary } = await import("../lib/tracked.js"), GG = { key: "BUF @ LA", home: "LA", away: "BUF" };
+    await recordMiddle(2096, 6, GG, cheap, "t"); await recordMiddle(2096, 6, GG, { ...cheap, cost: 2 }, "t2");   // saved once
+    await gradeTrackedWeek(2096, 6, [{ key: "BUF @ LA", home: "LA", away: "BUF", homeScore: 24, awayScore: 21 }]); const sm = await trackedSummary(2096);
+    ok(sm.middle && sm.middle.recorded === 1 && sm.middle.w === 1 && Math.abs(sm.middle.money - (2 - 1.06)) < 1e-9, "middle: saved once, graded (LA by exactly 3 = both sides won)", sm.middle);
+    for (const k of await globalThis.__TEST_REDIS__.keys("teaser:2096:*")) await globalThis.__TEST_REDIS__.del(k); } }
 { const { noteFirstSeen, recordStack, skey } = await import("../lib/stack.js"); const { getRedis } = await import("../lib/redis.js"); const G = { home: "DEN", away: "SEA", key: "SEA @ DEN" };
   await noteFirstSeen(2099, 6, G, [{ id: "keynumber|spread", team: "DEN", line: 3.5, kind: "spread" }], "2099-10-14T00:00:00Z");
   await noteFirstSeen(2099, 6, G, [{ id: "keynumber|spread", team: "DEN", line: 2.5, kind: "spread" }], "2099-10-15T00:00:00Z");   // later sighting must not overwrite
@@ -225,12 +245,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(rec["movepred|total"] && rec["movepred|total"].w === 1 && rec["movepred|total"].l === 0, "a pick that vanished before kickoff is graded at the line it was first shown (Under 42.5, final 37)", rec); }
 { const { floorDogPick } = await import("../lib/stack.js"); const G = { home: "IND", away: "TEN", key: "TEN @ IND" };
   const a = floorDogPick(G, -6.5, { away: { prevPts: 3 }, home: { prevPts: 27 } }), b = floorDogPick(G, 2.5, { home: { prevPts: 0 }, away: { prevPts: 20 } });
-  ok(a && a.pick === "TEN +6.5" && a.hit === 57.1 && b && b.pick === "IND +2.5" && !floorDogPick(G, 6.5, { away: { prevPts: 3 }, home: { prevPts: 27 } })
+  ok(a && a.pick === "TEN +6.5" && a.hit === 56.9 && b && b.pick === "IND +2.5" && !floorDogPick(G, 6.5, { away: { prevPts: 3 }, home: { prevPts: 27 } })
     && !floorDogPick(G, -6.5, { away: { prevPts: 7 }, home: { prevPts: 27 } }) && !floorDogPick(G, -6.5, { away: { prevPts: 3 }, home: { prevPts: 0 } }) && !floorDogPick(G, -6.5, null),
     "bounce back dog: scored <=3 last game AND underdog now -> that team; favorite / 7 pts / both low -> nothing", [a, b]); }
 { const { bounceBackPick } = await import("../lib/stack.js"); const G = { home: "LA", away: "BUF", key: "BUF @ LA" };
   const a = bounceBackPick(G, -3.5, { away: { prevAts: -24 } }), b = bounceBackPick(G, 2.5, { away: { prevAts: -21 } });
-  ok(a && a.pick === "BUF +3.5" && a.hit === 57 && b && b.pick === "BUF -2.5" && !bounceBackPick(G, -3.5, { away: { prevAts: -20.5 } })
+  ok(a && a.pick === "BUF +3.5" && a.hit === 58.8 && b && b.pick === "BUF -2.5" && !bounceBackPick(G, -3.5, { away: { prevAts: -20.5 } })
     && !bounceBackPick(G, -3.5, { home: { prevAts: -30 }, away: { prevAts: 3 } }) && !bounceBackPick(G, -3.5, null) && !bounceBackPick(G, null, { away: { prevAts: -30 } }),
     "bounce back: road team missed the spread by 21+ last game -> road team at the current line; home team / under 21 -> nothing", [a, b]); }
 { const { totalMovePick } = await import("../lib/stack.js"), { predictTotalMove, UP_MOVE } = await import("../lib/upgrade.js"); const G = { home: "LA", away: "BUF", key: "BUF @ LA" };
@@ -369,7 +389,21 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const y = sameGameParlays({ ...g, combos: [{ pick: "Under 49.5", hit: 62, line: 49.5, why: "TOTAL MOVE: t" }], td: [{ player: "Bi.Robinson", team: "ATL", fair: 64 }] });
     ok(y.best && y.best.strategy === "sgp_best" && y.best.legs.map((l) => l.label).join() === "Bi.Robinson TD,Under 49.5" && Math.abs(y.best.prob - 0.64 * 0.62 * 0.77) < 0.002, "same-game: a TD with the Under is kept (owner: test everything); the chance counts the 0.77 link");
     const z = sameGameParlays({ ...g, combos: [{ pick: "ATL +2.5", hit: 51, line: 2.5, why: "x" }, { pick: "Under 49.5", hit: 52, line: 49.5, why: "y" }], td: [{ player: "Bi.Robinson", team: "ATL", fair: 48 }] });
-    ok(z.best && z.best.strategy === "sgp_best_fill" && z.filled && z.best.legs.map((l) => l.label).join() === "ATL +2.5,Under 49.5", "same-game: no strong legs -> 2 legs filled (no moneyline here, so the card's spread + total), its own record");
+    ok(z.best && z.best.strategy === "sgp_best_fill" && z.filled && z.best.legs.map((l) => l.label).join() === "Bi.Robinson TD,ATL +2.5", "same-game: no strong legs -> 2 legs filled (no moneyline here: a TD, then the same team's spread that goes with it), its own record");
+    { // 10/14 fix: the filler never adds a leg that works against one already in (DEN +3.5 + SEA to win = SEA by 1-3 only)
+      const d = sameGameParlays({ key: "SEA @ DEN", away: "SEA", home: "DEN", started: false, final: false, poly: { spread: { homeSpread: 2.5, home: 0.53, away: 0.47 }, ml: { home: 0.43, away: 0.5725 }, total: { line: 40.5, over: 0.5, under: 0.5 } },
+        combos: [{ pick: "DEN +3.5", hit: 59.6, line: 3.5, price: 0.585, why: "BEAT THE 3: x" }], td: [{ player: "J.Smith-Njigba", team: "SEA", fair: 45 }, { player: "J.Dobbins", team: "DEN", fair: 38 }] });
+      ok(d.best && d.best.legs.map((l) => l.label).join() === "DEN +3.5,J.Dobbins TD" && !d.best.legs.some((l) => l.label === "SEA ML"), "same-game: DEN +3.5 is filled with DEN's own top TD, never SEA to win", d.best && d.best.legs.map((l) => l.label));
+      { const G2 = { key: "NO @ NYG", home: "NYG", away: "NO", poly: { spread: { homeSpread: 1.5, home: 0.5, away: 0.5 }, total: { line: 46.5, over: 0.5, under: 0.5 } } };
+        ok(/Costs 63¢ but wins 59\.9%/.test(ctx.T.costNote(G2, { pick: "NYG +3.5", p: 0.599, price: 0.63 })) && ctx.T.costNote(G2, { pick: "NYG +3.5", p: 0.599, price: 0.59 }) === ""
+          && /Costs 52¢/.test(ctx.T.costNote(G2, { pick: "NYG +1.5", p: 0.51, price: null, poly: null }) || "") === false && ctx.T.costNote(G2, { pick: "Under 46.5", p: 0.574 }) === "",
+          "card: warns only when the price is above the win rate (bought line's own price, or the main line's)");
+        const mn = ctx.T.middleNote({ ...G2, middle: { fav: "NO", dog: "NYG", favPrice: 0.5, dogPrice: 0.56, cost: 1.06, back: 1.093, exact3: 0.093 } });
+        ok(/MIDDLE:<\/b> NO -2\.5 \(50¢\) \+ NYG \+3\.5 \(56¢\)/.test(mn) && /Costs 106¢, pays back 109¢/.test(mn) && ctx.T.middleNote(G2) === "", "card: middle note shows both prices, cost and average payback"); }
+      const { comboChance } = await import("../lib/combo.js");
+      const mid = comboChance([{ game: "S", kind: "spread", team: "DEN", prob: 0.596 }, { game: "S", kind: "ml", team: "SEA", prob: 0.57 }]),
+        same = comboChance([{ game: "S", kind: "spread", team: "SEA", prob: 0.45 }, { game: "S", kind: "ml", team: "SEA", prob: 0.57 }]);
+      ok(Math.abs(mid - 0.166) < 0.001 && Math.abs(same - 0.45) < 1e-9, "same-game chance: opposite-team spread + moneyline only in the window between them (17%, not 34%); same team = the less likely leg", { mid, same }); }
     ok(sameGameParlays({ ...g, started: true }) === null, "same-game: none once the game has started");
     const data = { season: 2099, week: 6, games: [{ ...g, sgp: x }, { key: "OLD @ GAME", started: true, sgp: x }] };
     ok(await recordSgp(data, setJSON) === 1, "same-game: saved for games not yet started only");

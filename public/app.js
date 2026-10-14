@@ -94,6 +94,13 @@ function pickPrice(g, P) {
   if (!m || !sp) return null; const home = m[1] === g.home, main = home ? sp.homeSpread : -sp.homeSpread;
   return Number(m[2]) === Number(main) ? (home ? sp.home : sp.away) : null;
 }
+// MIDDLE (10/14, owner): favorite -2.5 AND underdog +3.5 as two bets, shown only when the two prices add up to less than they pay back
+// on average (lib/stack.js middleCheck). One side always wins; both win when the favorite wins by exactly 3.
+function middleNote(g) {
+  const m = g.middle; if (!m || g.final || g.started) return "";
+  return `<div class="s" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px"><b class="lg">MIDDLE:</b> ${esc(m.fav)} -2.5 (${Math.round(m.favPrice * 100)}¢) + ${esc(m.dog)} +3.5 (${Math.round(m.dogPrice * 100)}¢). ` +
+    `One side always wins; both win if ${esc(m.fav)} wins by exactly 3 (${Math.round(m.exact3 * 100)}% of games like this). Costs ${Math.round(m.cost * 100)}¢, pays back ${Math.round(m.back * 100)}¢ on average.</div>`;
+}
 function costNote(g, P) {
   const pr = pickPrice(g, P); if (!(pr > 0 && pr < 1) || pr * 100 <= P.p * 100) return "";
   return `<div class="s y" style="margin-top:4px">⚠ Costs ${Math.round(pr * 100)}¢ but wins ${(P.p * 100).toFixed(1)}%. Over time this loses money.</div>`;
@@ -153,7 +160,7 @@ function leanCell(g, kind) {
   // 10/12 (owner: the number must be honest). Tested on 2,578 games 2014-26, each season predicted without it: margin off by 9.99
   // points vs the line's 9.89, total 10.52 vs 10.47; the model beat the line in only 3 of 13 seasons on each. So it is shown as an
   // opinion, never as a pick.
-  return wrap(`<div class="s">${mline}</div>` + body +
+  return wrap(`<div class="s">${mline}</div>` + body + (kind === "spread" ? middleNote(g) : "") +
     (adj ? `<div class="s r" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">${injBadgeFor(g)}${esc(adj)}</div>` : "") +
     (p && p.warn && !g.final ? `<div class="s y">${esc(p.warn)}</div>` : ""));   // e.g. QB change the model can't see
 }
@@ -820,7 +827,9 @@ function trackedRows() {
   const fl = T.floor, rr = (x) => (x && x.n ? `${x.w}–${x.l}` : "—"), fRow = fl ? `<div class="arow"><span class="nm">Team scored 3 or less last week (kickoff spread) · shut out ${rr(fl.shut)} · on the road ${rr(fl.road)}</span><span class="dim rc">${fl.n ? `${fl.w}–${fl.l}` : fl.recorded ? `${fl.recorded} saved` : "none yet"}</span><b class="${fl.n ? (fl.hit >= 0.56 ? "g" : fl.hit >= 0.5 ? "y" : "r") : "dim"}">${fl.n ? Math.round(fl.hit * 100) + "%" : "—"}</b></div>` : "";
   // 10/14 shadow picks (recorded + graded, not shown): LINE MOVE triggered by Pinnacle; Polymarket order-book tilt 4x+
   const row = (x, name) => (x ? `<div class="arow"><span class="nm">${name} · spread ${rr(x.spread)} · total ${rr(x.total)}</span><span class="dim rc">${x.n ? `${x.w}–${x.l}` : x.recorded ? `${x.recorded} saved` : "none yet"}</span><b class="${x.n ? (x.hit >= 0.56 ? "g" : x.hit >= 0.5 ? "y" : "r") : "dim"}">${x.n ? Math.round(x.hit * 100) + "%" : "—"}</b></div>` : "");
-  return wRow + fRow + row(T.pinlm, "LINE MOVE using Pinnacle (shadow)") + row(T.tilt, "Polymarket order-book tilt 4x+ (shadow)") || '<div class="s dim">None yet.</div>';
+  // 10/14 MIDDLE: favorite -2.5 + underdog +3.5 when priced under its payback; a hit = both sides won (favorite by exactly 3)
+  const md = T.middle, mRow = md ? `<div class="arow"><span class="nm">Middle (fav −2.5 + dog +3.5) · both won ${rr(md)}${md.n ? ` · ${md.money >= 0 ? "+" : "−"}$${Math.abs(md.money).toFixed(2)} per $1 pairs` : ""}</span><span class="dim rc">${md.n ? `${md.w}–${md.l}` : md.recorded ? `${md.recorded} saved` : "none yet"}</span><b class="${md.n ? "" : "dim"}">${md.n ? Math.round(md.hit * 100) + "%" : "—"}</b></div>` : "";
+  return wRow + fRow + mRow + row(T.pinlm, "LINE MOVE using Pinnacle (shadow)") + row(T.tilt, "Polymarket order-book tilt 4x+ (shadow)") || '<div class="s dim">None yet.</div>';
 }
 // Decision model (10/9): straight bets only (no teasers, no alt lines), ONE pick per game per market (spread, total): the one
 // with the best record. Two angles on opposite sides of the same total no longer both show.
