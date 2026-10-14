@@ -703,3 +703,9 @@ Tested and NOT added (made it worse):
 - Fixed wording: "1 players" / "1 picks" (`plural`), same-game chance now "about N in 10" / "1 in N" (`sgpChance`), TD rows below 55% round down (`tdPct`), spacing between tile chips.
 - Fixed Bets tab: a lost account bet showed -111.9% because a stale cost was used; settled bets now use the resolved cost/shares (`lib/mybets.js`).
 - Known gaps (not fixed): market win % is ~2 points off in the 50-60% and 70-80% bins; BEAT THE tier "3.5 dog +5.5" shows 56.2% (borderline green); "100%" cannot be proven for predictions, only that the code does what the notes say.
+
+## FULL PASS 2 (10/14, owner: "build now" -- finish every check; NOT merged until "merge now")
+
+- Win % calibration re-tested (7,046 games 1999-2026, each season unseen): the 2-point gaps in the 50-60% / 70-80% bins are inside sampling noise (1 standard error ~1.3 pts); a refit (3 or 4 terms) is NOT better than the current formula (log loss 0.6123 vs 0.6124-0.6125) -> left as is.
+- Recent-period watch (all games, closing, 2020-25): books 4 fav -2.5 53.1% (64), books 7.5 fav -5.5 52.7% (91), books 3.5 dog +5.5 54.0% (161) -- all pass the "every period 52%+" bar but are weak lately; card shows the lower of close/open only. Owner's call whether to show a recent-years rate too.
+- Browser pass on the new front end: all 14 game pages, Lines, TD, Bets, Models, Model Picks, Alerts (bell) -- 0 page errors, 0 "undefined/NaN" lines; damaged-data run 0 issues. Countdown 1d 1h 7m matched the real kickoff time; kickoff times vs America/New_York for 15,288 date/time combos (2010-35): 0 wrong. Fuzz: 60,000 random/junk inputs through keyNumberPick + grading (0 bad, 0 crashes, max 2.5 pts bought), 60,000 through totalBuyPick + grading (0 bad). Grading audit already compares the real 2025 season to an independent Python build (285 games). TD 2+ formula (1.044) matches the service.
