@@ -901,15 +901,15 @@ function renderLab() {
   // Teaser legs say TEASER (owner's rule); older saved weeks have no flag, so the alt-line legs of the teaser parlays are matched by type.
   const legLine = (l, k) => `${l.teaser || (/^alt_/.test(k || "") && !l.rule) ? "<b>TEASER</b> " : ""}${esc(l.label)} <span class="dim">${esc(l.game)}${l.thin ? " · thin" : ""}</span> · ${Math.round(l.price * 100)}¢${l.result ? ` <span class="${l.result === "W" ? "g" : l.result === "L" ? "r" : "dim"}">${l.result}</span>` : ""}`;
   const thisWeek = !wk ? '<div class="s dim">Not recorded yet.</div>' :
-    Object.keys(names).map((k) => { const ps = wk.parlays.filter((p) => p.strategy === k);
+    Object.keys(names).filter((k) => !/^sgp_/.test(k)).map((k) => { const ps = wk.parlays.filter((p) => p.strategy === k);
       return `<div class="sec"><div class="sh">${esc(names[k])}</div>` + (ps.length ? ps.map((p) =>
         `<div class="row" style="display:block"><div>${p.legs.map((l) => legLine(l, k)).join("<br>")}</div><div class="s">pays ${p.pay.toFixed(2)}x · market chance ${pct(1 / p.pay)}${p.prob != null ? ` · model ${pct(p.prob)}` : ""}${p.result ? ` · <b class="${p.result === "W" ? "g" : p.result === "L" ? "r" : ""}">${p.result === "W" ? "HIT" : p.result === "L" ? "missed" : "push"}</b>` : ""}</div></div>`).join("") :
         '<div class="s">None this week.</div>') + `</div>`; }).join("");
   // Scoreboard (10/9): one line per parlay, grouped; this season (W-L, return) and the 2007-25 replay (hit, return).
   const SHORT = { home_fav_95_single: "Home fav 9.5+ · single", home_fav_95_2: "Home fav 9.5+ · 2 legs", home_fav_95_3: "Home fav 9.5+ · 3 legs", top3_home_75: "Top 3 home favs (75%+)",
     td_edge_3: "3 TD value picks", td_likely_2: "2 likeliest TD scorers", td_likely_3: "3 likeliest TD scorers",
-    angles_2: "2 angles", angles_3: "3 angles", angles_fav_3: "Angle + 2 home favs", alt_2: "2 TEASERS", alt_pick_3: "2 TEASERS + 1 pick", model_best_4: "Model's 4 best legs", right_now_3: "3 Right now legs", same_game_3: "Same game + TD", linked_sgp_3: "Fav covers + Over + scorer", best_2: "Best bets · 2", best_3: "Best bets · 3", best_4: "Best bets · 4 (Parlay of the week)" };
-  const GROUPS = [["BEST BETS", ["best_2", "best_3", "best_4"]], ["MONEYLINE FAVORITES", ["home_fav_95_single", "home_fav_95_2", "home_fav_95_3", "top3_home_75"]], ["TOUCHDOWNS", ["td_edge_3", "td_likely_2", "td_likely_3"]],
+    angles_2: "2 angles", angles_3: "3 angles", angles_fav_3: "Angle + 2 home favs", alt_2: "2 TEASERS", alt_pick_3: "2 TEASERS + 1 pick", model_best_4: "Model's 4 best legs", right_now_3: "3 Right now legs", same_game_3: "Same game + TD", linked_sgp_3: "Fav covers + Over + scorer", best_2: "Best bets · 2", best_3: "Best bets · 3", best_4: "Best bets · 4 (Parlay of the week)", sgp_best: "Same game · best", sgp_style: "Same game · your style" };
+  const GROUPS = [["BEST BETS", ["best_2", "best_3", "best_4"]], ["SAME-GAME PARLAYS", ["sgp_best", "sgp_style"]], ["MONEYLINE FAVORITES", ["home_fav_95_single", "home_fav_95_2", "home_fav_95_3", "top3_home_75"]], ["TOUCHDOWNS", ["td_edge_3", "td_likely_2", "td_likely_3"]],
     ["ANGLES", ["angles_2", "angles_3", "angles_fav_3", "alt_2", "alt_pick_3"]], ["MIXED", ["model_best_4", "right_now_3", "same_game_3", "linked_sgp_3"]]];
   const seen = new Set(GROUPS.flatMap((g) => g[1])), extra = Object.keys(names).filter((k) => !seen.has(k)); if (extra.length) GROUPS.push(["OTHER", extra]);
   const hist = (k) => { const h = REPLAY && REPLAY.parlays && REPLAY.parlays.find((x) => x.id === k); return h && h.n ? `${Math.round(h.hit * 100)}% · ${cPct(h.roi)}` : "—"; };
@@ -920,7 +920,7 @@ function renderLab() {
     GROUPS.map(([title, ks]) => `<div class="dim" style="font-size:11px;letter-spacing:.06em;margin:10px 0 4px">${title}</div><div style="${grid}">` +
       ks.filter((k) => names[k]).map((k) => `<span>${esc(SHORT[k] || names[k])}${tag(k)}</span><span style="text-align:right">${now(k)}</span><span class="dim" style="text-align:right">${hist(k)}</span>`).join("") + `</div>`).join("");
   LAB_SB = `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Parlay scoreboard · this season</div>${rows}</div></div>`;
-  $("lab").innerHTML = intro + `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Your model's parlays · week ${wk ? wk.week : S ? S.week : ""}</div>${thisWeek}</div></div>` + LAB_SB;
+  $("lab").innerHTML = intro + sgpRanked() + `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Your model's parlays · week ${wk ? wk.week : S ? S.week : ""}</div>${thisWeek}</div></div>` + LAB_SB;
   if (MB && RES) renderModel();   // the Models tab reads the same data
 }
 
@@ -1059,9 +1059,29 @@ function setBg(g) {
   el.style.background = `linear-gradient(90deg, ${ca}3d 0%, ${ca}1f 50%, ${ch}1f 50%, ${ch}3d 100%)`;
   el.innerHTML = `<img src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'">`;
 }
+// Same-game parlays (10/14, owner): under the game's Model cards. Built on the server (lib/sgp.js): "Best" = strong legs only, "Your style" =
+// spread + total + a TD each team. Chance includes the same-game links (a TD helps its team cover and the Over, hurts with the Under).
+const sgpLegs = (p) => p.legs.map((l) => `${esc(l.label)}${l.rule ? ` <span class="dim">${esc(l.rule)}</span>` : ""} <span class="dim">· ${Math.round(l.prob * 100)}%</span>`).join("<br>");
+const sgpChance = (p) => (p.prob == null ? "" : `<b class="${p.prob >= 0.3 ? "g" : p.prob >= 0.15 ? "lg" : "y"}">hits ~${Math.round(p.prob * 100)}%</b> <span class="dim">(about 1 in ${Math.max(1, Math.round(1 / p.prob))})</span>`);
+function sgpBox(g) {
+  const x = g.sgp; if (!x || g.started || g.final) return "";
+  const best = x.best ? `<div class="sh" style="margin:4px 0">BEST · ${x.best.legs.length} legs · ${sgpChance(x.best)}</div><div class="s">${sgpLegs(x.best)}</div>`
+    : x.single ? `<div class="sh" style="margin:4px 0">BEST</div><div class="s">Only one strong leg: <b>${esc(x.single.label)}</b> · ${Math.round(x.single.prob * 100)}% (bet it alone)</div>`
+    : `<div class="sh" style="margin:4px 0">BEST</div><div class="s dim">No strong legs in this game.</div>`;
+  const style = x.style ? `<div class="sh" style="margin:12px 0 4px">YOUR STYLE · ${x.style.legs.length} legs · ${sgpChance(x.style)}</div><div class="s">${sgpLegs(x.style)}</div>` : "";
+  return `<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAY</div><div class="card" style="margin-top:6px"><div class="inner">${best}${style}</div></div>`;
+}
+// Model Picks tab: every game's same-game parlays, highest chance first
+function sgpRanked() {
+  const gs = (S && S.games ? S.games : []).filter((g) => g.sgp && !g.started && !g.final); if (!gs.length) return "";
+  const row = (g, p, tag) => `<div class="row" style="display:block"><div><b>${esc(g.key)}</b> <span class="dim">· ${tag} · ${p.legs.length} legs</span> · ${sgpChance(p)}</div><div class="s">${sgpLegs(p)}</div></div>`;
+  const best = gs.filter((g) => g.sgp.best).sort((a, b) => b.sgp.best.prob - a.sgp.best.prob).map((g) => row(g, g.sgp.best, "Best")).join("");
+  const style = gs.filter((g) => g.sgp.style).sort((a, b) => b.sgp.style.prob - a.sgp.style.prob).map((g) => row(g, g.sgp.style, "Your style")).join("");
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Same-game parlays · ranked</div>${best || '<div class="s dim">No game has 2+ strong legs right now.</div>'}<div class="sh" style="margin-top:12px">Your style · ranked</div>${style}</div></div>`;
+}
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = "";
-  $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}${anglesBox(g)}${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : ""}<div class="sh" style="margin:16px 2px 0">SPREAD &amp; ML</div><div class="grid">${gameCard(g, "x")}</div><div class="sh" style="margin:16px 2px 0">TOTALS</div><div class="grid">${totalCard(g, "x")}</div>${tdTop3(g)}`;
+  $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}${anglesBox(g)}${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : ""}<div class="sh" style="margin:16px 2px 0">SPREAD &amp; ML</div><div class="grid">${gameCard(g, "x")}</div><div class="sh" style="margin:16px 2px 0">TOTALS</div><div class="grid">${totalCard(g, "x")}</div>${sgpBox(g)}${tdTop3(g)}`;
   $("back-btn").onclick = closeGame;
   if (g.final) ensureGrades();
   setBg($("panel-lines").classList.contains("on") ? g : null);   // 10/14 fix: the background redraw ran while another tab was showing (SEA/DEN logos on Models)
