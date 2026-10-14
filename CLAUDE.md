@@ -27,8 +27,9 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   TEASER. TD parlays may use thin markets (leg says "thin"); the price shown is the ask.
 - Model card (10/14, owner): when another green rule takes the OTHER side of the same market, the green pick adds "⚠ Rules split: <pick> (<rule>, <%>) is green too. Pick one side." (`public/app.js splitNote`).
 - SAME-GAME PARLAYS (10/14, owner: "build now, all three"; `lib/sgp.js`): every game page shows a "SAME-GAME PARLAY" box at the bottom,
-  below the touchdowns (owner 10/14); tab bar order (owner 10/14, final): Game Lines, Anytime TD, Bets, Bell, Models, Model Picks -- BEST (only strong legs: green spread/total 56%+ and TD players 55%+, one per team; a leg that works AGAINST a stronger
-  one is dropped -- TD + Under 0.77x, TD + other team covers 0.81x; 1 strong leg -> "bet it alone") and YOUR STYLE (card's spread + total
+  below the touchdowns (owner 10/14); tab bar order (owner 10/14, final): Game Lines, Anytime TD, Bets, Bell, Models, Model Picks -- BEST (strong legs: green spread/total 56%+ and TD players 55%+, one per team, ALL kept -- owner 10/14 "we are testing everything":
+  a TD with the Under stays, its chance counts the 0.77x link; fewer than 2 strong legs -> filled with the next-strongest legs and saved as
+  its own record `sgp_best_fill`, so every game gets one) and YOUR STYLE (card's spread + total
   pick + the top TD scorer on each team, Out/Doubtful/Questionable skipped). Chance = legs x same-game links (`lib/combo.js comboChance`).
   Model Picks tab: "Same-game parlays · ranked" card at the top + scoreboard group SAME-GAME PARLAYS (sgp_best / sgp_style). Saved on every
   slate build until kickoff (`paper:<s>:<w>:sgp|<game>`, last save before kickoff counts), graded by gradePaper, no bell alert (`noAlert`).
