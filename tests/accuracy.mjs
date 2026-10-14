@@ -36,7 +36,7 @@ if (games) {
     for (const [t, home] of [[g.home, true], [g.away, false]]) { const pts = home ? g.hs : g.as, opp = home ? g.as : g.hs;
       last[`${g.season}|${t}`] = { prevPts: pts, prevAts: home ? pts - opp - g.sp : pts - opp + g.sp }; } }
   const rules = {
-    // every bought-point tier (lib/stack.js BUY_TIERS), day games only; Polymarket's line = the bought number (main or alternate)
+    // every bought-point tier (lib/stack.js BUY_TIERS), day AND night games (each against its own card rate); Polymarket's line = the bought number (main or alternate)
     "BEAT THE 3": { claim: null, from: 1999, to: 2025, run: (g, G) => { const hs = -G.sp, T = BUY_TIERS[Math.abs(hs)]; if (!T) return null;
       const fav = hs < 0 ? g.home : g.away, dog = hs < 0 ? g.away : g.home, team = T.side === "fav" ? fav : dog, main = team === g.home ? T.line : -T.line;
       return keyNumberPick(g, { spread: { homeSpread: main, home: 0.5, away: 0.5 } }, { spread: { homeSpread: hs } }); } },
