@@ -788,9 +788,10 @@ function weekline() {
   const range = ks.length ? (a.getMonth() === z.getMonth() ? `${f(a)}–${z.getDate()}` : `${f(a)} – ${f(z)}`) : "";
   const m = S.meta || {};
   const round = { 19: "Wild Card", 20: "Divisional round", 21: "Conference Championships", 22: "Super Bowl" }[S.week];
-  $("hero-wk").textContent = `${round || `Week ${S.week}`} · ${range}`.toUpperCase();
+  const live = S.games.some((g) => !g.started && g.poly);   // 10/14 header: "LINES LIVE" while Polymarket has open lines
+  $("hero-wk").textContent = `${live ? "Lines live · " : ""}${round || `Week ${S.week}`} · ${range}`.toUpperCase();
   const hu = $("hero-upd"), detail = `Updated (your time): Polymarket ${clock(m.lastSnapshot)} · sportsbooks ${clock(S.booksAt)} · model ${clock(S.modelRunAt)}`;
-  hu.textContent = `Updated ${clock(m.lastSnapshot)} ›`; hu.onclick = () => toast(detail, 8000);   // short line; tap for the three times
+  hu.textContent = `Model ${clock(S.modelRunAt)} ›`; hu.onclick = () => toast(detail, 8000);   // 10/14: the lever reruns the model, so it shows the model's time; tap for all three
 }
 const hitCls = (h) => (h == null ? "dim" : h >= 0.55 ? "g" : h >= 0.5 ? "y" : "r");   // green 55%+, amber 50-55%, red under 50%
 function statTile(label, w, l, hit, sub) {
@@ -1108,7 +1109,7 @@ function tickCd() {
   if (!nxt) { ["d", "h", "m", "s"].forEach((k) => set("cd-" + k, "--")); set("cd-g", "No upcoming games this week"); tickCd._cur = null; return; }
   const ms = Math.max(0, new Date(nxt.kickoff) - Date.now());
   set("cd-d", p2(Math.floor(ms / 864e5))); set("cd-h", p2(Math.floor((ms % 864e5) / 36e5))); set("cd-m", p2(Math.floor((ms % 36e5) / 6e4))); set("cd-s", p2(Math.floor((ms % 6e4) / 1e3)));
-  $("cd-g").innerHTML = `${tlogo(nxt.away)}${nxt.away} @ ${tlogo(nxt.home)}${nxt.home} · ${tm(nxt.kickoff)}`;
+  $("cd-g").innerHTML = `until ${tlogo(nxt.away)}${nxt.away} @ ${tlogo(nxt.home)}${nxt.home} · ${tm(nxt.kickoff)}`;
   if (tickCd._cur && tickCd._cur !== nxt.key && Date.now() - (tickCd._last || 0) > 15000) { tickCd._last = Date.now(); setTimeout(() => loadSlate().catch(() => {}), 4000); }   // the game we were counting to just kicked off: refresh once
   tickCd._cur = nxt.key;
   tickCd._h = setTimeout(tickCd, 1000);
@@ -1148,23 +1149,24 @@ async function loadSlate() {
   if (!loadSlate._rolled) { loadSlate._rolled = true; setTimeout(() => slotify($("panel-lines")), 60); }   // 10/14: numbers roll in on first open
   if (openTd.length) { const rows = document.querySelectorAll(".tdr"); for (const i of openTd) if (rows[i]) rows[i].classList.add("open"); }
   try { localStorage.setItem("lastSeen", new Date().toISOString()); } catch {} }   // next visit's "What changed" starts from now
-// Pull new lines (the lever): a manual snapshot, then reload the page data. Sportsbook odds are bought only when the saved ones are 6+ h old.
+// The lever (10/14, owner: "this should only update the model"): reruns the model with the latest injuries and lines, then reloads.
+// Polymarket and sportsbook lines and injuries refresh on their own (scheduled snapshots, 30-min Pinnacle/Polymarket pull).
 let REFRESHING = false;
-async function refreshLines() {
-  if (REFRESHING) return; REFRESHING = true; toast("Updating lines…", 0);
-  try { const d = await (await fetch("/api/snapshot?src=manual")).json(); if (!d.ok) throw new Error(d.error); await loadSlate();
-    toast(`Updated ${d.lines} of ${d.upcoming} upcoming games${d.locked ? ` (${d.locked} locked)` : ""}, TD prices for ${d.props}.`);
-  } catch (e) { toast("Refresh failed: " + e.message, 10000); }
+async function rerunModel() {
+  if (REFRESHING) return; REFRESHING = true; toast("Rerunning the model…", 0);
+  try { const d = await (await fetch("/api/rerun", { method: "POST" })).json(); if (!d.ok) throw new Error(d.error); await loadSlate();
+    toast(d.note && !d.rerun ? `Model: ${d.note}.` : `Model updated: ${d.rerun} games, TD for ${d.td ?? 0}.${d.errors && d.errors.length ? " Errors: " + d.errors.join("; ") : ""}`, 8000);
+  } catch (e) { toast("Model rerun failed: " + e.message, 12000); }
   REFRESHING = false;
 }
-// 10/14 casino look: the slot lever next to "Updated" pulls new lines (same as the Lines button); the time spins like reels until it lands
+// 10/14 casino look: the slot lever reruns the model; the model time under it spins like reels until it lands
 if ($("lever")) {
   const lv = $("lever");
   const pull = async () => {
     if (lv.disabled || REFRESHING) return; lv.disabled = true; lv.classList.add("pull"); setTimeout(() => lv.classList.remove("pull"), 260);
-    const hu = $("hero-upd"); hu.innerHTML = `Updated <span class="mreel">7</span><span class="mreel">7</span>:<span class="mreel">7</span><span class="mreel">7</span>`;
+    const hu = $("hero-upd"); hu.innerHTML = `Model <span class="mreel">7</span><span class="mreel">7</span>:<span class="mreel">7</span><span class="mreel">7</span>`;
     const iv = setInterval(() => hu.querySelectorAll(".mreel").forEach((m) => { m.textContent = Math.floor(Math.random() * 10); }), 70);
-    try { await refreshLines(); } finally { clearInterval(iv); if (S) weekline(); lv.disabled = false; }
+    try { await rerunModel(); } finally { clearInterval(iv); if (S) weekline(); lv.disabled = false; }
   };
   lv.onclick = pull; let y0 = null;
   lv.addEventListener("pointerdown", (e) => { y0 = e.clientY; }); lv.addEventListener("pointermove", (e) => { if (y0 != null && e.clientY - y0 > 25) { y0 = null; pull(); } }); lv.addEventListener("pointerup", () => { y0 = null; });
@@ -1173,6 +1175,7 @@ function showPanel(name) {
   document.querySelectorAll(".tabs button[data-tab]").forEach((x) => x.classList.toggle("on", x.dataset.tab === name));
   $("bell").classList.toggle("on", name === "alerts");
   document.querySelectorAll(".panel").forEach((p) => p.classList.remove("on")); $("panel-" + name).classList.add("on");
+  try { if (window.scrollTo) window.scrollTo(0, 0); } catch {}   // 10/14 (owner): every tab change starts at the top of the page
   if (name === "record" || name === "lab" || name === "models") loadRecord();
   if (name === "record") setTimeout(playStamps, 50);
   setTimeout(() => slotify($("panel-" + name)), 60);   // 10/14: numbers roll in when you open a tab
