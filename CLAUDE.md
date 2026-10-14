@@ -60,7 +60,10 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   85%+ said 87% won 91%); skipping games where a green pick backs the underdog 42.5% (beat its priced chance 10/13 seasons; 3+ of 4
   legs 77%; weeks 1-4 35%, 15-18 51%). 5 favorites 33.6%; home favorites only 35.0%; 3 favorites 55.6%. Best green pick + 3 favorites
   32.2%; 3 favorites + top TD 31.4%; 2 favorites + 2 TD 21.6%; 4 green picks 10.8% (21.4% with LINE MOVE, which rarely fires live);
-  4 most likely TD scorers 9.2%. No effect: division games, rest, QB change, last result, wind, favorite-win vs Over link (none).
+  4 most likely TD scorers 9.2%. STRONG WEEK (all 4 favorites priced 70%+): 48.6% of 146 weeks (periods 50/43/53) vs 30.2% of
+  the other 63 -> flagged on the card (`strong`); 3+ of 4 legs: strong 82%, other 62%.
+  Also checked, no gain: time-slot spread, underdog with a new QB (market prices it), Thursday/Monday favorites (noise), linked 4 with
+  RB1+WR1 = top 2 by model (8.0% vs 7.9%), RB1+TE1 worse (5.1%). Favorites the line moved toward / total size / home vs road: no gain (the close prices it). No effect: division games, rest, QB change, last result, wind, favorite-win vs Over link (none).
 - Same game (2,665 games): owner's style (spread + total + top TD each team) 4.6-5.7% with the Over, 1.8-2.4% with the Under; best
   same-game 4-leg = favorite ML + Over + favorite's top 2 scorers 7.9%; best 3-leg = favorite covers + Over + its top TD 14.2%.
   Style is best in games with total 47+ and both top scorers 40%+ (~9-11%). Green spread pick + same team's top TD: both hit 26%
