@@ -621,3 +621,11 @@ Tested and NOT added (made it worse):
 
 - Bet Sunday morning after inactives (~90 min before kickoff) and a Model rerun; lines and weather move picks during the week.
 - A TEASER pick only works at the teased line.
+
+## Firmer promises (10/14, owner: "build 1 and 3; 2, 4, 5 out")
+
+- 1: BEAT THE 3 tiers replayed at the week's OPENING spread (2014-26, `npm run accuracy` prints them; `lib/stack.js BUY_OPEN / tierRate`). The card
+  shows the LOWER of the closing and opening rate when the opening sample is 60+ games. Moves: books 3.5 fav -2.5 day 59.8 -> 51.9 (yellow),
+  books 3 day 57.9 -> 55.6 (light green), 2.5 day 60.9 -> 58.6, 5.5 day 61.7 -> 58.7, 6.5 day 66.9 -> 64.3; the rest unchanged.
+- 3: live record per green rule (each BEAT THE tier day/night apart), each pick once at its first-shown line (`ruleRecords` in `stackSummary` -> `combos.rules`);
+  `npm run accuracy` prints it with a BELOW flag (15+ graded and 10+ points under the card). Flag only, nothing is cut.
