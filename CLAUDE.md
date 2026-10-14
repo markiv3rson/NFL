@@ -90,6 +90,13 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   * Dead page code removed: anglesBox, extraBets, rightNowBox, saferSide/saferOne/saferRate/saferTotal/totalMoved, comboLines, ord; the
     unused `angles` field on games.
 
+- 10/14 (owner, "build now for all three"): Models + Model Picks tabs are purple; the floating Lines / Model buttons are gone (the lever
+  pulls new lines via `refreshLines`; the model reruns automatically before every kickoff wave); "Updated" sits under the lever; page
+  headers are just the words with a rose line under them. RISK FIX: history lists (`snaps`, `pinnacle` 30-min, `tdpxhist`, `fcst`, `inj`)
+  now trim with `lib/redis.js pushCapped` -- the week's first 10 readings are always kept (opening lines for TOTAL MOVE / INJURY / wind
+  Under). Before, heavy refreshing -- and the 30-min Pinnacle pull after ~4 days -- pushed the opening readings out. The lever buys
+  sportsbook odds only when the saved ones are 6+ h old (3 credits); Polymarket reads are free.
+
 ## Where things live
 
 - Site (Next.js on Vercel, nfl-nfl9.vercel.app): `pages/api/*`, `lib/*`, front end `public/app.js`.

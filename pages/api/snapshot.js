@@ -11,7 +11,7 @@ import { alertTeaser, alertsTdNo } from "../../lib/alerts";
 import { applyCalibration } from "../../lib/calibration";
 import { tdRows } from "../../lib/picks";
 import { SEASON, currentWeek, loadGames, started } from "../../lib/games";
-import { getRedis, jparse, getJSON, setJSON, K, SLATE_CACHE } from "../../lib/redis";
+import { getRedis, jparse, getJSON, setJSON, K, SLATE_CACHE, pushCapped } from "../../lib/redis";
 import { fetchEvents, gameLines, tdProps } from "../../lib/poly";
 import { sanePoly } from "../../lib/sane";
 import { fetchBooks, booksFresh } from "../../lib/books";
@@ -129,7 +129,7 @@ export default async function handler(req, res) {
       }
       // Edge tracker (Polymarket vs sportsbook price gaps) CUT 10/13 (owner).
       if (prev && poly && !snap.suspect) await alertsFromLines(season, g, prev, poly).catch(() => 0);   // line-move alerts (10/1)
-      if (poly || snap.books) { await redis.rpush(K.snaps(season, week, g.key), JSON.stringify(snap)); await redis.ltrim(K.snaps(season, week, g.key), -200, -1); lines += poly ? 1 : 0; }
+      if (poly || snap.books) { await pushCapped(redis, K.snaps(season, week, g.key), JSON.stringify(snap), 200); lines += poly ? 1 : 0; }
       // Early-week total recording CUT 10/13 (owner): it went 11-18 live and is off on cards. Old saved rows still grade.
       // Early-week wind Under (10/13, owner: "build both"): saved ONCE, the first time the kickoff forecast says wind 10+ at an outdoor
       // stadium while Polymarket's total is still at its first number this week; graded at that number. Paper only (history at the
@@ -143,10 +143,10 @@ export default async function handler(req, res) {
       } catch {}
       // Recording for future tests (10/13, not shown): kickoff-hour forecast and Out/Doubtful starter counts, each saved with its time
       // (forecast every snapshot, injuries only when they change). Later tests can ask "who knew first, the forecast/news or the line?".
-      try { const wf = await windAtKickoff(g); if (wf.outdoor && wf.wind != null) { const fk = `fcst:${season}:${week}:${g.key}`; await redis.rpush(fk, JSON.stringify({ t, wind: wf.wind, temp: wf.temp == null ? null : wf.temp })); await redis.ltrim(fk, -120, -1); }
+      try { const wf = await windAtKickoff(g); if (wf.outdoor && wf.wind != null) { const fk = `fcst:${season}:${week}:${g.key}`; await pushCapped(redis, fk, JSON.stringify({ t, wind: wf.wind, temp: wf.temp == null ? null : wf.temp }), 120); }
         const sj = await situationFor(season, week, g).catch(() => null), ik = `inj:${season}:${week}:${g.key}`;
         if (sj && sj.home && sj.away && sj.home.inj && sj.away.inj) { const cur = JSON.stringify({ h: sj.home && sj.home.inj || null, a: sj.away && sj.away.inj || null }), last = await redis.lindex(ik, -1), lj = last ? jparse(last) : null;
-          if (!lj || JSON.stringify(lj.s) !== cur) { await redis.rpush(ik, JSON.stringify({ t, s: JSON.parse(cur) })); await redis.ltrim(ik, -60, -1); } } } catch {}
+          if (!lj || JSON.stringify(lj.s) !== cur) { await pushCapped(redis, ik, JSON.stringify({ t, s: JSON.parse(cur) }), 60); } } } catch {}
       const px = await tdProps(events, g.away, g.home).catch(() => null);
       if (px) {
         // TD guard. A feed glitch (e.g. the 2+ market read as anytime) halves prices for BOTH teams at once; real news
@@ -182,7 +182,7 @@ export default async function handler(req, res) {
           // TD price HISTORY (added 9/29): before, each snapshot overwrote the last, so only the latest/closing TD prices
           // existed. Compact rows {t, p: {market: [ask, bid]}}, last 150 snapshots per game (a week uses ~35).
           const compact = {}; for (const [q, v] of Object.entries(px)) { const o = typeof v === "number" ? { ask: v } : v; if (o && o.ask > 0) compact[q] = [o.ask, o.bid ?? null]; }
-          await redis.rpush(`tdpxhist:${season}:${week}:${g.key}`, JSON.stringify({ t, src, p: compact })); await redis.ltrim(`tdpxhist:${season}:${week}:${g.key}`, -150, -1); }
+          await pushCapped(redis, `tdpxhist:${season}:${week}:${g.key}`, JSON.stringify({ t, src, p: compact }), 150); }
       }
       if (String(req.query.kickoff || "").split(",").includes(g.key)) {
         const bk = books ? books[g.key] : ((await getJSON(K.books(season, week))) || { games: {} }).games[g.key];

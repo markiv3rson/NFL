@@ -428,6 +428,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(by.leg4_fav_td && by.leg4_fav_td.legs[3].label === "S.Barkley TD", "4-leg: 3 favorites + the top TD scorer from another game");
     const one = sameGameParlays({ ...G("PHI", "NYG", .7), td: [{ player: "S.Barkley", team: "PHI", fair: 62 }, { player: "A.Brown", team: "PHI", fair: 40 }, { player: "N.Out", team: "PHI", fair: 70, injury: "Out" }] });
     ok(one.linked && one.linked.legs.map((l) => l.label).join() === "PHI ML,Over 44.5,S.Barkley TD,A.Brown TD", "linked 4: favorite wins + Over + its top 2 scorers (Out player skipped)"); }
+  { // 10/14 risk fix: capped history lists keep the week's first readings (opening lines) and the newest
+    const { pushCapped } = await import("../lib/redis.js"); const R = globalThis.__TEST_REDIS__; await R.del("cap:test");
+    for (let i = 0; i < 30; i++) await pushCapped(R, "cap:test", String(i), 20, 5);
+    const L = await R.lrange("cap:test", 0, -1);
+    ok(L.length === 20 && L.slice(0, 5).join() === "0,1,2,3,4" && L[L.length - 1] === "29" && L[5] === "15", "capped list: first 5 readings kept, newest 15 kept, the middle trimmed");
+    await R.del("cap:test"); }
   { // ESPN final scores for games nflverse has not posted; waiting label on bets; only recent errors listed
     const { finalsFromScoreboard, overlayEspnFinals } = await import("../lib/espnFinals.js");
     const ev = (away, home, a, h, done) => ({ status: { type: { state: done ? "post" : "in", completed: done } }, competitions: [{ competitors: [ { homeAway: "away", score: String(a), team: { displayName: away } }, { homeAway: "home", score: String(h), team: { displayName: home } } ] }] });

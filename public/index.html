@@ -50,6 +50,9 @@
     color:rgba(255,200,210,.6); background:transparent; border:0; border-bottom:3px solid transparent; border-radius:0; }
   .tabs button span { overflow:hidden; text-overflow:ellipsis; max-width:100%; }
   .tabs button.on { color:var(--rose); border-bottom-color:var(--rose); }
+  /* 10/14 (owner): Models and Model Picks tabs are purple (the model's color) */
+  .tabs button[data-tab="models"], .tabs button[data-tab="lab"] { color:rgba(190,160,255,.75); }
+  .tabs button[data-tab="models"].on, .tabs button[data-tab="lab"].on { color:#c9a8ff; border-bottom-color:#b58cff; text-shadow:0 0 10px rgba(181,140,255,.6); }
   .tabs .bell { position:relative; }
   .tabs .bell.on { color:var(--rose); border-bottom-color:var(--rose); }
   .bell .cnt { position:absolute; top:3px; left:calc(50% + 4px); min-width:16px; height:16px; border-radius:8px; padding:0 4px; font-size:10px; font-weight:800; display:none; align-items:center; justify-content:center;
@@ -105,11 +108,12 @@
   .center { text-align:center; margin-top:14px; }
   .btn { font:inherit; font-size:14px; font-weight:700; padding:6px 14px; min-height:32px; border-radius:12px; border:1px solid var(--line); color:#d3d8e0; background:var(--card); cursor:pointer; }
   /* 10/14 (owner): page headers styled like the bottom tab bar (rose glass, icon + title) */
-  .phead { margin-top:12px; display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:18px; border:1px solid rgba(255,150,170,.42); color:#ffd2dc;
-    background:radial-gradient(120% 140% at 0% 0%,rgba(255,90,120,.5) 0%,rgba(0,0,0,0) 60%),linear-gradient(135deg,rgba(150,28,58,.55) 0%,rgba(105,16,44,.42) 55%,rgba(62,10,30,.34) 100%); }
-  .phead svg { flex:0 0 auto; color:var(--rose); }
-  .phead .pt { display:grid; gap:2px; min-width:0; flex:1; } .phead .pt b { font-size:20px; font-weight:800; color:#fff; line-height:1.1; }
-  .phead .pt span { font-size:12px; color:#e9c3cd; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* 10/14 (owner): page headers are just the words, big and clear, with a line under them */
+  .phead { margin-top:16px; display:flex; align-items:flex-end; gap:12px; padding:0 2px 10px; position:relative; }
+  .phead::after { content:""; position:absolute; left:0; right:0; bottom:0; height:2px; border-radius:2px; background:linear-gradient(90deg,var(--rose),rgba(255,90,120,.35) 60%,transparent); }
+  .phead svg { display:none; }
+  .phead .pt { display:grid; gap:2px; min-width:0; flex:1; } .phead .pt b { font-size:28px; font-weight:800; color:#fff; line-height:1.05; letter-spacing:-.01em; }
+  .phead .pt span { font-size:12.5px; color:var(--faint); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .phbtn { flex:0 0 auto; font:inherit; font-size:12px; font-weight:700; color:#fff; background:rgba(255,255,255,.12); border:1px solid rgba(255,150,170,.5); border-radius:999px; padding:6px 12px; cursor:pointer; }
   .banner { margin-top:10px; border-radius:14px; padding:11px 14px; display:flex; align-items:center; gap:10px; background:linear-gradient(90deg,rgba(150,100,255,.3),rgba(150,100,255,.08)); border:1px solid rgba(183,148,255,.6); box-shadow:0 0 18px rgba(150,100,255,.28); }
   .banner b { font-size:13px; font-weight:900; letter-spacing:.14em; color:var(--violet); text-shadow:var(--vglow); white-space:nowrap; }
@@ -258,6 +262,7 @@
   .cdn b.flip { animation:cdflip .4s ease; } @keyframes cdflip { 0% { transform:rotateX(0); } 50% { transform:rotateX(90deg); } 100% { transform:rotateX(0); } }
   /* 10/14 (owner): no title; week, countdown, next game and "Updated" all on the left; slot lever on the right */
   .hero .hl { display:grid; gap:4px; min-width:0; } .hero .hl .cdl { margin:4px 0 0; } .hero .hl .cdn { justify-content:flex-start; } .hero .hl .upd { margin-top:2px; }
+  .hero .hr { display:grid; justify-items:center; gap:4px; align-self:center; } .hero .hr .upd { margin-top:0; text-align:center; white-space:nowrap; }
   .lever { position:relative; flex:0 0 30px; width:30px; height:84px; border:0; background:none; padding:0; cursor:pointer; touch-action:none; align-self:center; }
   .lever .lmount { position:absolute; left:5px; bottom:2px; width:20px; height:26px; border-radius:6px; background:linear-gradient(90deg,#7a5a1a,#e7c46a,#7a5a1a); box-shadow:0 2px 0 #000; }
   .lever .larm { position:absolute; left:12px; bottom:18px; width:6px; height:54px; transform-origin:bottom center; background:linear-gradient(90deg,#777,#f2f2f2,#777); border-radius:3px; transition:transform .45s cubic-bezier(.3,1.6,.5,1); }
@@ -277,9 +282,9 @@
     <div class="hl"><div class="wk" id="hero-wk">WEEK</div>
       <div class="cdl">NEXT KICKOFF</div>
       <div class="cdn"><div><b id="cd-d">--</b><i>DAYS</i></div><span>:</span><div><b id="cd-h">--</b><i>HRS</i></div><span>:</span><div><b id="cd-m">--</b><i>MINS</i></div><span>:</span><div><b id="cd-s">--</b><i>SECS</i></div></div>
-      <div class="cdg" id="cd-g"></div>
+      <div class="cdg" id="cd-g"></div></div>
+    <div class="hr"><button class="lever" id="lever" aria-label="Pull to get new lines"><span class="lmount"></span><span class="larm"><span class="lknob"></span></span></button>
       <div class="upd" id="hero-upd">Loading…</div></div>
-    <button class="lever" id="lever" aria-label="Pull to get new lines"><span class="lmount"></span><span class="larm"><span class="lknob"></span></span></button>
   </div>
   <div id="weekline" style="display:none"></div>
 
@@ -313,8 +318,6 @@
 </nav>
 <div class="fab">
   <div id="toast" class="toast"></div>
-  <div class="fb"><button id="refresh-btn" aria-label="Refresh lines and injuries"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14-4M4 5v4h4M4 13a8 8 0 0 0 14 4M20 19v-4h-4"/></svg>Lines</button></div>
-  <div class="fb"><button id="rerun-btn" aria-label="Rerun model"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Model</button></div>
 </div>
 <script src="/app.js"></script>
 </body>
