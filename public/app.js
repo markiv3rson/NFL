@@ -129,6 +129,12 @@ function lineCheck(g, kind, pick) {
   const lab = (x) => (kind === "total" ? `${m[1]} ${x}` : `${t[1]} ${x > 0 ? "+" : ""}${x}`);
   return `<div class="s ${better ? "g" : "y"}" style="margin-top:4px">${better ? "✓" : "⚠"} Line moved: opened ${esc(lab(open))}, now ${esc(lab(now))} · ${better ? "better number now" : "worse number now"}</div>`;
 }
+// 10/14 (owner): another green rule takes the OTHER side of the same market (e.g. ATL +3.5 KEY NUMBER vs CHI -2.5 BOUNCE BACK) -> say so
+function splitNote(g, kind, pick) {
+  const isTot = (x) => /^(Over|Under)\b/.test(x), first = (x) => String(x).split(" ")[0];
+  const o = (g.combos || []).filter((c) => !c.teaser && c.hit >= BEST_MIN * 100 && (kind === "total" ? isTot(c.pick) : !isTot(c.pick) && !/\bML\b/.test(c.pick)) && first(c.pick) !== first(pick)).sort((a, b) => b.hit - a.hit)[0];
+  return o ? `<div class="s y" style="margin-top:4px">⚠ Rules split: ${esc(o.pick)} (${esc(String(o.why || "").split(":")[0])}, ${Math.round(o.hit)}%) is green too. Pick one side.</div>` : "";
+}
 function leanCell(g, kind) {
   let p = kind === "total" ? g.totalPick : g.spreadPick;
   const head = `<div class="k">Model${injApplied(g, kind) ? ' <span class="pill p-y" style="padding:0 6px;font-size:10px">Estimate</span>' : ""}</div>`;
@@ -172,7 +178,7 @@ function leanCell(g, kind) {
       body = `<div style="margin-top:6px"><b class="g" style="font-size:16px">PICK: ${esc(P.pick)} · ${pc}%</b></div>` +
         // 10/13 (owner: fewer notes): just the green pick's own reason (e.g. the LINE MOVE numbers)
         `<div class="s" style="margin-top:4px">${esc(P.why)}</div>` +
-        recLine(P.rec) + lineCheck(g, kind, P.pick);
+        recLine(P.rec) + lineCheck(g, kind, P.pick) + splitNote(g, kind, P.pick);
     }
   }
   // Early-week total: TURNED OFF 10/11 (owner) -- 11-18 live in 2026. Still recorded and graded on paper (lib/teaser.js) so its record keeps.
