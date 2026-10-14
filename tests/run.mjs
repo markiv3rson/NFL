@@ -986,7 +986,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       ok(/card modelglow/.test(ctx.T.sgpBox({ key: "A @ B", sgp: { best: { legs: [{ label: "x", prob: .6 }, { label: "y", prob: .6 }], prob: .36 } } })), "casino: the same-game parlay card glows purple"); }
     { const pp = { legs: [{ label: "A", prob: .6, price: .5 }, { label: "B", prob: .6, price: .4 }], prob: .36 };
       const h = ctx.T.sgpBox({ key: "A @ B", sgp: { best: pp } });
-      ok(/Polymarket 5\.0x · \$10 → \$50/.test(h) && /price not posted yet/.test(ctx.T.sgpBox({ key: "A @ B", sgp: { best: { ...pp, legs: [pp.legs[0], { label: "C", prob: .5, price: null }] } } })), "payout: legs' Polymarket prices multiplied (1/0.5 x 1/0.4 = 5x, $10 -> $50); a leg without a price says so"); }
+      ok(/Polymarket 5\.0x · \$10 → \$50/.test(h) && /\$20 → \$100/.test(ctx.T.sgpBox({ key: "A @ B", sgp: { best: { ...pp, stake: 20 } } })) && /price not posted yet/.test(ctx.T.sgpBox({ key: "A @ B", sgp: { best: { ...pp, legs: [pp.legs[0], { label: "C", prob: .5, price: null }] } } })), "payout: legs' Polymarket prices multiplied (1/0.5 x 1/0.4 = 5x, $10 -> $50); a leg without a price says so"); }
     { const p = { legs: [{ label: "Bi.Robinson TD", prob: 0.62 }, { label: "ATL +3.5", prob: 0.581, rule: "KEY NUMBER" }], prob: 0.43 };
       const h = ctx.T.sgpBox({ key: "CHI @ ATL", sgp: { best: p, style: { ...p, prob: 0.05 } } });
       const h3 = ctx.T.sgpBox({ key: "CHI @ ATL", sgp: { best: p, three: { ...p, prob: 0.2 }, linked: { ...p, prob: 0.08 }, style: { ...p, prob: 0.05 } } });

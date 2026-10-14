@@ -518,7 +518,7 @@ function renderMineNow() {
   const tiles = wkChips + `<div class="stats" style="margin-top:10px">` + (past ? `<div class="stat"><div class="k">BETS</div><div class="v mkt">${shown.length}</div><div class="k2">Week ${sel}</div></div>` : `<div class="stat"><div class="k">OPEN BETS</div><div class="v mkt">${nOpen}</div><div class="k2">${money(s.openCost)} staked</div></div>`) +
     `<div class="stat"><div class="k">RECORD</div><div class="v ${tot ? (s.wins / tot >= 0.5 ? "g" : "r") : "dim"}">${tot ? `${s.wins}–${s.losses}` : "—"}</div><div class="k2">settled</div></div>` +
     `<div class="stat"><div class="k">PROFIT</div><div class="v">${cMoney(s.pl)}</div><div class="k2">${sel === "all" ? "this season" : "Week " + sel}</div></div></div>`;
-  $("record-mine").innerHTML = tiles + `<div class="card" style="margin-top:10px">` +
+  $("record-mine").innerHTML = ticketRow() + tiles + `<div class="card" style="margin-top:10px">` +
     `<div class="sec"><div class="sh">Summary</div>` +
     `<div class="row"><span class="dim">Return · CLV</span><span>${cPct(s.roi)} · ${cPct(s.avgClv)}</span></div>` +
     (() => { const sc = MB.summary && MB.summary.settleCheck; if (!sc || !(sc.agree + sc.disagree)) return "";
@@ -856,7 +856,7 @@ function parlayStrip() {
   const P = parlayPicks(); if (!P.length) return "";
   const ch = P.reduce((a, x) => a * x.p, 1);
   const rows = P.map((x) => `<div class="bb"><div class="t1"><b class="g">${esc(x.pick)}</b><span style="white-space:nowrap">${Math.round(x.p * 100)}%</span></div><div class="t2">${esc(x.game)}</div></div>`).join("");
-  return `<div class="drop" id="parlaylist"><div class="card modelglow"><div class="inner">${rows}<div class="s" style="margin-top:8px">Chance all ${P.length} hit: <b>${Math.round(ch * 100)}%</b> · one pick per game</div></div></div></div>`;
+  return `<div id="parlaylist"><div class="card modelglow"><div class="inner">${rows}<div class="s" style="margin-top:8px">Chance all ${P.length} hit: <b>${Math.round(ch * 100)}%</b> · one pick per game</div></div></div></div>`;
 }
 // Morning / afternoon / primetime (10/9): TNF/SNF/MNF and anything starting 5 PM or later (your time) is primetime.
 function slotOf(g) {
@@ -869,17 +869,19 @@ function slotOf(g) {
 let GAMEBEST_OPEN = (() => { try { return localStorage.getItem("gameBestOpen") !== "0"; } catch { return true; } })();
 let BEST_OPEN = (() => { try { return localStorage.getItem("bestOpen") !== "0"; } catch { return true; } })();
 // 10/14 (owner: "come up with a better design"): Best bets and Parlay of the week as two casino tickets side by side; tap one to open its list
-function ticketRow() {
+function ticketRow() {   // 10/14 (owner): one combined ticket at the top of the Bets tab -- tap it to open both lists
   const B = bestBets(), P = parlayPicks(); if (!B.length && !P.length) return "";
   const ch = P.length ? Math.round(P.reduce((a, x) => a * x.p, 1) * 100) : null;
-  const t = (drop, k, big, sub) => `<button class="ticket" data-drop="${drop}"><span class="tk">${k}</span><b class="tb">${big}</b><span class="ts">${sub}</span></button>`;
-  return `<div class="jrow">${B.length ? t("bestlist", "BEST BETS", B.length, `green pick${B.length === 1 ? "" : "s"} · tap to open`) : ""}${P.length ? t("parlaylist", "PARLAY OF THE WEEK", `${ch}%`, `chance all ${P.length} hit · tap to open`) : ""}</div>`;
+  return `<button class="ticket one" data-drop="picklists"><span class="tk">THIS WEEK'S PICKS</span><span class="tpair">` +
+    (B.length ? `<span><b class="tb">${B.length}</b><span class="ts">best bets</span></span>` : "") +
+    (P.length ? `<span><b class="tb">${ch}%</b><span class="ts">parlay of the week · ${P.length} picks</span></span>` : "") +
+    `</span><span class="ts">tap to open</span></button><div class="drop" id="picklists">${B.length ? `<div class="sh" style="margin:12px 2px 0">BEST BETS</div>${bestStrip()}` : ""}${P.length ? `<div class="sh" style="margin:12px 2px 0">PARLAY OF THE WEEK</div>${parlayStrip()}` : ""}</div>`;
 }
 function bestStrip() {
   const B = bestBets(); if (!B.length) return "";
   const row = (x) => `<div class="bb"><div class="t1"><b class="g">${esc(x.pick)}</b><span style="white-space:nowrap">wins <b class="g">${Math.round(x.p * 100)}%</b></span></div><div class="t2">${esc(x.game)} · ${esc(x.why)}</div></div>`;
   const rows = ["Morning", "Afternoon", "Primetime"].map((sl) => { const xs = B.filter((x) => x.slot === sl); return xs.length ? `<div class="sh" style="margin:8px 0 4px">${sl.toUpperCase()}</div>${xs.map(row).join("")}` : ""; }).join("");
-  return `<div class="drop${BEST_OPEN ? " open" : ""}" id="bestlist"><div class="card"><div class="inner">${rows}</div></div></div>`;
+  return `<div id="bestlist"><div class="card"><div class="inner">${rows}</div></div></div>`;
 }
 let LAB_SB = "", REPLAY = null;
 function renderLab() {
@@ -894,13 +896,14 @@ function renderLab() {
     ["TOUCHDOWNS", [["td_edge_3", "3 TD value picks"], ["td_likely_2", "2 likeliest scorers"], ["td_likely_3", "3 likeliest scorers"], ["model_best_4", "4 most likely legs"]]]];
   const TESTED = { sgp_3: 18.8, sgp_linked: 7.9, leg4_fav: 42.5, leg4_green_fav: 32.2, leg4_fav_td: 31.4 };   // 2014-25 research (CLAUDE.md)
   const hist = (k) => { if (TESTED[k] != null) return `${TESTED[k]}%`; const h = REPLAY && REPLAY.parlays && REPLAY.parlays.find((x) => x.id === k); return h && h.n ? `${Math.round(h.hit * 100)}%` : "—"; };
-  const now = (k) => { const b = board[k]; if (!b || !b.decided) return '<span class="dim">waiting</span>'; const l = b.decided - b.hits; return `${b.hits}–${l} · ${Math.round((b.hits / b.decided) * 100)}%`; };
+  const now = (k) => { const b = board[k]; if (!b || !b.decided) return '<span class="dim">waiting</span>'; const l = b.decided - b.hits;
+    return `${b.hits}–${l} · ${Math.round((b.hits / b.decided) * 100)}%${b.money != null ? ` <span class="${b.money >= 0 ? "g" : "r"}">${b.money >= 0 ? "+" : "−"}$${Math.abs(Math.round(b.money))}</span>` : ""}`; };
   const tag = (k) => { const rv = board[k] && board[k].review; if (!rv || /TOO FEW|WAITING/i.test(rv.verdict)) return ""; const c = { HOLDS: "g", UNDERSTATED: "g", PAYING: "g", OVERSTATED: "r", LOSING: "r" }[rv.verdict] || "dim"; return ` <b class="${c}" style="font-size:10px">${esc(rv.verdict)}</b>`; };
   const grid = "display:grid;grid-template-columns:1fr auto auto;gap:4px 14px;align-items:baseline";
   const rows = `<div style="${grid};margin-bottom:6px"><span></span><span class="dim" style="font-size:11px;text-align:right">THIS SEASON</span><span class="dim" style="font-size:11px;text-align:right">PAST SEASONS</span></div>` +
     GROUPS.map(([title, ks]) => { const live = ks.filter(([k]) => names[k]); return live.length ? `<div class="dim" style="font-size:11px;letter-spacing:.06em;margin:10px 0 4px">${title}</div><div style="${grid}">` +
       live.map(([k, label]) => `<span>${esc(label)}${tag(k)}</span><span style="text-align:right">${now(k)}</span><span class="dim" style="text-align:right">${hist(k)}</span>`).join("") + `</div>` : ""; }).join("");
-  LAB_SB = `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Parlay scoreboard · this season</div>${rows}<div class="s dim" style="margin-top:8px">Hit % = share of graded parlays where every leg won (pushes left out).</div></div></div>`;
+  LAB_SB = `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Parlay scoreboard · this season</div>${rows}<div class="s dim" style="margin-top:8px">Hit % = share of graded parlays where every leg won (pushes left out). $ = result at your stakes: my style $5, same game 4 legs $10, 3 legs $15, 2 legs $20, 4 legs across games $10.</div></div></div>`;
   const open = [...document.querySelectorAll("#lab .drop.open")].map((e) => e.id);   // keep your open cards on refresh
   $("lab").innerHTML = sgpCards() + LAB_SB;
   for (const id of open) { const e = $(id); if (e && e.classList) e.classList.add("open"); }
@@ -1043,8 +1046,8 @@ const sgpChance = (p) => (p.prob == null ? "" : `<b class="${p.prob >= 0.3 ? "g"
 function payLine(p) {
   if (!p || !p.legs || !p.legs.length) return "";
   if (!p.legs.every((l) => l.price > 0 && l.price < 1)) return ' <span class="pay dim">· Polymarket price not posted yet</span>';
-  const x = p.legs.reduce((a, l) => a / l.price, 1);
-  return ` <span class="pay">· Polymarket ${x >= 10 ? Math.round(x) : x.toFixed(1)}x · $10 → $${Math.round(10 * x)}</span>`;
+  const x = p.legs.reduce((a, l) => a / l.price, 1), st = p.stake || 10;   // the owner's stake for this parlay type (lib/sgp.js STAKES)
+  return ` <span class="pay">· Polymarket ${x >= 10 ? Math.round(x) : x.toFixed(1)}x · $${st} → $${Math.round(st * x)}</span>`;
 }
 function sgpBox(g) {
   const x = g.sgp; if (!x || g.started || g.final) return "";
@@ -1092,7 +1095,7 @@ function renderLines() {
   if (DETAIL) { const g = S.games.find((x) => x.key === DETAIL); if (g) return renderDetail(g); DETAIL = null; }
   setBg(null);
   $("detail").style.display = "none"; $("lines").style.display = "";
-  $("lines").innerHTML = ticketRow() + bestStrip() + parlayStrip() + changedBox() + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
+  $("lines").innerHTML = changedBox() + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
 
     '';
 }

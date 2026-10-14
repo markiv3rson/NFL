@@ -149,6 +149,7 @@
     background:linear-gradient(135deg,rgba(255,207,74,.16),rgba(255,207,74,.05)); outline:1.5px dashed rgba(255,207,74,.6); outline-offset:-6px; box-shadow:0 0 16px rgba(255,207,74,.15);
     -webkit-mask:radial-gradient(circle at 0 50%,transparent 8px,#000 8.5px) left/51% 100% no-repeat,radial-gradient(circle at 100% 50%,transparent 8px,#000 8.5px) right/51% 100% no-repeat;
             mask:radial-gradient(circle at 0 50%,transparent 8px,#000 8.5px) left/51% 100% no-repeat,radial-gradient(circle at 100% 50%,transparent 8px,#000 8.5px) right/51% 100% no-repeat; }
+  .ticket.one { width:100%; margin-top:10px; gap:6px; } .ticket .tpair { display:flex; gap:22px; flex-wrap:wrap; } .ticket .tpair > span { display:grid; gap:2px; }
   .ticket .tk { font-size:10.5px; font-weight:800; letter-spacing:.14em; color:#ffcf4a; }
   .ticket .tb { font-size:30px; font-weight:900; line-height:1.05; color:#fff; text-shadow:0 0 12px rgba(255,207,74,.45); font-variant-numeric:tabular-nums; }
   .ticket .ts { font-size:11px; color:#e9dcc0; }
@@ -165,7 +166,8 @@
   @keyframes livepulse { 0%,100% { box-shadow:0 0 12px rgba(255,60,80,.55), inset 0 0 0 1px rgba(255,90,110,.5); } 50% { box-shadow:0 0 26px rgba(255,60,80,.95), inset 0 0 0 1px rgba(255,90,110,.8); } }
   /* 10/14 (owner picked sketch 6): header with no box -- a green "lines live" line, the countdown in a white-to-purple gradient,
      the next game under it, a slim brushed-metal lever with "Updated" under it on the right */
-  .hero.h6 { background:none !important; border:0 !important; border-radius:0; padding:6px 4px 4px; overflow:visible; }
+  .hero.h6 { background:none !important; border:0 !important; border-radius:0; padding:6px 4px 14px; overflow:visible; }
+  .hero.h6::after { content:""; position:absolute; left:0; right:0; bottom:0; height:1px; background:linear-gradient(90deg,rgba(181,140,255,.55),rgba(124,183,255,.45) 55%,rgba(255,255,255,.06)); }   /* 10/14 owner: line under the header */
   .hero.h6 .hl { display:grid; gap:6px; min-width:0; flex:1 1 auto; }
   .hero.h6 .live { display:flex; align-items:center; gap:7px; white-space:nowrap; font-size:11px; font-weight:800; letter-spacing:.14em; color:#3fe08a; }
   .hero.h6 .live::before { content:""; width:6px; height:6px; border-radius:50%; background:#3fe08a; box-shadow:0 0 0 3px rgba(63,224,138,.18); flex:0 0 auto; }

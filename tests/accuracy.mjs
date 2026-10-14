@@ -101,5 +101,15 @@ try {
   if (card) console.log(`     card picks (all rules) spread ${card.spread.w}-${card.spread.l} = ${(pct(card.spread.w, card.spread.l) || 0).toFixed(1)}% · total ${card.total.w}-${card.total.l} = ${(pct(card.total.w, card.total.l) || 0).toFixed(1)}%`);
 } catch (e) { console.log(`\nLIVE: site not reachable (${String(e).slice(0, 80)})`); }
 
+// Parlays (10/14, owner: "make sure everything is graded ... see what works and what doesn't"): every saved parlay type's live record,
+// how often it hit vs how often its % said, and the money at the owner's stakes. Reported weekly in the Tuesday report card.
+try {
+  const L = await getJSONurl(`${SITE}/api/results/list`), P = (L && L.paper) || {}, B = P.board || {}, names = P.names || {};
+  const keys = ["sgp_best", "sgp_best_fill", "sgp_3", "sgp_linked", "sgp_style", "leg4_fav", "leg4_green_fav", "leg4_fav_td", "best_2", "best_3", "best_4"];
+  console.log("\nPARLAYS this season (all legs must win):");
+  for (const k of keys) { const b = B[k]; if (!b) continue; const d = b.decided || 0;
+    console.log(`     ${(names[k] || k).slice(0, 44).padEnd(44)} ${d ? `${b.hits}-${d - b.hits} = ${(100 * b.hits / d).toFixed(1)}%` : "none graded yet"}${b.expRate != null && d ? ` · said ${(100 * b.expRate).toFixed(1)}%` : ""}${b.money != null ? ` · ${b.money >= 0 ? "+" : "-"}$${Math.abs(b.money).toFixed(0)}` : ""}${b.review && b.review.verdict && !/TOO FEW|WAITING/.test(b.review.verdict) ? ` · ${b.review.verdict}` : ""}`); }
+} catch (e) { console.log(`\nPARLAYS: site not reachable (${String(e).slice(0, 80)})`); }
+
 if (bad) { console.log(`\naccuracy: ${bad} rule(s) FAILED`); process.exit(1); }
 console.log("\naccuracy: every green rule still wins 56%+ on its history and matches the % the card shows");
