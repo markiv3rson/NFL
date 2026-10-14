@@ -139,6 +139,23 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   Saved once (`|middle` in `lib/tracked.js`), graded (W = favorite by exactly 3, both won), Models -> Tracked angles row with money.
   The Polymarket COMBO version (ML + spread as one parlay, 6.39x for SEA ML + DEN +3.5) can't be judged: the app can't see combo prices.
 
+## BUG HUNT (10/14, owner: "run every possible bug and fix them")
+
+- Ran: TypeScript name/type check of every JS file (no undefined names), Python undefined-name check (clean), 20,000 random games through
+  every pick rule / grading / middle / parlay builder (0 problems), 20,000 random parlay-leg sets through the same-game chance math
+  (never above the least likely leg, symmetric, no NaN), a 2-week scheduler simulation across the 11/1 daylight-saving change (site's
+  `nextBooksPull` and the scheduler's slots match on all 672 half-hours; 23 pulls / 57 credits a week), the live slate checked for
+  impossible values (none), every tab and all 14 game pages loaded in a browser with the live data (no errors, no "undefined"/"NaN"),
+  and 14 loads with randomly damaged data (0 page errors). The browser can't trust the sandbox's HTTPS proxy: serve `public/` from a
+  route stub and feed it live JSON fetched with curl (see /tmp scripts idea: route local.test -> files + /api/* fixtures).
+- Fixed: the iPhone clock / battery were drawn over the page content (`body::before` strip, `public/index.html`); the Bets tab still said
+  "Open this week $X of $200" (the weekly budget was deleted); the System warning said "tap ↻ Lines + injuries" (button removed);
+  a NaN / non-number line could become a pick labeled "A NaN" (`lib/picks.js` now returns no pick).
+- Checked and fine: parlay grading of the new -2.5 / +7.5 / +14.5 labels, read-only API endpoints with bad input, the TD tab header
+  ("Week 7 / top 7" in a screenshot was the digit animation mid-roll; it lands on "Week 6 · top 3"). NFL app credits 349 after the 10/14
+  7 AM pull (352 - 3) vs the NBA app's 490 -> two separate Odds API subscriptions.
+- Not testable here: the model service HTTP endpoints (importing it downloads the model data), Polymarket / Pinnacle live feeds.
+
 ## CLEANUP (10/14, owner: "delete all 8", teasers too)
 
 - Deleted: the price-gap tracker (`lib/edges.js`, "right now" gaps, PRICE GAP alert), the old bet sizing ($200 weekly cap, Kelly stakes,

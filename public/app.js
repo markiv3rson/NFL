@@ -533,7 +533,7 @@ function renderMineNow() {
     (() => { const sc = MB.summary && MB.summary.settleCheck; if (!sc || !(sc.agree + sc.disagree)) return "";
       return sc.disagree ? `<div class="s y">⚠ Settlement mismatch on ${sc.disagree} combo${sc.disagree === 1 ? "" : "s"}</div>`
         : ""; })() +
-    (past ? "" : `<div class="row"><span class="dim">Open this week</span><span>${money(s.openCost)} of $200</span></div>`) + `</div>` +
+    (past ? "" : `<div class="row"><span class="dim">Open this week</span><span>${money(s.openCost)}</span></div>`) + `</div>` +
     (past || !open.length ? "" : openBySlot(open) +
     `<div class="sec"><div class="sh">Expected returns</div>` +
     `<div class="row"><span class="dim">If everything hits</span><span>${money(s.maxPayout)} (${cMoney(s.maxPayout - s.openCost)})</span></div>` +

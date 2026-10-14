@@ -7,7 +7,7 @@ import RedisMock from "ioredis-mock";
 globalThis.__TEST_REDIS__ = new RedisMock();
 const { toProb, toAmerican, ncdf, ninv, isThinMarket, SD_MARGIN, shiftCover } = await import("../lib/odds.js");
 const { playedLastGame } = await import("../lib/snaps.js");
-const { spreadPick, totalPick, winPctAt, priceTd, nameMatches, tdRows, rosterPosFor } = await import("../lib/picks.js");
+const { spreadPick, totalPick, winPctAt, winPctMarket, priceTd, nameMatches, tdRows, rosterPosFor } = await import("../lib/picks.js");
 const { twoPlus, firstTdShares, applyCalibration, buildCalibration } = await import("../lib/calibration.js");
 const { setJSON } = await import("../lib/redis.js");
 
@@ -26,6 +26,11 @@ ok(isThinMarket(0.4, 0.01) && !isThinMarket(0.4, 0.37) && isThinMarket(0.07, 0.0
 { const m = { homeMargin: 3, calHomeCover: 50, mktHomeSpread: -3 }, a = spreadPick(m, -3.5, "A", "H"), c = spreadPick(m, -2.5, "A", "H");
   ok(a.side === "away" && c.side === "home" && near(a.pct, c.pct, 0.5), "spread shift direction", [a.pct, c.pct]); }
 ok(0.5 - shiftCover(0.5, -2.5, -3.5) > 2 * (0.5 - shiftCover(0.5, -4.5, -5.5)), "key numbers: crossing 3 moves more than 4.5->5.5");
+// 10/14 bug hunt: a NaN / missing line never becomes a pick; no leftover references to removed things
+ok(spreadPick({ homeMargin: 3 }, NaN, "A", "H") === null && spreadPick({ homeMargin: NaN }, -3, "A", "H") === null && totalPick({ total: 44 }, NaN) === null && winPctMarket(NaN) === null && winPctAt({ homeMargin: 3, homeWinPct: 61 }, NaN) === 61, "picks: a NaN line gives no pick (not 'A NaN')");
+{ const src = (f) => readFileSync(new URL(f, import.meta.url), "utf8");
+  ok(/body::before\s*\{[^}]*env\(safe-area-inset-top/.test(src("../public/index.html")), "page: a solid strip sits behind the iPhone status bar (the clock no longer draws over the content)");
+  ok(!/of \$200/.test(src("../public/app.js")) && !/↻ Lines/.test(src("../lib/watchdog.js")), "no leftover $200 weekly budget text or removed Lines button reference"); }
 ok(shiftCover(0.53, -3, -3) === 0.53, "shift keeps the anchor");
 { const t = totalPick({ total: 44, calUnder: 50, mktTotal: 44 }, 45); ok(t.side === "under" && t.pct > 50, "total shift direction"); }
 ok(near(winPctAt({ homeMargin: 5 }, -3), 100 * (1 / (1 + Math.exp(-(-0.0470 + 0.1187 * (3) + 0.0334 * (3) * Math.abs(3) / 10)))), 1e-9), "win % == fair_line.cal_win");

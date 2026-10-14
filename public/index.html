@@ -23,7 +23,10 @@
   button, .tile, .tdr, .gapstrip, .al { touch-action:manipulation; -webkit-touch-callout:none; }
   button { -webkit-appearance:none; appearance:none; }
   html, body { margin:0; padding:0; color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
-  body { padding-top:env(safe-area-inset-top,0px); }   /* 10/13: once only (it was on html AND body = double gap); the bottom bar has its own */
+  body { padding-top:env(safe-area-inset-top,0px); }
+  /* 10/14 (owner screenshot: the clock / battery were drawn over the game header): content scrolls UNDER the translucent iPhone status bar, so a
+     solid-ish strip the height of the status bar sits above everything (0 tall on a desktop / non-notch screen) */
+  body::before { content:""; position:fixed; top:0; left:0; right:0; height:env(safe-area-inset-top,0px); background:linear-gradient(to bottom,rgba(8,9,14,.97),rgba(8,9,14,.9)); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); z-index:90; pointer-events:none; }   /* 10/13: once only (it was on html AND body = double gap); the bottom bar has its own */
   html { background:linear-gradient(160deg,#1e2025 0%,#121418 50%,#08090b 100%) fixed #08090b; }
   body { background:transparent; min-height:100vh; }
   .wrap { position:relative; z-index:0; max-width:980px; margin:0 auto; padding:14px max(12px,env(safe-area-inset-right)) 170px max(12px,env(safe-area-inset-left)); }
@@ -238,7 +241,7 @@
   .chips { display:flex; gap:8px; overflow:auto; margin-top:10px; padding-bottom:2px; }
   .chips button { flex-shrink:0; min-height:30px; font:inherit; font-size:12px; font-weight:700; padding:5px 12px; border-radius:999px; cursor:pointer; color:var(--faint); background:transparent; border:1px solid var(--line); }
   .chips button.on { color:var(--rose); background:rgba(255,110,140,.14); border-color:rgba(170,182,255,.42); }
-  /* Lines / Model buttons: two small pills at the bottom right, over a faded strip so they never hide content */
+  /* the toast box (the old Lines / Model buttons here were removed 10/14) */
   .fab { position:fixed; right:max(12px,env(safe-area-inset-right)); bottom:calc(max(10px,env(safe-area-inset-bottom,0px)) + 84px); z-index:50; display:flex; flex-direction:row; align-items:center; gap:8px; }
   .fab .fb { display:flex; }
   .fab button { height:34px; padding:0 14px 0 12px; border-radius:999px; cursor:pointer; color:var(--rose); background:rgba(24,24,64,.62); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(170,182,255,.45); box-shadow:0 4px 14px rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; gap:6px; font:inherit; font-size:12.5px; font-weight:700; }
