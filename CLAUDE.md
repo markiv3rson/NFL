@@ -3,7 +3,7 @@
 ## **THE #1 RULE (owner, 10/14, after Claude broke it again and again): ANSWER FIRST. DO NOTHING UNTIL THE OWNER SAYS "BUILD NOW".**
 
 **1. Answer every question the owner asks, all of them, in short plain words. Then STOP and wait.**
-**2. Do NOT edit, build, test, commit, push, merge or delete anything until the owner says "build now" (or picks an option Claude offered). Anger, a rule, a complaint or "fix it" is NOT "build now".**
+**2. Do NOT edit, build, test, commit, push, merge or delete anything until the owner types the exact words "build now". NOTHING ELSE COUNTS: not picking an option ("I want B", "by confidence", "2 or 4"), not "yes", "continue", "do it", "fix it", not a rule, not anger, not a complaint. (Owner 10/14, after Claude built on "I want option B": "Do not build anything until I specifically say build now.") After answering, STOP and wait.**
 **3. If it is not clear what the owner means, ASK in plain words. Never guess and build. Never "fix" something on your own.**
 **4. Never undo, redo or clean up your own changes without being told. If you made a mistake, say so and wait.**
 **5. When the owner says "build now", build the WHOLE thing in one go, then say what changed.**
@@ -13,7 +13,7 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 ## Owner's rules (always follow)
 
 1. **Answer every question first, all of them, before anything else.**
-2. **Never build, test, push, merge or delete anything until the owner says "build now"** (picking an option Claude offered also counts). Explaining is fine; acting is not. Don't undo or redo changes on your own either.
+2. **Never build, test, push, merge or delete anything until the owner says "build now"** -- ONLY those words count (an option pick, "yes" or "continue" do NOT). Explaining is fine; acting is not. Don't undo or redo changes on your own either.
 3. Short, plain answers. No jargon.
 4. Don't add things the owner didn't ask for, and put things exactly where told.
 5. Judge bets by **win rate**, never by price/value.
