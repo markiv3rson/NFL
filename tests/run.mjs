@@ -780,7 +780,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const g = { ...tg, combos: [{ id: "c1", pick: "TB +4.5", why: "Road team off a loss vs 3-game win streak", hit: 59, n: 283 }] };
     const lo = { ...tg, combos: [{ pick: "Over 46.5", why: "x", hit: 53, n: 2580 }, { pick: "Under 46.5", why: "y", hit: 56.8, n: 2580 }, { pick: "Under 46.5", why: "z", hit: 56.1, n: 2580 }] };
     ok(/>TB \+4\.5</.test(ctx.T.tile(g)) && /TB \+4\.5<\/b>/.test(ctx.T.anglesBox(g)) && /wins 59%/.test(ctx.T.anglesBox(g)) && ctx.T.anglesBox(tg) === "" &&
-      (ctx.T.anglesBox(lo).match(/class="bb"/g) || []).length === 1 && /Under 46\.5<\/b>.*wins 56\.8%/.test(ctx.T.anglesBox(lo)) && !/Over 46\.5/.test(ctx.T.anglesBox(lo)), "game page: one straight pick per market, 56%+, no opposite sides"); }
+      (ctx.T.anglesBox(lo).match(/class="bb"/g) || []).length === 1 && /Under 46\.5<\/b>.*wins 56\.8%/.test(ctx.T.anglesBox(lo)) && !/Over 46\.5/.test(ctx.T.anglesBox(lo)), "game page: one straight pick per market, 56%+, no opposite sides");
+    ok(!/\$\{anglesBox\(g\)\}/.test(readFileSync(new URL("../public/app.js", import.meta.url), "utf8")), "game page: the BEST PICK box is off (it repeated the Model cards)"); }
   { // proven angles in Model Picks parlays (10/8)
     const { buildPaper } = await import("../lib/paper.js");
     const G = (k, angles, winPct, ml) => ({ key: k, home: k.split(" @ ")[1], away: k.split(" @ ")[0], started: false, final: false, angles, winPct, poly: ml ? { ml: { home: ml }, spread: { homeSpread: -3 } } : null, td: [] });

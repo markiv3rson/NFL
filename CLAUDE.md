@@ -33,6 +33,7 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   Model Picks tab: "Same-game parlays · ranked" card at the top + scoreboard group SAME-GAME PARLAYS (sgp_best / sgp_style). Saved on every
   slate build until kickoff (`paper:<s>:<w>:sgp|<game>`, last save before kickoff counts), graded by gradePaper, no bell alert (`noAlert`).
   Legs without a Polymarket price yet (TD markets post late in the week) still count; such parlays get win/loss only (no return).
+- Game page (10/14, owner): the "BEST PICK · THIS GAME" box at the top was removed (it repeated the Model cards; `anglesBox` code kept).
 - Bets tab: an open leg says "⚠ app now picks the other side" when the app has a 56%+ pick against it.
 - Early-week total edge: TURNED OFF on cards 10/11 (11-18 live); recording CUT 10/13 (old rows still grade).
 - Anytime TD tab: "Best TD picks" box at the top (10/14, owner: only the model's 55%+ players; graded weeks 3-5 they scored 17 of 21
