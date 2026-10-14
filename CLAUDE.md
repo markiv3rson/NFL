@@ -673,3 +673,15 @@ Tested and NOT added (made it worse):
 
 - Spread / total Model card keeps only: the model number, PICK + %, one short reason, and the "Rules split" warning. The without-the-extra-points %, this rule's record, "line moved" and the
   cost warning sit behind a "More" tap (`public/app.js moreBox`, a plain `<details>`). Light-green / yellow cards still have no notes.
+
+## BOUGHT-POINT TOTALS (10/14, owner: "by confidence"; option A)
+
+- `lib/stack.js totalBuyPick / withTotalBuy` (id `totalbuy|total`, green): when the chooser likes a side of the total AND is confident, take that side on a Polymarket ALTERNATE total
+  line moved the pick's way -- Over lower, Under higher, off Polymarket's main total. Chooser's most confident 10% (raw confidence >= thr10 0.6288) buys 2 points, the next 20% (>= thr30 0.58026) buys 4
+  (`lib/chooser.js totalBuyLevel`; the weekly rebuild republishes `markets.total.thr` and checks the rule as `oos.totalBuy`). Honest rates (2,607 games 2014-26, every season unseen,
+  half-point lines at the closing total): top 10% buying 2 = 59.4% (133; 58/62/58 by period), next 20% buying 4 = 64.2% (313; 66/65/63). The chooser adds ~2-3 points on top of
+  what the points alone win (the bottom 70% buying 4 wins 61.9%). Sides tested: always Under 55.9 / 62.6%, always Over 57.1 / 62.6% (2 / 4 points) -> the side hardly matters without confidence.
+  Card shows these rates (no "without the points" line: the plain-line rates are too noisy); recorded, graded and counted in the live rule list as "BOUGHT TOTAL · 2 pts / 4 pts".
+- Polymarket lists 20-40 total lines per game (2-point steps, 1-point on some), `lib/poly.js` now keeps the ones within 6 points of the main total with a two-sided book and a 10-90c price as
+  `talts` (stored with the spread alternates in `alts:<season>:<week>:<game>`, read by `lib/week.js` and the kickoff recorder in `pages/api/snapshot.js`; older than 3 h -> no pick).
+  Tested but NOT used: choosing the side by size (Over if total <= 41), by line move, by day/night (night Under 57.7% at 2 points vs Over 54.3%; day the reverse -- small samples).

@@ -586,6 +586,24 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const ga = parseGame([...mkts, mk("spreads", "Spread: Minnesota Vikings (-1.5)", ["Minnesota Vikings", "Miami Dolphins"], ["0.79", "0.21"], { bestBid: 0.78, bestAsk: 0.8 })], "MIA", "MIN");
     const alt = (t, l) => (ga.alts || []).find((x) => x.team === t && x.line === l);
     ok(alt("MIN", -1.5).price === 0.8 && Math.abs(alt("MIA", 1.5).price - 0.22) < 1e-9 && alt("MIA", 10) && !alt("MIN", 19.5) && !alt("MIA", -19.5), "poly parse: alternate spreads keep both sides at the buy price; an unpriced placeholder is left out");
+    { // bought-point totals (10/14, owner: "by confidence"): alternate total lines parse with both sides' buy prices; the pick needs the chooser's confidence
+      const tm = (line, bid, ask, mid) => mk("totals", `O/U ${line}`, ["Over", "Under"], [String(mid), String(1 - mid)], { line, bestBid: bid, bestAsk: ask });
+      const gt = parseGame([tm(50.5, 0.60, 0.61, 0.605), tm(52.5, 0.52, 0.53, 0.525), tm(54.5, 0.45, 0.46, 0.455), tm(56.5, 0.38, 0.39, 0.385), tm(60.5, 0.2, 0.21, 0.205)], "MIA", "MIN");
+      const ta = (side, l) => (gt.talts || []).find((x) => x.side === side && x.line === l);
+      ok(gt.total && gt.total.line === 52.5 && Math.abs(ta("over", 50.5).price - 0.61) < 1e-9 && Math.abs(ta("under", 54.5).price - 0.55) < 1e-9 && Math.abs(ta("under", 56.5).price - 0.62) < 1e-9 && !ta("over", 60.5) && !ta("under", 60.5),
+        "poly parse: alternate totals keep both sides at the buy price (Under = 1 - the Over bid), within 6 points of the main total", gt.talts);
+      const { totalBuyPick, withTotalBuy, ruleLabel, gradeStackPick: gsp } = await import("../lib/stack.js"), { totalBuyLevel, TOTAL_BUY } = await import("../lib/chooser.js");
+      const polyT = { total: { line: 52.5, over: 0.53, under: 0.48 } }, rec = { t: new Date().toISOString(), talts: gt.talts };
+      const mkc = (side, q) => ({ id: "chooser|total", kind: "total", side, q, hit: 51, line: 52.5 });
+      const u2 = totalBuyPick(mkc("under", 0.64), polyT, { t: rec.t, talts: [...gt.talts, { side: "under", line: 54.5, price: 0.55 }] }), o2 = totalBuyPick(mkc("over", 0.65), polyT, rec), u4 = totalBuyPick(mkc("under", 0.60), polyT, rec);
+      ok(totalBuyLevel(0.64) === 2 && totalBuyLevel(0.60) === 4 && totalBuyLevel(0.55) === 0 && totalBuyLevel(TOTAL_BUY.thr10) === 2 && totalBuyLevel(TOTAL_BUY.thr30) === 4, "bought totals: top 10% confident buys 2 points, the next 20% buys 4, the rest none");
+      ok(u2 && u2.pick === "Under 54.5" && u2.pts === 2 && u2.hit === 59.4 && u2.kind === "total" && u2.side === "under" && u2.line === 54.5 && Math.abs(u2.price - 0.55) < 1e-9 && /CHOOSER \+ POINTS/.test(u2.why)
+        && o2 && o2.pick === "Over 50.5" && o2.pts === 2 && u4 && u4.pick === "Under 56.5" && u4.pts === 4 && u4.hit === 64.2, "bought totals: Under buys higher lines, Over lower lines, off the Polymarket main total", { u2, o2, u4 });
+      ok(!totalBuyPick(mkc("under", 0.55), polyT, rec) && !totalBuyPick(mkc("over", 0.60), polyT, rec) && !totalBuyPick(mkc("under", 0.64), polyT, { t: new Date(Date.now() - 4 * 3600e3).toISOString(), talts: gt.talts }) && !totalBuyPick(mkc("under", 0.64), polyT, {})
+        && !totalBuyPick({ ...mkc("under", 0.64), q: null }, polyT, rec) && !totalBuyPick(mkc("under", 0.64), { spread: {} }, rec), "bought totals: no pick when the chooser is not confident, the alternate line is missing / stale, or there is no main total");
+      const list = [mkc("under", 0.64), { id: "keynum|spread", kind: "spread" }];
+      ok(withTotalBuy(list, polyT, { t: rec.t, talts: [{ side: "under", line: 54.5, price: 0.55 }] }).length === 3 && withTotalBuy(list, polyT, {}).length === 2 && withTotalBuy([{ id: "keynum|spread" }], polyT, rec).length === 1, "bought totals: added to the card's picks only when it applies");
+      ok(gsp({ ...u2, home: "MIN" }, 30, 21) === "W" && gsp({ ...u2, home: "MIN" }, 40, 20) === "L" && gsp({ ...o2, home: "MIN" }, 20, 21) === "L" && gsp({ ...o2, home: "MIN" }, 30, 21) === "W" && ruleLabel({ id: "totalbuy|total", pts: 4 }) === "BOUGHT TOTAL · 4 pts", "bought totals: graded like any total (Under 54.5 wins on 51 points, Over 50.5 loses on 41) and labeled by points in the live rule records"); }
     { // database space (10/14): a finished, fully graded week's TD price history shrinks to first + last; its rerun log to 5 runs; once
       const { compactOldWeeks } = await import("../lib/compact.js"); const { SEASON: SZ, resetGamesCache: rgc } = await import("../lib/games.js"); const RR = globalThis.__TEST_REDIS__, rf = globalThis.fetch;
       const HH = "season,game_type,week,gameday,gametime,away_team,away_score,home_team,home_score,spread_line,total_line,roof,stadium,location,surface\n";

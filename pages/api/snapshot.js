@@ -1,7 +1,7 @@
 // Takes a line snapshot: Polymarket lines + TD prices for every game that has NOT kicked off,
 // plus sportsbook consensus when books=1. Called by the Railway scheduler (7/12/3/7 PT, Sunday
 // 6/7/8/9/10/12/3 PT, and just before each kickoff with kickoff=<game>) and by the Refresh button.
-import { tablePicks, recordStack, lineMovePick, lineMoveTotalPick, keyNumberPick, injuryPick, bounceBackPick, floorDogPick } from "../../lib/stack";
+import { tablePicks, withTotalBuy, recordStack, lineMovePick, lineMoveTotalPick, keyNumberPick, injuryPick, bounceBackPick, floorDogPick } from "../../lib/stack";
 import { venue, windAtKickoff } from "../../lib/wind";
 import { tkey, WIND_U_MPH, recordFloor } from "../../lib/tracked";
 import { loadComboModel } from "../../lib/combomodel";
@@ -58,7 +58,7 @@ export async function writePrelog(season, week, g, t, poly, bk, model) {
         // Before, books came first, so a recorded pick could sit on a different number than the one shown.
         const hsNow = poly && poly.spread && poly.spread.homeSpread != null ? poly.spread.homeSpread : bk && bk.spread ? bk.spread.homeSpread : null;
         const tlNow = poly && poly.total && poly.total.line != null ? poly.total.line : now;
-        try { const sitS = await situationFor(season, week, g).catch(() => null); await recordFloor(season, week, g, hsNow, sitS, t).catch(() => 0); await recordStack(season, week, g, tablePicks({ ...g, outdoor: !!v.outdoor }, mg, hsNow, tlNow, s0, open, sitS, Number(week)).concat(injuryPick(g, hsNow, s0, sitS, Number(week)) || [], bounceBackPick(g, hsNow, sitS) || [], floorDogPick(g, hsNow, sitS) || [], ...(await timingAtKickoff(season, week, g, t, poly, bk))), t); } catch {} }   // combo picks (10/9); a failure here never stops the rest
+        try { const altRec = (await getJSON(`alts:${season}:${week}:${g.key}`).catch(() => null)) || {}; const sitS = await situationFor(season, week, g).catch(() => null); await recordFloor(season, week, g, hsNow, sitS, t).catch(() => 0); await recordStack(season, week, g, withTotalBuy(tablePicks({ ...g, outdoor: !!v.outdoor }, mg, hsNow, tlNow, s0, open, sitS, Number(week)), poly, altRec).concat(injuryPick(g, hsNow, s0, sitS, Number(week)) || [], bounceBackPick(g, hsNow, sitS) || [], floorDogPick(g, hsNow, sitS) || [], ...(await timingAtKickoff(season, week, g, t, poly, bk))), t); } catch {} }   // combo picks (10/9); a failure here never stops the rest
   }
 }
 
@@ -103,7 +103,7 @@ export default async function handler(req, res) {
         if (sp.dropped.length) await logError("snapshot", `${g.key}: dropped implausible Polymarket line (${sp.dropped.join("; ")})`).catch(() => {}); }
       // Alternate spreads (BEAT THE 3 buys +3.5 / -2.5 there) are kept as ONE latest copy per game, not inside every snapshot (200 kept per game: it would
       // add MBs a week to the database and to every page load).
-      const alts = poly && poly.alts ? poly.alts : null; if (alts) { poly = { ...poly }; delete poly.alts; await setJSON(`alts:${season}:${week}:${g.key}`, { t, alts }); }
+      const alts = poly && poly.alts ? poly.alts : null, talts = poly && poly.talts ? poly.talts : null; if (alts || talts) { poly = { ...poly }; delete poly.alts; delete poly.talts; await setJSON(`alts:${season}:${week}:${g.key}`, { t, alts, talts }); }   // 10/14: alternate totals ride along (bought-point totals)
       const snap = { t, src, poly: poly || null, books: books ? books[g.key] || null : undefined };
       // Bad-data guard: a line jumping this far between snapshots is almost always a feed glitch, not a real move
       const prevRaw = await redis.lindex(K.snaps(season, week, g.key), -1), prev = prevRaw ? (jparse(prevRaw) || {}).poly || null : null;

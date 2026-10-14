@@ -334,6 +334,21 @@ def train_chooser(d, F, F_for=None):
         out["markets"][mk] = {"coef": [round(float(c), 6) for c in full.coef_[0]], "b0": round(float(full.intercept_[0]), 6),
                               "cal": [round(float(cal.intercept_[0]), 6), round(float(cal.coef_[0][0]), 6)]}
         out["oos"][mk] = {"games": int(ok.sum()), "hit": round(float(win[ok].mean()) * 100, 1)}
+        if mk == "total":
+            # BOUGHT-POINT TOTALS (10/14, owner "by confidence"): the cutoffs for the chooser's most confident 30% / 10% of games (raw confidence), republished weekly.
+            # Honest check of the rule on unseen seasons: top 10% buys 2 points, next 20% buys 4 (half-point lines only, bet at the closing total).
+            qv = np.maximum(oos, 1 - oos); thr30, thr10 = float(np.quantile(qv[ok], .7)), float(np.quantile(qv[ok], .9))
+            out["markets"][mk]["thr"] = [round(thr30, 5), round(thr10, 5)]
+            def buy_hit(sel, k):
+                w = l = 0
+                for T, tot, p in zip(d.kt.values[sel], d.tot.values[sel], oos[sel]):
+                    line = T - k if p > 0.5 else T + k
+                    if float(line).is_integer(): continue
+                    if ((tot > line) if p > 0.5 else (tot < line)): w += 1
+                    else: l += 1
+                return (round(100 * w / (w + l), 1) if w + l else None), w + l
+            h2, n2 = buy_hit(ok & (qv >= thr10), 2); h4, n4 = buy_hit(ok & (qv >= thr30) & (qv < thr10), 4)
+            out["oos"]["totalBuy"] = {"hit2": h2, "n2": n2, "hit4": h4, "n4": n4}
     return out
 
 
