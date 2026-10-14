@@ -1116,7 +1116,9 @@ function sgpBox(g) {
 const FOUR_NAMES = { leg4_fav: "4 biggest favorites", leg4_green_fav: "Best green pick + 3 favorites", leg4_fav_td: "3 favorites + top TD scorer" };
 function fourLegCard() {
   const F = (S && S.fourLeg) || []; if (!F.length) return "";
-  const row = (p) => `<div class="row" style="display:block"><div><b>${esc(FOUR_NAMES[p.strategy] || p.strategy)}</b> · ${sgpChance(p)} <span class="dim">· history ${p.hist}% of weeks</span></div><div class="s">${p.legs.map((l) => `${esc(l.label)} <span class="dim">${esc(l.game)} · ${Math.round(l.prob * 100)}%</span>`).join("<br>")}</div></div>`;
+  const strong = (p) => (p.strong == null ? "" : p.strong ? '<div class="s g" style="margin-top:4px">STRONG WEEK: all 4 favorites at 70%+. Weeks like this hit 49% (146 weeks), and 3 of 4 won 82%.</div>'
+    : '<div class="s y" style="margin-top:4px">Not all 4 favorites at 70%+. Weeks like this hit 30% (63 weeks), 3 of 4 won 62%.</div>');
+  const row = (p) => `<div class="row" style="display:block"><div><b>${esc(FOUR_NAMES[p.strategy] || p.strategy)}</b> · ${sgpChance(p)} <span class="dim">· history ${p.hist}% of weeks</span></div><div class="s">${p.legs.map((l) => `${esc(l.label)} <span class="dim">${esc(l.game)} · ${Math.round(l.prob * 100)}%</span>`).join("<br>")}</div>${strong(p)}</div>`;
   return `<div class="card modelglow" style="margin-top:10px"><div class="inner"><div class="sh">4-leg parlays · this week</div>${F.map(row).join("")}<div class="s dim" style="margin-top:6px">History = share of weeks all 4 legs won, 2014-25 (214 weeks). The 4 favorites also got 3 of 4 right 77% of weeks.</div></div></div>`;
 }
 // Model Picks tab: every game's same-game parlays, highest chance first
