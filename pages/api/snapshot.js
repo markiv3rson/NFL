@@ -31,7 +31,7 @@ export const config = { maxDuration: 120 };
 // Automatic pre-log (protocol 3.3): model vs Polymarket frozen at kickoff for every game. Used by the kickoff snapshot
 // AND the late-closing safety net below (added 9/29), so a missed kickoff (e.g. the scheduler down) still gets one.
 // LINE MOVE / KEY NUMBER at kickoff (10/14 fix): the kickoff snapshot reuses the last books pull. Same rule as the card: that reading must
-// be current (taken before the next scheduled pull is due), else no LINE MOVE; KEY NUMBER then uses the newest Pinnacle line (under 1.5 h).
+// be current (taken before the next scheduled pull is due), else no LINE MOVE; KEY NUMBER then needs the newest Pinnacle line (under 1.5 h) to still sit on the books' last number.
 async function timingAtKickoff(season, week, g, t, poly, bk) {
   const bkT = ((await getJSON(K.books(season, week)).catch(() => null)) || {}).t, hrs = (x) => (new Date(t) - new Date(x)) / 3600e3;
   const fresh = booksFresh(bkT, new Date(t));   // current until the owner's next scheduled pull (10/14)
@@ -39,7 +39,7 @@ async function timingAtKickoff(season, week, g, t, poly, bk) {
   let B = fresh ? bk : null;
   if (!fresh) { const raws = (await getRedis().lrange(`pinnacle:${season}:${week}:${g.key}`, -6, -1).catch(() => null)) || [];
     const pr = raws.map(jparse).filter((x) => x && x.hs != null && hrs(x.t) <= 1.5 && hrs(x.t) >= -0.1).pop();
-    if (pr) B = { spread: { homeSpread: pr.hs } }; }
+    if (pr && bk && bk.spread && Number(pr.hs) === Number(bk.spread.homeSpread)) B = bk; }   // 10/14: Pinnacle only confirms the books' last number
   return [...(fresh ? [lineMovePick(g, poly, bk), lineMoveTotalPick(g, poly, bk)] : []), keyNumberPick(g, poly, B, alts)].filter(Boolean);
 }
 export async function writePrelog(season, week, g, t, poly, bk, model) {
