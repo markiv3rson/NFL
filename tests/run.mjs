@@ -437,6 +437,16 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(b.result === "W" && b.ret === null && st.result === "L" && sm.board.sgp_best.hits === 1 && sm.board.sgp_best.roi === null && sm.board.sgp_style.graded === 1, "same-game: graded (ATL +3.5 and Bijan hit; your style lost on the Under/Swift), unpriced legs -> win/loss only");
     ok(!(await listAlerts(2099)).some((a) => /Same game · (best \(strong|your style)/.test(a.title || "")), "same-game: no bell alert");
     for (const k of await R.keys("paper:2099:*")) await R.del(k); }
+  { // 4-leg parlays (10/14 research): 4 biggest favorites skip a game where a green pick backs the dog; green+3 favs; 3 favs + top TD; linked same-game 4
+    const { fourLegParlays, sameGameParlays } = await import("../lib/sgp.js");
+    const G = (h, a, ph, extra = {}) => ({ key: `${a} @ ${h}`, away: a, home: h, started: false, final: false, poly: { ml: { home: ph, away: 1 - ph }, total: { line: 44.5, over: .5, under: .5 } }, combos: [], td: [], ...extra });
+    const gs = [G("KC", "LV", .85), G("BUF", "NYJ", .8), G("DET", "CHI", .75), G("SF", "ARI", .7, { combos: [{ pick: "ARI +7.5", hit: 57.1, line: 7.5, why: "BOUNCE BACK DOG: x" }] }), G("PHI", "NYG", .65, { td: [{ player: "S.Barkley", team: "PHI", fair: 62 }] }), G("BAL", "CLE", .6)];
+    const F = fourLegParlays(gs), by = Object.fromEntries(F.map((f) => [f.strategy, f]));
+    ok(by.leg4_fav && by.leg4_fav.legs.map((l) => l.label).join() === "KC ML,BUF ML,DET ML,PHI ML" && Math.abs(by.leg4_fav.prob - .85 * .8 * .75 * .65) < .002 && by.leg4_fav.hist === 42.5, "4-leg: 4 biggest favorites, skipping SF (our green pick backs ARI)");
+    ok(by.leg4_green_fav && by.leg4_green_fav.legs[0].label === "ARI +7.5" && by.leg4_green_fav.legs.slice(1).map((l) => l.label).join() === "KC ML,BUF ML,DET ML", "4-leg: best green pick + 3 biggest favorites in other games");
+    ok(by.leg4_fav_td && by.leg4_fav_td.legs[3].label === "S.Barkley TD", "4-leg: 3 favorites + the top TD scorer from another game");
+    const one = sameGameParlays({ ...G("PHI", "NYG", .7), td: [{ player: "S.Barkley", team: "PHI", fair: 62 }, { player: "A.Brown", team: "PHI", fair: 40 }, { player: "N.Out", team: "PHI", fair: 70, injury: "Out" }] });
+    ok(one.linked && one.linked.legs.map((l) => l.label).join() === "PHI ML,Over 44.5,S.Barkley TD,A.Brown TD", "linked 4: favorite wins + Over + its top 2 scorers (Out player skipped)"); }
   { // ESPN final scores for games nflverse has not posted; waiting label on bets; only recent errors listed
     const { finalsFromScoreboard, overlayEspnFinals } = await import("../lib/espnFinals.js");
     const ev = (away, home, a, h, done) => ({ status: { type: { state: done ? "post" : "in", completed: done } }, competitions: [{ competitors: [ { homeAway: "away", score: String(a), team: { displayName: away } }, { homeAway: "home", score: String(h), team: { displayName: home } } ] }] });

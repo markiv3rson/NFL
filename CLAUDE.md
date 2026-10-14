@@ -27,7 +27,7 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   TEASER. TD parlays may use thin markets (leg says "thin"); the price shown is the ask.
 - Model card (10/14, owner): when another green rule takes the OTHER side of the same market, the green pick adds "⚠ Rules split: <pick> (<rule>, <%>) is green too. Pick one side." (`public/app.js splitNote`).
 - SAME-GAME PARLAYS (10/14, owner: "build now, all three"; `lib/sgp.js`): every game page shows a "SAME-GAME PARLAY" box at the bottom,
-  below the touchdowns (owner 10/14); Model Picks tab moved next to Anytime TD in the tab bar -- BEST (only strong legs: green spread/total 56%+ and TD players 55%+, one per team; a leg that works AGAINST a stronger
+  below the touchdowns (owner 10/14); tab bar order (owner 10/14, final): Game Lines, Anytime TD, Bets, Bell, Models, Model Picks -- BEST (only strong legs: green spread/total 56%+ and TD players 55%+, one per team; a leg that works AGAINST a stronger
   one is dropped -- TD + Under 0.77x, TD + other team covers 0.81x; 1 strong leg -> "bet it alone") and YOUR STYLE (card's spread + total
   pick + the top TD scorer on each team, Out/Doubtful/Questionable skipped). Chance = legs x same-game links (`lib/combo.js comboChance`).
   Model Picks tab: "Same-game parlays · ranked" card at the top + scoreboard group SAME-GAME PARLAYS (sgp_best / sgp_style). Saved on every
@@ -53,6 +53,21 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   legs (`lib/mybets.js saveComboLegs` -> `combolegs:<id>`), the Bets tab uses them after Polymarket drops them, 1+ TD legs with no mark are
   graded from the official scorers, and Bets -> analysis counts account combos' legs too. `/api/combolegs` = one-time lookup that tries to
   get OLD settled combos' legs back from Polymarket by id (`?raw=1` shows a sample reply).
+
+## 4-LEG PARLAY RESEARCH (10/14, owner: "find strategies for a 4 leg parlay"; 214 weeks 2014-25, closing moneylines, walk-forward TD model)
+
+- Cross-game, share of weeks all 4 won: 4 biggest moneyline favorites 41.1% (market said 37.9%; heavy favorites win more than priced:
+  85%+ said 87% won 91%); skipping games where a green pick backs the underdog 42.5% (beat its priced chance 10/13 seasons; 3+ of 4
+  legs 77%; weeks 1-4 35%, 15-18 51%). 5 favorites 33.6%; home favorites only 35.0%; 3 favorites 55.6%. Best green pick + 3 favorites
+  32.2%; 3 favorites + top TD 31.4%; 2 favorites + 2 TD 21.6%; 4 green picks 10.8% (21.4% with LINE MOVE, which rarely fires live);
+  4 most likely TD scorers 9.2%. No effect: division games, rest, QB change, last result, wind, favorite-win vs Over link (none).
+- Same game (2,665 games): owner's style (spread + total + top TD each team) 4.6-5.7% with the Over, 1.8-2.4% with the Under; best
+  same-game 4-leg = favorite ML + Over + favorite's top 2 scorers 7.9%; best 3-leg = favorite covers + Over + its top TD 14.2%.
+  Style is best in games with total 47+ and both top scorers 40%+ (~9-11%). Green spread pick + same team's top TD: both hit 26%
+  (vs 20% if unrelated). Lead RB of a team implied 27+ points scores 54-55%. Opponent TDs allowed adds nothing to the TD model.
+- BUILT (`lib/sgp.js FOUR_LEG / fourLegParlays`, slate `fourLeg`): Model Picks "4-leg parlays · this week" card (purple) +
+  scoreboard group 4-LEG PARLAYS (leg4_fav, leg4_green_fav, leg4_fav_td, recorded weekly in buildPaper, graded); same-game box adds
+  LINKED 4 (`sgp_linked`, saved per game) and a note when "your style" uses an Under with TDs.
 
 ## Where things live
 

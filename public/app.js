@@ -938,15 +938,15 @@ function renderLab() {
   // Teaser legs say TEASER (owner's rule); older saved weeks have no flag, so the alt-line legs of the teaser parlays are matched by type.
   const legLine = (l, k) => `${l.teaser || (/^alt_/.test(k || "") && !l.rule) ? "<b>TEASER</b> " : ""}${esc(l.label)} <span class="dim">${esc(l.game)}${l.thin ? " · thin" : ""}</span> · ${Math.round(l.price * 100)}¢${l.result ? ` <span class="${l.result === "W" ? "g" : l.result === "L" ? "r" : "dim"}">${l.result}</span>` : ""}`;
   const thisWeek = !wk ? '<div class="s dim">Not recorded yet.</div>' :
-    Object.keys(names).filter((k) => !/^sgp_/.test(k)).map((k) => { const ps = wk.parlays.filter((p) => p.strategy === k);
+    Object.keys(names).filter((k) => !/^(sgp_|leg4_)/.test(k)).map((k) => { const ps = wk.parlays.filter((p) => p.strategy === k);
       return `<div class="sec"><div class="sh">${esc(names[k])}</div>` + (ps.length ? ps.map((p) =>
         `<div class="row" style="display:block"><div>${p.legs.map((l) => legLine(l, k)).join("<br>")}</div><div class="s">pays ${p.pay.toFixed(2)}x · market chance ${pct(1 / p.pay)}${p.prob != null ? ` · model ${pct(p.prob)}` : ""}${p.result ? ` · <b class="${p.result === "W" ? "g" : p.result === "L" ? "r" : ""}">${p.result === "W" ? "HIT" : p.result === "L" ? "missed" : "push"}</b>` : ""}</div></div>`).join("") :
         '<div class="s">None this week.</div>') + `</div>`; }).join("");
   // Scoreboard (10/9): one line per parlay, grouped; this season (W-L, return) and the 2007-25 replay (hit, return).
   const SHORT = { home_fav_95_single: "Home fav 9.5+ · single", home_fav_95_2: "Home fav 9.5+ · 2 legs", home_fav_95_3: "Home fav 9.5+ · 3 legs", top3_home_75: "Top 3 home favs (75%+)",
     td_edge_3: "3 TD value picks", td_likely_2: "2 likeliest TD scorers", td_likely_3: "3 likeliest TD scorers",
-    angles_2: "2 angles", angles_3: "3 angles", angles_fav_3: "Angle + 2 home favs", alt_2: "2 TEASERS", alt_pick_3: "2 TEASERS + 1 pick", model_best_4: "Model's 4 best legs", right_now_3: "3 Right now legs", same_game_3: "Same game + TD", linked_sgp_3: "Fav covers + Over + scorer", best_2: "Best bets · 2", best_3: "Best bets · 3", best_4: "Best bets · 4 (Parlay of the week)", sgp_best: "Same game · best", sgp_style: "Same game · your style" };
-  const GROUPS = [["BEST BETS", ["best_2", "best_3", "best_4"]], ["SAME-GAME PARLAYS", ["sgp_best", "sgp_style"]], ["MONEYLINE FAVORITES", ["home_fav_95_single", "home_fav_95_2", "home_fav_95_3", "top3_home_75"]], ["TOUCHDOWNS", ["td_edge_3", "td_likely_2", "td_likely_3"]],
+    angles_2: "2 angles", angles_3: "3 angles", angles_fav_3: "Angle + 2 home favs", alt_2: "2 TEASERS", alt_pick_3: "2 TEASERS + 1 pick", model_best_4: "Model's 4 best legs", right_now_3: "3 Right now legs", same_game_3: "Same game + TD", linked_sgp_3: "Fav covers + Over + scorer", best_2: "Best bets · 2", best_3: "Best bets · 3", best_4: "Best bets · 4 (Parlay of the week)", sgp_best: "Same game · best", sgp_style: "Same game · your style", sgp_linked: "Same game · linked 4", leg4_fav: "4 biggest favorites", leg4_green_fav: "Green pick + 3 favorites", leg4_fav_td: "3 favorites + top TD" };
+  const GROUPS = [["BEST BETS", ["best_2", "best_3", "best_4"]], ["4-LEG PARLAYS", ["leg4_fav", "leg4_green_fav", "leg4_fav_td"]], ["SAME-GAME PARLAYS", ["sgp_best", "sgp_style", "sgp_linked"]], ["MONEYLINE FAVORITES", ["home_fav_95_single", "home_fav_95_2", "home_fav_95_3", "top3_home_75"]], ["TOUCHDOWNS", ["td_edge_3", "td_likely_2", "td_likely_3"]],
     ["ANGLES", ["angles_2", "angles_3", "angles_fav_3", "alt_2", "alt_pick_3"]], ["MIXED", ["model_best_4", "right_now_3", "same_game_3", "linked_sgp_3"]]];
   const seen = new Set(GROUPS.flatMap((g) => g[1])), extra = Object.keys(names).filter((k) => !seen.has(k)); if (extra.length) GROUPS.push(["OTHER", extra]);
   const hist = (k) => { const h = REPLAY && REPLAY.parlays && REPLAY.parlays.find((x) => x.id === k); return h && h.n ? `${Math.round(h.hit * 100)}% · ${cPct(h.roi)}` : "—"; };
@@ -957,7 +957,7 @@ function renderLab() {
     GROUPS.map(([title, ks]) => `<div class="dim" style="font-size:11px;letter-spacing:.06em;margin:10px 0 4px">${title}</div><div style="${grid}">` +
       ks.filter((k) => names[k]).map((k) => `<span>${esc(SHORT[k] || names[k])}${tag(k)}</span><span style="text-align:right">${now(k)}</span><span class="dim" style="text-align:right">${hist(k)}</span>`).join("") + `</div>`).join("");
   LAB_SB = `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Parlay scoreboard · this season</div>${rows}</div></div>`;
-  $("lab").innerHTML = intro + sgpRanked() + `<div class="card modelglow" style="margin-top:10px"><div class="inner"><div class="sh">Your model's parlays · week ${wk ? wk.week : S ? S.week : ""}</div>${thisWeek}</div></div>` + LAB_SB;
+  $("lab").innerHTML = intro + fourLegCard() + sgpRanked() + `<div class="card modelglow" style="margin-top:10px"><div class="inner"><div class="sh">Your model's parlays · week ${wk ? wk.week : S ? S.week : ""}</div>${thisWeek}</div></div>` + LAB_SB;
   if (MB && RES) renderModel();   // the Models tab reads the same data
 }
 
@@ -1106,8 +1106,18 @@ function sgpBox(g) {
   const best = x.best ? `<div class="sh" style="margin:4px 0">BEST · ${x.best.legs.length} legs · ${sgpChance(x.best)}</div><div class="s">${sgpLegs(x.best)}</div>`
     : x.single ? `<div class="sh" style="margin:4px 0">BEST</div><div class="s">Only one strong leg: <b>${esc(x.single.label)}</b> · ${Math.round(x.single.prob * 100)}% (bet it alone)</div>`
     : `<div class="sh" style="margin:4px 0">BEST</div><div class="s dim">No strong legs in this game.</div>`;
-  const style = x.style ? `<div class="sh" style="margin:12px 0 4px">YOUR STYLE · ${x.style.legs.length} legs · ${sgpChance(x.style)}</div><div class="s">${sgpLegs(x.style)}</div>` : "";
-  return `<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAY</div><div class="card modelglow" style="margin-top:6px"><div class="inner">${best}${style}</div></div>`;
+  // 10/14 research: in the owner's 4-leg style an Under cuts the chance about in half (1.8-2.4% vs 4.6-5.7% with the Over, 2014-25)
+  const under = x.style && x.style.legs.some((l) => l.kind === "total" && /^Under/.test(l.label)) && x.style.legs.filter((l) => l.kind === "td").length;
+  const style = x.style ? `<div class="sh" style="margin:12px 0 4px">YOUR STYLE · ${x.style.legs.length} legs · ${sgpChance(x.style)}</div><div class="s">${sgpLegs(x.style)}</div>${under ? '<div class="s y" style="margin-top:4px">With TDs, the Over hits about twice as often as the Under.</div>' : ""}` : "";
+  const linked = x.linked ? `<div class="sh" style="margin:12px 0 4px">LINKED 4 · ${sgpChance(x.linked)}</div><div class="s">${sgpLegs(x.linked)}</div><div class="s dim" style="margin-top:4px">Favorite wins + Over + its top 2 scorers. Best same-game 4-leg in 2014-25: hit 7.9%.</div>` : "";
+  return `<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAY</div><div class="card modelglow" style="margin-top:6px"><div class="inner">${best}${style}${linked}</div></div>`;
+}
+// Model Picks tab (10/14): this week's 4-leg parlays from the tested rules, with how often each rule hit in 2014-25
+const FOUR_NAMES = { leg4_fav: "4 biggest favorites", leg4_green_fav: "Best green pick + 3 favorites", leg4_fav_td: "3 favorites + top TD scorer" };
+function fourLegCard() {
+  const F = (S && S.fourLeg) || []; if (!F.length) return "";
+  const row = (p) => `<div class="row" style="display:block"><div><b>${esc(FOUR_NAMES[p.strategy] || p.strategy)}</b> · ${sgpChance(p)} <span class="dim">· history ${p.hist}% of weeks</span></div><div class="s">${p.legs.map((l) => `${esc(l.label)} <span class="dim">${esc(l.game)} · ${Math.round(l.prob * 100)}%</span>`).join("<br>")}</div></div>`;
+  return `<div class="card modelglow" style="margin-top:10px"><div class="inner"><div class="sh">4-leg parlays · this week</div>${F.map(row).join("")}<div class="s dim" style="margin-top:6px">History = share of weeks all 4 legs won, 2014-25 (214 weeks). The 4 favorites also got 3 of 4 right 77% of weeks.</div></div></div>`;
 }
 // Model Picks tab: every game's same-game parlays, highest chance first
 function sgpRanked() {
