@@ -175,8 +175,8 @@ function leanCell(g, kind) {
     }
     else {
       const pc = Math.round(P.p * 100);
-      // 10/14 casino look (owner): the green pick pulses at normal size, glows brighter the stronger it is, and its % rolls in like a slot reel
-      body = `<div style="margin-top:6px"><b class="g pulse" style="font-size:16px;--gl:${glowOf(P.p)}">PICK: ${esc(P.pick)} · <span class="reelpct" data-v="${pc}%">${pc}%</span></b></div>` +
+      // 10/14 casino look (owner): the green pick is the same size as the card's other text and only GLOWS (no growing), glows brighter the stronger it is, and its % rolls in like a slot reel
+      body = `<div style="margin-top:6px"><b class="g pulse" style="--gl:${glowOf(P.p)}">PICK: ${esc(P.pick)} · <span class="reelpct" data-v="${pc}%">${pc}%</span></b></div>` +
         // 10/13 (owner: fewer notes): just the green pick's own reason (e.g. the LINE MOVE numbers)
         `<div class="s" style="margin-top:4px">${esc(P.why)}</div>` +
         recLine(P.rec) + lineCheck(g, kind, P.pick) + splitNote(g, kind, P.pick);

@@ -216,9 +216,9 @@
   .price-link { cursor:pointer; border-bottom:1px dotted var(--faint); }
   /* 10/14 casino look (owner): green pick pulse (glow brighter for stronger picks), slot-reel %, HIT/MISS stamps on Bets, flip-clock
      countdown, slot lever refresh, purple glow on the model's parlay cards */
-  .pulse { display:inline-block; transform-origin:left center; animation:pickpulse 1.5s ease-in-out infinite; --gl:.6; }
-  @keyframes pickpulse { 0%,100% { transform:scale(1); text-shadow:0 0 calc(5px * var(--gl)) rgba(63,224,138,calc(.5 * var(--gl))); }
-    50% { transform:scale(1.06); text-shadow:0 0 calc(16px * var(--gl)) rgba(63,224,138,var(--gl)), 0 0 calc(28px * var(--gl)) rgba(63,224,138,calc(.5 * var(--gl))); } }
+  .pulse { animation:pickpulse 1.5s ease-in-out infinite; --gl:.6; }   /* owner 10/14: glow only, same size as the rest */
+  @keyframes pickpulse { 0%,100% { text-shadow:0 0 calc(5px * var(--gl)) rgba(63,224,138,calc(.5 * var(--gl))); }
+    50% { text-shadow:0 0 calc(16px * var(--gl)) rgba(63,224,138,var(--gl)), 0 0 calc(28px * var(--gl)) rgba(63,224,138,calc(.5 * var(--gl))); } }
   .reelpct { display:inline-flex; vertical-align:bottom; } .reelpct .rd { display:inline-block; height:1.25em; overflow:hidden; }
   .reelpct .rd > span { display:block; transition:transform 1.4s cubic-bezier(.2,.9,.2,1.04); } .reelpct .rd b { display:block; height:1.25em; line-height:1.25em; font-weight:inherit; }
   .betwrap { position:relative; }
@@ -230,11 +230,12 @@
   canvas.coinfx { position:fixed; inset:0; width:100vw; height:100vh; pointer-events:none; z-index:9999; }
   .cdn b { background:linear-gradient(rgba(255,255,255,.10) 50%, rgba(255,255,255,.04) 50%); border-radius:6px; padding:3px 4px; box-shadow:0 2px 0 rgba(0,0,0,.6); }
   .cdn b.flip { animation:cdflip .4s ease; } @keyframes cdflip { 0% { transform:rotateX(0); } 50% { transform:rotateX(90deg); } 100% { transform:rotateX(0); } }
-  .updrow { display:flex; align-items:flex-end; gap:8px; }
-  .lever { position:relative; flex:0 0 18px; width:18px; height:40px; border:0; background:none; padding:0; margin-bottom:-2px; cursor:pointer; touch-action:none; }
-  .lever .lmount { position:absolute; left:3px; bottom:0; width:12px; height:13px; border-radius:4px; background:linear-gradient(90deg,#7a5a1a,#e7c46a,#7a5a1a); box-shadow:0 1px 0 #000; }
-  .lever .larm { position:absolute; left:7px; bottom:8px; width:4px; height:24px; transform-origin:bottom center; background:linear-gradient(90deg,#777,#f2f2f2,#777); border-radius:2px; transition:transform .45s cubic-bezier(.3,1.6,.5,1); }
-  .lever .lknob { position:absolute; left:50%; top:-8px; width:13px; height:13px; margin-left:-6.5px; border-radius:50%; background:radial-gradient(circle at 35% 30%,#ff9ab2,#e0244f 55%,#6d0b22); box-shadow:0 1px 3px rgba(0,0,0,.6); }
+  /* 10/14 (owner): no title; week, countdown, next game and "Updated" all on the left; slot lever on the right */
+  .hero .hl { display:grid; gap:4px; min-width:0; } .hero .hl .cdl { margin:4px 0 0; } .hero .hl .cdn { justify-content:flex-start; } .hero .hl .upd { margin-top:2px; }
+  .lever { position:relative; flex:0 0 30px; width:30px; height:84px; border:0; background:none; padding:0; cursor:pointer; touch-action:none; align-self:center; }
+  .lever .lmount { position:absolute; left:5px; bottom:2px; width:20px; height:26px; border-radius:6px; background:linear-gradient(90deg,#7a5a1a,#e7c46a,#7a5a1a); box-shadow:0 2px 0 #000; }
+  .lever .larm { position:absolute; left:12px; bottom:18px; width:6px; height:54px; transform-origin:bottom center; background:linear-gradient(90deg,#777,#f2f2f2,#777); border-radius:3px; transition:transform .45s cubic-bezier(.3,1.6,.5,1); }
+  .lever .lknob { position:absolute; left:50%; top:-12px; width:22px; height:22px; margin-left:-11px; border-radius:50%; background:radial-gradient(circle at 35% 30%,#ff9ab2,#e0244f 55%,#6d0b22); box-shadow:0 2px 4px rgba(0,0,0,.6); }
   .lever.pull .larm { transform:scaleY(-.5); transition:transform .18s ease-in; } .lever:disabled { opacity:.6; }
   .mreel { display:inline-block; min-width:.6em; text-align:center; font-variant-numeric:tabular-nums; animation:mreel .1s steps(2) infinite; color:#ffcf4a; }
   @keyframes mreel { 50% { opacity:.4; } }
@@ -247,10 +248,12 @@
 <div class="pagewm" id="bgwm"></div>
 <div class="wrap">
   <div class="hero">
-    <div><div class="wk" id="hero-wk">WEEK</div><h1>NFL Slate</h1><div class="updrow"><div class="upd" id="hero-upd">Loading…</div><button class="lever" id="lever" aria-label="Pull to get new lines"><span class="lmount"></span><span class="larm"><span class="lknob"></span></span></button></div></div>
-    <div class="cd"><div class="cdl">NEXT KICKOFF</div>
+    <div class="hl"><div class="wk" id="hero-wk">WEEK</div>
+      <div class="cdl">NEXT KICKOFF</div>
       <div class="cdn"><div><b id="cd-d">--</b><i>DAYS</i></div><span>:</span><div><b id="cd-h">--</b><i>HRS</i></div><span>:</span><div><b id="cd-m">--</b><i>MINS</i></div><span>:</span><div><b id="cd-s">--</b><i>SECS</i></div></div>
-      <div class="cdg" id="cd-g"></div></div>
+      <div class="cdg" id="cd-g"></div>
+      <div class="upd" id="hero-upd">Loading…</div></div>
+    <button class="lever" id="lever" aria-label="Pull to get new lines"><span class="lmount"></span><span class="larm"><span class="lknob"></span></span></button>
   </div>
   <div id="weekline" style="display:none"></div>
 
