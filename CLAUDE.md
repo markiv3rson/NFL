@@ -103,6 +103,14 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   POST /api/rerun); Polymarket / sportsbook lines and injuries refresh on their own (schedule + 30-min pull). Bottom tab bar has no box: a
   dark fade with a purple-to-blue hairline. Every tab change scrolls to the top.
 
+- 10/14 (owner): STAKES per parlay type (`lib/sgp.js STAKES`): my style $5, same game 4 legs $10, 3 legs $15, 2 legs $20, 4 legs across
+  games $10 -- saved on each parlay (`stake`), shown as "$stake -> $payout", and graded into a money result per type (`board.money`,
+  scoreboard "+$/-$"; win rate stays the main judge). `npm run accuracy` (Tuesday report card) now prints every parlay type's live record,
+  hit vs said %, money and verdict. Best bets + Parlay of the week moved off Game Lines to the top of the Bets tab as two tickets side by side
+  (tap one to open its list). A line sits under the header. Filter chips (Bets weeks, Alerts kinds) are docked right above the bottom tab
+  bar (`.chips.dock`) for one-thumb use. Grading check 10/14: weeks 3-5 every final game graded (16/16/15), all 87 card picks graded
+  (chooser included since 10/12), week 6 parlays saved and waiting.
+
 ## Where things live
 
 - Site (Next.js on Vercel, nfl-nfl9.vercel.app): `pages/api/*`, `lib/*`, front end `public/app.js`.
