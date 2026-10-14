@@ -1062,7 +1062,7 @@ function setBg(g) {
   el.style.background = `linear-gradient(90deg, ${ca}3d 0%, ${ca}1f 50%, ${ch}1f 50%, ${ch}3d 100%)`;
   el.innerHTML = `<img src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'">`;
 }
-// Same-game parlays (10/14, owner): under the game's Model cards. Built on the server (lib/sgp.js): "Best" = strong legs only, "Your style" =
+// Same-game parlays (10/14, owner): at the bottom of the game page, below the touchdowns (owner 10/14). Built on the server (lib/sgp.js): "Best" = strong legs only, "Your style" =
 // spread + total + a TD each team. Chance includes the same-game links (a TD helps its team cover and the Over, hurts with the Under).
 const sgpLegs = (p) => p.legs.map((l) => `${esc(l.label)}${l.rule ? ` <span class="dim">${esc(l.rule)}</span>` : ""} <span class="dim">· ${Math.round(l.prob * 100)}%</span>`).join("<br>");
 const sgpChance = (p) => (p.prob == null ? "" : `<b class="${p.prob >= 0.3 ? "g" : p.prob >= 0.15 ? "lg" : "y"}">hits ~${Math.round(p.prob * 100)}%</b> <span class="dim">(about 1 in ${Math.max(1, Math.round(1 / p.prob))})</span>`);
@@ -1084,7 +1084,7 @@ function sgpRanked() {
 }
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = "";
-  $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}${anglesBox(g)}${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : ""}<div class="sh" style="margin:16px 2px 0">SPREAD &amp; ML</div><div class="grid">${gameCard(g, "x")}</div><div class="sh" style="margin:16px 2px 0">TOTALS</div><div class="grid">${totalCard(g, "x")}</div>${sgpBox(g)}${tdTop3(g)}`;
+  $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}${anglesBox(g)}${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : ""}<div class="sh" style="margin:16px 2px 0">SPREAD &amp; ML</div><div class="grid">${gameCard(g, "x")}</div><div class="sh" style="margin:16px 2px 0">TOTALS</div><div class="grid">${totalCard(g, "x")}</div>${tdTop3(g)}${sgpBox(g)}`;
   $("back-btn").onclick = closeGame;
   if (g.final) ensureGrades();
   setBg($("panel-lines").classList.contains("on") ? g : null);   // 10/14 fix: the background redraw ran while another tab was showing (SEA/DEN logos on Models)
