@@ -313,6 +313,15 @@ PASSING CELLS that buy points, best first (day / night / all shown as separate r
   books 6    favorite -2.5   buys 3.5 all   wins 64.2% (120) periods 56/73
   books 1    favorite +4.5   buys 5.5 day   wins 64.2% (159) periods 58/70
 
+RARE 2.5-3 POINT BUYS (60%+ at the close AND the open, every period 56%+):
+  books 3: underdog at +5.5 buys 2.5 · close 61.5% (1125) 57/66/61/62 · open 62.8% (387) 58/69
+  books 3.5: underdog at +6.5 buys 3 · close 61.1% (671) 61/58/64/62 · open 65.2% (296) 65/66
+  books 2.5: underdog at +5.5 buys 3 · close 64.4% (514) 61/69/63/65 · open 61.7% (339) 61/62
+  books 6.5: underdog at +9.5 buys 3 · close 62.6% (329) 63/67/56/62 · open 64.5% (166) 61/68
+  books 4.5: underdog at +7.5 buys 3 · close 60.8% (260) 63/57/69/57 · open 60.6% (170) 57/63
+  books 4.5: favorite at -1.5 buys 3 · close 65.0% (260) 71/63/60/65 · open 68.8% (170) 70/68
+  books 1.5: underdog at +4.5 buys 3 · close 66.3% (202) 67/65/69/65 · open 66.3% (199) 59/68
+
 === TOTALS WIN RATES · CLOSING (1999-2025) · 7016 games · passing cells: 49 (Over at books -x = buys x points; Under at books +x = buys x points) ===
   total 48+    Over at books -6    buys 6 wins 68.2% (626) periods 66/70/67/69
   total 42-47  Under at books +6    buys 6 wins 68.0% (1571) periods 65/67/70/68

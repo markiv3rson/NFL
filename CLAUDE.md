@@ -646,3 +646,9 @@ Tested and NOT added (made it worse):
 - No pick ever buys more than 2 points (`BUY_TIERS`; a test checks it). Removed: books 1 -> dog +3.5 (buys 2.5) and books 6.5 -> fav -2.5 (buys 4). Kept: books 1.5, 2.5, 3, 3.5, 4.5,
   5.5, 13.5. Each kept tier is already the fewest points that passed (books 1.5 +2.5 54%, 4.5 -3.5 53%, 5.5 +6.5 56% not steady). The line matrix passes a few more cells within 2
   points (books 4 fav -2.5 64%, 6 dog +7.5 58%, 6.5 dog +8.5 62%, 7.5 fav -5.5 59%) but its bar (every period 52%+) is looser than the one the tiers were added under -- not added.
+- RARE 3-POINT EXCEPTION (owner 10/14: "3 should be the max but only on rare situations"): a 3-point buy is allowed only where it wins 60%+ at BOTH the closing and opening number
+  with every period 56%+ and no cheaper line passes (`tests/line_matrix.mjs` prints the list). Two tiers: books 3.5 -> underdog +6.5 (replaces favorite -2.5, which fell to 52% at the
+  open): day 60.9% close / 67.9% open, night 62.1% / 58.3%; books 6.5 -> underdog +9.5: day 62.4% / 63.6%, night 63.6% (66) / 67.6% (37). Card shows the lower. The other 3-point
+  cells (books 3 dog +5.5, 2.5 dog +5.5, 4.5 dog +7.5, 4.5 fav -1.5, 1.5 dog +4.5) already have a cheaper tier on that books number -- not added.
+- FINAL CAP 10/14 (owner: "cap it at 3.5"): no tier buys more than 3.5 points (test checks it). Books 1 -> dog +3.5 (buys 2.5) is BACK; the old books 6.5 -> fav -2.5 (buys 4) stays out. 9 tiers: books 1, 1.5, 2.5, 3,
+  3.5 (dog +6.5), 4.5, 5.5, 6.5 (dog +9.5), 13.5.

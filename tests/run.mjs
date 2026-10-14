@@ -192,15 +192,14 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const k25 = keyNumberPick(G, sp(-2.5), bk(-2.5), [{ team: "BUF", line: 3.5, price: 0.6 }]);
   ok(k25 && k25.pick === "BUF +3.5" && k25.hit === 58.6 && /books at BUF \+2\.5/.test(k25.why) && main.hit === 55.6 && !keyNumberPick(G, sp(-2.5), bk(-2)),
     "key number: books at 2.5 -> underdog +3.5 at 58.6% (books at 3: 55.6%, opening-line rates; books at 2 is not a pick)");
-  const k15 = keyNumberPick(G, sp(-1.5), bk(-1.5), [{ team: "BUF", line: 3.5, price: 0.66 }]), k35 = keyNumberPick(G, sp(-3.5), bk(-3.5), [{ team: "LA", line: -2.5, price: 0.58 }]);
-  const k35main = keyNumberPick(G, sp(2.5, 0.45, 0.57), bk(3.5));   // road favorite BUF -3.5 at the books, Polymarket main line BUF -2.5
-  ok(k15 && k15.pick === "BUF +3.5" && k15.hit === 62.1 && k15.price === 0.66 && k35 && k35.pick === "LA -2.5" && k35.hit === 51.9 && k35.line === -2.5 && k35.price === 0.58
-    && k35main && k35main.pick === "BUF -2.5" && k35main.price === 0.57 && !keyNumberPick(G, sp(-3.5), bk(-3.5), [{ team: "BUF", line: 3.5, price: 0.4 }])
-    && gradeStackPick({ ...k35, home: "LA" }, 24, 21) === "W" && gradeStackPick({ ...k35, home: "LA" }, 23, 21) === "L" && gradeStackPick({ ...k15, home: "LA" }, 23, 21) === "W",
-    "BEAT THE 3: books 1.5 -> dog +3.5 at 62.1%; books 3.5 -> favorite -2.5 at 51.9% (opening-line rate) (main line or alternate)");
+  const k15 = keyNumberPick(G, sp(-1.5), bk(-1.5), [{ team: "BUF", line: 3.5, price: 0.66 }]), k35 = keyNumberPick(G, sp(-3.5), bk(-3.5), [{ team: "BUF", line: 6.5, price: 0.6 }]);   // 3 points bought: a rare exception
+  ok(k15 && k15.pick === "BUF +3.5" && k15.hit === 62.1 && k15.price === 0.66 && k35 && k35.pick === "BUF +6.5" && k35.hit === 60.9 && k35.line === 6.5 && k35.price === 0.6 && /BEAT THE 6/.test(k35.why)
+    && !keyNumberPick(G, sp(-3.5), bk(-3.5), [{ team: "BUF", line: 3.5, price: 0.4 }])
+    && gradeStackPick({ ...k35, home: "LA" }, 24, 21) === "W" && gradeStackPick({ ...k35, home: "LA" }, 30, 21) === "L" && gradeStackPick({ ...k15, home: "LA" }, 23, 21) === "W",
+    "BEAT THE 3: books 1.5 -> dog +3.5 at 62.1%; books 3.5 -> dog +6.5 (3 points, rare exception) at 60.9%");
   const k1 = keyNumberPick(G, sp(-1.5), bk(-1), [{ team: "BUF", line: 3.5, price: 0.7 }]);
-  ok(!k1 && !keyNumberPick(G, sp(-1.5), bk(-2), [{ team: "BUF", line: 3.5, price: 0.6 }]) && !keyNumberPick(G, sp(-3.5), bk(-4), [{ team: "LA", line: -2.5, price: 0.6 }]),
-    "BEAT THE 3: books 1 (would buy 2.5 points), 2 and 4 are not picks");
+  ok(k1 && k1.pick === "BUF +3.5" && k1.hit === 60.7 && !keyNumberPick(G, sp(-1.5), bk(-2), [{ team: "BUF", line: 3.5, price: 0.6 }]) && !keyNumberPick(G, sp(-3.5), bk(-4), [{ team: "LA", line: -2.5, price: 0.6 }]),
+    "BEAT THE 3: books 1 -> dog +3.5 at 60.7% (buys 2.5); books 2 and 4 are not picks");
   // 10/14: new tested tiers (day and night rates) and the MIDDLE check
   const { isNightGame, middleCheck, BUY_TIERS } = await import("../lib/stack.js");
   const day = { ...G, kickoff: "2026-10-18T17:00:00Z" }, thu = { ...G, kickoff: "2026-10-16T00:15:00Z" }, snf = { ...G, kickoff: "2026-10-19T00:20:00Z" }, mon = { ...G, kickoff: "2026-10-20T00:15:00Z" };
@@ -213,8 +212,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const t55 = keyNumberPick(day, sp(-5.5), bk(-5.5), [{ team: "BUF", line: 7.5, price: 0.64 }]), t135 = keyNumberPick(day, sp(-13.5), bk(-13.5), [{ team: "BUF", line: 14.5, price: 0.6 }]);
   ok(t45 && t45.pick === "LA -2.5" && t45.hit === 65.6 && !t65 && t55 && t55.pick === "BUF +7.5" && t55.hit === 58.7 && /BEAT THE 7/.test(t55.why)
     && t135 && t135.pick === "BUF +14.5" && t135.hit === 68 && /BEAT THE 14/.test(t135.why) && !keyNumberPick(day, sp(-7.5), bk(-7.5), [{ team: "LA", line: -6.5, price: 0.6 }])
-    && !keyNumberPick(day, sp(-6), bk(-6), [{ team: "BUF", line: 7.5, price: 0.6 }]) && Object.keys(BUY_TIERS).length === 7 && Object.entries(BUY_TIERS).every(([A, T]) => (T.side === "fav" ? +A - Math.abs(T.line) : T.line - +A) <= 2),
-    "bought points (never more than 2): books 4.5 -> fav -2.5, 6.5 / 1 removed, 5.5 -> dog +7.5, 13.5 -> dog +14.5; books 7.5 / 6 are not picks", { t45, t55 });
+    && !keyNumberPick(day, sp(-6), bk(-6), [{ team: "BUF", line: 7.5, price: 0.6 }]) && Object.keys(BUY_TIERS).length === 9 && Object.entries(BUY_TIERS).every(([A, T]) => (T.side === "fav" ? +A - Math.abs(T.line) : T.line - +A) <= 3.5),
+    "bought points (never more than 3.5): books 4.5 -> fav -2.5, 6.5 -> dog +9.5, 5.5 -> dog +7.5, 13.5 -> dog +14.5; books 7.5 / 6 are not picks", { t45, t55 });
   { const { ruleRecords, ruleFlag } = await import("../lib/stack.js"), mk = (g, res, t, o = {}) => ({ id: "keynum|spread", tier: 3, hit: 55.6, week: 6, game: g, result: res, t, ...o });
     const rows = Array.from({ length: 16 }, (_, i) => mk(`G${i}`, i < 4 ? "W" : "L", "2"));   // 4-12 = 25%
     const seen = [mk("G0", "L", "1", { id: "chooser|spread" })];   // chooser picks are not green rules -> ignored
