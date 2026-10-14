@@ -104,6 +104,13 @@
   .sw button.on { background:rgba(255,255,255,.1); color:#fff; }
   .center { text-align:center; margin-top:14px; }
   .btn { font:inherit; font-size:14px; font-weight:700; padding:6px 14px; min-height:32px; border-radius:12px; border:1px solid var(--line); color:#d3d8e0; background:var(--card); cursor:pointer; }
+  /* 10/14 (owner): page headers styled like the bottom tab bar (rose glass, icon + title) */
+  .phead { margin-top:12px; display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:18px; border:1px solid rgba(255,150,170,.42); color:#ffd2dc;
+    background:radial-gradient(120% 140% at 0% 0%,rgba(255,90,120,.5) 0%,rgba(0,0,0,0) 60%),linear-gradient(135deg,rgba(150,28,58,.55) 0%,rgba(105,16,44,.42) 55%,rgba(62,10,30,.34) 100%); }
+  .phead svg { flex:0 0 auto; color:var(--rose); }
+  .phead .pt { display:grid; gap:2px; min-width:0; flex:1; } .phead .pt b { font-size:20px; font-weight:800; color:#fff; line-height:1.1; }
+  .phead .pt span { font-size:12px; color:#e9c3cd; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .phbtn { flex:0 0 auto; font:inherit; font-size:12px; font-weight:700; color:#fff; background:rgba(255,255,255,.12); border:1px solid rgba(255,150,170,.5); border-radius:999px; padding:6px 12px; cursor:pointer; }
   .banner { margin-top:10px; border-radius:14px; padding:11px 14px; display:flex; align-items:center; gap:10px; background:linear-gradient(90deg,rgba(150,100,255,.3),rgba(150,100,255,.08)); border:1px solid rgba(183,148,255,.6); box-shadow:0 0 18px rgba(150,100,255,.28); }
   .banner b { font-size:13px; font-weight:900; letter-spacing:.14em; color:var(--violet); text-shadow:var(--vglow); white-space:nowrap; }
   .banner span { font-size:12px; color:#c9ced6; line-height:1.35; }
@@ -130,6 +137,26 @@
   .c-amb { color:var(--gold); background:rgba(242,207,102,.14); } .c-red { color:var(--red); background:rgba(255,107,107,.14); }
   .c-grn { color:var(--green); background:rgba(61,220,151,.14); } .c-cy { color:var(--cyan); background:rgba(79,227,208,.14); }
   .back { min-height:28px; font:inherit; font-size:12.5px; font-weight:700; color:var(--rose); background:rgba(255,110,140,.12); border:1px solid rgba(255,150,170,.35); border-radius:999px; padding:2px 10px; cursor:pointer; margin-top:8px; margin-bottom:12px; }
+  /* 10/14 Game Lines top: casino tickets + line-move chips */
+  .jrow { margin-top:10px; display:grid; grid-template-columns:repeat(auto-fit,minmax(0,1fr)); gap:10px; }
+  .ticket { position:relative; display:grid; gap:2px; justify-items:start; text-align:left; font:inherit; color:#fff; cursor:pointer; padding:12px 16px; border-radius:14px; border:0;
+    background:linear-gradient(135deg,rgba(255,207,74,.16),rgba(255,207,74,.05)); outline:1.5px dashed rgba(255,207,74,.6); outline-offset:-6px; box-shadow:0 0 16px rgba(255,207,74,.15);
+    -webkit-mask:radial-gradient(circle at 0 50%,transparent 8px,#000 8.5px) left/51% 100% no-repeat,radial-gradient(circle at 100% 50%,transparent 8px,#000 8.5px) right/51% 100% no-repeat;
+            mask:radial-gradient(circle at 0 50%,transparent 8px,#000 8.5px) left/51% 100% no-repeat,radial-gradient(circle at 100% 50%,transparent 8px,#000 8.5px) right/51% 100% no-repeat; }
+  .ticket .tk { font-size:10.5px; font-weight:800; letter-spacing:.14em; color:#ffcf4a; }
+  .ticket .tb { font-size:30px; font-weight:900; line-height:1.05; color:#fff; text-shadow:0 0 12px rgba(255,207,74,.45); font-variant-numeric:tabular-nums; }
+  .ticket .ts { font-size:11px; color:#e9dcc0; }
+  .moves { margin-top:10px; display:grid; gap:6px; }
+  .mvl { font-size:10.5px; font-weight:800; letter-spacing:.14em; color:var(--rose); } .mvl span { color:var(--faint); letter-spacing:.04em; font-weight:700; }
+  .mvs { display:flex; gap:8px; overflow-x:auto; padding-bottom:2px; scrollbar-width:none; } .mvs::-webkit-scrollbar { display:none; }
+  .mv { flex:0 0 auto; font-size:12px; color:#dfe3ea; padding:6px 10px; border-radius:999px; background:rgba(255,90,120,.12); border:1px solid rgba(255,150,170,.35); white-space:nowrap; }
+  .mv b { color:#fff; margin-right:4px; }
+  .mwarn { margin-top:4px; font-size:11px; font-weight:700; color:var(--yellow); white-space:normal; line-height:1.3; }
+  .card.dd { margin-top:10px; padding:0; } .ddh { width:100%; display:flex; justify-content:space-between; align-items:center; gap:10px; font:inherit; color:#fff; background:none; border:0; padding:13px 14px; cursor:pointer; text-align:left; }
+  .ddt { font-size:14px; font-weight:800; letter-spacing:.04em; } .ddm { font-size:12px; color:var(--faint); white-space:nowrap; } .card.dd .drop .inner { padding:0 14px 12px; }
+  .pay { color:#ffcf4a; font-weight:700; white-space:nowrap; } .pay.dim { color:var(--faint); font-weight:400; }
+  .tile.live { border-color:rgba(255,70,90,.95) !important; box-shadow:0 0 18px rgba(255,60,80,.75), inset 0 0 0 1px rgba(255,90,110,.6); animation:livepulse 1.6s ease-in-out infinite; }
+  @keyframes livepulse { 0%,100% { box-shadow:0 0 12px rgba(255,60,80,.55), inset 0 0 0 1px rgba(255,90,110,.5); } 50% { box-shadow:0 0 26px rgba(255,60,80,.95), inset 0 0 0 1px rgba(255,90,110,.8); } }
   .gapstrip { margin-top:10px; border-radius:14px; padding:7px 12px; min-height:32px; background:rgba(79,227,208,.08); border:1px solid rgba(79,227,208,.35); cursor:pointer; }
   .gapstrip .t { font-size:12.5px; font-weight:800; color:var(--cyan); }
   .scorers { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:10px; }
@@ -198,7 +225,7 @@
   .prl > .s { text-transform:uppercase; letter-spacing:.04em; font-size:13px; font-weight:700; color:#eef0f4; }
   /* game page: the two team logos split the whole page in half behind the cards (away left, home right) */
   .sc { border:1px solid rgba(255,255,255,.28); }
-  .mcard, #panel-lab .card { border-color:rgba(183,148,255,.6); }
+  .mcard { border-color:rgba(183,148,255,.6); }   /* 10/14 owner: Model Picks cards plain (no purple) */
   #detail .gh, #detail .sub { display:none; }
   .dtop .dwm { position:absolute; top:50%; width:46%; height:150px; margin-top:-75px; object-fit:contain; opacity:.2; pointer-events:none; } .dtop .dwm.l { left:-10px; } .dtop .dwm.r { right:-10px; }
   .dtop .nm { display:flex; align-items:center; justify-content:space-between; }
@@ -209,7 +236,6 @@
   .stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:10px; }
   .stat { background:var(--card); border:1px solid rgba(255,255,255,.28); border-radius:16px; padding:10px 8px; text-align:center; }
   .stat .k { font-size:10px; font-weight:800; letter-spacing:.06em; color:var(--faint); text-transform:none; } .stat .v { font-size:19px; font-weight:800; margin-top:2px; } .stat .k2 { font-size:10px; color:var(--faint); }
-  #panel-lab .stat { border-color:rgba(183,148,255,.6); }
   .arow { display:flex; align-items:center; gap:8px; padding:9px 0; border-top:1px solid var(--line2); font-size:13px; } .arow .nm { flex:1; font-weight:600; } .arow .rc { font-size:11px; } .arow b { width:40px; text-align:right; }
   .pbars { display:flex; gap:3px; align-items:flex-end; height:64px; margin-top:10px; } .pb { flex:1; display:flex; flex-direction:column; justify-content:flex-end; } .pb i { display:block; width:100%; border-radius:3px; }
   .pyrs { display:flex; gap:3px; margin-top:4px; } .pyrs span { flex:1; text-align:center; font-size:8px; color:var(--faint); }
@@ -219,7 +245,7 @@
   .pulse { animation:pickpulse 1.5s ease-in-out infinite; --gl:.6; }   /* owner 10/14: glow only, same size as the rest */
   @keyframes pickpulse { 0%,100% { text-shadow:0 0 calc(5px * var(--gl)) rgba(63,224,138,calc(.5 * var(--gl))); }
     50% { text-shadow:0 0 calc(16px * var(--gl)) rgba(63,224,138,var(--gl)), 0 0 calc(28px * var(--gl)) rgba(63,224,138,calc(.5 * var(--gl))); } }
-  .reelpct { display:inline-flex; vertical-align:bottom; } .reelpct .rd { display:inline-block; height:1.25em; overflow:hidden; }
+  .reelpct { display:inline-flex; vertical-align:text-top; } .reelpct .rd { display:inline-block; height:1.25em; overflow:hidden; }
   .reelpct .rd > span { display:block; transition:transform 1.4s cubic-bezier(.2,.9,.2,1.04); } .reelpct .rd b { display:block; height:1.25em; line-height:1.25em; font-weight:inherit; }
   .betwrap { position:relative; }
   .stamp { position:absolute; right:6px; top:50%; transform:translateY(-50%) rotate(-8deg); font-weight:900; font-size:18px; letter-spacing:.04em; line-height:1; padding:3px 9px;
@@ -241,7 +267,7 @@
   @keyframes mreel { 50% { opacity:.4; } }
   .card.modelglow { border-color:rgba(181,140,255,.85); box-shadow:0 0 14px rgba(181,140,255,.55), inset 0 0 0 1px rgba(181,140,255,.35); animation:mglow 2.4s ease-in-out infinite; }
   @keyframes mglow { 0%,100% { box-shadow:0 0 10px rgba(181,140,255,.4), inset 0 0 0 1px rgba(181,140,255,.3); } 50% { box-shadow:0 0 22px rgba(181,140,255,.8), inset 0 0 0 1px rgba(181,140,255,.5); } }
-  @media (prefers-reduced-motion: reduce) { .pulse, .card.modelglow, .mreel, .cdn b.flip, .stamp.go { animation:none; } .reelpct .rd > span { transition:none; } }
+  @media (prefers-reduced-motion: reduce) { .tile.live, .card.modelglow, .mreel, .cdn b.flip, .stamp.go { animation:none; } .reelpct .rd > span { transition:none; } }
 </style>
 </head>
 <body>
@@ -258,23 +284,21 @@
   <div id="weekline" style="display:none"></div>
 
   <div class="panel on" id="panel-lines"><div id="lines"></div><div id="detail" style="display:none"></div></div>
-  <div class="panel" id="panel-td"><div id="td-header" class="sub" style="margin-top:12px">Anytime TD</div><div id="td"></div></div>
+  <div class="panel" id="panel-td"><div class="phead"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg><div class="pt"><b>Anytime TD</b><span id="td-header"></span></div></div><div id="td"></div></div>
   <div class="panel" id="panel-lab">
-    <div class="banner"><b>MODEL PARLAYS</b></div>
+    <div class="phead"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 3.5h5M10.5 3.5v5.2L5.2 18a1.6 1.6 0 0 0 1.4 2.5h10.8a1.6 1.6 0 0 0 1.4-2.5l-5.3-9.3V3.5"/></svg><div class="pt"><b>Model Picks</b><span>Parlays built and graded by the model</span></div></div>
     <div id="lab"></div>
   </div>
   <div class="panel" id="panel-record">
-    <div class="sub" style="margin-top:12px;font-weight:800;letter-spacing:.08em">YOUR BETS ONLY · REAL MONEY</div>
-    <div class="s dim" id="upd-record" style="margin-top:2px"></div>
+    <div class="phead"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a1.5 1.5 0 0 1 1.5-1.5h13A1.5 1.5 0 0 1 20 7v2.5a2.5 2.5 0 0 0 0 5V17a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17v-2.5a2.5 2.5 0 0 0 0-5z"/><path d="M14.5 6v2M14.5 11v2M14.5 16v2"/></svg><div class="pt"><b>Bets</b><span id="upd-record">Your real-money bets</span></div></div>
     <div id="record-mine"></div>
   </div>
   <div class="panel" id="panel-models">
-    <div class="banner"><b>MODELS</b></div>
-    <div class="s dim" id="upd-models" style="margin:4px 2px 0"></div>
+    <div class="phead"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20V11M12 20V5M18 20v-6"/></svg><div class="pt"><b>Models</b><span id="upd-models">How the picks are doing</span></div></div>
     <div id="models"></div>
   </div>
   <div class="panel" id="panel-alerts">
-    <div class="center" style="text-align:left;margin-top:12px"><span style="font-size:24px;font-weight:800">Alerts</span> <button class="tag" id="al-read" style="float:right;margin-top:6px">Mark all read</button></div>
+    <div class="phead"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><div class="pt"><b>Alerts</b><span>News that can move a pick</span></div><button class="phbtn" id="al-read">Mark all read</button></div>
     <div class="chips" id="al-chips"></div>
     <div id="alerts"></div>
   </div>
