@@ -101,10 +101,13 @@ function middleNote(g) {
   return `<div class="s" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px"><b class="lg">MIDDLE:</b> ${esc(m.fav)} -2.5 (${Math.round(m.favPrice * 100)}¢) + ${esc(m.dog)} +3.5 (${Math.round(m.dogPrice * 100)}¢). ` +
     `One side always wins; both win if ${esc(m.fav)} wins by exactly 3 (${Math.round(m.exact3 * 100)}% of games like this). Costs ${Math.round(m.cost * 100)}¢, pays back ${Math.round(m.back * 100)}¢ on average.</div>`;
 }
+// 10/14 (owner: "organize the cards, too much noise"): the card keeps the model number, the PICK + %, one short reason and the "Rules split" warning;
+// everything else (without-the-points %, this rule's record, line moved, cost warning) sits behind a "More" tap.
+function moreBox(inner) { return inner ? `<details class="more" style="margin-top:6px"><summary class="dim" style="font-size:12px;cursor:pointer">More</summary>${inner}</details>` : ""; }
 // 10/14 (owner: "show it"): on a green bought-point pick, how often the same side wins WITHOUT the extra points (the books' own number)
 function plainNote(P) {
   if (P.plain == null || !(P.p * 100 - P.plain >= 2)) return "";
-  return `<div class="s" style="margin-top:4px">Without the extra points it wins about ${Math.round(P.plain)}% · with them ${Math.floor(P.p * 100)}%.</div>`;
+  return `<div class="s" style="margin-top:4px">Without the extra points it wins about ${Math.round(P.plain)}% · with them ${Math.round(P.p * 100)}%.</div>`;
 }
 function costNote(g, P) {
   const pr = pickPrice(g, P); if (!(pr > 0 && pr < 1) || pr * 100 <= P.p * 100) return "";
@@ -159,7 +162,7 @@ function leanCell(g, kind) {
       body = `<div style="margin-top:6px"><b class="g pulse" style="--gl:${glowOf(P.p)}">PICK: ${esc(P.pick)} · <span class="reelpct" data-v="${pc}%">${pc}%</span></b></div>` +
         // 10/13 (owner: fewer notes): just the green pick's own reason (e.g. the LINE MOVE numbers)
         `<div class="s" style="margin-top:4px">${esc(P.why)}</div>` +
-        plainNote(P) + recLine(P.rec) + lineCheck(g, kind, P.pick) + splitNote(g, kind, P.pick) + costNote(g, P);
+        splitNote(g, kind, P.pick) + moreBox(plainNote(P) + recLine(P.rec) + lineCheck(g, kind, P.pick) + costNote(g, P));
     }
   }
   // 10/12 (owner: the number must be honest). Tested on 2,578 games 2014-26, each season predicted without it: margin off by 9.99
