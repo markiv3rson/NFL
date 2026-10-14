@@ -17,17 +17,16 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 
 ## What the app shows (owner's layout rules)
 
-- Tab bar (10/13): at the bottom, icon over each name, plus the Alerts bell; same rose color as the Lines / Model buttons (NOT green).
+- Tab bar: at the bottom, icon over each name, plus the Alerts bell; purple/blue, no box (the Lines / Model buttons are gone).
 - Model card: ONE answer — the model's number (purple), then **PICK** — green at 56%+ (with its short reason, e.g. LINE MOVE), LIGHT GREEN at 53-55% (owner 10/13), yellow
   below 53% with NO notes (owner 10/13: "too many notes"). Always a PICK, never LEAN. No teasers on cards; market lines only.
-- Teasers: CUT from Game Lines 10/13 (owner never bets them). The code stays; teaser legs are still recorded and graded.
+- Teasers: REMOVED 10/14 (owner never bets them; code deleted, no longer recorded). The "buy points" idea lives on as BEAT THE 3.
 - Best bets = top 10 straight picks at 56%+. Parlay of the week = top 4, one per game.
-- Model Picks tab (10/13: the angle / teaser / price-gap / spread-total-side parlays are hidden: angles_2/3, angles_fav_3, alt_2, alt_pick_3, right_now_3, same_game_3, linked_sgp_3): ~22 parlay types built once a week (first scheduled snapshot within 26 h of the first Sunday kickoff — Sat 7 AM PT
-  when the first game is London) and graded. Includes "Best bets · 2/3/4" (= the Parlay of the week). Alt-line parlays are labeled
-  TEASER. TD parlays may use thin markets (leg says "thin"); the price shown is the ask.
+- Model Picks tab (the old angle / teaser / price-gap parlays were deleted 10/14): parlay types built once a week (first scheduled snapshot within 26 h of the first Sunday kickoff — Sat 7 AM PT
+  when the first game is London) and graded. Includes "Best bets · 2/3/4" (= the Parlay of the week). TD parlays may use thin markets (leg says "thin"); the price shown is the ask.
 - Model card (10/14, owner): when another green rule takes the OTHER side of the same market, the green pick adds "⚠ Rules split: <pick> (<rule>, <%>) is green too. Pick one side." (`public/app.js splitNote`).
-- SAME-GAME PARLAYS (10/14, owner: "build now, all three"; `lib/sgp.js`): every game page shows a "SAME-GAME PARLAY" box at the bottom,
-  below the touchdowns (owner 10/14); tab bar order (owner 10/14, final): Game Lines, Anytime TD, Bets, Bell, Models, Model Picks -- BEST (strong legs: green spread/total 56%+ and TD players 55%+, one per team, ALL kept -- owner 10/14 "we are testing everything":
+- SAME-GAME PARLAYS (10/14, `lib/sgp.js`; current set = 2 legs / 3 legs / 4 legs / 4 legs · my style, see PAGE CLEANUP below): every game page
+  shows a "SAME-GAME PARLAY" box at the bottom, below the touchdowns; tab bar order (owner 10/14, final): Game Lines, Anytime TD, Bets, Bell, Models, Model Picks -- BEST (strong legs: green spread/total 56%+ and TD players 55%+, one per team, ALL kept -- owner 10/14 "we are testing everything":
   a TD with the Under stays, its chance counts the 0.77x link; fewer than 2 strong legs -> filled with the next-strongest legs and saved as
   its own record `sgp_best_fill`, so every game gets one) and YOUR STYLE (card's spread + total
   pick + the top TD scorer on each team, Out/Doubtful/Questionable skipped). Chance = legs x same-game links (`lib/combo.js comboChance`).
@@ -39,13 +38,13 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   PICK is the same size as the card's other text and only GLOWS (owner: no growing) -- brighter for stronger picks (`glowOf`: 56-57% soft, 58-60% mid, 61%+ bright); its % rolls in like a
   slot reel when a game page opens (`rollReels`); Bets tab only: settled bets get a gold HIT! (coins, once per bet via localStorage
   `stampSeen`) or red MISS stamp (`stampFor`, not on cashed-out bets); header countdown digits flip; header (owner 10/14): no "NFL Slate" title; week/date, NEXT KICKOFF countdown, next game and "Updated" on the left, a slot lever
-  on the right pulls new lines (same as the Lines button, time spins until it lands); the model's parlay cards (same-game box, Model Picks, Parlay of the
+  on the right RERUNS THE MODEL (lines refresh on their own); the model's parlay cards (same-game box, Model Picks, Parlay of the
   week) glow purple (`.modelglow`). KEY NUMBER is shown as "BEAT THE 3" (rule id stays `keynum|spread`).
 - Bets tab: an open leg says "⚠ app now picks the other side" when the app has a 56%+ pick against it.
-- Early-week total edge: TURNED OFF on cards 10/11 (11-18 live); recording CUT 10/13 (old rows still grade).
+- Early-week total edge: TURNED OFF 10/11 (11-18 live); its code was deleted 10/14.
 - Anytime TD tab: "Best TD picks" box at the top (10/14, owner: only the model's 55%+ players; graded weeks 3-5 they scored 17 of 21
   vs 22% for all listed players), then top 3 per team (owner wants it kept), plus a "⚠ Market disagrees" box for any player 20+ points from Polymarket.
-- Referees and price-gap alerts were removed on purpose. Models tab is 8 sections (10/13: "Price gaps" cut, "Records · model's side" cut, "Tracked angles" is only the wind Under paper row). Also cut 10/13: "Hit rate by week" (Trends), the Replay box, the Pick Lab paper singles (old game model's side; `recordPicks` no longer runs), bell alerts for MODEL / PRICE GAP / TEASER, and the edge tracker (`logEdges` no longer runs; the code stays). The Action Network pull was cut 10/13 (`lib/splits.js` and `/api/splitshist` stay for reference).
+- Referees and price-gap alerts were removed on purpose. Models tab is 8 sections (10/13: "Price gaps" cut, "Records · model's side" cut, "Tracked angles" = wind Under, OFFENSIVE FLOOR and the two shadow rules, `lib/tracked.js`). Also cut 10/13: "Hit rate by week" (Trends), the Replay box, the Pick Lab paper singles, bell alerts for MODEL / PRICE GAP / TEASER, the edge tracker and the Action Network pull (all their code deleted 10/14).
 
 - Sign-in (10/14, owner chose B): one good sign-in sets a 1-year "remember this phone" cookie (`middleware.ts`, `nfl_remember` = hash of
   username + password); changing SITE_PASSWORD in Vercel signs every phone out. Cross-site guard kept.
@@ -78,12 +77,12 @@ Read this first in every new chat. It carries the owner's rules and what has alr
     TD, 33% in 2014-25), 3 legs (`sgp_3` = favorite wins + Over + its top TD, best same-game 3-leg 18.8%, 25.3% when that player is 50%+),
     4 legs (`sgp_linked`, 7.9%), 4 legs · my style (`sgp_style`). Research 2,659 games: best 2-legs fav ML + Under 33.8%, fav ML + top TD
     33.0%, fav ML + Over 32.3%; best 3-legs fav ML + Over + top TD 18.8%, fav ML + Over + 2nd TD 14.7%, fav covers + Over + top TD 14.2%.
-  * Every parlay shows its Polymarket payout: legs' prices multiplied (1/price each) and what $10 returns (`payLine`); legs without a price say so.
+  * Every parlay shows its Polymarket payout: legs' prices multiplied (1/price each) and what its stake returns (`payLine`, STAKES); legs without a price say so.
   * Model Picks: page header + drop-down cards (Same game 2 / 3 / 4 legs, 4 legs · my style, 4 legs · different games), no purple on its cards;
     the old "Your model's parlays · week" list removed; scoreboard grouped (Same game, 4 legs, Best bets, Favorites, Touchdowns) with W-L and
     hit % and past-season hit %. Old cut parlays (angles, teasers, right now, linked_sgp_3, same_game_3) no longer built; their code removed.
   * Game Lines: Best bets / Parlay of the week as two gold tickets; line changes as a chip strip; live game tiles glow red.
-  * Every tab has a rose header like the tab bar; numbers roll in like slot reels when a tab or game opens (`slotify`).
+  * Page headers are plain words with a gradient line; numbers roll in like slot reels when a tab or game opens (`slotify`).
   * Anytime TD: Best TD picks players are not repeated in the list below; "Market disagrees" is a ⚠ line on the player's row.
   * Alerts: wind alert says "Strong wind can lower scoring" (the old "Windy under" angle is not a pick). SOS removed from the screen
     (strength of schedule is still computed in `lib/week.js schedStrength` as `g.sos`, just not shown).
@@ -111,10 +110,23 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   bar (`.chips.dock`) for one-thumb use. Grading check 10/14: weeks 3-5 every final game graded (16/16/15), all 87 card picks graded
   (chooser included since 10/12), week 6 parlays saved and waiting.
 
+## CLEANUP (10/14, owner: "delete all 8", teasers too)
+
+- Deleted: the price-gap tracker (`lib/edges.js`, "right now" gaps, PRICE GAP alert), the old bet sizing ($200 weekly cap, Kelly stakes,
+  value-ranked "best" list, `gameBets`, correlation warnings, `placedThisWeek`), the alternate-line value tracker (`lib/altfair.js`), the
+  retired scanned-combo code (`stackPicks`, `STACK_NAMES`), the old Pick Lab singles (`picksFor` / `recordPicks` / `picksSummary`, angle
+  names), the early-week total card note, the hidden "unmodeled TD players" / "ESPN removed" lists, the Action Network code
+  (`lib/splits.js`, `/api/splitshist`), the 10/10 replay tool (`lib/backfill.js`, `/api/replaypicks`), and ALL teaser code (legs, total
+  +-6, "total fell" leg, teaser alert). `lib/teaser.js` became `lib/tracked.js` (wind Under, OFFENSIVE FLOOR, shadow rules only; still in
+  the Redis hash `teaser:<s>:<w>` so old rows count). Old Redis data from the removed features (edgelog:, picks:, altval:, splits:,
+  teaser legs) was NOT deleted. System "Recorded this week" now counts the card picks saved at kickoff (it said "picks missing" since 10/13).
+- Kept on purpose: strength of schedule (computed, not shown), the old season replay (feeds "history %" on the scoreboard), the game
+  model's own spread/total side (`spreadPick`/`totalPick`, card cover only), TD "No" alerts.
+
 ## Where things live
 
 - Site (Next.js on Vercel, nfl-nfl9.vercel.app): `pages/api/*`, `lib/*`, front end `public/app.js`.
-  - Combo picks: `lib/stack.js`, `lib/combotable.js`; game model: `lib/upgrade.js`; teasers: `lib/teaser.js`; week data: `lib/week.js`.
+  - Card picks: `lib/stack.js`, `lib/combotable.js`; game model: `lib/upgrade.js`; tracked paper tests: `lib/tracked.js`; week data: `lib/week.js`.
   - Model rerun (sends Out/Questionable lists to Railway): `pages/api/rerun.js`.
   - Bets tab / Polymarket sync: `lib/mybets.js`, `pages/api/mybets.js`.
 - Model service (Python on Railway): `railway-model-service/`.
@@ -148,10 +160,10 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   The earlier "77-41" included weeks 3-4 REPLAYED with patterns built from those same games — not a real test.
 - Cards now use the combined chooser (`lib/chooser.js`): one logistic model per market over all 109 factors, with the % shown
   made HONEST by a calibration fit on unseen games. Unseen-game results: spreads 51.2% (its confidence doesn't separate
-  winners), totals 52.0% (54.9% on its 195 most confident). So most cards show LEAN ~51-54%; PICK (56%+) is rare or absent.
+  winners), totals 52.0% (54.9% on its 195 most confident). So most chooser picks are yellow (~51-54%); cards always say PICK (never LEAN).
 - The weekly rebuild refits it (`weekly_rebuild.py train_chooser`) and publishes `chooser`; `lib/combomodel.js` loads it.
 - Dropped as picks (rates never checked on unseen games): scanned teaser combos, the 3 "keeper" angles, angles in general,
-  the "total fell" rule. Teasers left: dog +6 ladder and total ±6 (simple base rates: 67% 2007-25, 28-13 live).
+  the "total fell" rule. (Teasers were removed entirely 10/14.)
 - The game model alone has no edge on the line (50.6% / 51.7% on 2,531 games). Never present its side as a pick.
 - Its number (even the upgraded one) is LESS accurate than the line: margin off 9.99 vs 9.89, total 10.52 vs 10.47, better in only
   3 of 13 seasons (2014-26, each season unseen). (Owner removed the card note saying so, 10/13.)
@@ -442,9 +454,9 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   Division Under 52.9% open / 51.8% close; primetime Under 53.3% / 51.4%; division+primetime Under 55.9% open (229) but 51.7% close.
   Total key numbers: opening 46.5 Under 58.8% (114) but closing 46.5 Under only 49.4% (239) and 46-48 range 51.3% (1,092) -> chance.
 
-- OFFENSIVE FLOOR paper tracker BUILT 10/14 (owner: "build now"): `lib/teaser.js recordFloor`, saved at kickoff in the teaser hash as
+- OFFENSIVE FLOOR paper tracker BUILT 10/14 (owner: "build now"): `lib/tracked.js recordFloor`, saved at kickoff in the teaser hash as
   `<game>|floor` when exactly one team scored 3 or less last week -> that team at the kickoff spread (flags `shut`, `road`); graded with the
-  teaser legs, kept OUT of the teaser record; Models -> Tracked angles row (with shut-out and road splits). Not a pick until it holds live.
+  other tracked tests (`gradeTrackedWeek`); Models -> Tracked angles row (with shut-out and road splits). Not a pick until it holds live.
 - Batch 6 (10/14, closing 1999-2025, open 2014+). Nothing added to the app:
   OFFENSIVE FLOOR (watch list, paper candidate): team scored 0 last week -> bet it 64.2% open (53) / 57.4% close (155), periods
   99-05/06-12/13-19/20-25 = 60/44/66/63, only 14/27 seasons over 50; scored <=3 -> 60.6% open (137) / 54.6% close (423), periods
@@ -512,9 +524,8 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
 ## Recording for future tests (10/12, owner chose A + B) — NOT shown, NOT picks until tested on unseen games
 
 - A: betting splits are NOT available free -- Action Network's public feed leaves every bets % / money % null (PRO only; VSiN's
-  splits are paid too). Owner chose to keep pulling that feed for its per-book LINES with posting times (likely includes openers):
-  `lib/splits.js`, Redis `splits:<season>:<week>:<game>`. Only a failed pull is logged.
-- TESTED 10/12 on 2,127 games 2018-2025 (past splits are free via `/api/splitshist?season=&week=`; graded at the closing consensus line):
+  splits are paid too). The pull was cut 10/13 and its code (`lib/splits.js`) deleted 10/14; old Redis `splits:` rows remain.
+- TESTED 10/12 on 2,127 games 2018-2025 (past splits came from Action Network's history feed; `/api/splitshist` deleted 10/14; graded at the closing consensus line):
   NO splits rule reaches 56%. Spreads: fade the public 49-51%, follow money 50-52%, reverse line move 50.2% (2023-25 only).
   Totals: fade the public 50-51%; follow the money when money% - bets% >= 20: 54.5% (294-245) even with the cutoff picked
   leave-one-season-out, but only 33-31 in 2024-25 and season counts swing wildly (7 to 142 games). Not added as a pick; live

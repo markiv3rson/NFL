@@ -6,7 +6,7 @@ import { SEASON } from "../../lib/games";
 import { getRedis } from "../../lib/redis";
 import { fetchEvents, gameLines, bookDepth } from "../../lib/poly";
 import { lineMovePick, lineMoveTotalPick } from "../../lib/stack";
-import { tkey } from "../../lib/teaser";
+import { tkey } from "../../lib/tracked";
 import { logError } from "../../lib/status";
 import { sanePoly } from "../../lib/sane";
 export const config = { maxDuration: 60 };

@@ -1,7 +1,7 @@
 // NFL SLATEZZZ — everything comes from /api/slate (lines, TD, flags) and /api/mybets + /api/results/list (Record).
 let WINALL = false;
-let PAPER = null, PICKS = null, TEASERS = null, ALTS = null, COMBOS = null;
-let S = null, RES = null, EDGES = null, MB = null, tdSort = "likely", recView = "mine";
+let PAPER = null, TRACKED = null, COMBOS = null;
+let S = null, RES = null, MB = null, tdSort = "likely", recView = "mine";
 const $ = (id) => document.getElementById(id);
 const dash = '<span class="dim">—</span>';
 const esc = (t) => String(t == null ? "" : t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -137,11 +137,6 @@ function leanCell(g, kind) {
         recLine(P.rec) + lineCheck(g, kind, P.pick) + splitNote(g, kind, P.pick);
     }
   }
-  // Early-week total: TURNED OFF 10/11 (owner) -- 11-18 live in 2026. Still recorded and graded on paper (lib/teaser.js) so its record keeps.
-  if (EARLY_ON && kind === "total" && !g.final && g.modelEarly != null && g.totalOpen != null && LN.tl != null && Math.abs(LN.tl - g.totalOpen) < 0.5 && Math.abs(g.modelEarly - g.totalOpen) >= 2) {   // 2+ apart (10/10): 55% since 2014; 0.5+ was 54%
-    const ov = g.modelEarly > g.totalOpen;
-    body += `<div class="s" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">Early-week edge: <b class="g">${ov ? "Over" : "Under"} ${g.totalOpen} · 55%</b> · the total hasn't moved yet; best bet before it does.${S && S.earlyRec ? ` This season: <b>${S.earlyRec.w}–${S.earlyRec.l}</b>.` : ""}</div>`;
-  }
   // 10/12 (owner: the number must be honest). Tested on 2,578 games 2014-26, each season predicted without it: margin off by 9.99
   // points vs the line's 9.89, total 10.52 vs 10.47; the model beat the line in only 3 of 13 seasons on each. So it is shown as an
   // opinion, never as a pick.
@@ -167,14 +162,8 @@ function winnerOf(g) {
   const home = ph > 0.5, price = g.poly && g.poly.ml ? (home ? g.poly.ml.home : g.poly.ml.away) : null;
   return { game: g.key, team: home ? g.home : g.away, opp: home ? g.away : g.home, where: home ? "home" : "away", p: home ? ph : 1 - ph, price };
 }
-function winnersBox(mode = "picks") {
-  const P = S.picks || {}, pcx = (x) => (x == null ? "—" : `${Math.round(x * 100)}%`);
-  const pickRec = (m, name) => { const x = P[m]; return x && x.graded ? `<div class="row"><span class="dim">${name} (model's side)</span><span>${x.w}–${x.l} · ${m === "spread" ? "covered" : "right"} ${pcx(x.hit)}</span></div>` : `<div class="row"><span class="dim">${name} (model's side)</span><span class="dim">none graded yet</span></div>`; };
+function winnersBox() {
   const list = S.games.filter((g) => !g.started).map(winnerOf).filter(Boolean).sort((a, b) => b.p - a.p);
-  const W = S.winners, pc = (x) => (x == null ? "—" : `${Math.round(x * 100)}%`);
-  const rec = W && W.all && W.all.n ? "" +
-    (W.top4 && W.top4.n ? `<div class="row"><span class="dim">MONEYLINE · each week's top 4</span><span>${W.top4.w}–${W.top4.l} · right ${pc(W.top4.hit)}</span></div>` : "") : '';
-  if (mode === "records") return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Records · model's side</div>${rec}${W && W.stats && W.stats.n ? `<div class="row"><span class="dim">MONEYLINE · stats</span><span>${W.stats.w}–${W.stats.l} · right ${pc(W.stats.hit)}</span></div>` : ""}${pickRec("spread", "Spreads")}${pickRec("total", "Totals")}</div></div>`;
   return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Model's pick on every game</div>` +
     (list.slice(0, WINALL ? 99 : 8).map((x, i) => { const g = S.games.find((y) => y.key === x.game), cp = g && !g.started ? straightPicks(g, 0) : [], sp0 = cp.find((c) => !/^(Over|Under)\b/.test(c.pick) && !/\bML\b/.test(c.pick)), tt0 = cp.find((c) => /^(Over|Under)\b/.test(c.pick)),
         sp = sp0 ? { label: sp0.pick, gap: 99 } : null, tt = tt0 ? { label: tt0.pick, gap: 99 } : null;   // review fix 10/14: the CARD's pick (CLAUDE.md: never show the game model's own side as a pick)
@@ -696,7 +685,7 @@ function renderModelNow() {
   const stOk = st && st.ok && !st.creditWarning;
   const stRows = st ? [
     ["Last automatic run", st.auto ? `${hm(st.auto.t)} · ${esc(st.auto.what)}` + (Date.now() - new Date(st.auto.t) > 9 * 3600e3 ? ' <span class="y">(stale)</span>' : "") : '<span class="y">none recorded</span>'],
-    ["Recorded this week", (wc.recorded || []).length ? (wc.recorded || []).map((x) => `<div>${esc(x.game)} · ${x.close ? '<span class="g">closing line ✓</span>' : '<span class="y">closing line missing</span>'} · ${x.picks ? `<span class="g">${x.picks} picks ✓</span>` : '<span class="y">picks missing</span>'} · ${x.winner ? '<span class="g">winner ✓</span>' : '<span class="y">winner missing</span>'}</div>`).join("") : "—"],
+    ["Recorded this week", (wc.recorded || []).length ? (wc.recorded || []).map((x) => `<div>${esc(x.game)} · ${x.close ? '<span class="g">closing line ✓</span>' : '<span class="y">closing line missing</span>'} · ${x.picks ? `<span class="g">${x.picks} card picks ✓</span>` : '<span class="dim">no card pick</span>'} · ${x.winner ? '<span class="g">winner ✓</span>' : '<span class="y">winner missing</span>'}</div>`).join("") : "—"],
     ["Last snapshot", st.lastSnapshot ? hm(st.lastSnapshot) + (S.meta && S.meta.lastSrc === "manual" ? " · you" : "") : "—"], ["Last model run", st.modelRunAt ? hm(st.modelRunAt) : "—"],
     ["Last self-check", st.selfcheck ? `${hm(st.selfcheck.t)} · ${st.selfcheck.items.length ? `<span class="y">${st.selfcheck.items.length} issue(s) — see Watchdog</span>` : '<span class="g">all clear</span>'}` : "— (Thu 12:05 PM, Fri 5:05 PM, Sun 7:35 AM)"],
     ["Pre-logged at kickoff", `${st.prelogged || 0} of ${(S.games || []).length} games this week`],
@@ -734,7 +723,7 @@ function renderModelNow() {
     "" : '<div class="s">None yet.</div>') + recapTd;
   $("models").innerHTML = labStats() +
     mSec("m-score", `1 · Scoreboard · Week ${lw ?? S.week}`, "How every model did on the latest week with graded games, and whether this week's data is loaded.", recapRows + wcRows, (wc.watch || []).length, true) +
-    mSec("m-win", "2 · Winners · moneyline", "Who wins each game: the model's pick on every game, saved at kickoff and graded after, with its season record.", winnersBox("picks")) +
+    mSec("m-win", "2 · Winners · moneyline", "Who wins each game: the model's pick on every game, saved at kickoff and graded after, with its season record.", winnersBox()) +
     mSec("m-line", "3 · Spreads and totals", "Which side of the line to take. The model has no measured edge here, so about 50% is expected. Past seasons are shown for comparison.", clvSummary(res) + pastBox()) +
     mSec("m-td", "4 · Touchdowns", "Players' chances to score. The check shows whether the chances match reality; the picks show how the top scorers per team did.", `<div class="s"><b>Said vs scored</b></div>` + (tdWaiting ? `<div class="s y">${tdWaiting} waiting for snap counts</div>` : "") + (buckets || '<div class="s">None yet.</div>') + `<div class="s" style="margin-top:8px"><b>Top picks per team</b></div>` + topTd + `<div class="s" style="margin-top:8px"><b>Against Polymarket's price</b></div>` + (vsMkt || '<div class="s">None yet.</div>')) +
     mSec("m-ang", "5 · Tracked angles", "Betting rules tested on paper, each with its record and whether it holds up in past seasons.", pickLabBox()) +
@@ -775,7 +764,7 @@ async function loadRecord(sync = false) {
   try {
     const [mb, rl, rp] = await Promise.all([fetch(`/api/mybets${sync ? "?sync=1" : ""}`, { cache: "no-store" }).then((r) => r.json()), fetch("/api/results/list", { cache: "no-store" }).then((r) => r.json()), fetch("/api/replay", { cache: "no-store" }).then((r) => r.json()).catch(() => null)]);
     if (rp && rp.ok) REPLAY = rp.replay;   // history table; a failed fetch just leaves the card out
-    if (!mb.ok) throw new Error(mb.error); stampUpdated(); MB = mb; RES = rl.ok ? rl.results : []; EDGES = rl.ok ? rl.edges : null; PAPER = rl.ok ? rl.paper : null; ALTS = rl.ok ? rl.alts : null; PICKS = rl.ok ? rl.picks : null; TEASERS = rl.ok ? rl.teasers || null : null; COMBOS = rl.ok ? rl.combos || null : null; renderLab();
+    if (!mb.ok) throw new Error(mb.error); stampUpdated(); MB = mb; RES = rl.ok ? rl.results : []; PAPER = rl.ok ? rl.paper : null; TRACKED = rl.ok ? rl.tracked || null : null; COMBOS = rl.ok ? rl.combos || null : null; renderLab();
     renderRecord();
     if (sync && mb.sync) toast(mb.sync.ok ? `Synced ${mb.sync.positions} positions.` : `Sync: ${mb.sync.note}`);
   } catch (e) { toast("Record failed: " + e.message, 10000); }
@@ -798,8 +787,7 @@ function statTile(label, w, l, hit, sub) {
   return `<div class="stat"><div class="k">${label}</div><div class="v ${hitCls(hit)}">${hit == null ? "—" : `${w}–${l}`}</div><div class="k2">${hit == null ? "—" : `${Math.round(hit * 100)}% ${sub}`}</div></div>`;
 }
 function labStats() {
-  const P = PICKS || {}, W = (S && S.winners && S.winners.all) || {};
-  const g = (m) => { const x = P[m] || {}; return [x.w, x.l, x.graded ? x.hit : null]; };
+  const W = (S && S.winners && S.winners.all) || {};
   // 10/13 (owner): the spread/total tiles show YOUR card picks (chooser, LINE MOVE, KEY NUMBER), not the old game model's side.
   const C = (COMBOS && COMBOS.card) || { spread: { w: 0, l: 0 }, total: { w: 0, l: 0 } }, cs = C.spread, ct = C.total;
   const ch = (x) => (x.w + x.l ? x.w / (x.w + x.l) : null);
@@ -809,11 +797,11 @@ function labStats() {
   return `<div class="stats">${statTile("MONEYLINE", W.w, W.l, W.n ? W.hit : null, "right")}${statTile("SPREAD PICKS", cs.w, cs.l, ch(cs), "covered")}${statTile("TOTAL PICKS", ct.w, ct.l, ch(ct), "right")}${clvTile}</div>`;
 }
 function pickLabBox() {
-  // 10/13 (owner): the old angle rows, teaser rows, combo record and early-week row were cut; only the live paper tests that matter stay.
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Tracked angles</div>${teaserRow()}</div></div>`;
+  // paper tests recorded and graded live, not picks: wind Under, OFFENSIVE FLOOR, the two shadow rules
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Tracked angles</div>${trackedRows()}</div></div>`;
 }
-function teaserRow() {
-  const T = TEASERS; if (!T) return "";
+function trackedRows() {
+  const T = TRACKED; if (!T) return "";
   const wu = T.windU, wRow = wu ? `<div class="arow"><span class="nm">Early-week Under, wind 10+ forecast (opening number)</span><span class="dim rc">${wu.n ? `${wu.w}–${wu.l}` : wu.recorded ? `${wu.recorded} saved` : "none yet"}</span><b class="${wu.n ? (wu.hit >= 0.56 ? "g" : wu.hit >= 0.5 ? "y" : "r") : "dim"}">${wu.n ? Math.round(wu.hit * 100) + "%" : "—"}</b></div>` : "";
   // 10/14 paper: team scored 3 or less last week -> that team at the kickoff spread (with the shut-out and road splits)
   const fl = T.floor, rr = (x) => (x && x.n ? `${x.w}–${x.l}` : "—"), fRow = fl ? `<div class="arow"><span class="nm">Team scored 3 or less last week (kickoff spread) · shut out ${rr(fl.shut)} · on the road ${rr(fl.road)}</span><span class="dim rc">${fl.n ? `${fl.w}–${fl.l}` : fl.recorded ? `${fl.recorded} saved` : "none yet"}</span><b class="${fl.n ? (fl.hit >= 0.56 ? "g" : fl.hit >= 0.5 ? "y" : "r") : "dim"}">${fl.n ? Math.round(fl.hit * 100) + "%" : "—"}</b></div>` : "";
@@ -828,7 +816,6 @@ function teaserRow() {
 // market has no tested pick at all. Week 5: MIA +6.5 "67%" (3 games) beat CIN -6.5 55% (tested since 2014) to the top; CIN covered.
 const SMALL_N = 60;
 const isSmall = (x) => x.n != null && x.n < SMALL_N;
-const EARLY_ON = false;   // early-week total edge on the total card (off 10/11)
 function straightPicks(g, min = BEST_MIN) {
   if (!g || g.started || g.final) return [];
   const out = [], games = (n) => (n != null && n < SMALL_N ? ` · ${n} game${n === 1 ? "" : "s"}` : "");
@@ -942,7 +929,6 @@ const injBadgeFor = (g) => { const inj = g.model && g.model.inj; if (!inj) retur
 const recOf = (g, t) => (g.rec && g.rec[t] ? `<small class="rec">${esc(g.rec[t])}</small>` : "");   // season record under the team code (10/8)
 function tile(g) {
   const sc = g.started && !g.final ? LIVE_SC[g.key] : null;   // live score from ESPN (display only)
-  const eg = (S.edgesNow || []).filter((b) => b.game === g.key);
   const hp = g.winPct != null && isFinite(g.winPct) ? Number(g.winPct) : null, ap = hp == null ? null : 100 - hp;
   const lead = (v, o) => (v >= o ? "mkt" : "dim");
   const chips = [g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : "", straightPicks(g).length ? `<span class="chip c-grn">${esc(straightPicks(g)[0].pick)}</span>` : "", g.started && !g.final && !sc ? '<span class="chip c-red">LIVE</span>' : ""].join("");
@@ -1116,8 +1102,8 @@ function tickCd() {
   tickCd._cur = nxt.key;
   tickCd._h = setTimeout(tickCd, 1000);
 }
-// alerts: built on the server from changes it already sees between pulls (injuries, lines, price gaps, model moves, results)
-const ALK = { INJURY: ["Injury", "var(--red)"], "PRICE GAP": ["Price gap", "var(--cyan)"], "QB CHANGE": ["QB change", "var(--gold)"], "LINE MOVE": ["Line move", "var(--blue)"], WEATHER: ["Weather", "#7fd1ff"], MODEL: ["Model", "var(--violet)"], RESULT: ["Result", "var(--green)"], TEASER: ["Teaser leg", "var(--cyan)"], "TD NO": ["TD No", "var(--red)"], "TD JUMP": ["TD jump", "var(--green)"], "QB TD": ["QB TD", "var(--gold)"] };
+// alerts: built on the server from changes it already sees between pulls (injuries, lines, wind, results)
+const ALK = { INJURY: ["Injury", "var(--red)"], "QB CHANGE": ["QB change", "var(--gold)"], "LINE MOVE": ["Line move", "var(--blue)"], WEATHER: ["Weather", "#7fd1ff"], RESULT: ["Result", "var(--green)"], "TD NO": ["TD No", "var(--red)"], "TD JUMP": ["TD jump", "var(--green)"], "QB TD": ["QB TD", "var(--gold)"] };
 const alSeen = () => { try { return localStorage.getItem("alSeen") || ""; } catch { return ""; } };
 async function loadAlerts() {
   try { const d = await (await fetch("/api/alerts", { cache: "no-store" })).json(); if (d.ok) { ALERTS = d.alerts || []; renderAlerts(); } } catch {}
@@ -1129,7 +1115,7 @@ function renderAlerts() {
   $("al-chips").innerHTML = kinds.map((k) => `<button data-alk="${k}" class="${ALFILTER === k ? "on" : ""}">${k === "all" ? "All" : ALK[k][0]}</button>`).join("");
   const list = ALERTS.filter((a) => ALFILTER === "all" || a.kind === ALFILTER);
   $("alerts").innerHTML = list.map((a) => { const [lab, col] = ALK[a.kind] || [a.kind, "var(--dim)"];
-    const ic = a.kind === "INJURY" && a.team ? injBadge(a.team) : a.kind === "PRICE GAP" || a.kind === "LINE MOVE" ? pmLogo() : "";
+    const ic = a.kind === "INJURY" && a.team ? injBadge(a.team) : a.kind === "LINE MOVE" ? pmLogo() : "";
     return `<div class="card al${a.t > dots ? " un" : ""}" data-algame="${esc(a.game || "")}"><span class="dot"></span><div style="flex:1"><div class="kd" style="color:${col}"><span>${ic}${lab.toUpperCase()}</span><span class="dim" style="font-weight:600;letter-spacing:0">${hm(a.t)}</span></div>` +
       `<div class="ti">${esc(a.title)}</div>${a.sub ? `<div class="su">${esc(a.sub)}</div>` : ""}${a.game ? `<div style="font-size:11px;font-weight:700;margin-top:6px;color:var(--blue)">${esc(a.game)} ›</div>` : ""}</div></div>`; }).join("") ||
     '<div class="card" style="margin-top:10px"><div class="s">No alerts.</div></div>';
@@ -1199,7 +1185,7 @@ document.addEventListener("click", (e) => {
   const tr = e.target.closest(".tdr"); if (tr && !e.target.closest(".price-link") && !e.target.closest(".more")) { tr.classList.toggle("open"); return; }
   const p = e.target.closest(".price-link"); if (p) toast(p.dataset.market ? "Polymarket market: " + p.dataset.market : "No market recorded for this price.", 8000);
 });
-// Everything refreshes by itself while the page is open and visible: lines, model, injuries, alerts, and the Pick Lab / Record data.
+// Everything refreshes by itself while the page is open and visible: lines, model, injuries, alerts, and the records.
 const onRecordTab = () => ["panel-record", "panel-lab", "panel-models"].some((id) => $(id) && $(id).classList.contains("on"));
 // Grades finished games and syncs the Polymarket account while the page is open (the server allows one run per 5 minutes),
 // then reloads the Record data if a run happened, so results and bets show up without waiting for the scheduler.

@@ -68,15 +68,5 @@ for wk, gs in by_week.items():
         elif all(x == "P" for x in exp): result, ret = "P", 0.0
         else: result, ret = "W", math.prod(1 / l["price"] for l, r in zip(legs, exp) if r == "W") - 1
         combos.append(dict(week=wk, legs=legs, expected=dict(result=result, ret=ret, legs=exp)))
-# edge-tracker entries: ml / spread / total, graded at the result and against the closing price (same line only)
-edges = []
-for i, gm in enumerate(games):
-    if i % 3: continue
-    p = gm["poly"]; m = gm["H"] - gm["A"]; t = gm["H"] + gm["A"]; hs = p["spread"]["homeSpread"]; kind = ["ml", "spread", "total"][(i // 3) % 3]
-    if kind == "ml": home = i % 2 == 0; x = (m if home else -m); r = "P" if m == 0 else ("W" if x > 0 else "L"); price = p["ml"]["home" if home else "away"]; rec = dict(market="ml", team=gm["home"] if home else gm["away"]); close = price
-    elif kind == "spread": home = i % 2 == 0; line = hs if home else -hs; x = (m if home else -m) + line; r = res(x); price = 0.47; rec = dict(market="spread", team=gm["home"] if home else gm["away"], line=line + 0.0); close = p["spread"]["home" if home else "away"]
-    else: over = i % 2 == 0; line = p["total"]["line"]; x = t - line if over else line - t; r = res(x); price = 0.46; rec = dict(market="total", side="over" if over else "under", line=line); close = p["total"]["over" if over else "under"]
-    pl = (1 / price - 1) if r == "W" else (-1.0 if r == "L" else 0.0)
-    edges.append(dict(game=gm["key"], week=gm["week"], price=price, rec=rec, expected=dict(result=r, pl=pl, clv=close / price - 1)))
-json.dump(dict(games=games, combos=combos, edges=edges), open(os.path.join(os.path.dirname(__file__), "fixtures", "grading_2025.json"), "w"))
-print(f"{len(games)} games, {len(combos)} combos, {len(edges)} edge entries; pushes among spread picks:", sum(1 for g in games if g['expected'].get('spread', {}).get('result') == 'P'))
+json.dump(dict(games=games, combos=combos), open(os.path.join(os.path.dirname(__file__), "fixtures", "grading_2025.json"), "w"))
+print(f"{len(games)} games, {len(combos)} combos; pushes among spread picks:", sum(1 for g in games if g['expected'].get('spread', {}).get('result') == 'P'))

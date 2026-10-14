@@ -3,11 +3,9 @@
 // 6/7/8/9/10/12/3 PT, and just before each kickoff with kickoff=<game>) and by the Refresh button.
 import { tablePicks, recordStack, lineMovePick, lineMoveTotalPick, keyNumberPick, injuryPick, bounceBackPick, floorDogPick } from "../../lib/stack";
 import { venue, windAtKickoff } from "../../lib/wind";
-import { recordTeaser, recordTotalLeg, teaserLeg, totalMove, tkey, WIND_U_MPH, recordFloor } from "../../lib/teaser";
-import { comboFactors } from "../../lib/stack";
+import { tkey, WIND_U_MPH, recordFloor } from "../../lib/tracked";
 import { loadComboModel } from "../../lib/combomodel";
-import { recordAltValues } from "../../lib/altfair";
-import { alertTeaser, alertsTdNo } from "../../lib/alerts";
+import { alertsTdNo } from "../../lib/alerts";
 import { applyCalibration } from "../../lib/calibration";
 import { tdRows } from "../../lib/picks";
 import { SEASON, currentWeek, loadGames, started } from "../../lib/games";
@@ -22,7 +20,7 @@ import { logError } from "../../lib/status";
 import { loadModel } from "../../lib/week";
 import { isThinMarket } from "../../lib/odds";
 import { nameMatches } from "../../lib/picks";
-import { recordPaper, recordWinner, tdTotal, situationFor } from "../../lib/paper";
+import { recordPaper, recordWinner, situationFor } from "../../lib/paper";
 import { buildWeek } from "../../lib/week";
 import { loadInjuriesMeta } from "../../lib/injuries";
 import { alertsFromLines } from "../../lib/alerts";
@@ -51,23 +49,17 @@ export async function writePrelog(season, week, g, t, poly, bk, model) {
       return { player: p.name, team: p.team, fair: p.fair, ask: v ? v.ask : null, bid: v ? v.bid ?? null : null }; });
   await setJSON(`prelog:${season}:${week}:${g.key}`, { t, game: g.key, poly, books: bk,
     model: mg ? { homeMargin: mg.homeMargin, total: mg.total, homeWinPct: mg.homeWinPct, calHomeCover: mg.calHomeCover, calUnder: mg.calUnder, mktHomeSpread: mg.mktHomeSpread, mktTotal: mg.mktTotal, runAt: mdl.runAt || null } : null, topTd });
-  // Pick Lab paper singles (the old game model's side) CUT 10/13 (owner).
   await recordWinner(season, week, g, poly, t, mg).catch(() => 0);      // Most likely winners: the favorite at kickoff (9/30)
-  { const alts = poly && poly.alts ? poly.alts : ((await getJSON(`alts:${season}:${week}:${g.key}`).catch(() => null)) || {}).alts || null;   // late close: the saved latest copy
-    await recordTeaser(season, week, g, alts ? { ...(poly || {}), alts } : poly, bk, t).catch(() => 0);
-    { const allS = ((await getRedis().lrange(K.snaps(season, week, g.key), 0, -1).catch(() => [])) || []).map(jparse).filter(Boolean);   // review fix: first reading WITH a Polymarket line, like the card
+  { const allS = ((await getRedis().lrange(K.snaps(season, week, g.key), 0, -1).catch(() => [])) || []).map(jparse).filter(Boolean);   // review fix: first reading WITH a Polymarket line, like the card
       const first = allS.find((x) => x.poly && x.poly.total) || null, firstS = allS.find((x) => x.poly && x.poly.spread) || null, open = first ? first.poly.total.line : null;
-      const now = bk && bk.total && bk.total.line != null ? bk.total.line : poly && poly.total ? poly.total.line : null, mv = totalMove(open, now);
-      // Total moved 6 (10/9, model replayed 2014-25): the line's 3+ move first, then wind 15+ Under, else AGAINST the model's side
-      const mU = mg && mg.calUnder != null ? mg.calUnder >= 50 : null;
+      const now = bk && bk.total && bk.total.line != null ? bk.total.line : poly && poly.total ? poly.total.line : null;
       { const s0 = firstS ? firstS.poly.spread.homeSpread : null, v = venue(g) || {};
         // 10/12: recorded at the SAME line the card shows -- Polymarket first (where the bet is placed), books only as a fallback.
         // Before, books came first, so a recorded pick could sit on a different number than the one shown.
         const hsNow = poly && poly.spread && poly.spread.homeSpread != null ? poly.spread.homeSpread : bk && bk.spread ? bk.spread.homeSpread : null;
         const tlNow = poly && poly.total && poly.total.line != null ? poly.total.line : now;
         try { const sitS = await situationFor(season, week, g).catch(() => null); await recordFloor(season, week, g, hsNow, sitS, t).catch(() => 0); await recordStack(season, week, g, tablePicks({ ...g, outdoor: !!v.outdoor }, mg, hsNow, tlNow, s0, open, sitS, Number(week)).concat(injuryPick(g, hsNow, s0, sitS, Number(week)) || [], bounceBackPick(g, hsNow, sitS) || [], floorDogPick(g, hsNow, sitS) || [], ...(await timingAtKickoff(season, week, g, t, poly, bk))), t); } catch {} }   // combo picks (10/9); a failure here never stops the rest
-      await recordTotalLeg(season, week, g, poly, bk, mv ? mv.under : mg && mg.outdoor && mg.wind != null && mg.wind >= 15 ? true : mU == null ? true : !mU, t, open, mU === true).catch(() => 0); }
-    await recordAltValues(season, week, g, alts ? { ...(poly || {}), alts } : poly, bk, t).catch(() => 0); }   // alt lines under their historical rate (10/9)   // Teaser leg: underdog +1.5..+2.5 at +7.5..+8.5 (10/6)
+  }
 }
 
 export default async function handler(req, res) {
@@ -94,11 +86,7 @@ export default async function handler(req, res) {
       }
     }
     const open = games.filter((g) => !started(g));
-    const booksNow = books ? { t, games: books } : await getJSON(K.books(season, week));   // for the edge tracker (age-checked there)
-    let edges = 0;
     const events = open.length ? await fetchEvents() : [];
-    // Action Network pull CUT 10/13 (owner): its free splits were always empty and it matched 0 games; lib/splits.js and /api/splitshist stay for reference.
-    const splitsNote = null;
     // Pinnacle main spread / total, 10/13: recorded the same way (Redis pinnacle:<season>:<week>:<game>, last 60) on every snapshot, for
     // EVERY not-started game Pinnacle lists -- next week's too, under that game's own week, so its early lines are kept (owner: "do it
     // now"). Not shown or used for picks until tested on unseen games. A failed pull is logged and never stops the snapshot.
@@ -113,10 +101,9 @@ export default async function handler(req, res) {
       let poly = await gameLines(events, g.away, g.home).catch(() => null);
       { const sp = sanePoly(poly, g.nvSpread, g.nvTotal); poly = sp.poly;   // an alternate line read as the game line (10/4: "MIN +19.5") never gets saved
         if (sp.dropped.length) await logError("snapshot", `${g.key}: dropped implausible Polymarket line (${sp.dropped.join("; ")})`).catch(() => {}); }
-      // Alternate spreads (teaser legs, 10/6) are kept as ONE latest copy per game, not inside every snapshot (200 kept per game: it would
+      // Alternate spreads (BEAT THE 3 buys +3.5 / -2.5 there) are kept as ONE latest copy per game, not inside every snapshot (200 kept per game: it would
       // add MBs a week to the database and to every page load).
       const alts = poly && poly.alts ? poly.alts : null; if (alts) { poly = { ...poly }; delete poly.alts; await setJSON(`alts:${season}:${week}:${g.key}`, { t, alts }); }
-      if (alts) await alertTeaser(season, g, teaserLeg(g, { ...poly, alts }, books ? books[g.key] || null : ((await getJSON(K.books(season, week)).catch(() => null)) || { games: {} }).games[g.key])).catch(() => 0);   // teaser leg priced right (10/7)
       const snap = { t, src, poly: poly || null, books: books ? books[g.key] || null : undefined };
       // Bad-data guard: a line jumping this far between snapshots is almost always a feed glitch, not a real move
       const prevRaw = await redis.lindex(K.snaps(season, week, g.key), -1), prev = prevRaw ? (jparse(prevRaw) || {}).poly || null : null;
@@ -127,7 +114,6 @@ export default async function handler(req, res) {
         if (prev.ml && poly.ml && Math.abs(prev.ml.home - poly.ml.home) >= 0.25) why.push("moneyline jumped 25+ cents");
         if (why.length) snap.suspect = `Data check failed: ${why.join(", ")}. Bet held until next refresh.`;
       }
-      // Edge tracker (Polymarket vs sportsbook price gaps) CUT 10/13 (owner).
       if (prev && poly && !snap.suspect) await alertsFromLines(season, g, prev, poly).catch(() => 0);   // line-move alerts (10/1)
       if (poly || snap.books) { await pushCapped(redis, K.snaps(season, week, g.key), JSON.stringify(snap), 200); lines += poly ? 1 : 0; }
       // Early-week total recording CUT 10/13 (owner): it went 11-18 live and is off on cards. Old saved rows still grade.
@@ -219,6 +205,6 @@ export default async function handler(req, res) {
     }
     const graded = src === "manual" ? 0 : await gradeRecent(season).catch(() => 0);
     const acct = src === "manual" ? { ok: false, note: "skipped on manual refresh" } : await syncAccount().catch((e) => ({ ok: false, note: String(e) }));  // auto-sync My Bets
-    res.status(200).json({ ok: true, week, upcoming: open.length, locked: games.length - open.length, lines, props, books: booksNote, splits: splitsNote, pinnacle: pinNote, closedLate, graded, edges, paper, account: acct.ok ? `synced ${acct.positions} positions` : acct.note });
+    res.status(200).json({ ok: true, week, upcoming: open.length, locked: games.length - open.length, lines, props, books: booksNote, pinnacle: pinNote, closedLate, graded, paper, account: acct.ok ? `synced ${acct.positions} positions` : acct.note });
   } catch (err) { await logError("snapshot", err).catch(() => {}); res.status(500).json({ ok: false, error: String(err) }); }
 }
