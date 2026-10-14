@@ -402,6 +402,8 @@ Found from the live site and the Week 3 export (nfl-bettors-results.json). Site 
 - Calibration recheck (9/30), every constant against 2006-25 / 2013-25 results:
   - Win chance: model-gap weight 0.0324 -> 0 (it was fit on the old model; market-only scored better, 0.6016 vs
     0.6026); market part refit on 5,247 games: -0.0452 + 0.1464 x spread. Cover: flat 48.85% (gap term was worse).
+    10/14: win % now has a bend term: -0.0470 + 0.1187 m + 0.0334 m|m|/10 (m = market home-favored margin; `CAL_WIN_BEND`) --
+    the straight line said small favorites won 2-3 points more often than they did (each season unseen 2006-25).
   - Team points: old fit ran 2-3 pts high on overs; now market-implied points + real 2006-25 error quantiles.
   - 2+ TDs: x1.09 -> x1.035 (with the team TD total, x1.09 read 3.77% vs 3.58% actual).
   - Confirmed correct, unchanged: SD 13 / 13.3, Under calibration, Questionable 0.28 (starters sat 27.1%), Doubtful
