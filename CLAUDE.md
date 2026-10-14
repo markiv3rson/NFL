@@ -1,5 +1,13 @@
 # NFL betting app — notes for Claude
 
+## **THE #1 RULE (owner, 10/14, after Claude broke it again and again): ANSWER FIRST. DO NOTHING UNTIL THE OWNER SAYS "BUILD NOW".**
+
+**1. Answer every question the owner asks, all of them, in short plain words. Then STOP and wait.**
+**2. Do NOT edit, build, test, commit, push, merge or delete anything until the owner says "build now" (or picks an option Claude offered). Anger, a rule, a complaint or "fix it" is NOT "build now".**
+**3. If it is not clear what the owner means, ASK in plain words. Never guess and build. Never "fix" something on your own.**
+**4. Never undo, redo or clean up your own changes without being told. If you made a mistake, say so and wait.**
+**5. When the owner says "build now", build the WHOLE thing in one go, then say what changed.**
+
 Read this first in every new chat. It carries the owner's rules and what has already been tried.
 
 ## Owner's rules (always follow)
