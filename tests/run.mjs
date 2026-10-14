@@ -200,8 +200,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const { isNightGame, middleCheck, BUY_TIERS } = await import("../lib/stack.js");
   const day = { ...G, kickoff: "2026-10-18T17:00:00Z" }, thu = { ...G, kickoff: "2026-10-16T00:15:00Z" }, snf = { ...G, kickoff: "2026-10-19T00:20:00Z" }, mon = { ...G, kickoff: "2026-10-20T00:15:00Z" };
   ok(!isNightGame(day.kickoff) && isNightGame(thu.kickoff) && isNightGame(snf.kickoff) && isNightGame(mon.kickoff) && !isNightGame(null), "night games: Thursday, Sunday 7 PM ET+, Monday");
-  ok(keyNumberPick(day, sp(-2.5), bk(-2.5), [{ team: "BUF", line: 3.5, price: 0.6 }]) && !keyNumberPick(thu, sp(-2.5), bk(-2.5), [{ team: "BUF", line: 3.5, price: 0.6 }])
-    && !keyNumberPick(snf, sp(-2.5), bk(-2.5), [{ team: "BUF", line: 3.5, price: 0.6 }]), "BEAT THE 3: day games only (Thursday / Sunday night skipped)");
+  { const kd = keyNumberPick(day, sp(-2.5), bk(-2.5), [{ team: "BUF", line: 3.5, price: 0.6 }]), kt = keyNumberPick(thu, sp(-2.5), bk(-2.5), [{ team: "BUF", line: 3.5, price: 0.6 }]),
+      ks = keyNumberPick(snf, sp(-6.5), bk(-6.5), [{ team: "LA", line: -2.5, price: 0.7 }]);
+    ok(kd && kd.hit === 60.9 && !kd.night && kt && kt.hit === 51.1 && kt.night && /night game \(60¢\)$/.test(kt.why) && ks && ks.hit === 66.7 && ks.n === 66,
+      "BEAT THE 3: night games show the NIGHT win rate (books 2.5: 60.9% day, 51.1% night; books 6.5 night 66.7%)", { kt, ks }); }
   const t45 = keyNumberPick(day, sp(-4.5), bk(-4.5), [{ team: "LA", line: -2.5, price: 0.66 }]), t65 = keyNumberPick(day, sp(-6.5), bk(-6.5), [{ team: "LA", line: -2.5, price: 0.7 }]);
   const t55 = keyNumberPick(day, sp(-5.5), bk(-5.5), [{ team: "BUF", line: 7.5, price: 0.64 }]), t135 = keyNumberPick(day, sp(-13.5), bk(-13.5), [{ team: "BUF", line: 14.5, price: 0.6 }]);
   ok(t45 && t45.pick === "LA -2.5" && t45.hit === 65.6 && t65 && t65.pick === "LA -2.5" && t65.hit === 66.9 && t55 && t55.pick === "BUF +7.5" && t55.hit === 61.7 && /BEAT THE 7/.test(t55.why)
@@ -209,8 +211,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     && !keyNumberPick(day, sp(-6), bk(-6), [{ team: "BUF", line: 7.5, price: 0.6 }]) && Object.keys(BUY_TIERS).length === 9,
     "bought points: books 4.5 / 6.5 -> fav -2.5, 5.5 -> dog +7.5, 13.5 -> dog +14.5; books 7.5 / 6 are not picks", { t45, t55 });
   const cheap = middleCheck(day, sp(-2.5, 0.50, 0.50), bk(-3), [{ team: "BUF", line: 3.5, price: 0.56 }]), dear = middleCheck(day, sp(-2.5, 0.54, 0.46), bk(-3), [{ team: "BUF", line: 3.5, price: 0.58 }]);
-  ok(cheap && cheap.fav === "LA" && cheap.dog === "BUF" && Math.abs(cheap.cost - 1.06) < 1e-9 && Math.abs(cheap.back - 1.093) < 1e-9 && !dear && !middleCheck(thu, sp(-2.5, 0.5, 0.5), bk(-3), [{ team: "BUF", line: 3.5, price: 0.56 }])
-    && !middleCheck(day, sp(-6.5, 0.5, 0.5), bk(-6.5), []), "middle: fav -2.5 + dog +3.5 shown only when the two prices add up to less than the history payback (1 + exact-3 share); day games; books 2.5-3.5 only");
+  ok(cheap && cheap.fav === "LA" && cheap.dog === "BUF" && Math.abs(cheap.cost - 1.06) < 1e-9 && Math.abs(cheap.back - 1.093) < 1e-9 && !dear && middleCheck(thu, sp(-2.5, 0.5, 0.5), bk(-3), [{ team: "BUF", line: 3.5, price: 0.56 }]).exact3 === 0.094
+    && !middleCheck(day, sp(-6.5, 0.5, 0.5), bk(-6.5), []), "middle: fav -2.5 + dog +3.5 shown only when the two prices add up to less than the history payback (1 + exact-3 share, night share at night); books 2.5-3.5 only");
   { const { recordMiddle, gradeTrackedWeek, trackedSummary } = await import("../lib/tracked.js"), GG = { key: "BUF @ LA", home: "LA", away: "BUF" };
     await recordMiddle(2096, 6, GG, cheap, "t"); await recordMiddle(2096, 6, GG, { ...cheap, cost: 2 }, "t2");   // saved once
     await gradeTrackedWeek(2096, 6, [{ key: "BUF @ LA", home: "LA", away: "BUF", homeScore: 24, awayScore: 21 }]); const sm = await trackedSummary(2096);
@@ -245,6 +247,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(rec["movepred|total"] && rec["movepred|total"].w === 1 && rec["movepred|total"].l === 0, "a pick that vanished before kickoff is graded at the line it was first shown (Under 42.5, final 37)", rec); }
 { const { floorDogPick } = await import("../lib/stack.js"); const G = { home: "IND", away: "TEN", key: "TEN @ IND" };
   const a = floorDogPick(G, -6.5, { away: { prevPts: 3 }, home: { prevPts: 27 } }), b = floorDogPick(G, 2.5, { home: { prevPts: 0 }, away: { prevPts: 20 } });
+  { const nG = { ...G, kickoff: "2026-10-20T00:15:00Z" }, nb = floorDogPick(nG, -6.5, { away: { prevPts: 3 }, home: { prevPts: 27 } });
+    ok(nb && nb.hit === 53.1 && nb.night, "bounce back dog: night game shows the night rate (53.1%)", nb); }
   ok(a && a.pick === "TEN +6.5" && a.hit === 56.9 && b && b.pick === "IND +2.5" && !floorDogPick(G, 6.5, { away: { prevPts: 3 }, home: { prevPts: 27 } })
     && !floorDogPick(G, -6.5, { away: { prevPts: 7 }, home: { prevPts: 27 } }) && !floorDogPick(G, -6.5, { away: { prevPts: 3 }, home: { prevPts: 0 } }) && !floorDogPick(G, -6.5, null),
     "bounce back dog: scored <=3 last game AND underdog now -> that team; favorite / 7 pts / both low -> nothing", [a, b]); }
