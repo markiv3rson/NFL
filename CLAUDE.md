@@ -110,6 +110,32 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   bar (`.chips.dock`) for one-thumb use. Grading check 10/14: weeks 3-5 every final game graded (16/16/15), all 87 card picks graded
   (chooser included since 10/12), week 6 parlays saved and waiting.
 
+## BUY THE POINTS + fixes A-D (10/14 late, owner: "build now")
+
+- BEAT THE 3 is now a table of tested tiers (`lib/stack.js BUY_TIERS`, DAY GAMES ONLY, 1999-2025 closing line): books 1 / 1.5 / 2.5 / 3 ->
+  dog +3.5 (60.7 / 62.1 / 60.9 / 57.9%); books 3.5 / 4.5 / 6.5 -> fav -2.5 (59.8 / 65.6 / 66.9%); books 5.5 -> dog +7.5 (61.7%, "BEAT THE
+  7"); books 13.5 -> dog +14.5 (68.0% on 50, "BEAT THE 14"). NOT picks (tested 10/14): fav -6.5 at 7/7.5/8, dog +7.5 at 5/6/6.5, fav -9.5
+  at 10.5/11, dog +10.5 at 9/9.5/10, dog +14.5 at 13/14, books 2, books 4. Books 4.5 dog +7.5 also passed (60.8%) -- only the fav side
+  is shown. Polymarket alternate lines now read up to 15 points (`lib/poly.js`). Buying more points always raises the win rate; the price
+  rises too.
+- B: BEAT THE 3, BOUNCE BACK, BOUNCE BACK DOG fire in DAY games only (`isNightGame`: Thursday, Sunday 7 PM ET+, Monday). Night: BEAT THE 3
+  53-56% every period vs day 58-61%; BOUNCE BACK 50.9% vs 58.8%; DOG 53.1% vs 56.9% (app's own replay). Underdogs cover less at night
+  (Thu 46.7%, SNF 49.9%, Sun day 51.6%) and fewer night games land on 3. Card %: BOUNCE BACK 58.8% (318), DOG 56.9% (253).
+- A: same-game parlays -- `lib/combo.js pairLift` treats two side bets in one game as linked (same team = the less likely leg; opposite
+  teams = pA + pB - 1, the window between them). DEN +3.5 + SEA ML showed 34%, real ~13-17%. The 2-leg filler (`lib/sgp.js`) never adds
+  a leg that works against one already in (link < 1x); same-team TD first.
+- C: wind. Open-Meteo's archive (ERA5) at kickoff MATCHES nflverse stadium wind (235 games 2021-25: mean 8.9 vs 8.9 mph, 10+ in 35% vs
+  38%, corr 0.74) -- the source is not inflated; 9 of 10 outdoor games at 10+ in week 6 is the 5-day forecast or a windy week (the
+  historical-forecast API was blocked, can't test forecast skill). TOTAL MOVE used the MEASURED kickoff wind (unknown at the open):
+  without it 57.6% (507) / 61.3% (253) vs 59.1% / 62.7% -> wind dropped (`weekly_rebuild.py MOVE_DROP` + "w"; built-in `UP_MOVE` refit;
+  a published model that still has "w" is ignored by `useMoveModel` and the status `moveCheck`).
+- D: card warns "⚠ Costs X¢ but wins Y%" when the pick's price (its own bought-line price or the main line's) is above its win rate
+  (`public/app.js costNote`).
+- MIDDLE (owner: "only if it looks like a good edge"): books 2.5 / 3 / 3.5, day games -> favorite -2.5 + underdog +3.5 shown as a note on the
+  spread card only when the two prices add up to less than 1 + the exact-3 share (8.8 / 9.3 / 10.1%) (`lib/stack.js middleCheck`).
+  Saved once (`|middle` in `lib/tracked.js`), graded (W = favorite by exactly 3, both won), Models -> Tracked angles row with money.
+  The Polymarket COMBO version (ML + spread as one parlay, 6.39x for SEA ML + DEN +3.5) can't be judged: the app can't see combo prices.
+
 ## CLEANUP (10/14, owner: "delete all 8", teasers too)
 
 - Deleted: the price-gap tracker (`lib/edges.js`, "right now" gaps, PRICE GAP alert), the old bet sizing ($200 weekly cap, Kelly stakes,
@@ -365,9 +391,11 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   the books' consensus; Pinnacle-as-books is the shadow test). INJURY's "line hasn't moved yet" check uses the newest Polymarket line.
   The fallback now looks at the last 6 records (the newest one is often a snapshot record with no Polymarket reading).
   Full pass 10/14: every card pick (incl. TOTAL MOVE, BOUNCE BACK, BOUNCE BACK DOG, chooser) uses the newest Polymarket line.
-  BOOKS AT THE OWNER'S TIMES (10/14, owner): pulled at EVERY scheduled snapshot (Sun 6, 7, 8, 9, 10 AM, 12, 3 PM; Mon-Sat 7 AM, 12, 3, 7 PM).
-  Full pulls (with moneyline, 3 credits) at weekday 7 AM / 3 PM and Sunday 7, 9 AM, 12, 3 PM; the rest skip the moneyline (`&books=2`, 2
-  credits, last moneyline kept) -> ~340 of 500 credits a month. A books reading counts as current until the next scheduled pull (+45 min)
+  BOOKS AT THE OWNER'S TIMES (10/14 late, owner): pulled at EVERY scheduled snapshot -- Mon-Sat 7 AM, 3 PM, 7 PM; Sunday 5 AM, 8 AM,
+  9:30 AM, 12 PM, 4 PM (Pacific; scheduler SUNDAY / WEEKDAY are (hour, minute) slots). Full pulls (with moneyline, 3 credits) at weekday
+  7 AM and every Sunday pull; the rest skip the moneyline (`&books=2`, 2 credits, last moneyline kept) -> 23 pulls / 57 credits a week,
+  ~250 a month. The sandbox's ODDS_API_KEY read 490 left / 10 used on 10/14 (= the owner's NBA app reading); the NFL app (Vercel key)
+  read 352 the evening before -> most likely two different keys. A books reading counts as current until the next scheduled pull (+45 min)
   (`lib/books.js BOOK_PULLS / booksFresh`; keep it the same as scheduler.py WEEKDAY / SUNDAY). This replaced the 3 h / 8 h limit, so
   LINE MOVE / KEY NUMBER no longer drop off between pulls. Kickoff recorder uses the same rule; if the books aren't current, no LINE MOVE
   is saved and KEY NUMBER uses the newest Pinnacle line. Risk: a books move after the last pull (most likely overnight) isn't seen until

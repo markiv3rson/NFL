@@ -85,6 +85,26 @@ function lineCheck(g, kind, pick) {
   return `<div class="s ${better ? "g" : "y"}" style="margin-top:4px">${better ? "✓" : "⚠"} Line moved: opened ${esc(lab(open))}, now ${esc(lab(now))} · ${better ? "better number now" : "worse number now"}</div>`;
 }
 // 10/14 (owner): another green rule takes the OTHER side of the same market (e.g. ATL +3.5 KEY NUMBER vs CHI -2.5 BOUNCE BACK) -> say so
+// 10/14 (owner, "D"): warn when a pick costs more than it wins -- over time that loses money even if the win rate holds.
+// Price = the pick's own price (bought-point lines) or Polymarket's main line when the pick sits on it.
+function pickPrice(g, P) {
+  if (P.price > 0 && P.price < 1) return P.price;
+  const m = String(P.pick).match(/^(\S+) ([+-]?\d+(?:\.\d+)?)$/), sp = g.poly && g.poly.spread, to = g.poly && g.poly.total;
+  if (/^Over|^Under/.test(P.pick)) { const ln = Number(String(P.pick).split(" ")[1]); return to && Number(to.line) === ln ? (/^Over/.test(P.pick) ? to.over : to.under) : null; }
+  if (!m || !sp) return null; const home = m[1] === g.home, main = home ? sp.homeSpread : -sp.homeSpread;
+  return Number(m[2]) === Number(main) ? (home ? sp.home : sp.away) : null;
+}
+// MIDDLE (10/14, owner): favorite -2.5 AND underdog +3.5 as two bets, shown only when the two prices add up to less than they pay back
+// on average (lib/stack.js middleCheck). One side always wins; both win when the favorite wins by exactly 3.
+function middleNote(g) {
+  const m = g.middle; if (!m || g.final || g.started) return "";
+  return `<div class="s" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px"><b class="lg">MIDDLE:</b> ${esc(m.fav)} -2.5 (${Math.round(m.favPrice * 100)}¢) + ${esc(m.dog)} +3.5 (${Math.round(m.dogPrice * 100)}¢). ` +
+    `One side always wins; both win if ${esc(m.fav)} wins by exactly 3 (${Math.round(m.exact3 * 100)}% of games like this). Costs ${Math.round(m.cost * 100)}¢, pays back ${Math.round(m.back * 100)}¢ on average.</div>`;
+}
+function costNote(g, P) {
+  const pr = pickPrice(g, P); if (!(pr > 0 && pr < 1) || pr * 100 <= P.p * 100) return "";
+  return `<div class="s y" style="margin-top:4px">⚠ Costs ${Math.round(pr * 100)}¢ but wins ${(P.p * 100).toFixed(1)}%. Over time this loses money.</div>`;
+}
 function splitNote(g, kind, pick) {
   const isTot = (x) => /^(Over|Under)\b/.test(x), first = (x) => String(x).split(" ")[0];
   const o = (g.combos || []).filter((c) => !c.teaser && c.hit >= BEST_MIN * 100 && (kind === "total" ? isTot(c.pick) : !isTot(c.pick) && !/\bML\b/.test(c.pick)) && first(c.pick) !== first(pick)).sort((a, b) => b.hit - a.hit)[0];
@@ -134,13 +154,13 @@ function leanCell(g, kind) {
       body = `<div style="margin-top:6px"><b class="g pulse" style="--gl:${glowOf(P.p)}">PICK: ${esc(P.pick)} · <span class="reelpct" data-v="${pc}%">${pc}%</span></b></div>` +
         // 10/13 (owner: fewer notes): just the green pick's own reason (e.g. the LINE MOVE numbers)
         `<div class="s" style="margin-top:4px">${esc(P.why)}</div>` +
-        recLine(P.rec) + lineCheck(g, kind, P.pick) + splitNote(g, kind, P.pick);
+        recLine(P.rec) + lineCheck(g, kind, P.pick) + splitNote(g, kind, P.pick) + costNote(g, P);
     }
   }
   // 10/12 (owner: the number must be honest). Tested on 2,578 games 2014-26, each season predicted without it: margin off by 9.99
   // points vs the line's 9.89, total 10.52 vs 10.47; the model beat the line in only 3 of 13 seasons on each. So it is shown as an
   // opinion, never as a pick.
-  return wrap(`<div class="s">${mline}</div>` + body +
+  return wrap(`<div class="s">${mline}</div>` + body + (kind === "spread" ? middleNote(g) : "") +
     (adj ? `<div class="s r" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">${injBadgeFor(g)}${esc(adj)}</div>` : "") +
     (p && p.warn && !g.final ? `<div class="s y">${esc(p.warn)}</div>` : ""));   // e.g. QB change the model can't see
 }
@@ -807,7 +827,9 @@ function trackedRows() {
   const fl = T.floor, rr = (x) => (x && x.n ? `${x.w}–${x.l}` : "—"), fRow = fl ? `<div class="arow"><span class="nm">Team scored 3 or less last week (kickoff spread) · shut out ${rr(fl.shut)} · on the road ${rr(fl.road)}</span><span class="dim rc">${fl.n ? `${fl.w}–${fl.l}` : fl.recorded ? `${fl.recorded} saved` : "none yet"}</span><b class="${fl.n ? (fl.hit >= 0.56 ? "g" : fl.hit >= 0.5 ? "y" : "r") : "dim"}">${fl.n ? Math.round(fl.hit * 100) + "%" : "—"}</b></div>` : "";
   // 10/14 shadow picks (recorded + graded, not shown): LINE MOVE triggered by Pinnacle; Polymarket order-book tilt 4x+
   const row = (x, name) => (x ? `<div class="arow"><span class="nm">${name} · spread ${rr(x.spread)} · total ${rr(x.total)}</span><span class="dim rc">${x.n ? `${x.w}–${x.l}` : x.recorded ? `${x.recorded} saved` : "none yet"}</span><b class="${x.n ? (x.hit >= 0.56 ? "g" : x.hit >= 0.5 ? "y" : "r") : "dim"}">${x.n ? Math.round(x.hit * 100) + "%" : "—"}</b></div>` : "");
-  return wRow + fRow + row(T.pinlm, "LINE MOVE using Pinnacle (shadow)") + row(T.tilt, "Polymarket order-book tilt 4x+ (shadow)") || '<div class="s dim">None yet.</div>';
+  // 10/14 MIDDLE: favorite -2.5 + underdog +3.5 when priced under its payback; a hit = both sides won (favorite by exactly 3)
+  const md = T.middle, mRow = md ? `<div class="arow"><span class="nm">Middle (fav −2.5 + dog +3.5) · both won ${rr(md)}${md.n ? ` · ${md.money >= 0 ? "+" : "−"}$${Math.abs(md.money).toFixed(2)} per $1 pairs` : ""}</span><span class="dim rc">${md.n ? `${md.w}–${md.l}` : md.recorded ? `${md.recorded} saved` : "none yet"}</span><b class="${md.n ? "" : "dim"}">${md.n ? Math.round(md.hit * 100) + "%" : "—"}</b></div>` : "";
+  return wRow + fRow + mRow + row(T.pinlm, "LINE MOVE using Pinnacle (shadow)") + row(T.tilt, "Polymarket order-book tilt 4x+ (shadow)") || '<div class="s dim">None yet.</div>';
 }
 // Decision model (10/9): straight bets only (no teasers, no alt lines), ONE pick per game per market (spread, total): the one
 // with the best record. Two angles on opposite sides of the same total no longer both show.
@@ -821,7 +843,7 @@ function straightPicks(g, min = BEST_MIN) {
   const out = [], games = (n) => (n != null && n < SMALL_N ? ` · ${n} game${n === 1 ? "" : "s"}` : "");
   // 10/12: picks come only from the combined chooser (g.combos, honest win rates on unseen games). Angles and the "total fell" rule
   // were dropped as picks: their rates were measured on the same games they were chosen from.
-  for (const c of g.combos || []) if (!c.teaser) out.push({ pick: c.pick, game: g.key, why: c.why + games(c.n), p: c.hit / 100, rec: c.rec, n: c.n ?? null });
+  for (const c of g.combos || []) if (!c.teaser) out.push({ pick: c.pick, game: g.key, why: c.why + games(c.n), p: c.hit / 100, rec: c.rec, n: c.n ?? null, price: c.price ?? null });
   const best = {}, better = (x, y) => (isSmall(x) !== isSmall(y) ? !isSmall(x) : x.p > y.p);
   for (const x of out) { const k = /^(Over|Under)\b/.test(x.pick) ? "total" : /\bML\b/.test(x.pick) ? "ml" : "spread"; if (!best[k] || better(x, best[k])) best[k] = x; }
   return Object.values(best).filter((x) => x.p >= min).sort((a, b) => (isSmall(a) - isSmall(b)) || b.p - a.p);
