@@ -753,7 +753,7 @@ function renderModelNow() {
     "" : '<div class="s">None yet.</div>') + recapTd;
   $("models").innerHTML = labStats() +
     mSec("m-board", "★ Parlay scoreboard · this season", LAB_SB || '<div class="s">Loading…</div>') +
-    mSec("m-score", `1 · Scoreboard · Week ${lw ?? S.week}`, recapRows + wcRows, (wc.watch || []).length, true) +
+    mSec("m-score", `1 · Scoreboard · Week ${lw ?? S.week}`, recapRows + wcRows, (wc.watch || []).length, false) +
     mSec("m-win", "2 · Winners · moneyline", winnersBox()) +
     mSec("m-line", "3 · Spreads and totals", cardRecBox() + clvSummary(res) + pastBox()) +
     mSec("m-td", "4 · Touchdowns", `<div class="s"><b>Chances vs results</b></div>` + (tdWaiting ? `<div class="s y">${tdWaiting} waiting for snap counts</div>` : "") + (buckets || '<div class="s">None yet.</div>') + `<div class="s" style="margin-top:8px"><b>Top scorers</b></div>` + topTd + `<div class="s" style="margin-top:8px"><b>Vs Polymarket</b></div>` + (vsMkt || '<div class="s">None yet.</div>')) +
@@ -813,6 +813,9 @@ function weekline() {
   hu.textContent = `Model ${clock(S.modelRunAt)} ›`; hu.onclick = () => toast(detail, 8000);   // 10/14: the lever reruns the model, so it shows the model's time; tap for all three
 }
 const hitCls = (h) => (h == null ? "dim" : h >= 0.55 ? "g" : h >= 0.5 ? "y" : "r");   // green 55%+, amber 50-55%, red under 50%
+function statTile(label, w, l, hit, sub) {
+  return `<div class="stat"><div class="k">${label}</div><div class="v ${hitCls(hit)}">${hit == null ? "—" : `${w}–${l}`}</div><div class="k2">${hit == null ? "—" : `${Math.round(hit * 100)}% ${sub}`}</div></div>`;
+}
 function labStats() {
   const W = (S && S.winners && S.winners.all) || {};
   // 10/13 (owner): the spread/total tiles show YOUR card picks (chooser, LINE MOVE, KEY NUMBER), not the old game model's side.
@@ -820,11 +823,8 @@ function labStats() {
   const ch = (x) => (x.w + x.l ? x.w / (x.w + x.l) : null);
   // 10/13 CLV tracker: points gained vs the closing line on graded card picks (first number shown vs the number at kickoff)
   const V = C.clv || { n: 0 }, av = V.n ? V.sum / V.n : null;
-  const rec = (x, sub) => { const h = ch(x); return h == null ? "—" : `${x.w}–${x.l} · ${Math.round(h * 100)}% ${sub}`; };
-  const mlHit = W.n ? W.hit : null, ml = mlHit == null ? "—" : `${W.w}–${W.l} · ${Math.round(mlHit * 100)}% right`;
-  const lv = av == null ? "—" : `<span class="${av > 0 ? "g" : av < 0 ? "r" : ""}">${av > 0 ? "+" : ""}${av.toFixed(2)} pts</span> · beat the close ${Math.round((100 * V.beat) / V.n)}% · ${plural(V.n, "pick")}`;
-  const r = (lab, v) => `<div class="row"><span class="dim">${lab}</span><span>${v}</span></div>`;
-  return `<div class="mgrid">${r("Moneyline", ml)}${r("Spread picks", rec(cs, "covered"))}${r("Total picks", rec(ct, "right"))}${r("Line value", lv)}</div>`;
+  const clvTile = `<div class="stat" style="grid-column:1/-1"><div class="k">LINE VALUE</div><div class="v ${av == null ? "dim" : av > 0 ? "g" : av < 0 ? "r" : "y"}">${av == null ? "—" : `${av > 0 ? "+" : ""}${av.toFixed(2)}`}</div><div class="k2">${av == null ? "starts this week" : `pts vs close · beat it ${Math.round((100 * V.beat) / V.n)}% · ${plural(V.n, "pick")}`}</div></div>`;
+  return `<div class="stats">${statTile("MONEYLINE", W.w, W.l, W.n ? W.hit : null, "right")}${statTile("SPREAD PICKS", cs.w, cs.l, ch(cs), "covered")}${statTile("TOTAL PICKS", ct.w, ct.l, ch(ct), "right")}${clvTile}</div>`;
 }
 function pickLabBox() {
   // paper tests recorded and graded live, not picks: wind Under, OFFENSIVE FLOOR, the two shadow rules
