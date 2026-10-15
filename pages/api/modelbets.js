@@ -1,0 +1,16 @@
+// Model Picks (10/15): every parlay the app saved this season, grouped by week and by type, with its results.
+// types: "2" 2 legs, "3" 3 legs, "4" 4 legs, "style" my style, "pts" my style with bought lines, "diff" 4 legs across games.
+import { getRedis, getJSON } from "../../lib/redis";
+import { SEASON } from "../../lib/games";
+
+const GROUP = { sgp_best: "2", sgp_best_fill: "2", sgp_3: "3", sgp_linked: "4", sgp_style: "style", sgp_style_pts: "pts", leg4_fav: "diff", leg4_green_fav: "diff", leg4_fav_td: "diff" };
+export default async function handler(req, res) {
+  res.setHeader("Cache-Control", "no-store");
+  try {
+    const r = getRedis(), weeks = {}; let c = "0";
+    do { const [n, ks] = await r.scan(c, "MATCH", `paper:${SEASON}:*`, "COUNT", 200); c = n;
+      for (const k of ks) { const w = k.split(":")[2], rec = await getJSON(k); if (!rec || !Array.isArray(rec.parlays)) continue;
+        for (const p of rec.parlays) { const g = GROUP[p.strategy]; if (!g) continue; const W = (weeks[w] = weeks[w] || {}); (W[g] = W[g] || []).push({ strategy: p.strategy, legs: p.legs, prob: p.prob ?? null, stake: p.stake ?? null, result: p.result || null, ret: p.ret ?? null, game: rec.game || null, kickoff: rec.kickoff || null }); } } } while (c !== "0");
+    res.status(200).json({ ok: true, season: SEASON, weeks });
+  } catch (e) { res.status(200).json({ ok: false, error: String(e).slice(0, 200) }); }
+}

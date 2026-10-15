@@ -27,7 +27,7 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 
 ## What the app shows (owner's layout rules)
 
-- Tab bar: at the bottom, icon over each name, plus the Alerts bell; purple/blue, no box (the Lines / Model buttons are gone).
+- Tab bar (10/15): Game Lines, Anytime TD, Bets, Alerts, Models -- FIVE tabs; there is no Model Picks tab (it lives inside Bets). Icon over each name, purple/blue, no box.
 - Model card: ONE answer — the model's number (purple), then **PICK** — green at 56%+ (with its short reason, e.g. LINE MOVE), LIGHT GREEN at 53-55% (owner 10/13), yellow
   below 53% with NO notes (owner 10/13: "too many notes"). Always a PICK, never LEAN. No teasers on cards; market lines only.
 - Teasers: REMOVED 10/14 (owner never bets them; code deleted, no longer recorded). The "buy points" idea lives on as BEAT THE 3.
@@ -740,3 +740,17 @@ Tested and NOT added (made it worse):
 - **Models tab:** NO cards. Section headers are bold uppercase with a line under them (`.fold`), sub-headings have a thin line, rows are plain label / value pairs TWO ACROSS (`#models .drop.open` grid); long multi-line rows (System "Recorded this week") run full width. The four top tiles (Moneyline, Spread picks, Total picks, Line value) stay as tiles (owner 10/15: "who told you to remove this?"). Color only where it is needed: W-L records by rate (`paint` no longer colors ranges like "10-20%"), money, on target / too high, all clear / saved / none. The parlay scoreboard is the first section (closed). Section 3 starts with "Card picks" (PICK / PICK w/ POINTS, spread and total: W-L, %, money per $100; `COMBOS.cardRec`). Section 4 Touchdowns = three plain lists (Chances vs results, Top scorers, Vs Polymarket: Accuracy, Yes bets, No bets). The "Picks recorded and graded" list was removed.
 - **Removed notes:** Bets "mixed time slots" warning, scoreboard footnote, section blurbs (`mSec` has no meaning argument), page subtitles, `plainNote` / `costNote`, "Lines you could buy" header.
 - Tests: 331 site checks, grading audit 4,124, accuracy ok (LINE TABLE exact); browser audit and damaged-data run 0 errors.
+
+## MODEL PICKS v5 (10/15, owner: "build now")
+
+- **Model Picks tab:** NO button cards. Week chips at the top (`#lab-wk`, current week first), six sub-tabs docked above the bottom bar (`#lab-sub`: 2 legs, 3 legs, 4 legs, My style, Bought, Diff), and ONE list for the chosen type, one column, kickoff order.
+  Block (`pBlock`, also used by the game page): `[logo] ARI @ [logo] LA · 67%` on the left, the PL line top right in blue with the Polymarket logo (`PL: 1.7x · $20 → $33`, `PL: —` with no price), legs `✓ won / ✗ lost / • pending  label · %` (bought-line legs add `· N pts`), `✓ Won` / `✗ Lost` bottom right.
+- **Data:** the current week uses the live slate (`g.sgp`, `S.fourLeg`); once a game has started its saved copy (with results) is used; past weeks come from `/api/modelbets` (every saved parlay this season by week and type; `recordSgp` now saves `kickoff`). Past weeks fill up from week 6 on (same-game parlays were first saved 10/14).
+- **Bets tab:** layout unchanged; team logos added next to team names (`logoLabel`, `legName`, `tdTeam`: a touchdown leg gets its player's team logo only when the player is found once in this week's TD lists). Model Picks stays its own tab (owner: "keep the Bets layout as is"); an open question is whether to combine both under Bets with a toggle.
+- Tests: 333 site checks, grading audit 4,124, accuracy ok; browser audit 0 errors (logos do not load in the sandbox, the app hides a failed logo).
+
+## ONE BETS TAB (10/15, owner: "build now ... merge now")
+
+- Model Picks is no longer a tab. The **Bets** tab has a toggle at the top (`#bets-sw`): **My bets** on the left (the list exactly as before, week chips docked above the bar, team logos added) and **Model bets** on the right (week chips at the top, the six sub-tabs docked above the bar,
+  the one-column parlay list described in MODEL PICKS v5 above). The choice is remembered (`localStorage betsView`, `BETSVIEW`, `applyBetsView`). Bottom bar: Game Lines, Anytime TD, Bets, Alerts, Models.
+- Tests: 333 site checks, grading audit 4,124, accuracy ok; browser audit and damaged-data run 0 errors.
