@@ -770,3 +770,5 @@ Tested and NOT added (made it worse):
 - `noteFirstSeen` now keeps `price`, `points`, `tier`, `key` (rule labels / money of first-shown picks).
 - 4 (model's number on the card), 8, 12 not cut; 7 ("4 legs · my style · bought lines") kept, owner wants more research first.
 - Tests: 326 site checks, grading audit 4,124, accuracy ok (LINE TABLE exact); browser audit 0 errors.
+
+- **13 UNDONE (10/15, owner: "who told you to change my layout ... put that back"):** the card is back to CARD v2: BEAT THE rules name the SIDE only; PICK sits on Polymarket's own line with the line table's win %; PICK w/ POINTS = best cushion; MORE lists every buyable line up to 3.5 points (1 / 2 / 3 points, each with win %, price, cushion). Points are counted from POLYMARKET's main line (BUF @ LV: main BUF -5.5, books -4.5 -> -4.5 is 1 pt, -3.5 is 2 pts, -2.5 is 3 pts). Never change card layout without the owner saying so. Open: owner asked why buy 2 points when the underdog +1 point could do it -- underdog rows are not on the card (removed earlier at the owner's request); ask before adding.
