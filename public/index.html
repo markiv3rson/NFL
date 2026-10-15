@@ -100,7 +100,12 @@
   .sh { font-size:12.5px; font-weight:800; color:#d3d8e0; letter-spacing:.06em; margin-bottom:4px; text-transform:uppercase; }
   .sh.mdl { color:var(--violet); text-shadow:var(--vglow); }
   .row { display:flex; justify-content:space-between; gap:10px; font-size:13px; padding:4px 0; } .row > .dim:first-child { color:var(--text); } .row > span:first-child { min-width:0; overflow-wrap:anywhere; } .bb { padding:7px 0; border-bottom:1px solid var(--line2); } .bb:last-child { border-bottom:0; } .bb .t1 { display:flex; justify-content:space-between; gap:8px; } .bb .t2 { font-size:11.5px; color:var(--faint); margin-top:2px; } .row > span:last-child { text-align:right; } #models .fold b { color:var(--text); font-size:14px; letter-spacing:.02em; } #models .fold { padding:13px 2px; }
-  #models .drop.open > .s { margin-top:10px; } #models .drop.open > .s > b { color:var(--cyan); font-size:11px; letter-spacing:.09em; text-transform:uppercase; }
+  #models .fold { border-top:0; border-bottom:1px solid var(--line); padding:16px 0 7px; font-size:14px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; }
+  #models .mgrid, #models .drop.open { display:grid; grid-template-columns:1fr 1fr; column-gap:18px; row-gap:0; padding-top:4px; }
+  #models .drop.open > *, #models .mgrid > .s { grid-column:1 / -1; } #models .drop.open > .row, #models .mgrid > .row { grid-column:auto; font-size:12.5px; }
+  #models .row > span:first-child { overflow-wrap:break-word; flex:0 0 auto; max-width:50%; } #models .row > span:last-child { min-width:0; text-align:right; }
+  #models .card, #models .stat, #models .stats { background:none; border:0; box-shadow:none; border-radius:0; padding:0; margin-top:6px; } #models .card .inner { padding:0; }
+  #models .drop.open > .s { margin-top:12px; } #models .drop.open > .s > b { display:block; color:var(--text); font-size:11.5px; letter-spacing:.09em; text-transform:uppercase; border-bottom:1px solid var(--line2); padding-bottom:3px; }
   .fold { display:flex; justify-content:space-between; align-items:center; font-size:13px; padding:10px 0; border-top:1px solid var(--line2); cursor:pointer; }
   .sw { display:flex; gap:6px; margin-top:12px; background:rgba(0,0,0,.4); border:1px solid var(--line); border-radius:12px; padding:3px; }
   .sw button { flex:1; min-height:30px; font:inherit; font-size:13px; font-weight:700; padding:5px 4px; border-radius:9px; cursor:pointer; color:var(--faint); background:transparent; border:0; }
@@ -159,8 +164,8 @@
   .mwarn { margin-top:4px; font-size:11px; font-weight:700; color:var(--yellow); white-space:normal; line-height:1.3; }
   .cols { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:start; } .cols .card.dd { margin-top:10px; } .cols .ddh { flex-direction:column; align-items:flex-start; gap:4px; padding:12px; } .cols .ddm { white-space:normal; }
   #lab > .drop { margin-top:10px; border-top:0; padding-top:0; }
-  .pgrid { display:block; } .par { padding:10px 0; border-top:1px solid var(--line2); font-size:13px; } .pgrid > .par:first-child { border-top:0; padding-top:0; }
-  .pbh { margin-bottom:3px; font-size:14px; } .pbl { margin-top:2px; padding-left:14px; overflow-wrap:anywhere; } .pbp { margin-top:5px; padding-left:14px; color:var(--gold); font-weight:700; }
+  .pgrid { display:grid; grid-template-columns:1fr 1fr; column-gap:16px; align-items:start; } .par { padding:8px 0; border-top:1px solid var(--line2); font-size:11.5px; min-width:0; } .pgrid > .par:nth-child(-n+2) { border-top:0; padding-top:0; }
+  .pbh { margin-bottom:2px; font-size:12.5px; } .pbl { margin-top:1px; padding-left:8px; overflow-wrap:anywhere; } .pbp { margin-top:4px; padding-left:8px; color:var(--gold); font-weight:700; }
   .card.dd { margin-top:10px; padding:0; } .ddh { width:100%; display:flex; justify-content:space-between; align-items:center; gap:10px; font:inherit; color:#fff; background:none; border:0; padding:13px 14px; cursor:pointer; text-align:left; }
   .ddt { font-size:14px; font-weight:800; letter-spacing:.04em; } .ddm { font-size:12px; color:var(--faint); white-space:nowrap; } .card.dd .drop .inner { padding:0 14px 12px; }
   .pay { color:#ffcf4a; font-weight:700; white-space:nowrap; } .pay.dim { color:var(--faint); font-weight:400; }

@@ -726,7 +726,7 @@ function renderModelNow() {
     ["Model service (Railway)", st.railway ? (st.railway.ok ? `answering · ${st.railway.ms} ms` : `<span class="r">NOT answering${st.railway.code ? " (HTTP " + st.railway.code + ")" : st.railway.err ? " (" + esc(st.railway.err) + ")" : ""}</span>`) : "—"],
     ["Database used", st.usedMb != null ? `${st.usedMb.toFixed(1)} of ${st.capMb} MB` : "—"],
     ["Sportsbook credits left", st.creditWarning ? `<span class="y">${st.credits ?? "—"}</span>` : (st.credits ?? "—")],
-  ].map(([a, b]) => `<div class="row"><span class="dim">${a}</span><span>${b}</span></div>`).join("") +
+  ].map(([a, b]) => `<div class="row"${/<div/.test(String(b)) ? ' style="grid-column:1/-1"' : ""}><span class="dim">${a}</span><span>${b}</span></div>`).join("") +
     (st.creditWarning ? `<div class="s y">⚠ ${esc(st.creditWarning)}</div>` : "") +
     "" : "";
   GBG_RES = res; const games = gbgHtml();
@@ -772,7 +772,7 @@ function renderModelNow() {
 // Color code (10/9): records green at 55%+ won, yellow 50-55%, red under 50%; status words green; dates and times dimmed.
 function paint(html) {
   return html.replace(/>([^<>]+)</g, (all, t) => ">" + t
-    .replace(/(^|[^\d/.])(\d{1,4})–(\d{1,4})(?![\d/])/g, (m, pre, w, l) => { const n = +w + +l; if (!n) return m; const r = +w / n; return `${pre}<b class="${r >= 0.55 ? "g" : r >= 0.5 ? "y" : "r"}">${w}–${l}</b>`; })
+    .replace(/(^|[^\d/.])(\d{1,4})–(\d{1,4})(?![\d/%])/g, (m, pre, w, l) => { const n = +w + +l; if (!n) return m; const r = +w / n; return `${pre}<b class="${r >= 0.55 ? "g" : r >= 0.5 ? "y" : "r"}">${w}–${l}</b>`; })
     .replace(/\b(OK|all clear|saved|kept current|new model live)\b/g, '<span class="g">$1</span>')
     .replace(/\b((?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{1,2}\/\d{1,2}, \d{1,2}:\d{2}\s?(?:AM|PM))/g, '<span class="dim">$1</span>') + "<");
 }
@@ -813,9 +813,6 @@ function weekline() {
   hu.textContent = `Model ${clock(S.modelRunAt)} ›`; hu.onclick = () => toast(detail, 8000);   // 10/14: the lever reruns the model, so it shows the model's time; tap for all three
 }
 const hitCls = (h) => (h == null ? "dim" : h >= 0.55 ? "g" : h >= 0.5 ? "y" : "r");   // green 55%+, amber 50-55%, red under 50%
-function statTile(label, w, l, hit, sub) {
-  return `<div class="stat"><div class="k">${label}</div><div class="v ${hitCls(hit)}">${hit == null ? "—" : `${w}–${l}`}</div><div class="k2">${hit == null ? "—" : `${Math.round(hit * 100)}% ${sub}`}</div></div>`;
-}
 function labStats() {
   const W = (S && S.winners && S.winners.all) || {};
   // 10/13 (owner): the spread/total tiles show YOUR card picks (chooser, LINE MOVE, KEY NUMBER), not the old game model's side.
@@ -823,8 +820,11 @@ function labStats() {
   const ch = (x) => (x.w + x.l ? x.w / (x.w + x.l) : null);
   // 10/13 CLV tracker: points gained vs the closing line on graded card picks (first number shown vs the number at kickoff)
   const V = C.clv || { n: 0 }, av = V.n ? V.sum / V.n : null;
-  const clvTile = `<div class="stat" style="grid-column:1/-1"><div class="k">LINE VALUE</div><div class="v ${av == null ? "dim" : av > 0 ? "g" : av < 0 ? "r" : "y"}">${av == null ? "—" : `${av > 0 ? "+" : ""}${av.toFixed(2)}`}</div><div class="k2">${av == null ? "starts this week" : `pts vs close · beat it ${Math.round((100 * V.beat) / V.n)}% · ${plural(V.n, "pick")}`}</div></div>`;
-  return `<div class="stats">${statTile("MONEYLINE", W.w, W.l, W.n ? W.hit : null, "right")}${statTile("SPREAD PICKS", cs.w, cs.l, ch(cs), "covered")}${statTile("TOTAL PICKS", ct.w, ct.l, ch(ct), "right")}${clvTile}</div>`;
+  const rec = (x, sub) => { const h = ch(x); return h == null ? "—" : `${x.w}–${x.l} · ${Math.round(h * 100)}% ${sub}`; };
+  const mlHit = W.n ? W.hit : null, ml = mlHit == null ? "—" : `${W.w}–${W.l} · ${Math.round(mlHit * 100)}% right`;
+  const lv = av == null ? "—" : `<span class="${av > 0 ? "g" : av < 0 ? "r" : ""}">${av > 0 ? "+" : ""}${av.toFixed(2)} pts</span> · beat the close ${Math.round((100 * V.beat) / V.n)}% · ${plural(V.n, "pick")}`;
+  const r = (lab, v) => `<div class="row"><span class="dim">${lab}</span><span>${v}</span></div>`;
+  return `<div class="mgrid">${r("Moneyline", ml)}${r("Spread picks", rec(cs, "covered"))}${r("Total picks", rec(ct, "right"))}${r("Line value", lv)}</div>`;
 }
 function pickLabBox() {
   // paper tests recorded and graded live, not picks: wind Under, OFFENSIVE FLOOR, the two shadow rules
