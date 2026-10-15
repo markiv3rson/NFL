@@ -754,3 +754,5 @@ Tested and NOT added (made it worse):
 - Model Picks is no longer a tab. The **Bets** tab has a toggle at the top (`#bets-sw`): **My bets** on the left (the list exactly as before, week chips docked above the bar, team logos added) and **Model bets** on the right (week chips at the top, the six sub-tabs docked above the bar,
   the one-column parlay list described in MODEL PICKS v5 above). The choice is remembered (`localStorage betsView`, `BETSVIEW`, `applyBetsView`). Bottom bar: Game Lines, Anytime TD, Bets, Alerts, Models.
 - Tests: 333 site checks, grading audit 4,124, accuracy ok; browser audit and damaged-data run 0 errors.
+
+- Sub-tab bar (10/15, owner: "clean and crisp"): Model bets sub-tabs and week tabs are a flat strip -- no round pills or borders, equal columns, plain bold text, purple underline on the active one (`#lab-sub`, `#lab-wk` in `public/index.html`).
