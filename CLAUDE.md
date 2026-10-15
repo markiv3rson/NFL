@@ -781,3 +781,5 @@ Tested and NOT added (made it worse):
 - **Type is small and one line per row** (11px rows, 13px PICK lines, nowrap); the paragraph reason is now one short tag (e.g. "BEAT THE 3"). No cushion / "PICK costs" text on the card.
 - Polymarket IS reachable from the sandbox (`fetchEvents` / `gameLines` in `lib/poly.js` return live alternate prices, 10/15 check) -- the earlier note "feeds not testable here" was wrong. The card still reads the SAVED alternates (refreshed every 30 min by the pull, dropped after 3 h).
 - Tests: 326 site checks, grading audit 4,124, accuracy ok.
+
+- **PICK w/ POINTS now sits UNDER MORE** (owner 10/15), first line inside it, above the list. The card on top shows only Model + PICK. In the list the row the model chose turns GREEN all the way across (`cardBody`, class `g` on the whole row); other rows color only their win %.

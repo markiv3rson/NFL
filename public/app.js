@@ -120,9 +120,10 @@ function cardBody(g, kind, C) {
   let l2;
   if (p) { const c2 = clsOf(p.hit); l2 = `<b class="${c2}" style="font-size:13px;white-space:nowrap">PICK w/ POINTS: ${esc(p.pick)} · ${hitTxt(p.hit, c2)}</b>`; }
   else l2 = `<span class="dim" style="font-size:13px;white-space:nowrap">PICK w/ POINTS: none</span>`;
-  const rows = C.rows.map((r) => `<div class="s" style="margin-top:3px;font-size:11px;white-space:nowrap">${esc(r.pick)} · ${ptsWord(r.points)} · <b class="${clsOf(r.hit)}">${hitTxt(r.hit, clsOf(r.hit))}</b> · ${Math.round(r.price * 100)}¢${p && r.pick === p.pick ? " ◀ picked" : ""}</div>`).join("");
-  const more = (x.why ? `<div class="s dim" style="margin-top:4px;font-size:11px;white-space:nowrap">${esc(String(x.why).split(":")[0])}</div>` : "") + (rows ? `<div style="margin-top:6px">${rows}</div>` : "");
-  return `<div style="margin-top:6px">${l1}</div><div style="margin-top:4px">${l2}</div>` + moreBox(more);
+  const rows = C.rows.map((r) => { const pk = !!(p && r.pick === p.pick), cl = clsOf(r.hit);   // the row the model chose turns green all the way across (owner 10/15)
+    return `<div class="s${pk ? " g" : ""}" style="margin-top:3px;font-size:11px;white-space:nowrap">${esc(r.pick)} · ${ptsWord(r.points)} · ${pk ? hitTxt(r.hit, "g") : `<b class="${cl}">${hitTxt(r.hit, cl)}</b>`} · ${Math.round(r.price * 100)}¢</div>`; }).join("");
+  const more = l2 + (x.why ? `<div class="s dim" style="margin-top:4px;font-size:11px;white-space:nowrap">${esc(String(x.why).split(":")[0])}</div>` : "") + (rows ? `<div style="margin-top:6px">${rows}</div>` : "");
+  return `<div style="margin-top:6px">${l1}</div>` + moreBox(`<div style="margin-top:4px">${more}</div>`);
 }
 function leanCell(g, kind) {
   let p = kind === "total" ? g.totalPick : g.spreadPick;
