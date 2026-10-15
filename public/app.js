@@ -926,7 +926,7 @@ function bestStrip() {
 let LAB_SB = "", REPLAY = null;
 function renderLab() {
   if (!$("lab")) return;
-  if (!PAPER) { $("lab").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }
+  if (!PAPER) { renderLabList(); return; }
   const names = PAPER.names || {}, board = PAPER.board || {};
   // Scoreboard (10/14, owner: "organize it"): the parlays still built, grouped; this season W-L and hit %, then the tested history.
   const GROUPS = [["SAME GAME", [["sgp_best", "2 legs"], ["sgp_best_fill", "2 legs · filled"], ["sgp_3", "3 legs"], ["sgp_linked", "4 legs"], ["sgp_style", "4 legs · my style"], ["sgp_style_pts", "4 legs · my style · bought lines"]]],
@@ -1105,6 +1105,14 @@ function sgpBox(g) {
 const FOUR_NAMES = { leg4_fav: "4 biggest favorites", leg4_green_fav: "Best green pick + 3 favorites", leg4_fav_td: "3 favorites + top TD scorer" };
 const LAB_TABS = [["2", "2 legs"], ["3", "3 legs"], ["4", "4 legs"], ["style", "My style"], ["pts", "Bought"], ["diff", "Diff"]];
 let MODELBETS = null, LABTYPE = "2", LABWEEK = null;
+// 10/15 (owner): ONE Bets tab -- My bets on the left (the list as before), Model bets on the right (the model's parlays). The choice is remembered.
+let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
+function applyBetsView() {
+  const m = BETSVIEW === "model", set = (id, on) => { const e = $(id); if (e) e.style.display = on ? "" : "none"; };
+  set("record-mine", !m); set("lab", m); set("lab-sub", m);
+  document.querySelectorAll("#bets-sw [data-bv]").forEach((b) => b.classList.toggle("on", b.dataset.bv === BETSVIEW));
+  if (m) renderLabList();
+}
 function labParlays(week, type) {
   const rec = (MODELBETS && MODELBETS.weeks && MODELBETS.weeks[week] && MODELBETS.weeks[week][type]) || [];
   if (!(S && Number(week) === Number(S.week))) return rec.map((p) => ({ p, game: p.game, kick: p.kickoff, title: p.game ? gameLogos(p.game) : esc(FOUR_NAMES[p.strategy] || p.strategy), across: !p.game }));
@@ -1178,7 +1186,7 @@ function renderAlerts() {
       `<div class="ti">${esc(a.title)}</div>${a.sub ? `<div class="su">${esc(a.sub)}</div>` : ""}${a.game ? `<div style="font-size:11px;font-weight:700;margin-top:6px;color:var(--blue)">${esc(a.game)} ›</div>` : ""}</div></div>`; }).join("") ||
     '<div class="card" style="margin-top:10px"><div class="s">No alerts.</div></div>';
 }
-function renderAll() { weekline(); renderLines(); renderTd(); if (PAPER) renderLab(); if (MB) renderRecord(); tickCd(); renderAlerts(); }
+function renderAll() { weekline(); renderLines(); renderTd(); if (PAPER) renderLab(); else renderLabList(); if (MB) renderRecord(); applyBetsView(); tickCd(); renderAlerts(); }
 // Newest version all the time (9/30): if a new deploy went live while this page was open (or sat in a phone tab),
 // reload once to pick it up; data refreshes on its own when you come back to the tab after 2+ minutes.
 let BUILD = null, LOADED_AT = 0, LOAD_SEQ = 0;
@@ -1222,7 +1230,8 @@ function showPanel(name) {
   $("bell").classList.toggle("on", name === "alerts");
   document.querySelectorAll(".panel").forEach((p) => p.classList.remove("on")); $("panel-" + name).classList.add("on");
   try { if (window.scrollTo) window.scrollTo(0, 0); } catch {}   // 10/14 (owner): every tab change starts at the top of the page
-  if (name === "record" || name === "lab" || name === "models") loadRecord();
+  if (name === "record" || name === "models") loadRecord();
+  if (name === "record") applyBetsView();
   if (name === "record") setTimeout(playStamps, 50);
   setTimeout(() => slotify($("panel-" + name)), 60);   // 10/14: numbers roll in when you open a tab
   if (S && S.games) setBg(name === "lines" && DETAIL ? S.games.find((x) => x.key === DETAIL) : null);   // game background only on an open game page
@@ -1238,6 +1247,7 @@ document.addEventListener("click", (e) => {
       if (d.dataset.drop === "gamebest") { GAMEBEST_OPEN = el.classList.contains("open"); try { localStorage.setItem("gameBestOpen", GAMEBEST_OPEN ? "1" : "0"); } catch {} } } return; }
   const gt = e.target.closest("[data-game]"); if (gt) { openGame(gt.dataset.game); return; }
   const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k) { showPanel("lines"); openGame(k); } return; }
+  const bv = e.target.closest("[data-bv]"); if (bv) { BETSVIEW = bv.dataset.bv === "model" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} applyBetsView(); try { window.scrollTo(0, 0); } catch {} return; }
   const lt = e.target.closest("[data-labt]"); if (lt) { LABTYPE = lt.dataset.labt; renderLabList(); return; }
   const lw = e.target.closest("[data-labw]"); if (lw) { LABWEEK = Number(lw.dataset.labw); renderLabList(); return; }
   const gb = e.target.closest("[data-gbw]"); if (gb) { GBGWEEK = gb.dataset.gbw === "all" ? "all" : Number(gb.dataset.gbw); $("gbg").innerHTML = gbgHtml(); return; }
@@ -1246,7 +1256,7 @@ document.addEventListener("click", (e) => {
   const p = e.target.closest(".price-link"); if (p) toast(p.dataset.market ? "Polymarket market: " + p.dataset.market : "No market recorded for this price.", 8000);
 });
 // Everything refreshes by itself while the page is open and visible: lines, model, injuries, alerts, and the records.
-const onRecordTab = () => ["panel-record", "panel-lab", "panel-models"].some((id) => $(id) && $(id).classList.contains("on"));
+const onRecordTab = () => ["panel-record", "panel-models"].some((id) => $(id) && $(id).classList.contains("on"));
 // Grades finished games and syncs the Polymarket account while the page is open (the server allows one run per 5 minutes),
 // then reloads the Record data if a run happened, so results and bets show up without waiting for the scheduler.
 function catchUp() { fetch("/api/results/grade?lock=1", { cache: "no-store" }).then((r) => r.json()).then((d) => { if (d && d.ran && onRecordTab()) loadRecord(); }).catch(() => {}); }
