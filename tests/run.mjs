@@ -608,31 +608,31 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       const alts = { t: now, alts: [{ team: "NE", line: -6.5, price: 0.52 }, { team: "NE", line: -5.5, price: 0.56 }, { team: "NE", line: -4.5, price: 0.66 }, { team: "NE", line: -3.5, price: 0.7 }, { team: "NYJ", line: 8.5, price: 0.5 }] };
       const ch = [{ id: "linemove|spread", kind: "spread", team: "NE", pick: "NE -7.5", hit: 51.2, n: 2600, line: -7.5, why: "x" }];
       const c1 = buildCard(NE, ch, ps(-7.5, 0.5), { spread: { homeSpread: -7.5 } }, alts);
-      const r = (L) => Math.max(spreadRate(7.5, true, L, false).rate, 51.2), cu = (L, pr) => Math.round((r(L) - pr * 100) * 10) / 10;
-      ok(c1.spread.plain.pick === "NE -7.5" && c1.spread.plain.hit === 51.2 && c1.spread.plain.price === 0.5 && c1.spread.plain.cushion === 1.2 && c1.spread.plain.id === "cardpick|spread"
-        && c1.spread.rows.map((x) => x.pick).join() === "NE -6.5,NE -5.5,NE -4.5" && c1.spread.rows.every((x) => x.points <= 3.5 && x.points > 0) && c1.spread.rows[0].points === 1 && c1.spread.rows[2].points === 3,
-        "card: PICK sits on Polymarket's line with its win % and cushion; the rows are only lines up to 3.5 points better, each with its points, win % and price", c1.spread);
-      const want = [[-6.5, 0.52], [-5.5, 0.56], [-4.5, 0.66]].map(([L, pr]) => ({ L, c: cu(L, pr) })).filter((x) => x.c > 0).sort((a, b) => b.c - a.c || b.L - a.L)[0];
-      ok((want ? c1.spread.pts && c1.spread.pts.line === want.L && c1.spread.pts.cushion === want.c : !c1.spread.pts) && (!c1.spread.pts || c1.spread.pts.id === "ptspick|spread" && c1.spread.pts.hit >= c1.spread.plain.hit),
-        "card: PICK w/ POINTS = the line with the best cushion (win % - price); never below the plain pick's win %; none when no line has a positive cushion", { pts: c1.spread.pts, want });
-      ok(!buildCard(NE, ch, ps(-7.5, 0.5), { spread: { homeSpread: -7.5 } }, { t: new Date(Date.now() - 4 * 3600e3).toISOString(), alts: alts.alts }).spread.pts && buildCard(NE, ch, ps(-7.5, 0.5), { spread: { homeSpread: -7.5 } }, { t: new Date(Date.now() - 4 * 3600e3).toISOString(), alts: alts.alts }).spread.rows.length === 0
-        && buildCard(NE, ch, ps(-7.5, 0.5), { spread: { homeSpread: -7.5 } }, null).spread.rows.length === 0 && !buildCard({ ...NE, started: true }, ch, ps(-7.5, 0.5), null, alts),
+      const bought = c1.spread.rows.filter((x) => x.points > 0), okRows = bought.filter((x) => x.hit >= 56), minP = okRows.length ? Math.min(...okRows.map((x) => x.points)) : null;
+      ok(c1.spread.plain.pick === "NE -7.5" && c1.spread.plain.hit === 51.2 && c1.spread.plain.price === 0.5 && c1.spread.plain.id === "cardpick|spread"
+        && new Set(c1.spread.rows.map((x) => x.team)).size === 2 && c1.spread.rows.every((x) => x.points >= 0 && x.points <= 3.5 && (x.points <= 2 || x.hit >= 60)) && c1.spread.rows.some((x) => x.team === "NYJ" && x.points === 1)
+        && c1.spread.rows.every((x, i, a) => i === 0 || a[i - 1].points <= x.points) && !c1.spread.rows.some((x) => x.points === 4),
+        "card (10/15): one list with BOTH teams, 0 / 1 / 2 points from Polymarket's main line, a 3rd point only at 60%+; sorted by points, each with win % and price", c1.spread);
+      ok(c1.spread.pts && c1.spread.pts.id === "ptspick|spread" && c1.spread.pts.points >= 1 && c1.spread.pts.points <= 2 && (minP == null ? c1.spread.pts.hit === Math.max(...bought.map((x) => x.hit)) : c1.spread.pts.points === minP && c1.spread.pts.hit === Math.max(...okRows.filter((x) => x.points === minP).map((x) => x.hit))),
+        "card (10/15): PICK w/ POINTS = the fewest points (1 or 2) that reach 56%, either team; none reaching it -> the highest win rate within 2 points", { pts: c1.spread.pts });
+      ok(!buildCard(NE, ch, ps(-7.5, 0.5), { spread: { homeSpread: -7.5 } }, { t: new Date(Date.now() - 4 * 3600e3).toISOString(), alts: alts.alts }).spread.pts && buildCard(NE, ch, ps(-7.5, 0.5), { spread: { homeSpread: -7.5 } }, { t: new Date(Date.now() - 4 * 3600e3).toISOString(), alts: alts.alts }).spread.rows.every((x) => x.points === 0)
+        && buildCard(NE, ch, ps(-7.5, 0.5), { spread: { homeSpread: -7.5 } }, null).spread.rows.every((x) => x.points === 0) && !buildCard({ ...NE, started: true }, ch, ps(-7.5, 0.5), null, alts),
         "card: no points line when the saved alternate prices are 3+ hours old or missing; no card once the game has started");
       { const rule = [{ id: "keynum|spread", kind: "spread", team: "NYJ", pick: "NYJ +5.5", hit: 56.2, n: 536, line: 5.5, plain: 50.6, why: "BEAT THE 5: x" }, ...ch], c = buildCard(NE, rule, ps(-7.5, 0.5), { spread: { homeSpread: -3.5 } }, alts);
-        ok(c.spread.plain.team === "NYJ" && c.spread.plain.pick === "NYJ +7.5" && c.spread.plain.ruleId === "keynum|spread" && c.spread.plain.hit === Math.round(spreadRate(3.5, false, 7.5).rate * 10) / 10 && c.spread.rows.every((x) => x.team === "NYJ" && x.line > 7.5),
+        ok(c.spread.plain.team === "NYJ" && c.spread.plain.pick === "NYJ +7.5" && c.spread.plain.ruleId === "keynum|spread" && c.spread.plain.hit === Math.round(spreadRate(3.5, false, 7.5).rate * 10) / 10 && c.spread.rows.filter((x) => x.team === "NYJ" && x.points > 0).every((x) => x.line > 7.5),
           "card: a BEAT THE rule names the side, but the PICK is on Polymarket's own line (never the bought +5.5) and uses the line table's win % there; the buyable lines are listed", c.spread.plain); }
       ok(buildCard(NE, [{ id: "chooser|spread", kind: "spread", team: "NE", pick: "NE -7.5", hit: 51.2, n: 2600, line: -7.5, why: "x" }, { id: "chooser|total", kind: "total", side: "over", pick: "Over 42.5", hit: 51.5, n: 2600, line: 42.5, why: "y" }], { ...ps(-7.5, 0.5), total: { line: 42.5, over: 0.5, under: 0.5 } }, { spread: { homeSpread: -7.5 } }, alts) === null,
         "card (10/15): the chooser's yellow side is not shown -- no tested rule, no PICK");
       // totals: the chooser's side; Over buys lower lines, Under higher; needs the books total for the history (Polymarket's total when none)
       const pt = { total: { line: 42.5, over: 0.5, under: 0.5 } }, talts = { t: now, talts: [{ side: "over", line: 41.5, price: 0.55 }, { side: "over", line: 39.5, price: 0.62 }, { side: "over", line: 38.5, price: 0.7 }, { side: "under", line: 43.5, price: 0.55 }] };
       const chT = [{ id: "movepred|total", kind: "total", side: "over", pick: "Over 42.5", hit: 51.5, n: 2600, line: 42.5, why: "y" }], c2 = buildCard(NE, chT, pt, { total: { line: 42.5 } }, talts);
-      ok(c2.total.plain.pick === "Over 42.5" && c2.total.plain.price === 0.5 && c2.total.rows.map((x) => x.pick).join() === "Over 41.5,Over 39.5" && c2.total.rows.map((x) => x.points).join() === "1,3"
-        && c2.total.rows.every((x) => x.points > 0 && x.points <= 3.5 && x.side === "over") && c2.total.rows.length === 2 && Math.abs(c2.total.rows[0].hit - Math.max(totalRate(42.5, "over", 41.5, false).rate, 51.5)) < 0.06,
-        "card: totals -- Over buys lower lines up to 3.5 points (4 points is left out), each row's win % from the line table", c2.total.rows);
+      ok(c2.total.plain.pick === "Over 42.5" && c2.total.plain.price === 0.5 && c2.total.rows.some((x) => x.pick === "Over 41.5" && x.points === 1) && c2.total.rows.some((x) => x.pick === "Under 43.5" && x.points === 1)
+        && c2.total.rows.every((x) => x.points >= 0 && x.points <= 3.5 && (x.points <= 2 || x.hit >= 60)) && !c2.total.rows.some((x) => x.points === 4) && Math.abs(c2.total.rows.find((x) => x.pick === "Over 41.5").hit - totalRate(42.5, "over", 41.5).rate) < 0.06,
+        "card (10/15): totals -- one list with Over AND Under, 0 / 1 / 2 points from Polymarket's main total (4 points is left out), each row's win % from the line table", c2.total.rows);
       const picks = cardPicks(c1), cp = picks.find((x) => x.id === "cardpick|spread"), pp = picks.find((x) => x.id === "ptspick|spread");
       ok(cp && gsp({ ...cp, home: "NE" }, 30, 21) === "W" && gsp({ ...cp, home: "NE" }, 28, 21) === "L" && (!pp || gsp({ ...pp, home: "NE" }, 28, 21) === (7 + pp.line > 0 ? "W" : "L")) && ruleLabel({ id: "cardpick|spread", kind: "spread" }) === "PICK · spread" && /PICK w\/ POINTS · total · 2 pts/.test(ruleLabel({ id: "ptspick|total", kind: "total", points: 2 }))
-        && cushionOf(58, 0.54) === 4 && cushionOf(58, null) === null && isGreenPick(58, 0.54) && !isGreenPick(58, 0.56) && isGreenPick(56, null) && !isGreenPick(55, null),
-        "card: the PICK and the points line are recorded as their own picks, graded at their own line; green = cushion +3 or better (no price yet: 56%+)");
+        && cushionOf(58, 0.54) === 4 && cushionOf(58, null) === null && isGreenPick(58) && isGreenPick(56) && !isGreenPick(55.9),
+        "card: the PICK and the points line are recorded as their own picks, graded at their own line; green = win rate 56%+");
       { // recorded at kickoff, graded, counted in the Models tab: the card's PICK and PICK w/ POINTS (10/15)
         const { recordStack, gradeStackWeek, stackSummary, noteFirstSeen, gradeFirstSeenWeek } = await import("../lib/stack.js"), RR = globalThis.__TEST_REDIS__;
         for (const k of await RR.keys("stack*:2099:7")) await RR.del(k);
