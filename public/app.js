@@ -670,7 +670,7 @@ function cardRecBox() {
   const R = (COMBOS && COMBOS.cardRec) || {};
   const row = (lab, k) => { const b = R[k]; if (!b || !(b.w + b.l)) return `<div class="row"><span class="dim">${lab}</span><span class="dim">waiting</span></div>`;
     const pc = Math.round((100 * b.w) / (b.w + b.l)); return `<div class="row"><span class="dim">${lab}</span><span>${b.w}–${b.l} · <b class="${pc >= 56 ? "g" : pc >= 50 ? "y" : "r"}">${pc}%</b>${b.stk ? ` · <span class="${b.ret >= 0 ? "g" : "r"}">${b.ret >= 0 ? "+" : "−"}$${Math.abs(Math.round((b.ret / b.stk) * 100))} per $100</span>` : ""}</span></div>`; };
-  return `<div class="s"><b>Card picks</b></div>` + row("PICK · spread", "cardpick|spread") + row("PICK w/ POINTS · spread", "ptspick|spread") + row("PICK · total", "cardpick|total") + row("PICK w/ POINTS · total", "ptspick|total");
+  return `<div class="s"><b>Card picks</b></div>` + row("PICK · spread", "cardpick|spread") + row("PICK w/ POINTS · spread", "ptspick|spread") + row("PICK · total", "cardpick|total") + row("PICK w/ POINTS · total", "ptspick|total") + row("MODEL SIDE · spread", "modelpick|spread") + row("MODEL SIDE · total", "modelpick|total");
 }
 function renderModelNow() {
   if (!MB || !RES) { $("models").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }
@@ -1072,7 +1072,7 @@ const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;   // 10/14 audit: "1 
 const plPay = (p) => {
   if (!p || !p.legs || !p.legs.length || !p.legs.every((l) => l.price > 0 && l.price < 1)) return "PL: —";
   const x = p.legs.reduce((a, l) => a / l.price, 1), st = p.stake || 10;   // the owner's stake for this parlay type (lib/sgp.js STAKES)
-  return `PL: ${x >= 10 ? Math.round(x) : x.toFixed(1)}x · $${st} → $${Math.round(st * x)}`;
+  return `PL: ${x >= 10 ? Math.round(x) : x.toFixed(1)}x<span class="plw"> · $${st} → </span><span class="g">$${Math.round(st * x)}</span>`;   // owner 10/15: logo + "PL: 7.7x" blue, "$10 →" white, payout green
 };
 const legMark = (r) => (r === "W" ? '<span class="g">✓</span>' : r === "L" ? '<span class="r">✗</span>' : r === "P" ? '<span class="dim">–</span>' : "•");
 const gameLogos = (key) => { const m = String(key || "").match(/^([A-Z]{2,4}) @ ([A-Z]{2,4})$/); return m ? `${tlogo(m[1])}${esc(m[1])} @ ${tlogo(m[2])}${esc(m[2])}` : esc(key); };
