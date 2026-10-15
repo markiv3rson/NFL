@@ -104,28 +104,32 @@ const okN = (x) => typeof x === "number" && isFinite(x);
 const okPick = (x) => !!x && typeof x === "object" && typeof x.pick === "string" && okN(x.hit);
 function cardOf(g, kind) {
   const c = g && g.card && typeof g.card === "object" ? g.card[kind] : null;
-  if (!c || !okPick(c.plain)) return null;
+  if (!c || typeof c !== "object") return null;
   const price = (x) => (okN(x.price) && x.price > 0 && x.price < 1 ? x.price : null);
   const fix = (x) => ({ ...x, price: price(x), cushion: okN(x.cushion) ? x.cushion : null });
   const rows = (Array.isArray(c.rows) ? c.rows : []).filter((r) => okPick(r) && okN(r.points) && okN(r.price) && r.price > 0 && r.price < 1).map(fix);
-  return { ...c, plain: fix(c.plain), pts: okPick(c.pts) && okN(c.pts.points) ? fix(c.pts) : null, rows };
+  if (!okPick(c.plain) && !rows.length) return null;   // 10/15: a game with no tested rule still shows its list (PICK says "No pick")
+  return { ...c, plain: okPick(c.plain) ? fix(c.plain) : null, pts: okPick(c.pts) && okN(c.pts.points) ? fix(c.pts) : null, rows };
 }
 const clsOf = (hit) => (hit >= 56 ? "g" : hit >= 53 ? "lg" : "y");   // 10/15 (owner): colors by win rate only
 const hitTxt = (hit, cls) => `${cls === "g" ? Math.round(hit) : Math.floor(hit)}%`;
 const cushTxt = (c) => (c == null ? "" : `${c > 0 ? "+" : c < 0 ? "−" : ""}${Math.abs(Math.round(c))}`);
 const ptsWord = (n) => (n === 0 ? "main" : `${n} pt${n === 1 ? "" : "s"}`);   // short, so a list row fits on one line (owner 10/15)
 function cardBody(g, kind, C) {
-  const x = C.plain, p = C.pts, c1 = clsOf(x.hit, x.price), tx = hitTxt(x.hit, c1);
-  const l1 = c1 === "g" ? `<b class="g pulse" style="--gl:${glowOf(x.hit / 100)};font-size:13px;white-space:nowrap">PICK: ${esc(x.pick)} · <span class="reelpct" data-v="${tx}">${tx}</span></b>` : `<b class="${c1}" style="font-size:13px;white-space:nowrap">PICK: ${esc(x.pick)} · ${tx}</b>`;
+  const x = C.plain, p = C.pts;
+  let l1;
+  if (x) { const c1 = clsOf(x.hit), tx = hitTxt(x.hit, c1);
+    l1 = c1 === "g" ? `<b class="g pulse" style="--gl:${glowOf(x.hit / 100)};font-size:13px;white-space:nowrap">PICK: ${esc(x.pick)} · <span class="reelpct" data-v="${tx}">${tx}</span></b>` : `<b class="${c1}" style="font-size:13px;white-space:nowrap">PICK: ${esc(x.pick)} · ${tx}</b>`; }
+  else l1 = `<b class="dim" style="font-size:13px">No pick</b>`;
   let l2;
   if (p) { const c2 = clsOf(p.hit); l2 = `<b class="${c2}" style="font-size:13px;white-space:nowrap">PICK w/ POINTS: ${esc(p.pick)} · ${hitTxt(p.hit, c2)}</b>`; }
   else l2 = `<span class="dim" style="font-size:13px;white-space:nowrap">PICK w/ POINTS: none</span>`;
-  const grp = (r) => r.team || (r.side === "over" ? "Over" : "Under"), first = x.team || (x.side === "over" ? "Over" : "Under");
+  const grp = (r) => r.team || (r.side === "over" ? "Over" : "Under"), first = x ? x.team || (x.side === "over" ? "Over" : "Under") : null;
   const names = [...new Set(C.rows.map(grp))].sort((a, b) => (a === first ? -1 : 0) - (b === first ? -1 : 0));
-  const rows = names.map((nm) => `<div class="s dim" style="margin-top:6px;font-size:11px;font-weight:700">${esc(nm)}</div>` + C.rows.filter((r) => grp(r) === nm).map((r) => { const pk = !!(p && r.pick === p.pick);   // plain rows (owner 10/15); only the model's chosen row is green, all the way across
-    return `<div class="s${pk ? " g" : ""}" style="margin-top:2px;font-size:11px;white-space:nowrap">${esc(r.pick)} · ${ptsWord(r.points)} · ${hitTxt(r.hit, pk ? "g" : "lg")} · ${Math.round(r.price * 100)}¢</div>`; }).join("")).join("");
-  const more = l2 + (x.why ? `<div class="s dim" style="margin-top:4px;font-size:11px;white-space:nowrap">${esc(String(x.why).split(":")[0])}</div>` : "") + (rows ? `<div style="margin-top:2px">${rows}</div>` : "");
-  return `<div style="margin-top:6px">${l1}</div>` + moreBox(`<div style="margin-top:4px">${more}</div>`);
+  // one list split by team with a gap, no titles (owner 10/15); only the model's chosen row is green, all the way across
+  const rows = names.map((nm, i) => `<div style="margin-top:${i ? 8 : 2}px">` + C.rows.filter((r) => grp(r) === nm).map((r) => { const pk = !!(p && r.pick === p.pick);
+    return `<div class="s${pk ? " g" : ""}" style="margin-top:2px;font-size:11px;white-space:nowrap">${esc(r.pick)} · ${ptsWord(r.points)} · ${hitTxt(r.hit, pk ? "g" : "lg")} · ${Math.round(r.price * 100)}¢</div>`; }).join("") + "</div>").join("");
+  return `<div style="margin-top:6px">${l1}</div>` + moreBox(`<div style="margin-top:4px">${l2}</div>` + (rows ? `<div style="margin-top:6px">${rows}</div>` : ""));
 }
 function leanCell(g, kind) {
   let p = kind === "total" ? g.totalPick : g.spreadPick;
