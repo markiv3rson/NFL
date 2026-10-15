@@ -94,21 +94,9 @@ function pickPrice(g, P) {
   if (!m || !sp) return null; const home = m[1] === g.home, main = home ? sp.homeSpread : -sp.homeSpread;
   return Number(m[2]) === Number(main) ? (home ? sp.home : sp.away) : null;
 }
-// MIDDLE (10/14, owner): favorite -2.5 AND underdog +3.5 as two bets, shown only when the two prices add up to less than they pay back
-// on average (lib/stack.js middleCheck). One side always wins; both win when the favorite wins by exactly 3.
-function middleNote(g) {
-  const m = g.middle; if (!m || g.final || g.started) return "";
-  return `<div class="s" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px"><b class="lg">MIDDLE:</b> ${esc(m.fav)} -2.5 (${Math.round(m.favPrice * 100)}¢) + ${esc(m.dog)} +3.5 (${Math.round(m.dogPrice * 100)}¢). ` +
-    `One side always wins; both win if ${esc(m.fav)} wins by exactly 3 (${Math.round(m.exact3 * 100)}% of games like this). Costs ${Math.round(m.cost * 100)}¢, pays back ${Math.round(m.back * 100)}¢ on average.</div>`;
-}
-// 10/14 (owner: "organize the cards, too much noise"): the card keeps the model number, the PICK + %, one short reason and the "Rules split" warning;
+// 10/14 (owner: "organize the cards, too much noise"): the card keeps the model number, the PICK + %, one short reason;
 // everything else (without-the-points %, this rule's record, line moved, cost warning) sits behind a "More" tap.
 function moreBox(inner) { return inner ? `<details class="more" style="margin-top:6px"><summary class="dim" style="font-size:12px;cursor:pointer">More</summary>${inner}</details>` : ""; }
-function splitNote(g, kind, pick) {
-  const isTot = (x) => /^(Over|Under)\b/.test(x), first = (x) => String(x).split(" ")[0];
-  const o = (g.combos || []).filter((c) => !c.teaser && c.hit >= BEST_MIN * 100 && (kind === "total" ? isTot(c.pick) : !isTot(c.pick) && !/\bML\b/.test(c.pick)) && first(c.pick) !== first(pick)).sort((a, b) => b.hit - a.hit)[0];
-  return o ? `<div class="s y" style="margin-top:4px">⚠ Rules split: ${esc(o.pick)} (${esc(String(o.why || "").split(":")[0])}, ${Math.round(o.hit)}%) is green too. Pick one side.</div>` : "";
-}
 // 10/15 (owner: "build now"): the spread / total card shows MODEL, the model's number, PICK (the side at Polymarket's own line) and PICK w/ POINTS (the same side on a
 // bought line, chosen by cushion = win % minus price). Everything else sits under MORE. Green = cushion +3 or better, light green 0 to +3, yellow below 0; no price yet -> 56% / 53%.
 // 10/15 hardening: a malformed card part (missing / non-number pieces) is treated as no card instead of breaking the page
@@ -133,7 +121,7 @@ function cardBody(g, kind, C) {
   if (p) { const c2 = clsOf(p.hit, p.price); l2 = `<b class="${c2}">PICK w/ POINTS: ${esc(p.pick)} · ${hitTxt(p.hit, c2)}</b>`; }
   else l2 = `<span class="dim">PICK w/ POINTS: ${C.rows.length ? "none beats its price" : "no prices posted yet"}</span>`;
   const rows = C.rows.map((r) => `<div class="s" style="margin-top:3px">${esc(r.pick)} · ${ptsWord(r.points)} · <b class="${clsOf(r.hit, r.price)}">${hitTxt(r.hit, clsOf(r.hit, r.price))}</b> · ${Math.round(r.price * 100)}¢ · cushion ${cushTxt(r.cushion)}${p && r.line === p.line ? " ◀ picked" : ""}</div>`).join("");
-  const more = (x.why ? `<div class="s" style="margin-top:4px">${esc(x.why)}</div>` : "") + splitNote(g, kind, x.pick) + (rows ? `<div style="margin-top:6px">${rows}</div>` : "") +
+  const more = (x.why ? `<div class="s" style="margin-top:4px">${esc(x.why)}</div>` : "") + (rows ? `<div style="margin-top:6px">${rows}</div>` : "") +
     (x.price != null ? `<div class="s dim" style="margin-top:6px">PICK costs ${Math.round(x.price * 100)}¢ · cushion ${cushTxt(x.cushion)}</div>` : "");
   return `<div style="margin-top:6px">${l1}</div><div style="margin-top:4px">${l2}</div>` + moreBox(more);
 }
@@ -184,13 +172,13 @@ function leanCell(g, kind) {
       body = `<div style="margin-top:6px"><b class="g pulse" style="--gl:${glowOf(P.p)}">PICK: ${esc(P.pick)} · <span class="reelpct" data-v="${pc}%">${pc}%</span></b></div>` +
         // 10/13 (owner: fewer notes): just the green pick's own reason (e.g. the LINE MOVE numbers)
         `<div class="s" style="margin-top:4px">${esc(P.why)}</div>` +
-        splitNote(g, kind, P.pick) + moreBox(recLine(P.rec) + lineCheck(g, kind, P.pick));
+        moreBox(recLine(P.rec) + lineCheck(g, kind, P.pick));
     }
   }
   // 10/12 (owner: the number must be honest). Tested on 2,578 games 2014-26, each season predicted without it: margin off by 9.99
   // points vs the line's 9.89, total 10.52 vs 10.47; the model beat the line in only 3 of 13 seasons on each. So it is shown as an
   // opinion, never as a pick.
-  return wrap(`<div class="s">${mline}</div>` + body + (kind === "spread" ? middleNote(g) : "") +
+  return wrap(`<div class="s">${mline}</div>` + body + 
     (adj ? `<div class="s r" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">${injBadgeFor(g)}${esc(adj)}</div>` : "") +
     (p && p.warn && !g.final ? `<div class="s y">${esc(p.warn)}</div>` : ""));   // e.g. QB change the model can't see
 }
@@ -849,14 +837,10 @@ function pickLabBox() {
 }
 function trackedRows() {
   const T = TRACKED; if (!T) return "";
-  const wu = T.windU, wRow = wu ? `<div class="arow"><span class="nm">Early-week Under, wind 10+ forecast (opening number)</span><span class="dim rc">${wu.n ? `${wu.w}–${wu.l}` : wu.recorded ? `${wu.recorded} saved` : "none yet"}</span><b class="${wu.n ? (wu.hit >= 0.56 ? "g" : wu.hit >= 0.5 ? "y" : "r") : "dim"}">${wu.n ? Math.round(wu.hit * 100) + "%" : "—"}</b></div>` : "";
-  // 10/14 paper: team scored 3 or less last week -> that team at the kickoff spread (with the shut-out and road splits)
-  const fl = T.floor, rr = (x) => (x && x.n ? `${x.w}–${x.l}` : "—"), fRow = fl ? `<div class="arow"><span class="nm">Team scored 3 or less last week (kickoff spread) · shut out ${rr(fl.shut)} · on the road ${rr(fl.road)}</span><span class="dim rc">${fl.n ? `${fl.w}–${fl.l}` : fl.recorded ? `${fl.recorded} saved` : "none yet"}</span><b class="${fl.n ? (fl.hit >= 0.56 ? "g" : fl.hit >= 0.5 ? "y" : "r") : "dim"}">${fl.n ? Math.round(fl.hit * 100) + "%" : "—"}</b></div>` : "";
+  const rr = (x) => (x && x.n ? `${x.w}–${x.l}` : "—");
   // 10/14 shadow picks (recorded + graded, not shown): LINE MOVE triggered by Pinnacle; Polymarket order-book tilt 4x+
   const row = (x, name) => (x ? `<div class="arow"><span class="nm">${name} · spread ${rr(x.spread)} · total ${rr(x.total)}</span><span class="dim rc">${x.n ? `${x.w}–${x.l}` : x.recorded ? `${x.recorded} saved` : "none yet"}</span><b class="${x.n ? (x.hit >= 0.56 ? "g" : x.hit >= 0.5 ? "y" : "r") : "dim"}">${x.n ? Math.round(x.hit * 100) + "%" : "—"}</b></div>` : "");
-  // 10/14 MIDDLE: favorite -2.5 + underdog +3.5 when priced under its payback; a hit = both sides won (favorite by exactly 3)
-  const md = T.middle, mRow = md ? `<div class="arow"><span class="nm">Middle (fav −2.5 + dog +3.5) · both won ${rr(md)}${md.n ? ` · ${md.money >= 0 ? "+" : "−"}$${Math.abs(md.money).toFixed(2)} per $1 pairs` : ""}</span><span class="dim rc">${md.n ? `${md.w}–${md.l}` : md.recorded ? `${md.recorded} saved` : "none yet"}</span><b class="${md.n ? "" : "dim"}">${md.n ? Math.round(md.hit * 100) + "%" : "—"}</b></div>` : "";
-  return wRow + fRow + mRow + row(T.pinlm, "LINE MOVE using Pinnacle (shadow)") + row(T.tilt, "Polymarket order-book tilt 4x+ (shadow)") || '<div class="s dim">None yet.</div>';
+  return row(T.pinlm, "LINE MOVE using Pinnacle (shadow)") + row(T.tilt, "Polymarket order-book tilt 4x+ (shadow)") || '<div class="s dim">None yet.</div>';
 }
 // Decision model (10/9): straight bets only (no teasers, no alt lines), ONE pick per game per market (spread, total): the one
 // with the best record. Two angles on opposite sides of the same total no longer both show.

@@ -4,7 +4,7 @@
 // Then prints each rule's LIVE record this season from the site. Needs the internet (nflverse schedule + the site); without it, it says so.
 // Rules that need inputs not in public history files (INJURY: weekly starters out; TOTAL MOVE: the model's early features) are live-only here.
 import { readFileSync } from "node:fs";
-import { BUY_TIERS, BUY_ALT, buyCands, isNightGame, keyNumberPick, bounceBackPick, floorDogPick, lineMovePick, lineMoveTotalPick, injuryPick, gradeStackPick } from "../lib/stack.js";
+import { BUY_TIERS, BUY_ALT, buyCands, keyNumberPick, bounceBackPick, floorDogPick, lineMovePick, lineMoveTotalPick, injuryPick, gradeStackPick } from "../lib/stack.js";
 import { startersOut } from "../lib/snaps.js";
 import { parseCSV } from "../lib/injuries.js";
 import { kickoffISO } from "../lib/games.js";
@@ -36,7 +36,7 @@ if (games) {
     for (const [t, home] of [[g.home, true], [g.away, false]]) { const pts = home ? g.hs : g.as, opp = home ? g.as : g.hs;
       last[`${g.season}|${t}`] = { prevPts: pts, prevAts: home ? pts - opp - g.sp : pts - opp + g.sp }; } }
   const rules = {
-    // every bought-point tier (lib/stack.js BUY_TIERS), day AND night games (each against its own card rate); Polymarket's line = the bought number (main or alternate)
+    // every bought-point tier (lib/stack.js BUY_TIERS), all games; Polymarket's line = the bought number (main or alternate)
     "BEAT THE 3": { claim: null, from: 1999, to: 2025, run: (g, G) => { const hs = -G.sp, T = BUY_TIERS[Math.abs(hs)]; if (!T) return null;
       const fav = hs < 0 ? g.home : g.away, dog = hs < 0 ? g.away : g.home, team = T.side === "fav" ? fav : dog, main = team === g.home ? T.line : -T.line;
       return keyNumberPick(g, { spread: { homeSpread: main, home: 0.5, away: 0.5 } }, { spread: { homeSpread: hs } }); } },
@@ -44,8 +44,8 @@ if (games) {
     "BEAT THE 3 (alt)": { claim: null, from: 1999, to: 2025, run: (g, G) => { const hs = -G.sp, T = (BUY_ALT[Math.abs(hs)] || [])[0]; if (!T) return null;
       const fav = hs < 0 ? g.home : g.away, dog = hs < 0 ? g.away : g.home, team = T.side === "fav" ? fav : dog, main = team === g.home ? T.line : -T.line;
       return keyNumberPick(g, { spread: { homeSpread: main, home: 0.5, away: 0.5 } }, { spread: { homeSpread: hs } }); } },
-    "BOUNCE BACK": { claim: 58.8, from: 1999, to: 2025, run: (g, G) => bounceBackPick(g, -G.sp, { away: prevOf[`${G.id}|away`], home: prevOf[`${G.id}|home`] }) },
-    "BOUNCE BACK DOG": { claim: 56.9, from: 1999, to: 2025, run: (g, G) => floorDogPick(g, -G.sp, { away: prevOf[`${G.id}|away`], home: prevOf[`${G.id}|home`] }) },
+    "BOUNCE BACK": { claim: 57.2, from: 1999, to: 2025, run: (g, G) => bounceBackPick(g, -G.sp, { away: prevOf[`${G.id}|away`], home: prevOf[`${G.id}|home`] }) },
+    "BOUNCE BACK DOG": { claim: 56.5, from: 1999, to: 2025, run: (g, G) => floorDogPick(g, -G.sp, { away: prevOf[`${G.id}|away`], home: prevOf[`${G.id}|home`] }) },
     // LINE MOVE: Polymarket "still has the old number" = the opening line; the books = the close. Graded at the opening number.
     "LINE MOVE (spread)": { claim: null, from: 2014, to: 2025, run: (g, G) => { const o = opens[G.id]; if (!o || !isFinite(o.so)) return null;
       return lineMovePick(g, { spread: { homeSpread: -o.so, home: 0.5, away: 0.5 } }, { spread: { homeSpread: -G.sp } }); } },
@@ -67,29 +67,28 @@ if (games) {
     console.log(`${fail ? "FAIL" : "ok  "} ${name.padEnd(20)} ${w}-${l}${p ? ` (${p} push)` : ""} = ${hit == null ? "—" : hit.toFixed(1) + "%"} ${R.from}-${String(R.to).slice(2)} · ${tierTxt}`);
   }
   // AT THE OPENING LINE (10/14, owner: "build 1"): the same rules, but the books' number is the week's OPENING spread (2014-26). Picks that
-  // fire early in the week meet this number, not the close. Day / night shown apart; the card shows the lower of the two rates.
+  // fire early in the week meet this number, not the close. The card shows the lower of the closing and opening rates.
   { const out = {};
     for (const G of games) { if (G.season < 2014 || G.season > 2025) continue; const o = opens[G.id]; if (!o || !isFinite(o.so)) continue;
       const g = { key: `${G.away} @ ${G.home}`, away: G.away, home: G.home, kickoff: G.kickoff }, hs = -o.so;
       for (const T of buyCands(Math.abs(hs))) {   // every candidate on its own line (main-line price only for that candidate)
         const fav = hs < 0 ? g.home : g.away, dog = hs < 0 ? g.away : g.home, team = T.side === "fav" ? fav : dog, main = team === g.home ? T.line : -T.line;
         const x = keyNumberPick(g, { spread: { homeSpread: main, home: 0.5, away: 0.5 } }, { spread: { homeSpread: hs } }); if (!x) continue;
-        const res = gradeStackPick({ ...x, home: G.home }, G.hs, G.as), k = `${Math.abs(hs)} ${T.side} ${x.line > 0 ? "+" : ""}${x.line}|${x.night ? "night" : "day"}`, t = (out[k] = out[k] || { w: 0, l: 0 });
+        const res = gradeStackPick({ ...x, home: G.home }, G.hs, G.as), k = `${Math.abs(hs)} ${T.side} ${x.line > 0 ? "+" : ""}${x.line}`, t = (out[k] = out[k] || { w: 0, l: 0 });
         if (res === "W") t.w++; else if (res === "L") t.l++; } }
     console.log("\nOPENING-LINE replay of BEAT THE 3 tiers (books' number = the week's opening spread, 2014-2025):");
     for (const [k, t] of Object.entries(out).sort()) console.log(`     books ${k.padEnd(9)} ${t.w}-${t.l} = ${pct(t.w, t.l) == null ? "—" : pct(t.w, t.l).toFixed(1)}% (${t.w + t.l})`); }
-  // EXACT TIER NUMBERS (10/14 audit, owner: "100% accuracy"): every stored number in BUY_TIERS / BUY_ALT (closing 1999-2025 day / night, opening 2014-2025 day / night, the same side at the
+  // EXACT TIER NUMBERS (10/14 audit, owner: "100% accuracy"): every stored number in BUY_TIERS / BUY_ALT (closing 1999-2025, opening 2014-2025, the same side at the
   // books' own number) recomputed straight from the nflverse file and compared. Any difference over 0.05 points, or a different game count, FAILS.
   { let miss = 0, cells = 0;
     const cand = []; for (const [A, T] of Object.entries(BUY_TIERS)) cand.push([+A, T]); for (const [A, L] of Object.entries(BUY_ALT)) for (const T of L) cand.push([+A, T]);
     for (const [A, T] of cand) {
-      const rate = (ver, night, lo, hi) => { let w = 0, n = 0; for (const G of games) { if (G.season < lo || G.season > hi) continue; const sp = ver === "close" ? G.sp : (opens[G.id] ? -opens[G.id].so : NaN); if (!isFinite(sp) || Math.abs(sp) !== A || isNightGame(G.kickoff) !== night) continue;
+      const rate = (ver, lo, hi) => { let w = 0, n = 0; for (const G of games) { if (G.season < lo || G.season > hi) continue; const sp = ver === "close" ? G.sp : (opens[G.id] ? -opens[G.id].so : NaN); if (!isFinite(sp) || Math.abs(sp) !== A) continue;
           const X = (ver === "close" ? G.sp > 0 : -sp > 0) ? G.hs - G.as : G.as - G.hs; n++; if (T.side === "fav" ? X > Math.abs(T.line) : X < Math.abs(T.line)) w++; } return [n ? Math.round(1000 * w / n) / 10 : null, n]; };
-      const plain = (night) => { let w = 0, n = 0; for (const G of games) { if (G.season > 2025 || Math.abs(G.sp) !== A || isNightGame(G.kickoff) !== night) continue; const X = G.sp > 0 ? G.hs - G.as : G.as - G.hs; if (X === A) continue; n++; if (T.side === "fav" ? X > A : X < A) w++; } return Math.round(1000 * w / n) / 10; };
-      const want = [["close day", [T.hit, T.n], rate("close", false, 1999, 2025)], ["close night", T.night, rate("close", true, 1999, 2025)], ["open day", T.open[0], rate("open", false, 2014, 2025)],
-        ["open night", T.open[1], rate("open", true, 2014, 2025)]];
+      const plain = () => { let w = 0, n = 0; for (const G of games) { if (G.season > 2025 || Math.abs(G.sp) !== A) continue; const X = G.sp > 0 ? G.hs - G.as : G.as - G.hs; if (X === A) continue; n++; if (T.side === "fav" ? X > A : X < A) w++; } return Math.round(1000 * w / n) / 10; };
+      const want = [["close", [T.hit, T.n], rate("close", 1999, 2025)], ["open", T.open, rate("open", 2014, 2025)]];
       for (const [lab, st, nw] of want) { cells++; if (nw[0] == null || Math.abs(st[0] - nw[0]) > 0.05 || st[1] !== nw[1]) { miss++; console.log(`     books ${A} ${T.side} ${T.line} ${lab}: stored ${st[0]} (${st[1]}) vs recomputed ${nw[0]} (${nw[1]})`); } }
-      for (const [lab, st, nw] of [["plain day", T.plain[0], plain(false)], ["plain night", T.plain[1], plain(true)]]) { cells++; if (Math.abs(st - nw) > 0.05) { miss++; console.log(`     books ${A} ${T.side} ${T.line} ${lab}: stored ${st} vs recomputed ${nw}`); } } }
+      { cells++; const pl = plain(); if (Math.abs(T.plain - pl) > 0.05) { miss++; console.log(`     books ${A} ${T.side} ${T.line} plain: stored ${T.plain} vs recomputed ${pl}`); } } }
     if (miss) bad++;
     console.log(`${miss ? "FAIL" : "ok  "} ${"TIER NUMBERS".padEnd(20)} ${cells - miss} of ${cells} stored numbers match the nflverse file exactly`); }
   // EXACT LINE TABLE (10/15): the win-rate table behind PICK w/ POINTS (lib/linetable_data.js) is rebuilt from the nflverse file and must match what is stored, count for count.

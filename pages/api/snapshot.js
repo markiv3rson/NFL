@@ -4,7 +4,6 @@
 import { buildCard, cardPicks } from "../../lib/cardpick";
 import { tablePicks, recordStack, lineMovePick, lineMoveTotalPick, keyNumberPick, injuryPick, bounceBackPick, floorDogPick } from "../../lib/stack";
 import { venue, windAtKickoff } from "../../lib/wind";
-import { tkey, WIND_U_MPH, recordFloor } from "../../lib/tracked";
 import { loadComboModel } from "../../lib/combomodel";
 import { alertsTdNo } from "../../lib/alerts";
 import { applyCalibration } from "../../lib/calibration";
@@ -59,7 +58,7 @@ export async function writePrelog(season, week, g, t, poly, bk, model) {
         // Before, books came first, so a recorded pick could sit on a different number than the one shown.
         const hsNow = poly && poly.spread && poly.spread.homeSpread != null ? poly.spread.homeSpread : bk && bk.spread ? bk.spread.homeSpread : null;
         const tlNow = poly && poly.total && poly.total.line != null ? poly.total.line : now;
-        try { const altRec = (await getJSON(`alts:${season}:${week}:${g.key}`).catch(() => null)) || {}; const sitS = await situationFor(season, week, g).catch(() => null); await recordFloor(season, week, g, hsNow, sitS, t).catch(() => 0); const lst = tablePicks({ ...g, outdoor: !!v.outdoor }, mg, hsNow, tlNow, s0, open, sitS, Number(week)).concat(injuryPick(g, hsNow, s0, sitS, Number(week)) || [], bounceBackPick(g, hsNow, sitS) || [], floorDogPick(g, hsNow, sitS) || [], ...(await timingAtKickoff(season, week, g, t, poly, bk)));
+        try { const altRec = (await getJSON(`alts:${season}:${week}:${g.key}`).catch(() => null)) || {}; const sitS = await situationFor(season, week, g).catch(() => null); const lst = tablePicks({ ...g, outdoor: !!v.outdoor }, mg, hsNow, tlNow, s0, open, sitS, Number(week)).concat(injuryPick(g, hsNow, s0, sitS, Number(week)) || [], bounceBackPick(g, hsNow, sitS) || [], floorDogPick(g, hsNow, sitS) || [], ...(await timingAtKickoff(season, week, g, t, poly, bk)));
           await recordStack(season, week, g, lst.concat(cardPicks(buildCard({ ...g, started: false, final: false }, lst, poly, bk, altRec))), t); } catch {} }   // + the card's PICK and PICK w/ POINTS (10/15)   // combo picks (10/9); a failure here never stops the rest
   }
 }
@@ -119,16 +118,6 @@ export default async function handler(req, res) {
       if (prev && poly && !snap.suspect) await alertsFromLines(season, g, prev, poly).catch(() => 0);   // line-move alerts (10/1)
       if (poly || snap.books) { await pushCapped(redis, K.snaps(season, week, g.key), JSON.stringify(snap), 200); lines += poly ? 1 : 0; }
       // Early-week total recording CUT 10/13 (owner): it went 11-18 live and is off on cards. Old saved rows still grade.
-      // Early-week wind Under (10/13, owner: "build both"): saved ONCE, the first time the kickoff forecast says wind 10+ at an outdoor
-      // stadium while Polymarket's total is still at its first number this week; graded at that number. Paper only (history at the
-      // opening total 60.5% 2014-26, but 2024 51% / 2025 52%, so it gets a live test first).
-      if (poly && poly.total && !snap.suspect && !(await redis.hexists(tkey(season, week), `${g.key}|windU`).catch(() => 1))) try {
-        // review fix 10/14: opening total = first snapshot WITH a Polymarket total (index 0 is often a books-only snapshot -> never fired)
-        const f0 = ((await redis.lrange(K.snaps(season, week, g.key), 0, -1)) || []).map(jparse).find((x) => x && x.poly && x.poly.total) || null, to = f0 ? f0.poly.total.line : null;
-        if (to != null && Math.abs(poly.total.line - to) < 0.5) { const wk = await windAtKickoff(g);
-          if (wk.outdoor && wk.wind != null && wk.wind >= WIND_U_MPH) await redis.hsetnx(tkey(season, week), `${g.key}|windU`,
-            JSON.stringify({ game: g.key, kind: "total", windU: true, side: "under", base: to, line: to, wind: wk.wind, week, t })); }
-      } catch {}
       // Recording for future tests (10/13, not shown): kickoff-hour forecast and Out/Doubtful starter counts, each saved with its time
       // (forecast every snapshot, injuries only when they change). Later tests can ask "who knew first, the forecast/news or the line?".
       try { const wf = await windAtKickoff(g); if (wf.outdoor && wf.wind != null) { const fk = `fcst:${season}:${week}:${g.key}`; await pushCapped(redis, fk, JSON.stringify({ t, wind: wf.wind, temp: wf.temp == null ? null : wf.temp }), 120); }
