@@ -16,7 +16,7 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 
 1. **Answer every question first, all of them, before anything else.**
 2. **Never build, test, push, merge or delete anything until the owner says "build now"** -- ONLY those words count (an option pick, "yes" or "continue" do NOT). Explaining is fine; acting is not. Don't undo or redo changes on your own either.
-3. Short, plain answers. No jargon.
+3. Short, plain answers. No jargon. **Every spread or line written in a reply carries its + or − (favorite −2.5, underdog +3.5) -- owner 10/15.**
 4. Don't add things the owner didn't ask for, and put things exactly where told.
 5. Judge bets by **win rate**, never by price/value.
 6. Trust small samples. No "luck" filter.
@@ -676,7 +676,7 @@ Tested and NOT added (made it worse):
 - Spread / total Model card keeps only: the model number, PICK + %, one short reason, and the "Rules split" warning. The without-the-extra-points %, this rule's record, "line moved" and the
   cost warning sit behind a "More" tap (`public/app.js moreBox`, a plain `<details>`). Light-green / yellow cards still have no notes.
 
-## BOUGHT-POINT TOTALS (10/14, owner: "by confidence"; option A)
+## BOUGHT-POINT TOTALS (10/14, owner: "by confidence"; option A) -- REMOVED 10/15 (the card's PICK w/ POINTS replaced it; code deleted; `talts` parsing stays)
 
 - `lib/stack.js totalBuyPick / withTotalBuy` (id `totalbuy|total`, green): when the chooser likes a side of the total AND is confident, take that side on a Polymarket ALTERNATE total
   line moved the pick's way -- Over lower, Under higher, off Polymarket's main total. Chooser's most confident 10% (raw confidence >= thr10 0.6288) buys 2 points, the next 20% (>= thr30 0.58026) buys 4
@@ -688,7 +688,7 @@ Tested and NOT added (made it worse):
   `talts` (stored with the spread alternates in `alts:<season>:<week>:<game>`, read by `lib/week.js` and the kickoff recorder in `pages/api/snapshot.js`; older than 3 h -> no pick).
   Tested but NOT used: choosing the side by size (Over if total <= 41), by line move, by day/night (night Under 57.7% at 2 points vs Over 54.3%; day the reverse -- small samples).
 
-## SHORTEST POINTS, EITHER SIDE (10/14, owner: options 1, 2, 4, 6, 7, 8 + "build now"; NOT merged until "merge now")
+## SHORTEST POINTS, EITHER SIDE (10/14) -- PARTLY SUPERSEDED 10/15: books 4, 6, 6.5, 7.5 tiers removed (8 tiers left); the tiers now only NAME THE SIDE, the bought line is chosen by cushion (see CARD v2)
 
 - Rule (owner): take the FEWEST points that still hold up (56%+, closing and opening line), on whichever side, favorite or underdog; never more than 3.5. `BUY_TIERS` is now 12 tiers
   (`lib/stack.js`; each carries its own day / night / opening / plain rates): books 1 dog +3.5, 1.5 dog +3.5, 2.5 dog +3.5, 3 dog +3.5, **3.5 dog +5.5 (2 pts; 55.9% close day, 63.2% open) -- OR favorite -2.5 (1 pt,
@@ -709,3 +709,26 @@ Tested and NOT added (made it worse):
 - Win % calibration re-tested (7,046 games 1999-2026, each season unseen): the 2-point gaps in the 50-60% / 70-80% bins are inside sampling noise (1 standard error ~1.3 pts); a refit (3 or 4 terms) is NOT better than the current formula (log loss 0.6123 vs 0.6124-0.6125) -> left as is.
 - Recent-period watch (all games, closing, 2020-25): books 4 fav -2.5 53.1% (64), books 7.5 fav -5.5 52.7% (91), books 3.5 dog +5.5 54.0% (161) -- all pass the "every period 52%+" bar but are weak lately; card shows the lower of close/open only. Owner's call whether to show a recent-years rate too.
 - Browser pass on the new front end: all 14 game pages, Lines, TD, Bets, Models, Model Picks, Alerts (bell) -- 0 page errors, 0 "undefined/NaN" lines; damaged-data run 0 issues. Countdown 1d 1h 7m matched the real kickoff time; kickoff times vs America/New_York for 15,288 date/time combos (2010-35): 0 wrong. Fuzz: 60,000 random/junk inputs through keyNumberPick + grading (0 bad, 0 crashes, max 2.5 pts bought), 60,000 through totalBuyPick + grading (0 bad). Grading audit already compares the real 2025 season to an independent Python build (285 games). TD 2+ formula (1.044) matches the service.
+
+## CARD v2 + OPTION 3 + LAYOUT (10/15, owner: "build now"; on the work branch, NOT merged until "merge now")
+
+- **Why:** the owner pays for every bought point ("I want money, buy less points"). 1 point at books 1 / 1.5 / 4.5 wins only 52-54%, 2 points 63% -- the jumps come from crossing 3 and 7. So points are only bought when
+  the line's win % beats its Polymarket price. The 56% bar was Claude's own early cutoff (not the owner's); the real bar is the price.
+- **Game page, spread and total cards (`lib/cardpick.js buildCard`, shown by `public/app.js cardBody`):** `Model: <number>` / `PICK: <side at Polymarket's own line> · win %` / `PICK w/ POINTS: <bought line> · win %`.
+  Everything else (the rule's reason, "Rules split", every buyable line with points, win %, price and cushion, the PICK's price) is under MORE. Removed from the card: the underdog rows, this rule's record, the cost warning.
+- **CUSHION = win % - Polymarket price.** Colors (PICK and PICK w/ POINTS): green +3 or better, light green 0 to +3, yellow below 0; no price posted -> the old 56% / 53% lines. PICK w/ POINTS = the line with the best cushion
+  among lines up to **3.5 points** better than Polymarket's main line (fewest points on a tie); none when no line has a positive cushion, the saved alternate prices are 3+ h old, or no price is posted ("none beats its price" / "no prices posted yet").
+- **Side:** the best-tested rule pick (BEAT THE 3 tiers, LINE MOVE, INJURY, BOUNCE BACK, BOUNCE BACK DOG, TOTAL MOVE), else the chooser's side (owner 10/15: "the chooser's side"). A BEAT THE rule names the side only: the PICK is on Polymarket's own line
+  (never the bought +3.5) with the line table's win % there. BEAT THE tiers left: books 1, 1.5, 2.5, 3, 3.5 (dog +5.5 or fav -2.5), 4.5, 5.5, 13.5.
+- **Win rates for ANY line (`lib/linetable.js`, data `lib/linetable_data.js`, built by `tests/linetable_build.mjs` from nflverse, 6,967 games):** counts of the favorite's margin per books number (spreads) and of final total - books total (totals), in three groups: closing 1999-2025,
+  opening 2014-2025, closing 2020-2025 (recent years); day / night when the group has 60+ games. The rate shown is the LOWEST of the three groups, never below the plain pick's own %. `npm run accuracy` rebuilds the table and FAILS if one count differs ("LINE TABLE").
+- **Real prices vs history (10/15, last night's Polymarket prices, 14 games, both sides):** bought lines cost MORE than they win on average (closing-only history: 1 point -2.9, 2 points -2.5, 3 points -1.9 cents; totals -2.0 / -1.6 / -2.0; main lines about fair at -0.6 / -0.7); only 18-26% of
+  bought spread lines and 17-33% of total lines had a positive cushion (5-13% with the lowest-of-three rate). So "none beats its price" will be the usual answer -- that is the app being frugal, not broken. Past Polymarket alternate prices are not saved anywhere (only the latest `alts:` copy), so money on past seasons can't be tested.
+  From now on every PICK and PICK w/ POINTS is recorded with its price, so Models shows W-L AND money per $100.
+- **Recorded + graded:** ids `cardpick|spread` / `cardpick|total` (PICK) and `ptspick|spread` / `ptspick|total` (PICK w/ POINTS) go through `recordStack` (kickoff, `pages/api/snapshot.js`) and `noteFirstSeen` (first shown), graded by `gradeStackWeek` /
+  `gradeFirstSeenWeek`; the Models tile "Spread / Total picks" counts the PICK from week 6 on; after kickoff the card shows both locked picks with W / L (`lockedFor`). Models -> "Picks recorded and graded" lists every saved pick id (saved / graded / W-L / money).
+- **Parlays and Best bets use the PLAIN line only** (`plainLeg` in `lib/cardpick.js`): Best bets / Parlay of the week / 4-leg favorites / same-game legs are the card's PICK at Polymarket's own line, green = cushion +3 or better (no price: 56%+), best cushion first.
+  The ONLY parlay with bought lines is the new **"4 legs · my style · bought lines"** (`sgp_style_pts`, $5, per game, needs at least one points leg, saved and graded like the others): spread and total on PICK w/ POINTS where there is one + the top TD each team.
+- **Layout:** tab bar order Game Lines, Anytime TD, Bets, Alerts, Model Picks, **Models (far right)**. Model Picks: two drop-downs side by side (Same game 2 legs, 3 legs; their lists open full width below), then stacked: Same game 4 legs, 4 legs · my style,
+  4 legs · my style · bought lines, 4 legs · different games. The **parlay scoreboard moved to the Models tab** (first section, closed until tapped), followed by "Picks recorded and graded".
+- Tests: 332 site checks (card, line table, parlay legs, record+grade end to end), grading audit 4,124, service checks, accuracy (TIER NUMBERS 54 of 54, LINE TABLE exact). Browser pass on the new front end with a fixture that has invented alternate lines (live slate JSON does not carry them): 0 page errors.

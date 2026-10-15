@@ -92,6 +92,9 @@ if (games) {
       for (const [lab, st, nw] of [["plain day", T.plain[0], plain(false)], ["plain night", T.plain[1], plain(true)]]) { cells++; if (Math.abs(st - nw) > 0.05) { miss++; console.log(`     books ${A} ${T.side} ${T.line} ${lab}: stored ${st} vs recomputed ${nw}`); } } }
     if (miss) bad++;
     console.log(`${miss ? "FAIL" : "ok  "} ${"TIER NUMBERS".padEnd(20)} ${cells - miss} of ${cells} stored numbers match the nflverse file exactly`); }
+  // EXACT LINE TABLE (10/15): the win-rate table behind PICK w/ POINTS (lib/linetable_data.js) is rebuilt from the nflverse file and must match what is stored, count for count.
+  { const { buildTable } = await import("./linetable_build.mjs"), { LT } = await import("../lib/linetable_data.js"), fresh = await buildTable(), same = JSON.stringify({ s: fresh.s, t: fresh.t }) === JSON.stringify(LT); if (!same) bad++;
+    console.log(`${same ? "ok  " : "FAIL"} ${"LINE TABLE".padEnd(20)} ${same ? `every count matches the nflverse file (${fresh.games} games, ${Object.keys(fresh.s).length} spread numbers, ${Object.keys(fresh.t).length} total buckets)` : "stored table differs from the nflverse file: re-run tests/linetable_build.mjs"}`); }
   // INJURY (10/14): starters out rebuilt per team-week from nflverse's injury reports + snap counts with the app's own startersOut(), then
   // the app's own injuryPick(): line not yet moved 1+ toward the healthy team between the opening line and the close, graded at the close.
   { let w = 0, l = 0, p = 0, seasons = 0;
@@ -143,7 +146,7 @@ try {
 // how often it hit vs how often its % said, and the money at the owner's stakes. Reported weekly in the Tuesday report card.
 try {
   const L = await getJSONurl(`${SITE}/api/results/list`), P = (L && L.paper) || {}, B = P.board || {}, names = P.names || {};
-  const keys = ["sgp_best", "sgp_best_fill", "sgp_3", "sgp_linked", "sgp_style", "leg4_fav", "leg4_green_fav", "leg4_fav_td", "best_2", "best_3", "best_4"];
+  const keys = ["sgp_best", "sgp_best_fill", "sgp_3", "sgp_linked", "sgp_style", "sgp_style_pts", "leg4_fav", "leg4_green_fav", "leg4_fav_td", "best_2", "best_3", "best_4"];
   console.log("\nPARLAYS this season (all legs must win):");
   for (const k of keys) { const b = B[k]; if (!b) continue; const d = b.decided || 0;
     console.log(`     ${(names[k] || k).slice(0, 44).padEnd(44)} ${d ? `${b.hits}-${d - b.hits} = ${(100 * b.hits / d).toFixed(1)}%` : "none graded yet"}${b.expRate != null && d ? ` · said ${(100 * b.expRate).toFixed(1)}%` : ""}${b.money != null ? ` · ${b.money >= 0 ? "+" : "-"}$${Math.abs(b.money).toFixed(0)}` : ""}${b.review && b.review.verdict && !/TOO FEW|WAITING/.test(b.review.verdict) ? ` · ${b.review.verdict}` : ""}`); }

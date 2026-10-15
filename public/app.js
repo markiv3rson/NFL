@@ -118,6 +118,34 @@ function splitNote(g, kind, pick) {
   const o = (g.combos || []).filter((c) => !c.teaser && c.hit >= BEST_MIN * 100 && (kind === "total" ? isTot(c.pick) : !isTot(c.pick) && !/\bML\b/.test(c.pick)) && first(c.pick) !== first(pick)).sort((a, b) => b.hit - a.hit)[0];
   return o ? `<div class="s y" style="margin-top:4px">⚠ Rules split: ${esc(o.pick)} (${esc(String(o.why || "").split(":")[0])}, ${Math.round(o.hit)}%) is green too. Pick one side.</div>` : "";
 }
+// 10/15 (owner: "build now"): the spread / total card shows MODEL, the model's number, PICK (the side at Polymarket's own line) and PICK w/ POINTS (the same side on a
+// bought line, chosen by cushion = win % minus price). Everything else sits under MORE. Green = cushion +3 or better, light green 0 to +3, yellow below 0; no price yet -> 56% / 53%.
+// 10/15 hardening: a malformed card part (missing / non-number pieces) is treated as no card instead of breaking the page
+const okN = (x) => typeof x === "number" && isFinite(x);
+const okPick = (x) => !!x && typeof x === "object" && typeof x.pick === "string" && okN(x.hit);
+function cardOf(g, kind) {
+  const c = g && g.card && typeof g.card === "object" ? g.card[kind] : null;
+  if (!c || !okPick(c.plain)) return null;
+  const price = (x) => (okN(x.price) && x.price > 0 && x.price < 1 ? x.price : null);
+  const fix = (x) => ({ ...x, price: price(x), cushion: okN(x.cushion) ? x.cushion : null });
+  const rows = (Array.isArray(c.rows) ? c.rows : []).filter((r) => okPick(r) && okN(r.points) && okN(r.price) && r.price > 0 && r.price < 1).map(fix);
+  return { ...c, plain: fix(c.plain), pts: okPick(c.pts) && okN(c.pts.points) ? fix(c.pts) : null, rows };
+}
+const clsOf = (hit, price) => { const c = price > 0 && price < 1 ? hit - price * 100 : null; return c != null ? (c >= 3 ? "g" : c >= 0 ? "lg" : "y") : hit >= 56 ? "g" : hit >= 53 ? "lg" : "y"; };
+const hitTxt = (hit, cls) => `${cls === "g" ? Math.round(hit) : Math.floor(hit)}%`;
+const cushTxt = (c) => (c == null ? "" : `${c > 0 ? "+" : c < 0 ? "−" : ""}${Math.abs(Math.round(c))}`);
+const ptsWord = (n) => `${n} point${n === 1 ? "" : "s"}`;
+function cardBody(g, kind, C) {
+  const x = C.plain, p = C.pts, c1 = clsOf(x.hit, x.price), tx = hitTxt(x.hit, c1);
+  const l1 = c1 === "g" ? `<b class="g pulse" style="--gl:${glowOf(x.hit / 100)}">PICK: ${esc(x.pick)} · <span class="reelpct" data-v="${tx}">${tx}</span></b>` : `<b class="${c1}" style="font-size:16px">PICK: ${esc(x.pick)} · ${tx}</b>`;
+  let l2;
+  if (p) { const c2 = clsOf(p.hit, p.price); l2 = `<b class="${c2}">PICK w/ POINTS: ${esc(p.pick)} · ${hitTxt(p.hit, c2)}</b>`; }
+  else l2 = `<span class="dim">PICK w/ POINTS: ${C.rows.length ? "none beats its price" : "no prices posted yet"}</span>`;
+  const rows = C.rows.map((r) => `<div class="s" style="margin-top:3px">${esc(r.pick)} · ${ptsWord(r.points)} · <b class="${clsOf(r.hit, r.price)}">${hitTxt(r.hit, clsOf(r.hit, r.price))}</b> · ${Math.round(r.price * 100)}¢ · cushion ${cushTxt(r.cushion)}${p && r.line === p.line ? " ◀ picked" : ""}</div>`).join("");
+  const more = (x.why ? `<div class="s" style="margin-top:4px">${esc(x.why)}</div>` : "") + splitNote(g, kind, x.pick) + (rows ? `<div class="s dim" style="margin-top:6px">Lines you could buy (win % from past games, price from Polymarket)</div>${rows}` : "") +
+    (x.price != null ? `<div class="s dim" style="margin-top:6px">PICK costs ${Math.round(x.price * 100)}¢ · cushion ${cushTxt(x.cushion)}</div>` : "");
+  return `<div style="margin-top:6px">${l1}</div><div style="margin-top:4px">${l2}</div>` + moreBox(more);
+}
 function leanCell(g, kind) {
   let p = kind === "total" ? g.totalPick : g.spreadPick;
   const head = `<div class="k">Model${injApplied(g, kind) ? ' <span class="pill p-y" style="padding:0 6px;font-size:10px">Estimate</span>' : ""}</div>`;
@@ -138,13 +166,16 @@ function leanCell(g, kind) {
     const homeSide = mm + LN.hs > 0, t = homeSide ? g.home : g.away, ln = homeSide ? LN.hs : -LN.hs;
     p = kind === "total" ? { side: mt > LN.tl ? "over" : "under", label: `${mt > LN.tl ? "Over" : "Under"} ${LN.tl}`, warn: p && p.warn } : { team: t, label: `${t} ${sgn(ln)}`, warn: p && p.warn };
   }
-  const P = g.final ? null : straightPicks(g).find((x) => (kind === "total" ? isTot(x.pick) : !isTot(x.pick) && !/\bML\b/.test(x.pick)));
+  const P = g.final || (!g.started && cardOf(g, "spread") && cardOf(g, "total")) ? null : straightPicks(g).find((x) => (kind === "total" ? isTot(x.pick) : !isTot(x.pick) && !/\bML\b/.test(x.pick)));
+  const CC = !g.final && !g.started ? cardOf(g, kind) : null;
   let body = "";
   const LP = (g.started || g.final) && g.lockedPicks ? g.lockedPicks[kind === "total" ? "total" : "spread"] : null;
   if (LP) {   // 10/13: after kickoff, the pick that was locked in at kickoff and how it did
     const cls = LP.hit >= 56 ? "g" : LP.hit >= 53 ? "lg" : "y", pc = cls === "g" ? Math.round(LP.hit) : Math.floor(LP.hit), rs = LP.result === "W" ? ' · <span class="g">W</span>' : LP.result === "L" ? ' · <span class="r">L</span>' : LP.result === "P" ? " · push" : g.final ? "" : ' · <span class="dim">live</span>';
-    body = `<div style="margin-top:6px"><b class="${cls}" style="font-size:16px">PICK: ${esc(LP.pick)} · ${pc}%</b>${rs}</div><div class="s dim" style="margin-top:4px">locked at kickoff</div>`;
+    const lp = LP.pts, lrs = lp ? (lp.result === "W" ? ' · <span class="g">W</span>' : lp.result === "L" ? ' · <span class="r">L</span>' : lp.result === "P" ? " · push" : g.final ? "" : ' · <span class="dim">live</span>') : "";
+    body = `<div style="margin-top:6px"><b class="${cls}" style="font-size:16px">PICK: ${esc(LP.pick)} · ${pc}%</b>${rs}</div>` + (lp ? `<div style="margin-top:4px"><b>PICK w/ POINTS: ${esc(lp.pick)} · ${Math.floor(lp.hit)}%</b>${lrs}</div>` : "") + `<div class="s dim" style="margin-top:4px">locked at kickoff</div>`;
   }
+  else if (!g.final && CC) body = cardBody(g, kind, CC);
   else if (!g.final) {
     if (!P) {   // nothing at 56%+: a yellow PICK from the best tested pick above 50%. 10/11: the game model's own side was dropped as a fallback --
       // tested on 2,531 games 2014-26 it won 50.6% against the spread and 51.7% on totals (a coin flip), so it is not shown as a lean.
@@ -634,6 +665,17 @@ function clvSummary(res) {
   const rows = one("spread", "SPREAD side") + one("total", "TOTAL side");
   return rows ? rows : "";
 }
+// 10/15 (owner): everything the app records and grades, in the Models tab. Picks saved at kickoff, how many are graded, their record and what the card said.
+const PICK_NAMES = { "cardpick|spread": "PICK · spread", "cardpick|total": "PICK · total", "ptspick|spread": "PICK w/ POINTS · spread", "ptspick|total": "PICK w/ POINTS · total", "chooser|spread": "Chooser side · spread", "chooser|total": "Chooser side · total",
+  "keynum|spread": "BEAT THE 3 side rule", "linemove|spread": "LINE MOVE · spread", "linemove|total": "LINE MOVE · total", "injury|spread": "INJURY", "bounceback|spread": "BOUNCE BACK", "floordog|spread": "BOUNCE BACK DOG", "movepred|total": "TOTAL MOVE" };
+function recordedBox() {
+  const B = (COMBOS && COMBOS.byId) || {}, ids = Object.keys(B).sort((a, b) => (/^(cardpick|ptspick)/.test(b) - /^(cardpick|ptspick)/.test(a)) || a.localeCompare(b));
+  if (!ids.length) return '<div class="s">Nothing recorded yet. Picks are saved at kickoff and graded when the game ends.</div>';
+  const tot = ids.reduce((a, i) => ({ rec: a.rec + B[i].rec, g: a.g + B[i].w + B[i].l + B[i].p }), { rec: 0, g: 0 });
+  const rows = ids.map((i) => { const b = B[i], g = b.w + b.l + b.p, pc = b.w + b.l ? Math.round((b.w / (b.w + b.l)) * 100) : null;
+    return `<div class="row"><span>${esc(PICK_NAMES[i] || i)}</span><span>${b.rec} saved · ${b.w}–${b.l}${b.p ? `–${b.p}` : ""}${pc != null ? ` · <b class="${pc >= 56 ? "g" : pc >= 50 ? "y" : "r"}">${pc}%</b>` : ""}${b.stk ? ` · <span class="${b.ret >= 0 ? "g" : "r"}">${b.ret >= 0 ? "+" : "−"}$${Math.abs(Math.round((b.ret / b.stk) * 100))} per $100</span>` : ""}${g < b.rec ? ` <span class="dim">· ${b.rec - g} waiting</span>` : ""}</span></div>`; }).join("");
+  return `<div class="s">${plural(tot.rec, "pick")} saved at kickoff · ${tot.g} graded · ${tot.rec - tot.g} waiting for the game to end. Parlays are in the scoreboard above; touchdowns and winners are sections 2 and 4.</div>${rows}`;
+}
 function renderModelNow() {
   if (!MB || !RES) { $("models").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }
   const s = MB.summary, res = RES;
@@ -715,7 +757,7 @@ function renderModelNow() {
   const stOk = st && st.ok && !st.creditWarning;
   const stRows = st ? [
     ["Last automatic run", st.auto ? `${hm(st.auto.t)} · ${esc(st.auto.what)}` + (Date.now() - new Date(st.auto.t) > 9 * 3600e3 ? ' <span class="y">(stale)</span>' : "") : '<span class="y">none recorded</span>'],
-    ["Recorded this week", (wc.recorded || []).length ? (wc.recorded || []).map((x) => `<div>${esc(x.game)} · ${x.close ? '<span class="g">closing line ✓</span>' : '<span class="y">closing line missing</span>'} · ${x.picks ? `<span class="g">${x.picks} card picks ✓</span>` : '<span class="dim">no card pick</span>'} · ${x.winner ? '<span class="g">winner ✓</span>' : '<span class="y">winner missing</span>'}</div>`).join("") : "—"],
+    ["Recorded this week", (wc.recorded || []).length ? (wc.recorded || []).map((x) => `<div>${esc(x.game)} · ${x.close ? '<span class="g">closing line ✓</span>' : '<span class="y">closing line missing</span>'} · ${x.picks ? `<span class="g">${x.picks} picks saved ✓</span>` : '<span class="dim">no card pick</span>'}${x.card ? "" : x.picks ? ' <span class="y">· PICK missing</span>' : ""} · ${x.winner ? '<span class="g">winner ✓</span>' : '<span class="y">winner missing</span>'}</div>`).join("") : "—"],
     ["Last snapshot", st.lastSnapshot ? hm(st.lastSnapshot) + (S.meta && S.meta.lastSrc === "manual" ? " · you" : "") : "—"], ["Last model run", st.modelRunAt ? hm(st.modelRunAt) : "—"],
     ["Last self-check", st.selfcheck ? `${hm(st.selfcheck.t)} · ${st.selfcheck.items.length ? `<span class="y">${st.selfcheck.items.length} issue(s) — see Watchdog</span>` : '<span class="g">all clear</span>'}` : "— (Thu 12:05 PM, Fri 5:05 PM, Sun 7:35 AM)"],
     ["Pre-logged at kickoff", `${st.prelogged || 0} of ${(S.games || []).length} games this week`],
@@ -752,6 +794,8 @@ function renderModelNow() {
   const recapRows = (wk.length ? "" +
     "" : '<div class="s">None yet.</div>') + recapTd;
   $("models").innerHTML = labStats() +
+    mSec("m-board", "★ Parlay scoreboard · this season", "Every parlay type the app builds, graded: this season's record and the past seasons' hit rate.", LAB_SB || '<div class="s">Loading…</div>') +
+    mSec("m-rec", "★ Picks recorded and graded", "Every spread and total pick the app saved at kickoff (the card's PICK, its PICK w/ POINTS and each rule) with its W–L.", recordedBox()) +
     mSec("m-score", `1 · Scoreboard · Week ${lw ?? S.week}`, "How every model did on the latest week with graded games, and whether this week's data is loaded.", recapRows + wcRows, (wc.watch || []).length, true) +
     mSec("m-win", "2 · Winners · moneyline", "Who wins each game: the model's pick on every game, saved at kickoff and graded after, with its season record.", winnersBox()) +
     mSec("m-line", "3 · Spreads and totals", "Which side of the line to take. The model has no measured edge here, so about 50% is expected. Past seasons are shown for comparison.", clvSummary(res) + pastBox()) +
@@ -851,6 +895,11 @@ const isSmall = (x) => x.n != null && x.n < SMALL_N;
 function straightPicks(g, min = BEST_MIN) {
   if (!g || g.started || g.final) return [];
   const out = [], games = (n) => (n != null && n < SMALL_N ? ` · ${n} game${n === 1 ? "" : "s"}` : "");
+  if (cardOf(g, "spread") || cardOf(g, "total")) {   // 10/15 (owner): Best bets / Parlay of the week / winners use the card's PICK at Polymarket's own line; green = cushion +3 or better (no price yet: 56%+)
+    for (const k of ["spread", "total"]) { const x = (cardOf(g, k) || {}).plain; if (!x) continue; const r = (g.combos || []).find((c) => c.id === x.ruleId);
+      out.push({ pick: x.pick, game: g.key, why: (x.why || "") + games(x.n), p: x.hit / 100, rec: r ? r.rec : null, n: x.n ?? null, price: x.price ?? null, cushion: x.cushion ?? null, plain: null, green: clsOf(x.hit, x.price) === "g" }); }
+    return out.filter((x) => (min > 0 ? x.green : x.p > min)).sort((a, b) => (isSmall(a) - isSmall(b)) || (b.cushion ?? -99) - (a.cushion ?? -99) || b.p - a.p);
+  }
   // 10/12: picks come only from the combined chooser (g.combos, honest win rates on unseen games). Angles and the "total fell" rule
   // were dropped as picks: their rates were measured on the same games they were chosen from.
   for (const c of g.combos || []) if (!c.teaser) out.push({ pick: c.pick, game: g.key, why: c.why + games(c.n), p: c.hit / 100, rec: c.rec, n: c.n ?? null, price: c.price ?? null, plain: c.plain ?? null });
@@ -907,7 +956,7 @@ function renderLab() {
   if (!PAPER) { $("lab").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }
   const names = PAPER.names || {}, board = PAPER.board || {};
   // Scoreboard (10/14, owner: "organize it"): the parlays still built, grouped; this season W-L and hit %, then the tested history.
-  const GROUPS = [["SAME GAME", [["sgp_best", "2 legs"], ["sgp_best_fill", "2 legs · filled"], ["sgp_3", "3 legs"], ["sgp_linked", "4 legs"], ["sgp_style", "4 legs · my style"]]],
+  const GROUPS = [["SAME GAME", [["sgp_best", "2 legs"], ["sgp_best_fill", "2 legs · filled"], ["sgp_3", "3 legs"], ["sgp_linked", "4 legs"], ["sgp_style", "4 legs · my style"], ["sgp_style_pts", "4 legs · my style · bought lines"]]],
     ["4 LEGS · DIFFERENT GAMES", [["leg4_fav", "4 biggest favorites"], ["leg4_green_fav", "Green pick + 3 favorites"], ["leg4_fav_td", "3 favorites + top TD"]]],
     ["BEST BETS", [["best_2", "Top 2 picks"], ["best_3", "Top 3 picks"], ["best_4", "Top 4 (Parlay of the week)"]]],
     ["FAVORITES", [["home_fav_95_single", "Home fav 9.5+ · single"], ["home_fav_95_2", "Home fav 9.5+ · 2 legs"], ["home_fav_95_3", "Home fav 9.5+ · 3 legs"], ["top3_home_75", "Top 3 home favs (75%+)"]]],
@@ -921,9 +970,9 @@ function renderLab() {
   const rows = `<div style="${grid};margin-bottom:6px"><span></span><span class="dim" style="font-size:11px;text-align:right">THIS SEASON</span><span class="dim" style="font-size:11px;text-align:right">PAST SEASONS</span></div>` +
     GROUPS.map(([title, ks]) => { const live = ks.filter(([k]) => names[k]); return live.length ? `<div class="dim" style="font-size:11px;letter-spacing:.06em;margin:10px 0 4px">${title}</div><div style="${grid}">` +
       live.map(([k, label]) => `<span>${esc(label)}${tag(k)}</span><span style="text-align:right">${now(k)}</span><span class="dim" style="text-align:right">${hist(k)}</span>`).join("") + `</div>` : ""; }).join("");
-  LAB_SB = `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Parlay scoreboard · this season</div>${rows}<div class="s dim" style="margin-top:8px">Hit % = share of graded parlays where every leg won (pushes left out). $ = result at your stakes: my style $5, same game 4 legs $10, 3 legs $15, 2 legs $20, 4 legs across games $10.</div></div></div>`;
+  LAB_SB = `${rows}<div class="s dim" style="margin-top:8px">Hit % = share of graded parlays where every leg won (pushes left out). $ = result at your stakes: my style $5, same game 4 legs $10, 3 legs $15, 2 legs $20, 4 legs across games $10.</div>`;   // 10/15 (owner): lives in the Models tab, closed until you open it
   const open = [...document.querySelectorAll("#lab .drop.open")].map((e) => e.id);   // keep your open cards on refresh
-  $("lab").innerHTML = sgpCards() + LAB_SB;
+  $("lab").innerHTML = sgpCards();
   for (const id of open) { const e = $(id); if (e && e.classList) e.classList.add("open"); }
   if (MB && RES) renderModel();   // the Models tab reads the same data
 }
@@ -1056,7 +1105,7 @@ function setBg(g) {
 }
 // Same-game parlays (10/14, owner): at the bottom of the game page, below the touchdowns (owner 10/14). Built on the server (lib/sgp.js): "Best" = strong legs only, "Your style" =
 // spread + total + a TD each team. Chance includes the same-game links (a TD helps its team cover and the Over, hurts with the Under).
-const sgpLegs = (p) => p.legs.map((l) => `${esc(l.label)}${l.rule ? ` <span class="dim">${esc(l.rule)}</span>` : ""} <span class="dim">· ${Math.round(l.prob * 100)}%</span>`).join("<br>");
+const sgpLegs = (p) => p.legs.map((l) => `${esc(l.label)}${l.bought ? ` <span class="dim">· ${l.points} pt${l.points === 1 ? "" : "s"} bought</span>` : ""}${l.rule ? ` <span class="dim">${esc(l.rule)}</span>` : ""} <span class="dim">· ${Math.round(l.prob * 100)}%</span>`).join("<br>");
 const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;   // 10/14 audit: "1 picks" / "1 players" / "1 games"
 const sgpChance = (p) => (p.prob == null ? "" : `<b class="${p.prob >= 0.3 ? "g" : p.prob >= 0.15 ? "lg" : "y"}">hits ~${Math.round(p.prob * 100)}%</b> <span class="dim">(about ${p.prob >= 0.3 ? `${Math.round(p.prob * 10)} in 10` : `1 in ${Math.round(1 / p.prob)}`})</span>`) + payLine(p);   // 10/14 audit: 67% used to read "about 1 in 1"
 // 10/14 (owner): what the parlay pays on Polymarket -- the legs' current prices multiplied (1 / price each), and what $10 returns.
@@ -1075,7 +1124,8 @@ function sgpBox(g) {
     sec(`2 LEGS${x.filled ? " · FILLED" : ""}`, x.best, x.filled ? "Fewer than 2 strong legs, so favorite wins + its top TD were used. Graded separately." : "") +
     sec("3 LEGS", x.three, "Favorite wins + Over + its top scorer (hit 18.8% in 2014-25).") +
     sec("4 LEGS", x.linked, "Favorite wins + Over + its top 2 scorers (hit 7.9% in 2014-25).") +
-    sec("4 LEGS · MY STYLE", x.style, under ? "With TDs, the Over hits about twice as often as the Under." : "") + `</div></div>`;
+    sec("4 LEGS · MY STYLE", x.style, under ? "With TDs, the Over hits about twice as often as the Under." : "") +
+    sec("4 LEGS · MY STYLE · BOUGHT LINES", x.stylePts, "Spread and total on the card's PICK w/ POINTS lines.") + `</div></div>`;
 }
 // Model Picks tab (10/14, owner): one drop-down card per parlay type -- same game 2 / 3 / 4 legs, my style, 4 legs across games.
 // Each starts closed and shows how many games and the best chance; tap to open. Every one is saved before kickoff and graded.
@@ -1095,10 +1145,16 @@ function sgpCards() {
   const strong = (p) => (p.strong == null ? "" : p.strong ? '<div class="s g" style="margin-top:4px">STRONG WEEK: all 4 favorites at 70%+. Weeks like this hit 49% (146 weeks), and 3 of 4 won 82%.</div>'
     : '<div class="s y" style="margin-top:4px">Not all 4 favorites at 70%+. Weeks like this hit 30% (63 weeks), 3 of 4 won 62%.</div>');
   const frow = (p) => `<div class="row" style="display:block"><div><b>${esc(FOUR_NAMES[p.strategy] || p.strategy)}</b> · ${sgpChance(p)} <span class="dim">· history ${p.hist}% of weeks</span></div><div class="s">${p.legs.map((l) => `${esc(l.label)}${l.thu ? ' <span class="lg" title="Thursday favorites won 4 points more often than priced">· Thu +4</span>' : ""} <span class="dim">· ${esc(l.game)} · ${Math.round(l.prob * 100)}%</span>`).join("<br>")}</div>${strong(p)}</div>`;
-  return ddCard("dd-sg2", "Same game · 2 legs", "The 2 strongest legs in each game. Games without 2 strong legs get favorite wins + its top TD (33% of games in 2014-25) and are graded separately.", two.map((x) => row(x.g, x.p, x.g.sgp.filled ? "filled" : "")), top(two)) +
-    ddCard("dd-sg3", "Same game · 3 legs", "Favorite wins + Over + its top TD scorer. Best same-game 3-leg in 2014-25: hit 18.8% (25% when that player is 50%+).", three.map((x) => row(x.g, x.p)), top(three)) +
+  const mpts = list((g) => g.sgp.stylePts);
+  // 10/15 (owner: "organize everything"): two drop-downs side by side (same game 2 and 3 legs), their lists open full width below, then the rest stacked
+  const head = (id, title, n, top) => (n ? `<div class="card dd"><button class="ddh" data-drop="${id}"><span class="ddt">${title}</span><span class="ddm">${n} · best ${top}% ›</span></button></div>` : "");
+  const dropOf = (id, note, rows) => (rows.length ? `<div class="drop" id="${id}"><div class="card"><div class="inner">${note ? `<div class="s dim" style="margin-bottom:6px">${note}</div>` : ""}${rows.join("")}</div></div></div>` : "");
+  const n2 = "The 2 strongest legs in each game. Games without 2 strong legs get favorite wins + its top TD (33% of games in 2014-25) and are graded separately.", n3 = "Favorite wins + Over + its top TD scorer. Best same-game 3-leg in 2014-25: hit 18.8% (25% when that player is 50%+).";
+  return `<div class="duo">${head("dd-sg2", "Same game · 2 legs", two.length, top(two))}${head("dd-sg3", "Same game · 3 legs", three.length, top(three))}</div>` +
+    dropOf("dd-sg2", n2, two.map((x) => row(x.g, x.p, x.g.sgp.filled ? "filled" : ""))) + dropOf("dd-sg3", n3, three.map((x) => row(x.g, x.p))) +
     ddCard("dd-sg4", "Same game · 4 legs", "Favorite wins + Over + its top 2 TD scorers. Best same-game 4-leg in 2014-25: hit 7.9%.", four.map((x) => row(x.g, x.p)), top(four)) +
-    ddCard("dd-mine", "4 legs · my style", "Spread + total + the top TD scorer on each team. With TDs, the Over hits about twice as often as the Under.", mine.map((x) => row(x.g, x.p)), top(mine)) +
+    ddCard("dd-mine", "4 legs · my style", "Spread + total at Polymarket's own lines + the top TD scorer on each team. With TDs, the Over hits about twice as often as the Under.", mine.map((x) => row(x.g, x.p)), top(mine)) +
+    ddCard("dd-mpts", "4 legs · my style · bought lines", "The same, but the spread and total sit on the card's PICK w/ POINTS line (up to 3.5 points) where there is one. Tests whether buying points helps a parlay.", mpts.map((x) => row(x.g, x.p)), top(mpts)) +
     ddCard("dd-four", "4 legs · different games", "History = share of weeks all 4 legs won, 2014-25 (214 weeks).", F.map(frow), F.length ? Math.round(Math.max(...F.map((p) => p.prob)) * 100) : 0);
 }
 function renderDetail(g) {
