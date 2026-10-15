@@ -120,15 +120,16 @@ function cardBody(g, kind, C) {
   let l2;
   if (p) { const c2 = clsOf(p.hit); l2 = `<b class="${c2}" style="font-size:13px;white-space:nowrap">PICK w/ POINTS: ${esc(p.pick)} · ${hitTxt(p.hit, c2)}</b>`; }
   else l2 = `<span class="dim" style="font-size:13px;white-space:nowrap">PICK w/ POINTS: none</span>`;
-  const rows = C.rows.map((r) => { const pk = !!(p && r.pick === p.pick), cl = clsOf(r.hit);   // the row the model chose turns green all the way across (owner 10/15)
-    return `<div class="s${pk ? " g" : ""}" style="margin-top:3px;font-size:11px;white-space:nowrap">${esc(r.pick)} · ${ptsWord(r.points)} · ${pk ? hitTxt(r.hit, "g") : `<b class="${cl}">${hitTxt(r.hit, cl)}</b>`} · ${Math.round(r.price * 100)}¢</div>`; }).join("");
-  const more = l2 + (x.why ? `<div class="s dim" style="margin-top:4px;font-size:11px;white-space:nowrap">${esc(String(x.why).split(":")[0])}</div>` : "") + (rows ? `<div style="margin-top:6px">${rows}</div>` : "");
+  const grp = (r) => r.team || (r.side === "over" ? "Over" : "Under"), first = x.team || (x.side === "over" ? "Over" : "Under");
+  const names = [...new Set(C.rows.map(grp))].sort((a, b) => (a === first ? -1 : 0) - (b === first ? -1 : 0));
+  const rows = names.map((nm) => `<div class="s dim" style="margin-top:6px;font-size:11px;font-weight:700">${esc(nm)}</div>` + C.rows.filter((r) => grp(r) === nm).map((r) => { const pk = !!(p && r.pick === p.pick);   // plain rows (owner 10/15); only the model's chosen row is green, all the way across
+    return `<div class="s${pk ? " g" : ""}" style="margin-top:2px;font-size:11px;white-space:nowrap">${esc(r.pick)} · ${ptsWord(r.points)} · ${hitTxt(r.hit, pk ? "g" : "lg")} · ${Math.round(r.price * 100)}¢</div>`; }).join("")).join("");
+  const more = l2 + (x.why ? `<div class="s dim" style="margin-top:4px;font-size:11px;white-space:nowrap">${esc(String(x.why).split(":")[0])}</div>` : "") + (rows ? `<div style="margin-top:2px">${rows}</div>` : "");
   return `<div style="margin-top:6px">${l1}</div>` + moreBox(`<div style="margin-top:4px">${more}</div>`);
 }
 function leanCell(g, kind) {
   let p = kind === "total" ? g.totalPick : g.spreadPick;
-  const head = `<div class="k">Model${injApplied(g, kind) ? ' <span class="pill p-y" style="padding:0 6px;font-size:10px">Estimate</span>' : ""}</div>`;
-  const wrap = (inner) => `<div class="modelcell" style="grid-row:span 2">${head}${inner}</div>`;
+  const wrap = (inner) => `<div class="modelcell" style="grid-row:span 2">${inner}</div>`;   // 10/15 (owner): no "MODEL ESTIMATE" title on the card
   if (!p && g.early && g.model && g.model.homeMargin != null) {   // next week before any market line: the model's own numbers, labeled
     const m = g.model, side = m.homeMargin >= 0 ? `${g.home} -${m.homeMargin.toFixed(1)}` : `${g.away} -${(-m.homeMargin).toFixed(1)}`, wp = m.homeWinPct != null ? Math.round(m.homeWinPct >= 50 ? m.homeWinPct : 100 - m.homeWinPct) : null;
     return wrap(`${earlyNote(g)}<div style="margin-top:6px"><b class="mod">${kind === "total" ? `Total ${m.total.toFixed(1)}` : side}</b></div>` +

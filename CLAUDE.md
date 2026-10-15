@@ -783,3 +783,5 @@ Tested and NOT added (made it worse):
 - Tests: 326 site checks, grading audit 4,124, accuracy ok.
 
 - **PICK w/ POINTS now sits UNDER MORE** (owner 10/15), first line inside it, above the list. The card on top shows only Model + PICK. In the list the row the model chose turns GREEN all the way across (`cardBody`, class `g` on the whole row); other rows color only their win %.
+
+- **Card polish (10/15, owner: "build now, merge now"):** the "MODEL ESTIMATE" title is gone from the card (the purple section header and the "Model: <number>" line stay). The MORE list is plain (no green / yellow on win %), SPLIT BY TEAM (the pick's team first, team name as a small header; totals: Over / Under), and the ONLY green is the PICK w/ POINTS line and the row it chose (whole row green).
