@@ -756,3 +756,5 @@ Tested and NOT added (made it worse):
 - Tests: 333 site checks, grading audit 4,124, accuracy ok; browser audit and damaged-data run 0 errors.
 
 - Sub-tab bar (10/15, owner: "clean and crisp"): Model bets sub-tabs and week tabs are a flat strip -- no round pills or borders, equal columns, plain bold text, purple underline on the active one (`#lab-sub`, `#lab-wk` in `public/index.html`).
+
+- Alternate prices (10/15, owner: "go look"): the card dropped Polymarket alternate lines after 3 h because only the scheduled snapshots saved them. The 30-min pull (`pages/api/pinnaclepull.js`) now saves `alts:<season>:<week>:<game>` too, so PICK w/ POINTS sees current prices.
