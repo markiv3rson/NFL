@@ -38,6 +38,7 @@ export default async function handler(req, res) {
       if (raw._mkt) Object.defineProperty(p, "_mkt", { value: { ...(raw._mkt.spread && p.spread ? { spread: raw._mkt.spread } : {}), ...(raw._mkt.total && p.total ? { total: raw._mkt.total } : {}) }, enumerable: false });
       const M = p._mkt || {}, mk = async (x) => (x ? { ...((await bookDepth(x.tok).catch(() => null)) || {}), vol: x.vol, liq: x.liq } : null);
       const [sb, tb] = await Promise.all([mk(M.spread), mk(M.total)]);
+      if (g.week != null && (raw.alts || raw.talts)) await getRedis().set(`alts:${SEASON}:${g.week}:${g.key}`, JSON.stringify({ t, alts: raw.alts || null, talts: raw.talts || null })).catch(() => 0);   // 10/15: alternate prices refresh every 30 min (the card drops them after 3 h; snapshots alone left them stale)
       await recordShadow(getRedis(), SEASON, g, p, pin, sb, tb, t).catch(() => 0);
       return { hs: p.spread ? p.spread.homeSpread : null, h: p.spread ? p.spread.home : null, tl: p.total ? p.total.line : null, o: p.total ? p.total.over : null,
         ...(sb ? { sb } : {}), ...(tb ? { tb } : {}) }; };

@@ -756,3 +756,17 @@ Tested and NOT added (made it worse):
 - Tests: 333 site checks, grading audit 4,124, accuracy ok; browser audit and damaged-data run 0 errors.
 
 - Sub-tab bar (10/15, owner: "clean and crisp"): Model bets sub-tabs and week tabs are a flat strip -- no round pills or borders, equal columns, plain bold text, purple underline on the active one (`#lab-sub`, `#lab-wk` in `public/index.html`).
+
+- Alternate prices (10/15, owner: "go look"): the card dropped Polymarket alternate lines after 3 h because only the scheduled snapshots saved them. The 30-min pull (`pages/api/pinnaclepull.js`) now saves `alts:<season>:<week>:<game>` too, so PICK w/ POINTS sees current prices.
+
+## CUTS + 13 (10/15, owner: "build now and 13"; on the work branch, NOT merged until "merge now")
+
+- **Day / night split DROPPED everywhere** (owner: "night games don't really matter"): BEAT THE tiers, BOUNCE BACK (57.2%, 376), BOUNCE BACK DOG (56.5%, 285) and the line table use ALL games (`isNightGame` deleted from `lib/stack.js`; `BUY_TIERS` rates recomputed from nflverse, `npm run accuracy` TIER NUMBERS 27 of 27). Earlier notes above about day / night rates are superseded.
+- **Line table:** one histogram per group (no d / n); a group counts only with 200+ games (opening and recent-years groups), the closing group 40+ (`lib/linetable.js MIN_N`).
+- **Chooser PICK removed from the card** (`lib/cardpick.js TESTED`): a card shows a PICK only when a tested rule fires (BEAT THE, LINE MOVE, INJURY, BOUNCE BACK, BOUNCE BACK DOG, TOTAL MOVE). The chooser stays in the records. Live check: 10 of 28 cards have a PICK.
+- **13: a BEAT THE pick sits on its BOUGHT line** (DEN +3.5, not DEN +2.5), with the tier's tested rate and that line's price; no PICK w/ POINTS on top for those. Other rules keep PICK on Polymarket's line + PICK w/ POINTS.
+- **Cut:** wind alert, "Rules split ⚠" warning, OFFENSIVE FLOOR tracker, wind Under tracker, MIDDLE note + tracker (old saved rows are no longer graded or shown). Shadow trackers (Pinnacle LINE MOVE, order-book tilt) stay.
+- **Alternate prices:** the 30-min Pinnacle pull now also saves `alts:<season>:<week>:<game>` (the card dropped them after 3 h when only the scheduled snapshots saved them; live check showed 0 buyable lines on every game).
+- `noteFirstSeen` now keeps `price`, `points`, `tier`, `key` (rule labels / money of first-shown picks).
+- 4 (model's number on the card), 8, 12 not cut; 7 ("4 legs · my style · bought lines") kept, owner wants more research first.
+- Tests: 326 site checks, grading audit 4,124, accuracy ok (LINE TABLE exact); browser audit 0 errors.

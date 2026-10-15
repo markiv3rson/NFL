@@ -8,7 +8,9 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { parseCSV } from "../lib/injuries.js";
 import { kickoffISO } from "../lib/games.js";
-import { isNightGame } from "../lib/stack.js";
+// day / night is only used in this research file (the app dropped the split 10/15): Thursday, Monday, Sunday 7 PM ET+
+const ETF = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", hourCycle: "h23" });
+const isNightGame = (kickoff) => { const d = kickoff ? new Date(kickoff) : null; if (!d || isNaN(d)) return false; const o = {}; for (const x of ETF.formatToParts(d)) o[x.type] = x.value; return o.weekday === "Thu" || o.weekday === "Mon" || (o.weekday === "Sun" && Number(o.hour) % 24 >= 19); };
 
 const r = await fetch("https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv", { signal: AbortSignal.timeout(60000) });
 const [h, ...rows] = parseCSV(await r.text()), ix = (k) => h.indexOf(k);
