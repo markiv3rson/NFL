@@ -98,7 +98,7 @@ function pickPrice(g, P) {
 // everything else (without-the-points %, this rule's record, line moved, cost warning) sits behind a "More" tap.
 function moreBox(inner) { return inner ? `<details class="more" style="margin-top:6px"><summary class="dim" style="font-size:12px;cursor:pointer">More</summary>${inner}</details>` : ""; }
 // 10/15 (owner: "build now"): the spread / total card shows MODEL, the model's number, PICK (the side at Polymarket's own line) and PICK w/ POINTS (the same side on a
-// bought line, chosen by cushion = win % minus price). Everything else sits under MORE. Green = cushion +3 or better, light green 0 to +3, yellow below 0; no price yet -> 56% / 53%.
+// bought line, fewest points that reach 56%, either team). Everything else sits under MORE. Green 56%+, light green 53-55%, yellow below (owner 10/15: win rate, not price).
 // 10/15 hardening: a malformed card part (missing / non-number pieces) is treated as no card instead of breaking the page
 const okN = (x) => typeof x === "number" && isFinite(x);
 const okPick = (x) => !!x && typeof x === "object" && typeof x.pick === "string" && okN(x.hit);
@@ -110,20 +110,20 @@ function cardOf(g, kind) {
   const rows = (Array.isArray(c.rows) ? c.rows : []).filter((r) => okPick(r) && okN(r.points) && okN(r.price) && r.price > 0 && r.price < 1).map(fix);
   return { ...c, plain: fix(c.plain), pts: okPick(c.pts) && okN(c.pts.points) ? fix(c.pts) : null, rows };
 }
-const clsOf = (hit, price) => { const c = price > 0 && price < 1 ? hit - price * 100 : null; return c != null ? (c >= 3 ? "g" : c >= 0 ? "lg" : "y") : hit >= 56 ? "g" : hit >= 53 ? "lg" : "y"; };
+const clsOf = (hit) => (hit >= 56 ? "g" : hit >= 53 ? "lg" : "y");   // 10/15 (owner): colors by win rate only
 const hitTxt = (hit, cls) => `${cls === "g" ? Math.round(hit) : Math.floor(hit)}%`;
 const cushTxt = (c) => (c == null ? "" : `${c > 0 ? "+" : c < 0 ? "−" : ""}${Math.abs(Math.round(c))}`);
-const ptsWord = (n) => `${n} point${n === 1 ? "" : "s"}`;
+const ptsWord = (n) => (n === 0 ? "main" : `${n} pt${n === 1 ? "" : "s"}`);   // short, so a list row fits on one line (owner 10/15)
 function cardBody(g, kind, C) {
   const x = C.plain, p = C.pts, c1 = clsOf(x.hit, x.price), tx = hitTxt(x.hit, c1);
-  const l1 = c1 === "g" ? `<b class="g pulse" style="--gl:${glowOf(x.hit / 100)}">PICK: ${esc(x.pick)} · <span class="reelpct" data-v="${tx}">${tx}</span></b>` : `<b class="${c1}" style="font-size:16px">PICK: ${esc(x.pick)} · ${tx}</b>`;
+  const l1 = c1 === "g" ? `<b class="g pulse" style="--gl:${glowOf(x.hit / 100)};font-size:13px;white-space:nowrap">PICK: ${esc(x.pick)} · <span class="reelpct" data-v="${tx}">${tx}</span></b>` : `<b class="${c1}" style="font-size:13px;white-space:nowrap">PICK: ${esc(x.pick)} · ${tx}</b>`;
   let l2;
-  if (p) { const c2 = clsOf(p.hit, p.price); l2 = `<b class="${c2}">PICK w/ POINTS: ${esc(p.pick)} · ${hitTxt(p.hit, c2)}</b>`; }
-  else l2 = `<span class="dim">PICK w/ POINTS: ${C.rows.length ? "none beats its price" : "no prices posted yet"}</span>`;
-  const rows = C.rows.map((r) => `<div class="s" style="margin-top:3px">${esc(r.pick)} · ${ptsWord(r.points)} · <b class="${clsOf(r.hit, r.price)}">${hitTxt(r.hit, clsOf(r.hit, r.price))}</b> · ${Math.round(r.price * 100)}¢ · cushion ${cushTxt(r.cushion)}${p && r.line === p.line ? " ◀ picked" : ""}</div>`).join("");
-  const more = (x.why ? `<div class="s" style="margin-top:4px">${esc(x.why)}</div>` : "") + (rows ? `<div style="margin-top:6px">${rows}</div>` : "") +
-    (x.price != null ? `<div class="s dim" style="margin-top:6px">PICK costs ${Math.round(x.price * 100)}¢ · cushion ${cushTxt(x.cushion)}</div>` : "");
-  return `<div style="margin-top:6px">${l1}</div><div style="margin-top:4px">${l2}</div>` + moreBox(more);
+  if (p) { const c2 = clsOf(p.hit); l2 = `<b class="${c2}" style="font-size:13px;white-space:nowrap">PICK w/ POINTS: ${esc(p.pick)} · ${hitTxt(p.hit, c2)}</b>`; }
+  else l2 = `<span class="dim" style="font-size:13px;white-space:nowrap">PICK w/ POINTS: none</span>`;
+  const rows = C.rows.map((r) => { const pk = !!(p && r.pick === p.pick), cl = clsOf(r.hit);   // the row the model chose turns green all the way across (owner 10/15)
+    return `<div class="s${pk ? " g" : ""}" style="margin-top:3px;font-size:11px;white-space:nowrap">${esc(r.pick)} · ${ptsWord(r.points)} · ${pk ? hitTxt(r.hit, "g") : `<b class="${cl}">${hitTxt(r.hit, cl)}</b>`} · ${Math.round(r.price * 100)}¢</div>`; }).join("");
+  const more = l2 + (x.why ? `<div class="s dim" style="margin-top:4px;font-size:11px;white-space:nowrap">${esc(String(x.why).split(":")[0])}</div>` : "") + (rows ? `<div style="margin-top:6px">${rows}</div>` : "");
+  return `<div style="margin-top:6px">${l1}</div>` + moreBox(`<div style="margin-top:4px">${more}</div>`);
 }
 function leanCell(g, kind) {
   let p = kind === "total" ? g.totalPick : g.spreadPick;
@@ -852,10 +852,10 @@ const isSmall = (x) => x.n != null && x.n < SMALL_N;
 function straightPicks(g, min = BEST_MIN) {
   if (!g || g.started || g.final) return [];
   const out = [], games = (n) => (n != null && n < SMALL_N ? ` · ${n} game${n === 1 ? "" : "s"}` : "");
-  if (cardOf(g, "spread") || cardOf(g, "total")) {   // 10/15 (owner): Best bets / Parlay of the week / winners use the card's PICK at Polymarket's own line; green = cushion +3 or better (no price yet: 56%+)
+  if (cardOf(g, "spread") || cardOf(g, "total")) {   // 10/15 (owner): Best bets / Parlay of the week / winners use the card's PICK at Polymarket's own line; green = win rate 56%+
     for (const k of ["spread", "total"]) { const x = (cardOf(g, k) || {}).plain; if (!x) continue; const r = (g.combos || []).find((c) => c.id === x.ruleId);
-      out.push({ pick: x.pick, game: g.key, why: (x.why || "") + games(x.n), p: x.hit / 100, rec: r ? r.rec : null, n: x.n ?? null, price: x.price ?? null, cushion: x.cushion ?? null, plain: null, green: clsOf(x.hit, x.price) === "g" }); }
-    return out.filter((x) => (min > 0 ? x.green : x.p > min)).sort((a, b) => (isSmall(a) - isSmall(b)) || (b.cushion ?? -99) - (a.cushion ?? -99) || b.p - a.p);
+      out.push({ pick: x.pick, game: g.key, why: (x.why || "") + games(x.n), p: x.hit / 100, rec: r ? r.rec : null, n: x.n ?? null, price: x.price ?? null, cushion: x.cushion ?? null, plain: null, green: clsOf(x.hit) === "g" }); }
+    return out.filter((x) => (min > 0 ? x.green : x.p > min)).sort((a, b) => (isSmall(a) - isSmall(b)) || b.p - a.p);
   }
   // 10/12: picks come only from the combined chooser (g.combos, honest win rates on unseen games). Angles and the "total fell" rule
   // were dropped as picks: their rates were measured on the same games they were chosen from.

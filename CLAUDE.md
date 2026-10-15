@@ -770,3 +770,16 @@ Tested and NOT added (made it worse):
 - `noteFirstSeen` now keeps `price`, `points`, `tier`, `key` (rule labels / money of first-shown picks).
 - 4 (model's number on the card), 8, 12 not cut; 7 ("4 legs · my style · bought lines") kept, owner wants more research first.
 - Tests: 326 site checks, grading audit 4,124, accuracy ok (LINE TABLE exact); browser audit 0 errors.
+
+- **13 UNDONE (10/15, owner: "who told you to change my layout ... put that back"):** the card is back to CARD v2: BEAT THE rules name the SIDE only; PICK sits on Polymarket's own line with the line table's win %; PICK w/ POINTS = best cushion; MORE lists every buyable line up to 3.5 points (1 / 2 / 3 points, each with win %, price, cushion). Points are counted from POLYMARKET's main line (BUF @ LV: main BUF -5.5, books -4.5 -> -4.5 is 1 pt, -3.5 is 2 pts, -2.5 is 3 pts). Never change card layout without the owner saying so. Open: owner asked why buy 2 points when the underdog +1 point could do it -- underdog rows are not on the card (removed earlier at the owner's request); ask before adding.
+
+## CARD LIST BY WIN RATE (10/15, owner: "we are not trying to beat the market, I just need to win" / "1 list with both" / "make the words smaller, one line"; on the work branch, NOT merged until "merge now")
+
+- **Win rate decides, price is only shown.** Colors: green 56%+, light green 53-55%, yellow below (`clsOf`, `isGreenPick(hit)`); the cushion (win % minus price) stays in the data but picks and colors nothing. Best bets sort by win rate.
+- **ONE list under MORE with BOTH teams** (spread: both teams; total: Over AND Under): lines 0 ("main"), 1 and 2 points from Polymarket's main line, each `line · pts · win % · price`, sorted by points. A 3rd point appears only when it is rare: 60%+ and no line within 2 points reaches 60% (`lib/cardpick.js finishRows`, `RULE_POINTS 2`, `RARE_BAR 60`). 4 points never.
+- **PICK w/ POINTS** = the fewest points (1 or 2) that reach 56% on EITHER team (`pickPts`, `PTS_BAR 56`); none reaching it -> the highest win rate within 2 points; "none" only with no lines. PICK is still the rule's side at Polymarket's own line (BEAT THE: table rate there).
+- **Type is small and one line per row** (11px rows, 13px PICK lines, nowrap); the paragraph reason is now one short tag (e.g. "BEAT THE 3"). No cushion / "PICK costs" text on the card.
+- Polymarket IS reachable from the sandbox (`fetchEvents` / `gameLines` in `lib/poly.js` return live alternate prices, 10/15 check) -- the earlier note "feeds not testable here" was wrong. The card still reads the SAVED alternates (refreshed every 30 min by the pull, dropped after 3 h).
+- Tests: 326 site checks, grading audit 4,124, accuracy ok.
+
+- **PICK w/ POINTS now sits UNDER MORE** (owner 10/15), first line inside it, above the list. The card on top shows only Model + PICK. In the list the row the model chose turns GREEN all the way across (`cardBody`, class `g` on the whole row); other rows color only their win %.
