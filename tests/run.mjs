@@ -647,7 +647,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
         const fin = [{ key: "NYJ @ NE", homeScore: 31, awayScore: 20 }];   // NE wins by 11, total 51
         const n1 = await gradeStackWeek(2099, 7, fin), n2 = await gradeFirstSeenWeek(2099, 7, fin), sm = await stackSummary(2099);
         ok(pk.length >= 2 && n1 === pk.length && n2 === pk.length && sm.cardRec["cardpick|spread"] && sm.cardRec["cardpick|spread"].w === 1 && sm.cardRec["cardpick|total"].w === 1 && sm.cardRec["cardpick|spread"].stk === 1 && sm.rules["PICK · spread"] && sm.rules["PICK · spread"].w === 1
-          && (!cc.spread.pts || sm.rules[`PICK w/ POINTS · spread · ${cc.spread.pts.points} pt${cc.spread.pts.points === 1 ? "" : "s"}`].w === 1) && sm.card.spread.w === 1 && sm.card.total.w === 1 && sm.recorded >= pk.length,
+          && (!cc.spread.pts || (r => r && r.w + r.l === 1)(sm.rules[`PICK w/ POINTS · spread · ${cc.spread.pts.points} pt${cc.spread.pts.points === 1 ? "" : "s"}`])) && sm.card.spread.w === 1 && sm.card.total.w === 1 && sm.recorded >= pk.length,
           "recorded + graded: the card's PICK and PICK w/ POINTS are saved at kickoff, graded when the game ends, and counted in the Models tab (by id, by rule label and in the spread / total tiles)", { n1, n2, cardRec: sm.cardRec, rules: sm.rules });
         for (const k of await RR.keys("stack*:2099:7")) await RR.del(k); }
       { const g2 = { key: "NYJ @ NE", card: c1 }, lp = plainLeg(g2, "spread"), pl = ptsLeg(g2, "spread");
