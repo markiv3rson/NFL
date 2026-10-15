@@ -373,7 +373,7 @@ function renderTd() {
 }
 // ---------- Record: Mine ----------
 const RESMARK = { W: '<span class="g">✓</span>', L: '<span class="r">✗</span>', P: '<span class="dim">=</span>', pending: '<span class="dim">•</span>' };
-function legName(l) { return esc(l.kind === "td" ? `${l.player} TD` : l.kind === "spread" ? `${l.team} ${sgn(l.line)}` : `${l.side === "over" ? "Over" : "Under"} ${l.line}`); }
+function legName(l) { return l.kind === "td" ? `${tlogo(l.team || tdTeam(l.player))}${esc(`${l.player} TD`)}` : l.kind === "spread" ? `${tlogo(l.team)}${esc(`${l.team} ${sgn(l.line)}`)}` : esc(`${l.side === "over" ? "Over" : "Under"} ${l.line}`); }
 // Weakest leg of an open combo (10/9): the leg where the model is furthest below the price paid, if it is below at all.
 function weakLeg(b) {
   if (b.result !== "pending" || !b.legs || b.legs.length < 2) return null;
@@ -440,12 +440,28 @@ function playStamps() {
   if (added) { try { localStorage.setItem("stampSeen", JSON.stringify([...set].slice(-500))); } catch {} }
 }
 const stampFor = (b) => (b.sold || (b.result !== "W" && b.result !== "L") ? "" : `<span class="stamp ${b.result === "W" ? "hit" : "miss"}" data-sid="${esc(String(b.id || ""))}">${b.result === "W" ? "HIT!" : "MISS"}</span>`);
+// 10/15 (owner): team logos next to team names in the Bets tab -- spread legs ("DEN +3.5"), totals ("Under 40.5 · SEA @ DEN") and touchdown legs
+// (the player's team, found from this week's touchdown lists; no logo when it can't be told).
+const normNm = (x) => String(x || "").toLowerCase().replace(/[^a-z\- ]/g, " ").replace(/\s+/g, " ").trim();
+function tdTeam(name) {
+  const t = normNm(name).split(" "), ini = (t[0] || "")[0], last = t.slice(1).join(" "), hits = new Set();
+  for (const g of (S && S.games) || []) for (const r of g.td || []) { const m = String(r.player || "").match(/^([A-Za-z])[A-Za-z]*\.\s*(.+)$/), full = normNm(r.player);
+    if ((m && m[1].toLowerCase() === ini && normNm(m[2]) === last) || full === normNm(name)) hits.add(r.team); }
+  return hits.size === 1 ? [...hits][0] : null;
+}
+function logoLabel(label) {
+  const L = String(label || "");
+  let m = L.match(/^([A-Z]{2,4}) ([+-]\d[\d.]*)(.*)$/); if (m) return `${tlogo(m[1])}${esc(m[1])} ${esc(m[2])}${esc(m[3])}`;
+  m = L.match(/^(.*?)(\b[A-Z]{2,4}\b) @ ([A-Z]{2,4})\b(.*)$/); if (m) return `${esc(m[1])}${tlogo(m[2])}${esc(m[2])} @ ${tlogo(m[3])}${esc(m[3])}${esc(m[4])}`;
+  m = L.match(/^(.+?) 1\+ TD(.*)$/); if (m) { const tm0 = tdTeam(m[1]); return `${tlogo(tm0)}${esc(L)}`; }
+  return esc(L);
+}
 function betRow(b) { return `<div class="betwrap">${betRowInner(b)}${stampFor(b)}</div>`; }
 function betRowInner(b) {
   if (b.source === "account") {   // bet recorded automatically from your Polymarket account
     const st = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Even" : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : (b.waiting ? '<span class="y">waiting for TD results</span>' : '<span class="dim">open</span>');
     const name = b.picks && b.picks.length ? `Combo · ${b.picks.length} picks` : `${esc(b.title)}${b.outcome ? ` — ${esc(b.outcome)}` : ""}`;
-    const picks = b.picks && b.picks.length ? b.picks.map((p) => `<div class="s" style="padding:0 0 0 16px">${p.result ? RESMARK[p.result] + " " : "• "}${esc(p.label)}${!p.result && legFlipped(p.label) ? ' <span class="y">⚠ app now picks the other side</span>' : ""}</div>`).join("") : "";
+    const picks = b.picks && b.picks.length ? b.picks.map((p) => `<div class="s" style="padding:0 0 0 16px">${p.result ? RESMARK[p.result] + " " : "• "}${logoLabel(p.label)}${!p.result && legFlipped(p.label) ? ' <span class="y">⚠ app now picks the other side</span>' : ""}</div>`).join("") : "";
     return `<div class="row"><span>${name} <span class="dim">wk ${b.week ?? "?"}</span></span><span>${st}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
       `<div class="s" style="padding:0 0 ${picks ? 2 : 6}px 8px">${money(b.cost)}${b.price != null ? ` at ${b.price < 0.005 ? "<1" : Math.round(b.price * 100)}¢` : ""} · ${b.sold ? `sold early for ${money(Math.max(0, (b.cost || 0) + (b.pl || 0)))}` : `pays ${money(b.toWin)} if it wins`}</div>` + (picks ? `<div style="padding-bottom:6px">${picks}</div>` : "");
   }
@@ -792,7 +808,8 @@ function stampUpdated() { const t = new Date().toLocaleTimeString(undefined, { h
 async function loadRecord(sync = false) {
   if (sync) toast("Syncing…", 0);
   try {
-    const [mb, rl, rp] = await Promise.all([fetch(`/api/mybets${sync ? "?sync=1" : ""}`, { cache: "no-store" }).then((r) => r.json()), fetch("/api/results/list", { cache: "no-store" }).then((r) => r.json()), fetch("/api/replay", { cache: "no-store" }).then((r) => r.json()).catch(() => null)]);
+    const [mb, rl, rp, mbt] = await Promise.all([fetch(`/api/mybets${sync ? "?sync=1" : ""}`, { cache: "no-store" }).then((r) => r.json()), fetch("/api/results/list", { cache: "no-store" }).then((r) => r.json()), fetch("/api/replay", { cache: "no-store" }).then((r) => r.json()).catch(() => null), fetch("/api/modelbets", { cache: "no-store" }).then((r) => r.json()).catch(() => null)]);
+    if (mbt && mbt.ok) MODELBETS = mbt;
     if (rp && rp.ok) REPLAY = rp.replay;   // history table; a failed fetch just leaves the card out
     if (!mb.ok) throw new Error(mb.error); stampUpdated(); MB = mb; RES = rl.ok ? rl.results : []; PAPER = rl.ok ? rl.paper : null; TRACKED = rl.ok ? rl.tracked || null : null; COMBOS = rl.ok ? rl.combos || null : null; renderLab();
     renderRecord();
@@ -927,9 +944,7 @@ function renderLab() {
     GROUPS.map(([title, ks]) => { const live = ks.filter(([k]) => names[k]); return live.length ? `<div class="dim" style="font-size:11px;letter-spacing:.06em;margin:10px 0 4px">${title}</div><div style="${grid}">` +
       live.map(([k, label]) => `<span>${esc(label)}${tag(k)}</span><span style="text-align:right">${now(k)}</span><span class="dim" style="text-align:right">${hist(k)}</span>`).join("") + `</div>` : ""; }).join("");
   LAB_SB = `${rows}`;   // 10/15 (owner): lives in the Models tab, closed until you open it
-  const open = [...document.querySelectorAll("#lab .drop.open")].map((e) => e.id);   // keep your open cards on refresh
-  $("lab").innerHTML = sgpCards();
-  for (const id of open) { const e = $(id); if (e && e.classList) e.classList.add("open"); }
+  renderLabList();
   if (MB && RES) renderModel();   // the Models tab reads the same data
 }
 
@@ -1059,46 +1074,57 @@ function setBg(g) {
   el.style.background = `linear-gradient(90deg, ${ca}3d 0%, ${ca}1f 50%, ${ch}1f 50%, ${ch}3d 100%)`;
   el.innerHTML = `<img src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'">`;
 }
-// 10/15 (owner: "keep it organized"): every parlay is the same compact block -- the game (or the parlay's name) with its HIT %, one line per leg with its %, then the Polymarket payout.
-//   ARI @ LA   67%
-//   ARI +3.5 · 55%
-//   K.Williams TD · 67%
-//   PL: 1.7x · $20 → $33        (PL: — when a leg has no price yet)
+// 10/15 (owner): every parlay is the same block, in one column, like the Bets list:
+//   [logo] ARI @ [logo] LA · 67%              [P] PL: 1.7x · $20 → $33   (blue)
+//     ✓ ARI +3.5 · 55%        (✓ won, ✗ lost, • pending)
+//     • K.Williams TD · 67%
+//                                                         ✓ Won / ✗ Lost
 const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;   // 10/14 audit: "1 picks" / "1 players" / "1 games"
 const plPay = (p) => {
   if (!p || !p.legs || !p.legs.length || !p.legs.every((l) => l.price > 0 && l.price < 1)) return "PL: —";
   const x = p.legs.reduce((a, l) => a / l.price, 1), st = p.stake || 10;   // the owner's stake for this parlay type (lib/sgp.js STAKES)
   return `PL: ${x >= 10 ? Math.round(x) : x.toFixed(1)}x · $${st} → $${Math.round(st * x)}`;
 };
+const legMark = (r) => (r === "W" ? '<span class="g">✓</span>' : r === "L" ? '<span class="r">✗</span>' : r === "P" ? '<span class="dim">–</span>' : "•");
+const gameLogos = (key) => { const m = String(key || "").match(/^([A-Z]{2,4}) @ ([A-Z]{2,4})$/); return m ? `${tlogo(m[1])}${esc(m[1])} @ ${tlogo(m[2])}${esc(m[2])}` : esc(key); };
+// title = HTML for the left of the top line; p = the parlay; showGame = show each leg's game (parlays across games)
 function pBlock(title, p, showGame) {
   if (!p || !Array.isArray(p.legs) || !p.legs.length) return "";
   const pr = typeof p.prob === "number" && isFinite(p.prob) ? p.prob : null;
-  const legs = p.legs.map((l) => `<div class="pbl">• ${esc(l.label)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · ${Math.round((l.prob || 0) * 100)}%${showGame && l.game ? ` <span class="dim">${esc(l.game)}</span>` : ""}</div>`).join("");
-  return `<div class="par"><div class="pbh"><b>${esc(title)}</b>${pr == null ? "" : ` <span class="${pr >= 0.3 ? "g" : pr >= 0.15 ? "lg" : "y"}">· ${Math.round(pr * 100)}%</span>`}</div>${legs}<div class="pbp">${plPay(p)}</div></div>`;
+  const legs = p.legs.map((l) => `<div class="pbl">${legMark(l.result)} ${logoLabel(l.label)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · ${Math.round((l.prob || 0) * 100)}%${showGame && l.game ? ` <span class="dim">${gameLogos(l.game)}</span>` : ""}</div>`).join("");
+  const res = p.result === "W" ? '<span class="g">✓ Won</span>' : p.result === "L" ? '<span class="r">✗ Lost</span>' : p.result === "P" ? '<span class="dim">Push</span>' : "";
+  return `<div class="par"><div class="pbh"><span class="pbn">${title}${pr == null ? "" : ` <span class="${pr >= 0.3 ? "g" : pr >= 0.15 ? "lg" : "y"}">· ${Math.round(pr * 100)}%</span>`}</span><span class="plb">${pmLogo()} ${plPay(p)}</span></div>${legs}<div class="pbr">${res}</div></div>`;
 }
 function sgpBox(g) {
   const x = g.sgp; if (!x || g.started || g.final) return "";
-  const blocks = [["2 legs", x.best], ["3 legs", x.three], ["4 legs", x.linked], ["4 legs · my style", x.style], ["4 legs · my style · bought lines", x.stylePts]].map(([t, p]) => pBlock(t, p, false)).join("");
+  const blocks = [["2 legs", x.best], ["3 legs", x.three], ["4 legs", x.linked], ["4 legs · my style", x.style], ["4 legs · my style · bought lines", x.stylePts]].map(([t, p]) => pBlock(esc(t), p, false)).join("");
   return blocks ? `<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAYS</div><div class="pgrid" style="margin-top:6px">${blocks}</div>` : "";
 }
-// Model Picks tab (10/15, owner): the drop-down buttons sit in two columns -- left: 2 / 3 / 4 legs and 4 legs across games, right: my style and my style with bought lines.
-// Tapping one opens its list under the buttons, full width, with the parlays two across. Every one is saved before kickoff and graded.
+// Model Picks tab (10/15, owner): six sub-tabs docked above the bottom bar (2 legs, 3 legs, 4 legs, My style, Bought, Diff) and week chips at the top;
+// each shows only its parlays, one column, in kickoff order. The current week comes from the live slate (results from the saved copies once a game starts); past weeks from /api/modelbets.
 const FOUR_NAMES = { leg4_fav: "4 biggest favorites", leg4_green_fav: "Best green pick + 3 favorites", leg4_fav_td: "3 favorites + top TD scorer" };
-function sgpCards() {
-  const gs = (S && S.games ? S.games : []).filter((g) => g.sgp && typeof g.sgp === "object" && !g.started && !g.final);
-  const list = (pick) => gs.map((g) => ({ g, p: pick(g) })).filter((x) => x.p && x.p.prob != null && Array.isArray(x.p.legs)).sort((a, b) => b.p.prob - a.p.prob);
-  const top = (xs) => (xs.length ? Math.round(xs[0].p.prob * 100) : 0);
-  const two = list((g) => g.sgp.best), three = list((g) => g.sgp.three), four = list((g) => g.sgp.linked), mine = list((g) => g.sgp.style), mpts = list((g) => g.sgp.stylePts);
-  const F = ((S && S.fourLeg) || []).filter((p) => p && Array.isArray(p.legs));
-  const head = (id, title, n, topP) => (n ? `<div class="card dd"><button class="ddh" data-drop="${id}"><span class="ddt">${title}</span><span class="ddm">${n} · best ${topP}% ›</span></button></div>` : "");
-  // one card per opened list, the games in kickoff order from morning to evening (owner 10/15)
-  const byTime = (xs) => [...xs].sort((a, b) => (new Date(a.g.kickoff || 0) - new Date(b.g.kickoff || 0)) || (a.g.key < b.g.key ? -1 : 1));
-  const gl = (id, xs) => (xs.length ? `<div class="drop" id="${id}"><div class="card"><div class="inner"><div class="pgrid">${byTime(xs).map((x) => pBlock(x.g.key, x.p, false)).join("")}</div></div></div></div>` : "");
-  const fl = F.length ? `<div class="drop" id="dd-four"><div class="card"><div class="inner"><div class="pgrid">${F.map((p) => pBlock(FOUR_NAMES[p.strategy] || p.strategy, p, true)).join("")}</div></div></div></div>` : "";
-  const left = head("dd-sg2", "Same game · 2 legs", two.length, top(two)) + head("dd-sg3", "Same game · 3 legs", three.length, top(three)) + head("dd-sg4", "Same game · 4 legs", four.length, top(four)) +
-    head("dd-four", "4 legs · different games", F.length, F.length ? Math.round(Math.max(...F.map((p) => p.prob || 0)) * 100) : 0);
-  const right = head("dd-mine", "4 legs · my style", mine.length, top(mine)) + head("dd-mpts", "4 legs · my style · bought lines", mpts.length, top(mpts));
-  return `<div class="cols"><div>${left}</div><div>${right}</div></div>` + gl("dd-sg2", two) + gl("dd-sg3", three) + gl("dd-sg4", four) + gl("dd-mine", mine) + gl("dd-mpts", mpts) + fl;
+const LAB_TABS = [["2", "2 legs"], ["3", "3 legs"], ["4", "4 legs"], ["style", "My style"], ["pts", "Bought"], ["diff", "Diff"]];
+let MODELBETS = null, LABTYPE = "2", LABWEEK = null;
+function labParlays(week, type) {
+  const rec = (MODELBETS && MODELBETS.weeks && MODELBETS.weeks[week] && MODELBETS.weeks[week][type]) || [];
+  if (!(S && Number(week) === Number(S.week))) return rec.map((p) => ({ p, game: p.game, kick: p.kickoff, title: p.game ? gameLogos(p.game) : esc(FOUR_NAMES[p.strategy] || p.strategy), across: !p.game }));
+  const pick = { 2: (g) => g.sgp.best, 3: (g) => g.sgp.three, 4: (g) => g.sgp.linked, style: (g) => g.sgp.style, pts: (g) => g.sgp.stylePts };
+  if (type === "diff") { const F = ((S && S.fourLeg) || []).filter((p) => p && Array.isArray(p.legs));
+    const done = (st) => rec.find((r) => r.strategy === st);   // a saved copy carries the results
+    return (F.length ? F.map((p) => ({ ...p, ...(done(p.strategy) ? { result: done(p.strategy).result, legs: done(p.strategy).legs } : {}) })) : rec).map((p) => ({ p, game: null, kick: null, title: esc(FOUR_NAMES[p.strategy] || p.strategy), across: true })); }
+  const out = [];
+  for (const g of (S && S.games) || []) { const live = g.sgp && typeof g.sgp === "object" && !g.started && !g.final ? pick[type](g) : null;
+    if (live && Array.isArray(live.legs)) out.push({ p: live, game: g.key, kick: g.kickoff, title: gameLogos(g.key), across: false });
+    else { const r = rec.filter((x) => x.game === g.key).pop(); if (r) out.push({ p: r, game: g.key, kick: g.kickoff || r.kickoff, title: gameLogos(g.key), across: false }); } }
+  return out;
+}
+function renderLabList() {
+  if (!$("lab")) return;
+  const weeks = [...new Set([...Object.keys((MODELBETS && MODELBETS.weeks) || {}).map(Number), ...(S && S.week != null ? [Number(S.week)] : [])])].sort((a, b) => b - a), sel = LABWEEK || (S && S.week) || weeks[0];
+  const chips = `<div class="chips" id="lab-wk">${weeks.map((w) => `<button data-labw="${w}" class="${Number(sel) === w ? "on" : ""}">Week ${w}</button>`).join("")}</div>`;
+  const xs = labParlays(sel, LABTYPE).sort((a, b) => (new Date(a.kick || 0) - new Date(b.kick || 0)) || 0).filter((x) => x.p && Array.isArray(x.p.legs));
+  $("lab").innerHTML = chips + (xs.length ? `<div class="pgrid" style="margin-top:6px">${xs.map((x) => pBlock(x.title, x.p, x.across)).join("")}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
+  if ($("lab-sub")) $("lab-sub").innerHTML = LAB_TABS.map(([k, t]) => `<button data-labt="${k}" class="${LABTYPE === k ? "on" : ""}">${t}</button>`).join("");
 }
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = "";
@@ -1212,6 +1238,8 @@ document.addEventListener("click", (e) => {
       if (d.dataset.drop === "gamebest") { GAMEBEST_OPEN = el.classList.contains("open"); try { localStorage.setItem("gameBestOpen", GAMEBEST_OPEN ? "1" : "0"); } catch {} } } return; }
   const gt = e.target.closest("[data-game]"); if (gt) { openGame(gt.dataset.game); return; }
   const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k) { showPanel("lines"); openGame(k); } return; }
+  const lt = e.target.closest("[data-labt]"); if (lt) { LABTYPE = lt.dataset.labt; renderLabList(); return; }
+  const lw = e.target.closest("[data-labw]"); if (lw) { LABWEEK = Number(lw.dataset.labw); renderLabList(); return; }
   const gb = e.target.closest("[data-gbw]"); if (gb) { GBGWEEK = gb.dataset.gbw === "all" ? "all" : Number(gb.dataset.gbw); $("gbg").innerHTML = gbgHtml(); return; }
   const ch = e.target.closest("[data-alk]"); if (ch) { ALFILTER = ch.dataset.alk; renderAlerts(); return; }
   const tr = e.target.closest(".tdr"); if (tr && !e.target.closest(".price-link") && !e.target.closest(".more")) { tr.classList.toggle("open"); return; }

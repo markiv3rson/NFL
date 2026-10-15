@@ -164,8 +164,11 @@
   .mwarn { margin-top:4px; font-size:11px; font-weight:700; color:var(--yellow); white-space:normal; line-height:1.3; }
   .cols { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:start; } .cols .card.dd { margin-top:10px; } .cols .ddh { flex-direction:column; align-items:flex-start; gap:4px; padding:12px; } .cols .ddm { white-space:normal; }
   #lab > .drop { margin-top:10px; border-top:0; padding-top:0; }
-  .pgrid { display:grid; grid-template-columns:1fr 1fr; column-gap:16px; align-items:start; } .par { padding:8px 0; border-top:1px solid var(--line2); font-size:11.5px; min-width:0; } .pgrid > .par:nth-child(-n+2) { border-top:0; padding-top:0; }
-  .pbh { margin-bottom:2px; font-size:12.5px; } .pbl { margin-top:1px; padding-left:8px; overflow-wrap:anywhere; } .pbp { margin-top:4px; padding-left:8px; color:var(--gold); font-weight:700; }
+  .pgrid { display:block; } .par { padding:11px 0; border-top:1px solid var(--line2); font-size:13.5px; } .pgrid > .par:first-child { border-top:0; padding-top:2px; }
+  .pbh { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:4px; } .pbn { font-weight:700; font-size:14.5px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+  .plb { color:var(--blue); font-weight:700; font-size:12.5px; white-space:nowrap; display:flex; align-items:center; gap:4px; } .plb .pm { width:16px; height:16px; }
+  .pbl { margin-top:3px; padding-left:12px; overflow-wrap:anywhere; } .pbr { text-align:right; font-weight:800; min-height:4px; }
+  #lab-sub { justify-content:space-between; gap:6px; } #lab-sub button { flex:1 1 0; min-width:0; padding:5px 4px; font-size:11.5px; white-space:nowrap; text-align:center; }
   .card.dd { margin-top:10px; padding:0; } .ddh { width:100%; display:flex; justify-content:space-between; align-items:center; gap:10px; font:inherit; color:#fff; background:none; border:0; padding:13px 14px; cursor:pointer; text-align:left; }
   .ddt { font-size:14px; font-weight:800; letter-spacing:.04em; } .ddm { font-size:12px; color:var(--faint); white-space:nowrap; } .card.dd .drop .inner { padding:0 14px 12px; }
   .pay { color:#ffcf4a; font-weight:700; white-space:nowrap; } .pay.dim { color:var(--faint); font-weight:400; }
@@ -322,7 +325,8 @@
   <div class="panel" id="panel-td"><div class="phead"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg><div class="pt"><b>Anytime TD</b><span id="td-header"></span></div></div><div id="td"></div></div>
   <div class="panel" id="panel-lab">
     <div class="phead"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 3.5h5M10.5 3.5v5.2L5.2 18a1.6 1.6 0 0 0 1.4 2.5h10.8a1.6 1.6 0 0 0 1.4-2.5l-5.3-9.3V3.5"/></svg><div class="pt"><b>Model Picks</b></div></div>
-    <div id="lab"></div>
+    <div id="lab" style="padding-bottom:64px"></div>
+    <div class="chips dock" id="lab-sub"></div>
   </div>
   <div class="panel" id="panel-record">
     <div class="phead"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a1.5 1.5 0 0 1 1.5-1.5h13A1.5 1.5 0 0 1 20 7v2.5a2.5 2.5 0 0 0 0 5V17a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17v-2.5a2.5 2.5 0 0 0 0-5z"/><path d="M14.5 6v2M14.5 11v2M14.5 16v2"/></svg><div class="pt"><b>Bets</b><span id="upd-record"></span></div></div>
