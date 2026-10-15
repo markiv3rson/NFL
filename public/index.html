@@ -162,6 +162,8 @@
   .mv { flex:0 0 auto; font-size:12px; color:#dfe3ea; padding:6px 10px; border-radius:999px; background:rgba(140,120,255,.12); border:1px solid rgba(170,182,255,.35); white-space:nowrap; }
   .mv b { color:#fff; margin-right:4px; }
   .mwarn { margin-top:4px; font-size:11px; font-weight:700; color:var(--yellow); white-space:normal; line-height:1.3; }
+  .duo { display:grid; grid-template-columns:1fr 1fr; gap:10px; } .duo .card.dd { margin-top:10px; } .duo .ddh { flex-direction:column; align-items:flex-start; gap:4px; padding:12px; } .duo .ddm { white-space:normal; }
+  #lab > .drop { margin-top:8px; border-top:0; padding-top:0; }
   .card.dd { margin-top:10px; padding:0; } .ddh { width:100%; display:flex; justify-content:space-between; align-items:center; gap:10px; font:inherit; color:#fff; background:none; border:0; padding:13px 14px; cursor:pointer; text-align:left; }
   .ddt { font-size:14px; font-weight:800; letter-spacing:.04em; } .ddm { font-size:12px; color:var(--faint); white-space:nowrap; } .card.dd .drop .inner { padding:0 14px 12px; }
   .pay { color:#ffcf4a; font-weight:700; white-space:nowrap; } .pay.dim { color:var(--faint); font-weight:400; }
@@ -339,8 +341,8 @@
   <button data-tab="td"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg><span>Anytime TD</span></button>
   <button data-tab="record"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a1.5 1.5 0 0 1 1.5-1.5h13A1.5 1.5 0 0 1 20 7v2.5a2.5 2.5 0 0 0 0 5V17a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17v-2.5a2.5 2.5 0 0 0 0-5z"/><path d="M14.5 6v2M14.5 11v2M14.5 16v2"/></svg><span>Bets</span></button>
   <button class="bell" id="bell" aria-label="Alerts"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span>Alerts</span><b class="cnt" id="bell-cnt"></b></button>
-  <button data-tab="models"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20V11M12 20V5M18 20v-6"/></svg><span>Models</span></button>
   <button data-tab="lab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 3.5h5M10.5 3.5v5.2L5.2 18a1.6 1.6 0 0 0 1.4 2.5h10.8a1.6 1.6 0 0 0 1.4-2.5l-5.3-9.3V3.5"/></svg><span>Model Picks</span></button>
+  <button data-tab="models"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20V11M12 20V5M18 20v-6"/></svg><span>Models</span></button>
 </nav>
 <div class="fab">
   <div id="toast" class="toast"></div>

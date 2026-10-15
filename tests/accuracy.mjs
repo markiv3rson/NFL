@@ -4,7 +4,7 @@
 // Then prints each rule's LIVE record this season from the site. Needs the internet (nflverse schedule + the site); without it, it says so.
 // Rules that need inputs not in public history files (INJURY: weekly starters out; TOTAL MOVE: the model's early features) are live-only here.
 import { readFileSync } from "node:fs";
-import { BUY_TIERS, keyNumberPick, bounceBackPick, floorDogPick, lineMovePick, lineMoveTotalPick, injuryPick, gradeStackPick } from "../lib/stack.js";
+import { BUY_TIERS, BUY_ALT, buyCands, isNightGame, keyNumberPick, bounceBackPick, floorDogPick, lineMovePick, lineMoveTotalPick, injuryPick, gradeStackPick } from "../lib/stack.js";
 import { startersOut } from "../lib/snaps.js";
 import { parseCSV } from "../lib/injuries.js";
 import { kickoffISO } from "../lib/games.js";
@@ -40,12 +40,16 @@ if (games) {
     "BEAT THE 3": { claim: null, from: 1999, to: 2025, run: (g, G) => { const hs = -G.sp, T = BUY_TIERS[Math.abs(hs)]; if (!T) return null;
       const fav = hs < 0 ? g.home : g.away, dog = hs < 0 ? g.away : g.home, team = T.side === "fav" ? fav : dog, main = team === g.home ? T.line : -T.line;
       return keyNumberPick(g, { spread: { homeSpread: main, home: 0.5, away: 0.5 } }, { spread: { homeSpread: hs } }); } },
+    // the second candidates (books 3.5: the favorite at -2.5, 1 point), replayed on their own line
+    "BEAT THE 3 (alt)": { claim: null, from: 1999, to: 2025, run: (g, G) => { const hs = -G.sp, T = (BUY_ALT[Math.abs(hs)] || [])[0]; if (!T) return null;
+      const fav = hs < 0 ? g.home : g.away, dog = hs < 0 ? g.away : g.home, team = T.side === "fav" ? fav : dog, main = team === g.home ? T.line : -T.line;
+      return keyNumberPick(g, { spread: { homeSpread: main, home: 0.5, away: 0.5 } }, { spread: { homeSpread: hs } }); } },
     "BOUNCE BACK": { claim: 58.8, from: 1999, to: 2025, run: (g, G) => bounceBackPick(g, -G.sp, { away: prevOf[`${G.id}|away`], home: prevOf[`${G.id}|home`] }) },
     "BOUNCE BACK DOG": { claim: 56.9, from: 1999, to: 2025, run: (g, G) => floorDogPick(g, -G.sp, { away: prevOf[`${G.id}|away`], home: prevOf[`${G.id}|home`] }) },
     // LINE MOVE: Polymarket "still has the old number" = the opening line; the books = the close. Graded at the opening number.
-    "LINE MOVE (spread)": { claim: null, from: 2014, to: 2026, run: (g, G) => { const o = opens[G.id]; if (!o || !isFinite(o.so)) return null;
+    "LINE MOVE (spread)": { claim: null, from: 2014, to: 2025, run: (g, G) => { const o = opens[G.id]; if (!o || !isFinite(o.so)) return null;
       return lineMovePick(g, { spread: { homeSpread: -o.so, home: 0.5, away: 0.5 } }, { spread: { homeSpread: -G.sp } }); } },
-    "LINE MOVE (total)": { claim: 67.0, from: 2014, to: 2026, run: (g, G) => { const o = opens[G.id]; if (!o || !isFinite(o.to) || G.tl == null) return null;
+    "LINE MOVE (total)": { claim: 66.1, from: 2014, to: 2025, run: (g, G) => { const o = opens[G.id]; if (!o || !isFinite(o.to) || G.tl == null) return null;
       return lineMoveTotalPick(g, { total: { line: o.to, over: 0.5, under: 0.5 } }, { total: { line: G.tl } }); } },
   };
   console.log("\nACCURACY -- the app's own pick code replayed on past games (closing line unless noted):");
@@ -57,7 +61,7 @@ if (games) {
       const t = (tiers[x.hit] = tiers[x.hit] || { w: 0, l: 0, n: x.n }); if (res === "W") t.w++; else if (res === "L") t.l++; }
     const hit = pct(w, l), tierTxt = Object.entries(tiers).map(([h, t]) => `card says ${h}% -> ${pct(t.w, t.l).toFixed(1)}% (${t.w + t.l})`).join(" · ");
     // drift = the code now wins LESS than the card says (by 1.5+ points on 50+ games); winning more is noted, not a failure
-    const drift = Object.entries(tiers).filter(([h, t]) => t.w + t.l >= 50 && pct(t.w, t.l) < Number(h) - 1.5);
+    const exact = !/^BEAT THE 3/.test(name), drift = Object.entries(tiers).filter(([h, t]) => exact ? t.w + t.l >= 30 && Math.abs(pct(t.w, t.l) - Number(h)) > 0.05 : t.w + t.l >= 50 && pct(t.w, t.l) < Number(h) - 1.5);   // 10/14 audit: every non-tier rule must match its card number exactly
     const fail = hit == null || hit < 56 || drift.length;
     if (fail) bad++;
     console.log(`${fail ? "FAIL" : "ok  "} ${name.padEnd(20)} ${w}-${l}${p ? ` (${p} push)` : ""} = ${hit == null ? "—" : hit.toFixed(1) + "%"} ${R.from}-${String(R.to).slice(2)} · ${tierTxt}`);
@@ -65,18 +69,36 @@ if (games) {
   // AT THE OPENING LINE (10/14, owner: "build 1"): the same rules, but the books' number is the week's OPENING spread (2014-26). Picks that
   // fire early in the week meet this number, not the close. Day / night shown apart; the card shows the lower of the two rates.
   { const out = {};
-    for (const G of games) { if (G.season < 2014) continue; const o = opens[G.id]; if (!o || !isFinite(o.so)) continue;
-      const g = { key: `${G.away} @ ${G.home}`, away: G.away, home: G.home, kickoff: G.kickoff }, hs = -o.so, T = BUY_TIERS[Math.abs(hs)]; if (!T) continue;
-      const fav = hs < 0 ? g.home : g.away, dog = hs < 0 ? g.away : g.home, team = T.side === "fav" ? fav : dog, main = team === g.home ? T.line : -T.line;
-      const x = keyNumberPick(g, { spread: { homeSpread: main, home: 0.5, away: 0.5 } }, { spread: { homeSpread: hs } }); if (!x) continue;
-      const res = gradeStackPick({ ...x, home: G.home }, G.hs, G.as), k = `${Math.abs(hs)}|${x.night ? "night" : "day"}`, t = (out[k] = out[k] || { w: 0, l: 0 });
-      if (res === "W") t.w++; else if (res === "L") t.l++; }
-    console.log("\nOPENING-LINE replay of BEAT THE 3 tiers (books' number = the week's opening spread, 2014-26):");
+    for (const G of games) { if (G.season < 2014 || G.season > 2025) continue; const o = opens[G.id]; if (!o || !isFinite(o.so)) continue;
+      const g = { key: `${G.away} @ ${G.home}`, away: G.away, home: G.home, kickoff: G.kickoff }, hs = -o.so;
+      for (const T of buyCands(Math.abs(hs))) {   // every candidate on its own line (main-line price only for that candidate)
+        const fav = hs < 0 ? g.home : g.away, dog = hs < 0 ? g.away : g.home, team = T.side === "fav" ? fav : dog, main = team === g.home ? T.line : -T.line;
+        const x = keyNumberPick(g, { spread: { homeSpread: main, home: 0.5, away: 0.5 } }, { spread: { homeSpread: hs } }); if (!x) continue;
+        const res = gradeStackPick({ ...x, home: G.home }, G.hs, G.as), k = `${Math.abs(hs)} ${T.side} ${x.line > 0 ? "+" : ""}${x.line}|${x.night ? "night" : "day"}`, t = (out[k] = out[k] || { w: 0, l: 0 });
+        if (res === "W") t.w++; else if (res === "L") t.l++; } }
+    console.log("\nOPENING-LINE replay of BEAT THE 3 tiers (books' number = the week's opening spread, 2014-2025):");
     for (const [k, t] of Object.entries(out).sort()) console.log(`     books ${k.padEnd(9)} ${t.w}-${t.l} = ${pct(t.w, t.l) == null ? "—" : pct(t.w, t.l).toFixed(1)}% (${t.w + t.l})`); }
+  // EXACT TIER NUMBERS (10/14 audit, owner: "100% accuracy"): every stored number in BUY_TIERS / BUY_ALT (closing 1999-2025 day / night, opening 2014-2025 day / night, the same side at the
+  // books' own number) recomputed straight from the nflverse file and compared. Any difference over 0.05 points, or a different game count, FAILS.
+  { let miss = 0, cells = 0;
+    const cand = []; for (const [A, T] of Object.entries(BUY_TIERS)) cand.push([+A, T]); for (const [A, L] of Object.entries(BUY_ALT)) for (const T of L) cand.push([+A, T]);
+    for (const [A, T] of cand) {
+      const rate = (ver, night, lo, hi) => { let w = 0, n = 0; for (const G of games) { if (G.season < lo || G.season > hi) continue; const sp = ver === "close" ? G.sp : (opens[G.id] ? -opens[G.id].so : NaN); if (!isFinite(sp) || Math.abs(sp) !== A || isNightGame(G.kickoff) !== night) continue;
+          const X = (ver === "close" ? G.sp > 0 : -sp > 0) ? G.hs - G.as : G.as - G.hs; n++; if (T.side === "fav" ? X > Math.abs(T.line) : X < Math.abs(T.line)) w++; } return [n ? Math.round(1000 * w / n) / 10 : null, n]; };
+      const plain = (night) => { let w = 0, n = 0; for (const G of games) { if (G.season > 2025 || Math.abs(G.sp) !== A || isNightGame(G.kickoff) !== night) continue; const X = G.sp > 0 ? G.hs - G.as : G.as - G.hs; if (X === A) continue; n++; if (T.side === "fav" ? X > A : X < A) w++; } return Math.round(1000 * w / n) / 10; };
+      const want = [["close day", [T.hit, T.n], rate("close", false, 1999, 2025)], ["close night", T.night, rate("close", true, 1999, 2025)], ["open day", T.open[0], rate("open", false, 2014, 2025)],
+        ["open night", T.open[1], rate("open", true, 2014, 2025)]];
+      for (const [lab, st, nw] of want) { cells++; if (nw[0] == null || Math.abs(st[0] - nw[0]) > 0.05 || st[1] !== nw[1]) { miss++; console.log(`     books ${A} ${T.side} ${T.line} ${lab}: stored ${st[0]} (${st[1]}) vs recomputed ${nw[0]} (${nw[1]})`); } }
+      for (const [lab, st, nw] of [["plain day", T.plain[0], plain(false)], ["plain night", T.plain[1], plain(true)]]) { cells++; if (Math.abs(st - nw) > 0.05) { miss++; console.log(`     books ${A} ${T.side} ${T.line} ${lab}: stored ${st} vs recomputed ${nw}`); } } }
+    if (miss) bad++;
+    console.log(`${miss ? "FAIL" : "ok  "} ${"TIER NUMBERS".padEnd(20)} ${cells - miss} of ${cells} stored numbers match the nflverse file exactly`); }
+  // EXACT LINE TABLE (10/15): the win-rate table behind PICK w/ POINTS (lib/linetable_data.js) is rebuilt from the nflverse file and must match what is stored, count for count.
+  { const { buildTable } = await import("./linetable_build.mjs"), { LT } = await import("../lib/linetable_data.js"), fresh = await buildTable(), same = JSON.stringify({ s: fresh.s, t: fresh.t }) === JSON.stringify(LT); if (!same) bad++;
+    console.log(`${same ? "ok  " : "FAIL"} ${"LINE TABLE".padEnd(20)} ${same ? `every count matches the nflverse file (${fresh.games} games, ${Object.keys(fresh.s).length} spread numbers, ${Object.keys(fresh.t).length} total buckets)` : "stored table differs from the nflverse file: re-run tests/linetable_build.mjs"}`); }
   // INJURY (10/14): starters out rebuilt per team-week from nflverse's injury reports + snap counts with the app's own startersOut(), then
   // the app's own injuryPick(): line not yet moved 1+ toward the healthy team between the opening line and the close, graded at the close.
   { let w = 0, l = 0, p = 0, seasons = 0;
-    for (let y = 2014; y <= Math.max(...games.map((x) => x.season)); y++) {
+    for (let y = 2014; y <= 2025; y++) {
       let injRows, snapRows;
       try { injRows = parseCSV(getText(`https://github.com/nflverse/nflverse-data/releases/download/injuries/injuries_${y}.csv`));
         snapRows = parseCSV(getText(`https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_${y}.csv`)); } catch { continue; }
@@ -94,8 +116,8 @@ if (games) {
                       away: { inj: startersOut(snaps[G.away], (inj[G.away] || []).filter((x) => x.week === G.week), G.week) } };
         const g = { key: `${G.away} @ ${G.home}`, away: G.away, home: G.home }, x = injuryPick(g, -G.sp, -o.so, sit, G.week); if (!x) continue;
         const res = gradeStackPick({ ...x, home: G.home }, G.hs, G.as); if (res === "W") w++; else if (res === "L") l++; else p++; } }
-    const hit = pct(w, l), fail = !seasons || hit == null || hit < 56 || hit < 57.0 - 1.5; if (fail) bad++;
-    console.log(`${fail ? "FAIL" : "ok  "} ${"INJURY".padEnd(20)} ${w}-${l}${p ? ` (${p} push)` : ""} = ${hit == null ? "—" : hit.toFixed(1) + "%"} 2014-${String(Math.max(...games.map((x) => x.season))).slice(2)} (${seasons} seasons of reports) · card says 57%`); }
+    const hit = pct(w, l), fail = !seasons || hit == null || hit < 56 || hit < 56.5 - 0.05; if (fail) bad++;
+    console.log(`${fail ? "FAIL" : "ok  "} ${"INJURY".padEnd(20)} ${w}-${l}${p ? ` (${p} push)` : ""} = ${hit == null ? "—" : hit.toFixed(1) + "%"} 2014-25 (${seasons} seasons of reports) · card says 56.5%`); }
 }
 // TOTAL MOVE: its inputs are the model's early features, so it is checked by the weekly rebuild's own honest test (every season predicted by a
 // model that never saw it, bet at the opening total), read from the site. The card shows these same numbers.
@@ -124,7 +146,7 @@ try {
 // how often it hit vs how often its % said, and the money at the owner's stakes. Reported weekly in the Tuesday report card.
 try {
   const L = await getJSONurl(`${SITE}/api/results/list`), P = (L && L.paper) || {}, B = P.board || {}, names = P.names || {};
-  const keys = ["sgp_best", "sgp_best_fill", "sgp_3", "sgp_linked", "sgp_style", "leg4_fav", "leg4_green_fav", "leg4_fav_td", "best_2", "best_3", "best_4"];
+  const keys = ["sgp_best", "sgp_best_fill", "sgp_3", "sgp_linked", "sgp_style", "sgp_style_pts", "leg4_fav", "leg4_green_fav", "leg4_fav_td", "best_2", "best_3", "best_4"];
   console.log("\nPARLAYS this season (all legs must win):");
   for (const k of keys) { const b = B[k]; if (!b) continue; const d = b.decided || 0;
     console.log(`     ${(names[k] || k).slice(0, 44).padEnd(44)} ${d ? `${b.hits}-${d - b.hits} = ${(100 * b.hits / d).toFixed(1)}%` : "none graded yet"}${b.expRate != null && d ? ` · said ${(100 * b.expRate).toFixed(1)}%` : ""}${b.money != null ? ` · ${b.money >= 0 ? "+" : "-"}$${Math.abs(b.money).toFixed(0)}` : ""}${b.review && b.review.verdict && !/TOO FEW|WAITING/.test(b.review.verdict) ? ` · ${b.review.verdict}` : ""}`); }
