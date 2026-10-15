@@ -753,7 +753,7 @@ function renderModelNow() {
     "" : '<div class="s">None yet.</div>') + recapTd;
   $("models").innerHTML = labStats() +
     mSec("m-board", "★ Parlay scoreboard · this season", LAB_SB || '<div class="s">Loading…</div>') +
-    mSec("m-score", `1 · Scoreboard · Week ${lw ?? S.week}`, recapRows + wcRows, (wc.watch || []).length, true) +
+    mSec("m-score", `1 · Scoreboard · Week ${lw ?? S.week}`, recapRows + wcRows, (wc.watch || []).length, false) +
     mSec("m-win", "2 · Winners · moneyline", winnersBox()) +
     mSec("m-line", "3 · Spreads and totals", cardRecBox() + clvSummary(res) + pastBox()) +
     mSec("m-td", "4 · Touchdowns", `<div class="s"><b>Chances vs results</b></div>` + (tdWaiting ? `<div class="s y">${tdWaiting} waiting for snap counts</div>` : "") + (buckets || '<div class="s">None yet.</div>') + `<div class="s" style="margin-top:8px"><b>Top scorers</b></div>` + topTd + `<div class="s" style="margin-top:8px"><b>Vs Polymarket</b></div>` + (vsMkt || '<div class="s">None yet.</div>')) +
