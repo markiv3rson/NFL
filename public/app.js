@@ -1078,12 +1078,8 @@ const plPay = (p) => {
 };
 const legMark = (r) => (r === "W" ? '<span class="g">✓</span>' : r === "L" ? '<span class="r">✗</span>' : r === "P" ? '<span class="dim">–</span>' : "•");
 const gameLogos = (key) => { const m = String(key || "").match(/^([A-Z]{2,4}) @ ([A-Z]{2,4})$/); return m ? `${tlogo(m[1])}${esc(m[1])} @ ${tlogo(m[2])}${esc(m[2])}` : esc(key); };
-// 10/16 (owner): a logo only next to a NAME -- a team leg (ML, spread, TD) shows its team's logo; a total leg (Over / Under) has no name, so no logo
-function legLogoLabel(l) {
-  if (l.kind === "total") return esc(l.label);
-  if (l.team && /^[A-Z]{2,4}$/.test(l.team)) return `${tlogo(l.team)}${esc(l.label)}`;
-  return logoLabel(l.label);
-}
+// 10/16 (owner, final): NO logo on any leg line -- logos sit only on the parlay's header (the game names). Plain text legs.
+function legLogoLabel(l) { return esc(l.label); }
 // title = HTML for the left of the top line; p = the parlay; showGame = show each leg's game (parlays across games)
 function pBlock(title, p, showGame) {
   if (!p || !Array.isArray(p.legs) || !p.legs.length) return "";
