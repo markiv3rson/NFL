@@ -31,6 +31,9 @@ PERIODS = (2017, 2021)             # three test periods: FIRST-2017, 2018-2021, 
 # 10.449 / 10.552 (line alone 9.710 / 10.362). Leave-one-season-out (the checks below): 30 -> 9.999 / 10.502, 3000 -> 9.944 / 10.455 (line 9.903 / 10.456).
 # The model is still no better than the line; 3000 just stops it from adding noise. Season decay weights (0.7-0.9 a season) made it worse.
 UP_ALPHA = 3000
+# 10/16 (owner: "rebuild it now"): bump this tag whenever the rebuild code changes what it publishes. app.py rebuilds on start when the saved
+# build carries a different tag, so a deploy to Railway rebuilds right away instead of waiting for Tuesday 4 AM PT.
+BUILD_TAG = "2026-10-16 ridge 3000"
 COLD = {"GB", "CHI", "BUF", "NE", "CLE", "PIT", "DEN", "KC", "NYJ", "NYG", "PHI", "CIN", "BAL"}
 TZ = {"SEA": -3, "SF": -3, "LA": -3, "LAC": -3, "LV": -3, "OAK": -3, "SD": -3, "STL": -1, "ARI": -2, "DEN": -2, "KC": -1, "DAL": -1, "HOU": -1,
       "MIN": -1, "CHI": -1, "GB": -1, "NO": -1, "TEN": -1}
@@ -410,7 +413,7 @@ def build(site_opens=None):
               "marginErr": round(err(um, d.res), 3), "oldMarginErr": round(err(d.mm, d.res), 3), "marketMarginErr": round(err(d.km, d.res), 3),
               "totalErr": round(err(ut, d.tot), 3), "oldTotalErr": round(err(d.mt, d.tot), 3), "combos": len(rows), "minutes": round((time.time() - t0) / 60, 1)}
     feat = list(Z.columns)
-    return {"builtAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "season": int(cur), "checks": checks,
+    return {"builtAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "tag": BUILD_TAG, "season": int(cur), "checks": checks,
             "upgrade": {"feat": feat, "m": [round(float(v), 6) for v in fm.coef_], "mi": round(float(fm.intercept_), 6), "t": [round(float(v), 6) for v in ft.coef_], "ti": round(float(ft.intercept_), 6)},
             "early": {"feat": list(ZE.columns), "t": [round(float(v), 6) for v in fe.coef_], "ti": round(float(fe.intercept_), 6)},
             "table": rows, "chooser": train_chooser(d, F, F_for),
