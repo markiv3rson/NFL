@@ -14,6 +14,7 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 
 ## CURRENT STATE (cleaned 10/15 -- READ THIS FIRST; where an older section below disagrees, THIS wins)
 
+- **OWNER'S STANDING DECISIONS (10/16, final -- do NOT re-raise, do NOT ask again, do NOT "suggest" the opposite):** (1) WIN RATE is the only judge of a pick and its color. Green 56%+, light green 53-55%, yellow below. (2) PRICE / CUSHION is data only. It never picks a line and never colors anything. The owner: "I'm winning anyway. I don't care about the price. If I gotta pay a little bit more, then what the fuck? I don't care." The 10/15 cut of cushion colors was Claude's reading of "I just need to win"; the owner confirmed it 10/16 ("just keep it green"). (3) PICK w/ POINTS = the fewest points (1 or 2) that reach 56% on either side; 1-POINT LINES STAY, on spreads and totals (owner 10/16: "I don't want to skip 1 point lines"). (4) The fallback (best line when none reaches 56%) STAYS. (5) Nothing from the Polymarket real-price replay changes the app; its "candidates" were put to the owner 10/16 and REJECTED. Checked 10/16 against `lib/cardpick.js` (`isGreenPick`, `pickPts`, `PTS_BAR 56`, `RULE_POINTS 2`, `FAR_GAIN 3`) and `public/app.js clsOf`: the code does exactly this.
 - **Tabs (bottom bar, 5):** Game Lines, Anytime TD, Bets, Alerts, Models. Model Picks is not a tab: it is the right side of the toggle at the top of Bets (My bets | Model bets).
 - **Spread / total card:** `Model: <number>` / `PICK: <side at Polymarket's own line> · win %`. Under MORE: `PICK w/ POINTS` first, then ONE list with both teams (totals: Over AND Under) at main, 1 and 2 points; a 3rd point only if it beats the best line within 2 points by 3+ win points; 4 points never. The chosen row is green across; nothing else is green in the list. Same rules on every game.
 - **PICK side:** a tested rule (BEAT THE tiers, LINE MOVE, INJURY, BOUNCE BACK, BOUNCE BACK DOG, TOTAL MOVE); with no rule it is the model's side at the main line (`modelpick|`, 50.6% spreads / 51.7% totals, yellow, its own record row "MODEL SIDE", NEVER counted in the rules' record, the weekly recap or Final alerts). The chooser was REMOVED 10/16 (with the scanned combo table); old `chooser|` rows stay in the records as history. BEAT THE tiers (14) only name the side.
@@ -869,7 +870,7 @@ Tested and NOT added (made it worse):
   FOUND BY THE TESTS AND FIXED: the kickoff recorder (`pages/api/snapshot.js writePrelog`) built the card without the model numbers, so a game with NO rule recorded nothing at kickoff
   (the chooser used to fill that hole); it now passes `model` / `modelUp` into `buildCard`, so the model-side PICK is saved at kickoff like the others. Dry run without the chooser / table:
   passes, artifact keys builtAt / checks / early / moveT / season / tag / upgrade, marginErr 9.944 vs line 9.903, totalErr 10.455 vs line 10.456.
-- **Open for the owner (not built):** when no line reaches 56% the card still names the best one; on history that fallback said 55.7% and won 43.2% (37 games) -- show "none" instead?
+- ANSWERED 10/16 (owner: "I don't want that"): the fallback stays; the card names the best line when none reaches 56%.
 
 ## POLYMARKET REAL-PRICE REPLAY (10/16, owner: "Build now number one ... auto math, auto calibration, everything"; work branch, NOT merged until "merge now")
 
@@ -894,7 +895,7 @@ Tested and NOT added (made it worse):
 - **Buying early does nothing:** the same line's price moves -0.75c to +0.4c on average from 5 / 3 / 1 days out to the close (580-1,182 lines); the picks bought 3 days early cost 2c less
   and won the same games -> no early-buy edge (the earlier "-3c on picks" was selection, not timing).
 - **Bottom line:** at real Polymarket prices the bought points win more often but cost what they win: every bought spread class is between -0.5 and -10 per $100; only 2-3 point total
-  lines and underdog spread rows made money. **Candidates for the owner (NOT built -- card logic needs his word):** (1) never take a 1-point bought TOTAL as PICK w/ POINTS (39-58);
+  lines and underdog spread rows made money. **Candidates put to the owner 10/16 and REJECTED (owner: win rate only, keep 1-point lines, keep it green; see OWNER'S STANDING DECISIONS -- do not raise them again):** (1) never take a 1-point bought TOTAL as PICK w/ POINTS (39-58);
   (2) the spread table's 56-59% band is hot on real lines (won 51-54%) -- shrink more or show the lower closing-only rate; (3) main-line favorites lose at Polymarket, underdogs
   break even; (4) moneyline favorites at 60-70c are the worst parlay legs. Next data step if wanted: the same trade-log pull for TD player-prop events (`-player-props` slugs).
 
