@@ -109,8 +109,8 @@ _r, _q = ns4["def_epa_now"](_p, "TB"); ok(abs(_r - 2.5 / (3 + 150)) < 1e-12 and 
 import importlib, json as _json; _xf = importlib.import_module("extra_factors")
 _c = _xf._clean({"a": float("nan"), "b": np.float64(1.5), "c": {"d": float("inf"), "e": np.bool_(True)}})
 ok(_c == {"a": None, "b": 1.5, "c": {"d": None, "e": True}} and "NaN" not in _json.dumps(_c), "extra factors: NaN/inf sent as null")
-# Weekly rebuild (10/9): a build that is worse than the old model, too small, or has too few combos is never published
+# Weekly rebuild (10/9): a build that is worse than the old model or too small is never published (10/16: the combo-count gate went with the scanned table)
 _wr = importlib.import_module("weekly_rebuild")
-_good = {"checks": {"games": 2500, "marginErr": 10.0, "oldMarginErr": 10.25, "totalErr": 10.5, "oldTotalErr": 10.8, "combos": 900}}
-ok(_wr.passes(_good) and not _wr.passes({"checks": {**_good["checks"], "games": 500}}) and not _wr.passes({"checks": {**_good["checks"], "marginErr": 10.6}}) and not _wr.passes({"checks": {**_good["checks"], "combos": 50}}), "weekly rebuild: only a sound build is published")
+_good = {"checks": {"games": 2500, "marginErr": 10.0, "oldMarginErr": 10.25, "totalErr": 10.5, "oldTotalErr": 10.8}}
+ok(_wr.passes(_good) and not _wr.passes({"checks": {**_good["checks"], "games": 500}}) and not _wr.passes({"checks": {**_good["checks"], "marginErr": 10.6}}) and not hasattr(_wr, "scan") and not hasattr(_wr, "train_chooser"), "weekly rebuild: only a sound build is published; the combo scan and the chooser are gone (10/16)")
 print(f"service checks: {'FAILED ' + str(bad) if bad else 'all passed'}"); sys.exit(1 if bad else 0)

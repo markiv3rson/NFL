@@ -151,10 +151,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const o = startersOut(sn, [{ name: "Joe QB Jr.", status: "Out", week: 3 }, { name: "Al CB", status: "Doubtful", week: 3 }, { name: "Bo CB", status: "Out", week: 3 }, { name: "Cy S", status: "Questionable", week: 3 }], 3);
   ok(o.qb === 1 && o.db === 1 && o.sk === 0, "starters out: Out/Doubtful 60%+ starters only, by group, names matched across suffixes"); }
 { const S5 = await import("../lib/stack.js");
-  const P5 = S5.tablePicks({ key: "CHI @ GB", away: "CHI", home: "GB", outdoor: true, kickoff: "2026-10-11T17:00:00Z" }, { homeMargin: -2, total: 44, wind: 0, temp: 60, fix: {}, xf: { s: { gbm: 3, ens: 3 }, t: { ens: -2 } } }, 1.5, 46.5, null, null, null, 5);
-  const sp5 = P5.find((p) => p.kind === "spread"), to5 = P5.find((p) => p.kind === "total");
-  ok(sp5 && to5 && !/\b(Over|Under)\b/.test(sp5.why) && !/likes? the (dog|favorite)/.test(to5.why) && P5.every((p) => !/likes the dog \(fade it\)/.test(p.why) || (p.kind === "spread" && p.team === "CHI")) && P5.every((p) => !/likes the favorite \(fade it\)/.test(p.why) || (p.kind === "spread" && p.team === "GB")),
-    "chooser reasons: spread reasons skip Over/Under leans, total reasons skip dog/favorite leans, and a lean pointing away from the pick says (fade it)"); }
+  const P5 = S5.movePicks({ key: "CHI @ GB", away: "CHI", home: "GB", outdoor: true, kickoff: "2026-10-11T17:00:00Z" }, { homeMargin: -2, total: 44, wind: 0, temp: 60, fix: {}, xf: { s: { gbm: 3, ens: 3 }, t: { ens: -2 } } }, 1.5, 46.5, null, null, null, 5);
+  ok(Array.isArray(P5) && P5.every((p) => p.id === "movepred|total") && !S5.tablePicks && !S5.useTable, "model picks (10/16): only TOTAL MOVE comes from the model side; the chooser and the scanned combo table are gone"); }
 { const { lineMovePick } = await import("../lib/stack.js"); const G = { key: "BUF @ LA", away: "BUF", home: "LA", kickoff: new Date(Date.now() + 3600e3).toISOString() };
   const pm = (P, h = 0.5, a = 0.5) => ({ spread: { homeSpread: P, home: h, away: a } }), now = new Date().toISOString(), old = new Date(Date.now() - 30 * 3600e3).toISOString();
   const a = lineMovePick(G, pm(-3.5), pm(-5)), b = lineMovePick(G, pm(-6.5), pm(-5.5)), c = lineMovePick(G, pm(-2.5), pm(-3)), d = lineMovePick(G, pm(-3.5), pm(-4)), e = lineMovePick(G, pm(-1), pm(-4.5));
@@ -890,20 +888,17 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     { const PP = ctx.T.parlayPicks(); ok(PP.length === 4 && new Set(PP.map((x) => x.game)).size === 4 && PP[0].p >= PP[3].p && /Chance all 4 hit: <b>\d+%<\/b>/.test(ctx.T.parlayStrip()), "parlay of the week: top 4 green picks, one per game, chance all hit"); }
     ok(B2.length === 10 && B2[0].p >= B2[9].p && !B2.some((x) => x.pick === "L +1") && !B2.some((x) => x.pick === "B -3.5"), "best bets: top 10 at 56%+; teasers and alt lines in their own list"); }
   {
-    { const { tablePicks, gradeStackPick, comboFactors } = await import("../lib/stack.js"), G = { key: "A @ B", away: "A", home: "B", outdoor: true, kickoff: "2026-10-11T17:00:00Z" };
+    { const { movePicks, gradeStackPick, comboFactors } = await import("../lib/stack.js"), G = { key: "A @ B", away: "A", home: "B", outdoor: true, kickoff: "2026-10-11T17:00:00Z" };
       const F = comboFactors(G, { homeMargin: 12, total: 41, outdoor: true, wind: 16, fix: {} }, -8, 40, -8, 40, null, 6).F;
       const X = comboFactors(G, { homeMargin: 12, total: 41, outdoor: true, wind: 16, temp: 20, fix: { awayQbFirstStart: true }, xf: { homeRest: 7, awayRest: 4, homeCoach: 0.6, awayCoach: 0.4, homeAge: 27, awayAge: 25.5, awayQbRun: 7, tzdiff: 3, early: true, ptsTot: 45, s: { gbm: -0.1, logit: -0.1, rf: -0.1, ens: -0.5 }, t: { gbm: 0.1, ridge: -0.1, ens: 0.4 } } }, -8, 40, -8, 40, null, 6).F;
       ok(X.cold && X.shortwk && X["dogrest-"] && X.dogCoachBad && X.favCoachGood && X.dogNewQB && X.awayEastEarly && X.tz2P && X.dogYounger1 && X.dogQBruns && X.bigDogQBruns && X.ptsTotO3 && X.gbmDog && X.logitDog && X.rfDog && X.statDog && X.gbmO && X.ridgeU && X.statO && !X.allLeanDog && !X.homeCoachBad, "combo factors from the model service: rest, coaches, QB, travel, age, stats models");
       const C0 = comboFactors(G, { homeMargin: 12, total: 41, outdoor: true, wind: 16, fix: {} }, -8, 40, -8, 40, null, 6), ug = C0.up.margin - 8, ut = C0.up.total - 40;
       ok(F.wind15 && F.wind10 && F["sp>=7"] && F["tot<=41"] && F.mdlFav === (ug > 0) && F.mdlFav3 === (ug >= 3) && F.mdlO === (ut > 0) && F.mdlU === (ut < 0) && !F.prime && F.roadDog, "combo factors from the game (model leans from the upgraded model)");
-      const P = tablePicks(G, { homeMargin: 12, total: 41, outdoor: true, wind: 16, fix: {} }, -8, 40, -8, 40, null, 6);
-      ok(P.length === 2 && P.every((x) => x.hit > 50 && x.why) && !(P.some((x) => x.kind === "total" && x.side === "under") && P.some((x) => x.kind === "total" && x.side === "over")), "chooser picks: one side per market, with reasons");
+      const P = movePicks(G, { homeMargin: 12, total: 41, outdoor: true, wind: 16, fix: {} }, -8, 40, -8, 40, null, 6);
+      ok(Array.isArray(P) && P.every((x) => x.id === "movepred|total" && x.kind === "total"), "model picks: only TOTAL MOVE can come from the model side (chooser removed 10/16)");
       { const sit = { home: { prevOT: true, nextDiv: true, prevDiv: true, revenge: true, winPct: 0.8 }, away: { prevMon: true, prevAway: true, prev2Away: true, prevMarg: -30, winPct: 0.2 } };
         const NF = comboFactors(G, { homeMargin: 12, total: 41, outdoor: true, wind: 0, fix: { div: false }, xf: { awayRest: 14 } }, -8, 40, -8, 40, sit, 17).F;
         ok(NF.favAfterOT && NF.favLookaheadDiv && NF.favRevenge && NF.dogAfterMNF && NF.dogAfterLoss28 && NF.road2nd && NF.road3rd && NF.roadOffBye && NF.sandwichAny && NF.wk17dogLosing && !NF.divRematch, "combo factors: research factors (overtime, Monday, revenge, lookahead, road trip, bye, sandwich, late season)"); }
-      { const K = tablePicks({ key: "MIA @ GB", away: "MIA", home: "GB", outdoor: true, kickoff: "2026-12-20T18:00:00Z" }, { homeMargin: 3, total: 40, temp: 20, fix: {} }, -3, 40);
-        ok(K.length === 2 && K.some((x) => x.id === "chooser|spread" && /^(MIA \+3|GB -3)$/.test(x.pick)) && K.some((x) => x.id === "chooser|total" && /^(Over|Under) 40$/.test(x.pick)) && K.every((x) => x.hit > 50 && x.hit < 60 && x.n >= 2000 && !x.teaser && x.why) && !K.some((x) => /^keeper/.test(x.id)),
-          "chooser: one spread and one total pick per game, honest rate (50-60%), tested on 2,000+ unseen games; no keeper angles"); }
       ok(gradeStackPick({ kind: "spread", team: "A", home: "B", line: 8.5 }, 24, 17) === "W" && gradeStackPick({ kind: "total", side: "over", line: 34 }, 20, 13) === "L", "combo picks: grading"); }
     { // combo picks from Polymarket's position data (10/9)
       const { comboPicks } = await import("../lib/mybets.js"), { setJSON: sj, K: KK } = await import("../lib/redis.js");

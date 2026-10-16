@@ -16,12 +16,12 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 
 - **Tabs (bottom bar, 5):** Game Lines, Anytime TD, Bets, Alerts, Models. Model Picks is not a tab: it is the right side of the toggle at the top of Bets (My bets | Model bets).
 - **Spread / total card:** `Model: <number>` / `PICK: <side at Polymarket's own line> · win %`. Under MORE: `PICK w/ POINTS` first, then ONE list with both teams (totals: Over AND Under) at main, 1 and 2 points; a 3rd point only if it beats the best line within 2 points by 3+ win points; 4 points never. The chosen row is green across; nothing else is green in the list. Same rules on every game.
-- **PICK side:** a tested rule (BEAT THE tiers, LINE MOVE, INJURY, BOUNCE BACK, BOUNCE BACK DOG, TOTAL MOVE); with no rule it is the model's side at the main line (`modelpick|`, 50.6% spreads / 51.7% totals, yellow, its own record row "MODEL SIDE", NEVER counted in the rules' record, the weekly recap or Final alerts). The chooser no longer makes a card PICK. BEAT THE tiers (14) only name the side.
+- **PICK side:** a tested rule (BEAT THE tiers, LINE MOVE, INJURY, BOUNCE BACK, BOUNCE BACK DOG, TOTAL MOVE); with no rule it is the model's side at the main line (`modelpick|`, 50.6% spreads / 51.7% totals, yellow, its own record row "MODEL SIDE", NEVER counted in the rules' record, the weekly recap or Final alerts). The chooser was REMOVED 10/16 (with the scanned combo table); old `chooser|` rows stay in the records as history. BEAT THE tiers (14) only name the side.
 - **Colors:** by WIN RATE only -- green 56%+, light green 53-55%, yellow below. Price/cushion is data, never a color or a reason. No notes, warnings or footnotes.
 - **Win rates for any line:** `lib/linetable.js` (all games, no day/night split; lowest of closing 1999-2025 / opening 2014-25 / recent 2020-25). **SPREADS ARE SHRUNK (10/16):** each group's rate is pulled toward the same side + same cushion pooled over every books number (as 200 extra games, `SHRINK_K`) before the lowest is taken -- tested leave-one-season-out, the card's chosen PICK w/ POINTS now says 59.0% and wins 59.5% (it said 59.7% and won 57.8% unshrunk; favorites said 61.7% and won 56.6%). Totals are not shrunk (said 56.3%, won 57.4%). Examples now: books 3 dog +3.5 54.6% (was 55.3), 4.5 fav -2.5 58.3% (was 63.8), 13.5 dog +14.5 57.1% (was 63.9), 2.5 dog +3.5 56.2% (was 56.9), 4 fav -2.5 54.4%. The recent group counts from 60 games (opening 200, closing 40); at 200 it counted for only 1 of 15 BEAT THE tiers. Recent 2020-25 rates (10/15): books 4 fav -2.5 53.1% (64), books 7 fav -5.5 51.1% (88), books 7.5 fav -5.5 52.7% (91), books 3.5 dog +5.5 54.0% (161) -- now shown on the cards; samples are small (1 standard error ~6 pts). Day/night rates in older sections are gone.
 - **Records / ids:** `cardpick|`, `ptspick|`, `modelpick|` plus each rule's own id; saved at kickoff and on first show, graded. Parlays use the plain PICK line; only `sgp_style_pts` ("Bought") uses points lines.
 - **Alternate prices:** the 30-min Pinnacle pull saves `alts:` (checked live 10/15: every card has 5-7 spread rows, 4-7 total rows).
-- **Removed for good:** teasers, wind alert/Under tracker, OFFENSIVE FLOOR tracker, MIDDLE, price-gap, Rules-split warning, cushion colors, "Model Picks" tab, BOUGHT-POINT TOTALS pick, day/night split.
+- **Removed for good:** teasers, wind alert/Under tracker, OFFENSIVE FLOOR tracker, MIDDLE, price-gap, Rules-split warning, cushion colors, "Model Picks" tab, BOUGHT-POINT TOTALS pick, day/night split, **the pick chooser and the scanned combo table (10/16: `lib/chooser.js`, `lib/combotable.js`, `scan` / `train_chooser` in the rebuild, the "300+ combos" publish gate; `lib/stack.js movePicks` = TOTAL MOVE only; `lib/combomodel.js` loads `upgrade` / `early` / `moveT` only and refetches a build without a tag every 15 min)**.
 - **Live edges (all that passed testing):** key-number points (BEAT THE), LINE MOVE, TOTAL MOVE, INJURY, BOUNCE BACK (road team missed by 24+ since 10/16, 61.3% on 261), BOUNCE BACK DOG.
 - **Parlay chance (10/16):** `lib/combo.js comboChance` shrinks the product of the positive same-game links (lift product ^0.75, `LIFT_POWER`); drags (TD with the Under, TD vs the other team's cover) stay full. Measured 2021-25 with the walk-forward TD model: ML + Over + top TD said 22.9% hit 20.9% (now 20.9), ML + Over + 2 TDs said 12.4% hit 9.6% (now 10.3), style + Under said 2.6% hit 2.0%.
 - **Game model (10/16):** ridge strength `UP_ALPHA = 3000` in `weekly_rebuild.py` (was 30; walk-forward margin error 9.917 -> 9.793, total 10.541 -> 10.409; dry run passed: marginErr 9.944 vs line 9.903, totalErr 10.455 vs line 10.456). `BUILD_TAG` there + `app.py`: Railway rebuilds on deploy when the saved build has a different tag, so a merge brings the new model live the same hour (no Tuesday wait). The game model alone and the chooser are about a coin flip. Week 6 is the first real live test.
@@ -197,7 +197,7 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 ## Where things live
 
 - Site (Next.js on Vercel, nfl-nfl9.vercel.app): `pages/api/*`, `lib/*`, front end `public/app.js`.
-  - Card picks: `lib/stack.js`, `lib/combotable.js`; game model: `lib/upgrade.js`; tracked paper tests: `lib/tracked.js`; week data: `lib/week.js`.
+  - Card picks: `lib/stack.js` (rules), `lib/cardpick.js` (the card), `lib/linetable.js` (win % of any line); game model: `lib/upgrade.js`; tracked paper tests: `lib/tracked.js`; week data: `lib/week.js`.
   - Model rerun (sends Out/Questionable lists to Railway): `pages/api/rerun.js`.
   - Bets tab / Polymarket sync: `lib/mybets.js`, `pages/api/mybets.js`.
 - Model service (Python on Railway): `railway-model-service/`.
@@ -224,7 +224,7 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   the rebuild skips teaser bet types for these factors. Their scanned rates (~65%) were measured on the games they were found in, so
   they are NOT win rates; since 10/12 these factors are only inputs to the chooser (see "How picks are chosen").
 
-## How picks are chosen (Oct 12, 2026 — owner chose "A + B")
+## How picks are chosen (Oct 12, 2026 — owner chose "A + B") [SUPERSEDED: the chooser and the combo table were removed 10/16 -- see CURRENT STATE]
 
 - The scanned single patterns ("combos") were OVERFIT: judged on the same games they were found in they won 60.7%; on unseen
   games (each season's patterns found without it, 2014-26) only 49.8%. Week 5, the first true live test, went 15-21.
@@ -858,4 +858,11 @@ Tested and NOT added (made it worse):
   buckets and under 56% -> no pick. Kernel-smoothed line table (pool books A +-0.5 at the same team line, then shrink): rows Brier 0.2466 vs 0.2468 but the chosen PICK w/ POINTS calibrates
   worse (favorites 57.8 said / 55.3 won, 2-point lines 57.7 / 54.0 vs 59.9 / 59.4 and 59.0 / 59.3 now) -> not built. **Conclusion: nothing beats the current number; the closing line is the
   model. The card number stays ridge 3000.** The "vs open" column for models that use the closing line is NOT a real test (the close already knows the move) and was ignored.
+- **CUT 10/16 (owner: "Cut 1 and two", "build now"):** the pick chooser and the scanned combo table are gone from the site and the rebuild. Site: `lib/chooser.js` and `lib/combotable.js`
+  deleted; `tablePicks` -> `movePicks` (TOTAL MOVE only; `comboFactors` kept for the model number and the move model); `lib/combomodel.js` keeps `upgrade` / `early` / `moveT` only.
+  Rebuild: `scan`, `train_chooser`, `F_for`, `PERIODS`, `INJ_FACTORS` removed; the artifact has no `table` / `chooser`; `passes()` = games 2000+, margin and total error vs the old model
+  (the "300+ combos" gate is gone); `BUILD_TAG` bumped so Railway rebuilds on deploy. No new `chooser|` picks are recorded; old ones stay as history (`CURRENT_RULES` never counted them).
+  FOUND BY THE TESTS AND FIXED: the kickoff recorder (`pages/api/snapshot.js writePrelog`) built the card without the model numbers, so a game with NO rule recorded nothing at kickoff
+  (the chooser used to fill that hole); it now passes `model` / `modelUp` into `buildCard`, so the model-side PICK is saved at kickoff like the others. Dry run without the chooser / table:
+  passes, artifact keys builtAt / checks / early / moveT / season / tag / upgrade, marginErr 9.944 vs line 9.903, totalErr 10.455 vs line 10.456.
 - **Open for the owner (not built):** when no line reaches 56% the card still names the best one; on history that fallback said 55.7% and won 43.2% (37 games) -- show "none" instead?
