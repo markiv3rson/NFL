@@ -509,6 +509,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const saved = await getJSON(K.tdpx(2097, 7, "KC @ BUF")), hist = await getRedis().lrange("tdpxhist:2097:7:KC @ BUF", 0, -1);
     ok(n1 === 2 && n2 === 2 && saved["A 1+ TD"].ask === 0.5 && saved["B 1+ TD"].ask === 0.34 && saved["C 1+ TD"].ask === 0.41 && hist.length === 2 && JSON.parse(hist[1]).src === "pin30",
       "30-min TD prices: first save, then C added and B moved, A's halving kept for the snapshot guard, history row written", { n1, n2, saved }); }
+  { // 10/16 (owner's pass): ESPN "ruled out" news joins the starters-out count before the official report says Out (Hurts: official "DNP" Thursday, ESPN Out)
+    const { withEspnOuts } = await import("../lib/paper.js"); const { startersOut } = await import("../lib/snaps.js");
+    const rows = [{ home: "PHI", away: "DEN", kickoff: "2026-10-05T17:00:00Z" }], kick = "2026-10-18T17:00:00Z";
+    const off = withEspnOuts([{ name: "Jalen Hurts", pos: "QB", status: "Did Not Participate In Practice", week: 6 }], [{ name: "Jalen Hurts", pos: "QB", status: "Out", date: "2026-10-15T23:10:00Z" }, { name: "Old Guy", pos: "WR", status: "Out", date: "2026-09-20T12:00:00Z" }], "PHI", kick, rows, 6);
+    const snaps = { "00-1": { name: "Jalen Hurts", pos: "QB", weeks: { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 } } };
+    ok(off.length === 1 && off[0].status === "Out" && startersOut(snaps, off, 6).qb === 1 && startersOut(snaps, [{ name: "Jalen Hurts", pos: "QB", status: "Did Not Participate In Practice", week: 6 }], 6).qb === 0,
+      "starters out: ESPN Out overrides the official DNP (QB counted), a stale ESPN Out from before the last game is ignored", off); }
   { // old combo legs (10/14): legs found anywhere in a reply; legs saved at sync are used after Polymarket drops them
     const { findLegs } = await import("../pages/api/combolegs.js"); const { saveComboLegs, comboPicks } = await import("../lib/mybets.js"); const { getJSON } = await import("../lib/redis.js"); const R = globalThis.__TEST_REDIS__;
     const legs = [{ slug: "asc-nfl-sea-den-2026-10-15-neg-3pt5", eventSlug: "nfl-sea-den-2026-10-15", outcome: "+3.50", team: { abbreviation: "den", logo: "x" }, state: "" }, { slug: "tsc-nfl-sea-den-2026-10-15-total-40pt5", eventSlug: "nfl-sea-den-2026-10-15", outcome: "Under", state: "MARKET_STATE_WON" }];
