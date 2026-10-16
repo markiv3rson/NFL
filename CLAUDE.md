@@ -868,3 +868,43 @@ Tested and NOT added (made it worse):
   (the chooser used to fill that hole); it now passes `model` / `modelUp` into `buildCard`, so the model-side PICK is saved at kickoff like the others. Dry run without the chooser / table:
   passes, artifact keys builtAt / checks / early / moveT / season / tag / upgrade, marginErr 9.944 vs line 9.903, totalErr 10.455 vs line 10.456.
 - **Open for the owner (not built):** when no line reaches 56% the card still names the best one; on history that fallback said 55.7% and won 43.2% (37 games) -- show "none" instead?
+
+## RESEARCH 10/16 afternoon (owner: "10 minutes each" on the 8 follow-ups, then "keep digging"; nothing built in the app -- findings below, each topic worked until its data ran out, then dug further)
+
+- **1. Pick timing (live).** Correct numbers (an earlier pass compared BEAT THE's bought line with Pinnacle's main line -- wrong): on POLYMARKET's own line, week 6's 18 spread rule picks
+  (14 BEAT THE, BOUNCE BACK, DOG, 2 LINE MOVE) saw the line move toward the pick in 3, against in 4, unchanged in 11 by Thursday noon (avg +0.1 pts; the pick's own Polymarket price +0.4c).
+  Polymarket's spread moved at all Mon->Thu in only 5 of 14 games (avg 0.7 pts). Weeks 3-6 saved card picks (results file `clvPts`): spread picks avg +0.03 pts (18 of 30 at 0), total picks
+  -0.9; W-L by move (for us / against / none): spreads 1-5 / 3-4 / 16-15, totals 5-3 / 8-8 / 7-15 -- nothing yet. Pinnacle vs Polymarket gap of 1+ point right now: 5 of 14 games, all on
+  totals except BUF @ LV (shadow LINE MOVE territory). The real study needs graded weeks 6-10 (`stackfirst:` times + `pin30`).
+- **2. TD 40-45% bucket.** This season 6 of 26 scored (noise). Walk-forward 2021-25, 869 players in the band: said 42.4 scored 41.3 -- calibrated; by position RB 40.6 / WR 42.9 / TE 37.3;
+  by season 38.8-45.6; cold slices: weeks 1-4 35.9% (209) and 14+ 37.1% (245), team implied under 20 points 33.3% (120), Questionable 29.4% (51), DNP 19.2% (26) -- each 1 of ~30 cuts,
+  1-2 standard errors, and `imp` / `q` / `dnp` are already model inputs -> nothing changed. 45-55 band: RB 48.7 (692) fine, WR 45.4 (227), team rank 3 37.0 (27). 55%+ picks are RBs
+  (380, 65.0%); WRs 15 at 46.7%, TE 1 -- the Best TD picks box is in practice an RB list. Top-3 list rank 1/2/3 said 43/32/26 scored 44/33/28 (unchanged).
+- **3. Fallback PICK w/ POINTS.** With the SHRUNK table the app uses now, the leave-one-season-out replay (1,510 games, every alternate +1/+2/+2.5/+3 offered) has ZERO games where no line
+  reaches 56% -- the fallback only happens live when Polymarket lists too few alternates (ARI @ LA at books 13.5). Unshrunk it was 60 games at 43.3% (favorite rows 50%, underdog 30%;
+  the main-line favorite 55% in those games -- 1 cut, not a rule). Shrunk card re-check: said 59.0 won 59.5 (1 pt 56.4/57.4, 2 pts 59.0/59.3, 3 pts 60.7/61.0; favorites 59.9/59.4,
+  underdogs 58.8/59.5; totals 56.3/57.4). Nothing to change; owner keeps the fallback.
+- **4. Alternate prices (this week, 141 priced rows on 28 cards).** Polymarket prices bought points ABOVE their win rate: spreads price minus win% = +1.0c at the main line, +2.8 at 1 pt,
+  +3.0 at 2 pts, +0.3 at 3 pts; totals +1.5 / +3.6 / +3.3 / -0.2. Expected money per $100: spreads main -1.9, 1 pt -5.0, 2 pts -5.0, 3 pts -0.5; totals -3.0 / -6.6 / -5.7 / +0.2; Unders -2.4 vs
+  Overs -6.6. Rows that are BOTH 56%+ and priced under their win rate: 11 of 141 (CHI -1.5 61% at 48c the only big one; the rest Unders at 55-62c, CLE +6.5 / PHI +6.5 / WAS +9.5 at 56-60c).
+  The chosen PICK w/ POINTS: 58.7% at 60c = -2.4 per $100, positive in 5 of 26. The 10/15 finding holds: the points win more often but cost more than they win. Owner's rule (win rate) stands.
+- **5. Odds API past odds (tested with the sandbox key, 1 credit).** The FREE plan already serves `/v4/historical/.../events` (a snapshot list with timestamps; snapshots exist every 5 MINUTES:
+  previous 11:50:39 / next 12:00:39 around 2024-10-16 12:00Z); historical ODDS return `HISTORICAL_UNAVAILABLE_ON_FREE_USAGE_PLAN`, paid plans only (~$30/mo 20K credits, $59 100K, per
+  third-party pages; the official site is blocked here). Cost rule from those pages: a historical odds call = 10 x markets x regions credits -> spreads+totals, one region = 20 per snapshot;
+  one snapshot carries EVERY game. 6 snapshots a week (Mon open, Wed, Fri, Sat, Sun 9 AM, kickoff) x 18 weeks x 6 seasons 2020-25 = ~650 calls = ~13K credits = ONE month of the $30 plan.
+  That answers "bet Wednesday or Sunday" for every rule and gives hourly lines for the INJURY / LINE MOVE timing. Best buy. Verify the plan page and the 10x rule before paying.
+- **6. Betting splits.** No free history anywhere: SharpAPI (DraftKings + Circa, 5-min refresh, 48 h of history, $229/mo Pro), Sportradar (enterprise). sportsbettingdime's public page
+  is reachable but its tables are drawn by JavaScript (only the article text comes through; a headless browser could read it weekly -- live only, no past data; Wayback has no snapshots).
+  Kaggle "nfl-sample-2018-2026" (oliviersportsdata) = Bet365/BookMaker timestamped lines for only 18 games (a vendor sample). Verdict: not worth paying; the MGM test already said no edge.
+- **7. Injury posting times.** nflverse's injury file has no dates (the `date_modified` column in its dictionary is not in the 2025 file). NFL.com's weekly pages (nfl.com/injuries/league/2024/REG10,
+  reachable) show only the final practice status + game status per player -- no per-day history. ESPN's free feed (site.api.espn.com/apis/site/v2/sports/football/nfl/injuries, 800 items,
+  32 teams) carries a `date` per item and a comment naming the practice day ("full participant in Wednesday's practice", "ruled out ... Tuesday") -> the only free source of WHEN news posted,
+  live only. The app's `inj:` recorder already logs starters-out changes with times. Past seasons stay untestable.
+- **8. Polymarket history -- THE FIND.** Last season's NFL game markets still exist on gamma (e.g. `nfl-kc-buf-2025-11-02`: moneyline, spreads -1.5 / -2.5, totals 50.5-53.5, team totals, 1H).
+  `prices-history` returns nothing for them (purged after resolution), BUT the public trade log (`data-api.polymarket.com/trades?market=<conditionId>&limit=1000&offset=N`) still has every
+  trade with price and timestamp: Chiefs-Bills ML 1,356 pre-kickoff trades (first Oct 26 at 68c, last Nov 2 21:24Z at 56c), spread -2.5 91 trades (last 50c), -1.5 21 (last 53c),
+  O/U 52.5 176 (51c), O/U 50.5 133 (56c). So the 2025 season's Polymarket closing (and mid-week) prices for main AND alternate lines can be rebuilt for free -- the missing piece for
+  "do bought lines make money at Polymarket's price" and for Polymarket-vs-books timing. Size: ~270 games x ~15 markets x 1-4 calls = a few thousand calls. Not built (a separate job);
+  order-book depth is still not archived anywhere, so keep `pin30` running.
+- Clock note: the sandbox clock only advances while a command runs (it read 14:13-14:19 for the first pass), so "10 minutes" cannot be measured with `date` here; the second pass went
+  topic by topic until each source was exhausted (every check above). Nothing passed the bar to build; the next real steps are the Odds API month (5) and the Polymarket trade backfill (8).
