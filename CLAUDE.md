@@ -868,3 +868,25 @@ Tested and NOT added (made it worse):
   (the chooser used to fill that hole); it now passes `model` / `modelUp` into `buildCard`, so the model-side PICK is saved at kickoff like the others. Dry run without the chooser / table:
   passes, artifact keys builtAt / checks / early / moveT / season / tag / upgrade, marginErr 9.944 vs line 9.903, totalErr 10.455 vs line 10.456.
 - **Open for the owner (not built):** when no line reaches 56% the card still names the best one; on history that fallback said 55.7% and won 43.2% (37 games) -- show "none" instead?
+
+## RESEARCH 10/16 afternoon (owner: "10 minutes each" on the 8 follow-ups; nothing built -- data-limited, all findings below)
+
+- **Pick timing (live):** week 6, 18 spread rule picks first shown Mon-Thu; by Thursday noon Pinnacle had moved TOWARD the pick in 13, against in 3, flat in 2 (BEAT THE picks
+  mostly toward). No grades yet. The week-5 audit has no first-shown rows (the recorder started 10/14), so the "when did it fire" study needs weeks 6-10.
+- **TD 40-45% bucket:** this season 6 of 26 scored (23%, market said 35%) -- but walk-forward history 2021-25 says 44.4% / scored 42.0% on 1,446 players: calibrated. 26 players
+  is noise (1 standard error ~10 points). Nothing to fix. Side finding: Best TD picks (55%+) are 380 RBs (65.0% scored) and 15 WRs (46.7%) -- WRs rarely qualify and run cold.
+- **Fallback PICK w/ POINTS (no line reaches 56%), unshrunk replay 2014-25, 60 games:** the card's best row won 43.3% (favorite rows 50.0% on 40, underdog rows 30.0% on 20);
+  in those same games the favorite at 2 points won 56.7% and the main-line favorite 55.0%, the underdog side 45-48%. 60 games, 1 cut -- not a rule. Owner keeps the fallback.
+- **Alternate prices (this week's cards, 52 priced picks):** PICK w/ POINTS averages 58.7% win rate at 60c = -$2.4 per $100 expected (positive in 5 of 26; green ones -$2.2);
+  PICK at the main line 50.8% at 51c = +$0.5 (CHI -1.5 BOUNCE BACK 61.3% at 48c is the one big edge). Polymarket prices the bought points close to history -- the points win more
+  often but pay less than they win. Owner's rule stands (judge by win rate); money per pick is recorded from week 6 on.
+- **Odds API historical odds (paid):** third-party pages (the official site is blocked from the sandbox): plans ~$30/mo for 20K credits, 100K at $59; historical snapshots back to 2020,
+  a historical call costs 10x a live one per market and region. One snapshot returns every NFL game at that time, so 6 snapshots a week x 18 weeks x 6 seasons ~ 650 calls ~ 13K credits:
+  ONE month of the $30 plan would answer "Wednesday vs Sunday" for every rule. Best buy on the list; verify the plan page first.
+- **Betting splits (paid):** SharpAPI = DraftKings + Circa bets % / handle %, refreshed every 5 min, history kept only 48 h, Pro plan $229/mo. Sportradar = enterprise, sales call.
+  No free archive exists. History test on MGM data found nothing, so not worth $229.
+- **Injury posting times:** nflverse's 2025 injury file has NO date_modified column (the dictionary lists it, the file doesn't). ESPN's free feed
+  (site.api.espn.com/apis/site/v2/sports/football/nfl/injuries) carries a `date` per item (e.g. "2026-10-15T23:41Z ... remained sidelined at practice Thursday") -- a free live source of
+  when news posted; the app already records starters-out changes with times (`inj:`), so the live study is covered. Past seasons stay untestable.
+- **Polymarket history:** prices-history exists (we already use it; back to Aug 2026); order-book depth is NOT archived by Polymarket -- our 30-min `pin30` log is the only record. Keep it running.
+- Timing: the 8 topics took ~25 min total, not 80 -- each stopped when the data ran out (history files have no timestamps; live picks aren't graded yet). Nothing passed the bar to build.
