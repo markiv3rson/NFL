@@ -254,10 +254,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     && !floorDogPick(G, -6.5, { away: { prevPts: 7 }, home: { prevPts: 27 } }) && !floorDogPick(G, -6.5, { away: { prevPts: 3 }, home: { prevPts: 0 } }) && !floorDogPick(G, -6.5, null),
     "bounce back dog: scored <=3 last game AND underdog now -> that team; favorite / 7 pts / both low -> nothing", [a, b]); }
 { const { bounceBackPick } = await import("../lib/stack.js"); const G = { home: "LA", away: "BUF", key: "BUF @ LA" };
-  const a = bounceBackPick(G, -3.5, { away: { prevAts: -24 } }), b = bounceBackPick(G, 2.5, { away: { prevAts: -21 } });
-  ok(a && a.pick === "BUF +3.5" && a.hit === 57.2 && b && b.pick === "BUF -2.5" && !bounceBackPick(G, -3.5, { away: { prevAts: -20.5 } })
+  const a = bounceBackPick(G, -3.5, { away: { prevAts: -24 } }), b = bounceBackPick(G, 2.5, { away: { prevAts: -28 } });
+  ok(a && a.pick === "BUF +3.5" && a.hit === 61.3 && b && b.pick === "BUF -2.5" && !bounceBackPick(G, -3.5, { away: { prevAts: -23.5 } })
     && !bounceBackPick(G, -3.5, { home: { prevAts: -30 }, away: { prevAts: 3 } }) && !bounceBackPick(G, -3.5, null) && !bounceBackPick(G, null, { away: { prevAts: -30 } }),
-    "bounce back: road team missed the spread by 21+ last game -> road team at the current line; home team / under 21 -> nothing", [a, b]); }
+    "bounce back: road team missed the spread by 24+ last game -> road team at the current line; home team / under 24 -> nothing", [a, b]); }
 { const { totalMovePick } = await import("../lib/stack.js"), { predictTotalMove, UP_MOVE } = await import("../lib/upgrade.js"); const G = { home: "LA", away: "BUF", key: "BUF @ LA" };
   const mv = (move) => ({ move, thr20: 0.72, thr10: 0.97, hit20: 56.8, n20: 507, hit10: 61.9, n10: 252 });
   const a = totalMovePick(G, mv(1.2), 47.5, 47.5), b = totalMovePick(G, mv(-0.8), 47.5, 47.5), c = totalMovePick(G, mv(0.5), 47.5, 47.5), d = totalMovePick(G, mv(1.2), 48.5, 47.5);
