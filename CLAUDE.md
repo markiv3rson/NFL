@@ -26,6 +26,7 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 - **Live edges (all that passed testing):** key-number points (BEAT THE), LINE MOVE, TOTAL MOVE, INJURY, BOUNCE BACK (road team missed by 24+ since 10/16, 61.3% on 261), BOUNCE BACK DOG.
 - **Parlay chance (10/16):** `lib/combo.js comboChance` shrinks the product of the positive same-game links (lift product ^0.75, `LIFT_POWER`); drags (TD with the Under, TD vs the other team's cover) stay full. Measured 2021-25 with the walk-forward TD model: ML + Over + top TD said 22.9% hit 20.9% (now 20.9), ML + Over + 2 TDs said 12.4% hit 9.6% (now 10.3), style + Under said 2.6% hit 2.0%.
 - **Game model (10/16):** ridge strength `UP_ALPHA = 3000` in `weekly_rebuild.py` (was 30; walk-forward margin error 9.917 -> 9.793, total 10.541 -> 10.409; dry run passed: marginErr 9.944 vs line 9.903, totalErr 10.455 vs line 10.456). `BUILD_TAG` there + `app.py`: Railway rebuilds on deploy when the saved build has a different tag, so a merge brings the new model live the same hour (no Tuesday wait). The game model alone and the chooser are about a coin flip. Week 6 is the first real live test.
+- **TD model vs Polymarket (10/16):** `railway-model-service/data/poly_td_closes.csv` + `tests/poly_td_replay.mjs`: 2026 weeks 3-6 Best TD picks (55%+) 12-2 at 63c; all priced players Brier 0.184 vs market 0.188 -- the TD model beats the market so far. INJURY EARLY shadow tracker live (Models -> Tracked angles). Model bets list has time-slot headers; every parlay leg has a logo; computer screens use the full width; finished cards go green when the PICK won; FINAL under the score on the tile.
 - **Polymarket real prices (10/16):** `railway-model-service/data/poly_closes.csv` holds every 2025-26 game market's real closing / early prices (trade log); `tests/poly_replay.mjs` replays the card on them with money per $100. Result: bought points cost about what they win (PICK w/ POINTS spreads 53.5% at 59c = -9.5 per $100, totals 53.6% = -7.3; 1-point total picks 40.2%); nothing changed in the app -- see POLYMARKET REAL-PRICE REPLAY.
 - **Process:** nothing is built until the owner types "build now"; merge only on "merge now"; even read-only checks wait for the owner's go.
 - **Game page layout (10/16, owner's sketches, built + merged):** the section title sits OUTSIDE the card on its own row with the pills next to it -- "SPREAD & ML" + `Injuries N ▾` + `History ▾`, "TOTALS" + `History ▾` (`secRow` / `headPills`; the drop-downs still open at the top of the card, `headDrops`). Inside each card: `MARKET` header, then SPORTSBOOK (left) | POLYMARKET (right) (`.mk`), then the `MODEL` header and the model lines (Model number, PICK, More) FULL WIDTH under it -- no purple box, no line between market and model, no green "live" dot. Touchdowns = ONE card titled "ANYTIME TD" (`tdTop3`): the top 3 of each team in one list ranked best to worst, team logo next to each name, no team titles; the "First TD pick" line (and the finished game's touchdown line) at the bottom of that card (`.tdfoot`). Same-game parlays below untouched. Sketches: claude.ai/artifact/6D4NwGUfdaHu3xkyaYGSMh.
@@ -912,6 +913,32 @@ Tested and NOT added (made it worse):
   F. Keep as is: TD model, totals table, BOUNCE BACK, BOUNCE BACK DOG, the card layout and colors.
 - Checked and NOT a bug: SEA @ DEN's PICK first showed "DEN +2.5 · 39%" on Wednesday -- that was the old day/night table (Thursday night game) before the split was removed 10/15;
   at kickoff it read 47.7% (unshrunk) and today's table says 49.1%.
+
+## BUILD 10/16 night (owner: "c d e f build now" + layout asks + "build everything ive asked now. build now. merge now"; merged)
+
+- **Model bets list (Bets -> Model bets):** a small header between the time slots, in kickoff order, the blocks unchanged (`labSlot` / `.labslot` in `public/app.js`): EARLY (Sunday before 9 AM
+  your time, London), 10 AM GAMES, 1 PM GAMES, PRIME TIME · THU / SUN / MON (Sunday 4 PM+ and every weeknight). The "Diff" list (parlays across games) has no headers.
+- **Logos on every parlay leg** (game page same-game box, Model bets, Diff): a team leg (ML, spread, TD) shows its team's logo, a total leg shows BOTH teams' logos (`legLogoLabel`,
+  `bothLogos`). Checked in the DOM: 17 of 17 legs on a game page, 28 / 56 / 56 / 12 on the Model bets lists.
+- **Computer screen (1100px and wider):** the page uses the whole width (`.wrap max-width:none`), Game Lines tiles 4 across (5 at 1600px+), the docked chip strips (Alerts kinds, My bets
+  weeks, Model bets sub-tabs) are centered. Under 1100px (iPhone) nothing changed. The Alerts chips sat bottom-left on a computer because the strip was left-aligned.
+- **Finished game cards:** the card border and the GAME FINISHED cover turn GREEN when the PICK locked at kickoff won, stay red when it lost (`finClass`, `.card.fin.won`, `.cover.won`);
+  each card by its own PICK (SEA @ DEN: both green).
+- **Game Lines tile of a finished game:** FINAL sits under the score (`.lv dim`), the foot shows the day and time like every other tile.
+- **c. INJURY EARLY shadow** (`lib/tracked.js recordInjEarly`, called from the slate build every 30 min, weeks 4+): the first build that sees exactly one team with its starting QB /
+  2+ DBs / 2+ linemen out saves the HEALTHY team at Polymarket's line of that moment (`<game>|injearly`, once per game), whether or not the line has moved -- the INJURY rule's edge is
+  60% at the opening line and gone after the move. Graded with the other tracked legs; Models -> Tracked angles row "INJURY EARLY (shadow)". Not a pick. Tested.
+- **d. TD model vs REAL Polymarket TD prices** (`railway-model-service/data/poly_td_closes.csv`, 3,231 anytime-TD markets from the trade log; `tests/poly_td_replay.mjs`).
+  2025: Polymarket listed anytime-TD markets only from 11/30 (weeks 13-18, 10 players a game) and almost nobody traded them (6 markets with a trade in the last 2 hours) -> 2025 is a
+  CALIBRATION check only (walk-forward, trained 2022-24, all 4,544 names matched): model 55%+ 25-15 = 62.5% (said 60.1), 45-54 47.6% (said 49.8), 35-44 33.7% (39.4), 25-34 30.7% (29.3),
+  under 25 21.4% (18.3). 2026 weeks 3-6 (the app's own kickoff numbers vs the trade-log close, 275 priced players): all players 30.5% hit (said 27.3) at 31c = +2.0 per $100, Brier model
+  0.184 vs market 0.188; **Best TD picks (55%+) 12-2 = 85.7% at 63c = +34.9 per $100** (small); 45-54 10-10 at 53c (-9.0); 35-44 17-21 = 44.7% at 43c (+7.3); 25-34 27.7% (-12.5);
+  under 25 19.6% at 19c (+5.5). Longshots the model likes 10+ points more than the price: 0-5. Players the model likes 10+ points LESS than the price: 5-19 = 20.8% at 43c (-49.4 per $100
+  for whoever buys them). The TD model is the one model that beats the market so far; the 55%+ list is the bet.
+- **e. Favorite BEAT THE tiers -- watch:** `ruleRecords` now also pools the live BEAT THE picks by side ("BEAT THE · favorite tiers" / "· underdog tiers", the pick's line sign), so the
+  Tuesday report card (`npm run accuracy`, LIVE per green rule) shows both with the BELOW flag; re-check after week 8 (real-line replay: favorites 10-13, underdogs 61-45).
+- **f.** TD model, totals table, BOUNCE BACK, BOUNCE BACK DOG, card layout and colors: unchanged.
+- Tests: 329 site checks, grading audit, service checks, accuracy; browser pass phone + 1440px (0 errors), DOM logo count, screenshots of every changed screen.
 
 ## POLYMARKET REAL-PRICE REPLAY (10/16, owner: "Build now number one ... auto math, auto calibration, everything"; work branch, NOT merged until "merge now")
 

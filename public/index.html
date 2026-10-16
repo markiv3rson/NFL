@@ -65,7 +65,7 @@
     .panel { display:none; } .panel.on { display:block; }
   .grid { display:grid; grid-template-columns:1fr; gap:10px; margin-top:10px; }
   .card { background:var(--card); border:1px solid rgba(255,255,255,.28); border-radius:14px; padding:9px 12px; position:relative; overflow:hidden; -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); }
-  .card.fin { border-color:rgba(255,107,107,.6); }
+  .card.fin { border-color:rgba(255,107,107,.6); } .card.fin.won { border-color:rgba(74,222,128,.6); }   /* 10/16 (owner): green when the locked PICK won */
   .gh { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:16px; font-weight:700; }
   .badge { font-size:10.5px; font-weight:700; padding:1px 8px; border-radius:999px; background:rgba(242,207,102,.14); color:var(--gold); }
   .sub { font-size:12px; color:var(--faint); margin-top:2px; }
@@ -96,7 +96,7 @@
   .warn-t { color:var(--yellow); }
   .live { width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); display:inline-block; margin-right:4px; vertical-align:1px; }
   .cover { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; text-align:center; background:rgba(255,107,107,.1); padding:10px; }
-  .cover b { color:var(--red); font-size:15px; letter-spacing:.08em; }
+  .cover b { color:var(--red); font-size:15px; letter-spacing:.08em; } .cover.won { background:rgba(74,222,128,.1); } .cover.won b { color:var(--green); }
   .fin .inner { opacity:.22; }
   .sec { padding:10px 0 8px; border-top:1px solid var(--line2); } .sec:first-child { border-top:none; padding-top:2px; }
   .sh { font-size:12.5px; font-weight:800; color:#d3d8e0; letter-spacing:.06em; margin-bottom:4px; text-transform:uppercase; }
@@ -129,6 +129,10 @@
   /* tiles */
   .tiles { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:10px; }
   @media (min-width:760px) { .tiles { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+  /* 10/16 (owner): on a computer the page uses the whole screen; the phone layout (under 1100px) is unchanged */
+  @media (min-width:1100px) { .wrap { max-width:none; padding-left:28px; padding-right:28px; } .tiles { grid-template-columns:repeat(4,minmax(0,1fr)); } .chips.dock { justify-content:center; } }
+  @media (min-width:1600px) { .tiles { grid-template-columns:repeat(5,minmax(0,1fr)); } }
+  .labslot { grid-column:1 / -1; margin:14px 2px 0; }
   .tile { position:relative; overflow:hidden; background:var(--card); border:1px solid rgba(255,255,255,.28); border-radius:16px; padding:12px; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.3); text-align:left; font:inherit; color:inherit; }
   .tile .mid.lvmid { display:inline-flex; flex-direction:column; align-items:center; line-height:1.15; } .tile .sr { white-space:nowrap; } .tile .lv { font-size:10.5px; font-weight:800; letter-spacing:.04em; margin-top:2px; } .tile .lv.r { color:var(--red); }
   .dtop .s3.r { color:var(--red); }
