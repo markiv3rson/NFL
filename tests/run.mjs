@@ -391,10 +391,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       combos: [{ pick: "ATL +2.5", hit: 58.1, line: 2.5, why: "BOUNCE BACK: x" }, { pick: "CHI -2.5", hit: 57, line: -2.5, why: "BOUNCE BACK: y" }, { pick: "Under 49.5", hit: 52.1, line: 49.5, why: "z" }],
       td: [{ player: "Bi.Robinson", team: "ATL", fair: 62, price: null }, { player: "D.Swift", team: "CHI", fair: 49, price: 0.45 }, { player: "Hurt Guy", team: "CHI", fair: 70, injury: "Questionable" }] };
     const x = sameGameParlays(g);
-    ok(x.best && x.best.legs.map((l) => l.label).join() === "Bi.Robinson TD,ATL +2.5" && Math.abs(x.best.prob - 0.429) < 0.002, "same-game: best = Bijan TD + ATL +2.5 (they help each other: 62% x 58.1% x 1.19)");
+    ok(x.best && x.best.legs.map((l) => l.label).join() === "Bi.Robinson TD,ATL +2.5" && Math.abs(x.best.prob - 0.62 * 0.581 * Math.pow(1.19, 0.75)) < 0.002, "same-game: best = Bijan TD + ATL +2.5 (they help each other: 62% x 58.1% x 1.19^0.75, 10/16)");
     ok(x.style && x.style.legs.map((l) => l.label).join() === "ATL +2.5,Under 49.5,D.Swift TD,Bi.Robinson TD" && x.style.pay == null, "same-game: your style = spread + total + top TD each team (a Questionable player skipped; unpriced TD -> no payout shown)");
     const y = sameGameParlays({ ...g, combos: [{ pick: "Under 49.5", hit: 62, line: 49.5, why: "TOTAL MOVE: t" }], td: [{ player: "Bi.Robinson", team: "ATL", fair: 64 }] });
-    ok(y.best && y.best.strategy === "sgp_best" && y.best.legs.map((l) => l.label).join() === "Bi.Robinson TD,Under 49.5" && Math.abs(y.best.prob - 0.64 * 0.62 * 0.77) < 0.002, "same-game: a TD with the Under is kept (owner: test everything); the chance counts the 0.77 link");
+    ok(y.best && y.best.strategy === "sgp_best" && y.best.legs.map((l) => l.label).join() === "Bi.Robinson TD,Under 49.5" && Math.abs(y.best.prob - 0.64 * 0.62 * Math.pow(0.77, 0.75)) < 0.002, "same-game: a TD with the Under is kept (owner: test everything); the chance counts the 0.77 link (^0.75, 10/16)");
     const z = sameGameParlays({ ...g, poly: { ...g.poly, spread: { homeSpread: 2.5, home: 0.5, away: 0.5 } }, combos: [{ pick: "ATL +2.5", hit: 51, line: 2.5, why: "x" }, { pick: "Under 49.5", hit: 52, line: 49.5, why: "y" }], td: [{ player: "Bi.Robinson", team: "ATL", fair: 48 }] });
     ok(z.best && z.best.strategy === "sgp_best_fill" && z.filled && z.best.legs.map((l) => l.label).join() === "Bi.Robinson TD,ATL +2.5", "same-game: no strong legs -> 2 legs filled (no moneyline here: a TD, then the same team's spread that goes with it), its own record");
     { // 10/14 fix: the filler never adds a leg that works against one already in (DEN +3.5 + SEA to win = SEA by 1-3 only)
@@ -852,7 +852,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const td = { game: "A @ B", kind: "td", team: "B", prob: 0.5 }, cov = { game: "A @ B", kind: "spread", team: "B", prob: 0.5 }, opp = { game: "A @ B", kind: "spread", team: "A", prob: 0.5 },
       ov = { game: "A @ B", kind: "total", side: "over", prob: 0.5 }, un = { game: "A @ B", kind: "total", side: "under", prob: 0.5 }, other = { game: "C @ D", kind: "spread", team: "D", prob: 0.5 };
     ok(pairLift(td, cov) === 1.19 && pairLift(cov, td) === 1.19 && pairLift(td, opp) === 0.81 && pairLift(td, ov) === 1.23 && pairLift(td, un) === 0.77 && pairLift(cov, ov) === 1 && pairLift(td, other) === 1, "combo links: TD with cover/Over up, with opponent/Under down, other pairs unrelated");
-    ok(Math.abs(comboChance([td, cov, ov]) - 0.125 * 1.19 * 1.23) < 1e-12 && comboChance([td, { ...cov, prob: null }]) === null && comboChance([{ ...td, prob: 0.9 }, { ...cov, prob: 0.9 }]) <= 0.9, "combo chance: product times same-game links, capped at the least likely leg");
+    ok(Math.abs(comboChance([td, cov, ov]) - 0.125 * Math.pow(1.19 * 1.23, 0.75)) < 1e-12 && Math.abs(comboChance([td, cov]) - 0.25 * Math.pow(1.19, 0.75)) < 1e-12 && comboChance([td, { ...cov, prob: null }]) === null && comboChance([{ ...td, prob: 0.9 }, { ...cov, prob: 0.9 }]) <= 0.9, "combo chance: product times the same-game touchdown links shrunk by the 0.75 power (10/16), capped at the least likely leg");
   }
   { // weakest leg of an open combo (10/9)
     const L = (n, p, m) => ({ kind: "total", side: "over", line: n, price: p, modelP: m, result: "pending" });
