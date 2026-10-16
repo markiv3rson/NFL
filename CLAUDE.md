@@ -961,6 +961,22 @@ Tested and NOT added (made it worse):
 - **Model bets slot headers** carry the real kickoff times ("1 PM GAMES · Sun 1:05 PM · Sun 1:25 PM") and a line under them (`.labslot`).
 - Nothing else found: tests, grading audit, accuracy, browser pass (phone + computer) all clean.
 
+## PASS 4 (10/16, owner: "spend 15 minutes looking at everything over and over ... fix it"; merged)
+
+- **Numbers correlate (live week-6 slate, 13 unplayed games, scripted):** every PICK's % equals its main row; every PICK w/ POINTS is a listed row with the same % and price and is
+  the fewest points reaching 56%; every parlay leg equals its source (card PICK / PICK w/ POINTS, TD list % and price, Polymarket no-vig moneyline); every parlay chance is at or
+  under its weakest leg; every payout = stake x the legs' prices multiplied; Diff chances = the legs' product; every game has both cards, both PICK w/ POINTS, 3+ rows, all five
+  same-game parlays, top 3 TD per team, injuries, a win %. Models tab TD bands recomputed from the results file match to the player. Bets week-6 profit +$41.66 = the two sold
+  combos. By design, not errors: the 3- and 4-leg same-game parlays carry "Over · 50%" (tested shape, not the card's total pick); the tile's 90% (win chance from the spread) and
+  the Diff parlay's "LA ML 87%" (Polymarket's no-vig moneyline) are different, both meant.
+- **FIXED -- the INJURY family could not see ESPN's "ruled out" news:** starters-out counts (`situationFor` -> `startersOut`) read only the official report, which marks a player Out
+  on Friday; Thursday it still said "DNP" for Hurts while ESPN, the alert and the model already had him out. INJURY and INJURY EARLY therefore saw nothing until the line had moved.
+  Now ESPN Out / Doubtful entries posted after the team's last game join the list as "Out" (`lib/paper.js withEspnOuts`, same rule as the model rerun and the TD tab). Tested.
+- **TD prices confirmed live:** the first 30-min pull on the new code filled B.Tuten, K.Williams, P.Nacua, J.Cook, J.Williams, D.Swift; every parlay on those games shows its payout.
+  Only the Monday game (WAS @ SF) waits for Polymarket to post its markets.
+- Seen, left alone: the Alerts kind "LINE MOVE" (a sportsbook line change) shares its name with the LINE MOVE rule (a pick). The MONEYLINE tile is the favorite-at-kickoff record
+  (16-13), the results file's "SEA ML" rows are the model's own moneyline side (24-21) -- two different records, both labeled.
+
 ## POLYMARKET REAL-PRICE REPLAY (10/16, owner: "Build now number one ... auto math, auto calibration, everything"; work branch, NOT merged until "merge now")
 
 - **Data (new, `railway-model-service/data/poly_closes.csv`, 9,425 rows):** every 2025 + 2026 regular-season Polymarket game market (spreads, totals, moneyline; 357 events,
