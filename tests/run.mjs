@@ -486,6 +486,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(s3.n === 1 && s3.hit === 0 && s3.roi === -1 && t3.n === 0 && t3.hit === null, "parlay history: a lost leg loses the parlay; top-3 needs three games at 75%+ no-vig");
     ok(s1.periods.length === 3 && s1.periods[0].n === 3 && s1.periods[1].n === 0 && s1.periods[2].n === 0, "parlay history: split into the three periods");
     ok(parlayHistory([]).every((p) => p.n === 0), "parlay history: empty schedule gives empty rows"); }
+  { // 10/16 audit: an account position with 0 / negative shares and no settlement or sale is not a bet (it showed "pays -$17.00")
+    const { isHeld } = await import("../lib/mybets.js");
+    ok(!isHeld(-17, null, null) && !isHeld(0, null, null) && isHeld(10, null, null) && isHeld(-17, { win: false, pl: -7.5 }, null) && isHeld(0, null, { pl: 3 }), "account bets: negative / zero shares are not a bet unless settled or sold"); }
   { // old combo legs (10/14): legs found anywhere in a reply; legs saved at sync are used after Polymarket drops them
     const { findLegs } = await import("../pages/api/combolegs.js"); const { saveComboLegs, comboPicks } = await import("../lib/mybets.js"); const { getJSON } = await import("../lib/redis.js"); const R = globalThis.__TEST_REDIS__;
     const legs = [{ slug: "asc-nfl-sea-den-2026-10-15-neg-3pt5", eventSlug: "nfl-sea-den-2026-10-15", outcome: "+3.50", team: { abbreviation: "den", logo: "x" }, state: "" }, { slug: "tsc-nfl-sea-den-2026-10-15-total-40pt5", eventSlug: "nfl-sea-den-2026-10-15", outcome: "Under", state: "MARKET_STATE_WON" }];

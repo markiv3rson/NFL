@@ -89,7 +89,6 @@ def features(season, pos):
                                   t=('tgt','sum'), c=('car','sum'), td=('td','sum'))
     for c in ['rz','rzc','i5','i10','t','c','td']: pr[c+'_pg'] = pr[c]/pr.g
     pg = pg.sort_values('week')
-    rows=[]
     # season-to-date (strictly before this week) player rates
     cols=['tgt','car','rz_tgt','i10_tgt','rz_car','i5_car','td']
     pg = pg.sort_values(['pid','week'])
