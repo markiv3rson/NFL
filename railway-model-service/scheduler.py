@@ -3,7 +3,7 @@ Snapshot scheduler (runs inside the Railway service, 24/7).
 Calls the site's /api/snapshot on Mark's schedule, Pacific time:
   Sunday:  5 AM, 8 AM, 9:30 AM, 12 PM, 4 PM   (Polymarket + sportsbooks)
   Mon-Sat: 7 AM, 3 PM, 7 PM                   (Polymarket + sportsbooks)
-  Every 30 min (:10 and :40): Pinnacle lines + Polymarket's at the same moment (/api/pinnaclepull, recorded only)
+  Every 15 min (:10 / :25 / :40 / :55): Pinnacle lines + Polymarket's lines, alternates and TD prices at the same moment (/api/pinnaclepull)
   Every 30 min (:15 and :45): build the slate so every pick shown gets its first-shown record (/api/slate)
   Every kickoff: 3 minutes before -> closing-line snapshot (Polymarket; books reused)
   Every distinct kickoff wave: ~60 min before -> model rerun (catches that wave's active/inactive news)
@@ -215,8 +215,9 @@ def _loop():
                 if tag not in fired and _bg("snapshot", _call, "/api/snapshot?src=schedule" + bk, tries=2): fired[tag] = time.time()
             # Pinnacle every 30 min (10/13, owner): Pinnacle moves first; saved with Polymarket's line at the same moment so "Pinnacle moved,
             # Polymarket hasn't" can be tested. Free feed, no credits. Recorded only.
-            if now_pt.minute % 30 >= 10 and now_pt.minute % 30 < 15:
-                tag = f"p:{now_pt:%Y-%m-%d-%H}-{now_pt.minute // 30}"
+            # 10/16 (owner): every 15 min (:10 / :25 / :40 / :55) -- the pull also refreshes the Polymarket TD prices and alternate lines
+            if now_pt.minute % 15 >= 10 and now_pt.minute % 15 < 15:
+                tag = f"p:{now_pt:%Y-%m-%d-%H}-{now_pt.minute // 15}"
                 if tag not in fired and _bg("pinnacle", _call, "/api/pinnaclepull", tries=1, timeout=90): fired[tag] = time.time()
             # 10/14 fix: build the slate every 30 min (:15 / :45, right after the Pinnacle pull). Picks are saved as "first shown"
             # (stackfirst:) only when the slate is built, so a timing pick that came and went while nobody had the app open was never
