@@ -23,12 +23,15 @@ function status(g) {
   if (g.started) return '<span class="r">Live · locked</span>';
   return "not started";
 }
-function headButtons(g, id, extra = "", noWarn = false) {
+// 10/16 (owner): the Injuries / History pills sit on the section-title line (SPREAD & ML, TOTALS), outside the card; the drop-downs open at the top of the card
+function headPills(g, id, noWarn = false) {
   const n = noWarn ? 0 : (g.injuries || []).length;
-  return `<div class="top"><div><div class="gh">${matchup(g)}${g.badge ? `<span class="badge">${esc(g.badge)}</span>` : ""}</div><div class="sub">${tm(g.kickoff)} · ${status(g)}${extra}</div>` +
-    (!noWarn && g.qb && g.qb.length && !g.final ? `<div class="warn">⚠ ${esc(g.qb.join(" · "))} · ${qbAdjusted(g) ? "model adjusted" : "not in the model yet"}</div>` : "") +
-    (!noWarn && g.dataCheck ? `<div class="warn">⚠ ${esc(g.dataCheck)}</div>` : "") + `</div>` +
-    `<div class="btns" style="margin-top:0;flex-shrink:0">${n ? `<button class="tag" data-drop="inj-${id}">Injuries ${n} ▾</button>` : ""}<button class="tag" data-drop="his-${id}">History ▾</button></div></div>` +
+  return `<div class="btns">${n ? `<button class="tag" data-drop="inj-${id}">Injuries ${n} ▾</button>` : ""}<button class="tag" data-drop="his-${id}">History ▾</button></div>`;
+}
+const secRow = (title, pills = "") => `<div class="trow"><div class="sh">${title}</div>${pills}</div>`;
+function headDrops(g, id, noWarn = false) {
+  return (!noWarn && g.qb && g.qb.length && !g.final ? `<div class="warn">⚠ ${esc(g.qb.join(" · "))} · ${qbAdjusted(g) ? "model adjusted" : "not in the model yet"}</div>` : "") +
+    (!noWarn && g.dataCheck ? `<div class="warn">⚠ ${esc(g.dataCheck)}</div>` : "") +
     `<div class="drop" id="inj-${id}"><div class="s" style="margin-bottom:4px">Official report${(() => { const w = [...new Set((g.injuries || []).map((x) => x.week))]; return w.length ? ` · Week ${w.join("/")}` + (w.every((x) => Number(x) !== Number(S.week)) ? " (last week's)" : "") : ""; })()} · updated ${S.injuriesUpdated ? hm(S.injuriesUpdated) : "—"}</div>` +
     (g.injuries || []).map((x) => `<div class="drow"><span>${injBadge(x.team)}${esc(x.name)} <span class="dim">${esc(x.pos || "")} · ${x.team}</span></span><span class="${x.shown ? "dim" : /out/i.test(x.status) ? "r" : /doubt/i.test(x.status) ? "r" : "y"}">${esc(x.shown || x.status)}</span></div>`).join("") + `</div>` +
     `<div class="drop" id="his-${id}">${historyRows(g)}</div>`;
@@ -51,7 +54,6 @@ function historyRows(g) {
     rows.slice().reverse().map((r, i) => `<div class="drow"><span>${hm(r.from.t)}${r.from.src === "kickoff" ? " 🔒" : ""}` +
       `${r.last !== r.from ? `<br><span class="dim">last checked ${hm(r.last.t)}</span>` : ""}${i === rows.length - 1 ? '<br><span class="dim">opening line</span>' : ""}</span>${cell(r.from.poly)}</div>`).join("");
 }
-const HDR = `<div class="hd">MARKET</div><div class="hd hm">MODEL</div>`;
 const qbAdjusted = (g) => !!(g.model && g.model.inj && [g.model.inj.home, g.model.inj.away].some((t) => t && (t.players || []).some((q) => q.group === "QB1")));
 const lastName = (n) => String(n || "").replace(/\s+(Jr\.?|Sr\.?|II|III|IV)$/i, "").split(" ").slice(-1)[0];
 // "Injury adjustment: GB -1.6 (Reed out, Banks out). ATL 0."  (only when the estimate actually moved something)
@@ -133,7 +135,7 @@ function cardBody(g, kind, C) {
 }
 function leanCell(g, kind) {
   let p = kind === "total" ? g.totalPick : g.spreadPick;
-  const wrap = (inner) => `<div class="modelcell" style="grid-row:span 2">${inner}</div>`;   // 10/15 (owner): no "MODEL ESTIMATE" title on the card
+  const wrap = (inner) => `<div class="modelcell">${inner}</div>`;   // 10/15 (owner): no "MODEL ESTIMATE" title; 10/16 (owner): no box -- the model lines sit under the market, full width
   if (!p && g.early && g.model && g.model.homeMargin != null) {   // next week before any market line: the model's own numbers, labeled
     const m = g.model, side = m.homeMargin >= 0 ? `${g.home} -${m.homeMargin.toFixed(1)}` : `${g.away} -${(-m.homeMargin).toFixed(1)}`, wp = m.homeWinPct != null ? Math.round(m.homeWinPct >= 50 ? m.homeWinPct : 100 - m.homeWinPct) : null;
     return wrap(`${earlyNote(g)}<div style="margin-top:6px"><b class="mod">${kind === "total" ? `Total ${m.total.toFixed(1)}` : side}</b></div>` +
@@ -237,35 +239,31 @@ function changedBox() {
 function gameCard(g, i) {
   {
     const lv = liveFor(g), p = (lv && lv.poly) || g.poly || {}, b = g.books || {};   // live numbers for a game in progress; model and kickoff line stay locked
-    const live = !g.started && p.spread ? '<span class="live"></span>' : "";
     const row = (k, v, mt, c) => `<div class="prl${mt ? " mt" : ""}"><span class="s">${k}</span><span class="${c || ""}">${v}</span></div>`;
-    const poly = liveHead(g, lv) + (p.spread || p.ml ? `${live}` +
+    const poly = liveHead(g, lv) + (p.spread || p.ml ?
       (p.spread ? row("Spread", `${g.home} ${sgn(p.spread.homeSpread)} ${odds(toAmerican(p.spread.home))}`, false, "mkt") + row("", `${g.away} ${sgn(-p.spread.homeSpread)} ${odds(toAmerican(p.spread.away))}`, false, "mkt") : "") +
       (p.ml ? row("Moneyline", `${g.home} ${odds(toAmerican(p.ml.home))}`, !!p.spread, "mlc") + row("", `${g.away} ${odds(toAmerican(p.ml.away))}`, false, "mlc") : "") : dash) + liveTail(g, lv);
-    // Tested angle (9/30): home favorites of 9.5+ on the moneyline, the one game-line angle that held up on unseen years
-    const hsNow = p.spread ? p.spread.homeSpread : b.spread ? b.spread.homeSpread : null;
-    return `<div class="card${g.final ? " fin" : ""}"><div class="inner">${headButtons(g, "l" + i)}<div class="f">${HDR}` +
+    return secRow("SPREAD &amp; ML", headPills(g, "l" + i)) + `<div class="card${g.final ? " fin" : ""}" style="margin-top:10px"><div class="inner">${headDrops(g, "l" + i)}<div class="hd">MARKET</div><div class="mk">` +
       `<div><div class="k">SPORTSBOOK</div>${b.spread ? `${g.home} ${sgn(b.spread.homeSpread)} ${odds(b.spread.home.odds)}<div class="s">fair ${g.home} ${odds(toAmerican(b.spread.home.fair))} / ${g.away} ${odds(toAmerican(b.spread.away.fair))}</div>` : dash}</div>` +
-      leanCell(g, "spread") +
       `<div><div class="k">${pmLogo()}POLYMARKET</div>${poly}</div>` +
-      `</div></div>${cover(g, g.spreadPick)}</div>`;
+      `</div><div class="hd hm">MODEL</div>` + leanCell(g, "spread") +
+      `</div>${cover(g, g.spreadPick)}</div>`;
   }
 }
 // ---------- Totals ----------
 function totalCard(g, i) {
   {
     const lv = liveFor(g), p = (lv && lv.poly) || g.poly || {}, b = g.books || {};
-    const live = !g.started && p.total ? '<span class="live"></span>' : "";
     const row = (k, v) => `<div class="prl"><span class="s">${k}</span><span class="mkt">${v}</span></div>`;
-    const poly = liveHead(g, lv, "total") + (p.total ? `${live}` + row(`Over ${p.total.line}`, odds(toAmerican(p.total.over))) + row(`Under ${p.total.line}`, odds(toAmerican(p.total.under))) : dash) + liveTail(g, lv, "total");
+    const poly = liveHead(g, lv, "total") + (p.total ? row(`Over ${p.total.line}`, odds(toAmerican(p.total.over))) + row(`Under ${p.total.line}`, odds(toAmerican(p.total.under))) : dash) + liveTail(g, lv, "total");
     // Tested angle (10/1): outdoor games with 12+ mph wind went Under the closing total 56.1% of the time, 2007-25 (786 games), and it
     // beat break-even in all three periods (53.7 / 58.1 / 56.7%). The slope is real too: each mph takes ~0.18 pts off what the line allows for.
     // Model first (10/6): when the model leans Over, the angle is left off the card (the model already counts the wind); it is still tracked in Models.
-    return `<div class="card${g.final ? " fin" : ""}"><div class="inner">${headButtons(g, "t" + i, "", true)}<div class="f">${HDR}` +
+    return secRow("TOTALS", headPills(g, "t" + i, true)) + `<div class="card${g.final ? " fin" : ""}" style="margin-top:10px"><div class="inner">${headDrops(g, "t" + i, true)}<div class="hd">MARKET</div><div class="mk">` +
       `<div><div class="k">SPORTSBOOK</div>${b.total ? `${b.total.line}<div class="s">O ${odds(b.total.over.odds)} · U ${odds(b.total.under.odds)}</div>` : dash}</div>` +
-      leanCell(g, "total") +
       `<div><div class="k">${pmLogo()}POLYMARKET</div>${poly}</div>` +
-      `</div></div>${cover(g, g.totalPick)}</div>`;
+      `</div><div class="hd hm">MODEL</div>` + leanCell(g, "total") +
+      `</div>${cover(g, g.totalPick)}</div>`;
   }
 }
 // ---------- Anytime TD ----------
@@ -1009,9 +1007,9 @@ function tdGameLine(gr, rows) {
   if (!gr || !gr.found) return "";
   const gp = rows.map((r) => ({ r, p: gr.map.get(tdKey(r.team, r.player)) })).filter((x) => x.p && (x.p.scored || x.p.played === true));
   const waiting = rows.filter((r) => { const p = gr.map.get(tdKey(r.team, r.player)); return p && !p.scored && p.played === undefined; }).length;
-  if (!gp.length) return waiting ? `<div class="s y" style="margin:12px 2px 0">Waiting for snap counts.</div>` : "";
+  if (!gp.length) return waiting ? `<div class="s y" style="margin:8px 0 0">Waiting for snap counts.</div>` : "";
   const hit = gp.filter((x) => x.p.scored).length, exp = gp.reduce((a, x) => a + x.r.fair, 0) / 100;
-  return `<div class="s" style="margin:12px 2px 0"><b>Touchdowns:</b> model's top ${gp.length} · ${hit} scored · expected ${exp.toFixed(1)}${waiting ? ` · <span class="y">${waiting} waiting for snap counts</span>` : ""}</div>`;
+  return `<div class="s" style="margin:8px 0 0"><b>Touchdowns:</b> model's top ${gp.length} · ${hit} scored · expected ${exp.toFixed(1)}${waiting ? ` · <span class="y">${waiting} waiting for snap counts</span>` : ""}</div>`;
 }
 // First TD pick (10/6): the player from either team with the highest first-touchdown chance; after the game, ✓ if he scored first.
 function firstTdPick(g) {
@@ -1028,17 +1026,19 @@ function firstTdLine(g, gr) {
   const p = firstTdPick(g); if (!p) return "";
   const rec = gr && gr.found ? gr.map.get(tdKey(p.team, p.player)) : null;
   const mark = !g.final || !rec || rec.ftdHit === undefined ? "" : rec.ftdHit ? ' · <b class="g">✓ scored first</b>' : ' · <b class="r">✗</b>';
-  return `<div class="s" style="margin:12px 2px 0"><b>First TD pick:</b> ${esc(p.player)} <span class="dim">${esc(p.team)}</span> <b class="mod">${Math.round(p.first)}%</b>${mark}</div>`;
+  return `<div class="s" style="margin:8px 0 0"><b>First TD pick:</b> ${esc(p.player)} <span class="dim">${esc(p.team)}</span> <b class="mod">${Math.round(p.first)}%</b>${mark}</div>`;
 }
+// 10/16 (owner): ONE "ANYTIME TD" card -- the top 3 of each team in one list, best to worst, team logo next to the name, no team titles;
+// the First TD pick (and the finished game's touchdown line) sit at the bottom of that card.
 function tdTop3(g) {
-  const gr = g.final ? tdGradeMap(g) : null, shown = [];
-  const side = (team) => { const rows = (g.td || []).filter((r) => r.team === team && r.fair != null && usable(r)).sort((a, b) => b.fair - a.fair).slice(0, 3); shown.push(...rows);
-    const wo = ((g.without || {})[team] || []).map((w) => `<div class="s" style="margin-top:8px"><b>Without ${esc(w.out)}</b> <span class="dim">(${w.games} game${w.games === 1 ? "" : "s"})</span>: ${w.top.length ? w.top.map((x) => `${esc(x.name)} ${x.td}`).join(" · ") : "no TDs"}</div>`).join("");
-    return `<div class="sc card mcard"><div class="in"><div class="hh">${team} top scorers</div>` +
-      (rows.map((r, i) => `<div class="p"><div class="a"><span class="dim" style="font-size:11px;width:16px">#${i + 1}</span><b>${esc(r.player)}<span class="pos">${esc(r.pos)}</span></b><em class="mod">${tdPct(r.fair)}%</em></div>` +
-        `<div class="b">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${r.two != null ? ` · 2+ ${Math.round(r.two)}%` : ""}${r.first != null ? ` · 1st ${Math.round(r.first)}%` : ""}${gr && gr.found ? ` · ${tdMark(gr, r)}` : ""}</div></div>`).join("") || '<div class="s">No players yet.</div>') + wo + `</div></div>`; };
-  const cards = `<div class="scorers">${side(g.away)}${side(g.home)}</div>`;
-  return firstTdLine(g, gr) + (g.final ? tdGameLine(gr, shown) : "") + cards;
+  const gr = g.final ? tdGradeMap(g) : null;
+  const top = (team) => (g.td || []).filter((r) => r.team === team && r.fair != null && usable(r)).sort((a, b) => b.fair - a.fair).slice(0, 3);
+  const rows = top(g.away).concat(top(g.home)).sort((a, b) => b.fair - a.fair);
+  const wo = [g.away, g.home].map((team) => ((g.without || {})[team] || []).map((w) => `<div class="s" style="margin-top:8px">${tlogo(team)}<b>Without ${esc(w.out)}</b> <span class="dim">(${w.games} game${w.games === 1 ? "" : "s"})</span>: ${w.top.length ? w.top.map((x) => `${esc(x.name)} ${x.td}`).join(" · ") : "no TDs"}</div>`).join("")).join("");
+  const list = rows.map((r, i) => `<div class="p"><div class="a"><span class="dim" style="font-size:11px;width:16px">#${i + 1}</span>${tlogo(r.team)}<b>${esc(r.player)}<span class="pos">${esc(r.pos)}</span></b><em class="mod">${tdPct(r.fair)}%</em></div>` +
+    `<div class="b">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${r.two != null ? ` · 2+ ${Math.round(r.two)}%` : ""}${r.first != null ? ` · 1st ${Math.round(r.first)}%` : ""}${gr && gr.found ? ` · ${tdMark(gr, r)}` : ""}</div></div>`).join("") || '<div class="s">No players yet.</div>';
+  const foot = firstTdLine(g, gr) + (g.final ? tdGameLine(gr, rows) : "");
+  return secRow("ANYTIME TD") + `<div class="sc card mcard" style="margin-top:10px"><div class="in">${list}${wo}${foot ? `<div class="tdfoot">${foot}</div>` : ""}</div></div>`;
 }
 function startsIn(g) {
   const ms = new Date(g.kickoff) - Date.now(); if (!(ms > 0)) return "";
@@ -1125,7 +1125,7 @@ function renderLabList() {
 }
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = "";
-  $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : ""}<div class="sh" style="margin:16px 2px 0">SPREAD &amp; ML</div><div class="grid">${gameCard(g, "x")}</div><div class="sh" style="margin:16px 2px 0">TOTALS</div><div class="grid">${totalCard(g, "x")}</div>${tdTop3(g)}${sgpBox(g)}`;
+  $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : ""}${gameCard(g, "x")}${totalCard(g, "x")}${tdTop3(g)}${sgpBox(g)}`;
   $("back-btn").onclick = closeGame;
   if (ROLL_ON_OPEN) { ROLL_ON_OPEN = false; slotify($("detail")); }   // 10/14: numbers roll in when you open a game
   if (g.final) ensureGrades();
