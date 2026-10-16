@@ -476,7 +476,7 @@ function gbgHtml() {
   const wks = [...new Set(GBG_RES.map((r) => r.week))].sort((a, b) => b - a); if (!wks.length) return "";
   const sel = GBGWEEK && (GBGWEEK === "all" || wks.includes(GBGWEEK)) ? GBGWEEK : wks[0];
   const list = GBG_RES.filter((r) => sel === "all" || r.week === sel).sort((a, b) => b.week - a.week || String(a.gradedAt || "").localeCompare(String(b.gradedAt || "")));
-  // 10/13 (owner): each game shows the card's PICK results (chooser / LINE MOVE / KEY NUMBER). Games before 10/12 have no recorded card
+  // 10/13 (owner): each game shows the card's PICK results (the tested rules; the chooser until 10/16). Games before 10/12 have no recorded card
   // pick, so they show the old game model's side, labeled as such.
   const res1 = (x) => (x.result === "W" ? '<span class="g">W</span>' : x.result === "L" ? '<span class="r">L</span>' : x.result === "P" ? "P" : '<span class="dim">…</span>');
   const row = (r) => { const cp = ((COMBOS && COMBOS.card && COMBOS.card.byGame) || {})[`${r.week}|${r.game}`];
@@ -826,7 +826,7 @@ function statTile(label, w, l, hit, sub) {
 }
 function labStats() {
   const W = (S && S.winners && S.winners.all) || {};
-  // 10/13 (owner): the spread/total tiles show YOUR card picks (chooser, LINE MOVE, KEY NUMBER), not the old game model's side.
+  // 10/13 (owner): the spread/total tiles show YOUR card picks (the tested rules, and the chooser until 10/16), not the old game model's side.
   const C = (COMBOS && COMBOS.card) || { spread: { w: 0, l: 0 }, total: { w: 0, l: 0 } }, cs = C.spread, ct = C.total;
   const ch = (x) => (x.w + x.l ? x.w / (x.w + x.l) : null);
   // 10/13 CLV tracker: points gained vs the closing line on graded card picks (first number shown vs the number at kickoff)
@@ -835,7 +835,7 @@ function labStats() {
   return `<div class="stats">${statTile("MONEYLINE", W.w, W.l, W.n ? W.hit : null, "right")}${statTile("SPREAD PICKS", cs.w, cs.l, ch(cs), "covered")}${statTile("TOTAL PICKS", ct.w, ct.l, ch(ct), "right")}${clvTile}</div>`;
 }
 function pickLabBox() {
-  // paper tests recorded and graded live, not picks: wind Under, OFFENSIVE FLOOR, the two shadow rules
+  // paper tests recorded and graded live, not picks: the two shadow rules (Pinnacle LINE MOVE, order-book tilt); wind Under / OFFENSIVE FLOOR were cut 10/15
   return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Tracked angles</div>${trackedRows()}</div></div>`;
 }
 function trackedRows() {
@@ -860,7 +860,7 @@ function straightPicks(g, min = BEST_MIN) {
       out.push({ pick: x.pick, game: g.key, why: (x.why || "") + games(x.n), p: x.hit / 100, rec: r ? r.rec : null, n: x.n ?? null, price: x.price ?? null, cushion: x.cushion ?? null, plain: null, green: clsOf(x.hit) === "g" }); }
     return out.filter((x) => (min > 0 ? x.green : x.p > min)).sort((a, b) => (isSmall(a) - isSmall(b)) || b.p - a.p);
   }
-  // 10/12: picks come only from the combined chooser (g.combos, honest win rates on unseen games). Angles and the "total fell" rule
+  // 10/12: picks come from g.combos (the tested rules since 10/16; the chooser before that). Angles and the "total fell" rule
   // were dropped as picks: their rates were measured on the same games they were chosen from.
   for (const c of g.combos || []) if (!c.teaser) out.push({ pick: c.pick, game: g.key, why: c.why + games(c.n), p: c.hit / 100, rec: c.rec, n: c.n ?? null, price: c.price ?? null, plain: c.plain ?? null });
   const best = {}, better = (x, y) => (isSmall(x) !== isSmall(y) ? !isSmall(x) : x.p > y.p);

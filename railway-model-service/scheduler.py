@@ -62,7 +62,7 @@ def _backup():
         raw = _call(f"/api/backup?cursor={cursor}")
         if not raw:
             print("[scheduler] backup page failed — nothing saved", flush=True)
-            _call(f"/api/status?backup=failed&files=0", tries=1)   # so the status panel doesn't keep showing last night's as current
+            _call("/api/status?backup=failed&files=0", tries=1)   # so the status panel doesn't keep showing last night's as current
             return
         page = json.loads(raw); data.update(page.get("data") or {}); cursor = str(page.get("next", "0")); pages += 1
         if cursor == "0" or pages > 200: break
@@ -78,7 +78,7 @@ def _backup():
         print(f"[scheduler] backup saved {path}", flush=True)
     except Exception as e:
         print(f"[scheduler] backup save failed: {e}", flush=True)
-        _call(f"/api/status?backup=failed&files=0", tries=1)
+        _call("/api/status?backup=failed&files=0", tries=1)
 
 def _retrain():
     """Weekly TD retrain, run IN-PROCESS (not over HTTP) so the gunicorn worker's request slot stays free.
