@@ -4,7 +4,9 @@
 import { savePinnacle, pinnacleFailed, pinnacleOk } from "../../lib/pinnacle";
 import { SEASON } from "../../lib/games";
 import { getRedis } from "../../lib/redis";
-import { fetchEvents, gameLines, bookDepth } from "../../lib/poly";
+import { fetchEvents, gameLines, bookDepth, tdProps } from "../../lib/poly";
+import { getJSON, setJSON, pushCapped, K } from "../../lib/redis";
+import { isThinMarket } from "../../lib/odds";
 import { lineMovePick, lineMoveTotalPick } from "../../lib/stack";
 import { tkey } from "../../lib/tracked";
 import { logError } from "../../lib/status";
@@ -26,6 +28,21 @@ export async function recordShadow(redis, season, g, p, pin, sb, tb, t) {
   const tt = tilt(tb); if (tt && p.total && live(Number(p.total.over), Number(p.total.under))) await put("tiltT", { kind: "total", tilt: true, side: tt > 0 ? "over" : "under", line: p.total.line, bd: tb.bd, ad: tb.ad });
   return n;
 }
+// TD prices every 30 min (10/16, owner: "get me my prices"): the scheduled snapshots (7 AM / 3 PM / 7 PM) were the only TD price refresh, so a market Polymarket
+// posted in the morning showed no price -- and no parlay payout -- until the afternoon. The pull now merges the live prices into the saved set: new players are
+// added, ordinary moves are taken, a price that HALVED is left to the snapshot's glitch guard (3 checks). Same history list as the snapshot (src "pin30").
+export async function mergeTdPrices(redis, season, g, px, t) {
+  if (!px || !g || g.week == null) return 0; const key = K.tdpx(season, g.week, g.key), old = (await getJSON(key)) || null, rec = (v) => (v == null ? null : typeof v === "number" ? { ask: v } : v);
+  const real = (v) => v && !isThinMarket(v.ask, v.bid ?? null), out = { ...(old || {}) }; let changed = 0;
+  for (const [q, v] of Object.entries(px)) { const n = rec(v), o = old ? rec(old[q]) : null; if (!n || !(n.ask > 0)) continue;
+    if (o && real(o) && real(n) && n.ask < o.ask * 0.5) continue;   // a halving waits for the snapshot guard
+    if (!o || o.ask !== n.ask || (o.bid ?? null) !== (n.bid ?? null)) { out[q] = v; changed++; } }
+  if (!changed) return 0;
+  await setJSON(key, out);
+  const compact = {}; for (const [q, v] of Object.entries(out)) { const o = rec(v); if (o && o.ask > 0) compact[q] = [o.ask, o.bid ?? null]; }
+  await pushCapped(redis, `tdpxhist:${season}:${g.week}:${g.key}`, JSON.stringify({ t, src: "pin30", p: compact }), 150);
+  return changed;
+}
 export default async function handler(req, res) {
   const t = new Date().toISOString();
   try {
@@ -40,6 +57,7 @@ export default async function handler(req, res) {
       const [sb, tb] = await Promise.all([mk(M.spread), mk(M.total)]);
       if (g.week != null && (raw.alts || raw.talts)) await getRedis().set(`alts:${SEASON}:${g.week}:${g.key}`, JSON.stringify({ t, alts: raw.alts || null, talts: raw.talts || null })).catch(() => 0);   // 10/15: alternate prices refresh every 30 min (the card drops them after 3 h; snapshots alone left them stale)
       await recordShadow(getRedis(), SEASON, g, p, pin, sb, tb, t).catch(() => 0);
+      await tdProps(events, g.away, g.home).then((px) => mergeTdPrices(getRedis(), SEASON, g, px, t)).catch(() => 0);   // TD prices every 30 min (10/16)
       return { hs: p.spread ? p.spread.homeSpread : null, h: p.spread ? p.spread.home : null, tl: p.total ? p.total.line : null, o: p.total ? p.total.over : null,
         ...(sb ? { sb } : {}), ...(tb ? { tb } : {}) }; };
     const n = await savePinnacle(getRedis(), SEASON, t, "pin30", polyFor); await pinnacleOk(getRedis());

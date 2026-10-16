@@ -954,6 +954,11 @@ Tested and NOT added (made it worse):
 - **Docked strips (owner 10/16: "make it like the Model bets sub tabs"):** the Alerts kinds strip and the My bets weeks strip are now the SAME flat strip as the Model bets sub-tabs
   (`.chips.dock` in `public/index.html`: equal columns, bold text, purple underline, no pills); when the labels do not fit (Alerts on a phone) the strip scrolls sideways instead of
   truncating. One rule for all three.
+- **TD prices every 30 min (owner 10/16: "why is there no prices on most of the parlays"):** TD prices were refreshed only by the scheduled snapshots (7 AM / 3 PM / 7 PM PT), so a
+  market Polymarket posted in the morning had no price -- and its parlays no payout -- until the afternoon. `pages/api/pinnaclepull.js mergeTdPrices` now merges the live prices
+  every 30 min: new players added, ordinary moves taken, a HALVED price left to the snapshot's 3-check glitch guard; same `tdpxhist:` history (src "pin30"). Tested. A leg still
+  without a price means Polymarket has not posted that player's market at all.
+- **Model bets slot headers** carry the real kickoff times ("1 PM GAMES · Sun 1:05 PM · Sun 1:25 PM") and a line under them (`.labslot`).
 - Nothing else found: tests, grading audit, accuracy, browser pass (phone + computer) all clean.
 
 ## POLYMARKET REAL-PRICE REPLAY (10/16, owner: "Build now number one ... auto math, auto calibration, everything"; work branch, NOT merged until "merge now")
