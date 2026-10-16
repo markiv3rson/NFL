@@ -974,6 +974,9 @@ Tested and NOT added (made it worse):
   Now ESPN Out / Doubtful entries posted after the team's last game join the list as "Out" (`lib/paper.js withEspnOuts`, same rule as the model rerun and the TD tab). Tested.
 - **TD prices confirmed live:** the first 30-min pull on the new code filled B.Tuten, K.Williams, P.Nacua, J.Cook, J.Williams, D.Swift; every parlay on those games shows its payout.
   Only the Monday game (WAS @ SF) waits for Polymarket to post its markets.
+- **Owner 10/16 (A):** a parlay leg whose player has NO Polymarket market (DeVonta Smith, Limited, CAR @ PHI) stays as is and the parlay shows "PL: —" until Polymarket posts him.
+  **The pull now runs every 15 minutes** (`scheduler.py` :10 / :25 / :40 / :55 -> `/api/pinnaclepull`: Pinnacle, Polymarket lines, alternates, TD prices, shadow records). Inside a
+  time slot the parlay blocks have NO lines between them; the only line is under the slot header (`.par` border removed).
 - Seen, left alone: the Alerts kind "LINE MOVE" (a sportsbook line change) shares its name with the LINE MOVE rule (a pick). The MONEYLINE tile is the favorite-at-kickoff record
   (16-13), the results file's "SEA ML" rows are the model's own moneyline side (24-21) -- two different records, both labeled.
 
