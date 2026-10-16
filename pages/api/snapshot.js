@@ -59,7 +59,8 @@ export async function writePrelog(season, week, g, t, poly, bk, model) {
         const hsNow = poly && poly.spread && poly.spread.homeSpread != null ? poly.spread.homeSpread : bk && bk.spread ? bk.spread.homeSpread : null;
         const tlNow = poly && poly.total && poly.total.line != null ? poly.total.line : now;
         try { const altRec = (await getJSON(`alts:${season}:${week}:${g.key}`).catch(() => null)) || {}; const sitS = await situationFor(season, week, g).catch(() => null); const cf = comboFactors({ ...g, outdoor: !!v.outdoor }, mg, hsNow, tlNow, s0, open, sitS, Number(week)), lst = (cf ? totalMovePick(g, cf.mvT, tlNow, open, Number(week)) || [] : []).concat(injuryPick(g, hsNow, s0, sitS, Number(week)) || [], bounceBackPick(g, hsNow, sitS) || [], floorDogPick(g, hsNow, sitS) || [], ...(await timingAtKickoff(season, week, g, t, poly, bk)));
-          await recordStack(season, week, g, lst.concat(cardPicks(buildCard({ ...g, started: false, final: false, model: mg, modelUp: cf ? cf.up : null }, lst, poly, bk, altRec))), t); } catch {} }   // + the card's PICK and PICK w/ POINTS (10/15); 10/16: the model numbers ride along so a game with no rule records its model-side PICK at kickoff too
+          await recordStack(season, week, g, lst.concat(cardPicks(buildCard({ ...g, started: false, final: false, model: mg, modelUp: cf ? cf.up : null }, lst, poly, bk, altRec))), t); }
+        catch (e) { await logError("kickoff", `${g.key}: card picks not saved at kickoff: ${String(e).slice(0, 160)}`).catch(() => {}); } }   // 10/16 audit: was silent   // + the card's PICK and PICK w/ POINTS (10/15); 10/16: the model numbers ride along so a game with no rule records its model-side PICK at kickoff too
   }
 }
 
