@@ -1125,7 +1125,10 @@ function labParlays(week, type) {
   return out;
 }
 // Time slot of a kickoff for the Model bets headers (your clock): Sunday before 9 = EARLY (London), before noon = 10 AM, before 4 PM = 1 PM, the rest and every weeknight = PRIME TIME
-function labSlot(kick) { const d = new Date(kick), h = d.getHours(), wd = d.getDay(), DAY = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]; if (wd !== 0 && wd !== 6) return `PRIME TIME · ${DAY[wd]}`; return h < 9 ? "EARLY" : h < 12 ? "10 AM GAMES" : h < 16 ? "1 PM GAMES" : `PRIME TIME · ${DAY[wd]}`; }
+function labSlot(kick) {   // same cutoffs as the Bets tab's kickSlot (Pacific clock): before 9 EARLY, before noon 10 AM, before 5 PM 1 PM, the rest and every weeknight PRIME TIME
+  const d = new Date(kick), fmt = (o) => new Intl.DateTimeFormat("en-US", { ...o, timeZone: "America/Los_Angeles" }).format(d), h = Number(fmt({ hour: "numeric", hourCycle: "h23" })), day = fmt({ weekday: "short" }).toUpperCase();
+  if (!/SUN|SAT/.test(day)) return `PRIME TIME · ${day}`;
+  return h < 9 ? "EARLY" : h < 12 ? "10 AM GAMES" : h < 17 ? "1 PM GAMES" : `PRIME TIME · ${day}`; }
 function renderLabList() {
   if (!$("lab")) return;
   const weeks = [...new Set([...Object.keys((MODELBETS && MODELBETS.weeks) || {}).map(Number), ...(S && S.week != null ? [Number(S.week)] : [])])].sort((a, b) => b - a), sel = LABWEEK || (S && S.week) || weeks[0];

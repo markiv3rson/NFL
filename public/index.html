@@ -174,9 +174,10 @@
   .pbh { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:4px; } .pbn { font-weight:700; font-size:14.5px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
   .plb { color:var(--blue); font-weight:700; font-size:12.5px; white-space:nowrap; display:flex; align-items:center; gap:4px; } .plb .plw { color:#fff; } .plb .pm { width:16px; height:16px; }
   .pbl { margin-top:3px; padding-left:12px; overflow-wrap:anywhere; } .pbr { text-align:right; font-weight:800; min-height:4px; }
-  #lab-sub { gap:0; padding:0; border-top:1px solid var(--line); background:rgba(8,9,14,.97); -webkit-backdrop-filter:none; backdrop-filter:none; }
-  #lab-sub button { flex:1 1 0; min-width:0; position:relative; min-height:40px; padding:0 2px; border:0; border-radius:0; background:none; font-size:11.5px; font-weight:700; letter-spacing:.02em; color:var(--faint); white-space:nowrap; text-align:center; }
-  #lab-sub button.on { color:#fff; background:none; border:0; } #lab-sub button.on::after { content:""; position:absolute; left:24%; right:24%; bottom:0; height:2px; border-radius:2px; background:#a98bff; }
+  /* 10/16 (owner): EVERY docked strip -- Model bets sub-tabs, My bets weeks, Alerts kinds -- is the same flat strip: equal columns, bold text, purple underline, no pills */
+  .chips.dock { gap:0; padding:0 max(12px,env(safe-area-inset-right)) 0 max(12px,env(safe-area-inset-left)); border-top:1px solid var(--line); background:rgba(8,9,14,.97); -webkit-backdrop-filter:none; backdrop-filter:none; }
+  .chips.dock button { flex:1 0 auto; min-width:0; position:relative; min-height:40px; padding:0 10px; border:0; border-radius:0; background:none; font-size:11.5px; font-weight:700; letter-spacing:.02em; color:var(--faint); white-space:nowrap; text-align:center; }   /* equal columns when they fit, the strip scrolls when they don't (Alerts on a phone) */
+  .chips.dock button.on { color:#fff; background:none; border:0; } .chips.dock button.on::after { content:""; position:absolute; left:24%; right:24%; bottom:0; height:2px; border-radius:2px; background:#a98bff; }
   #lab-wk { gap:20px; margin-top:6px; padding:0; border-bottom:1px solid var(--line2); overflow-x:auto; scrollbar-width:none; } #lab-wk::-webkit-scrollbar { display:none; }
   #lab-wk button { position:relative; min-height:36px; padding:0 2px; border:0; border-radius:0; background:none; font-size:13px; font-weight:700; color:var(--faint); }
   #lab-wk button.on { color:#fff; background:none; border:0; } #lab-wk button.on::after { content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; border-radius:2px; background:#a98bff; }
@@ -203,9 +204,8 @@
   .hero.h6 .lever .larm { left:9px; bottom:12px; width:4px; height:42px; background:linear-gradient(90deg,#6b7280,#e5e7eb,#6b7280); }
   .hero.h6 .lever .lknob { width:16px; height:16px; margin-left:-8px; top:-8px; background:radial-gradient(circle at 35% 30%,#e4e7ff,#8f9bff 55%,#33358f); }
   /* 10/14 (owner, phone): a page's filter chips (Bets weeks, Alerts kinds) sit right above the bottom tabs, where the thumb is */
-  .chips.dock { position:fixed; left:0; right:0; bottom:calc(max(8px,env(safe-area-inset-bottom,0px)) + 66px); z-index:54; margin:0; flex-wrap:nowrap; overflow-x:auto;
-    padding:8px max(12px,env(safe-area-inset-right)) 6px max(12px,env(safe-area-inset-left)); background:linear-gradient(to top,rgba(8,9,14,.94),rgba(8,9,14,.75)); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); scrollbar-width:none; }
-  .chips.dock::-webkit-scrollbar { display:none; } .chips.dock button { flex:0 0 auto; }
+  .chips.dock { position:fixed; left:0; right:0; bottom:calc(max(8px,env(safe-area-inset-bottom,0px)) + 66px); z-index:54; margin:0; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
+  .chips.dock::-webkit-scrollbar { display:none; }
   .gapstrip { margin-top:10px; border-radius:14px; padding:7px 12px; min-height:32px; background:rgba(79,227,208,.08); border:1px solid rgba(79,227,208,.35); cursor:pointer; }
   .gapstrip .t { font-size:12.5px; font-weight:800; color:var(--cyan); }
   .sc { position:relative; overflow:hidden; border-radius:16px; padding:10px; background:var(--card); }
