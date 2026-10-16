@@ -26,6 +26,11 @@ ARTIFACT = os.path.join(OUT_DIR, "combomodel.json")
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIRST = 2014                       # first season with the game-model replay (needs the season before for its prior)
 PERIODS = (2017, 2021)             # three test periods: FIRST-2017, 2018-2021, 2022-now
+# 10/16 (owner: "fix what you find"): the upgraded game model's ridge strength. It was 30; tested 30 / 300 / 1000 / 3000 / 10000 / 30000 walk-forward
+# (train every earlier season, test 2015-26): margin error 9.917 / 9.832 / 9.807 / 9.793 / 9.819 / 9.914, total 10.541 / 10.463 / 10.422 / 10.409 /
+# 10.449 / 10.552 (line alone 9.710 / 10.362). Leave-one-season-out (the checks below): 30 -> 9.999 / 10.502, 3000 -> 9.944 / 10.455 (line 9.903 / 10.456).
+# The model is still no better than the line; 3000 just stops it from adding noise. Season decay weights (0.7-0.9 a season) made it worse.
+UP_ALPHA = 3000
 COLD = {"GB", "CHI", "BUF", "NE", "CLE", "PIT", "DEN", "KC", "NYJ", "NYG", "PHI", "CIN", "BAL"}
 TZ = {"SEA": -3, "SF": -3, "LA": -3, "LAC": -3, "LV": -3, "OAK": -3, "SD": -3, "STL": -1, "ARI": -2, "DEN": -2, "KC": -1, "DAL": -1, "HOU": -1,
       "MIN": -1, "CHI": -1, "GB": -1, "NO": -1, "TEN": -1}
@@ -386,8 +391,8 @@ def build(site_opens=None):
     um, ut = np.full(len(d), np.nan), np.full(len(d), np.nan)
     for s in sorted(d.season.unique()):   # leave-one-season-out: the honest accuracy check, and the leans the combos are scanned with
         tr, te = (d.season != s).values, (d.season == s).values
-        um[te] = Ridge(alpha=30).fit(Z[tr], d.res[tr]).predict(Z[te]); ut[te] = Ridge(alpha=30).fit(Z[tr], d.tot[tr]).predict(Z[te])
-    fm, ft = Ridge(alpha=30).fit(Z, d.res), Ridge(alpha=30).fit(Z, d.tot)
+        um[te] = Ridge(alpha=UP_ALPHA).fit(Z[tr], d.res[tr]).predict(Z[te]); ut[te] = Ridge(alpha=UP_ALPHA).fit(Z[tr], d.tot[tr]).predict(Z[te])
+    fm, ft = Ridge(alpha=UP_ALPHA).fit(Z, d.res), Ridge(alpha=UP_ALPHA).fit(Z, d.tot)
     eo = d.so.notna() & d.to.notna(); ZE = design(d[eo], {k: v[eo.values] for k, v in F0.items()}, early=True); fe = Ridge(alpha=30).fit(ZE, d.tot[eo])
     F = factors(d, um, ut); rows = scan(d, F, per)
     # 10/14 fix: for the chooser's honest test, season s is hidden from every row's model leans (two-level leave-one-season-out)
@@ -398,7 +403,7 @@ def build(site_opens=None):
         for t in seasons_:
             if t == s: continue
             te = (d.season == t).values; tr = ~d.season.isin([s, t]).values
-            um_s[te] = Ridge(alpha=30).fit(Z[tr], d.res[tr]).predict(Z[te]); ut_s[te] = Ridge(alpha=30).fit(Z[tr], d.tot[tr]).predict(Z[te])
+            um_s[te] = Ridge(alpha=UP_ALPHA).fit(Z[tr], d.res[tr]).predict(Z[te]); ut_s[te] = Ridge(alpha=UP_ALPHA).fit(Z[tr], d.tot[tr]).predict(Z[te])
         cacheF[s] = factors(d, um_s, ut_s); return cacheF[s]
     err = lambda p, y: float(np.mean(np.abs(p - y)))
     checks = {"games": int(len(d)), "seasons": [int(d.season.min()), int(d.season.max())], "openLines": int(eo.sum()),
