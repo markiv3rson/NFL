@@ -132,7 +132,7 @@
   /* 10/16 (owner): on a computer the page uses the whole screen; the phone layout (under 1100px) is unchanged */
   @media (min-width:1100px) { .wrap { max-width:none; padding-left:28px; padding-right:28px; } .tiles { grid-template-columns:repeat(4,minmax(0,1fr)); } .chips.dock { justify-content:center; } }
   @media (min-width:1600px) { .tiles { grid-template-columns:repeat(5,minmax(0,1fr)); } }
-  .labslot { grid-column:1 / -1; margin:14px 2px 0; }
+  .labslot { grid-column:1 / -1; margin:14px 2px 0; padding-bottom:6px; border-bottom:1px solid var(--line); } .labslot .lst { color:var(--faint); font-weight:600; letter-spacing:0; text-transform:none; }
   .tile { position:relative; overflow:hidden; background:var(--card); border:1px solid rgba(255,255,255,.28); border-radius:16px; padding:12px; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.3); text-align:left; font:inherit; color:inherit; }
   .tile .mid.lvmid { display:inline-flex; flex-direction:column; align-items:center; line-height:1.15; } .tile .sr { white-space:nowrap; } .tile .lv { font-size:10.5px; font-weight:800; letter-spacing:.04em; margin-top:2px; } .tile .lv.r { color:var(--red); }
   .dtop .s3.r { color:var(--red); }

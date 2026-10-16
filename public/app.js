@@ -1078,10 +1078,9 @@ const plPay = (p) => {
 };
 const legMark = (r) => (r === "W" ? '<span class="g">✓</span>' : r === "L" ? '<span class="r">✗</span>' : r === "P" ? '<span class="dim">–</span>' : "•");
 const gameLogos = (key) => { const m = String(key || "").match(/^([A-Z]{2,4}) @ ([A-Z]{2,4})$/); return m ? `${tlogo(m[1])}${esc(m[1])} @ ${tlogo(m[2])}${esc(m[2])}` : esc(key); };
-// 10/16 (owner): every leg gets a logo -- a team leg (ML, spread, TD) its team's, a total leg both teams' (from the leg's game)
-const bothLogos = (key) => { const m = String(key || "").match(/^([A-Z]{2,4}) @ ([A-Z]{2,4})$/); return m ? `${tlogo(m[1])}${tlogo(m[2])}` : ""; };
+// 10/16 (owner): a logo only next to a NAME -- a team leg (ML, spread, TD) shows its team's logo; a total leg (Over / Under) has no name, so no logo
 function legLogoLabel(l) {
-  if (l.kind === "total") return `${bothLogos(l.game)}${esc(l.label)}`;
+  if (l.kind === "total") return esc(l.label);
   if (l.team && /^[A-Z]{2,4}$/.test(l.team)) return `${tlogo(l.team)}${esc(l.label)}`;
   return logoLabel(l.label);
 }
@@ -1135,7 +1134,9 @@ function renderLabList() {
   const chips = `<div class="chips" id="lab-wk">${weeks.map((w) => `<button data-labw="${w}" class="${Number(sel) === w ? "on" : ""}">Week ${w}</button>`).join("")}</div>`;
   const xs = labParlays(sel, LABTYPE).sort((a, b) => (new Date(a.kick || 0) - new Date(b.kick || 0)) || 0).filter((x) => x.p && Array.isArray(x.p.legs));
   // 10/16 (owner): a header between the time slots (early / 10 AM / 1 PM / prime time); the blocks themselves are unchanged
-  let lastSlot = null; const blocks = xs.map((x) => { const sl = x.kick ? labSlot(x.kick) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl}</div>` : ""; if (sl) lastSlot = sl; return h + pBlock(x.title, x.p, x.across); });
+  // header = the slot + the real kickoff times in it (owner 10/16: "put the right time on there"), e.g. "1 PM GAMES · Sun 1:05 PM · Sun 1:25 PM"
+  const slotTimes = {}; for (const x of xs) if (x.kick) { const sl = labSlot(x.kick), tt = tm(x.kick); (slotTimes[sl] = slotTimes[sl] || []).includes(tt) || slotTimes[sl].push(tt); }
+  let lastSlot = null; const blocks = xs.map((x) => { const sl = x.kick ? labSlot(x.kick) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl; return h + pBlock(x.title, x.p, x.across); });
   $("lab").innerHTML = chips + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
   if ($("lab-sub")) $("lab-sub").innerHTML = LAB_TABS.map(([k, t]) => `<button data-labt="${k}" class="${LABTYPE === k ? "on" : ""}">${t}</button>`).join("");
 }

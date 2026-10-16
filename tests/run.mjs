@@ -502,6 +502,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const { ruleRecords } = await import("../lib/stack.js"), mk = (g, res, line, hit) => ({ id: "keynum|spread", tier: 4, key: 3, hit, week: 6, game: g, result: res, t: "1", line });
     const R = ruleRecords([mk("A", "W", -2.5, 54.4), mk("B", "L", -2.5, 54.4), mk("C", "W", 3.5, 56.2), mk("D", "W", 3.5, 56.2)], []);
     ok(R["BEAT THE · favorite tiers"].w === 1 && R["BEAT THE · favorite tiers"].l === 1 && R["BEAT THE · underdog tiers"].w === 2 && R["BEAT THE · underdog tiers"].say === 56.2 && R["BEAT THE 3 · books 4"].w === 3, "live rule records: BEAT THE pooled by favorite / underdog side", R); }
+  { // TD prices every 30 min (10/16): new players added, ordinary moves taken, a halved price left to the snapshot guard
+    const { mergeTdPrices } = await import("../pages/api/pinnaclepull.js"); const { getJSON, K, getRedis } = await import("../lib/redis.js"); const G = { key: "KC @ BUF", week: 7 };
+    const n1 = await mergeTdPrices(getRedis(), 2097, G, { "A 1+ TD": { ask: 0.5, bid: 0.48 }, "B 1+ TD": { ask: 0.3, bid: 0.28 } }, "t1");
+    const n2 = await mergeTdPrices(getRedis(), 2097, G, { "A 1+ TD": { ask: 0.2, bid: 0.18 }, "B 1+ TD": { ask: 0.34, bid: 0.32 }, "C 1+ TD": { ask: 0.41, bid: 0.4 } }, "t2");
+    const saved = await getJSON(K.tdpx(2097, 7, "KC @ BUF")), hist = await getRedis().lrange("tdpxhist:2097:7:KC @ BUF", 0, -1);
+    ok(n1 === 2 && n2 === 2 && saved["A 1+ TD"].ask === 0.5 && saved["B 1+ TD"].ask === 0.34 && saved["C 1+ TD"].ask === 0.41 && hist.length === 2 && JSON.parse(hist[1]).src === "pin30",
+      "30-min TD prices: first save, then C added and B moved, A's halving kept for the snapshot guard, history row written", { n1, n2, saved }); }
   { // old combo legs (10/14): legs found anywhere in a reply; legs saved at sync are used after Polymarket drops them
     const { findLegs } = await import("../pages/api/combolegs.js"); const { saveComboLegs, comboPicks } = await import("../lib/mybets.js"); const { getJSON } = await import("../lib/redis.js"); const R = globalThis.__TEST_REDIS__;
     const legs = [{ slug: "asc-nfl-sea-den-2026-10-15-neg-3pt5", eventSlug: "nfl-sea-den-2026-10-15", outcome: "+3.50", team: { abbreviation: "den", logo: "x" }, state: "" }, { slug: "tsc-nfl-sea-den-2026-10-15-total-40pt5", eventSlug: "nfl-sea-den-2026-10-15", outcome: "Under", state: "MARKET_STATE_WON" }];
