@@ -888,6 +888,31 @@ Tested and NOT added (made it worse):
 - Known and fine: Models "PICK · total" says waiting for week 6 because SEA @ DEN's total pick at kickoff was still the chooser's (id `chooser|total`, won); from Sunday every game
   records `cardpick|` / `modelpick|`. Self-check runs Thu 12:05 PM, Fri 5:05 PM, Sun 7:35 AM PT (scheduler), so "last self-check Thu" on a Friday morning is right.
 
+## BREAKDOWN 10/16 (owner: "give me a real breakdown ... break down everything to see what we can improve on. build now") -- nothing in the app changed; choices for the owner
+
+- **What the app really is in week 6 (14 games):** 12 of 13 unplayed games get their PICK side from a BEAT THE tier (56-64% at the bought line in history; on Polymarket's OWN line the PICK
+  shows the table's 46-50% = yellow); CHI @ ATL is BOUNCE BACK (CHI -1.5, 61%); TEN @ IND is BOUNCE BACK DOG (TEN +6.5, 56.5%). LINE MOVE 0 fires (Polymarket tracks the books within
+  1 point: 270 of 333 real 2025-26 games), INJURY 0 (the line moves before the app sees the news: CAR @ PHI moved 5 points on Hurts), TOTAL MOVE 1 fire (SEA @ DEN, won). Every total
+  PICK is the model's side at 51.7%. So the GREEN on the cards comes from PICK w/ POINTS (56-65%) nearly everywhere.
+- **Live record of the current rules = 1 game** (SEA @ DEN: BEAT THE, PICK, PICK w/ POINTS, TOTAL MOVE all won). Weeks 3-5 (spreads 22-18, totals 27-19) were the old chooser. Sunday
+  10/18 is the first real test of what is on the cards now.
+- **Proven in history (each season unseen):** BEAT THE 59%, BOUNCE BACK 61.3%, DOG 57%, LINE MOVE 63 / 66%, INJURY 56.5%, TOTAL MOVE 57-62%, PICK w/ POINTS spreads said 59.0 won 59.5,
+  totals 56.3 / 57.4; TD Best picks 64% (RBs), TD model on target this season in every band but 40-50% (29% of 35).
+- **Weaker on REAL Polymarket lines 2025-26 (win rate, 351 games):** PICK w/ POINTS spreads 53.5% (said 56.4; 2026 so far 38-41), the table's 56-59% rows won 51-54%; favorite BEAT THE
+  tiers 10-13 vs underdog tiers 61-45 (57.5%) -- 23 games, small; 1-point bought totals 39-58 (owner: keep); main-line favorites 48%, underdogs 52%. Buying early changes nothing.
+- **The owner's own bets (Bets tab analysis):** spreads 8-5 (62%), totals 11-5 (69%), touchdowns 10-21 (32%); 3-leg combos 1 of 2 won (+$101), 4-leg 2 of 12 (-$83), 5-leg 0 of 1.
+  The TD legs are what sink the combos; the app's Best TD picks (55%+) scored 17 of 21 live (weeks 3-5) and 64% in history.
+- **Improvements on the table (owner picks; each is a "build now" item):**
+  A. Combos from the app's legs only: spread / total PICK w/ POINTS + Best TD picks (55%+ players, in practice RB1s), 2-3 legs, never 5.
+  B. Bet Sunday morning after the model rerun and inactives: prices do not get worse by waiting (under 1c), and the injuries are in.
+  C. INJURY EARLY (shadow first): the edge is 60% at the OPENING line and gone once the line moves; record a shadow pick the minute `inj:` starters-out changes (ESPN feed with dates),
+     at the line of that minute, and grade it. Live only; past seasons can't be rebuilt.
+  D. TD player prices from the Polymarket trade log (same free pull as the game lines): the real hit rate and price of Best TD picks at Polymarket, the owner's most-bet market.
+  E. Favorite BEAT THE tiers: watch; 10-13 on real lines is 23 games. Re-check after week 8 with the live record.
+  F. Keep as is: TD model, totals table, BOUNCE BACK, BOUNCE BACK DOG, the card layout and colors.
+- Checked and NOT a bug: SEA @ DEN's PICK first showed "DEN +2.5 · 39%" on Wednesday -- that was the old day/night table (Thursday night game) before the split was removed 10/15;
+  at kickoff it read 47.7% (unshrunk) and today's table says 49.1%.
+
 ## POLYMARKET REAL-PRICE REPLAY (10/16, owner: "Build now number one ... auto math, auto calibration, everything"; work branch, NOT merged until "merge now")
 
 - **Data (new, `railway-model-service/data/poly_closes.csv`, 9,425 rows):** every 2025 + 2026 regular-season Polymarket game market (spreads, totals, moneyline; 357 events,
