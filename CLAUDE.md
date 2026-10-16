@@ -918,8 +918,8 @@ Tested and NOT added (made it worse):
 
 - **Model bets list (Bets -> Model bets):** a small header between the time slots, in kickoff order, the blocks unchanged (`labSlot` / `.labslot` in `public/app.js`): EARLY (Sunday before 9 AM
   your time, London), 10 AM GAMES, 1 PM GAMES, PRIME TIME · THU / SUN / MON (Sunday 4 PM+ and every weeknight). The "Diff" list (parlays across games) has no headers.
-- **Logos on every parlay leg** (game page same-game box, Model bets, Diff): a team leg (ML, spread, TD) shows its team's logo, a total leg shows BOTH teams' logos (`legLogoLabel`,
-  `bothLogos`). Checked in the DOM: 17 of 17 legs on a game page, 28 / 56 / 56 / 12 on the Model bets lists.
+- **Logos on parlay legs** (game page same-game box, Model bets, Diff): a team leg (ML, spread, TD) shows its team's logo next to the name; a total leg (Over / Under) has NO logo
+  (owner 10/16: "only next to their name"; the two-logo total leg was built and removed the same day). `legLogoLabel`.
 - **Computer screen (1100px and wider):** the page uses the whole width (`.wrap max-width:none`), Game Lines tiles 4 across (5 at 1600px+), the docked chip strips (Alerts kinds, My bets
   weeks, Model bets sub-tabs) are centered. Under 1100px (iPhone) nothing changed. The Alerts chips sat bottom-left on a computer because the strip was left-aligned.
 - **Finished game cards:** the card border and the GAME FINISHED cover turn GREEN when the PICK locked at kickoff won, stay red when it lost (`finClass`, `.card.fin.won`, `.cover.won`);

@@ -1078,10 +1078,9 @@ const plPay = (p) => {
 };
 const legMark = (r) => (r === "W" ? '<span class="g">✓</span>' : r === "L" ? '<span class="r">✗</span>' : r === "P" ? '<span class="dim">–</span>' : "•");
 const gameLogos = (key) => { const m = String(key || "").match(/^([A-Z]{2,4}) @ ([A-Z]{2,4})$/); return m ? `${tlogo(m[1])}${esc(m[1])} @ ${tlogo(m[2])}${esc(m[2])}` : esc(key); };
-// 10/16 (owner): every leg gets a logo -- a team leg (ML, spread, TD) its team's, a total leg both teams' (from the leg's game)
-const bothLogos = (key) => { const m = String(key || "").match(/^([A-Z]{2,4}) @ ([A-Z]{2,4})$/); return m ? `${tlogo(m[1])}${tlogo(m[2])}` : ""; };
+// 10/16 (owner): a logo only next to a NAME -- a team leg (ML, spread, TD) shows its team's logo; a total leg (Over / Under) has no name, so no logo
 function legLogoLabel(l) {
-  if (l.kind === "total") return `${bothLogos(l.game)}${esc(l.label)}`;
+  if (l.kind === "total") return esc(l.label);
   if (l.team && /^[A-Z]{2,4}$/.test(l.team)) return `${tlogo(l.team)}${esc(l.label)}`;
   return logoLabel(l.label);
 }
