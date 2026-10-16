@@ -25,6 +25,7 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 - **Live edges (all that passed testing):** key-number points (BEAT THE), LINE MOVE, TOTAL MOVE, INJURY, BOUNCE BACK (road team missed by 24+ since 10/16, 61.3% on 261), BOUNCE BACK DOG.
 - **Parlay chance (10/16):** `lib/combo.js comboChance` shrinks the product of the positive same-game links (lift product ^0.75, `LIFT_POWER`); drags (TD with the Under, TD vs the other team's cover) stay full. Measured 2021-25 with the walk-forward TD model: ML + Over + top TD said 22.9% hit 20.9% (now 20.9), ML + Over + 2 TDs said 12.4% hit 9.6% (now 10.3), style + Under said 2.6% hit 2.0%.
 - **Game model (10/16):** ridge strength `UP_ALPHA = 3000` in `weekly_rebuild.py` (was 30; walk-forward margin error 9.917 -> 9.793, total 10.541 -> 10.409; dry run passed: marginErr 9.944 vs line 9.903, totalErr 10.455 vs line 10.456). `BUILD_TAG` there + `app.py`: Railway rebuilds on deploy when the saved build has a different tag, so a merge brings the new model live the same hour (no Tuesday wait). The game model alone and the chooser are about a coin flip. Week 6 is the first real live test.
+- **Polymarket real prices (10/16):** `railway-model-service/data/poly_closes.csv` holds every 2025-26 game market's real closing / early prices (trade log); `tests/poly_replay.mjs` replays the card on them with money per $100. Result: bought points cost about what they win (PICK w/ POINTS spreads 53.5% at 59c = -9.5 per $100, totals 53.6% = -7.3; 1-point total picks 40.2%); nothing changed in the app -- see POLYMARKET REAL-PRICE REPLAY.
 - **Process:** nothing is built until the owner types "build now"; merge only on "merge now"; even read-only checks wait for the owner's go.
 - **Game page layout (10/16, owner's sketches, built + merged):** the section title sits OUTSIDE the card on its own row with the pills next to it -- "SPREAD & ML" + `Injuries N ▾` + `History ▾`, "TOTALS" + `History ▾` (`secRow` / `headPills`; the drop-downs still open at the top of the card, `headDrops`). Inside each card: `MARKET` header, then SPORTSBOOK (left) | POLYMARKET (right) (`.mk`), then the `MODEL` header and the model lines (Model number, PICK, More) FULL WIDTH under it -- no purple box, no line between market and model, no green "live" dot. Touchdowns = ONE card titled "ANYTIME TD" (`tdTop3`): the top 3 of each team in one list ranked best to worst, team logo next to each name, no team titles; the "First TD pick" line (and the finished game's touchdown line) at the bottom of that card (`.tdfoot`). Same-game parlays below untouched. Sketches: claude.ai/artifact/6D4NwGUfdaHu3xkyaYGSMh.
 - **PICK w/ POINTS fallback stays (owner 10/16: "I don't want that"):** when no line within 2 points reaches 56%, the card still names the best line (history: said 55.7%, won 43.2% on 37 games). Do not change it to "none".
@@ -869,6 +870,33 @@ Tested and NOT added (made it worse):
   (the chooser used to fill that hole); it now passes `model` / `modelUp` into `buildCard`, so the model-side PICK is saved at kickoff like the others. Dry run without the chooser / table:
   passes, artifact keys builtAt / checks / early / moveT / season / tag / upgrade, marginErr 9.944 vs line 9.903, totalErr 10.455 vs line 10.456.
 - **Open for the owner (not built):** when no line reaches 56% the card still names the best one; on history that fallback said 55.7% and won 43.2% (37 games) -- show "none" instead?
+
+## POLYMARKET REAL-PRICE REPLAY (10/16, owner: "Build now number one ... auto math, auto calibration, everything"; work branch, NOT merged until "merge now")
+
+- **Data (new, `railway-model-service/data/poly_closes.csv`, 9,425 rows):** every 2025 + 2026 regular-season Polymarket game market (spreads, totals, moneyline; 357 events,
+  9,594 markets from gamma series 10187 / 12185), prices rebuilt from Polymarket's public TRADE LOG (`data-api.polymarket.com/trades?market=<conditionId>`; `prices-history` is
+  purged once a market resolves). Per market: `close` = last trade before kickoff (about the midpoint; the replay adds 1c for the ask), `first`, the last price 5 / 3 / 1 days out,
+  2-hour VWAP, trade counts, volume. 351 games matched to nflverse scores (the 6 unmatched are January playoff slugs); 4 games had no main line traded in the last 2 hours.
+  **2025 had thin markets: only 1-2 traded spread lines in 136 of 268 games (totals 106); 2026 has 6+ lines in 76 of 79 games.** So 2025 PICK w/ POINTS was the fallback
+  (no 56% line offered) in 118 of 207 spread cards and 149 of 223 total cards; 2026 only 3 and 13.
+- **Replay (`tests/poly_replay.mjs`, run `node --import ./tests/register.mjs tests/poly_replay.mjs`):** the app's OWN `buildCard` (rows, PICK w/ POINTS), `keyNumberPick`
+  (BEAT THE) and LINE MOVE on those real lines, graded on the real scores, win rate AND money per $100 at the real price. 2026 is out of sample (the table stops at 2025);
+  2025 is in-sample with the live table, so the headline 2025 numbers below come from the scratch run with a table cut at 2024 (same picture).
+- **Card rows (every line the card lists):** spreads 1 pt won 56.1% (said 53.2) at 56c = -0.5 per $100; 2 pts 58.2% (said 56.5) at 60c = -2.2; 2.5-3 pts 55.6% (said 60.7) at 62c = -9.7.
+  Favorite rows 48.2% (-10.7 per $100), underdog rows 58.1% (+6.2). Rows the table calls 56-59% won only 51.3% (-14.2), 60%+ 55.6% (-3.9) -- the shrunk spread table still runs
+  HOT on real Polymarket lines. Totals: 2 pts 59.2% (+1.8), 1 pt 53.4% (-3.0); Over rows 55.8% vs Under rows 50.3%; total rows said 56-59 won 64.3% (+9.3) -- the totals table is fine.
+- **PICK w/ POINTS:** spreads 147-128 = 53.5% (said 56.4) at 59c = -9.5 per $100 (honest 2025 56.1% / -3.8; 2026 46.8% / -23.5 on 79); said 56%+ 51.7% (-15.2); fallback 55.6%.
+  Totals 162-140 = 53.6% at 58c = -7.3; **1-point total picks 39-58 = 40.2% (-27.2)**, 2-point 61.3% (+5.1), 3-point 62.9% (+3.6); said 56%+ 62.4% (+5.7); fallback 48.1% (-15.5).
+- **BEAT THE at the real bought-line price:** 82-65 = 55.8% (said 57.1) at 59c = -5.7 per $100 (2025 58.3% / -1.2; 2026 52.4% / -11.7). Books 3 -> +3.5 23-16 (+4.8), 3.5 -> +5.5 9-4,
+  2.5 -> +3.5 15-15 (-16.2), 4.5 -> -2.5 4-4, 7 -> -5.5 5-5. LINE MOVE at the close fired 10 / 9 times (6-4, 5-4): Polymarket and the books close within 1 point in 270 of 333 games.
+- **Main lines at Polymarket's price:** favorites 47.6% (2025) / 48.1% (2026) lose -5 per $100; underdogs 52.4 / 51.9% (+1.2 / +1.5); 2025 Over 51.9% (+3.8), Under 48.1%.
+  Moneyline favorites priced 60-70c won 56.3% (-13.5 per $100, 112 games); 50-60c 55.1% (-1.8); 70-80c 74.7% (-0.5); 80c+ 90.5% (+4.3, 42).
+- **Buying early does nothing:** the same line's price moves -0.75c to +0.4c on average from 5 / 3 / 1 days out to the close (580-1,182 lines); the picks bought 3 days early cost 2c less
+  and won the same games -> no early-buy edge (the earlier "-3c on picks" was selection, not timing).
+- **Bottom line:** at real Polymarket prices the bought points win more often but cost what they win: every bought spread class is between -0.5 and -10 per $100; only 2-3 point total
+  lines and underdog spread rows made money. **Candidates for the owner (NOT built -- card logic needs his word):** (1) never take a 1-point bought TOTAL as PICK w/ POINTS (39-58);
+  (2) the spread table's 56-59% band is hot on real lines (won 51-54%) -- shrink more or show the lower closing-only rate; (3) main-line favorites lose at Polymarket, underdogs
+  break even; (4) moneyline favorites at 60-70c are the worst parlay legs. Next data step if wanted: the same trade-log pull for TD player-prop events (`-player-props` slugs).
 
 ## RESEARCH 10/16 afternoon (owner: "10 minutes each" on the 8 follow-ups, then "keep digging"; nothing built in the app -- findings below, each topic worked until its data ran out, then dug further)
 
