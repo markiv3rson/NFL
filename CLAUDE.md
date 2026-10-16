@@ -889,4 +889,4 @@ Tested and NOT added (made it worse):
   (site.api.espn.com/apis/site/v2/sports/football/nfl/injuries) carries a `date` per item (e.g. "2026-10-15T23:41Z ... remained sidelined at practice Thursday") -- a free live source of
   when news posted; the app already records starters-out changes with times (`inj:`), so the live study is covered. Past seasons stay untestable.
 - **Polymarket history:** prices-history exists (we already use it; back to Aug 2026); order-book depth is NOT archived by Polymarket -- our 30-min `pin30` log is the only record. Keep it running.
-- Timing: the 8 topics took ~25 min total, not 80 -- each stopped when the data ran out (history files have no timestamps; live picks aren't graded yet). Nothing passed the bar to build.
+- Timing (measured by the clock file): the 8 topics ran 14:13-14:19 UTC wall time plus write-up, not 10 min each -- each stopped when the data ran out (history files have no timestamps; live picks aren't graded yet; the official Odds API / Polymarket / SharpAPI doc sites are blocked from the sandbox). Nothing passed the bar to build.
