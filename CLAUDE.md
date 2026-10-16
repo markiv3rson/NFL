@@ -380,7 +380,7 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
 - Same method on spreads: top 10% 55.9%, top 20% 53% -- not added. Also tested 10/13, no edge: Poisson scoring model (49.3% totals),
   538 Elo rebuilt (52.2%), MGM money vs bets splits (spreads 47.8%).
 
-## BOUNCE BACK (Oct 13, 2026 -- owner: "build now")
+## BOUNCE BACK (Oct 13, 2026 -- owner: "build now") [SUPERSEDED 10/16: cutoff is 24+, 61.3% on 261 -- see CURRENT STATE / RESEARCH DAY 10/16]
 
 - `lib/stack.js bounceBackPick` (+ `prevAts` in `lib/paper.js situationFor`): the ROAD team missed the spread by 21+ in its last game ->
   road team at the current line. Nothing fitted. Closing line 2006-25 57.6% (297; 55/60/58% by period, 14/20 seasons); 1999-2005 (held
@@ -842,3 +842,10 @@ Tested and NOT added (made it worse):
   team hit 6.90% (full product said 6.71, shrunk 6.10); cover + Under + TD each team hit 1.99% (full 2.63, shrunk-everything 3.02) -> drags are NOT shrunk; cover & own TD 1.14x, cover & other
   team's TD 0.75x, the two TDs 1.03x.
 - **Database** 8.9 of 30 MB after week 5 compaction; no errors; Railway answering.
+- **Extra 15 minutes (10/16, owner): tried and NOT built.** (1) Spread line table split by HOME/ROAD: rows a hair better (Brier 0.2465 vs 0.2468) but the chosen PICK w/ POINTS
+  calibrates worse (said 59.2 won 58.5; home-team picks said 58.3 won 56.1) -- the thinner cells bring the selection bias back. Fact behind it: a ROAD underdog buying 1 point wins 56.8%
+  (1,548) vs a HOME underdog 53.6% (935); at 2 points 59.9 vs 58.1. (2) Table lean at the main line as the no-rule side: 48.7% (1,510) -- the model side (50.6%) stays. (3) Totals by week:
+  weeks 1-3 Under at the main total 52.1% (1,257; periods 55/50/49/54), Under +2 58.1% vs 56.2% the rest of the year -- a small early-season Under lean, only usable next September;
+  weeks 4-12 and 13+ are 50/50 at the main total. (4) Totals by spread size: spread <=3 Under +2 58.2% (58/55/57/63) vs Over +2 54.4%; total 48+ & spread <=3 Under +2 59.5% (437; 58/63/57/61).
+  Leave-one-season-out with the totals table split by spread size: rows WORSE (Brier 0.2508 vs 0.2490), PICK w/ POINTS the same (56.4 / 57.3 vs 56.3 / 57.4) -> not built.
+- **Open for the owner (not built):** when no line reaches 56% the card still names the best one; on history that fallback said 55.7% and won 43.2% (37 games) -- show "none" instead?
