@@ -46,18 +46,18 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 9. Phone alerts / login: don't build or ask unless the owner raises it.
 10. The owner handles Railway settings. Never paste secrets (an Odds API key was once shared in a screenshot — don't repeat it).
 
-## What the app shows (owner's layout rules)
+## What the app shows (owner's layout rules) [HISTORY -- bullets dated before 10/15 may be stale; where one disagrees with CURRENT STATE, CURRENT STATE wins]
 
 - Tab bar (10/15): Game Lines, Anytime TD, Bets, Alerts, Models -- FIVE tabs; there is no Model Picks tab (it lives inside Bets). Icon over each name, purple/blue, no box.
-- Model card: ONE answer — the model's number (purple), then **PICK** — green at 56%+ (with its short reason, e.g. LINE MOVE), LIGHT GREEN at 53-55% (owner 10/13), yellow
-  below 53% with NO notes (owner 10/13: "too many notes"). Always a PICK, never LEAN. No teasers on cards; market lines only.
+- Model card: ONE answer — the model's number (purple), then **PICK** — green at 56%+, LIGHT GREEN at 53-55% (owner 10/13), yellow
+  below 53% with NO notes (owner 10/13: "too many notes"). Always a PICK, never LEAN. No teasers on cards; market lines only. (The short reason tag was removed 10/15; PICK w/ POINTS and the line list sit under MORE -- see CURRENT STATE.)
 - Teasers: REMOVED 10/14 (owner never bets them; code deleted, no longer recorded). The "buy points" idea lives on as BEAT THE 3.
 - Best bets = top 10 straight picks at 56%+. Parlay of the week = top 4, one per game.
 - Model Picks tab (the old angle / teaser / price-gap parlays were deleted 10/14): parlay types built once a week (first scheduled snapshot within 26 h of the first Sunday kickoff — Sat 7 AM PT
   when the first game is London) and graded. Includes "Best bets · 2/3/4" (= the Parlay of the week). TD parlays may use thin markets (leg says "thin"); the price shown is the ask.
-- Model card (10/14, owner): when another green rule takes the OTHER side of the same market, the green pick adds "⚠ Rules split: <pick> (<rule>, <%>) is green too. Pick one side." (`public/app.js splitNote`).
+- [CUT 10/15] The "⚠ Rules split" warning (10/14) is gone; when two rules take opposite sides the card shows the higher win rate, nothing else.
 - SAME-GAME PARLAYS (10/14, `lib/sgp.js`; current set = 2 legs / 3 legs / 4 legs / 4 legs · my style, see PAGE CLEANUP below): every game page
-  shows a "SAME-GAME PARLAY" box at the bottom, below the touchdowns; tab bar order (owner 10/14, final): Game Lines, Anytime TD, Bets, Bell, Models, Model Picks -- BEST (strong legs: green spread/total 56%+ and TD players 55%+, one per team, ALL kept -- owner 10/14 "we are testing everything":
+  shows a "SAME-GAME PARLAY" box at the bottom, below the touchdowns (tab bar: see CURRENT STATE) -- BEST (strong legs: green spread/total 56%+ and TD players 55%+, one per team, ALL kept -- owner 10/14 "we are testing everything":
   a TD with the Under stays, its chance counts the 0.77x link; fewer than 2 strong legs -> filled with the next-strongest legs and saved as
   its own record `sgp_best_fill`, so every game gets one) and YOUR STYLE (card's spread + total
   pick + the top TD scorer on each team, Out/Doubtful/Questionable skipped). Chance = legs x same-game links (`lib/combo.js comboChance`).
@@ -75,7 +75,7 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 - Early-week total edge: TURNED OFF 10/11 (11-18 live); its code was deleted 10/14.
 - Anytime TD tab: "Best TD picks" box at the top (10/14, owner: only the model's 55%+ players; graded weeks 3-5 they scored 17 of 21
   vs 22% for all listed players), then top 3 per team (owner wants it kept), plus a "⚠ Market disagrees" box for any player 20+ points from Polymarket.
-- Referees and price-gap alerts were removed on purpose. Models tab is 8 sections (10/13: "Price gaps" cut, "Records · model's side" cut, "Tracked angles" = wind Under, OFFENSIVE FLOOR and the two shadow rules, `lib/tracked.js`). Also cut 10/13: "Hit rate by week" (Trends), the Replay box, the Pick Lab paper singles, bell alerts for MODEL / PRICE GAP / TEASER, the edge tracker and the Action Network pull (all their code deleted 10/14).
+- Referees and price-gap alerts were removed on purpose. Models tab is 8 sections (10/13: "Price gaps" cut, "Records · model's side" cut; "Tracked angles" = the shadow tests in `lib/tracked.js`: Pinnacle LINE MOVE, order-book tilt, INJURY EARLY -- the wind Under and OFFENSIVE FLOOR trackers were cut 10/15). Also cut 10/13: "Hit rate by week" (Trends), the Replay box, the Pick Lab paper singles, bell alerts for MODEL / PRICE GAP / TEASER, the edge tracker and the Action Network pull (all their code deleted 10/14).
 
 - Sign-in (10/14, owner chose B): one good sign-in sets a 1-year "remember this phone" cookie (`middleware.ts`, `nfl_remember` = hash of
   username + password); changing SITE_PASSWORD in Vercel signs every phone out. Cross-site guard kept.
@@ -115,7 +115,7 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   * Game Lines: Best bets / Parlay of the week as two gold tickets; line changes as a chip strip; live game tiles glow red.
   * Page headers are plain words with a gradient line; numbers roll in like slot reels when a tab or game opens (`slotify`).
   * Anytime TD: Best TD picks players are not repeated in the list below; "Market disagrees" is a ⚠ line on the player's row.
-  * Alerts: wind alert says "Strong wind can lower scoring" (the old "Windy under" angle is not a pick). SOS removed from the screen
+  * Alerts: [the wind alert was CUT 10/15]. SOS removed from the screen
     (strength of schedule is still computed in `lib/week.js schedStrength` as `g.sos`, just not shown).
   * Dead page code removed: anglesBox, extraBets, rightNowBox, saferSide/saferOne/saferRate/saferTotal/totalMoved, comboLines, ord; the
     unused `angles` field on games.
@@ -939,6 +939,22 @@ Tested and NOT added (made it worse):
   Tuesday report card (`npm run accuracy`, LIVE per green rule) shows both with the BELOW flag; re-check after week 8 (real-line replay: favorites 10-13, underdogs 61-45).
 - **f.** TD model, totals table, BOUNCE BACK, BOUNCE BACK DOG, card layout and colors: unchanged.
 - Tests: 329 site checks, grading audit, service checks, accuracy; browser pass phone + 1440px (0 errors), DOM logo count, screenshots of every changed screen.
+
+## PASS 3 (10/16, owner: "read through everything. math logic, contradicting each other. confusion. do another pass"; merged)
+
+- **Thresholds agree everywhere:** card colors green 56 / light green 53 (`clsOf`, `isGreenPick`, `PTS_BAR 56`); parlay "strong legs" use the same `isGreenPick` (56%+) and TD 55%+
+  (`TD_MIN`); Best TD picks 55%+ (`BEST_TD`); Best bets 56%+; glow 56 / 58 / 61. Below green the shown % rounds DOWN everywhere (card, TD rows).
+- **Kickoff recorder = the card:** `pages/api/snapshot.js` builds the kickoff card with the same `buildCard`, the same rule list (TOTAL MOVE, INJURY, BOUNCE BACK, DOG, LINE MOVE, BEAT THE),
+  the same saved alternates and the model numbers, so the PICK / PICK w/ POINTS saved at kickoff is the one the card showed.
+- **FIXED -- time-slot rules disagreed:** the Bets tab's `kickSlot` (Pacific clock, before 9 / noon / 5 PM, TNF-SNF-MNF prime) and the new Model bets headers used different cutoffs
+  (phone clock, 4 PM). `labSlot` now uses the same Pacific cutoffs. `slotOf` (parlay-of-the-week slot) keeps its own 3 slots (morning / afternoon / primetime), same hours.
+- **Tiles:** Spread picks / Total picks count the card's PICK from week 6 on and the old card picks before (weeks 3-5 chooser era) -- one record per game and market, as the note says.
+- **Notes de-contradicted:** the "What the app shows" section is marked HISTORY; its stale bullets (Rules split warning, old tab order, wind alert, old Tracked angles list, the
+  reason tag on the card) now say CUT / see CURRENT STATE. Rule of reading: CURRENT STATE + OWNER'S STANDING DECISIONS win over every older section.
+- **Docked strips (owner 10/16: "make it like the Model bets sub tabs"):** the Alerts kinds strip and the My bets weeks strip are now the SAME flat strip as the Model bets sub-tabs
+  (`.chips.dock` in `public/index.html`: equal columns, bold text, purple underline, no pills); when the labels do not fit (Alerts on a phone) the strip scrolls sideways instead of
+  truncating. One rule for all three.
+- Nothing else found: tests, grading audit, accuracy, browser pass (phone + computer) all clean.
 
 ## POLYMARKET REAL-PRICE REPLAY (10/16, owner: "Build now number one ... auto math, auto calibration, everything"; work branch, NOT merged until "merge now")
 
