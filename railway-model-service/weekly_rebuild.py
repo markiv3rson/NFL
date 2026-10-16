@@ -14,7 +14,7 @@ Opening lines: data/opens.csv (aussportsbetting.com 2006-Oct 2026) plus the site
 Output (/data/combomodel.json): {builtAt, upgrade, early, table, checks}. Published only if the checks pass, otherwise the
 previous file stays. The site reads it from GET /combo-model (lib/combomodel.js) and falls back to its built-in copy.
 """
-import os, json, time, itertools, threading, warnings
+import os, json, time, threading, warnings
 import numpy as np, pandas as pd
 import season as _season
 warnings.filterwarnings("ignore")
@@ -25,7 +25,14 @@ WORK = os.path.join(OUT_DIR, "rebuild")
 ARTIFACT = os.path.join(OUT_DIR, "combomodel.json")
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIRST = 2014                       # first season with the game-model replay (needs the season before for its prior)
-PERIODS = (2017, 2021)             # three test periods: FIRST-2017, 2018-2021, 2022-now
+# 10/16 (owner: "fix what you find"): the upgraded game model's ridge strength. It was 30; tested 30 / 300 / 1000 / 3000 / 10000 / 30000 walk-forward
+# (train every earlier season, test 2015-26): margin error 9.917 / 9.832 / 9.807 / 9.793 / 9.819 / 9.914, total 10.541 / 10.463 / 10.422 / 10.409 /
+# 10.449 / 10.552 (line alone 9.710 / 10.362). Leave-one-season-out (the checks below): 30 -> 9.999 / 10.502, 3000 -> 9.944 / 10.455 (line 9.903 / 10.456).
+# The model is still no better than the line; 3000 just stops it from adding noise. Season decay weights (0.7-0.9 a season) made it worse.
+UP_ALPHA = 3000
+# 10/16 (owner: "rebuild it now"): bump this tag whenever the rebuild code changes what it publishes. app.py rebuilds on start when the saved
+# build carries a different tag, so a deploy to Railway rebuilds right away instead of waiting for Tuesday 4 AM PT.
+BUILD_TAG = "2026-10-16 ridge 3000, no chooser / combo table"
 COLD = {"GB", "CHI", "BUF", "NE", "CLE", "PIT", "DEN", "KC", "NYJ", "NYG", "PHI", "CIN", "BAL"}
 TZ = {"SEA": -3, "SF": -3, "LA": -3, "LAC": -3, "LV": -3, "OAK": -3, "SD": -3, "STL": -1, "ARI": -2, "DEN": -2, "KC": -1, "DAL": -1, "HOU": -1,
       "MIN": -1, "CHI": -1, "GB": -1, "NO": -1, "TEN": -1}
@@ -157,7 +164,6 @@ def qb_runs(seasons):
 # for straight bets only (no teasers, owner's call).
 INJ_GRP = {"QB": "qb", "WR": "sk", "TE": "sk", "RB": "sk", "T": "ol", "G": "ol", "C": "ol", "OT": "ol", "OG": "ol", "CB": "db", "S": "db", "FS": "db", "SS": "db",
            "LB": "f7", "ILB": "f7", "OLB": "f7", "MLB": "f7", "DE": "f7", "DT": "f7", "NT": "f7"}
-INJ_FACTORS = [f"{s}{g}out" for g in ("QB", "SK", "OL", "DB", "F7") for s in ("dog", "fav")]
 INJ_MIN = {"qb": 1, "sk": 1, "ol": 2, "db": 2, "f7": 2}
 def _nn(x):
     import re
@@ -291,65 +297,9 @@ def design(d, F, early=False):
     if early: Z = Z.drop(columns=list(EARLY_DROP))
     return Z.astype(float).fillna(0)
 
-def scan(d, F, per):
-    hs = d.km.values; homeDog = hs < 0; dm = np.where(homeDog, d.res, -d.res); sp = np.abs(hs)
-    B = {"DOG6(1.5-2.5)": np.where((sp >= 1.5) & (sp <= 2.5), np.sign(dm + sp + 6), np.nan), "anyDog+6": np.sign(dm + sp + 6), "anyFav-6->": np.sign(-dm - sp + 6),
-         "Under+6": -np.sign(d.tot - (d.kt + 6)).values, "Over-6": np.sign(d.tot - (d.kt - 6)).values, "Dog ATS": np.sign(dm + sp), "Fav ATS": -np.sign(dm + sp),
-         "Under": -np.sign(d.tot - d.kt).values, "Over": np.sign(d.tot - d.kt).values}
-    names = list(F); combos = [(n,) for n in names] + list(itertools.combinations(names, 2)); rows = []
-    for bn, x in B.items():
-        x = np.asarray(x, float); valid = ~np.isnan(x) & (x != 0); base = (x[valid] > 0).mean()
-        straight = bn in ("Dog ATS", "Fav ATS", "Under", "Over")
-        for c in combos:
-            if not straight and any(n in INJ_FACTORS for n in c): continue   # starters-out combos: straight bets only
-            k = valid.copy()
-            for n in c: k &= F[n]
-            n = int(k.sum())
-            if n < 60: continue
-            wv = x[k] > 0; pr = [wv[per[k] == p].mean() if (per[k] == p).sum() >= 12 else np.nan for p in range(3)]
-            if np.any(np.isnan(pr)): continue
-            if min(pr) >= base + 0.02 and wv.mean() >= base + 0.04: rows.append([bn, list(c), round(float(wv.mean()) * 100, 1), n])
-    return rows
-
-# Pick chooser (10/12, lib/chooser.js): one logistic model per market over every factor; its win rate is made honest by a calibration
-# fit on leave-one-season-out predictions (each game judged by a model that never saw its season). Scanned single patterns won 49.8%
-# on unseen games, so the site's picks come from this instead.
-def train_chooser(d, F, F_for=None):
-    """F_for(s) (10/14 fix): the factors rebuilt with season s hidden from the model leans of EVERY row (two-level leave-one-season-out).
-    Before, the training rows' leans came from ridge fits that had seen the test season, so the honest % ran slightly high."""
-    from sklearn.linear_model import LogisticRegression
-    names = list(F); X = np.column_stack([F[n] for n in names]).astype(float)
-    hs = d.km.values; homeDog = hs < 0; dm = np.where(homeDog, d.res, -d.res); sp = np.abs(hs)
-    Y = {"spread": np.sign(dm + sp), "total": np.sign(d.tot.values - d.kt.values)}
-    lg = lambda p: np.log(p / (1 - p)); out = {"feat": names, "markets": {}, "oos": {}}
-    for mk, y in Y.items():
-        ok = y != 0; oos = np.full(len(d), np.nan)
-        for s in sorted(d.season.unique()):
-            tr = (d.season != s).values & ok; te = (d.season == s).values
-            Xs = X if F_for is None else (lambda Fs: np.column_stack([Fs[n] for n in names]).astype(float))(F_for(s))
-            oos[te] = LogisticRegression(C=0.05, max_iter=3000).fit(Xs[tr], (y[tr] > 0).astype(int)).predict_proba(Xs[te])[:, 1]
-        q = np.maximum(oos, 1 - oos); win = ((oos > 0.5) == (y > 0)).astype(int)
-        cal = LogisticRegression(C=1e6).fit(lg(np.clip(q[ok], 0.5001, 0.999)).reshape(-1, 1), win[ok])
-        full = LogisticRegression(C=0.05, max_iter=3000).fit(X[ok], (y[ok] > 0).astype(int))
-        out["markets"][mk] = {"coef": [round(float(c), 6) for c in full.coef_[0]], "b0": round(float(full.intercept_[0]), 6),
-                              "cal": [round(float(cal.intercept_[0]), 6), round(float(cal.coef_[0][0]), 6)]}
-        out["oos"][mk] = {"games": int(ok.sum()), "hit": round(float(win[ok].mean()) * 100, 1)}
-        if mk == "total":
-            # BOUGHT-POINT TOTALS (10/14, owner "by confidence"): the cutoffs for the chooser's most confident 30% / 10% of games (raw confidence), republished weekly.
-            # Honest check of the rule on unseen seasons: top 10% buys 2 points, next 20% buys 4 (half-point lines only, bet at the closing total).
-            qv = np.maximum(oos, 1 - oos); thr30, thr10 = float(np.quantile(qv[ok], .7)), float(np.quantile(qv[ok], .9))
-            out["markets"][mk]["thr"] = [round(thr30, 5), round(thr10, 5)]
-            def buy_hit(sel, k):
-                w = l = 0
-                for T, tot, p in zip(d.kt.values[sel], d.tot.values[sel], oos[sel]):
-                    line = T - k if p > 0.5 else T + k
-                    if float(line).is_integer(): continue
-                    if ((tot > line) if p > 0.5 else (tot < line)): w += 1
-                    else: l += 1
-                return (round(100 * w / (w + l), 1) if w + l else None), w + l
-            h2, n2 = buy_hit(ok & (qv >= thr10), 2); h4, n4 = buy_hit(ok & (qv >= thr30) & (qv < thr10), 4)
-            out["oos"]["totalBuy"] = {"hit2": h2, "n2": n2, "hit4": h4, "n4": n4}
-    return out
+# 10/16 (owner: "cut 1 and two"): the scanned combo table (scan) and the pick chooser (train_chooser) were removed. Both were retired as
+# card picks on 10/12 (49.8% and 49-52% on unseen seasons); the rebuild now publishes the upgraded game model, the early total model and
+# the total-move model only, and goes live on the model checks alone.
 
 
 # Total-move model (10/13): predicts how far the total will move from the OPENING number to the close, using only what is known at the
@@ -380,40 +330,27 @@ def train_move(ZE, mv, seasons, tot, op):
 def build(site_opens=None):
     from sklearn.linear_model import Ridge
     t0 = time.time(); d, cur = assemble(site_opens)
-    per = d.season.map(lambda s: 0 if s <= PERIODS[0] else (1 if s <= PERIODS[1] else 2)).values
     F0 = factors(d, d.mm.values, d.mt.values)
     Z = design(d, F0)
     um, ut = np.full(len(d), np.nan), np.full(len(d), np.nan)
-    for s in sorted(d.season.unique()):   # leave-one-season-out: the honest accuracy check, and the leans the combos are scanned with
+    for s in sorted(d.season.unique()):   # leave-one-season-out: the honest accuracy check
         tr, te = (d.season != s).values, (d.season == s).values
-        um[te] = Ridge(alpha=30).fit(Z[tr], d.res[tr]).predict(Z[te]); ut[te] = Ridge(alpha=30).fit(Z[tr], d.tot[tr]).predict(Z[te])
-    fm, ft = Ridge(alpha=30).fit(Z, d.res), Ridge(alpha=30).fit(Z, d.tot)
+        um[te] = Ridge(alpha=UP_ALPHA).fit(Z[tr], d.res[tr]).predict(Z[te]); ut[te] = Ridge(alpha=UP_ALPHA).fit(Z[tr], d.tot[tr]).predict(Z[te])
+    fm, ft = Ridge(alpha=UP_ALPHA).fit(Z, d.res), Ridge(alpha=UP_ALPHA).fit(Z, d.tot)
     eo = d.so.notna() & d.to.notna(); ZE = design(d[eo], {k: v[eo.values] for k, v in F0.items()}, early=True); fe = Ridge(alpha=30).fit(ZE, d.tot[eo])
-    F = factors(d, um, ut); rows = scan(d, F, per)
-    # 10/14 fix: for the chooser's honest test, season s is hidden from every row's model leans (two-level leave-one-season-out)
-    seasons_, cacheF = sorted(d.season.unique()), {}
-    def F_for(s):
-        if s in cacheF: return cacheF[s]
-        um_s, ut_s = um.copy(), ut.copy()
-        for t in seasons_:
-            if t == s: continue
-            te = (d.season == t).values; tr = ~d.season.isin([s, t]).values
-            um_s[te] = Ridge(alpha=30).fit(Z[tr], d.res[tr]).predict(Z[te]); ut_s[te] = Ridge(alpha=30).fit(Z[tr], d.tot[tr]).predict(Z[te])
-        cacheF[s] = factors(d, um_s, ut_s); return cacheF[s]
     err = lambda p, y: float(np.mean(np.abs(p - y)))
     checks = {"games": int(len(d)), "seasons": [int(d.season.min()), int(d.season.max())], "openLines": int(eo.sum()),
               "marginErr": round(err(um, d.res), 3), "oldMarginErr": round(err(d.mm, d.res), 3), "marketMarginErr": round(err(d.km, d.res), 3),
-              "totalErr": round(err(ut, d.tot), 3), "oldTotalErr": round(err(d.mt, d.tot), 3), "combos": len(rows), "minutes": round((time.time() - t0) / 60, 1)}
+              "totalErr": round(err(ut, d.tot), 3), "oldTotalErr": round(err(d.mt, d.tot), 3), "minutes": round((time.time() - t0) / 60, 1)}
     feat = list(Z.columns)
-    return {"builtAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "season": int(cur), "checks": checks,
+    return {"builtAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "tag": BUILD_TAG, "season": int(cur), "checks": checks,
             "upgrade": {"feat": feat, "m": [round(float(v), 6) for v in fm.coef_], "mi": round(float(fm.intercept_), 6), "t": [round(float(v), 6) for v in ft.coef_], "ti": round(float(ft.intercept_), 6)},
             "early": {"feat": list(ZE.columns), "t": [round(float(v), 6) for v in fe.coef_], "ti": round(float(fe.intercept_), 6)},
-            "table": rows, "chooser": train_chooser(d, F, F_for),
             "moveT": train_move(ZE.drop(columns=[c for c in MOVE_DROP if c in ZE.columns]), (d.kt[eo] - d.to[eo]).values, d.season[eo].values, d.tot[eo].values, d.to[eo].values)}
 
 def passes(a):
     c = a["checks"]
-    return c["games"] >= 2000 and c["marginErr"] <= c["oldMarginErr"] + 0.05 and c["marginErr"] <= 10.6 and c["totalErr"] <= c["oldTotalErr"] + 0.05 and c["combos"] >= 300
+    return c["games"] >= 2000 and c["marginErr"] <= c["oldMarginErr"] + 0.05 and c["marginErr"] <= 10.6 and c["totalErr"] <= c["oldTotalErr"] + 0.05
 
 def run(site_opens=None):
     """Build, check, publish. Returns the checks (and whether it went live)."""

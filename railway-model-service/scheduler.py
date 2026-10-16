@@ -106,7 +106,7 @@ def _rebuild_combos():
                 gid = idx.get((int(x["season"]), int(x["week"]), x["away"], x["home"]))
                 if gid and x.get("so") is not None and x.get("to") is not None: opens[gid] = {"so": x["so"], "to": x["to"]}
         r = weekly_rebuild.run(opens)
-        summary = ("went live: " if r.get("ok") else "kept previous: ") + json.dumps({k: r.get(k) for k in ("games", "marginErr", "oldMarginErr", "totalErr", "combos", "minutes", "error") if r.get(k) is not None})
+        summary = ("went live: " if r.get("ok") else "kept previous: ") + json.dumps({k: r.get(k) for k in ("games", "marginErr", "oldMarginErr", "totalErr", "minutes", "error") if r.get(k) is not None})
         print(f"[scheduler] combo rebuild -> {summary}", flush=True)
         _call(f"/api/status?combos={urllib.parse.quote(summary)}", tries=1)
     except Exception as e:

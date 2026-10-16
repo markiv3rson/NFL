@@ -44,7 +44,7 @@ if (games) {
     "BEAT THE 3 (alt)": { claim: null, from: 1999, to: 2025, run: (g, G) => { const hs = -G.sp, T = (BUY_ALT[Math.abs(hs)] || [])[0]; if (!T) return null;
       const fav = hs < 0 ? g.home : g.away, dog = hs < 0 ? g.away : g.home, team = T.side === "fav" ? fav : dog, main = team === g.home ? T.line : -T.line;
       return keyNumberPick(g, { spread: { homeSpread: main, home: 0.5, away: 0.5 } }, { spread: { homeSpread: hs } }); } },
-    "BOUNCE BACK": { claim: 57.2, from: 1999, to: 2025, run: (g, G) => bounceBackPick(g, -G.sp, { away: prevOf[`${G.id}|away`], home: prevOf[`${G.id}|home`] }) },
+    "BOUNCE BACK": { claim: 61.3, from: 1999, to: 2025, run: (g, G) => bounceBackPick(g, -G.sp, { away: prevOf[`${G.id}|away`], home: prevOf[`${G.id}|home`] }) },
     "BOUNCE BACK DOG": { claim: 56.5, from: 1999, to: 2025, run: (g, G) => floorDogPick(g, -G.sp, { away: prevOf[`${G.id}|away`], home: prevOf[`${G.id}|home`] }) },
     // LINE MOVE: Polymarket "still has the old number" = the opening line; the books = the close. Graded at the opening number.
     "LINE MOVE (spread)": { claim: null, from: 2014, to: 2025, run: (g, G) => { const o = opens[G.id]; if (!o || !isFinite(o.so)) return null;

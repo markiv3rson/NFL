@@ -2,7 +2,7 @@
 // plus sportsbook consensus when books=1. Called by the Railway scheduler (7/12/3/7 PT, Sunday
 // 6/7/8/9/10/12/3 PT, and just before each kickoff with kickoff=<game>) and by the Refresh button.
 import { buildCard, cardPicks } from "../../lib/cardpick";
-import { tablePicks, recordStack, lineMovePick, lineMoveTotalPick, keyNumberPick, injuryPick, bounceBackPick, floorDogPick } from "../../lib/stack";
+import { comboFactors, totalMovePick, recordStack, lineMovePick, lineMoveTotalPick, keyNumberPick, injuryPick, bounceBackPick, floorDogPick } from "../../lib/stack";
 import { venue, windAtKickoff } from "../../lib/wind";
 import { loadComboModel } from "../../lib/combomodel";
 import { alertsTdNo } from "../../lib/alerts";
@@ -58,8 +58,8 @@ export async function writePrelog(season, week, g, t, poly, bk, model) {
         // Before, books came first, so a recorded pick could sit on a different number than the one shown.
         const hsNow = poly && poly.spread && poly.spread.homeSpread != null ? poly.spread.homeSpread : bk && bk.spread ? bk.spread.homeSpread : null;
         const tlNow = poly && poly.total && poly.total.line != null ? poly.total.line : now;
-        try { const altRec = (await getJSON(`alts:${season}:${week}:${g.key}`).catch(() => null)) || {}; const sitS = await situationFor(season, week, g).catch(() => null); const lst = tablePicks({ ...g, outdoor: !!v.outdoor }, mg, hsNow, tlNow, s0, open, sitS, Number(week)).concat(injuryPick(g, hsNow, s0, sitS, Number(week)) || [], bounceBackPick(g, hsNow, sitS) || [], floorDogPick(g, hsNow, sitS) || [], ...(await timingAtKickoff(season, week, g, t, poly, bk)));
-          await recordStack(season, week, g, lst.concat(cardPicks(buildCard({ ...g, started: false, final: false }, lst, poly, bk, altRec))), t); } catch {} }   // + the card's PICK and PICK w/ POINTS (10/15)   // combo picks (10/9); a failure here never stops the rest
+        try { const altRec = (await getJSON(`alts:${season}:${week}:${g.key}`).catch(() => null)) || {}; const sitS = await situationFor(season, week, g).catch(() => null); const cf = comboFactors({ ...g, outdoor: !!v.outdoor }, mg, hsNow, tlNow, s0, open, sitS, Number(week)), lst = (cf ? totalMovePick(g, cf.mvT, tlNow, open, Number(week)) || [] : []).concat(injuryPick(g, hsNow, s0, sitS, Number(week)) || [], bounceBackPick(g, hsNow, sitS) || [], floorDogPick(g, hsNow, sitS) || [], ...(await timingAtKickoff(season, week, g, t, poly, bk)));
+          await recordStack(season, week, g, lst.concat(cardPicks(buildCard({ ...g, started: false, final: false, model: mg, modelUp: cf ? cf.up : null }, lst, poly, bk, altRec))), t); } catch {} }   // + the card's PICK and PICK w/ POINTS (10/15); 10/16: the model numbers ride along so a game with no rule records its model-side PICK at kickoff too
   }
 }
 

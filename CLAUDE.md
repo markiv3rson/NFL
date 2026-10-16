@@ -12,12 +12,27 @@
 
 Read this first in every new chat. It carries the owner's rules and what has already been tried.
 
+## CURRENT STATE (cleaned 10/15 -- READ THIS FIRST; where an older section below disagrees, THIS wins)
+
+- **Tabs (bottom bar, 5):** Game Lines, Anytime TD, Bets, Alerts, Models. Model Picks is not a tab: it is the right side of the toggle at the top of Bets (My bets | Model bets).
+- **Spread / total card:** `Model: <number>` / `PICK: <side at Polymarket's own line> · win %`. Under MORE: `PICK w/ POINTS` first, then ONE list with both teams (totals: Over AND Under) at main, 1 and 2 points; a 3rd point only if it beats the best line within 2 points by 3+ win points; 4 points never. The chosen row is green across; nothing else is green in the list. Same rules on every game.
+- **PICK side:** a tested rule (BEAT THE tiers, LINE MOVE, INJURY, BOUNCE BACK, BOUNCE BACK DOG, TOTAL MOVE); with no rule it is the model's side at the main line (`modelpick|`, 50.6% spreads / 51.7% totals, yellow, its own record row "MODEL SIDE", NEVER counted in the rules' record, the weekly recap or Final alerts). The chooser was REMOVED 10/16 (with the scanned combo table); old `chooser|` rows stay in the records as history. BEAT THE tiers (14) only name the side.
+- **Colors:** by WIN RATE only -- green 56%+, light green 53-55%, yellow below. Price/cushion is data, never a color or a reason. No notes, warnings or footnotes.
+- **Win rates for any line:** `lib/linetable.js` (all games, no day/night split; lowest of closing 1999-2025 / opening 2014-25 / recent 2020-25). **SPREADS ARE SHRUNK (10/16):** each group's rate is pulled toward the same side + same cushion pooled over every books number (as 200 extra games, `SHRINK_K`) before the lowest is taken -- tested leave-one-season-out, the card's chosen PICK w/ POINTS now says 59.0% and wins 59.5% (it said 59.7% and won 57.8% unshrunk; favorites said 61.7% and won 56.6%). Totals are not shrunk (said 56.3%, won 57.4%). Examples now: books 3 dog +3.5 54.6% (was 55.3), 4.5 fav -2.5 58.3% (was 63.8), 13.5 dog +14.5 57.1% (was 63.9), 2.5 dog +3.5 56.2% (was 56.9), 4 fav -2.5 54.4%. The recent group counts from 60 games (opening 200, closing 40); at 200 it counted for only 1 of 15 BEAT THE tiers. Recent 2020-25 rates (10/15): books 4 fav -2.5 53.1% (64), books 7 fav -5.5 51.1% (88), books 7.5 fav -5.5 52.7% (91), books 3.5 dog +5.5 54.0% (161) -- now shown on the cards; samples are small (1 standard error ~6 pts). Day/night rates in older sections are gone.
+- **Records / ids:** `cardpick|`, `ptspick|`, `modelpick|` plus each rule's own id; saved at kickoff and on first show, graded. Parlays use the plain PICK line; only `sgp_style_pts` ("Bought") uses points lines.
+- **Alternate prices:** the 30-min Pinnacle pull saves `alts:` (checked live 10/15: every card has 5-7 spread rows, 4-7 total rows).
+- **Removed for good:** teasers, wind alert/Under tracker, OFFENSIVE FLOOR tracker, MIDDLE, price-gap, Rules-split warning, cushion colors, "Model Picks" tab, BOUGHT-POINT TOTALS pick, day/night split, **the pick chooser and the scanned combo table (10/16: `lib/chooser.js`, `lib/combotable.js`, `scan` / `train_chooser` in the rebuild, the "300+ combos" publish gate; `lib/stack.js movePicks` = TOTAL MOVE only; `lib/combomodel.js` loads `upgrade` / `early` / `moveT` only and refetches a build without a tag every 15 min)**.
+- **Live edges (all that passed testing):** key-number points (BEAT THE), LINE MOVE, TOTAL MOVE, INJURY, BOUNCE BACK (road team missed by 24+ since 10/16, 61.3% on 261), BOUNCE BACK DOG.
+- **Parlay chance (10/16):** `lib/combo.js comboChance` shrinks the product of the positive same-game links (lift product ^0.75, `LIFT_POWER`); drags (TD with the Under, TD vs the other team's cover) stay full. Measured 2021-25 with the walk-forward TD model: ML + Over + top TD said 22.9% hit 20.9% (now 20.9), ML + Over + 2 TDs said 12.4% hit 9.6% (now 10.3), style + Under said 2.6% hit 2.0%.
+- **Game model (10/16):** ridge strength `UP_ALPHA = 3000` in `weekly_rebuild.py` (was 30; walk-forward margin error 9.917 -> 9.793, total 10.541 -> 10.409; dry run passed: marginErr 9.944 vs line 9.903, totalErr 10.455 vs line 10.456). `BUILD_TAG` there + `app.py`: Railway rebuilds on deploy when the saved build has a different tag, so a merge brings the new model live the same hour (no Tuesday wait). The game model alone and the chooser are about a coin flip. Week 6 is the first real live test.
+- **Process:** nothing is built until the owner types "build now"; merge only on "merge now"; even read-only checks wait for the owner's go.
+
 ## Owner's rules (always follow)
 
 1. **Answer every question first, all of them, before anything else.**
 2. **Never build, test, push, merge or delete anything until the owner says "build now"** -- ONLY those words count (an option pick, "yes" or "continue" do NOT). Explaining is fine; acting is not. Don't undo or redo changes on your own either.
 3. Short, plain answers. No jargon. **Every spread or line written in a reply carries its + or − (favorite −2.5, underdog +3.5) -- owner 10/15.**
-4. Don't add things the owner didn't ask for, and put things exactly where told. **NO explanatory notes, warnings, footnotes, subtitles or "how this works" sentences anywhere in the app (owner 10/15: "I'm the one building it, I understand it"). Show data only. Never add a section, list or card nobody asked for.** **NO explanatory notes, warnings, footnotes, subtitles or "how this works" sentences anywhere in the app (owner 10/15: "I'm the one building it, I understand it"). Show data only. Never add a section, list or card nobody asked for (owner 10/15: the "Picks recorded and graded" list).**
+4. Don't add things the owner didn't ask for, and put things exactly where told. **NO explanatory notes, warnings, footnotes, subtitles or "how this works" sentences anywhere in the app (owner 10/15: "I'm the one building it, I understand it"). Show data only. Never add a section, list or card nobody asked for.**
 5. Judge bets by **win rate**, never by price/value.
 6. Trust small samples. No "luck" filter.
 7. "Tests pass" only means the code runs — never say it as if the predictions are right. Give accuracy numbers instead.
@@ -120,7 +135,7 @@ Read this first in every new chat. It carries the owner's rules and what has alr
   bar (`.chips.dock`) for one-thumb use. Grading check 10/14: weeks 3-5 every final game graded (16/16/15), all 87 card picks graded
   (chooser included since 10/12), week 6 parlays saved and waiting.
 
-## BUY THE POINTS + fixes A-D (10/14 late, owner: "build now")
+## BUY THE POINTS + fixes A-D (10/14 late, owner: "build now") [PARTLY SUPERSEDED -- see CURRENT STATE]
 
 - BEAT THE 3 is now a table of tested tiers (`lib/stack.js BUY_TIERS`, 1999-2025 closing line, DAY rates): books 1 / 1.5 / 2.5 / 3 ->
   dog +3.5 (60.7 / 62.1 / 60.9 / 57.9%); books 3.5 / 4.5 / 6.5 -> fav -2.5 (59.8 / 65.6 / 66.9%); books 5.5 -> dog +7.5 (61.7%, "BEAT THE
@@ -182,7 +197,7 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 ## Where things live
 
 - Site (Next.js on Vercel, nfl-nfl9.vercel.app): `pages/api/*`, `lib/*`, front end `public/app.js`.
-  - Card picks: `lib/stack.js`, `lib/combotable.js`; game model: `lib/upgrade.js`; tracked paper tests: `lib/tracked.js`; week data: `lib/week.js`.
+  - Card picks: `lib/stack.js` (rules), `lib/cardpick.js` (the card), `lib/linetable.js` (win % of any line); game model: `lib/upgrade.js`; tracked paper tests: `lib/tracked.js`; week data: `lib/week.js`.
   - Model rerun (sends Out/Questionable lists to Railway): `pages/api/rerun.js`.
   - Bets tab / Polymarket sync: `lib/mybets.js`, `pages/api/mybets.js`.
 - Model service (Python on Railway): `railway-model-service/`.
@@ -209,7 +224,7 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
   the rebuild skips teaser bet types for these factors. Their scanned rates (~65%) were measured on the games they were found in, so
   they are NOT win rates; since 10/12 these factors are only inputs to the chooser (see "How picks are chosen").
 
-## How picks are chosen (Oct 12, 2026 — owner chose "A + B")
+## How picks are chosen (Oct 12, 2026 — owner chose "A + B") [SUPERSEDED: the chooser and the combo table were removed 10/16 -- see CURRENT STATE]
 
 - The scanned single patterns ("combos") were OVERFIT: judged on the same games they were found in they won 60.7%; on unseen
   games (each season's patterns found without it, 2014-26) only 49.8%. Week 5, the first true live test, went 15-21.
@@ -256,7 +271,7 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
 - Tested, not added: model vs OPEN total 51-54% (56.2% only at 5+ apart, 8/13 seasons); wind 10+ Under at close 58.7% but 2024 42%,
   2025 48% (market caught up; also uses game-time wind, not the forecast); open total 50+ Under 54.7%; open total <=38 Over 53.5%.
 
-## KEY NUMBER (Oct 13, 2026 -- Claude's idea, owner: "build now")
+## KEY NUMBER (Oct 13, 2026 -- Claude's idea, owner: "build now") [PARTLY SUPERSEDED -- see CURRENT STATE]
 
 - `lib/stack.js keyNumberPick`: books' spread exactly 3 -> underdog +3.5 on Polymarket (main line or alternate). Nothing fitted.
   Regular season 2006-25, closing line exactly 3 (793 games): dog +3.5 won 58.1% (61/56/56% by period); fav -2.5 50.9%.
@@ -365,7 +380,7 @@ Train on earlier seasons, predict the next one (2019–25 for the TD model). A c
 - Same method on spreads: top 10% 55.9%, top 20% 53% -- not added. Also tested 10/13, no edge: Poisson scoring model (49.3% totals),
   538 Elo rebuilt (52.2%), MGM money vs bets splits (spreads 47.8%).
 
-## BOUNCE BACK (Oct 13, 2026 -- owner: "build now")
+## BOUNCE BACK (Oct 13, 2026 -- owner: "build now") [SUPERSEDED 10/16: cutoff is 24+, 61.3% on 261 -- see CURRENT STATE / RESEARCH DAY 10/16]
 
 - `lib/stack.js bounceBackPick` (+ `prevAts` in `lib/paper.js situationFor`): the ROAD team missed the spread by 21+ in its last game ->
   road team at the current line. Nothing fitted. Closing line 2006-25 57.6% (297; 55/60/58% by period, 14/20 seasons); 1999-2005 (held
@@ -632,7 +647,7 @@ Tested and NOT added (made it worse):
 - Bet Sunday morning after inactives (~90 min before kickoff) and a Model rerun; lines and weather move picks during the week.
 - A TEASER pick only works at the teased line.
 
-## Firmer promises (10/14, owner: "build 1 and 3; 2, 4, 5 out")
+## Firmer promises (10/14, owner: "build 1 and 3; 2, 4, 5 out") [PARTLY SUPERSEDED -- see CURRENT STATE]
 
 - 1: BEAT THE 3 tiers replayed at the week's OPENING spread (2014-26, `npm run accuracy` prints them; `lib/stack.js BUY_OPEN / tierRate`). The card
   shows the LOWER of the closing and opening rate when the opening sample is 60+ games. Moves: books 3.5 fav -2.5 day 59.8 -> 51.9 (yellow),
@@ -651,7 +666,7 @@ Tested and NOT added (made it worse):
 - NOT wired into the app yet: BUY_TIERS still has the 9 tested tiers. The matrix shows more passing cells (books 5 / 7 / 7.5 favorites at -2.5, books 4 / 4.5 / 5.5 ...);
   adding any is the owner's call.
 
-## CAP AT 2 POINTS (10/14, owner: "cap it at 2 points ... use fewer points when that is enough")
+## CAP AT 2 POINTS (10/14, owner: "cap it at 2 points ... use fewer points when that is enough") [PARTLY SUPERSEDED -- see CURRENT STATE]
 
 - No pick ever buys more than 2 points (`BUY_TIERS`; a test checks it). Removed: books 1 -> dog +3.5 (buys 2.5) and books 6.5 -> fav -2.5 (buys 4). Kept: books 1.5, 2.5, 3, 3.5, 4.5,
   5.5, 13.5. Each kept tier is already the fewest points that passed (books 1.5 +2.5 54%, 4.5 -3.5 53%, 5.5 +6.5 56% not steady). The line matrix passes a few more cells within 2
@@ -663,7 +678,7 @@ Tested and NOT added (made it worse):
 - FINAL CAP 10/14 (owner: "cap it at 3.5"): no tier buys more than 3.5 points (test checks it). Books 1 -> dog +3.5 (buys 2.5) is BACK; the old books 6.5 -> fav -2.5 (buys 4) stays out. 9 tiers: books 1, 1.5, 2.5, 3,
   3.5 (dog +6.5), 4.5, 5.5, 6.5 (dog +9.5), 13.5.
 
-## "Without the extra points" line (10/14, owner: "yes show it, build now")
+## "Without the extra points" line (10/14, owner: "yes show it, build now") [PARTLY SUPERSEDED -- see CURRENT STATE]
 
 - A green bought-point pick now says "Without the extra points it wins about X% · with them Y%." (`public/app.js plainNote`; shown only when the points add 2+ points; not on light-green /
   yellow cards -- owner's no-notes rule). `BUY_TIERS[..].plain` = [day, night] win rate of the same side at the books' own number, 1999-2025 closing, pushes left out:
@@ -671,12 +686,12 @@ Tested and NOT added (made it worse):
 - Chooser side test (10/14, 2,604 games 2014-26, every season unseen): the chooser picking the side then buying points wins no more than always-favorite / always-underdog
   (0 pts 48.5%, 1 pt 53.5%, 2 pts 57.6%, 3 pts 60.5%; books 3.5 + 1 pt: chooser 53.7% vs favorite 60.4%). The points do the work, not the side -> key-number rules decide the side (owner agreed).
 
-## Card cleanup (10/14, owner: "organize the cards, too much noise"; chose A + B)
+## Card cleanup (10/14, owner: "organize the cards, too much noise"; chose A + B) [PARTLY SUPERSEDED -- see CURRENT STATE]
 
 - Spread / total Model card keeps only: the model number, PICK + %, one short reason, and the "Rules split" warning. The without-the-extra-points %, this rule's record, "line moved" and the
   cost warning sit behind a "More" tap (`public/app.js moreBox`, a plain `<details>`). Light-green / yellow cards still have no notes.
 
-## BOUGHT-POINT TOTALS (10/14, owner: "by confidence"; option A) -- REMOVED 10/15 (the card's PICK w/ POINTS replaced it; code deleted; `talts` parsing stays)
+## BOUGHT-POINT TOTALS (10/14, owner: "by confidence"; option A) -- REMOVED 10/15 (the card's PICK w/ POINTS replaced it; code deleted; `talts` parsing stays) [PARTLY SUPERSEDED -- see CURRENT STATE]
 
 - `lib/stack.js totalBuyPick / withTotalBuy` (id `totalbuy|total`, green): when the chooser likes a side of the total AND is confident, take that side on a Polymarket ALTERNATE total
   line moved the pick's way -- Over lower, Under higher, off Polymarket's main total. Chooser's most confident 10% (raw confidence >= thr10 0.6288) buys 2 points, the next 20% (>= thr30 0.58026) buys 4
@@ -710,7 +725,7 @@ Tested and NOT added (made it worse):
 - Recent-period watch (all games, closing, 2020-25): books 4 fav -2.5 53.1% (64), books 7.5 fav -5.5 52.7% (91), books 3.5 dog +5.5 54.0% (161) -- all pass the "every period 52%+" bar but are weak lately; card shows the lower of close/open only. Owner's call whether to show a recent-years rate too.
 - Browser pass on the new front end: all 14 game pages, Lines, TD, Bets, Models, Model Picks, Alerts (bell) -- 0 page errors, 0 "undefined/NaN" lines; damaged-data run 0 issues. Countdown 1d 1h 7m matched the real kickoff time; kickoff times vs America/New_York for 15,288 date/time combos (2010-35): 0 wrong. Fuzz: 60,000 random/junk inputs through keyNumberPick + grading (0 bad, 0 crashes, max 2.5 pts bought), 60,000 through totalBuyPick + grading (0 bad). Grading audit already compares the real 2025 season to an independent Python build (285 games). TD 2+ formula (1.044) matches the service.
 
-## CARD v2 + OPTION 3 + LAYOUT (10/15, owner: "build now"; on the work branch, NOT merged until "merge now")
+## CARD v2 + OPTION 3 + LAYOUT (10/15, owner: "build now"; on the work branch, NOT merged until "merge now") [PARTLY SUPERSEDED -- see CURRENT STATE]
 
 - **Why:** the owner pays for every bought point ("I want money, buy less points"). 1 point at books 1 / 1.5 / 4.5 wins only 52-54%, 2 points 63% -- the jumps come from crossing 3 and 7. So points are only bought when
   the line's win % beats its Polymarket price. The 56% bar was Claude's own early cutoff (not the owner's); the real bar is the price.
@@ -733,7 +748,7 @@ Tested and NOT added (made it worse):
   4 legs · my style · bought lines, 4 legs · different games. The **parlay scoreboard moved to the Models tab** (first section, closed until tapped), followed by "Picks recorded and graded".
 - Tests: 332 site checks (card, line table, parlay legs, record+grade end to end), grading audit 4,124, service checks, accuracy (TIER NUMBERS 54 of 54, LINE TABLE exact). Browser pass on the new front end with a fixture that has invented alternate lines (live slate JSON does not carry them): 0 page errors.
 
-## LAYOUT v3 (10/15, owner: "build now")
+## LAYOUT v3 (10/15, owner: "build now") [PARTLY SUPERSEDED -- see CURRENT STATE]
 
 - **Parlay lists (Model Picks lists, game page, 4 legs across games):** ONE card per opened list, the games in kickoff order (morning to evening), parlays TWO ACROSS in small type, every block identical: `ARI @ LA · 67%` (game name, then its hit %), `• leg · %` lines (bought-line legs add `· N pts`), `PL: 1.7x · $20 → $33` (`PL: —` with no price). No notes, no "hits ~", no "filled", no rule tags (`pBlock` / `plPay` in `public/app.js`; CSS `.pgrid`, `.par`, `.pbh`, `.pbl`, `.pbp`; `.pb` is the old bar-chart class, don't reuse).
 - **Model Picks buttons (`sgpCards`):** two columns -- left: Same game 2 legs, 3 legs, 4 legs, 4 legs · different games; right: 4 legs · my style, 4 legs · my style · bought lines. A tapped button opens its list under the buttons.
@@ -741,7 +756,7 @@ Tested and NOT added (made it worse):
 - **Removed notes:** Bets "mixed time slots" warning, scoreboard footnote, section blurbs (`mSec` has no meaning argument), page subtitles, `plainNote` / `costNote`, "Lines you could buy" header.
 - Tests: 331 site checks, grading audit 4,124, accuracy ok (LINE TABLE exact); browser audit and damaged-data run 0 errors.
 
-## MODEL PICKS v5 (10/15, owner: "build now")
+## MODEL PICKS v5 (10/15, owner: "build now") [PARTLY SUPERSEDED -- see CURRENT STATE]
 
 - **Model Picks tab:** NO button cards. Week chips at the top (`#lab-wk`, current week first), six sub-tabs docked above the bottom bar (`#lab-sub`: 2 legs, 3 legs, 4 legs, My style, Bought, Diff), and ONE list for the chosen type, one column, kickoff order.
   Block (`pBlock`, also used by the game page): `[logo] ARI @ [logo] LA · 67%` on the left, the PL line top right in blue with the Polymarket logo (`PL: 1.7x · $20 → $33`, `PL: —` with no price), legs `✓ won / ✗ lost / • pending  label · %` (bought-line legs add `· N pts`), `✓ Won` / `✗ Lost` bottom right.
@@ -749,7 +764,7 @@ Tested and NOT added (made it worse):
 - **Bets tab:** layout unchanged; team logos added next to team names (`logoLabel`, `legName`, `tdTeam`: a touchdown leg gets its player's team logo only when the player is found once in this week's TD lists). Model Picks stays its own tab (owner: "keep the Bets layout as is"); an open question is whether to combine both under Bets with a toggle.
 - Tests: 333 site checks, grading audit 4,124, accuracy ok; browser audit 0 errors (logos do not load in the sandbox, the app hides a failed logo).
 
-## ONE BETS TAB (10/15, owner: "build now ... merge now")
+## ONE BETS TAB (10/15, owner: "build now ... merge now") [PARTLY SUPERSEDED -- see CURRENT STATE]
 
 - Model Picks is no longer a tab. The **Bets** tab has a toggle at the top (`#bets-sw`): **My bets** on the left (the list exactly as before, week chips docked above the bar, team logos added) and **Model bets** on the right (week chips at the top, the six sub-tabs docked above the bar,
   the one-column parlay list described in MODEL PICKS v5 above). The choice is remembered (`localStorage betsView`, `BETSVIEW`, `applyBetsView`). Bottom bar: Game Lines, Anytime TD, Bets, Alerts, Models.
@@ -759,7 +774,7 @@ Tested and NOT added (made it worse):
 
 - Alternate prices (10/15, owner: "go look"): the card dropped Polymarket alternate lines after 3 h because only the scheduled snapshots saved them. The 30-min pull (`pages/api/pinnaclepull.js`) now saves `alts:<season>:<week>:<game>` too, so PICK w/ POINTS sees current prices.
 
-## CUTS + 13 (10/15, owner: "build now and 13"; on the work branch, NOT merged until "merge now")
+## CUTS + 13 (10/15, owner: "build now and 13"; on the work branch, NOT merged until "merge now") [PARTLY SUPERSEDED -- see CURRENT STATE]
 
 - **Day / night split DROPPED everywhere** (owner: "night games don't really matter"): BEAT THE tiers, BOUNCE BACK (57.2%, 376), BOUNCE BACK DOG (56.5%, 285) and the line table use ALL games (`isNightGame` deleted from `lib/stack.js`; `BUY_TIERS` rates recomputed from nflverse, `npm run accuracy` TIER NUMBERS 27 of 27). Earlier notes above about day / night rates are superseded.
 - **Line table:** one histogram per group (no d / n); a group counts only with 200+ games (opening and recent-years groups), the closing group 40+ (`lib/linetable.js MIN_N`).
@@ -797,3 +812,57 @@ Tested and NOT added (made it worse):
 - **PICK on games with no rule = the model's side at the main line** (`lib/cardpick.js modelNums`): spread by `modelUp.margin` (else `model.homeMargin`) vs Polymarket's main spread, total by the model's total vs the main total; an exact tie goes to the favorite (totals: Under). Shown at the model's honest history 50.6% spreads / 51.7% totals (2,531 games) = yellow. OWN record ids `modelpick|spread` / `modelpick|total` (Models -> Card picks rows "MODEL SIDE"), never mixed into the rules' record or the tiles. Best bets / parlay "strong legs" ignore them (under 56%); "my style" parlays now have a spread and total leg on every game.
 - PICK w/ POINTS stays free to pick either team (owner: keep it as is).
 - Tests: 327 site checks, grading audit 4,124, accuracy ok (TIER NUMBERS 45 of 45).
+
+## RESEARCH DAY 10/16 (owner: "10 minutes on each model, rule and output; fix what you find"; work branch, NOT merged until "merge now")
+
+- **Fixed:** BOUNCE BACK cutoff 21+ -> 24+ (the 21-23 band won 47.8% on 115, under 50% in 3 of 4 periods; 24+ 61.3% on 261, 28+ 64.7%); game model ridge 30 -> 3000;
+  Railway rebuild-on-deploy (`BUILD_TAG`); same-game parlay links shrunk (`LIFT_POWER` 0.75 on positive links only); spread line table shrunk (`SHRINK_K` 200) and the recent-years
+  group counting from 60 games. Tests after all of it: 327 site checks, grading audit 4,124, service checks, accuracy replay (BOUNCE BACK 160-101 = 61.3%).
+- **History windows (owner asked: learn from only the last 5-10 years?) -- NO, longer wins or ties everywhere, each season unseen:** game model margin error 3y 9.97 / 5y 9.84 / all 9.76;
+  TOTAL MOVE top 20% 55.1 / 56.6 / 58.4%; win % formula refit 3y/5y/10y/all log loss 0.6104 / 0.6090 / 0.6086 / 0.6086 vs the current formula 0.6075 (kept); TD model 3 / 5 / all seasons
+  Brier 0.16142 / 0.16138 / 0.16152 (3 kept); chooser 48-53% at every window; rules all / last 10 / last 5: BEAT THE 59.1 / 59.4 / 58.1, BOUNCE BACK 57.2 / 60.0 / 60.9, DOG 56.5 / 62.8 / 64.4,
+  LINE MOVE spread 62.6 / 63.2 / 64.5, total 66.1 / 65.8 / 64.7, INJURY 56.5 / 57.2 / 61.1.
+- **TD model variants (train 3 seasons, test 2021-25):** recency off / strong, older seasons x0.6, blend 30/70 and 70/30, GBM 600 iters, depth 4, logit C 0.3 / 3 -- all within 0.0002 Brier of
+  the current model (depth 4 -0.00004, better in 2 of 5). Nothing changed. This season (weeks 3-5, 807 players): said 14 -> 16.5% scored, 24 -> 27, 35 -> 36, 47 -> 38 (55 players), 65 -> 81 (21);
+  vs Polymarket on 733 priced: Brier model 0.1566 vs market mid 0.1607; 10+ points apart (154) model 0.1544 vs 0.1651. 2+ TD said 3.8% hit 4.9%; first TD 5.05 / 5.11. History 2021-25 walk-forward:
+  Best TD picks (55%+) 254 of 396 = 64.1% (said 59.9); top-3 list rank 1 / 2 / 3 said 43 / 32 / 26, scored 44 / 33 / 28.
+- **Game model extras:** season-decay weights 0.9 / 0.8 / 0.7 worse; dropping qbr -0.03 margin error (left in); km (the line) is the only feature that matters (+0.30 without it).
+  TOTAL MOVE: alpha 100 / 300 / 3000 / 10000 -> top 20% 57.2 / 58.6 / 58.2 / 57.2 (1000 kept, inside noise); dropping mt or apm +1 point (noise). Chooser: C 0.01-1.0 all 48-52% spreads, 51-53% totals.
+- **Rule splits (closing line):** BEAT THE by week / home-road / total size all 56-61%; LINE MOVE spread: move 2.5-3.4 only 55.7% (176; the rest 62-66%, noise), toward the underdog 67%, road pick 65%;
+  LINE MOVE total: every split 61-71% (moved DOWN -> Under 68.6%, 5+ points 71.4%); BOUNCE BACK DOG: home dog 60.2% vs road 53.3%, scored 0 60.6% vs 1-3 54.3%, weeks 5-12 51.6% (periods uneven, no cut);
+  INJURY by type: QB out 56.9% (123), 2+ OL 55.2% (67), 2+ DB 51.3% (78; dropping it leaves the rule at 56.4%, not changed); weeks 14+ 63.1%, weeks 4-13 53%; the edge at the OPENING line is in
+  "already moved 1+" games (66.1%, 233) -- the news moved the line; by the close those are 53.7%.
+- **Card accuracy, leave-one-season-out 2014-25 (1,569 games with a half-point closing spread; the card's own rows and pickPts replayed):** unshrunk lowest-of-three: rows said 52.5% won 54.7%
+  (a minimum of three noisy numbers runs low), but the CHOSEN line said 59.7% won 57.8% (favorites 61.7 / 56.6, 2-point lines 60.9 / 57.4, far lines 61.2 / 58.8) -- picking the best-looking
+  cell runs hot. Estimators tried: pooled closing 59.9 / 58.6; average of 3 60.5 / 56.5 (worst); closing shrunk K=100 58.9 / 58.7; lowest of 3 shrunk K=100 59.1 / 58.3 (fav 60.2 / 57.2);
+  **lowest of 3 shrunk K=200 59.0 / 59.5 (fav 59.9 / 59.4, dog 58.8 / 59.5, 1 pt 56.4 / 57.4, 2 pts 59.0 / 59.3, far 60.7 / 61.0; rows said 56-59 won 57.6, 60-64 won 60.6) -> built.**
+  Totals (1,629 games): PICK w/ POINTS said 56.3% won 57.4%, rows calibrated -> not shrunk.
+- **Parlay chances, walk-forward TD model 2021-25 (1,359 favorite team-games):** fav ML + top TD said 37.2% hit 36.9%; ML + Over + top TD 22.9 / 20.9; ML + Over + top 2 TDs 12.4 / 9.6; measured
+  links ML&TD 1.12x (app 1.19), TD&Over 1.22x (1.23), ML&Over 1.00x; joint 3-leg 1.32x vs the product 1.46x -> power 0.75 on positive links. Owner's style (754 games): cover + Over + TD each
+  team hit 6.90% (full product said 6.71, shrunk 6.10); cover + Under + TD each team hit 1.99% (full 2.63, shrunk-everything 3.02) -> drags are NOT shrunk; cover & own TD 1.14x, cover & other
+  team's TD 0.75x, the two TDs 1.03x.
+- **Database** 8.9 of 30 MB after week 5 compaction; no errors; Railway answering.
+- **Extra 15 minutes (10/16, owner): tried and NOT built.** (1) Spread line table split by HOME/ROAD: rows a hair better (Brier 0.2465 vs 0.2468) but the chosen PICK w/ POINTS
+  calibrates worse (said 59.2 won 58.5; home-team picks said 58.3 won 56.1) -- the thinner cells bring the selection bias back. Fact behind it: a ROAD underdog buying 1 point wins 56.8%
+  (1,548) vs a HOME underdog 53.6% (935); at 2 points 59.9 vs 58.1. (2) Table lean at the main line as the no-rule side: 48.7% (1,510) -- the model side (50.6%) stays. (3) Totals by week:
+  weeks 1-3 Under at the main total 52.1% (1,257; periods 55/50/49/54), Under +2 58.1% vs 56.2% the rest of the year -- a small early-season Under lean, only usable next September;
+  weeks 4-12 and 13+ are 50/50 at the main total. (4) Totals by spread size: spread <=3 Under +2 58.2% (58/55/57/63) vs Over +2 54.4%; total 48+ & spread <=3 Under +2 59.5% (437; 58/63/57/61).
+  Leave-one-season-out with the totals table split by spread size: rows WORSE (Brier 0.2508 vs 0.2490), PICK w/ POINTS the same (56.4 / 57.3 vs 56.3 / 57.4) -> not built.
+- **GAME MODEL REBUILD (10/16, owner: "rebuild that entire model, try a different way"; 20 minutes, walk-forward 2019-26, train = every earlier season from 2014; line alone margin error 9.743):**
+  current ridge 3000 **9.732** (side vs the close 51.5%); old ridge 30 9.758; "model of the gap" (line + ridge on what the line misses) alpha 300 / 1000 / 3000 / 10000 -> 9.730 / 9.731 / 9.733 / 9.737
+  (a tie, side 50.8-51.4%); boosted trees on the gap 9.77-9.86 (worse), half-weight 9.757; stacking line + line-free model with a learned blend 9.778 (the blend put 1.06 on the line, 0.00 on
+  the model); small-spread interactions 9.759. Totals: gap ridge 10.363 vs current 10.386 vs line 10.325 (not better than the line). Aimed at the OPENING spread with early features only:
+  ridge 50.7-52.1%, boosted trees 49.9-51.7%, logistic / boosted classifiers 50.6-51.7%, confident top 10% 46-51% -> spreads can't be predicted off the open with what the app can see
+  (the totals version is TOTAL MOVE, 58%). Market-implied ratings (ratings fit from the market's own closing lines, this week's line vs the rating gap, 4,135 games 2006-25): every gap
+  bucket 46-53% home cover, fade the adjustment 50.4 / 52.1%; the one steady bucket (market priced the home team 2-4 under its rating -> road team 54.3%, 54/55/54 by period) is 1 of 7
+  buckets and under 56% -> no pick. Kernel-smoothed line table (pool books A +-0.5 at the same team line, then shrink): rows Brier 0.2466 vs 0.2468 but the chosen PICK w/ POINTS calibrates
+  worse (favorites 57.8 said / 55.3 won, 2-point lines 57.7 / 54.0 vs 59.9 / 59.4 and 59.0 / 59.3 now) -> not built. **Conclusion: nothing beats the current number; the closing line is the
+  model. The card number stays ridge 3000.** The "vs open" column for models that use the closing line is NOT a real test (the close already knows the move) and was ignored.
+- **CUT 10/16 (owner: "Cut 1 and two", "build now"):** the pick chooser and the scanned combo table are gone from the site and the rebuild. Site: `lib/chooser.js` and `lib/combotable.js`
+  deleted; `tablePicks` -> `movePicks` (TOTAL MOVE only; `comboFactors` kept for the model number and the move model); `lib/combomodel.js` keeps `upgrade` / `early` / `moveT` only.
+  Rebuild: `scan`, `train_chooser`, `F_for`, `PERIODS`, `INJ_FACTORS` removed; the artifact has no `table` / `chooser`; `passes()` = games 2000+, margin and total error vs the old model
+  (the "300+ combos" gate is gone); `BUILD_TAG` bumped so Railway rebuilds on deploy. No new `chooser|` picks are recorded; old ones stay as history (`CURRENT_RULES` never counted them).
+  FOUND BY THE TESTS AND FIXED: the kickoff recorder (`pages/api/snapshot.js writePrelog`) built the card without the model numbers, so a game with NO rule recorded nothing at kickoff
+  (the chooser used to fill that hole); it now passes `model` / `modelUp` into `buildCard`, so the model-side PICK is saved at kickoff like the others. Dry run without the chooser / table:
+  passes, artifact keys builtAt / checks / early / moveT / season / tag / upgrade, marginErr 9.944 vs line 9.903, totalErr 10.455 vs line 10.456.
+- **Open for the owner (not built):** when no line reaches 56% the card still names the best one; on history that fallback said 55.7% and won 43.2% (37 games) -- show "none" instead?

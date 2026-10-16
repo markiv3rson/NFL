@@ -151,10 +151,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const o = startersOut(sn, [{ name: "Joe QB Jr.", status: "Out", week: 3 }, { name: "Al CB", status: "Doubtful", week: 3 }, { name: "Bo CB", status: "Out", week: 3 }, { name: "Cy S", status: "Questionable", week: 3 }], 3);
   ok(o.qb === 1 && o.db === 1 && o.sk === 0, "starters out: Out/Doubtful 60%+ starters only, by group, names matched across suffixes"); }
 { const S5 = await import("../lib/stack.js");
-  const P5 = S5.tablePicks({ key: "CHI @ GB", away: "CHI", home: "GB", outdoor: true, kickoff: "2026-10-11T17:00:00Z" }, { homeMargin: -2, total: 44, wind: 0, temp: 60, fix: {}, xf: { s: { gbm: 3, ens: 3 }, t: { ens: -2 } } }, 1.5, 46.5, null, null, null, 5);
-  const sp5 = P5.find((p) => p.kind === "spread"), to5 = P5.find((p) => p.kind === "total");
-  ok(sp5 && to5 && !/\b(Over|Under)\b/.test(sp5.why) && !/likes? the (dog|favorite)/.test(to5.why) && P5.every((p) => !/likes the dog \(fade it\)/.test(p.why) || (p.kind === "spread" && p.team === "CHI")) && P5.every((p) => !/likes the favorite \(fade it\)/.test(p.why) || (p.kind === "spread" && p.team === "GB")),
-    "chooser reasons: spread reasons skip Over/Under leans, total reasons skip dog/favorite leans, and a lean pointing away from the pick says (fade it)"); }
+  const P5 = S5.movePicks({ key: "CHI @ GB", away: "CHI", home: "GB", outdoor: true, kickoff: "2026-10-11T17:00:00Z" }, { homeMargin: -2, total: 44, wind: 0, temp: 60, fix: {}, xf: { s: { gbm: 3, ens: 3 }, t: { ens: -2 } } }, 1.5, 46.5, null, null, null, 5);
+  ok(Array.isArray(P5) && P5.every((p) => p.id === "movepred|total") && !S5.tablePicks && !S5.useTable, "model picks (10/16): only TOTAL MOVE comes from the model side; the chooser and the scanned combo table are gone"); }
 { const { lineMovePick } = await import("../lib/stack.js"); const G = { key: "BUF @ LA", away: "BUF", home: "LA", kickoff: new Date(Date.now() + 3600e3).toISOString() };
   const pm = (P, h = 0.5, a = 0.5) => ({ spread: { homeSpread: P, home: h, away: a } }), now = new Date().toISOString(), old = new Date(Date.now() - 30 * 3600e3).toISOString();
   const a = lineMovePick(G, pm(-3.5), pm(-5)), b = lineMovePick(G, pm(-6.5), pm(-5.5)), c = lineMovePick(G, pm(-2.5), pm(-3)), d = lineMovePick(G, pm(-3.5), pm(-4)), e = lineMovePick(G, pm(-1), pm(-4.5));
@@ -254,10 +252,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     && !floorDogPick(G, -6.5, { away: { prevPts: 7 }, home: { prevPts: 27 } }) && !floorDogPick(G, -6.5, { away: { prevPts: 3 }, home: { prevPts: 0 } }) && !floorDogPick(G, -6.5, null),
     "bounce back dog: scored <=3 last game AND underdog now -> that team; favorite / 7 pts / both low -> nothing", [a, b]); }
 { const { bounceBackPick } = await import("../lib/stack.js"); const G = { home: "LA", away: "BUF", key: "BUF @ LA" };
-  const a = bounceBackPick(G, -3.5, { away: { prevAts: -24 } }), b = bounceBackPick(G, 2.5, { away: { prevAts: -21 } });
-  ok(a && a.pick === "BUF +3.5" && a.hit === 57.2 && b && b.pick === "BUF -2.5" && !bounceBackPick(G, -3.5, { away: { prevAts: -20.5 } })
+  const a = bounceBackPick(G, -3.5, { away: { prevAts: -24 } }), b = bounceBackPick(G, 2.5, { away: { prevAts: -28 } });
+  ok(a && a.pick === "BUF +3.5" && a.hit === 61.3 && b && b.pick === "BUF -2.5" && !bounceBackPick(G, -3.5, { away: { prevAts: -23.5 } })
     && !bounceBackPick(G, -3.5, { home: { prevAts: -30 }, away: { prevAts: 3 } }) && !bounceBackPick(G, -3.5, null) && !bounceBackPick(G, null, { away: { prevAts: -30 } }),
-    "bounce back: road team missed the spread by 21+ last game -> road team at the current line; home team / under 21 -> nothing", [a, b]); }
+    "bounce back: road team missed the spread by 24+ last game -> road team at the current line; home team / under 24 -> nothing", [a, b]); }
 { const { totalMovePick } = await import("../lib/stack.js"), { predictTotalMove, UP_MOVE } = await import("../lib/upgrade.js"); const G = { home: "LA", away: "BUF", key: "BUF @ LA" };
   const mv = (move) => ({ move, thr20: 0.72, thr10: 0.97, hit20: 56.8, n20: 507, hit10: 61.9, n10: 252 });
   const a = totalMovePick(G, mv(1.2), 47.5, 47.5), b = totalMovePick(G, mv(-0.8), 47.5, 47.5), c = totalMovePick(G, mv(0.5), 47.5, 47.5), d = totalMovePick(G, mv(1.2), 48.5, 47.5);
@@ -391,10 +389,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       combos: [{ pick: "ATL +2.5", hit: 58.1, line: 2.5, why: "BOUNCE BACK: x" }, { pick: "CHI -2.5", hit: 57, line: -2.5, why: "BOUNCE BACK: y" }, { pick: "Under 49.5", hit: 52.1, line: 49.5, why: "z" }],
       td: [{ player: "Bi.Robinson", team: "ATL", fair: 62, price: null }, { player: "D.Swift", team: "CHI", fair: 49, price: 0.45 }, { player: "Hurt Guy", team: "CHI", fair: 70, injury: "Questionable" }] };
     const x = sameGameParlays(g);
-    ok(x.best && x.best.legs.map((l) => l.label).join() === "Bi.Robinson TD,ATL +2.5" && Math.abs(x.best.prob - 0.429) < 0.002, "same-game: best = Bijan TD + ATL +2.5 (they help each other: 62% x 58.1% x 1.19)");
+    ok(x.best && x.best.legs.map((l) => l.label).join() === "Bi.Robinson TD,ATL +2.5" && Math.abs(x.best.prob - 0.62 * 0.581 * Math.pow(1.19, 0.75)) < 0.002, "same-game: best = Bijan TD + ATL +2.5 (they help each other: 62% x 58.1% x 1.19^0.75, 10/16)");
     ok(x.style && x.style.legs.map((l) => l.label).join() === "ATL +2.5,Under 49.5,D.Swift TD,Bi.Robinson TD" && x.style.pay == null, "same-game: your style = spread + total + top TD each team (a Questionable player skipped; unpriced TD -> no payout shown)");
     const y = sameGameParlays({ ...g, combos: [{ pick: "Under 49.5", hit: 62, line: 49.5, why: "TOTAL MOVE: t" }], td: [{ player: "Bi.Robinson", team: "ATL", fair: 64 }] });
-    ok(y.best && y.best.strategy === "sgp_best" && y.best.legs.map((l) => l.label).join() === "Bi.Robinson TD,Under 49.5" && Math.abs(y.best.prob - 0.64 * 0.62 * 0.77) < 0.002, "same-game: a TD with the Under is kept (owner: test everything); the chance counts the 0.77 link");
+    ok(y.best && y.best.strategy === "sgp_best" && y.best.legs.map((l) => l.label).join() === "Bi.Robinson TD,Under 49.5" && Math.abs(y.best.prob - 0.64 * 0.62 * 0.77) < 0.002, "same-game: a TD with the Under is kept (owner: test everything); the chance counts the full 0.77 drag (drags are not shrunk, 10/16)");
     const z = sameGameParlays({ ...g, poly: { ...g.poly, spread: { homeSpread: 2.5, home: 0.5, away: 0.5 } }, combos: [{ pick: "ATL +2.5", hit: 51, line: 2.5, why: "x" }, { pick: "Under 49.5", hit: 52, line: 49.5, why: "y" }], td: [{ player: "Bi.Robinson", team: "ATL", fair: 48 }] });
     ok(z.best && z.best.strategy === "sgp_best_fill" && z.filled && z.best.legs.map((l) => l.label).join() === "Bi.Robinson TD,ATL +2.5", "same-game: no strong legs -> 2 legs filled (no moneyline here: a TD, then the same team's spread that goes with it), its own record");
     { // 10/14 fix: the filler never adds a leg that works against one already in (DEN +3.5 + SEA to win = SEA by 1-3 only)
@@ -647,7 +645,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
         const fin = [{ key: "NYJ @ NE", homeScore: 31, awayScore: 20 }];   // NE wins by 11, total 51
         const n1 = await gradeStackWeek(2099, 7, fin), n2 = await gradeFirstSeenWeek(2099, 7, fin), sm = await stackSummary(2099);
         ok(pk.length >= 2 && n1 === pk.length && n2 === pk.length && sm.cardRec["cardpick|spread"] && sm.cardRec["cardpick|spread"].w === 1 && sm.cardRec["cardpick|total"].w === 1 && sm.cardRec["cardpick|spread"].stk === 1 && sm.rules["PICK · spread"] && sm.rules["PICK · spread"].w === 1
-          && (!cc.spread.pts || sm.rules[`PICK w/ POINTS · spread · ${cc.spread.pts.points} pt${cc.spread.pts.points === 1 ? "" : "s"}`].w === 1) && sm.card.spread.w === 1 && sm.card.total.w === 1 && sm.recorded >= pk.length,
+          && (!cc.spread.pts || (r => r && r.w + r.l === 1)(sm.rules[`PICK w/ POINTS · spread · ${cc.spread.pts.points} pt${cc.spread.pts.points === 1 ? "" : "s"}`])) && sm.card.spread.w === 1 && sm.card.total.w === 1 && sm.recorded >= pk.length,
           "recorded + graded: the card's PICK and PICK w/ POINTS are saved at kickoff, graded when the game ends, and counted in the Models tab (by id, by rule label and in the spread / total tiles)", { n1, n2, cardRec: sm.cardRec, rules: sm.rules });
         for (const k of await RR.keys("stack*:2099:7")) await RR.del(k); }
       { const g2 = { key: "NYJ @ NE", card: c1 }, lp = plainLeg(g2, "spread"), pl = ptsLeg(g2, "spread");
@@ -852,7 +850,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const td = { game: "A @ B", kind: "td", team: "B", prob: 0.5 }, cov = { game: "A @ B", kind: "spread", team: "B", prob: 0.5 }, opp = { game: "A @ B", kind: "spread", team: "A", prob: 0.5 },
       ov = { game: "A @ B", kind: "total", side: "over", prob: 0.5 }, un = { game: "A @ B", kind: "total", side: "under", prob: 0.5 }, other = { game: "C @ D", kind: "spread", team: "D", prob: 0.5 };
     ok(pairLift(td, cov) === 1.19 && pairLift(cov, td) === 1.19 && pairLift(td, opp) === 0.81 && pairLift(td, ov) === 1.23 && pairLift(td, un) === 0.77 && pairLift(cov, ov) === 1 && pairLift(td, other) === 1, "combo links: TD with cover/Over up, with opponent/Under down, other pairs unrelated");
-    ok(Math.abs(comboChance([td, cov, ov]) - 0.125 * 1.19 * 1.23) < 1e-12 && comboChance([td, { ...cov, prob: null }]) === null && comboChance([{ ...td, prob: 0.9 }, { ...cov, prob: 0.9 }]) <= 0.9, "combo chance: product times same-game links, capped at the least likely leg");
+    ok(Math.abs(comboChance([td, cov, ov]) - 0.125 * Math.pow(1.19 * 1.23, 0.75)) < 1e-12 && Math.abs(comboChance([td, cov]) - 0.25 * Math.pow(1.19, 0.75)) < 1e-12 && Math.abs(comboChance([td, cov, un]) - 0.125 * Math.pow(1.19, 0.75) * 0.77) < 1e-12 && comboChance([td, { ...cov, prob: null }]) === null && comboChance([{ ...td, prob: 0.9 }, { ...cov, prob: 0.9 }]) <= 0.9, "combo chance: product times the same-game touchdown links shrunk by the 0.75 power (10/16), capped at the least likely leg");
   }
   { // weakest leg of an open combo (10/9)
     const L = (n, p, m) => ({ kind: "total", side: "over", line: n, price: p, modelP: m, result: "pending" });
@@ -890,20 +888,17 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     { const PP = ctx.T.parlayPicks(); ok(PP.length === 4 && new Set(PP.map((x) => x.game)).size === 4 && PP[0].p >= PP[3].p && /Chance all 4 hit: <b>\d+%<\/b>/.test(ctx.T.parlayStrip()), "parlay of the week: top 4 green picks, one per game, chance all hit"); }
     ok(B2.length === 10 && B2[0].p >= B2[9].p && !B2.some((x) => x.pick === "L +1") && !B2.some((x) => x.pick === "B -3.5"), "best bets: top 10 at 56%+; teasers and alt lines in their own list"); }
   {
-    { const { tablePicks, gradeStackPick, comboFactors } = await import("../lib/stack.js"), G = { key: "A @ B", away: "A", home: "B", outdoor: true, kickoff: "2026-10-11T17:00:00Z" };
+    { const { movePicks, gradeStackPick, comboFactors } = await import("../lib/stack.js"), G = { key: "A @ B", away: "A", home: "B", outdoor: true, kickoff: "2026-10-11T17:00:00Z" };
       const F = comboFactors(G, { homeMargin: 12, total: 41, outdoor: true, wind: 16, fix: {} }, -8, 40, -8, 40, null, 6).F;
       const X = comboFactors(G, { homeMargin: 12, total: 41, outdoor: true, wind: 16, temp: 20, fix: { awayQbFirstStart: true }, xf: { homeRest: 7, awayRest: 4, homeCoach: 0.6, awayCoach: 0.4, homeAge: 27, awayAge: 25.5, awayQbRun: 7, tzdiff: 3, early: true, ptsTot: 45, s: { gbm: -0.1, logit: -0.1, rf: -0.1, ens: -0.5 }, t: { gbm: 0.1, ridge: -0.1, ens: 0.4 } } }, -8, 40, -8, 40, null, 6).F;
       ok(X.cold && X.shortwk && X["dogrest-"] && X.dogCoachBad && X.favCoachGood && X.dogNewQB && X.awayEastEarly && X.tz2P && X.dogYounger1 && X.dogQBruns && X.bigDogQBruns && X.ptsTotO3 && X.gbmDog && X.logitDog && X.rfDog && X.statDog && X.gbmO && X.ridgeU && X.statO && !X.allLeanDog && !X.homeCoachBad, "combo factors from the model service: rest, coaches, QB, travel, age, stats models");
       const C0 = comboFactors(G, { homeMargin: 12, total: 41, outdoor: true, wind: 16, fix: {} }, -8, 40, -8, 40, null, 6), ug = C0.up.margin - 8, ut = C0.up.total - 40;
       ok(F.wind15 && F.wind10 && F["sp>=7"] && F["tot<=41"] && F.mdlFav === (ug > 0) && F.mdlFav3 === (ug >= 3) && F.mdlO === (ut > 0) && F.mdlU === (ut < 0) && !F.prime && F.roadDog, "combo factors from the game (model leans from the upgraded model)");
-      const P = tablePicks(G, { homeMargin: 12, total: 41, outdoor: true, wind: 16, fix: {} }, -8, 40, -8, 40, null, 6);
-      ok(P.length === 2 && P.every((x) => x.hit > 50 && x.why) && !(P.some((x) => x.kind === "total" && x.side === "under") && P.some((x) => x.kind === "total" && x.side === "over")), "chooser picks: one side per market, with reasons");
+      const P = movePicks(G, { homeMargin: 12, total: 41, outdoor: true, wind: 16, fix: {} }, -8, 40, -8, 40, null, 6);
+      ok(Array.isArray(P) && P.every((x) => x.id === "movepred|total" && x.kind === "total"), "model picks: only TOTAL MOVE can come from the model side (chooser removed 10/16)");
       { const sit = { home: { prevOT: true, nextDiv: true, prevDiv: true, revenge: true, winPct: 0.8 }, away: { prevMon: true, prevAway: true, prev2Away: true, prevMarg: -30, winPct: 0.2 } };
         const NF = comboFactors(G, { homeMargin: 12, total: 41, outdoor: true, wind: 0, fix: { div: false }, xf: { awayRest: 14 } }, -8, 40, -8, 40, sit, 17).F;
         ok(NF.favAfterOT && NF.favLookaheadDiv && NF.favRevenge && NF.dogAfterMNF && NF.dogAfterLoss28 && NF.road2nd && NF.road3rd && NF.roadOffBye && NF.sandwichAny && NF.wk17dogLosing && !NF.divRematch, "combo factors: research factors (overtime, Monday, revenge, lookahead, road trip, bye, sandwich, late season)"); }
-      { const K = tablePicks({ key: "MIA @ GB", away: "MIA", home: "GB", outdoor: true, kickoff: "2026-12-20T18:00:00Z" }, { homeMargin: 3, total: 40, temp: 20, fix: {} }, -3, 40);
-        ok(K.length === 2 && K.some((x) => x.id === "chooser|spread" && /^(MIA \+3|GB -3)$/.test(x.pick)) && K.some((x) => x.id === "chooser|total" && /^(Over|Under) 40$/.test(x.pick)) && K.every((x) => x.hit > 50 && x.hit < 60 && x.n >= 2000 && !x.teaser && x.why) && !K.some((x) => /^keeper/.test(x.id)),
-          "chooser: one spread and one total pick per game, honest rate (50-60%), tested on 2,000+ unseen games; no keeper angles"); }
       ok(gradeStackPick({ kind: "spread", team: "A", home: "B", line: 8.5 }, 24, 17) === "W" && gradeStackPick({ kind: "total", side: "over", line: 34 }, 20, 13) === "L", "combo picks: grading"); }
     { // combo picks from Polymarket's position data (10/9)
       const { comboPicks } = await import("../lib/mybets.js"), { setJSON: sj, K: KK } = await import("../lib/redis.js");
