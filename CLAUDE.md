@@ -848,4 +848,14 @@ Tested and NOT added (made it worse):
   weeks 1-3 Under at the main total 52.1% (1,257; periods 55/50/49/54), Under +2 58.1% vs 56.2% the rest of the year -- a small early-season Under lean, only usable next September;
   weeks 4-12 and 13+ are 50/50 at the main total. (4) Totals by spread size: spread <=3 Under +2 58.2% (58/55/57/63) vs Over +2 54.4%; total 48+ & spread <=3 Under +2 59.5% (437; 58/63/57/61).
   Leave-one-season-out with the totals table split by spread size: rows WORSE (Brier 0.2508 vs 0.2490), PICK w/ POINTS the same (56.4 / 57.3 vs 56.3 / 57.4) -> not built.
+- **GAME MODEL REBUILD (10/16, owner: "rebuild that entire model, try a different way"; 20 minutes, walk-forward 2019-26, train = every earlier season from 2014; line alone margin error 9.743):**
+  current ridge 3000 **9.732** (side vs the close 51.5%); old ridge 30 9.758; "model of the gap" (line + ridge on what the line misses) alpha 300 / 1000 / 3000 / 10000 -> 9.730 / 9.731 / 9.733 / 9.737
+  (a tie, side 50.8-51.4%); boosted trees on the gap 9.77-9.86 (worse), half-weight 9.757; stacking line + line-free model with a learned blend 9.778 (the blend put 1.06 on the line, 0.00 on
+  the model); small-spread interactions 9.759. Totals: gap ridge 10.363 vs current 10.386 vs line 10.325 (not better than the line). Aimed at the OPENING spread with early features only:
+  ridge 50.7-52.1%, boosted trees 49.9-51.7%, logistic / boosted classifiers 50.6-51.7%, confident top 10% 46-51% -> spreads can't be predicted off the open with what the app can see
+  (the totals version is TOTAL MOVE, 58%). Market-implied ratings (ratings fit from the market's own closing lines, this week's line vs the rating gap, 4,135 games 2006-25): every gap
+  bucket 46-53% home cover, fade the adjustment 50.4 / 52.1%; the one steady bucket (market priced the home team 2-4 under its rating -> road team 54.3%, 54/55/54 by period) is 1 of 7
+  buckets and under 56% -> no pick. Kernel-smoothed line table (pool books A +-0.5 at the same team line, then shrink): rows Brier 0.2466 vs 0.2468 but the chosen PICK w/ POINTS calibrates
+  worse (favorites 57.8 said / 55.3 won, 2-point lines 57.7 / 54.0 vs 59.9 / 59.4 and 59.0 / 59.3 now) -> not built. **Conclusion: nothing beats the current number; the closing line is the
+  model. The card number stays ridge 3000.** The "vs open" column for models that use the closing line is NOT a real test (the close already knows the move) and was ignored.
 - **Open for the owner (not built):** when no line reaches 56% the card still names the best one; on history that fallback said 55.7% and won 43.2% (37 games) -- show "none" instead?
