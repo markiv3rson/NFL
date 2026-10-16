@@ -235,7 +235,16 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const n2 = await recordShadow(getRedis(), 2097, G, p, { hs: 3.5, tl: 44 }, { bd: 9000, ad: 1500 }, null, "t2");   // second sighting: no new rows
   await gradeTrackedWeek(2097, 7, [{ key: "SEA @ DEN", home: "DEN", away: "SEA", homeScore: 20, awayScore: 24 }]); const s = await trackedSummary(2097);
   ok(n === 3 && n2 === 0 && s.pinlm && s.pinlm.recorded === 2 && s.tilt.recorded === 1,
-    "shadow picks: Pinnacle LINE MOVE (crossed 3 -> SEA side; total 3.5 apart -> Over) + order-book tilt 6x -> DEN; saved once, graded, kept out of other records", { n, n2, pinlm: s.pinlm, tilt: s.tilt }); }
+    "shadow picks: Pinnacle LINE MOVE (crossed 3 -> SEA side; total 3.5 apart -> Over) + order-book tilt 6x -> DEN; saved once, graded, kept out of other records", { n, n2, pinlm: s.pinlm, tilt: s.tilt });
+  { // INJURY EARLY shadow (10/16): the healthy team at the current line the first time exactly one team has its QB / 2+ DBs / 2+ OL out; once per game; graded
+    const { recordInjEarly } = await import("../lib/tracked.js"); const G = { key: "KC @ BUF", home: "BUF", away: "KC", week: 7 };
+    const i1 = await recordInjEarly(2097, 7, G, 2.5, { home: { inj: { qb: 1, db: 0, ol: 0 } }, away: { inj: { qb: 0, db: 0, ol: 0 } } }, "2097-10-20T12:00:00Z");
+    const i2 = await recordInjEarly(2097, 7, G, 1.5, { home: { inj: { qb: 1, db: 0, ol: 0 } }, away: { inj: { qb: 0, db: 0, ol: 0 } } }, "2097-10-20T13:00:00Z");
+    const i3 = await recordInjEarly(2097, 7, { ...G, key: "NE @ NYJ", home: "NYJ", away: "NE" }, -3, { home: { inj: { qb: 1 } }, away: { inj: { db: 2 } } }, "x");
+    const saved = JSON.parse(await getRedis().hget("teaser:2097:7", "KC @ BUF|injearly"));
+    await gradeTrackedWeek(2097, 7, [{ key: "KC @ BUF", home: "BUF", away: "KC", homeScore: 20, awayScore: 24 }]); const s2 = await trackedSummary(2097);
+    ok(i1 === 1 && i2 === 0 && i3 === 0 && saved.team === "KC" && saved.line === -2.5 && saved.out === "BUF" && s2.injearly.recorded === 1 && s2.injearly.w === 1,
+      "INJURY EARLY shadow: healthy KC at -2.5 saved once (BUF's QB out), both-hurt game skipped, graded a win", { i1, i2, i3, saved, ie: s2.injearly }); } }
 { const { clvOf } = await import("../lib/stack.js");
   ok(clvOf({ kind: "spread", line: 2.5, first: { line: 3.5 } }) === 1 && clvOf({ kind: "spread", line: -4, first: { line: -3 } }) === 1 && clvOf({ kind: "spread", line: 4, first: { line: 3 } }) === -1
     && clvOf({ kind: "total", side: "over", line: 46, first: { line: 44.5 } }) === 1.5 && clvOf({ kind: "total", side: "under", line: 44, first: { line: 45 } }) === 1 && clvOf({ kind: "spread", line: 3 }) === null,
@@ -336,7 +345,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(tl.indexOf(">PIT<") < tl.indexOf(">CLE<") && /<span class="mkt">60<\/span><span class="dim"> · <\/span><span class="dim">40<\/span>/.test(tl) && /TNF/.test(tl) && !/GAP/.test(tl), "tile: away name left, home name right, away 60 · home 40, TNF chip, no price-gap chip", tl);
   { const half = ctx.T.tile({ ...tg, winPct: 39.5 }), nums = (half.match(/<span class="(?:mkt|dim)">(\d+)<\/span><span class="dim"> · /) || [])[1], nums2 = (half.match(/ · <\/span><span class="(?:mkt|dim)">(\d+)<\/span>/) || [])[1];
     ok(Number(nums) + Number(nums2) === 100, "tile: the two percentages always add to 100 (60.5 and 39.5 do not both round up)", half); }
-  ok(/LIVE/.test(ctx.T.tile({ ...tg, started: true })) && />13<\/span>/.test(ctx.T.tile({ ...tg, started: true, final: true, awayScore: 13, homeScore: 27 })) && /Final/.test(ctx.T.tile({ ...tg, started: true, final: true, awayScore: 13, homeScore: 27 })), "tile: live tag, final score");
+  ok(/LIVE/.test(ctx.T.tile({ ...tg, started: true })) && />13<\/span>/.test(ctx.T.tile({ ...tg, started: true, final: true, awayScore: 13, homeScore: 27 })) && /<span class="lv dim">FINAL<\/span>/.test(ctx.T.tile({ ...tg, started: true, final: true, awayScore: 13, homeScore: 27 })), "tile: live tag, final score with FINAL under it (10/16)");
   vm.runInContext(`LIVE_SC = { "PIT @ CLE": { a: 14, h: 10, st: "in", lbl: "Q3 4:12" } }`, ctx);
   { const lt = ctx.T.tile({ ...tg, started: true }), dt = ctx.T.detailTop({ ...tg, started: true });
     ok(/>14<\/span>/.test(lt) && />10<\/span>/.test(lt) && /LIVE · Q3 4:12/.test(lt) && lt.indexOf('class="ft"') < lt.indexOf('class="bar"') && !/chip c-red">LIVE/.test(lt), "live tile: score, LIVE · Q3 under it, bar at the bottom", lt);
@@ -489,6 +498,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { // 10/16 audit: an account position with 0 / negative shares and no settlement or sale is not a bet (it showed "pays -$17.00")
     const { isHeld } = await import("../lib/mybets.js");
     ok(!isHeld(-17, null, null) && !isHeld(0, null, null) && isHeld(10, null, null) && isHeld(-17, { win: false, pl: -7.5 }, null) && isHeld(0, null, { pl: 3 }), "account bets: negative / zero shares are not a bet unless settled or sold"); }
+  { // 10/16 (owner "e"): BEAT THE live record also pooled by side -- favorite tiers (minus line) vs underdog tiers -- for the Tuesday report card
+    const { ruleRecords } = await import("../lib/stack.js"), mk = (g, res, line, hit) => ({ id: "keynum|spread", tier: 4, key: 3, hit, week: 6, game: g, result: res, t: "1", line });
+    const R = ruleRecords([mk("A", "W", -2.5, 54.4), mk("B", "L", -2.5, 54.4), mk("C", "W", 3.5, 56.2), mk("D", "W", 3.5, 56.2)], []);
+    ok(R["BEAT THE · favorite tiers"].w === 1 && R["BEAT THE · favorite tiers"].l === 1 && R["BEAT THE · underdog tiers"].w === 2 && R["BEAT THE · underdog tiers"].say === 56.2 && R["BEAT THE 3 · books 4"].w === 3, "live rule records: BEAT THE pooled by favorite / underdog side", R); }
   { // old combo legs (10/14): legs found anywhere in a reply; legs saved at sync are used after Polymarket drops them
     const { findLegs } = await import("../pages/api/combolegs.js"); const { saveComboLegs, comboPicks } = await import("../lib/mybets.js"); const { getJSON } = await import("../lib/redis.js"); const R = globalThis.__TEST_REDIS__;
     const legs = [{ slug: "asc-nfl-sea-den-2026-10-15-neg-3pt5", eventSlug: "nfl-sea-den-2026-10-15", outcome: "+3.50", team: { abbreviation: "den", logo: "x" }, state: "" }, { slug: "tsc-nfl-sea-den-2026-10-15-total-40pt5", eventSlug: "nfl-sea-den-2026-10-15", outcome: "Under", state: "MARKET_STATE_WON" }];
