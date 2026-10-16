@@ -872,6 +872,22 @@ Tested and NOT added (made it worse):
   passes, artifact keys builtAt / checks / early / moveT / season / tag / upgrade, marginErr 9.944 vs line 9.903, totalErr 10.455 vs line 10.456.
 - ANSWERED 10/16 (owner: "I don't want that"): the fallback stays; the card names the best line when none reaches 56%.
 
+## FULL APP PASS 2 (10/16, owner: "look through the entire app for mistakes, holes or missing data ... build now ... merge now")
+
+- Ran: full `npm test` (327 site checks, grading audit, service checks, accuracy: every rule 56%+ and TIER NUMBERS / LINE TABLE exact); type check of every JS file (0 undefined names /
+  wrong call counts), `node --check` on every file, Python compile + pyflakes; the LIVE slate (14 games, week 6) checked game by game: Polymarket spread / total / moneyline on all 14,
+  books on all 14, model numbers on all 14, card PICK + PICK w/ POINTS + 3-7 rows on every unplayed game (13), TD lists 13-22 players per game (45 of 252 without a Polymarket price =
+  markets not posted yet, mostly Sunday night / Monday games; 0 stale), injuries 8-28 per game, same-game parlays on all 13, first-shown picks saved for every game (9-16 each), SEA @ DEN
+  recorded at kickoff (6 picks, all graded) and in the results file; status: credits 335, Railway answering, database 9.1 of 30 MB, Pinnacle pull alive, ESPN kickoff check OK, 0 errors;
+  every tab (Lines, TD, Bets mine + Model bets all 6 sub-tabs, Alerts, Models with every section open) and all 14 game pages loaded headless with the live data: 0 page errors, 0
+  undefined / NaN / Infinity. No TD or injury row sits on the wrong game. Consistency checks: BEAT THE picks sit on Polymarket's own line with the table rate there (HOU +2.5 49%,
+  BUF -5.5 46%: by design), BOUNCE BACK CHI -1.5 61.3%, DOG TEN +6.5, no INJURY pick for CAR @ PHI because the line already moved 1+ toward CAR after Hurts was ruled out (rule).
+- FIXED: Bets tab showed a Polymarket account position "SEA Seahawks vs. DEN Broncos -- Broncos · settled -- P/L not reported · $7.54 · pays -$17.00" -- Polymarket had listed it with
+  netPosition -17 (sold out / merged) and no settlement; a ledger row with 0 or negative shares and no settlement or sale is now left out, and `toWin` is never negative
+  (`lib/mybets.js isHeld`, tested). Removed a dead `rows=[]` in `td_prob.py`. Nothing else found.
+- Known and fine: Models "PICK · total" says waiting for week 6 because SEA @ DEN's total pick at kickoff was still the chooser's (id `chooser|total`, won); from Sunday every game
+  records `cardpick|` / `modelpick|`. Self-check runs Thu 12:05 PM, Fri 5:05 PM, Sun 7:35 AM PT (scheduler), so "last self-check Thu" on a Friday morning is right.
+
 ## POLYMARKET REAL-PRICE REPLAY (10/16, owner: "Build now number one ... auto math, auto calibration, everything"; work branch, NOT merged until "merge now")
 
 - **Data (new, `railway-model-service/data/poly_closes.csv`, 9,425 rows):** every 2025 + 2026 regular-season Polymarket game market (spreads, totals, moneyline; 357 events,
