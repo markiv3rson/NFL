@@ -907,5 +907,12 @@ Tested and NOT added (made it worse):
   O/U 52.5 176 (51c), O/U 50.5 133 (56c). So the 2025 season's Polymarket closing (and mid-week) prices for main AND alternate lines can be rebuilt for free -- the missing piece for
   "do bought lines make money at Polymarket's price" and for Polymarket-vs-books timing. Size: ~270 games x ~15 markets x 1-4 calls = a few thousand calls. Not built (a separate job);
   order-book depth is still not archived anywhere, so keep `pin30` running.
+- **Next Gen Stats, second pass (10/16, owner: "yes, build now"). Nothing built.** nflverse's NGS release now holds usable weekly rows only for 2018-2023 (the 2024 files have 5 rows, 2025 is missing), so the walk-forward
+  test is 2021-23 (12,763 player-games), features merged from EARLIER weeks only (no leak). TD model Brier, base 0.15443: + goal-line set (rush yards over expected, 8+ box %, efficiency,
+  each x inside-5 carries) 0.15449 (worse, better in 1 of 3 seasons); + role-change set (air-yards-share jump and target jump last game, separation, YAC over expected) 0.15455 (worse, 1 of 3);
+  both 0.15438 (-0.00005, 2 of 3 -- the same ~0.1% as 10/13, noise). Best TD picks 66.3% base vs 66.1 / 64.7 / 66.7%; rank-1 scorer 43.6% vs 43.7 / 43.6 / 42.8. Leave NGS out of the TD model.
+  INJURY x replacement QB (the rule's QB-out games 2014-25, 107 with a known replacement from snap counts; CPOE from his earlier NGS weeks, 59 games 2018-23): replacement CPOE below 0 ->
+  healthy team 62.2% (37), CPOE 0 or better 52.4% (21); below -2 -> 71.4% (21), above +2 -> 55.6% (18); no NGS history at all (a true backup) 72.7% (11). Points the right way (a worse
+  backup = a better pick) but 21-37 games per cell and the NGS files stop at 2023 -> a CANDIDATE to re-test when nflverse restores 2024-25, not a rule. Scripts: /tmp/claude-0/ngs_td.py, ngs_qb.py.
 - Clock note: the sandbox clock only advances while a command runs (it read 14:13-14:19 for the first pass), so "10 minutes" cannot be measured with `date` here; the second pass went
   topic by topic until each source was exhausted (every check above). Nothing passed the bar to build; the next real steps are the Odds API month (5) and the Polymarket trade backfill (8).
