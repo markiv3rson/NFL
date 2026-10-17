@@ -1,0 +1,18 @@
+{
+ "at": "2026-10-16T04:07:40.523228",
+ "seconds": 367,
+ "patterns": 27,
+ "published": true,
+ "failed_checks": [],
+ "fit_through": "2026-04-12",
+ "games": 6153,
+ "injury_days": 819,
+ "injury_basis": "the official injury report before tip-off (2022-2026, 819 game days)",
+ "status_weights": {
+  "out": 0.999,
+  "questionable": 0.455,
+  "probable": 0.051,
+  "doubtful": 0.974,
+  "available": 0.055
+ }
+}

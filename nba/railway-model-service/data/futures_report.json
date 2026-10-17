@@ -1,0 +1,58 @@
+{
+ "built": "2026-10-14T10:20",
+ "sims_per_season": 4000,
+ "seasons": [
+  2010,
+  2011,
+  2012,
+  2013,
+  2014,
+  2015,
+  2016,
+  2017,
+  2018,
+  2019,
+  2021,
+  2022,
+  2023,
+  2024,
+  2025,
+  2026
+ ],
+ "team_seasons": 480,
+ "wins": {
+  "mae": 7.8,
+  "mae_prior_with_roster": 7.71,
+  "mae_prior_without_roster": 7.93,
+  "coverage_50": 46.5,
+  "coverage_80": 78.1,
+  "coverage_90": 87.5
+ },
+ "playoffs": {
+  "brier_model": 0.1867,
+  "brier_everyone_same_chance": 0.2489,
+  "n": 480
+ },
+ "champion": {
+  "seasons": 16,
+  "avg_chance_given_to_real_champion_pct": 10.9,
+  "uniform_pct": 3.3,
+  "log_loss": 2.454,
+  "uniform_log_loss": 3.401,
+  "real_champions_in_top4_pct": 68.8
+ },
+ "vs_market": {
+  "2025": {
+   "champion": "Oklahoma City Thunder",
+   "market_pct": 11.7,
+   "model_pct": 10.1,
+   "market_asof": "2024-10-14"
+  },
+  "2026": {
+   "champion": "New York Knicks",
+   "market_pct": 7.2,
+   "model_pct": 6.7,
+   "market_asof": "2025-10-14"
+  }
+ }
+}

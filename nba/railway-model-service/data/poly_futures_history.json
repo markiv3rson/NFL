@@ -1,0 +1,393 @@
+{
+ "note": "Polymarket futures prices nearest Oct 14 of the season start (CLOB prices-history, daily). won = resolved Yes.",
+ "seasons": {
+  "2025": {
+   "champion": {
+    "event": "NBA Champion",
+    "asof": "2024-10-14",
+    "teams": {
+     "Atlanta Hawks": {
+      "price": 0.0035,
+      "won": false
+     },
+     "Boston Celtics": {
+      "price": 0.21,
+      "won": false
+     },
+     "Brooklyn Nets": {
+      "price": 0.0035,
+      "won": false
+     },
+     "Charlotte Hornets": {
+      "price": 0.0085,
+      "won": false
+     },
+     "Chicago Bulls": {
+      "price": 0.0035,
+      "won": false
+     },
+     "Cleveland Cavaliers": {
+      "price": 0.0145,
+      "won": false
+     },
+     "Dallas Mavericks": {
+      "price": 0.065,
+      "won": false
+     },
+     "Denver Nuggets": {
+      "price": 0.07,
+      "won": false
+     },
+     "Detroit Pistons": {
+      "price": 0.0035,
+      "won": false
+     },
+     "Golden State Warriors": {
+      "price": 0.0215,
+      "won": false
+     },
+     "Houston Rockets": {
+      "price": 0.0075,
+      "won": false
+     },
+     "Indiana Pacers": {
+      "price": 0.016,
+      "won": false
+     },
+     "LA Clippers": {
+      "price": 0.011,
+      "won": false
+     },
+     "Los Angeles Lakers": {
+      "price": 0.0295,
+      "won": false
+     },
+     "Memphis Grizzlies": {
+      "price": 0.022,
+      "won": false
+     },
+     "Miami Heat": {
+      "price": 0.017,
+      "won": false
+     },
+     "Milwaukee Bucks": {
+      "price": 0.055,
+      "won": false
+     },
+     " Minnesota Timberwolves": {
+      "price": 0.065,
+      "won": false
+     },
+     "New Orleans Pelicans": {
+      "price": 0.0155,
+      "won": false
+     },
+     "New York Knicks": {
+      "price": 0.1,
+      "won": false
+     },
+     "Oklahoma City Thunder": {
+      "price": 0.12,
+      "won": true
+     },
+     "Orlando Magic": {
+      "price": 0.013,
+      "won": false
+     },
+     "Philadelphia 76ers": {
+      "price": 0.085,
+      "won": false
+     },
+     "Phoenix Suns": {
+      "price": 0.0255,
+      "won": false
+     },
+     "Portland Trail Blazers": {
+      "price": 0.0035,
+      "won": false
+     },
+     "Sacramento Kings": {
+      "price": 0.014,
+      "won": false
+     },
+     "San Antonio Spurs": {
+      "price": 0.0115,
+      "won": false
+     },
+     "Toronto Raptors": {
+      "price": 0.0035,
+      "won": false
+     },
+     "Utah Jazz": {
+      "price": 0.0035,
+      "won": false
+     },
+     "Washington Wizards": {
+      "price": 0.005,
+      "won": false
+     }
+    }
+   },
+   "east": {
+    "event": "NBA Eastern Conference Champion",
+    "asof": "2024-10-14",
+    "teams": {
+     "Boston Celtics": {
+      "price": 0.36,
+      "won": false
+     },
+     "Atlanta Hawks": {
+      "price": 0.007,
+      "won": false
+     },
+     "Brooklyn Nets": {
+      "price": 0.0045,
+      "won": false
+     },
+     "Charlotte Hornets": {
+      "price": 0.0055,
+      "won": false
+     },
+     "Chicago Bulls": {
+      "price": 0.0045,
+      "won": false
+     },
+     "Cleveland Cavaliers": {
+      "price": 0.04,
+      "won": false
+     },
+     "Detroit Pistons": {
+      "price": 0.005,
+      "won": false
+     },
+     "Indiana Pacers": {
+      "price": 0.035,
+      "won": true
+     },
+     "Miami Heat": {
+      "price": 0.04,
+      "won": false
+     },
+     "Milwaukee Bucks": {
+      "price": 0.115,
+      "won": false
+     },
+     "New York Knicks": {
+      "price": 0.205,
+      "won": false
+     },
+     "Orlando Magic": {
+      "price": 0.035,
+      "won": false
+     },
+     "Philadelphia 76ers": {
+      "price": 0.185,
+      "won": false
+     },
+     "Toronto Raptors": {
+      "price": 0.005,
+      "won": false
+     },
+     "Washington Wizards": {
+      "price": 0.0045,
+      "won": false
+     }
+    }
+   },
+   "west": {
+    "event": "NBA Western Conference Champion",
+    "asof": "2024-10-14",
+    "teams": {
+     "Denver Nuggets": {
+      "price": 0.15,
+      "won": false
+     },
+     "Dallas Mavericks": {
+      "price": 0.135,
+      "won": false
+     },
+     "Golden State Warriors": {
+      "price": 0.04,
+      "won": false
+     },
+     "LA Clippers": {
+      "price": 0.025,
+      "won": false
+     },
+     "Houston Rockets": {
+      "price": 0.0135,
+      "won": false
+     },
+     "Los Angeles Lakers": {
+      "price": 0.055,
+      "won": false
+     },
+     "Memphis Grizzlies": {
+      "price": 0.05,
+      "won": false
+     },
+     "Minnesota Timberwolves": {
+      "price": 0.14,
+      "won": false
+     },
+     "New Orleans Pelicans": {
+      "price": 0.028,
+      "won": false
+     },
+     "Oklahoma City Thunder": {
+      "price": 0.225,
+      "won": true
+     },
+     "Phoenix Suns": {
+      "price": 0.065,
+      "won": false
+     },
+     "Portland Trail Blazers": {
+      "price": 0.0075,
+      "won": false
+     },
+     "Sacramento Kings": {
+      "price": 0.037,
+      "won": false
+     },
+     "San Antonio Spurs": {
+      "price": 0.018,
+      "won": false
+     },
+     "Utah Jazz": {
+      "price": 0.0075,
+      "won": false
+     }
+    }
+   }
+  },
+  "2026": {
+   "champion": {
+    "event": "2026 NBA Champion",
+    "asof": "2025-10-14",
+    "teams": {
+     "Oklahoma City Thunder": {
+      "price": 0.275,
+      "won": false
+     },
+     "Cleveland Cavaliers": {
+      "price": 0.105,
+      "won": false
+     },
+     "New York Knicks": {
+      "price": 0.075,
+      "won": true
+     },
+     "Minnesota Timberwolves": {
+      "price": 0.0295,
+      "won": false
+     },
+     "Houston Rockets": {
+      "price": 0.065,
+      "won": false
+     },
+     "Indiana Pacers": {
+      "price": 0.027,
+      "won": false
+     },
+     "Boston Celtics": {
+      "price": 0.02,
+      "won": false
+     },
+     "Los Angeles Lakers": {
+      "price": 0.0565,
+      "won": false
+     },
+     "Orlando Magic": {
+      "price": 0.031,
+      "won": false
+     },
+     "Denver Nuggets": {
+      "price": 0.095,
+      "won": false
+     },
+     "San Antonio Spurs": {
+      "price": 0.021,
+      "won": false
+     },
+     "Golden State Warriors": {
+      "price": 0.0355,
+      "won": false
+     },
+     "Los Angeles Clippers": {
+      "price": 0.036,
+      "won": false
+     },
+     "Philadelphia 76ers": {
+      "price": 0.0105,
+      "won": false
+     },
+     "Dallas Mavericks": {
+      "price": 0.024,
+      "won": false
+     },
+     "Detroit Pistons": {
+      "price": 0.0195,
+      "won": false
+     },
+     "Milwaukee Bucks": {
+      "price": 0.0105,
+      "won": false
+     },
+     "Miami Heat": {
+      "price": 0.008,
+      "won": false
+     },
+     "Memphis Grizzlies": {
+      "price": 0.008,
+      "won": false
+     },
+     "New Orleans Pelicans": {
+      "price": 0.0065,
+      "won": false
+     },
+     "Toronto Raptors": {
+      "price": 0.008,
+      "won": false
+     },
+     "Phoenix Suns": {
+      "price": 0.0075,
+      "won": false
+     },
+     "Chicago Bulls": {
+      "price": 0.0075,
+      "won": false
+     },
+     "Portland Trail Blazers": {
+      "price": 0.008,
+      "won": false
+     },
+     "Brooklyn Nets": {
+      "price": 0.0065,
+      "won": false
+     },
+     "Atlanta Hawks": {
+      "price": 0.0215,
+      "won": false
+     },
+     "Charlotte Hornets": {
+      "price": 0.0065,
+      "won": false
+     },
+     "Utah Jazz": {
+      "price": 0.0065,
+      "won": false
+     },
+     "Sacramento Kings": {
+      "price": 0.008,
+      "won": false
+     },
+     "Washington Wizards": {
+      "price": 0.0065,
+      "won": false
+     }
+    }
+   }
+  }
+ }
+}

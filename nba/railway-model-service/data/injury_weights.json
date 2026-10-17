@@ -1,0 +1,20 @@
+{
+ "weights": {
+  "out": 0.999,
+  "questionable": 0.455,
+  "probable": 0.051,
+  "doubtful": 0.974,
+  "available": 0.055
+ },
+ "counts": {
+  "Out": 15349,
+  "Questionable": 6769,
+  "Probable": 2529,
+  "Doubtful": 931,
+  "Available": 1756
+ },
+ "unlisted_sit_rate": 0.1335,
+ "unlisted_n": 103694,
+ "dates": 819,
+ "built": "2026-10-16"
+}

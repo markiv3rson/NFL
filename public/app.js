@@ -818,8 +818,8 @@ function weekline() {
   const m = S.meta || {};
   const round = { 19: "Wild Card", 20: "Divisional round", 21: "Conference Championships", 22: "Super Bowl" }[S.week];
   const live = S.games.some((g) => !g.started && g.poly);   // 10/14 header: "LINES LIVE" while Polymarket has open lines
-  $("hero-wk").textContent = `${live ? "Lines live · " : ""}${round || `Week ${S.week}`} · ${range}`.toUpperCase();
-  const hu = $("hero-upd"), detail = `Updated (your time): Polymarket ${clock(m.lastSnapshot)} · sportsbooks ${clock(S.booksAt)} · model ${clock(S.modelRunAt)}`;
+  if ($("hero-wk")) $("hero-wk").textContent = `${live ? "Lines live · " : ""}${round || `Week ${S.week}`} · ${range}`.toUpperCase();
+  const hu = $("hero-upd"); if (!hu) return; const detail = `Updated (your time): Polymarket ${clock(m.lastSnapshot)} · sportsbooks ${clock(S.booksAt)} · model ${clock(S.modelRunAt)}`;
   hu.textContent = `Model ${clock(S.modelRunAt)} ›`; hu.onclick = () => toast(detail, 8000);   // 10/14: the lever reruns the model, so it shows the model's time; tap for all three
 }
 const hitCls = (h) => (h == null ? "dim" : h >= 0.55 ? "g" : h >= 0.5 ? "y" : "r");   // green 55%+, amber 50-55%, red under 50%
@@ -958,9 +958,9 @@ const liveTail = (g, lv, kind) => (liveHas(lv, kind) ? lockedNote(g, kind) : "")
 function refreshDetail() { const open = [...document.querySelectorAll(".drop.open")].map((e) => e.id).filter(Boolean); renderLines(); for (const id of open) { const e = $(id); if (e) e.classList.add("open"); } }
 const anyLive = () => !!(S && S.games && S.games.some((g) => g.started && !g.final));
 async function loadLive() {
-  if (!anyLive() || document.hidden || !$("panel-lines").classList.contains("on")) return;
+  if (!anyLive() || document.hidden || !($("panel-lines").classList.contains("on") || $("panel-home").classList.contains("on"))) return;
   try { const d = await (await fetch("/api/live", { cache: "no-store" })).json();
-    if (d.ok) { LIVE = d.games || {}; LIVE_SC = d.scores || {}; LIVE_T = d.t; if (DETAIL) refreshDetail(); else renderLines(); } } catch {}
+    if (d.ok) { LIVE = d.games || {}; LIVE_SC = d.scores || {}; LIVE_T = d.t; if ($("panel-home").classList.contains("on")) renderHome(); else if (DETAIL) refreshDetail(); else renderLines(); } } catch {}
 }
 function liveLoop() { clearTimeout(liveLoop._h); loadLive().finally(() => { liveLoop._h = setTimeout(liveLoop, 30000); }); }
 let DETAIL = null, LASTY = 0, ALERTS = [], ALFILTER = "all", ALPREV = null;
@@ -1155,19 +1155,69 @@ function renderLines() {
 let ROLL_ON_OPEN = false;
 function openGame(key) { ROLL_ON_OPEN = true; LASTY = (typeof window !== "undefined" && window.scrollY) || 0; DETAIL = key; renderLines(); if (window.scrollTo) window.scrollTo(0, 0); const g = S.games.find((x) => x.key === key); if (g && g.started && !g.final) liveLoop(); }
 function closeGame() { DETAIL = null; renderLines(); if (window.scrollTo) window.scrollTo(0, LASTY); }
-// countdown to the next game that has not started
+// ---------- HOME (10/17, owner's sketch): SLATEZZ header, then NFL and NBA live games as a list -- logos, team, its spread from the
+// sportsbooks before kickoff, the total in the middle, the score and clock. Each section's title row: LIVE NOW + NEXT GAME logos and clock.
+// Nothing live in a sport: its next game only. NBA data comes from the NBA side's own routes (/api/nba/slate, /api/nba/live).
+let NB = null, NBL = {}, HOME_T = 0;
+async function loadHome() {
+  if (Date.now() - HOME_T < 25000 && NB) return; HOME_T = Date.now();
+  try { const d = await (await fetch("/api/nba/slate", { cache: "no-store" })).json(); if (d && d.ok) NB = d; } catch {}
+  try { const d = await (await fetch("/api/nba/live", { cache: "no-store" })).json(); if (d && d.ok) NBL = d.scores || {}; } catch {}
+  if ($("panel-home").classList.contains("on")) renderHome();
+  clearTimeout(loadHome._h); loadHome._h = setTimeout(() => { if (!document.hidden && $("panel-home").classList.contains("on")) { HOME_T = 0; loadHome(); } }, 30000);
+}
+const hsp = (x) => (x == null || !isFinite(x) ? "" : x === 0 ? "PK" : (x > 0 ? "+" : "−") + Math.abs(x));
+function homeRow(o) {   // o: { key, attr, away, home, aLogo, hLogo, aSp, hSp, tot, sc }
+  const sc = o.sc, a = sc ? sc.a : null, h = sc ? sc.h : null;
+  return `<button class="hrow" ${o.attr}="${esc(o.key)}"><div class="hteams">` +
+    `<div class="hteam"><img src="${o.aLogo}" alt="" onerror="this.style.visibility='hidden'"><b>${esc(o.away)}</b><span>${hsp(o.aSp)}</span></div>` +
+    `<div class="hteam"><img src="${o.hLogo}" alt="" onerror="this.style.visibility='hidden'"><b>${esc(o.home)}</b><span>${hsp(o.hSp)}</span></div></div>` +
+    `<div class="hou">${o.tot != null ? `O/U<b>${o.tot}</b>` : ""}</div>` +
+    `<div class="hsc"><span class="${a != null && h != null && a < h ? "lo" : ""}">${a ?? ""}</span><span class="${a != null && h != null && h < a ? "lo" : ""}">${h ?? ""}</span></div>` +
+    `<div class="hclk">${esc(sc && sc.lbl ? sc.lbl : "LIVE")}</div></button>`;
+}
+function homeSection(sport, live, next, rows, nextRow) {
+  const head = `<div class="hsh">${live ? `<span class="lv"><i></i>${sport} · LIVE NOW</span>` : `<span class="sp">${sport}</span>`}` +
+    (next ? `<span class="ng">NEXT GAME <img src="${next.aLogo}" alt="" onerror="this.style.visibility='hidden'"><span class="at">@</span><img src="${next.hLogo}" alt="" onerror="this.style.visibility='hidden'"><b class="sgrad" data-hclk="${next.ts}">${Shell.clockTxt(next.ts - Date.now())}</b></span>` : "") + "</div>";
+  return `<div class="hsec">${head}${live ? rows : nextRow || '<div class="hempty">No games scheduled.</div>'}</div>`;
+}
+function renderHome() {
+  if (!$("home")) return;
+  let out = "";
+  if (S) {   // NFL
+    const live = S.games.filter((g) => g.started && !g.final);
+    const nx = S.games.filter((g) => !g.started && g.kickoff && new Date(g.kickoff) > Date.now()).sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff))[0];
+    const line = (g) => { const b = g.books || {}, p = g.poly || {}, hs = b.spread ? b.spread.homeSpread : p.spread ? p.spread.homeSpread : null, tl = b.total ? b.total.line : p.total ? p.total.line : null;
+      return { hSp: hs == null ? null : Number(hs), aSp: hs == null ? null : -Number(hs), tot: tl }; };
+    const rows = live.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff)).map((g) => homeRow({ key: g.key, attr: "data-game", away: g.away, home: g.home, aLogo: logoUrl(g.away), hLogo: logoUrl(g.home), ...line(g), sc: LIVE_SC[g.key] || null })).join("");
+    const next = nx ? { aLogo: logoUrl(nx.away), hLogo: logoUrl(nx.home), ts: new Date(nx.kickoff).getTime() } : null;
+    const nextRow = nx ? `<button class="hnext" data-game="${esc(nx.key)}"><div><div class="m"><img src="${logoUrl(nx.away)}" alt="" onerror="this.style.visibility='hidden'">${esc(nx.away)} @ ${esc(nx.home)}<img src="${logoUrl(nx.home)}" alt="" onerror="this.style.visibility='hidden'"></div><div class="t">${tm(nx.kickoff)}</div></div></button>` : "";
+    out += homeSection("NFL", live.length > 0, next, rows, nextRow);
+  }
+  if (NB && Array.isArray(NB.games)) {   // NBA (its own data)
+    const T = NB.teams || {}, lg = (t) => Shell.nbaLogo(t, T), bt = NB.books && NB.books.t ? Date.parse(NB.books.t) : null;
+    const live = NB.games.filter((g) => Date.now() >= Date.parse(g.start) && !(NBL[g.key] && NBL[g.key].st === "post"));
+    const nx = NB.games.filter((g) => Date.parse(g.start) > Date.now()).sort((a, b) => Date.parse(a.start) - Date.parse(b.start))[0];
+    const line = (g) => { const b = bt != null && bt <= Date.parse(g.start) ? g.books || {} : {};   // sportsbook numbers from before tip-off only
+      const hs = b.spread ? Number(b.spread.homeSpread) : null; return { hSp: hs, aSp: hs == null ? null : -hs, tot: b.total ? b.total.line : null }; };
+    const rows = live.sort((a, b) => Date.parse(a.start) - Date.parse(b.start)).map((g) => homeRow({ key: g.key, attr: "data-nbagame", away: g.away, home: g.home, aLogo: lg(g.away), hLogo: lg(g.home), ...line(g), sc: NBL[g.key] || null })).join("");
+    const next = nx ? { aLogo: lg(nx.away), hLogo: lg(nx.home), ts: Date.parse(nx.start) } : null;
+    const nextRow = nx ? `<button class="hnext" data-nbagame="${esc(nx.key)}"><div><div class="m"><img src="${lg(nx.away)}" alt="" onerror="this.style.visibility='hidden'">${esc(nx.away)} @ ${esc(nx.home)}<img src="${lg(nx.home)}" alt="" onerror="this.style.visibility='hidden'"></div><div class="t">${tm(nx.start)}</div></div></button>` : "";
+    out += homeSection("NBA", live.length > 0, next, rows, nextRow);
+  }
+  $("home").innerHTML = out || '<div class="hempty">Loading…</div>';
+}
+function homeClocks() { document.querySelectorAll("[data-hclk]").forEach((e) => { const t = Shell.clockTxt(Number(e.dataset.hclk) - Date.now()); if (e.textContent !== t) e.textContent = t; }); }
+// countdown to the next game that has not started -> the header (10/17: [away logo] vs [home logo] · NEXT GAME · clock; the home screen has its own clocks)
 function tickCd() {
   clearTimeout(tickCd._h);
   if (!S) return;
-  const set = (id, v) => { const e = $(id); if (e.textContent === v) return; const was = e.textContent; e.textContent = v;   // 10/14: digits flip like a casino clock
-    if (!REDUCE && was !== "--" && e.classList) { e.classList.remove("flip"); void e.offsetWidth; e.classList.add("flip"); } }, p2 = (n) => String(n).padStart(2, "0");
   const nxt = S.games.filter((g) => !g.started && g.kickoff && new Date(g.kickoff) > Date.now()).sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff))[0];   // by the clock, so it moves on at kickoff even before the next data load
-  if (!nxt) { ["d", "h", "m", "s"].forEach((k) => set("cd-" + k, "--")); set("cd-g", "No upcoming games this week"); tickCd._cur = null; return; }
-  const ms = Math.max(0, new Date(nxt.kickoff) - Date.now());
-  set("cd-d", p2(Math.floor(ms / 864e5))); set("cd-h", p2(Math.floor((ms % 864e5) / 36e5))); set("cd-m", p2(Math.floor((ms % 36e5) / 6e4))); set("cd-s", p2(Math.floor((ms % 6e4) / 1e3)));
-  $("cd-g").innerHTML = `until ${tlogo(nxt.away)}${nxt.away} @ ${tlogo(nxt.home)}${nxt.home} · ${tm(nxt.kickoff)}`;
-  if (tickCd._cur && tickCd._cur !== nxt.key && Date.now() - (tickCd._last || 0) > 15000) { tickCd._last = Date.now(); setTimeout(() => loadSlate().catch(() => {}), 4000); }   // the game we were counting to just kicked off: refresh once
-  tickCd._cur = nxt.key;
+  if (!nxt) { Shell.setNext(null); tickCd._cur = null; }
+  else Shell.setNext(logoUrl(nxt.away), logoUrl(nxt.home), new Date(nxt.kickoff) - Date.now());
+  if (nxt && tickCd._cur && tickCd._cur !== nxt.key && Date.now() - (tickCd._last || 0) > 15000) { tickCd._last = Date.now(); setTimeout(() => loadSlate().catch(() => {}), 4000); }   // the game we were counting to just kicked off: refresh once
+  tickCd._cur = nxt ? nxt.key : null;
+  if ($("panel-home").classList.contains("on")) homeClocks();
   tickCd._h = setTimeout(tickCd, 1000);
 }
 // alerts: built on the server from changes it already sees between pulls (injuries, lines, wind, results)
@@ -1178,7 +1228,7 @@ async function loadAlerts() {
 }
 function renderAlerts() {
   const dots = ALPREV != null ? ALPREV : alSeen(), unread = ALERTS.filter((a) => a.t > alSeen()).length;
-  $("bell-cnt").textContent = unread > 9 ? "9+" : String(unread); $("bell-cnt").style.display = unread ? "flex" : "none";
+  Shell.setCount("nfl", "alerts", unread);   // 10/17: the unread count sits on the menu's NFL Alerts row (the bell went with the tab bar)
   const kinds = ["all", ...Object.keys(ALK).filter((k) => ALERTS.some((a) => a.kind === k))];
   $("al-chips").innerHTML = kinds.map((k) => `<button data-alk="${k}" class="${ALFILTER === k ? "on" : ""}">${k === "all" ? "All" : ALK[k][0]}</button>`).join("");
   const list = ALERTS.filter((a) => ALFILTER === "all" || a.kind === ALFILTER);
@@ -1188,7 +1238,7 @@ function renderAlerts() {
       `<div class="ti">${esc(a.title)}</div>${a.sub ? `<div class="su">${esc(a.sub)}</div>` : ""}${a.game ? `<div style="font-size:11px;font-weight:700;margin-top:6px;color:var(--blue)">${esc(a.game)} ›</div>` : ""}</div></div>`; }).join("") ||
     '<div class="card" style="margin-top:10px"><div class="s">No alerts.</div></div>';
 }
-function renderAll() { weekline(); renderLines(); renderTd(); if (PAPER) renderLab(); else renderLabList(); if (MB) renderRecord(); applyBetsView(); tickCd(); renderAlerts(); }
+function renderAll() { weekline(); if ($("panel-home").classList.contains("on")) renderHome(); renderLines(); renderTd(); if (PAPER) renderLab(); else renderLabList(); if (MB) renderRecord(); applyBetsView(); tickCd(); renderAlerts(); }
 // Newest version all the time (9/30): if a new deploy went live while this page was open (or sat in a phone tab),
 // reload once to pick it up; data refreshes on its own when you come back to the tab after 2+ minutes.
 let BUILD = null, LOADED_AT = 0, LOAD_SEQ = 0;
@@ -1228,9 +1278,13 @@ if ($("lever")) {
   lv.addEventListener("pointerdown", (e) => { y0 = e.clientY; }); lv.addEventListener("pointermove", (e) => { if (y0 != null && e.clientY - y0 > 25) { y0 = null; pull(); } }); lv.addEventListener("pointerup", () => { y0 = null; });
 }
 function showPanel(name) {
-  document.querySelectorAll(".tabs button[data-tab]").forEach((x) => x.classList.toggle("on", x.dataset.tab === name));
-  $("bell").classList.toggle("on", name === "alerts");
+  if (!$("panel-" + name)) name = "home";
+  Shell.setActive(name);   // 10/17: the menu replaces the tab bar
+  if (name === "alerts") { ALPREV = alSeen(); if (ALERTS.length) { try { localStorage.setItem("alSeen", ALERTS[0].t); } catch {} } }   // opening Alerts marks them read (was the bell)
   document.querySelectorAll(".panel").forEach((p) => p.classList.remove("on")); $("panel-" + name).classList.add("on");
+  if (name === "alerts") renderAlerts();
+  if (name === "home") { renderHome(); loadHome(); }
+  if (name === "home" || name === "lines") liveLoop();
   try { if (window.scrollTo) window.scrollTo(0, 0); } catch {}   // 10/14 (owner): every tab change starts at the top of the page
   if (name === "record" || name === "models") loadRecord();
   if (name === "record") applyBetsView();
@@ -1238,17 +1292,21 @@ function showPanel(name) {
   setTimeout(() => slotify($("panel-" + name)), 60);   // 10/14: numbers roll in when you open a tab
   if (S && S.games) setBg(name === "lines" && DETAIL ? S.games.find((x) => x.key === DETAIL) : null);   // game background only on an open game page
 }
-document.querySelectorAll(".tabs button[data-tab]").forEach((btn) => btn.addEventListener("click", () => {
-  if (btn.dataset.tab === "lines" && DETAIL && $("panel-lines").classList.contains("on")) closeGame();   // tapping the tab you are on goes back to the tiles
-  showPanel(btn.dataset.tab);
-}));
-$("bell").onclick = () => { ALPREV = alSeen(); if (ALERTS.length) { try { localStorage.setItem("alSeen", ALERTS[0].t); } catch {} } showPanel("alerts"); renderAlerts(); };
+// 10/17: pages switch by the address' #name (the menu links set it): #home (or none), #alerts, #lines, #td, #record, #models
+const PANELS = ["home", "alerts", "lines", "td", "record", "models"];
+function routeHash() {
+  const name = Shell.hashPanel(PANELS, "home");
+  if (name === "lines" && DETAIL && $("panel-lines").classList.contains("on")) closeGame();   // choosing Game Lines while on a game goes back to the games
+  showPanel(name);
+}
+window.addEventListener("hashchange", routeHash);
 $("al-read").onclick = () => { ALPREV = ALERTS.length ? ALERTS[0].t : ""; renderAlerts(); };
 document.addEventListener("click", (e) => {
   const d = e.target.closest("[data-drop]"); if (d) { const el = $(d.dataset.drop); if (el) { el.classList.toggle("open"); if (d.dataset.drop === "bestlist") { BEST_OPEN = el.classList.contains("open"); try { localStorage.setItem("bestOpen", BEST_OPEN ? "1" : "0"); } catch {} }
       if (d.dataset.drop === "gamebest") { GAMEBEST_OPEN = el.classList.contains("open"); try { localStorage.setItem("gameBestOpen", GAMEBEST_OPEN ? "1" : "0"); } catch {} } } return; }
-  const gt = e.target.closest("[data-game]"); if (gt) { openGame(gt.dataset.game); return; }
-  const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k) { showPanel("lines"); openGame(k); } return; }
+  const gt = e.target.closest("[data-game]"); if (gt) { if (!$("panel-lines").classList.contains("on")) { history.replaceState(null, "", "#lines"); showPanel("lines"); } openGame(gt.dataset.game); return; }
+  const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k) { history.replaceState(null, "", "#lines"); showPanel("lines"); openGame(k); } return; }
+  const nb = e.target.closest("[data-nbagame]"); if (nb) { location.href = "/nba/index.html#game=" + encodeURIComponent(nb.dataset.nbagame); return; }
   const bv = e.target.closest("[data-bv]"); if (bv) { BETSVIEW = bv.dataset.bv === "model" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} applyBetsView(); try { window.scrollTo(0, 0); } catch {} return; }
   const lt = e.target.closest("[data-labt]"); if (lt) { LABTYPE = lt.dataset.labt; renderLabList(); return; }
   const lw = e.target.closest("[data-labw]"); if (lw) { LABWEEK = Number(lw.dataset.labw); renderLabList(); return; }
@@ -1264,5 +1322,9 @@ const onRecordTab = () => ["panel-record", "panel-models"].some((id) => $(id) &&
 function catchUp() { fetch("/api/results/grade?lock=1", { cache: "no-store" }).then((r) => r.json()).then((d) => { if (d && d.ran && onRecordTab()) loadRecord(); }).catch(() => {}); }
 async function refreshAll() { try { catchUp(); await loadSlate(); await loadAlerts(); if (onRecordTab()) await loadRecord(); } catch {} }
 function autoRefresh() { setTimeout(async () => { if (!document.hidden) await refreshAll(); autoRefresh(); }, 120e3); }
-loadSlate().then(loadAlerts).then(() => { catchUp(); autoRefresh(); }).catch((e) => ($("hero-upd").textContent = "Couldn't load this week: " + e.message));
+Shell.init("nfl");
+document.querySelectorAll("[data-mp]").forEach((a) => a.addEventListener("click", () => { if (a.dataset.msp === "nfl" && location.hash === "#" + a.dataset.mp) setTimeout(routeHash, 0); }));   // same item again: still go back from a game page
+Shell.onRefreshed = async () => { await loadSlate(); if ($("panel-home").classList.contains("on")) await loadHome(); };
+routeHash();
+loadSlate().then(loadAlerts).then(() => { catchUp(); autoRefresh(); }).catch((e) => toast("Couldn't load this week: " + e.message, 12000));
 document.addEventListener("visibilitychange", () => { if (!document.hidden && Date.now() - LOADED_AT > 60e3) refreshAll(); });

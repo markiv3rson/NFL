@@ -1,0 +1,30 @@
+{
+ "moneyline": {
+  "win_rate": 50.1,
+  "games": 471,
+  "seasons_above_50": 7,
+  "seasons": 13,
+  "pick_tier_games": 471,
+  "pick_tier_win_rate": 50.1,
+  "claimed": 62.4
+ },
+ "spread": {
+  "win_rate": 51.2,
+  "games": 10209,
+  "seasons_above_50": 14,
+  "seasons": 17,
+  "pick_tier_games": 1239,
+  "pick_tier_win_rate": 49.4,
+  "claimed": 54.4
+ },
+ "total": {
+  "win_rate": 47.8,
+  "games": 569,
+  "seasons_above_50": 5,
+  "seasons": 17,
+  "pick_tier_games": 58,
+  "pick_tier_win_rate": 29.3,
+  "claimed": 54.9
+ },
+ "tested": "2026-10-16"
+}

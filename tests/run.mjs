@@ -114,11 +114,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(!r["ATL @ NO"] && !r["BUF @ MIA"], "live score: not-started games and games we did not ask for are left out", r);
   ok(Object.keys(parseScoreboard({ events: [{ competitions: [] }, {}] }, ["A @ B"])).length === 0 && Object.keys(parseScoreboard(null, ["A @ B"])).length === 0 && Object.keys(parseScoreboard({ injuries: [] }, ["A @ B"])).length === 0, "live score: unreadable feeds give nothing"); }
 // ---------- what the page says (runs the real public/app.js)
-{ const el = () => ({ classList: { add() {}, remove() {}, toggle() {} }, style: {}, set innerHTML(v) {}, set textContent(v) {}, addEventListener() {} });
+{ const el = () => ({ classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } }, dataset: {}, appendChild() {}, style: {}, set innerHTML(v) {}, set textContent(v) {}, addEventListener() {} });
   const store = { lastSeen: "2026-10-01T12:00:00Z" };
-  const ctx = { document: { getElementById: () => el(), querySelectorAll: () => [], addEventListener() {}, hidden: false }, fetch: () => Promise.reject(new Error("offline")),
-    localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) }, location: { reload() {} }, window: {}, setTimeout, clearTimeout, console, Date, Math, Number, String, JSON, Promise, Set, Object, Array };
+  const ctx = { document: { getElementById: () => el(), querySelectorAll: () => [], addEventListener() {}, hidden: false, createElement: () => el(), body: el(), documentElement: el() }, fetch: () => Promise.reject(new Error("offline")),
+    localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) }, location: { reload() {}, hash: "" }, history: { replaceState() {} }, setTimeout, clearTimeout, console, Date, Math, Number, String, JSON, Promise, Set, Object, Array };
+  ctx.window = ctx; ctx.addEventListener = () => {}; ctx.body = undefined;
   vm.createContext(ctx);
+  vm.runInContext(readFileSync(new URL("../public/shell.js", import.meta.url), "utf8"), ctx);   // 10/17: the shared menu / header script loads first, as on the page
   vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={tdPct,plural,pBlock,plPay,sgpBox,labParlays,renderLabList,logoLabel,tdTeam,legName,moreBox,slotOf,parlayPicks,parlayStrip,lineCheck,recLine,bestBets,injTag,weakLeg,kickLine,tdNoGap,trackedRows,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,leanCell,prow,betRow,changedBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gameCard,totalCard,detailTop,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByConfidence,mSec,legFlipped,betSlots,openBySlot,straightPicks,sgpBox,glowOf,stampFor,betRow};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
@@ -1133,5 +1135,40 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(/84%/.test(box) && /82¢/.test(box) && !/7–3/.test(box), "page: picks show chance and price");
   ok(/Spread <b>—<\/b> · Total <b>—<\/b> · TD <b>/.test(box) && !/BAL -10\.5/.test(box), "page: each game shows the card's spread / total pick (none here) and the touchdown side -- not the game model's own side");
   }
+// ---------- 10/17 SLATEZZ: one site for NFL + NBA (menu, header, home lists, NBA kept separate)
+{ const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8"), nbaHtml = readFileSync(new URL("../public/nba/index.html", import.meta.url), "utf8");
+  const shell = readFileSync(new URL("../public/shell.js", import.meta.url), "utf8");
+  ok(!/class="tabs"/.test(html) && !/class="tabs"/.test(nbaHtml) && !/id="lever"/.test(html) && !/id="lever"/.test(nbaHtml), "no bottom tab bar and no lever on either page");
+  ok(/class="panel on" id="panel-home"/.test(html) && /id="shead-home"><span class="sgrad">SLATEZZ</.test(html) && /id="shead-next"/.test(html) && /id="shead-next"/.test(nbaHtml) && /id="menu-btn"/.test(html) && /id="menu-btn"/.test(nbaHtml), "home opens first with SLATEZZ; every other page has the menu button + next-game header");
+  ok(/src="\/shell\.js"/.test(html) && /src="\/shell\.js"/.test(nbaHtml) && /href="\/shell\.css"/.test(html) && /href="\/shell\.css"/.test(nbaHtml), "both pages load the one shared menu / header");
+  ok(/\.chips\.dock \{ position:fixed; left:0; right:0; bottom:0;/.test(html) && /\.chips\.dock \{ position:fixed; left:0; right:0; bottom:0;/.test(nbaHtml), "docked sub tabs sit at the very bottom on both pages");
+  const sctx = { window: {}, document: {}, location: { hash: "" }, Date, Math, Number, String, JSON, Promise, Object, Array }; sctx.window = sctx; vm.createContext(sctx); vm.runInContext(shell, sctx);
+  const Sh = sctx.Shell, H = 36e5, M = 6e4;
+  ok(Sh.clockTxt(25 * H + 7 * M + 5000) === "1d 1h 7m" && Sh.clockTxt(2 * H + 14 * M) === "2h 14m" && Sh.clockTxt(26 * M + 30000) === "26m" && Sh.clockTxt(45000) === "45s" && Sh.clockTxt(-5) === "0s", "header clock text: 1d 1h 7m / 2h 14m / 26m / 45s");
+  const items = [...shell.matchAll(/\["(\w+)", "([^"]+)", "\w+"\]/g)].map((m) => m[2]);
+  ok(JSON.stringify(items) === JSON.stringify(["Alerts", "Game Lines", "Anytime TD", "Bets", "Alerts", "Game Lines", "Bets"]) && /MODEL ANALYSIS/.test(shell) && /item\("nfl", "models", "NFL", "bars"\)\}\$\{item\("nba", "models", "NBA", "bars"\)/.test(shell) && !/NFL Model|NBA Model/.test(shell), "menu: NFL (Alerts, Game Lines, Anytime TD, Bets), NBA (Alerts, Game Lines, Bets), MODEL ANALYSIS (NFL, NBA)", items);
+  ok(/fetch\("\/api\/rerun", \{ method: "POST" \}\)/.test(shell) && /fetch\("\/api\/nba\/snapshot"/.test(shell), "the menu's refresh reruns both models (NFL /api/rerun, NBA /api/nba/snapshot)");
+  // NBA uses ONLY its own settings
+  const nbaR = await import("../nba/lib/redis.js"), nbaM = readFileSync(new URL("../nba/lib/model.js", import.meta.url), "utf8"), nbaB = readFileSync(new URL("../nba/lib/books.js", import.meta.url), "utf8");
+  ok(nbaR.redisUrl({ UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://nfl:1", REDIS_URL: "redis://x:2" }) === null && nbaR.redisUrl({ NBA_REDIS_URL: "redis://nba:3" }) === "redis://nba:3", "NBA's database is its own (NBA_REDIS_URL); NFL's database variable is never read");
+  ok(/NBA_MODEL_SERVICE_URL/.test(nbaM) && !/env\.MODEL_SERVICE_URL/.test(nbaM) && /NBA_ODDS_API_KEY/.test(nbaB) && !/env\.ODDS_API_KEY/.test(nbaB), "NBA's model service and odds key are its own settings");
+  const nbaApp = readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8");
+  ok(!/fetch\("\/api\/(?!nba\/)/.test(nbaApp), "the NBA page only calls /api/nba/... routes");
+  // NBA live scores (home screen)
+  const { parseLive } = await import("../pages/api/nba/live.js");
+  const ev = (a, h, as, hs, state, period, clock, detail) => ({ competitions: [{ competitors: [{ homeAway: "away", score: String(as), team: { abbreviation: a } }, { homeAway: "home", score: String(hs), team: { abbreviation: h } }], status: { period, displayClock: clock, type: { state, detail } } }] });
+  const L = parseLive({ events: [ev("BOS", "NY", 58, 61, "in", 3, "6:30", "6:30 - 3rd"), ev("LAL", "DEN", 50, 48, "in", 2, "0:00", "Halftime"), ev("GS", "PHO", 110, 104, "post", 4, "0:00", "Final"), ev("XXX", "DEN", 0, 0, "pre", 0, "12:00", "7:00 PM")] });
+  ok(L["BOS @ NYK"] && L["BOS @ NYK"].a === 58 && L["BOS @ NYK"].h === 61 && L["BOS @ NYK"].lbl === "Q3 6:30" && L["LAL @ DEN"].lbl === "Half" && L["GSW @ PHX"].st === "post" && Object.keys(L).length === 3, "NBA live scores: ESPN codes mapped (NY -> NYK, GS -> GSW, PHO -> PHX), quarter + clock, halftime, final", L);
+  // home rows: spread next to each team, total in the middle, score + clock; next game in the title row
+  const ctx = globalThis.__ctx, gid = ctx.document.getElementById; ctx.__h = "";
+  ctx.document.getElementById = (id) => (id === "home" ? { set innerHTML(v) { ctx.__h = v; } } : gid(id));
+  vm.runInContext(`S = { games: [{ key: "BUF @ LV", away: "BUF", home: "LV", started: true, final: false, kickoff: "2026-10-18T20:25:00Z", books: { spread: { homeSpread: 5.5 }, total: { line: 46.5 } }, poly: {} },
+    { key: "DAL @ GB", away: "DAL", home: "GB", started: false, final: false, kickoff: new Date(Date.now() + 2 * 36e5 + 14 * 6e4 + 20000).toISOString(), poly: {} }] };
+    LIVE_SC = { "BUF @ LV": { a: 17, h: 10, st: "in", lbl: "Q3 8:42" } }; NB = { teams: {}, books: { t: "2026-10-18T19:00:00Z" }, games: [] }; NBL = {};
+    renderHome();`, ctx);
+  const hh = ctx.__h;
+  ok(/NFL · LIVE NOW/.test(hh) && /<b>BUF<\/b><span>−5\.5<\/span>/.test(hh) && /<b>LV<\/b><span>\+5\.5<\/span>/.test(hh) && /O\/U<b>46\.5<\/b>/.test(hh) && />17</.test(hh) && />10</.test(hh) && /Q3 8:42/.test(hh), "home: live row = team + its sportsbook spread, total in the middle, score, clock", hh.slice(0, 600));
+  ok(/NEXT GAME <img[^>]+dal\.png[^>]*><span class="at">@<\/span><img[^>]+gb\.png/i.test(hh) && /data-hclk="\d+">2h 14m</.test(hh), "home: NFL title row shows the next game's logos and clock");
+  ok(/<span class="sp">NBA<\/span>/.test(hh) && /No games scheduled/.test(hh), "home: NBA section with nothing live and nothing scheduled says so"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);

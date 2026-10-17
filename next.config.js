@@ -9,12 +9,18 @@ const nextConfig = {
       { source: "/", headers: noStore },
       { source: "/index.html", headers: noStore },
       { source: "/app.js", headers: noStore },
+      { source: "/shell.js", headers: noStore },
+      { source: "/shell.css", headers: noStore },
+      { source: "/nba", headers: noStore },
+      { source: "/nba/index.html", headers: noStore },
+      { source: "/nba/app.js", headers: noStore },
       { source: "/api/:path*", headers: noStore },
     ];
   },
   async redirects() {
     return [
       { source: "/", destination: "/index.html", permanent: false },
+      { source: "/nba", destination: "/nba/index.html", permanent: false },   // 10/17: NBA lives in the same site
     ];
   },
 };
