@@ -471,6 +471,7 @@ function renderModels() {
 // ---------- Alerts
 let ALERTS = [], ALFILTER = "all", ALPREV = null;
 const ALK = { PICK: ["New pick", "var(--green)"], "LINE MOVE": ["Line move", "var(--blue)"], INJURY: ["Injury", "var(--red)"], RESULT: ["Result", "var(--gold)"] };
+const alSlug = (k) => String(k).toLowerCase().replace(/ /g, "");   // "QB CHANGE" -> "qbchange" (menu: #alerts-qbchange)
 const alSeen = () => { try { return localStorage.getItem("alSeen") || ""; } catch { return ""; } };
 async function loadAlerts() {
   try { const d = await (await fetch("/api/nba/alerts", { cache: "no-store" })).json(); if (d.ok) { ALERTS = d.alerts || []; renderAlerts(); } } catch {}
@@ -478,8 +479,6 @@ async function loadAlerts() {
 function renderAlerts() {
   const dots = ALPREV != null ? ALPREV : alSeen(), unread = ALERTS.filter((a) => a.t > alSeen()).length;
   Shell.setCount("nba", "alerts", unread);   // 10/17: the unread count sits on the menu's NBA Alerts row
-  const kinds = ["all", ...Object.keys(ALK).filter((k) => ALERTS.some((a) => a.kind === k))];
-  $("al-chips").innerHTML = kinds.map((k) => `<button data-alk="${k}" class="${ALFILTER === k ? "on" : ""}">${k === "all" ? "All" : ALK[k][0]}</button>`).join("");
   const list = ALERTS.filter((a) => ALFILTER === "all" || a.kind === ALFILTER);
   $("alerts").innerHTML = list.length ? list.map((a) => { const [lab, col] = ALK[a.kind] || [a.kind, "var(--dim)"];
     const ic = a.kind === "INJURY" && a.team ? tlogo(a.team) : a.kind === "LINE MOVE" ? pmLogo() : "";
@@ -501,6 +500,8 @@ async function loadSlate() {
 }
 function showPanel(name) {
   let sub = null;   // 10/17 (owner): My bets and Model bets are separate pages under Bets in the menu
+  if (/^alerts-/.test(name)) { const k = name.slice(7); ALFILTER = k === "all" ? "all" : Object.keys(ALK).find((x) => alSlug(x) === k) || "all"; name = "alerts"; }   // 10/17 (owner): the alert kinds are menu sub tabs under Alerts
+  if (name === "alerts") sub = `alerts-${ALFILTER === "all" ? "all" : alSlug(ALFILTER)}`;
   if (/^modelbets-/.test(name)) { const k = name.slice(10); if (LAB_TABS.some(([t]) => t === k)) LABTYPE = k; name = "modelbets"; }   // 10/17 (owner): the parlay types are menu sub tabs under Model bets
   if (name === "modelbets") sub = `modelbets-${LABTYPE}`;
   if (name === "mybets" || name === "modelbets") { sub = sub || name; BETSVIEW = name === "modelbets" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} name = "record"; }
@@ -518,7 +519,7 @@ function showPanel(name) {
   linesBg();
 }
 // 10/17: pages switch by the address' #name (the menu links set it): #alerts, #lines, #record, #models; #game=KEY opens a game (from the home screen)
-const PANELS = ["alerts", "lines", "record", "mybets", "modelbets", ...LAB_TABS.map(([k]) => `modelbets-${k}`), "models"];
+const PANELS = ["alerts", "lines", "record", "mybets", "modelbets", ...LAB_TABS.map(([k]) => `modelbets-${k}`), "alerts-all", ...Object.keys(ALK).map((k) => `alerts-${alSlug(k)}`), "models"];
 let OPEN_GAME = null;
 function routeHash() {
   const h = location.hash || "";
@@ -535,7 +536,6 @@ document.addEventListener("click", (e) => {
   const gt = e.target.closest("[data-game]"); if (gt) { if (!$("panel-lines").classList.contains("on")) showPanel("lines"); openGame(gt.dataset.game); return; }
   const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k && S && S.games.some((x) => x.key === k)) { showPanel("lines"); openGame(k); } return; }
   const bv = e.target.closest("[data-bv]"); if (bv) { BETSVIEW = bv.dataset.bv === "model" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} applyBetsView(); try { window.scrollTo(0, 0); } catch {} return; }
-  const ch = e.target.closest("[data-alk]"); if (ch) { ALFILTER = ch.dataset.alk; renderAlerts(); return; }
   const fu = e.target.closest("[data-fut]"); if (fu) { FUTSEC = fu.dataset.fut; renderModels(); const el = $("m-fut"); if (el) el.classList.add("open"); }
 });
 function catchUp() { fetch("/api/nba/results/grade", { cache: "no-store" }).then((r) => r.json()).then((d) => { if (d && (d.graded || d.parlays) && ($("panel-record").classList.contains("on") || $("panel-models").classList.contains("on"))) { loadBets(); loadModels(); } }).catch(() => {}); }

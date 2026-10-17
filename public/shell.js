@@ -20,9 +20,19 @@
   // 10/17 (owner): the Model bets parlay types are sub tabs under Model bets in the menu (both sports)
   const TYPES = { nfl: [["2", "2 legs"], ["3", "3 legs"], ["4", "4 legs"], ["style", "My style"], ["pts", "Bought"], ["diff", "Diff"]],
     nba: [["sgp", "Same game"], ["sgp_pts", "Bought"], ["best4", "Parlay"], ["fav4", "Favorites"]] };
-  const types = (sp) => (TYPES[sp] || []).map(([k, label]) => `<a class="mi ${sp} msub2" data-msp="${sp}" data-mp="modelbets-${k}" href="${URL_[sp]}#modelbets-${k}">${label}</a>`).join("");
-  const subs = (sp) => `<div class="mi ${sp} mpar"><span class="ic">${svg("bets")}</span>Bets</div>` + SUB.map(([id, label]) => `<a class="mi ${sp} msub" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><i></i>${label}</a>` + (id === "modelbets" ? types(sp) : "")).join("");
-  const item = (sp, id, label, ic) => id === "record" ? subs(sp) : `<a class="mi ${sp}" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><span class="ic">${svg(ic)}</span>${label}<b class="cnt" id="mcnt-${sp}-${id}"></b></a>`;
+  // 10/17 (owner): the alert kinds are sub tabs under Alerts too (ids match the pages' ALK keys, lower case without spaces)
+  const ALERTK = { nfl: [["all", "All"], ["injury", "Injury"], ["qbchange", "QB change"], ["linemove", "Line move"], ["weather", "Weather"], ["result", "Result"], ["tdno", "TD No"], ["tdjump", "TD jump"], ["qbtd", "QB TD"]],
+    nba: [["all", "All"], ["pick", "New pick"], ["linemove", "Line move"], ["injury", "Injury"], ["result", "Result"]] };
+  // 10/17 (owner): Alerts, Bets and Model bets open and close their lists (closed to start); tapping them only opens / closes
+  const car = '<i class="car">▾</i>';
+  const group = (key, inner) => `<div class="msubs" data-grp="${key}">${inner}</div>`;
+  const types = (sp) => group(`${sp}-mb`, (TYPES[sp] || []).map(([k, label]) => `<a class="mi ${sp} msub2" data-msp="${sp}" data-mp="modelbets-${k}" href="${URL_[sp]}#modelbets-${k}">${label}</a>`).join(""));
+  const sub = (sp, id, label) => id === "modelbets" ? `<div class="mi ${sp} msub mtog" data-tog="${sp}-mb" data-msp="${sp}" data-mp="modelbets"><i></i>${label}${car}</div>` + types(sp)
+    : `<a class="mi ${sp} msub" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><i></i>${label}</a>`;
+  const subs = (sp) => `<div class="mi ${sp} mpar mtog" data-tog="${sp}-bets"><span class="ic">${svg("bets")}</span>Bets${car}</div>` + group(`${sp}-bets`, SUB.map(([id, label]) => sub(sp, id, label)).join(""));
+  const alerts = (sp) => `<div class="mi ${sp} mpar mtog" data-tog="${sp}-alerts" data-msp="${sp}" data-mp="alerts"><span class="ic">${svg("bell")}</span>Alerts<b class="cnt" id="mcnt-${sp}-alerts"></b>${car}</div>` +
+    group(`${sp}-alerts`, ALERTK[sp].map(([k, label]) => `<a class="mi ${sp} msub" data-msp="${sp}" data-mp="alerts-${k}" href="${URL_[sp]}#alerts-${k}"><i></i>${label}</a>`).join(""));
+  const item = (sp, id, label, ic) => id === "record" ? subs(sp) : id === "alerts" ? alerts(sp) : `<a class="mi ${sp}" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><span class="ic">${svg(ic)}</span>${label}<b class="cnt" id="mcnt-${sp}-${id}"></b></a>`;
   const NFL_LOGO_FIX = { WSH: "wsh", WAS: "wsh", LA: "lar", LAR: "lar" };
   const Shell = {
     sport: "nfl", panel: "home",
@@ -98,7 +108,11 @@
       document.getElementById("mclose").onclick = Shell.close; document.getElementById("mscrim").onclick = Shell.close;
       document.getElementById("mref").onclick = Shell.refresh;
       Shell.loadRun(); document.getElementById("menu-btn") && document.getElementById("menu-btn").addEventListener("click", Shell.loadRun);   // fresh each time the menu opens
-      document.getElementById("mdraw").addEventListener("click", (e) => { if (e.target.closest("a")) Shell.close(); });   // same-page links change the hash; the page switches
+      document.getElementById("mdraw").addEventListener("click", (e) => {
+        const t = e.target.closest(".mtog");
+        if (t) { const g = document.querySelector(`.msubs[data-grp="${t.dataset.tog}"]`); const open = !(g && g.classList.contains("open")); t.classList.toggle("open", open); if (g) g.classList.toggle("open", open); return; }
+        if (e.target.closest("a")) Shell.close();   // same-page links change the hash; the page switches
+      });
       document.addEventListener("keydown", (e) => { if (e.key === "Escape") Shell.close(); });
     },
   };
