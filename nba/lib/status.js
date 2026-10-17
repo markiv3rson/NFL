@@ -25,8 +25,12 @@ export async function railwayHealth(fetcher = fetch) {
 }
 // Watchdog (NFL app idea): plain-language list of anything stale or missing, so nothing fails silently. Pacific daytime = the scheduler's
 // window (snapshot every 30 min, 7 AM-9:30 PM); a gap there of 90+ minutes means the Railway scheduler is not reaching the site.
-export function computeWatch({ snap, railway, pinnacle, espn = null, now = Date.now() }) {
+export function computeWatch({ snap, railway, pinnacle, espn = null, backup, now = Date.now() }) {
   const w = [], H = 3600e3;
+  if (backup !== undefined) {   // nightly backup (10/17), same checks as the NFL watchdog
+    if (!backup || now - Date.parse(backup.t) > 36 * H) w.push("No backup in the last 36 h — check the Railway volume.");
+    else if (backup.where === "failed") w.push("Last night's backup failed — check the Railway logs.");
+  }
   const hr = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", hour12: false }).format(now)) % 24;
   const day = hr >= 8 && hr < 22;
   if (railway && !railway.ok) w.push("The Railway model service is not answering: model numbers, the automatic rebuild and the schedule stop until it is back (check Railway).");
@@ -56,5 +60,6 @@ export async function getStatus({ now = Date.now(), fetcher = fetch } = {}) {
   const espn = jparse(await getRedis().get(ESPN_STATUS).catch(() => null));
   const keys = await r.dbsize().catch(() => null);
   const pinOk = await r.get("ok:pinnacle").catch(() => null);
-  return { lastSnapshot: snap, errors: errs, railway, keys, pinnacle: pinOk, espn, watch: computeWatch({ snap, railway, pinnacle: pinOk, espn, now }) };
+  const backup = jparse(await r.get("status:backup").catch(() => null)) || null;
+  return { lastSnapshot: snap, errors: errs, railway, keys, pinnacle: pinOk, espn, backup, watch: computeWatch({ snap, railway, pinnacle: pinOk, espn, backup, now }) };
 }

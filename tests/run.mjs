@@ -308,6 +308,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const u = usPlayerNames(ev);
   ok(u["astatc-nfl-lac-kc-2026-10-18-td-ladmcc-gte1"].name === "Ladd McConkey" && u["astatc-nfl-lac-kc-2026-10-18-td-ladmcc-gte1"].team === "LAC" && u["astatc-nfl-ari-lar-2026-10-18-td-pucnac-gte1"].team === "LA" && !u["asc-nfl-lac-kc-2026-10-18-neg-4pt5"],
     "bets: a TD leg's real name and team come from the Polymarket US event (ladmcc -> Ladd McConkey, LAC)"); }
+{ const { tdTeamFromModel } = await import("../lib/mybets.js");
+  const td = { "LA @ JAX": { away: [{ name: "K.Williams" }, { name: "P.Nacua" }], home: [{ name: "T.Etienne" }] }, "BUF @ ATL": { away: [{ name: "J.Cook" }], home: [{ name: "Bi.Robinson" }] }, "X @ Y": { away: [{ name: "K.Williams" }], home: [] } };
+  ok(tdTeamFromModel(td, "Bijan Robinson").team === "ATL" && tdTeamFromModel(td, "James Cook III").team === "BUF" && tdTeamFromModel(td, "Puka Nacua").game === "LA @ JAX" && tdTeamFromModel(td, "Kyren Williams") === null && tdTeamFromModel(td, "Nobody Here") === null,
+    "bets: an old TD leg with no game gets its team from that week's TD lists, only when one team has him"); }
+{ const fs = await import("node:fs"), app = fs.readFileSync(new URL("../public/app.js", import.meta.url), "utf8"), nba = fs.readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8");
+  ok(/const legTxt = \(r, html\) => \(r === "W" \? `<span class="g">/.test(app) && /legTxt\(p\.result, logoLabel/.test(app) && /legTxt\(l\.result, legName/.test(app) && (app.match(/legTxt\(l\.result, `/g) || []).length === 2
+    && /const legTxt = /.test(nba) && /legTxt\(l\.result, `\$\{tlogo/.test(nba), "bets: a won leg's text is green and a lost leg's red (My bets, Model bets, Over/Under; NBA Model bets)"); }
 { const { buildPaper, gradePaper } = await import("../lib/paper.js");
   const game = (k, hs, ml, win, extra = {}) => ({ key: k, away: k.split(" @ ")[0], home: k.split(" @ ")[1], started: false, final: false, poly: { spread: { homeSpread: hs }, ml: { home: ml, away: 1 - ml } }, winPct: win, td: [], ...extra });
   const data = { games: [game("A @ B", -10.5, 0.86, 86), game("C @ D", -12, 0.9, 90), game("E @ F", -3, 0.6, 60), game("G @ H", -7, 0.8, 79),
@@ -1188,7 +1195,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const card = { plain: { pick: "Over 46.5", hit: 51.7, price: 0.49 }, pts: { pick: "Under 48.5", hit: 57.2, price: 0.61, points: 2 }, rows: [{ pick: "Under 48.5", hit: 57.2, price: 0.61, points: 2 }] };
     vm.runInContext(`S = { week: 6, games: [ { key: "NO @ NYG", away: "NO", home: "NYG", kickoff: "2026-10-18T17:00:00Z", card: { total: ${JSON.stringify(card)} } }, { key: "SEA @ DEN", away: "SEA", home: "DEN", kickoff: "2026-10-16T00:15:00Z", started: true, final: true, lockedPicks: { total: { pick: "Under 40.5", hit: 51.7, result: "W", price: 0.5, pts: { pick: "Under 42.5", hit: 58, result: "W", points: 2, price: 0.6 } } } } ] }; MODELBETS = { ok: true, weeks: {} }; LABTYPE = "ou"; LABWEEK = null`, ctx);
     ctx.T.renderLabList(); const h = box.innerHTML;
-    ok(/Over 46\.5 · 52% · 49¢/.test(h) && /Under 48\.5 · 2 pts · 57% · 61¢/.test(h) && /✓<\/span> Under 40\.5/.test(h) && h.indexOf("SEA") < h.indexOf("NYG") && /labslot/.test(h) && !/PL:/.test(h) && !/plQuote/.test(h),
+    ok(/Over 46\.5 · 52% · 49¢/.test(h) && /Under 48\.5 · 2 pts · 57% · 61¢/.test(h) && /✓<\/span> <span class="g">Under 40\.5/.test(h) && h.indexOf("SEA") < h.indexOf("NYG") && /labslot/.test(h) && !/PL:/.test(h) && !/plQuote/.test(h),
       "Model bets Over/Under: total PICK + PICK w/ POINTS per game, kickoff order with slot headers, ✓ / ✗ after the game, price shown, no parlay payout or quote", h.slice(0, 400));
     ok(vm.runInContext("LAB_TABS.map(([k, t]) => t).join('|')", ctx) === "Over/Under|4 Leg (My Style)|4 Leg (Bought)|4 Leg|3 Leg|2 Leg|Different Game Parlays", "Model bets tabs in the owner's order and names");
     ctx.document.getElementById = oldGet; vm.runInContext(`LABTYPE = "2"`, ctx); }

@@ -4,8 +4,8 @@
 import { TEAMS, ABBRS } from "./teams";
 import { modelBase, modelHeaders } from "./model";
 import { getRedis, jparse } from "./redis";
+import { usEventList, appTeam } from "../../lib/polyus";
 
-const GAMMA = () => process.env.GAMMA_BASE || "https://gamma-api.polymarket.com";
 const arr = (v) => { try { return Array.isArray(v) ? v : JSON.parse(v || "[]"); } catch { return []; } };
 
 // "Los Angeles Clippers" / "LA Clippers" / "Trail Blazers" -> LAC / POR (a Polymarket name or a model-service name)
@@ -14,19 +14,24 @@ export const abbrOfName = (name) => {
   return ABBRS.find((a) => TEAMS[a].name === n) || ABBRS.find((a) => n.endsWith(TEAMS[a].nick)) || null;
 };
 
-async function getJson(url, fetcher = fetch) {
-  const r = await fetcher(url, { headers: { Accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(20000) });
-  if (!r.ok) throw new Error(`${r.status} from Polymarket`);
-  return r.json();
-}
-export async function fetchFutureEvents(fetcher = fetch) {
+// 10/17 (owner: "switch it"): futures prices come from POLYMARKET US, like every other Polymarket number in the app. Its futures events are turned into
+// the shape buildFutures reads (title, one market per team with groupItemTitle / bestBid / bestAsk). Polymarket US has no play-in market.
+// Win totals there are "Boston 51+ wins" = Over 50.5.
+const US_FUT = [[/^nba-champ-.*-w$/, "NBA: 2027 Champion"], [/^nba-eastconf-/, "Eastern Conference Champion"], [/^nba-westconf-/, "Western Conference Champion"],
+  [/^nba-playoffs-.*-q$/, "Team to Make Playoffs"], [/^nba-eastseed1-/, "Eastern Conference #1 Seed"], [/^nba-westseed1-/, "Western Conference #1 Seed"], [/-wintotals$/, "Regular Season Win Totals"]];
+const qv = (x) => { const v = Number(x && typeof x === "object" ? x.value : x); return v > 0 && v < 1 ? v : null; };
+export function usFutures(events) {
   const out = [];
-  for (const off of [0, 100]) {
-    const page = await getJson(`${GAMMA()}/events?tag_slug=nba&closed=false&limit=100&offset=${off}&order=volume&ascending=false`, fetcher);
-    out.push(...page); if (page.length < 100) break;
-  }
+  for (const e of events || []) { const hit = US_FUT.find(([re]) => re.test(String(e.slug || ""))); if (!hit) continue;
+    const markets = [];
+    for (const m of e.markets || []) { const L = (m.marketSides || []).find((x) => x.long), a = L && L.team ? appTeam(L.team.abbreviation, "nba") : null; if (!a || !TEAMS[a]) continue;
+      const bid = qv(m.bestBidQuote), ask = qv(m.bestAskQuote), mid = bid != null && ask != null ? (bid + ask) / 2 : ask ?? bid; if (mid == null) continue;
+      const line = Number(m.line);
+      markets.push({ groupItemTitle: TEAMS[a].name, closed: !!m.closed, bestBid: bid ?? 0, bestAsk: ask ?? 0, outcomePrices: [mid, 1 - mid], ...(Number.isFinite(line) && line > 0 ? { question: `O/U ${line - 0.5}` } : {}) }); }
+    out.push({ title: hit[1], slug: e.slug, markets }); }
   return out;
 }
+export async function fetchFutureEvents() { return usFutures(await usEventList("nba")); }
 
 // one Polymarket price: the midpoint of a real two-sided book, else the listed price; "thin" when the book is wide or empty
 export function priceOf(m) {
@@ -81,10 +86,10 @@ export function buildFutures(sim, events) {
 
 export async function loadFutures({ fetcher = fetch, now = Date.now() } = {}) {
   const base = modelBase(); if (!base) throw new Error("MODEL_SERVICE_URL not set");
-  const r = getRedis(), ckey = "futures:poly";
+  const r = getRedis(), ckey = "futures:polyus";
   let events = null; const c = jparse(await r.get(ckey).catch(() => null));
   if (c && now - c.t < 10 * 60e3) events = c.events;
-  else { try { events = await fetchFutureEvents(fetcher); await r.set(ckey, JSON.stringify({ t: now, events }), "EX", 3600).catch(() => {}); } catch { events = c ? c.events : []; } }
+  else { try { events = await fetchFutureEvents(); await r.set(ckey, JSON.stringify({ t: now, events }), "EX", 3600).catch(() => {}); } catch { events = c ? c.events : []; } }
   const res = await fetcher(`${base}/futures`, { headers: modelHeaders(), cache: "no-store", signal: AbortSignal.timeout(25000) });
   const sim = await res.json().catch(() => null);
   if (!sim || !sim.ok) return { ok: false, loading: !!(sim && sim.loading), error: (sim && sim.error) || `model service ${res.status}` };

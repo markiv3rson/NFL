@@ -405,11 +405,13 @@ async function plAuto() {
   }
 }
 const legMark = (r) => (r === "W" ? '<span class="g">✓</span>' : r === "L" ? '<span class="r">✗</span>' : r === "P" ? '<span class="dim">–</span>' : "•");
+// 10/17 (owner): a won leg's text is green and a lost leg's red, like its ✓ / ✗ (logos keep their colors)
+const legTxt = (r, html) => (r === "W" ? `<span class="g">${html}</span>` : r === "L" ? `<span class="r">${html}</span>` : html);
 const gameLogos = (key) => { const m = String(key || "").match(/^([A-Z]{2,4}) @ ([A-Z]{2,4})$/); return m ? `${tlogo(m[1])}${esc(m[1])} @ ${tlogo(m[2])}${esc(m[2])}` : esc(key); };
 function pBlock(title, p, showGame) {
   if (!p || !Array.isArray(p.legs) || !p.legs.length) return "";
   const pr = typeof p.prob === "number" && isFinite(p.prob) ? p.prob : null;
-  const legs = p.legs.map((l) => `<div class="pbl">${legMark(l.result)} ${tlogo(l.team || "")}${esc(l.label)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · ${Math.round((l.prob || 0) * 100)}%${showGame && l.game ? ` <span class="dim">${gameLogos(l.game)}</span>` : ""}</div>`).join("");
+  const legs = p.legs.map((l) => `<div class="pbl">${legMark(l.result)} ${legTxt(l.result, `${tlogo(l.team || "")}${esc(l.label)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · ${Math.round((l.prob || 0) * 100)}%`)}${showGame && l.game ? ` <span class="dim">${gameLogos(l.game)}</span>` : ""}</div>`).join("");
   const res = p.result === "W" ? '<span class="g">✓ Won</span>' : p.result === "L" ? '<span class="r">✗ Lost</span>' : p.result === "P" ? '<span class="dim">Push</span>' : "";
   return `<div class="par"><div class="pbh"><span class="pbn">${title}${pr == null ? "" : ` <span class="${pr >= 0.3 ? "g" : pr >= 0.15 ? "lg" : "y"}">· ${Math.round(pr * 100)}%</span>`}</span><span class="plb"${plTap(p)}>${pmLogo()} ${plShown(p)}</span></div>${legs}<div class="pbr">${res}</div></div>`;
 }
@@ -507,6 +509,7 @@ function renderModels() {
     ["Pinnacle lines", sy.pinnacle ? when(sy.pinnacle) : '<span class="y">no good pull yet</span>'],
     ["Lined games this season", sy.railway && sy.railway.lines ? `${sy.railway.lines.lined} of ${sy.railway.lines.games} · ${sy.railway.lines.polymarket} from Polymarket` : "—"],
     ["Stored items", sy.keys != null ? String(sy.keys) : "—"],
+    ["Last backup", sy.backup ? `${when(sy.backup.t)} · ${sy.backup.where === "volume" ? "saved" : sy.backup.where === "failed" ? '<span class="r">failed</span>' : '<span class="y">temporary</span>'}` : '<span class="y">none yet</span>'],
     ["Sportsbook credits left", S && S.books && S.books.remaining != null ? String(S.books.remaining) : "—"],
     ["Last rebuild", rb ? `${when(rb.at)} · ${rb.published ? "published" : `<span class="y">held: ${esc((rb.failed_checks || []).join("; "))}</span>`}` : "not yet"],
     ["Errors (last 2 days)", (sy.errors || []).length ? sy.errors.slice(0, 6).map((e) => `<div class="y">${when(e.t)} · ${esc(e.where)}: ${esc(e.msg)}</div>`).join("") : "none"],

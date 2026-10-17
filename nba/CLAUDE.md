@@ -3,6 +3,7 @@
 - Site code `nba/lib/*`, routes `pages/api/nba/*` (every route is `/api/nba/...`), pages `public/nba/*`, model service `nba/railway-model-service/*`, tests `nba/tests/*` (`npm run test:nba`).
 - Settings on the combined Vercel project: `NBA_REDIS_URL`, `NBA_MODEL_SERVICE_URL`, `NBA_MODEL_SERVICE_TOKEN`, `NBA_ODDS_API_KEY` (NBA never reads NFL's database, model service or odds key).
 - Railway NBA service: source `markiv3rson/NFL`, root directory `/nba/railway-model-service`, config file `/nba/railway-model-service/railway.json`, variables `SITE_URL` (the combined site), `SITE_API=/api/nba`, `SITE_LOGIN`.
+- 10/17 night: NBA nightly backup added (`/api/nba/backup` paged, NBA scheduler 12:10 AM PT, files in `MODEL_DIR/backups`, last 30 kept, Models -> System "Last backup", watchdog when missing / 36 h old / failed); the card's model-side rate is the 10/17 rebuild's own report, 49.4% spread / 50.4% total on 2,462 games (`lib/cardpick.js MODEL_HIT`); Polymarket lines and futures come from Polymarket US (root CLAUDE.md).
 - The old repo markiv3rson/NBA and the old Vercel project nba-nfl9 are no longer used once the above runs. Paths in the notes below are the OLD repo's (prefix them with `nba/`; the site's `public/` is now `public/nba/`).
 - The owner's rules and the root CLAUDE.md of the combined repo apply.
 

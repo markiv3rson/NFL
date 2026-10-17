@@ -371,6 +371,8 @@ function renderTd() {
 }
 // ---------- Record: Mine ----------
 const RESMARK = { W: '<span class="g">✓</span>', L: '<span class="r">✗</span>', P: '<span class="dim">=</span>', pending: '<span class="dim">•</span>' };
+// 10/17 (owner): a won leg's text is green and a lost leg's red, like its ✓ / ✗ (logos keep their colors)
+const legTxt = (r, html) => (r === "W" ? `<span class="g">${html}</span>` : r === "L" ? `<span class="r">${html}</span>` : html);
 function legName(l) { return l.kind === "td" ? `${tlogo(l.team || tdTeam(l.player))}${esc(`${l.player} TD`)}` : l.kind === "spread" ? `${tlogo(l.team)}${esc(`${l.team} ${sgn(l.line)}`)}` : esc(`${l.side === "over" ? "Over" : "Under"} ${l.line}`); }
 // Weakest leg of an open combo (10/9): the leg where the model is furthest below the price paid, if it is below at all.
 function weakLeg(b) {
@@ -460,14 +462,14 @@ function betRowInner(b) {
   if (b.source === "account") {   // bet recorded automatically from your Polymarket account
     const st = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Even" : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : (b.waiting ? '<span class="y">waiting for TD results</span>' : '<span class="dim">open</span>');
     const name = b.picks && b.picks.length ? `Combo · ${b.picks.length} picks` : `${esc(b.title)}${b.outcome ? ` — ${esc(b.outcome)}` : ""}`;
-    const picks = b.picks && b.picks.length ? b.picks.map((p) => `<div class="s" style="padding:0 0 0 16px">${p.result ? RESMARK[p.result] + " " : "• "}${logoLabel(p.label, p.team)}${!p.result && legFlipped(p.label) ? ' <span class="y">⚠ app now picks the other side</span>' : ""}</div>`).join("") : "";
+    const picks = b.picks && b.picks.length ? b.picks.map((p) => `<div class="s" style="padding:0 0 0 16px">${p.result ? RESMARK[p.result] + " " : "• "}${legTxt(p.result, logoLabel(p.label, p.team))}${!p.result && legFlipped(p.label) ? ' <span class="y">⚠ app now picks the other side</span>' : ""}</div>`).join("") : "";
     return `<div class="row"><span>${name} <span class="dim">wk ${b.week ?? "?"}</span></span><span>${st}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
       `<div class="s" style="padding:0 0 ${picks ? 2 : 6}px 8px">${money(b.cost)}${b.price != null ? ` at ${b.price < 0.005 ? "<1" : Math.round(b.price * 100)}¢` : ""} · ${b.sold ? `sold early for ${money(Math.max(0, (b.cost || 0) + (b.pl || 0)))}` : `pays ${money(b.toWin)} if it wins`}</div>` + (picks ? `<div style="padding-bottom:6px">${picks}</div>` : "");
   }
   const hit = b.legs.filter((l) => l.result === "W").length;
   const state = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? (b.pushUnconfirmed ? '<span class="y">Push leg</span>' : "Push") : (b.waiting ? '<span class="y">waiting for TD results</span>' : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : `<span class="dim">${hit} of ${b.legs.length} hit</span>`);
   return `<div class="row"><span>${b.legs.length > 1 ? "Combo" : "Single"} · ${money(b.cost)} → ${money(b.toWin)}</span><span>${state}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
-    `<div class="s" style="padding:0 0 6px 8px">${b.legs.map((l) => `${RESMARK[l.result]} ${weakLeg(b) === l ? '<b class="y">⚠</b> ' : ""}${legName(l)}${l.clv != null ? ` <span class="${signCls(l.clv)}">(${(l.clv * 100).toFixed(0)}%)</span>` : ""}`).join(" · ")}</div>`;
+    `<div class="s" style="padding:0 0 6px 8px">${b.legs.map((l) => `${RESMARK[l.result]} ${weakLeg(b) === l ? '<b class="y">⚠</b> ' : ""}${legTxt(l.result, legName(l))}${l.clv != null ? ` <span class="${signCls(l.clv)}">(${(l.clv * 100).toFixed(0)}%)</span>` : ""}`).join(" · ")}</div>`;
 }
 // Re-rendering a tab must not close what you opened (auto-refresh every 2 min, "Show all games", Sync): remember each section's state
 // by id, run the render, put the state back.
@@ -1156,7 +1158,7 @@ function legLogoLabel(l) { return esc(l.label); }
 function pBlock(title, p, showGame) {
   if (!p || !Array.isArray(p.legs) || !p.legs.length) return "";
   const pr = typeof p.prob === "number" && isFinite(p.prob) ? p.prob : null;
-  const legs = p.legs.map((l) => `<div class="pbl">${legMark(l.result)} ${legLogoLabel(l)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · ${Math.round((l.prob || 0) * 100)}%${showGame && l.game ? ` <span class="dim">${gameLogos(l.game)}</span>` : ""}</div>`).join("");
+  const legs = p.legs.map((l) => `<div class="pbl">${legMark(l.result)} ${legTxt(l.result, `${legLogoLabel(l)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · ${Math.round((l.prob || 0) * 100)}%`)}${showGame && l.game ? ` <span class="dim">${gameLogos(l.game)}</span>` : ""}</div>`).join("");
   const res = p.result === "W" ? '<span class="g">✓ Won</span>' : p.result === "L" ? '<span class="r">✗ Lost</span>' : p.result === "P" ? '<span class="dim">Push</span>' : "";
   return `<div class="par"><div class="pbh"><span class="pbn">${title}${pr == null ? "" : ` <span class="${pr >= 0.3 ? "g" : pr >= 0.15 ? "lg" : "y"}">· ${Math.round(pr * 100)}%</span>`}</span><span class="plb"${plTap(p)}>${pmLogo()} ${plShown(p)}</span></div>${legs}<div class="pbr">${res}</div></div>`;
 }
@@ -1189,7 +1191,7 @@ function ouLegs(g) {
   return [...(C.plain ? [{ label: C.plain.pick, prob: C.plain.hit / 100, price: C.plain.price }] : []), ...(C.pts ? [{ label: C.pts.pick, prob: C.pts.hit / 100, price: C.pts.price, bought: true, points: C.pts.points }] : [])];
 }
 function ouBlock(title, legs) {   // same block look as a parlay; every line is its own bet: line · win % · Polymarket price, ✓ / ✗ once graded
-  const line = (l) => `<div class="pbl">${legMark(l.result)} ${esc(l.label)}${l.bought && l.points ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · ${Math.round((l.prob || 0) * 100)}%${l.price > 0 && l.price < 1 ? ` · ${Math.round(l.price * 100)}¢` : ""}</div>`;
+  const line = (l) => `<div class="pbl">${legMark(l.result)} ${legTxt(l.result, `${esc(l.label)}${l.bought && l.points ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · ${Math.round((l.prob || 0) * 100)}%${l.price > 0 && l.price < 1 ? ` · ${Math.round(l.price * 100)}¢` : ""}`)}</div>`;
   return `<div class="par"><div class="pbh"><span class="pbn">${title}</span></div>${legs.map(line).join("")}</div>`;
 }
 function labParlays(week, type) {

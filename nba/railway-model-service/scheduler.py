@@ -6,11 +6,12 @@ Scheduler (runs inside the Railway service, 24/7). Pacific time.
   3 minutes before every tip-off:  one more /api/snapshot, so each game's saved closing line is the real last line, not up to 30 minutes old
   Hourly at :20, 6 AM - 11 PM:  sync the Polymarket account (my bets)
   Nightly 11:45 PM:    grade finished games' picks (/api/results/grade)
+  Nightly 12:10 AM:    back up the NBA database (/api/backup, paged) to a file on the volume, last 30 nights kept (10/17)
 Env: SITE_URL (the NBA site), SITE_LOGIN ("user:password" if the site has a login), VERCEL_BYPASS (only if Deployment Protection is on),
      SITE_API (10/17, merged site: "/api/nba" when SITE_URL is the combined NFL + NBA site; default "/api" = the old stand-alone NBA site).
 """
 import base64, json, os, threading, time, urllib.error, urllib.request
-from datetime import datetime
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 PT = ZoneInfo("America/Los_Angeles")
@@ -72,6 +73,40 @@ def refresh_tips():
         print("[scheduler] could not read tip-off times:", e, flush=True)
 
 
+BACKUP_DIR = os.environ.get("BACKUP_DIR") or os.path.join(os.environ.get("MODEL_DIR", "/data"), "backups")
+
+
+def _backup():
+    """Every key of the NBA database, in ~2 MB pages, saved as one file (keeps the last 30 nights)."""
+    data, cursor, pages = {}, "0", 0
+    while True:
+        raw = _call(f"/api/backup?cursor={cursor}")
+        if not raw:
+            print("[scheduler] backup page failed -- nothing saved", flush=True)
+            _call("/api/backup?mark=failed&files=0", tries=1)
+            return
+        page = json.loads(raw)
+        data.update(page.get("data") or {})
+        cursor, pages = str(page.get("next", "0")), pages + 1
+        if cursor == "0" or pages > 200:
+            break
+    try:
+        os.makedirs(BACKUP_DIR, exist_ok=True)
+        path = os.path.join(BACKUP_DIR, f"backup-{datetime.now(PT):%Y-%m-%d}.json")
+        with open(path, "w") as f:
+            json.dump({"ok": True, "t": datetime.now(timezone.utc).isoformat(), "keys": len(data), "pages": pages, "data": data}, f)
+        files = sorted(x for x in os.listdir(BACKUP_DIR) if x.startswith("backup-"))
+        for old in files[:-30]:
+            os.remove(os.path.join(BACKUP_DIR, old))
+        root = os.path.abspath(BACKUP_DIR).split(os.sep)[1] if os.path.abspath(BACKUP_DIR).count(os.sep) > 1 else ""
+        persistent = bool(root) and os.path.ismount(os.sep + root)
+        _call(f"/api/backup?mark={'volume' if persistent else 'temporary'}&files={min(len(files), 30)}", tries=1)
+        print(f"[scheduler] backup saved {path} ({len(data)} keys)", flush=True)
+    except Exception as e:
+        print(f"[scheduler] backup save failed: {e}", flush=True)
+        _call("/api/backup?mark=failed&files=0", tries=1)
+
+
 def _futures():
     try:
         import app
@@ -98,6 +133,8 @@ def due(now, last, tips=None):
         jobs.append(("sync", lambda: _call("/api/mybets?sync=1")))
     if h == 23 and m == 45:
         jobs.append(("grade", lambda: _call("/api/results/grade")))
+    if h == 0 and m == 10:
+        jobs.append(("backup", _backup))
     return [(n, f) for n, f in jobs if last.get(n) != key and not last.__setitem__(n, key)]
 
 

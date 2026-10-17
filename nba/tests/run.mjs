@@ -73,12 +73,12 @@ const LINES = (away, home) => [
   { market: "total", side: "under", line: 225.5, points: 2, hist: 54.0, n: 4000, price: 0.55, label: "Under 225.5" }, { market: "total", side: "over", line: 221.5, points: 2, hist: 53.0, n: 4000, price: 0.55, label: "Over 221.5" }];
 const mk = (away, home, over = {}) => ({ key: `${away} @ ${home}`, away, home, date: "2026-10-21", start: tipLater, poly: { ml: { away: 0.26, home: 0.74, midAway: 0.26, midHome: 0.74 }, spread: { homeSpread: -8.5, home: 0.51, away: 0.49 }, total: { line: 223.5, over: 0.5, under: 0.5 } }, model: { margin: 3, total: 225 }, lines: LINES(away, home), ...over });
 { const g = mk("OKC", "ATL"), c = cp.buildCard(g);
-  ok(c && c.spread.plain.id === "modelpick|spread" && c.spread.plain.pick === "OKC +8.5" && c.spread.plain.hit === 50.3 && c.spread.plain.price === 0.49, "no rule: PICK = the model's side at Polymarket's own line, at the model's honest rate (50.3%)", c && c.spread.plain);
+  ok(c && c.spread.plain.id === "modelpick|spread" && c.spread.plain.pick === "OKC +8.5" && c.spread.plain.hit === 49.4 && c.spread.plain.price === 0.49, "no rule: PICK = the model's side at Polymarket's own line, at the model's honest rate (49.4%)", c && c.spread.plain);
   ok(c.spread.rows.map((r) => `${r.pick}·${r.points}`).join("|") === "OKC +8.5·0|ATL -8.5·0|OKC +10.5·2|ATL -6.5·2|ATL -5.5·3|ATL -4.5·4", "list: both teams, the main line and every alternate up to 7 points (owner 10/16)", c.spread.rows.map((r) => r.pick));
   { const deep = mk("OKC", "ATL", { lines: [...LINES("OKC", "ATL"), { market: "spread", team: "ATL", line: -1.5, points: 7, hist: 73.0, n: 6000, price: 0.8, label: "ATL -1.5" }, { market: "spread", team: "ATL", line: -0.5, points: 8, hist: 76.0, n: 6000, price: 0.84, label: "ATL -0.5" }] }), cd = cp.buildCard(deep);
     ok(cd.spread.rows.some((r) => r.points === 7) && !cd.spread.rows.some((r) => r.points === 8) && cd.spread.pts.pick === "ATL -5.5" && cp.MAX_LIST === 7 && cp.MAX_BUY === 3.5, "a 7-point line is listed, 8 points never; PICK w/ POINTS never goes past 3.5 points (the market prices every point)", cd.spread.pts); }
   ok(c.spread.pts && c.spread.pts.pick === "ATL -5.5" && c.spread.pts.hit === 60 && c.spread.pts.id === "ptspick|spread", "PICK w/ POINTS: the far line that clearly wins more", c.spread.pts);
-  ok(c.total.plain.pick === "Over 223.5" && c.total.plain.hit === 50.5 && c.total.pts.pick === "Under 225.5" && c.total.pts.hit === 54, "total: model's side at the main total; PICK w/ POINTS = highest win rate within 2 points when none reaches 56%", c.total);
+  ok(c.total.plain.pick === "Over 223.5" && c.total.plain.hit === 50.4 && c.total.pts.pick === "Under 225.5" && c.total.pts.hit === 54, "total: model's side at the main total; PICK w/ POINTS = highest win rate within 2 points when none reaches 56%", c.total);
   const g2 = mk("OKC", "ATL", { lines: LINES("OKC", "ATL").filter((x) => x.points <= 2) }), c2 = cp.buildCard(g2);
   ok(c2.spread.pts.pick === "OKC +10.5" && c2.spread.pts.hit === 57, "PICK w/ POINTS: the fewest points that reach 56%, either team", c2.spread.pts);
   const g1p = mk("OKC", "ATL", { lines: [...LINES("OKC", "ATL").filter((x) => x.points <= 2), { market: "spread", team: "OKC", line: 9.5, points: 1, hist: 58.0, n: 6000, price: 0.55, label: "OKC +9.5" }] }), c4 = cp.buildCard(g1p);
@@ -120,7 +120,7 @@ const mk = (away, home, over = {}) => ({ key: `${away} @ ${home}`, away, home, d
   const P = pl.buildParlays(four, slate.collectPicks([...games, ...four]));
   const fav = P.find((p) => p.type === "fav4"), sg = P.filter((p) => p.type === "sgp"), sgp = P.filter((p) => p.type === "sgp_pts");
   ok(fav && fav.legs.length === 4 && fav.legs.every((l) => l.market === "ml" && l.prob === 0.74 && l.price === 0.74) && fav.stake === 10 && fav.pay === 3.33, "4 biggest favorites: moneyline legs at the market's chance, with Polymarket's payout", fav);
-  ok(sg.length === 5 && sg[0].legs.length === 2 && sg[0].legs[0].label === "A1 +8.5" && sg[0].legs[1].label === "Over 223.5" && Math.abs(sg[0].prob - 0.503 * 0.505) < 0.002 && sg[0].stake === 20, "same game 2 legs: spread PICK + total PICK, chance = product (independent)", sg[0]);
+  ok(sg.length === 5 && sg[0].legs.length === 2 && sg[0].legs[0].label === "A1 +8.5" && sg[0].legs[1].label === "Over 223.5" && Math.abs(sg[0].prob - 0.494 * 0.504) < 0.002 && sg[0].stake === 20, "same game 2 legs: spread PICK + total PICK, chance = product (independent)", sg[0]);
   ok(sgp.length === 5 && sgp[0].legs.every((l) => l.bought && l.points > 0) && sgp[0].legs[0].label === "H1 -5.5" && sgp[0].stake === 5, "same game bought lines: both PICK w/ POINTS legs", sgp[0]);
   const b4 = pl.buildParlays([...games, ...four], slate.collectPicks([...games, ...four])).find((p) => p.type === "best4"); ok(b4 && b4.legs.length === 4 && new Set(b4.legs.map((l) => l.game)).size === 4 && b4.legs[0].label === "H1 ML" && b4.legs[1].label === "TOR ML", "the Parlay: top 4 green picks, one per game", b4 && b4.legs.map((l) => l.label));
   ok(pl.buildParlays(four.slice(0, 3), []).every((p) => p.type !== "fav4" && p.type !== "best4"), "fewer than 4 games / green picks: no 4-leg parlays");
@@ -452,6 +452,14 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   const none = fu.buildFutures(sim, []);
   ok(none.ok && none.sections.every((x) => x.rows.every((r) => r.market === null)) && none.polymarket === false, "futures: still works when Polymarket can't be read (model numbers only)");
   const rp = sim.report; ok(rp.vs_market["2025"] && rp.champion.avg_chance_given_to_real_champion_pct > rp.champion.uniform_pct && rp.wins.mae_prior_with_roster <= rp.wins.mae_prior_without_roster, "futures: the shipped backtest beats guessing, and the roster term helps", rp.champion);
+  { // 10/17: Polymarket US futures events -> the same sections (title from Polymarket US, "Boston 51+ wins" = Over 50.5, no quote = no price)
+    const q = (v) => ({ value: String(v) }), mk = (slug, t, bid, ask, line) => ({ slug, line: line ?? null, bestBidQuote: bid == null ? null : q(bid), bestAskQuote: ask == null ? null : q(ask), marketSides: [{ long: true, team: { abbreviation: t } }, { long: false, team: { abbreviation: t } }] });
+    const us = fu.usFutures([{ slug: "nba-champ-2027-06-18-w", markets: [mk("a", "okc", 0.23, 0.24), mk("b", "sa", 0.22, 0.23), mk("c", "atl", null, null)] },
+      { slug: "nba-2027-04-11-wintotals", markets: [mk("d", "bos", 0.55, 0.57, 51)] }, { slug: "nba-mvp-2027-05-17-w", markets: [mk("e", "okc", 0.3, 0.31)] }, { slug: "nba-bos-det-2026-10-20", markets: [] }]);
+    const g = fu.buildFutures(sim, us), chU = g.sections.find((x) => x.id === "champion"), okc = chU.rows.find((r) => r.team === "OKC"), sas = chU.rows.find((r) => r.team === "SAS"), atl = chU.rows.find((r) => r.team === "ATL");
+    const bos = g.wins.find((w) => w.team === "BOS");
+    ok(us.length === 2 && chU.market && okc.market === 23.5 && sas.market === 22.5 && atl.market === null && bos.line === 50.5 && bos.marketOver === 56,
+      "futures: Polymarket US events read (champion midpoints, GS/SA codes mapped, 51+ wins = Over 50.5, no quote = no price; MVP and games skipped)", { okc, sas, atl, bos }); }
   const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
   ok(/\/api\/nba\/futures/.test(app) && /m-fut/.test(app) && /futuresRows\(/.test(app), "page: Futures section on the Models tab (rows, no notes)"); }
 
@@ -531,6 +539,18 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   const bad = st.computeWatch({ ...fine, railway: { ok: false }, snap: { ...fine.snap, modelOk: false }, pinnacle: null });
   ok(bad.length === 3 && /Railway/.test(bad[0]) && /did not answer/.test(bad[1]) && /Pinnacle/.test(bad[2]), "watchdog: Railway down, model silent and no Pinnacle are each named", bad.length);
   ok(st.computeWatch({ ...fine, snap: null }).some((x) => /No snapshot has run/.test(x)), "watchdog: no snapshot at all is reported"); }
+{ // 10/17: NBA nightly backup (the NBA database had none after the move into the combined site)
+  const st = await import("../lib/status.js"), now = Date.parse("2026-12-01T20:00:00Z"), base = { snap: { t: new Date(now).toISOString(), games: 0, modelOk: true }, railway: { ok: true }, pinnacle: new Date(now).toISOString(), now };
+  ok(st.computeWatch({ ...base, backup: null }).some((x) => /No backup/.test(x)) && st.computeWatch({ ...base, backup: { t: new Date(now - 40 * 3600e3).toISOString(), where: "volume" } }).some((x) => /No backup/.test(x))
+    && st.computeWatch({ ...base, backup: { t: new Date(now - 3600e3).toISOString(), where: "failed" } }).some((x) => /failed/.test(x)) && st.computeWatch({ ...base, backup: { t: new Date(now - 3600e3).toISOString(), where: "volume" } }).length === 0,
+    "watchdog: NBA backup missing / older than 36 h / failed is reported, a fresh one is silent");
+  const { getRedis } = await import("../lib/redis.js"); await getRedis().set("bk:test", "1"); await getRedis().rpush("bk:list", "a", "b");
+  const h = (await import("../../pages/api/nba/backup.js")).default, call = async (q) => { let out = null; await h({ query: q }, { status: () => ({ json: (j) => { out = j; } }) }); return out; };
+  let cur = "0", keys = {}, pages = 0; do { const pg = await call({ cursor: cur }); Object.assign(keys, pg.data); cur = String(pg.next); pages++; } while (cur !== "0" && pages < 50);
+  await call({ mark: "volume", files: "3" }); const mk = JSON.parse(await getRedis().get("status:backup"));
+  ok(keys["bk:test"] && keys["bk:test"].v === "1" && keys["bk:list"].type === "list" && keys["bk:list"].v.join() === "a,b" && mk.where === "volume" && mk.files === 3, "backup: every NBA key paged out (strings and lists), the save is reported", { pages, n: Object.keys(keys).length, mk });
+  const sch = readFileSync(new URL("../railway-model-service/scheduler.py", import.meta.url), "utf8");
+  ok(/h == 0 and m == 10/.test(sch) && /"backup", _backup/.test(sch) && /\/api\/backup\?cursor=/.test(sch) && /files\[:-30\]/.test(sch), "scheduler: NBA backup every night at 12:10 AM, last 30 kept"); }
 
 { const pn2 = await import("../lib/pinnacle.js");
   const g1 = { key: "BOS @ NYK", date: "2026-10-22", start: "2026-10-23T00:00:00Z", poly: { spread: { homeSpread: -3 }, total: { line: 220 } }, books: { spread: { homeSpread: -5 }, total: { line: 223.5 } } };
