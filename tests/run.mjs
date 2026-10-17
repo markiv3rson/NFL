@@ -433,9 +433,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
           ctx.T.renderLabList(); const h = box.innerHTML;
           ok(cur.map((x) => x.game).join() === "SEA @ DEN,HOU @ JAX,ARI @ LA" && cur[2].p.result === "W" && cur[0].p.result === undefined && past.length === 1 && past[0].p.result === "L",
             "Model Picks: the current week uses the live slate (results from the saved copy once a game has started), past weeks use the saved ones", cur.map((x) => x.game));
-          ok(/data-labw="6"/.test(h) && /data-labw="5"/.test(h) && !/class="drop"/.test(h) && /class="pgrid"/.test(h) && /class="plb"/.test(h) && /✓ Won/.test(h) && !/hits ~|about \d|filled|Fewer than/.test(h) && h.indexOf("SEA") < h.indexOf("HOU") && h.indexOf("HOU") < h.indexOf("ARI")
-            && ["2 legs", "3 legs", "4 legs", "My style", "Bought", "Diff"].every((t) => sub.innerHTML.includes(t)) && /data-labt="2" class="on"/.test(sub.innerHTML),
-            "Model Picks: week chips on top, one list in kickoff order with the blue PL line and Won at the bottom right, and the six sub-tabs", { h: h.slice(0, 300) });
+          ok(/<select id="lab-wk"[^>]*><option value="5">Week 5<\/option><option value="6" selected>Week 6<\/option>/.test(h) && !/class="drop"/.test(h) && /class="pgrid"/.test(h) && /class="plb"/.test(h) && /✓ Won/.test(h) && !/hits ~|about \d|filled|Fewer than/.test(h) && h.indexOf("SEA") < h.indexOf("HOU") && h.indexOf("HOU") < h.indexOf("ARI")
+            && sub.innerHTML === "",
+            "Model Picks: week drop-down on top (first recorded week first), one list in kickoff order with the blue PL line and Won at the bottom right; no docked type strip (the types are in the menu)", { h: h.slice(0, 300) });
           ctx.document.getElementById = oldGet;
           const pb = ctx.T.pBlock("X", P(0.5, [lg("A +1.5", 0.5, "W"), lg("Over 44.5", 0.5, "L"), lg("B.Tuten TD", 0.4)]), false);
           ok(/<span class="g">✓<\/span> .*A \+1\.5/.test(pb) && /<span class="r">✗<\/span> .*Over 44\.5/.test(pb) && /• .*B\.Tuten TD/.test(pb) && /✗ Lost|✓ Won/.test(pb) === false && /class="pm"/.test(pb) && /PL: 8\.0x/.test(pb),
@@ -1065,7 +1065,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "record-mine" ? box : old(id));
     vm.runInContext(`S = { week: 5, games: [] }; MBWEEK = 4; MB = { summary: {}, synced: null, bets: [ { id: "a", week: 4, source: "account", title: "Waiting combo", cost: 10, toWin: 100, result: "pending", waiting: true, legs: [] }, { id: "b", week: 4, source: "account", title: "Lost combo", cost: 5, toWin: 50, result: "L", pl: -5, legs: [] }, { id: "c", week: 4, cost: 8, toWin: 80, result: "pending", waiting: true, legs: [ { kind: "td", player: "Q", game: "A @ B", team: "B", result: "pending", price: 0.5 } ] } ] }`, ctx);
     ctx.T.renderMine(); ok(/Waiting combo/.test(box.innerHTML) && /waiting for TD results/.test(box.innerHTML) && /Lost combo/.test(box.innerHTML) && /BETS[\s\S]*>3</.test(box.innerHTML) && (box.innerHTML.match(/waiting for TD results/g) || []).length === 2, "record tab: an earlier week still shows bets (typed-in and account) that are waiting for touchdown data");
-    vm.runInContext(`S = null; MBWEEK = null`, ctx); let threw = false; try { ctx.T.renderMine(); } catch { threw = true; } ok(!threw && /data-mbw="all"/.test(box.innerHTML), "record tab: opens fine before the slate has loaded");
+    vm.runInContext(`S = null; MBWEEK = null`, ctx); let threw = false; try { ctx.T.renderMine(); } catch { threw = true; } ok(!threw && /<select id="mb-wk"/.test(box.innerHTML) && /<option value="all" selected>Season/.test(box.innerHTML), "record tab: opens fine before the slate has loaded");
     const els = { s1: { id: "s1", classList: new Set(["open"]) }, s2: { id: "s2", classList: new Set() } }; for (const e of Object.values(els)) { const c = e.classList; e.classList = { contains: (k) => c.has(k), toggle: (k, on) => (on ? c.add(k) : c.delete(k)) }; }
     const root = { querySelectorAll: () => Object.values(els) }; const g2 = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "rootX" ? root : els[id] || g2(id));
     ctx.T.keepOpenState("rootX", () => { els.s1.classList.toggle("open", false); els.s2.classList.toggle("open", true); });
@@ -1099,7 +1099,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     vm.runInContext(`S = { week: 4, games: [] }; MBWEEK = null; MB = { summary: { wins: 9, losses: 9, pushes: 0, pl: 0, openCost: 0 }, synced: null, bets: [
       { id: "a", week: 3, cost: 10, toWin: 100, result: "L", pl: -10, legs: [] }, { id: "b", week: 3, cost: 10, toWin: 100, result: "L", pl: -10, legs: [] },
       { id: "c", week: 4, cost: 20, toWin: 130, result: "W", pl: 110, legs: [] } ] }`, ctx);
-    ctx.T.renderMine(); ok(/1–0/.test(box.innerHTML) && /\+\$110/.test(box.innerHTML) && /data-mbw="3"/.test(box.innerHTML) && /data-mbw="all"/.test(box.innerHTML), "record tab: defaults to this week's bets only");
+    ctx.T.renderMine(); ok(/1–0/.test(box.innerHTML) && /\+\$110/.test(box.innerHTML) && /<option value="3">Week 3<\/option><option value="4" selected>Week 4<\/option><option value="all">Season/.test(box.innerHTML), "record tab: defaults to this week's bets only; the week drop-down runs from the first recorded week, then Season");
     vm.runInContext(`MBWEEK = "all"`, ctx); ctx.T.renderMine(); ok(/1–2/.test(box.innerHTML), "record tab: Season chip shows every week");
     vm.runInContext(`MBWEEK = 3`, ctx); ctx.T.renderMine();
     ok(/BETS/.test(box.innerHTML) && /RECORD/.test(box.innerHTML) && !/OPEN BETS/.test(box.innerHTML) && !/Expected returns/.test(box.innerHTML) && !/Open bets/.test(box.innerHTML) && !/Live account view/.test(box.innerHTML) && /Results/.test(box.innerHTML), "record tab: an earlier week shows results only");
@@ -1190,7 +1190,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
 { const sh = readFileSync(new URL("../public/shell.js", import.meta.url), "utf8");
   ok(/const SUB = \[\["mybets", "My bets"\], \["modelbets", "Model bets"\]\]/.test(sh) && /id === "record" \? subs\(sp\)/.test(sh), "menu: Bets heads two pages, My bets and Model bets, for each sport");
   for (const f of ["../public/app.js", "../public/nba/app.js"]) { const a = readFileSync(new URL(f, import.meta.url), "utf8");
-    ok(/name === "mybets" \|\| name === "modelbets"/.test(a) && /"record", "mybets", "modelbets"/.test(a) && /bt\.textContent = BETSVIEW === "model" \? "Model bets" : "My bets"/.test(a), `${f}: #mybets / #modelbets open their own page with its own title`); }
+    ok(/name === "mybets" \|\| name === "modelbets"/.test(a) && /"record", "mybets", "modelbets"/.test(a) && /bt\.textContent = BETSVIEW === "model" \? (`Model bets · |"Model bets")/.test(a), `${f}: #mybets / #modelbets open their own page with its own title`); }
+  ok(/const TYPES = \{ nfl: \[\["2", "2 legs"\], \["3", "3 legs"\], \["4", "4 legs"\], \["style", "My style"\], \["pts", "Bought"\], \["diff", "Diff"\]\] \}/.test(sh) && /#modelbets-\$\{k\}/.test(sh), "menu: the NFL Model bets parlay types are sub tabs under Model bets (NBA unchanged)");
+  { const a = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+    ok(/\^modelbets-/.test(a) && /LAB_TABS\.map\(\(\[k\]\) => `modelbets-\$\{k\}`\)/.test(a) && !/id="lab-sub"/.test(readFileSync(new URL("../public/index.html", import.meta.url), "utf8")), "NFL: #modelbets-<type> opens Model bets on that type; the docked type strip is gone"); }
   for (const f of ["../public/index.html", "../public/nba/index.html"]) ok(/id="bets-sw" style="display:none"/.test(readFileSync(new URL(f, import.meta.url), "utf8")), `${f}: the old My bets | Model bets switch is hidden (the menu picks)`); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);
