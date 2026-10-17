@@ -59,8 +59,7 @@ body.menu-open .mscrim { opacity:1; pointer-events:auto; } body.menu-open .mdraw
 .mi.msub2.on { padding-left:76px; }
 .msubs { display:none; } .msubs.open { display:block; }   /* 10/17 (owner): Alerts / Bets / Model bets open and close their lists */
 .mtog { user-select:none; -webkit-user-select:none; }
-.mi .car { font-style:normal; margin-left:auto; padding-left:8px; font-size:12px; color:#8d95a3; transition:transform .15s ease; } .mtog.open > .car { transform:rotate(180deg); }
-.mtog .cnt[style*="flex"] + .car { margin-left:0; }
+.mi .car { font-style:normal; margin-left:6px; font-size:12px; color:#8d95a3; transition:transform .15s ease; } .mtog.open > .car { transform:rotate(180deg); }   /* the arrow sits right after the name (owner 10/17) */
 
 @media (min-width:1100px) { #home { max-width:760px; margin:0 auto; } }   /* a computer: the lists stay readable instead of spanning the whole screen */
 /* home: NFL / NBA live lists (sketch "Home, games live") */
