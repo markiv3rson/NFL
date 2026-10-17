@@ -5,6 +5,7 @@ Calls the site's /api/snapshot on Mark's schedule, Pacific time:
   Mon-Sat: 7 AM, 3 PM, 7 PM                   (Polymarket + sportsbooks)
   Every 15 min (:10 / :25 / :40 / :55): Pinnacle lines + Polymarket's lines, alternates and TD prices at the same moment (/api/pinnaclepull)
   Every 30 min (:15 and :45): build the slate so every pick shown gets its first-shown record (/api/slate)
+  Every 5 min (:02, :07, ...): refresh the real Polymarket prices of the NFL and NBA parlays on the pages (/api/comboquotes?sport=nfl|nba)
   Every kickoff: 3 minutes before -> closing-line snapshot (Polymarket; books reused)
   Every distinct kickoff wave: ~60 min before -> model rerun (catches that wave's active/inactive news)
   Every 15 min: a new nflverse final -> model rerun (src=postgame)
@@ -225,6 +226,14 @@ def _loop():
             if now_pt.minute % 30 >= 15 and now_pt.minute % 30 < 20:
                 tag = f"sl:{now_pt:%Y-%m-%d-%H}-{now_pt.minute // 30}"
                 if tag not in fired and _bg("slate", _call, "/api/slate", tries=1, timeout=90): fired[tag] = time.time()
+            # 10/17 (owner: "I need it to refresh in the background all the time", NFL and NBA): every 5 min the site re-quotes the parlays
+            # whose real Polymarket price is older than 4 min (asks and closes, never buys), so pages open with real prices already there.
+            if now_pt.minute % 5 == 2:
+                tag = f"cq:{now_pt:%Y-%m-%d-%H-%M}"
+                if tag not in fired:
+                    fired[tag] = time.time()
+                    _bg("quotes", _call, "/api/comboquotes?sport=nfl", tries=1, timeout=75)
+                    _bg("quotesnba", _call, "/api/comboquotes?sport=nba", tries=1, timeout=75)
             nowu = datetime.now(timezone.utc)
             due = {}
             for k, game in kicks:

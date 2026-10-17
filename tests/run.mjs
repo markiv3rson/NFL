@@ -1112,6 +1112,24 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
         "real quote: the same parlay is shared for 2.5 min (no Polymarket call); a refresh reuses the combo symbol and asks ONE quote", calls.slice(n1));
       const before = calls.length, miss = await realQuote(fake, [{ game: "PIT @ TB", kind: "total", side: "over", label: "Over 39.5" }, { game: "PIT @ TB", kind: "spread", team: "TB", label: "TB +2.5" }], { "PIT @ TB": "2026-10-18T17:00:00Z" }, 10);
       ok(!miss.ok && /Over 39\.5/.test(miss.why) && calls.length === before, "real quote: a leg Polymarket does not list -> no quote asked", calls);
+      { // NBA (10/17, owner: "I need this for the nba also") + the background refresh
+        const { saveParlayList, refreshQuotes } = await import("../lib/comboquote.js");
+        const nb = [mk("asc-nba-gs-lal-2026-10-21-neg-3pt5", "basketball_team_full_game_spread", -3.5, [side("-3.50", true, "gs"), side("+3.50", false, "lal")]),
+          mk("tsc-nba-gs-lal-2026-10-21-224pt5", "basketball_team_full_game_total", 224.5, [side("Over", true), side("Under", false)]),
+          mk("aec-nba-gs-lal-2026-10-21", "basketball_team_full_game_winner", null, [side("Warriors", true, "gs"), side("Lakers", false, "lal")])];
+        const ns = (l) => JSON.stringify(legSymbol({ game: "GSW @ LAL", ...l }, nb, "nba"));
+        ok(eventSlugs("GSW @ LAL", "2026-10-22T02:00:00Z", "nba")[0] === "nba-gs-lal-2026-10-21" && ns({ market: "spread", team: "LAL", line: 3.5, label: "LAL +3.5" }) === '{"symbol":"asc-nba-gs-lal-2026-10-21-neg-3pt5","side":"SIDE_SELL"}'
+          && ns({ market: "total", side: "under", line: 224.5, label: "Under 224.5" }) === '{"symbol":"tsc-nba-gs-lal-2026-10-21-224pt5","side":"SIDE_SELL"}' && ns({ market: "ml", team: "GSW", label: "GSW ML" }) === '{"symbol":"aec-nba-gs-lal-2026-10-21","side":"SIDE_BUY"}'
+          && legSymbol({ game: "GSW @ LAL", kind: "spread", team: "LAL", label: "LAL +3.5" }, M, "nba") === null,
+          "real quote, NBA: Polymarket's NBA codes (GSW = gs) and Eastern date of tip-off; spread / total / moneyline legs -> NBA markets; football markets never used");
+        const R = globalThis.__TEST_REDIS__, soon = new Date(Date.now() + 5 * 3600e3).toISOString(), later = new Date(Date.now() + 80 * 3600e3).toISOString(), past = new Date(Date.now() - 3600e3).toISOString();
+        const L1 = [{ game: "PIT @ TB", kind: "spread", team: "TB", label: "TB +2.5" }, { game: "PIT @ TB", kind: "td", team: "PIT", player: "J.Warren", label: "J.Warren TD" }];
+        const n = await saveParlayList("nflx", [{ stake: 10, legs: L1, kick: { "PIT @ TB": soon } }, { stake: 5, legs: L1, kick: { "PIT @ TB": soon } }, { stake: 10, legs: [L1[0], { ...L1[1], label: "J.Warren 2+ TD" }], kick: { "PIT @ TB": later } },
+          { stake: 10, legs: L1, kick: { "PIT @ TB": past } }, { stake: 10, legs: [L1[0]], kick: { "PIT @ TB": soon } }]);
+        const before = calls.length, r1 = await refreshQuotes(fake, "nflx", { budgetMs: 20000 }), mid = calls.length, r2 = await refreshQuotes(fake, "nflx", { budgetMs: 20000 });
+        ok(n === 4 && r1.parlays === 2 && r1.quoted === 2 && calls.slice(before, mid).filter((c) => c === "POST /v1/rfqs").length === 2 && r2.stale === 0 && calls.length === mid && !calls.some((c) => /^PUT|accept/i.test(c)),
+          "background: re-quotes each parlay on the pages (games within 36 h, not started, 2+ legs), skips ones quoted in the last 4 min, never accepts", { n, r1, r2 });
+        for (const k of await R.keys("cq*")) await R.del(k); }
       vm.runInContext(`S = { games: [ { key: "PIT @ TB", kickoff: "2099-01-01T00:00:00Z" }, { key: "A @ B", kickoff: "2000-01-01T00:00:00Z" } ] }`, ctx);
       const pq = { stake: 10, legs: [{ game: "PIT @ TB", kind: "spread", team: "TB", label: "TB +2.5", price: 0.5 }, { game: "PIT @ TB", kind: "td", team: "PIT", label: "J.Warren TD", price: 0.45 }] };
       const est = ctx.T.plShown(pq); ctx.T.PLC[ctx.T.plKey(pq)] = { pay: 14.713, t: Date.now() };
