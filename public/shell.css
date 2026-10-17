@@ -50,13 +50,17 @@ body.menu-open .mscrim { opacity:1; pointer-events:auto; } body.menu-open .mdraw
 .mi.on { color:#fff; font-weight:800; }
 .mi.on .ic { color:#fff; }
 .mspace { flex:1 1 auto; min-height:24px; }
-.mi.mpar { cursor:default; }   /* "Bets" heads its two pages (10/17, owner: My bets / Model bets separated) */
+.mi.mpar { cursor:pointer; }   /* "Bets" heads its two pages (10/17, owner: My bets / Model bets separated) */
 .mi.msub { height:42px; padding-left:56px; font-size:15px; }
 .mi.msub i { width:6px; height:6px; border-radius:50%; background:currentColor; opacity:.55; flex:0 0 6px; }
 .mi.msub.on { padding-left:56px; } .mi.msub.on i { opacity:1; background:#b58cff; }
 .mi.msub.pon { color:#fff; font-weight:800; } .mi.msub.pon i { opacity:1; background:#b58cff; }   /* Model bets while one of its types is open */
 .mi.msub2 { height:36px; padding-left:76px; font-size:14px; color:#aab0bd; }   /* the parlay types under Model bets (10/17) */
 .mi.msub2.on { padding-left:76px; }
+.msubs { display:none; } .msubs.open { display:block; }   /* 10/17 (owner): Alerts / Bets / Model bets open and close their lists */
+.mtog { user-select:none; -webkit-user-select:none; }
+.mi .car { font-style:normal; margin-left:auto; padding-left:8px; font-size:12px; color:#8d95a3; transition:transform .15s ease; } .mtog.open > .car { transform:rotate(180deg); }
+.mtog .cnt[style*="flex"] + .car { margin-left:0; }
 
 @media (min-width:1100px) { #home { max-width:760px; margin:0 auto; } }   /* a computer: the lists stay readable instead of spanning the whole screen */
 /* home: NFL / NBA live lists (sketch "Home, games live") */
