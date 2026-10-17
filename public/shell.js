@@ -1,6 +1,7 @@
 // SLATEZZ shell (10/17, owner): the side menu for NFL + NBA ("Menu A · Neon"), the refresh button (reruns BOTH models), the header's next-game
 // clock and the logo helpers. Loaded by /index.html (NFL + home) and /nba/index.html before each page's app.js.
-// Pages: NFL #home (no hash) #alerts #lines #td #record #models on /index.html; NBA #alerts #lines #record #models on /nba/index.html.
+// Pages: NFL #home (no hash) #alerts #lines #td #mybets #modelbets #models on /index.html; NBA #alerts #lines #mybets #modelbets #models on /nba/index.html.
+// (10/17, owner: My bets and Model bets are separate pages, listed under Bets in the menu.)
 (function () {
   const ICON = {
     bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
@@ -15,7 +16,12 @@
     nba: [["alerts", "Alerts", "bell"], ["lines", "Game Lines", "grid"], ["record", "Bets", "bets"]],
   };
   const URL_ = { nfl: "/index.html", nba: "/nba/index.html" };
-  const item = (sp, id, label, ic) => `<a class="mi ${sp}" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><span class="ic">${svg(ic)}</span>${label}<b class="cnt" id="mcnt-${sp}-${id}"></b></a>`;
+  const SUB = [["mybets", "My bets"], ["modelbets", "Model bets"]];
+  // 10/17 (owner): the Model bets parlay types are sub tabs under Model bets in the menu (NFL; the NBA page keeps its docked strip)
+  const TYPES = { nfl: [["2", "2 legs"], ["3", "3 legs"], ["4", "4 legs"], ["style", "My style"], ["pts", "Bought"], ["diff", "Diff"]] };
+  const types = (sp) => (TYPES[sp] || []).map(([k, label]) => `<a class="mi ${sp} msub2" data-msp="${sp}" data-mp="modelbets-${k}" href="${URL_[sp]}#modelbets-${k}">${label}</a>`).join("");
+  const subs = (sp) => `<div class="mi ${sp} mpar"><span class="ic">${svg("bets")}</span>Bets</div>` + SUB.map(([id, label]) => `<a class="mi ${sp} msub" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><i></i>${label}</a>` + (id === "modelbets" ? types(sp) : "")).join("");
+  const item = (sp, id, label, ic) => id === "record" ? subs(sp) : `<a class="mi ${sp}" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><span class="ic">${svg(ic)}</span>${label}<b class="cnt" id="mcnt-${sp}-${id}"></b></a>`;
   const NFL_LOGO_FIX = { WSH: "wsh", WAS: "wsh", LA: "lar", LAR: "lar" };
   const Shell = {
     sport: "nfl", panel: "home",
@@ -38,7 +44,8 @@
     },
     setActive(panel) {
       Shell.panel = panel;
-      document.querySelectorAll(".mi").forEach((a) => a.classList.toggle("on", a.dataset.msp === Shell.sport && a.dataset.mp === panel));
+      const par = String(panel).split("-")[0];   // "modelbets-2": the type is on, Model bets above it is marked as its parent
+      document.querySelectorAll(".mi").forEach((a) => { const me = a.dataset.msp === Shell.sport; a.classList.toggle("on", me && a.dataset.mp === panel); a.classList.toggle("pon", me && par !== panel && a.dataset.mp === par); });
       const home = Shell.sport === "nfl" && panel === "home";
       document.body.classList.toggle("home-on", home); document.documentElement.classList.toggle("home-on", home);
       const h = document.getElementById("shead-home"), n = document.getElementById("shead-next");
@@ -62,7 +69,17 @@
       const t2 = c.ok ? (c.modelOk === false ? "NBA: lines refreshed, model did not answer" : `NBA: ${c.games ?? 0} game${c.games === 1 ? "" : "s"}`) : `NBA failed: ${c.error || "no answer"}`;
       say(`${t1} · ${t2}`, 9000);
       b.disabled = false; b.classList.remove("spin");
+      Shell.loadRun();
       if (typeof Shell.onRefreshed === "function") { try { await Shell.onRefreshed(); } catch {} }
+    },
+    // "Last model refresh · Sat 10/17 9:45 PM" under SLATEZZ: the newer of the NFL and NBA model runs (10/17, owner: one line, newest time)
+    runTxt(iso) {
+      const d = iso ? new Date(iso) : null; if (!d || isNaN(d)) return "—";
+      return `${d.toLocaleDateString("en-US", { weekday: "short" })} ${d.getMonth() + 1}/${d.getDate()} ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
+    },
+    async loadRun() {
+      const e = document.getElementById("mrun"); if (!e) return;
+      try { const d = await (await fetch("/api/lastrun", { cache: "no-store" })).json(); e.textContent = "Last model refresh · " + Shell.runTxt(d && d.newest); } catch {}
     },
     init(sport) {
       Shell.sport = sport;
@@ -71,6 +88,7 @@
         `<div class="mtop"><a class="mlogo sgrad" href="/index.html#home">SLATEZZ</a><div class="mbts">` +
         `<button class="mref" id="mref" aria-label="Rerun both models"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>` +
         `<button class="mclose" id="mclose" aria-label="Close menu"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>` +
+        `<div class="mrun" id="mrun">Last model refresh · —</div>` +
         `<div class="msec nfl"><span>NFL</span><span class="ml"></span></div>${ITEMS.nfl.map((x) => item("nfl", ...x)).join("")}` +
         `<div class="msec nba gap"><span>NBA</span><span class="ml"></span></div>${ITEMS.nba.map((x) => item("nba", ...x)).join("")}` +
         `<div class="mspace"></div><div class="msec mod"><span>MODEL ANALYSIS</span><span class="ml"></span></div>${item("nfl", "models", "NFL", "bars")}${item("nba", "models", "NBA", "bars")}</nav>`;
@@ -78,6 +96,7 @@
       const mb = document.getElementById("menu-btn"); if (mb) mb.onclick = Shell.open;
       document.getElementById("mclose").onclick = Shell.close; document.getElementById("mscrim").onclick = Shell.close;
       document.getElementById("mref").onclick = Shell.refresh;
+      Shell.loadRun(); document.getElementById("menu-btn") && document.getElementById("menu-btn").addEventListener("click", Shell.loadRun);   // fresh each time the menu opens
       document.getElementById("mdraw").addEventListener("click", (e) => { if (e.target.closest("a")) Shell.close(); });   // same-page links change the hash; the page switches
       document.addEventListener("keydown", (e) => { if (e.key === "Escape") Shell.close(); });
     },

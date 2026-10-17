@@ -94,7 +94,7 @@
   .p-n { color:var(--dim); border-color:var(--line); }
   .warn { font-size:12px; color:var(--yellow); margin-top:6px; }
   .warn-t { color:var(--yellow); }
-  .live { width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); display:inline-block; margin-right:4px; vertical-align:1px; }
+  .live:not(.tile) { width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); display:inline-block; margin-right:4px; vertical-align:1px; }   /* 10/17: the dot rule no longer crushes a live game tile into a 7px circle */
   .cover { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; text-align:center; background:rgba(255,107,107,.1); padding:10px; }
   .cover b { color:var(--red); font-size:15px; letter-spacing:.08em; }
   .fin .inner { opacity:.22; }
@@ -305,8 +305,8 @@
 
   <div class="panel on" id="panel-lines"><div id="lines"></div><div id="detail" style="display:none"></div></div>
   <div class="panel" id="panel-record">
-    <div class="phead"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a1.5 1.5 0 0 1 1.5-1.5h13A1.5 1.5 0 0 1 20 7v2.5a2.5 2.5 0 0 0 0 5V17a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17v-2.5a2.5 2.5 0 0 0 0-5z"/><path d="M14.5 6v2M14.5 11v2M14.5 16v2"/></svg><div class="pt"><b>Bets</b><span id="upd-record"></span></div></div>
-    <div class="sw" id="bets-sw"><button data-bv="mine" class="on">My bets</button><button data-bv="model">Model bets</button></div>
+    <div class="phead"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a1.5 1.5 0 0 1 1.5-1.5h13A1.5 1.5 0 0 1 20 7v2.5a2.5 2.5 0 0 0 0 5V17a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17v-2.5a2.5 2.5 0 0 0 0-5z"/><path d="M14.5 6v2M14.5 11v2M14.5 16v2"/></svg><div class="pt"><b id="bets-title">Bets</b><span id="upd-record"></span></div></div>
+    <div class="sw" id="bets-sw" style="display:none"><button data-bv="mine" class="on">My bets</button><button data-bv="model">Model bets</button></div>
     <div id="record-mine"></div>
     <div id="lab" style="display:none;padding-bottom:64px"></div>
     <div class="chips dock" id="lab-sub" style="display:none"></div>

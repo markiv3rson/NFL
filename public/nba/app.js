@@ -153,15 +153,25 @@ function changedBox() {
   if (!out.length) return "";
   return `<div class="moves"><div class="mvl">LINE MOVES <span>since the first line seen</span></div><div class="mvs">${out.join("")}</div></div>`;
 }
+// Live scores (10/17): ESPN's scoreboard via /api/nba/live -- a started game shows its score + clock, a finished one its final score
+// (before, a game counted as "live" from tip-off until the slate dropped it, so last night's games stayed LIVE).
+let NBL = {};
+const scOf = (g) => (g.inProgress ? NBL[g.key] || null : null), isFinal = (g) => { const sc = scOf(g); return !!(sc && sc.st === "post"); };
+async function loadLiveScores() {
+  if (!S || !S.games.some((g) => g.inProgress)) return;
+  try { const d = await (await fetch("/api/nba/live", { cache: "no-store" })).json(); if (d && d.ok) { NBL = d.scores || {}; if ($("panel-lines").classList.contains("on") && !DETAIL) renderLines(); } } catch {}
+}
 function tile(g) {
+  const sc = scOf(g), fin = isFinal(g), live = g.inProgress && !fin;
   const hp0 = mktWin(g), hp = hp0 ? hp0.home * 100 : null, ap = hp == null ? null : 100 - hp;
   const lead = (v, o) => (v >= o ? "mkt" : "dim");
   const green = greenPicks(g)[0];
-  const chips = [g.preseason ? '<span class="chip c-amb">PRESEASON</span>' : "", green ? `<span class="chip c-grn">${esc(green.pick)}</span>` : "", g.inProgress ? '<span class="chip c-red">LIVE</span>' : ""].filter(Boolean).join('<span style="display:inline-block;width:6px"></span>');
-  const mid = hp == null ? '<span class="mid dim">—</span>' : `<span class="mid"><span class="${lead(ap, hp)}">${Math.round(ap)}</span><span class="dim"> · </span><span class="${lead(hp, ap)}">${100 - Math.round(ap)}</span><span class="dim" style="font-size:11px">%</span></span>`;
-  const foot = g.inProgress ? "In progress" : tm(g.start);
-  return `<button class="tile${g.inProgress ? " live" : ""}" data-game="${esc(g.key)}"><img class="wmk l" loading="lazy" decoding="async" src="${esc(logoUrl(g.away))}" alt="" onerror="this.style.display='none'"><img class="wmk r" loading="lazy" decoding="async" src="${esc(logoUrl(g.home))}" alt="" onerror="this.style.display='none'">` +
-    `<div class="in"><div class="nm"><span class="t">${g.away}${recOf(g, g.away)}</span>${mid}<span class="t hm">${g.home}${recOf(g, g.home)}</span></div><div class="ft"><span>${foot}</span><span>${chips}</span></div>${hp == null ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
+  const chips = [g.preseason ? '<span class="chip c-amb">PRESEASON</span>' : "", green ? `<span class="chip c-grn">${esc(green.pick)}</span>` : "", live && !sc ? '<span class="chip c-red">LIVE</span>' : ""].filter(Boolean).join('<span style="display:inline-block;width:6px"></span>');
+  const mid0 = hp == null ? '<span class="mid dim">—</span>' : `<span class="mid"><span class="${lead(ap, hp)}">${Math.round(ap)}</span><span class="dim"> · </span><span class="${lead(hp, ap)}">${100 - Math.round(ap)}</span><span class="dim" style="font-size:11px">%</span></span>`;
+  const mid = sc && (sc.st === "in" || sc.st === "post") ? `<span class="mid lvmid"><span class="sr"><span class="${sc.a > sc.h ? "g" : "dim"}">${sc.a}</span><span class="dim"> – </span><span class="${sc.h > sc.a ? "g" : "dim"}">${sc.h}</span></span><span class="lv ${fin ? "dim" : "r"}">${fin ? "FINAL" : "● LIVE · " + esc(sc.lbl)}</span></span>` : mid0;
+  const foot = live ? "In progress" : tm(g.start);
+  return `<button class="tile${live ? " live" : ""}" data-game="${esc(g.key)}"><img class="wmk l" loading="lazy" decoding="async" src="${esc(logoUrl(g.away))}" alt="" onerror="this.style.display='none'"><img class="wmk r" loading="lazy" decoding="async" src="${esc(logoUrl(g.home))}" alt="" onerror="this.style.display='none'">` +
+    `<div class="in"><div class="nm"><span class="t">${g.away}${recOf(g, g.away)}</span>${mid}<span class="t hm">${g.home}${recOf(g, g.home)}</span></div><div class="ft"><span>${foot}</span><span>${chips}</span></div>${hp == null || sc ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
 }
 function renderLines() {
   if (!S) { $("lines").innerHTML = '<div class="s dim center">Loading…</div>'; return; }
@@ -301,6 +311,7 @@ function ticketRow() {
 // ---------- Bets: My bets | Model bets
 let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
 function applyBetsView() {
+  const bt = $("bets-title"); if (bt) bt.textContent = BETSVIEW === "model" ? "Model bets" : "My bets";
   const m = BETSVIEW === "model", set = (id, on) => { const e = $(id); if (e) e.style.display = on ? "" : "none"; };
   set("record-mine", !m); set("lab", m); set("lab-sub", m);
   document.querySelectorAll("#bets-sw [data-bv]").forEach((b) => b.classList.toggle("on", b.dataset.bv === BETSVIEW));
@@ -482,13 +493,16 @@ async function loadSlate() {
   const build = r.headers.get("x-build"); if (window.__build && build && build !== window.__build) return location.reload(); window.__build = build;
   S = j; TEAMS = j.teams || TEAMS;
   const open = [...document.querySelectorAll(".drop.open")].map((e) => e.id).filter(Boolean);
-  weekline(); tickCd(); renderLines(); if ($("panel-record").classList.contains("on")) { renderBets(); renderLabList(); }
+  weekline(); tickCd(); renderLines(); loadLiveScores(); if ($("panel-record").classList.contains("on")) { renderBets(); renderLabList(); }
   for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
   try { localStorage.setItem("lastSeen", new Date().toISOString()); } catch {}
 }
 function showPanel(name) {
+  let sub = null;   // 10/17 (owner): My bets and Model bets are separate pages under Bets in the menu
+  if (name === "mybets" || name === "modelbets") { sub = name; BETSVIEW = name === "modelbets" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} name = "record"; }
+  if (name === "record" && !sub) sub = BETSVIEW === "model" ? "modelbets" : "mybets";
   if (!$("panel-" + name)) name = "lines";
-  Shell.setActive(name);   // 10/17: the menu replaces the tab bar
+  Shell.setActive(sub || name);   // 10/17: the menu replaces the tab bar
   if (name === "alerts") { ALPREV = alSeen(); if (ALERTS.length) { try { localStorage.setItem("alSeen", ALERTS[0].t); } catch {} } }
   document.querySelectorAll(".panel").forEach((p) => p.classList.remove("on")); $("panel-" + name).classList.add("on");
   if (name === "alerts") renderAlerts();
@@ -499,7 +513,7 @@ function showPanel(name) {
   if (S) setBg(name === "lines" && DETAIL ? S.games.find((x) => x.key === DETAIL) : null);
 }
 // 10/17: pages switch by the address' #name (the menu links set it): #alerts, #lines, #record, #models; #game=KEY opens a game (from the home screen)
-const PANELS = ["alerts", "lines", "record", "models"];
+const PANELS = ["alerts", "lines", "record", "mybets", "modelbets", "models"];
 let OPEN_GAME = null;
 function routeHash() {
   const h = location.hash || "";
@@ -522,6 +536,7 @@ document.addEventListener("click", (e) => {
   const fu = e.target.closest("[data-fut]"); if (fu) { FUTSEC = fu.dataset.fut; renderModels(); const el = $("m-fut"); if (el) el.classList.add("open"); }
 });
 function catchUp() { fetch("/api/nba/results/grade", { cache: "no-store" }).then((r) => r.json()).then((d) => { if (d && (d.graded || d.parlays) && ($("panel-record").classList.contains("on") || $("panel-models").classList.contains("on"))) { loadBets(); loadModels(); } }).catch(() => {}); }
+setInterval(() => { if (!document.hidden) loadLiveScores(); }, 30000);   // scores every 30 s while a game is on
 function autoRefresh() { setTimeout(async () => { if (!document.hidden) { try { await loadSlate(); await loadAlerts(); } catch {} } autoRefresh(); }, 120e3); }
 loadAlerts(); setInterval(() => { if (!document.hidden) loadAlerts(); }, 120e3);
 Shell.init("nba");

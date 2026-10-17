@@ -555,7 +555,8 @@ function renderMineNow() {
   const shown = MB.bets.filter((b) => sel === "all" || Number(b.week) === Number(sel));
   const open = shown.filter((b) => b.result === "pending"), done = shown.filter((b) => b.result !== "pending");   // includes auto-recorded account bets
   const s = betsSummary(shown);
-  const wkChips = `<div class="chips dock" id="mb-chips">${wks.map((w) => `<button data-mbw="${w}" class="${String(sel) === String(w) ? "on" : ""}">Week ${w}</button>`).join("")}<button data-mbw="all" class="${sel === "all" ? "on" : ""}">Season</button></div>`;
+  // 10/17 (owner): the week picker is a drop-down, from the first recorded week to this week, then Season
+  const wkChips = `<div class="wksel"><select id="mb-wk" aria-label="Week">${wks.map((w) => `<option value="${w}"${String(sel) === String(w) ? " selected" : ""}>Week ${w}</option>`).join("")}<option value="all"${sel === "all" ? " selected" : ""}>Season</option></select></div>`;
   const settledPl = done.reduce((a, b) => a + (b.pl || 0), 0);
   const synced = MB.synced && MB.synced.list ? MB.synced.list : [];
   const syncedRows = synced.map((p) => {
@@ -565,10 +566,10 @@ function renderMineNow() {
   }).join("");
   const past = sel !== "all" && SW != null && Number(sel) < Number(SW);   // an earlier week: results only (no open bets / expected returns / live account)
   const nOpen = open.length, tot = s.wins + s.losses;
-  const tiles = wkChips + `<div class="stats" style="margin-top:10px">` + (past ? `<div class="stat"><div class="k">BETS</div><div class="v mkt">${shown.length}</div><div class="k2">Week ${sel}</div></div>` : `<div class="stat"><div class="k">OPEN BETS</div><div class="v mkt">${nOpen}</div><div class="k2">${money(s.openCost)} staked</div></div>`) +
+  const tiles = `<div class="stats" style="margin-top:10px">` + (past ? `<div class="stat"><div class="k">BETS</div><div class="v mkt">${shown.length}</div><div class="k2">Week ${sel}</div></div>` : `<div class="stat"><div class="k">OPEN BETS</div><div class="v mkt">${nOpen}</div><div class="k2">${money(s.openCost)} staked</div></div>`) +
     `<div class="stat"><div class="k">RECORD</div><div class="v ${tot ? (s.wins / tot >= 0.5 ? "g" : "r") : "dim"}">${tot ? `${s.wins}–${s.losses}` : "—"}</div><div class="k2">settled</div></div>` +
     `<div class="stat"><div class="k">PROFIT</div><div class="v">${cMoney(s.pl)}</div><div class="k2">${sel === "all" ? "this season" : "Week " + sel}</div></div></div>`;
-  $("record-mine").innerHTML = ticketRow() + tiles + `<div class="card" style="margin-top:10px">` +
+  $("record-mine").innerHTML = wkChips + ticketRow() + tiles + `<div class="card" style="margin-top:10px">` +
     `<div class="sec"><div class="sh">Summary</div>` +
     `<div class="row"><span class="dim">Return · CLV</span><span>${cPct(s.roi)} · ${cPct(s.avgClv)}</span></div>` +
     (() => { const sc = MB.summary && MB.summary.settleCheck; if (!sc || !(sc.agree + sc.disagree)) return "";
@@ -586,7 +587,7 @@ function renderMineNow() {
     `</div>` +
     `<div class="center"><button class="btn" id="sync-btn">↻ Sync account</button></div>`;
   $("sync-btn").onclick = () => loadRecord(true);
-  document.querySelectorAll("#mb-chips [data-mbw]").forEach((b) => { b.onclick = () => { MBWEEK = b.dataset.mbw === "all" ? "all" : Number(b.dataset.mbw); renderMine(); }; });
+  const mw = $("mb-wk"); if (mw) mw.onchange = () => { MBWEEK = mw.value === "all" ? "all" : Number(mw.value); renderMine(); };
 }
 // ---------- Record: Model ----------
 function rec(list) { const c = { W: 0, L: 0, P: 0 }; list.forEach((x) => c[x.result]++); return `${c.W}–${c.L}${c.P ? "–" + c.P : ""}`; }
@@ -1101,8 +1102,9 @@ let MODELBETS = null, LABTYPE = "2", LABWEEK = null;
 // 10/15 (owner): ONE Bets tab -- My bets on the left (the list as before), Model bets on the right (the model's parlays). The choice is remembered.
 let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
 function applyBetsView() {
+  const bt = $("bets-title"); if (bt) bt.textContent = BETSVIEW === "model" ? `Model bets · ${(LAB_TABS.find(([k]) => k === LABTYPE) || [, ""])[1]}` : "My bets";
   const m = BETSVIEW === "model", set = (id, on) => { const e = $(id); if (e) e.style.display = on ? "" : "none"; };
-  set("record-mine", !m); set("lab", m); set("lab-sub", m);
+  set("record-mine", !m); set("lab", m); set("lab-sub", false);   // 10/17: the types moved from the docked strip into the menu
   document.querySelectorAll("#bets-sw [data-bv]").forEach((b) => b.classList.toggle("on", b.dataset.bv === BETSVIEW));
   if (m) renderLabList();
 }
@@ -1127,14 +1129,14 @@ function labSlot(kick) {   // same cutoffs as the Bets tab's kickSlot (Pacific c
 function renderLabList() {
   if (!$("lab")) return;
   const weeks = [...new Set([...Object.keys((MODELBETS && MODELBETS.weeks) || {}).map(Number), ...(S && S.week != null ? [Number(S.week)] : [])])].sort((a, b) => b - a), sel = LABWEEK || (S && S.week) || weeks[0];
-  const chips = `<div class="chips" id="lab-wk">${weeks.map((w) => `<button data-labw="${w}" class="${Number(sel) === w ? "on" : ""}">Week ${w}</button>`).join("")}</div>`;
+  const chips = `<div class="wksel"><select id="lab-wk" aria-label="Week">${[...weeks].reverse().map((w) => `<option value="${w}"${Number(sel) === w ? " selected" : ""}>Week ${w}</option>`).join("")}</select></div>`;   // 10/17 (owner): a drop-down from the first recorded week
   const xs = labParlays(sel, LABTYPE).sort((a, b) => (new Date(a.kick || 0) - new Date(b.kick || 0)) || 0).filter((x) => x.p && Array.isArray(x.p.legs));
   // 10/16 (owner): a header between the time slots (early / 10 AM / 1 PM / prime time); the blocks themselves are unchanged
   // header = the slot + the real kickoff times in it (owner 10/16: "put the right time on there"), e.g. "1 PM GAMES · Sun 1:05 PM · Sun 1:25 PM"
   const slotTimes = {}; for (const x of xs) if (x.kick) { const sl = labSlot(x.kick), tt = tm(x.kick); (slotTimes[sl] = slotTimes[sl] || []).includes(tt) || slotTimes[sl].push(tt); }
   let lastSlot = null; const blocks = xs.map((x) => { const sl = x.kick ? labSlot(x.kick) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl; return h + pBlock(x.title, x.p, x.across); });
   $("lab").innerHTML = chips + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
-  if ($("lab-sub")) $("lab-sub").innerHTML = LAB_TABS.map(([k, t]) => `<button data-labt="${k}" class="${LABTYPE === k ? "on" : ""}">${t}</button>`).join("");
+  const lw = $("lab-wk"); if (lw && lw.tagName === "SELECT") lw.onchange = () => { LABWEEK = Number(lw.value); renderLabList(); };
 }
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = "";
@@ -1158,11 +1160,13 @@ function closeGame() { DETAIL = null; renderLines(); if (window.scrollTo) window
 // ---------- HOME (10/17, owner's sketch): SLATEZZ header, then NFL and NBA live games as a list -- logos, team, its spread from the
 // sportsbooks before kickoff, the total in the middle, the score and clock. Each section's title row: LIVE NOW + NEXT GAME logos and clock.
 // Nothing live in a sport: its next game only. NBA data comes from the NBA side's own routes (/api/nba/slate, /api/nba/live).
-let NB = null, NBL = {}, HOME_T = 0;
+let NB = null, NBL = {}, NBC = {}, HOME_T = 0;   // NBC: NBA games' last Polymarket line before tip-off (no sportsbook line, e.g. preseason)
 async function loadHome() {
   if (Date.now() - HOME_T < 25000 && NB) return; HOME_T = Date.now();
   try { const d = await (await fetch("/api/nba/slate", { cache: "no-store" })).json(); if (d && d.ok) NB = d; } catch {}
   try { const d = await (await fetch("/api/nba/live", { cache: "no-store" })).json(); if (d && d.ok) NBL = d.scores || {}; } catch {}
+  try { const since = new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10), d = await (await fetch("/api/nba/closes?since=" + since, { cache: "no-store" })).json();
+    if (d && d.ok) { NBC = {}; for (const c of d.closes || []) NBC[c.game] = c; } } catch {}
   if ($("panel-home").classList.contains("on")) renderHome();
   clearTimeout(loadHome._h); loadHome._h = setTimeout(() => { if (!document.hidden && $("panel-home").classList.contains("on")) { HOME_T = 0; loadHome(); } }, 30000);
 }
@@ -1198,8 +1202,9 @@ function renderHome() {
     const T = NB.teams || {}, lg = (t) => Shell.nbaLogo(t, T), bt = NB.books && NB.books.t ? Date.parse(NB.books.t) : null;
     const live = NB.games.filter((g) => Date.now() >= Date.parse(g.start) && !(NBL[g.key] && NBL[g.key].st === "post"));
     const nx = NB.games.filter((g) => Date.parse(g.start) > Date.now()).sort((a, b) => Date.parse(a.start) - Date.parse(b.start))[0];
-    const line = (g) => { const b = bt != null && bt <= Date.parse(g.start) ? g.books || {} : {};   // sportsbook numbers from before tip-off only
-      const hs = b.spread ? Number(b.spread.homeSpread) : null; return { hSp: hs, aSp: hs == null ? null : -hs, tot: b.total ? b.total.line : null }; };
+    const line = (g) => { const b = bt != null && bt <= Date.parse(g.start) ? g.books || {} : {}, c = NBC[g.key] || {};   // sportsbook numbers from before tip-off; none (preseason) -> Polymarket's last line before tip-off (10/17, owner)
+      const hs = b.spread ? Number(b.spread.homeSpread) : c.hs != null ? Number(c.hs) : null, tot = b.total ? b.total.line : c.tl != null ? c.tl : null;
+      return { hSp: hs, aSp: hs == null ? null : -hs, tot }; };
     const rows = live.sort((a, b) => Date.parse(a.start) - Date.parse(b.start)).map((g) => homeRow({ key: g.key, attr: "data-nbagame", away: g.away, home: g.home, aLogo: lg(g.away), hLogo: lg(g.home), ...line(g), sc: NBL[g.key] || null })).join("");
     const next = nx ? { aLogo: lg(nx.away), hLogo: lg(nx.home), ts: Date.parse(nx.start) } : null;
     const nextRow = nx ? `<button class="hnext" data-nbagame="${esc(nx.key)}"><div><div class="m"><img src="${lg(nx.away)}" alt="" onerror="this.style.visibility='hidden'">${esc(nx.away)} @ ${esc(nx.home)}<img src="${lg(nx.home)}" alt="" onerror="this.style.visibility='hidden'"></div><div class="t">${tm(nx.start)}</div></div></button>` : "";
@@ -1278,8 +1283,13 @@ if ($("lever")) {
   lv.addEventListener("pointerdown", (e) => { y0 = e.clientY; }); lv.addEventListener("pointermove", (e) => { if (y0 != null && e.clientY - y0 > 25) { y0 = null; pull(); } }); lv.addEventListener("pointerup", () => { y0 = null; });
 }
 function showPanel(name) {
+  let sub = null;   // 10/17 (owner): My bets and Model bets are separate pages under Bets in the menu
+  if (/^modelbets-/.test(name)) { const k = name.slice(10); if (LAB_TABS.some(([t]) => t === k)) LABTYPE = k; name = "modelbets"; }   // 10/17 (owner): the parlay types are menu sub tabs under Model bets
+  if (name === "modelbets") sub = `modelbets-${LABTYPE}`;
+  if (name === "mybets" || name === "modelbets") { sub = sub || name; BETSVIEW = name === "modelbets" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} name = "record"; }
+  if (name === "record" && !sub) sub = BETSVIEW === "model" ? `modelbets-${LABTYPE}` : "mybets";
   if (!$("panel-" + name)) name = "home";
-  Shell.setActive(name);   // 10/17: the menu replaces the tab bar
+  Shell.setActive(sub || name);   // 10/17: the menu replaces the tab bar
   if (name === "alerts") { ALPREV = alSeen(); if (ALERTS.length) { try { localStorage.setItem("alSeen", ALERTS[0].t); } catch {} } }   // opening Alerts marks them read (was the bell)
   document.querySelectorAll(".panel").forEach((p) => p.classList.remove("on")); $("panel-" + name).classList.add("on");
   if (name === "alerts") renderAlerts();
@@ -1293,7 +1303,7 @@ function showPanel(name) {
   if (S && S.games) setBg(name === "lines" && DETAIL ? S.games.find((x) => x.key === DETAIL) : null);   // game background only on an open game page
 }
 // 10/17: pages switch by the address' #name (the menu links set it): #home (or none), #alerts, #lines, #td, #record, #models
-const PANELS = ["home", "alerts", "lines", "td", "record", "models"];
+const PANELS = ["home", "alerts", "lines", "td", "record", "mybets", "modelbets", ...LAB_TABS.map(([k]) => `modelbets-${k}`), "models"];
 function routeHash() {
   const name = Shell.hashPanel(PANELS, "home");
   if (name === "lines" && DETAIL && $("panel-lines").classList.contains("on")) closeGame();   // choosing Game Lines while on a game goes back to the games
@@ -1308,7 +1318,6 @@ document.addEventListener("click", (e) => {
   const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k) { history.replaceState(null, "", "#lines"); showPanel("lines"); openGame(k); } return; }
   const nb = e.target.closest("[data-nbagame]"); if (nb) { location.href = "/nba/index.html#game=" + encodeURIComponent(nb.dataset.nbagame); return; }
   const bv = e.target.closest("[data-bv]"); if (bv) { BETSVIEW = bv.dataset.bv === "model" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} applyBetsView(); try { window.scrollTo(0, 0); } catch {} return; }
-  const lt = e.target.closest("[data-labt]"); if (lt) { LABTYPE = lt.dataset.labt; renderLabList(); return; }
   const lw = e.target.closest("[data-labw]"); if (lw) { LABWEEK = Number(lw.dataset.labw); renderLabList(); return; }
   const gb = e.target.closest("[data-gbw]"); if (gb) { GBGWEEK = gb.dataset.gbw === "all" ? "all" : Number(gb.dataset.gbw); $("gbg").innerHTML = gbgHtml(); return; }
   const ch = e.target.closest("[data-alk]"); if (ch) { ALFILTER = ch.dataset.alk; renderAlerts(); return; }
