@@ -1,15 +1,10 @@
-// Polymarket (public Gamma API): NBA game lines — moneyline, spread, total, plus every alternate line.
+// Polymarket NBA game lines — moneyline, spread, total, plus every alternate line. 10/17 (owner: "it needs to match my app", "do it for the nba also"):
+// read from POLYMARKET US (lib/polyus.js), the markets and prices of the owner's app; each US market arrives in the gamma shape parsed below.
 // There are NO player props for NBA on Polymarket, so nothing here asks for them.
 // Copied in shape from the NFL app's lib/poly.js, with NBA teams (taken from each event's own team list) and NBA spread sizes.
 import { ninv, isThinMarket } from "./odds";
 import { TEAMS, ABBRS } from "./teams";
-const GAMMA = process.env.GAMMA_BASE || "https://gamma-api.polymarket.com";
-const NBA_SERIES = process.env.POLY_NBA_SERIES || "10345";
-async function getJson(url) {
-  const r = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(20000) });
-  if (!r.ok) throw new Error(`${r.status} on ${url}`);
-  return r.json();
-}
+import { usGames, usEvent, usMarkets } from "../../lib/polyus";
 const arr = (v) => { try { return Array.isArray(v) ? v : JSON.parse(v || "[]"); } catch { return []; } };
 const isPeriod = (q) => /\b(1H|2H|1st|2nd|first|second|half|quarter|Q[1-4])\b/i.test(q || "") && !/team to score first/i.test(q || "");
 
@@ -104,9 +99,13 @@ export function parseGame(markets, away, home) {
   return out;
 }
 
+// NBA games on Polymarket US from yesterday to 5 days ahead, each with its full market list (an NBA game event is a few KB). The event's slug says
+// who is away / home ("nba-bos-det-2026-10-20" = BOS @ DET).
 export async function fetchEvents() {
-  const ev = await getJson(`${GAMMA}/events?series_id=${NBA_SERIES}&tag_id=100639&active=true&closed=false&limit=200&order=startTime&ascending=true`);
-  return Array.isArray(ev) ? ev : [];
+  const now = Date.now(), list = await usGames("nba", now - 86400e3, now + 5 * 86400e3);
+  const out = await Promise.all(list.map(async (e) => { const ev = await usEvent(e.slug).catch(() => null); if (!ev) return null;
+    return { slug: e.slug, startTime: e.start || ev.startTime, teams: [{ abbreviation: e.away, ordering: "away" }, { abbreviation: e.home, ordering: "home" }], markets: usMarkets(ev, "nba") }; }));
+  return out.filter(Boolean);
 }
 
 // One game from an event: { key, away, home, start (ISO), date (ET day), event }. The event's own team list says who is away / home.

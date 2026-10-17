@@ -302,6 +302,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
 { const { tdCodeName } = await import("../lib/mybets.js"); const N = ["D'Andre Swift", "Cam Skattebo", "Jacory Croskey-Merritt", "Caleb Williams", "Darnell Mooney", "Dan Moore"];
   ok(tdCodeName("dswi", N) === "D'Andre Swift" && tdCodeName("camska", N) === "Cam Skattebo" && tdCodeName("jacomer", N) === "Jacory Croskey-Merritt" && tdCodeName("dmoo", N) === null && tdCodeName("darmoo", N) === "Darnell Mooney",
     "bets: Polymarket TD codes map to names (1-letter first names too); a tie keeps the code"); }
+{ const { usPlayerNames } = await import("../lib/mybets.js");
+  const ev = { markets: [{ slug: "astatc-nfl-lac-kc-2026-10-18-td-ladmcc-gte1", titleShort: "Ladd McConkey 1+ TD", marketSides: [{ long: true, team: { abbreviation: "lac" } }, { long: false, team: { abbreviation: "lac" } }] },
+    { slug: "astatc-nfl-ari-lar-2026-10-18-td-pucnac-gte1", titleShort: "Puka Nacua 1+ TD", marketSides: [{ long: true, team: { abbreviation: "lar" } }] }, { slug: "asc-nfl-lac-kc-2026-10-18-neg-4pt5", marketSides: [] }] };
+  const u = usPlayerNames(ev);
+  ok(u["astatc-nfl-lac-kc-2026-10-18-td-ladmcc-gte1"].name === "Ladd McConkey" && u["astatc-nfl-lac-kc-2026-10-18-td-ladmcc-gte1"].team === "LAC" && u["astatc-nfl-ari-lar-2026-10-18-td-pucnac-gte1"].team === "LA" && !u["asc-nfl-lac-kc-2026-10-18-neg-4pt5"],
+    "bets: a TD leg's real name and team come from the Polymarket US event (ladmcc -> Ladd McConkey, LAC)"); }
 { const { buildPaper, gradePaper } = await import("../lib/paper.js");
   const game = (k, hs, ml, win, extra = {}) => ({ key: k, away: k.split(" @ ")[0], home: k.split(" @ ")[1], started: false, final: false, poly: { spread: { homeSpread: hs }, ml: { home: ml, away: 1 - ml } }, winPct: win, td: [], ...extra });
   const data = { games: [game("A @ B", -10.5, 0.86, 86), game("C @ D", -12, 0.9, 90), game("E @ F", -3, 0.6, 60), game("G @ H", -7, 0.8, 79),
@@ -511,6 +517,26 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const saved = await getJSON(K.tdpx(2097, 7, "KC @ BUF")), hist = await getRedis().lrange("tdpxhist:2097:7:KC @ BUF", 0, -1);
     ok(n1 === 2 && n2 === 2 && saved["A 1+ TD"].ask === 0.5 && saved["B 1+ TD"].ask === 0.34 && saved["C 1+ TD"].ask === 0.41 && hist.length === 2 && JSON.parse(hist[1]).src === "pin30",
       "30-min TD prices: first save, then C added and B moved, A's halving kept for the snapshot guard, history row written", { n1, n2, saved }); }
+  { // 10/17: a player Polymarket no longer lists drops out of the saved TD prices
+    const { mergeTdPrices } = await import("../pages/api/pinnaclepull.js"); const { getJSON, K, getRedis } = await import("../lib/redis.js"); const G = { key: "KC @ BUF", week: 7 };
+    const n3 = await mergeTdPrices(getRedis(), 2097, G, { "A 1+ TD": { ask: 0.2, bid: 0.18 }, "B 1+ TD": { ask: 0.34, bid: 0.32 } }, "t3"), saved = await getJSON(K.tdpx(2097, 7, "KC @ BUF"));
+    ok(n3 === 1 && !saved["C 1+ TD"] && saved["A 1+ TD"].ask === 0.5 && saved["B 1+ TD"].ask === 0.34, "TD prices: a player no longer listed is dropped, a held halving stays", { n3, saved }); }
+  { // 10/17 (owner: "it needs to match my app"): Polymarket US markets -> the lines the card reads
+    const { usMarkets } = await import("../lib/polyus.js"); const { parseGame, statPropsFromMarkets } = await import("../lib/poly.js");
+    const q = (v) => ({ value: String(v), currency: "USD" }), side = (d, long, t) => ({ description: d, long, ...(t ? { team: { abbreviation: t } } : {}) });
+    const sp = (line, bid, ask) => ({ slug: `asc-x-${line}`, sportsMarketType: "football_team_full_game_spread", line, bestBidQuote: q(bid), bestAskQuote: q(ask), marketSides: [side(String(line), true, "lar"), side(String(-line), false, "sea")] });
+    const tot = (line, bid, ask) => ({ slug: `tsc-x-${line}`, sportsMarketType: "football_team_full_game_total", line, bestBidQuote: q(bid), bestAskQuote: q(ask), marketSides: [side("Over", true), side("Under", false)] });
+    const ev = { markets: [{ slug: "aec-x", sportsMarketType: "football_team_full_game_winner", bestBidQuote: q(0.6), bestAskQuote: q(0.61), marketSides: [side("Rams", true, "lar"), side("Seahawks", false, "sea")] },
+      sp(-2.5, 0.5, 0.51), sp(-3.5, 0.42, 0.43), sp(-1.5, 0.55, 0.56), { ...sp(-2.5, 0.3, 0.31), sportsMarketType: "football_team_first_half_spread", slug: "h1" },
+      tot(44.5, 0.49, 0.5), tot(45.5, 0.45, 0.46), tot(43.5, 0.53, 0.54),
+      { slug: "astatc-td-pucnac-gte1", sportsMarketType: "football_player_touchdowns", line: 1, titleShort: "Puka Nacua 1+ TD", bestBidQuote: q(0.59), bestAskQuote: q(0.6), marketSides: [side("Yes", true, "lar"), side("No", false, "lar")] },
+      { slug: "astatc-td-pucnac-gte2", sportsMarketType: "football_player_touchdowns", line: 2, titleShort: "Puka Nacua 2+ TD", bestBidQuote: q(0.1), bestAskQuote: q(0.11), marketSides: [side("Yes", true, "lar"), side("No", false, "lar")] },
+      { slug: "astatc-recyd-x", sportsMarketType: "football_player_receiving_yards", line: 60, titleShort: "Puka Nacua 60+ Rec Yds", bestBidQuote: q(0.7), bestAskQuote: q(0.72), marketSides: [side("Yes", true, "lar"), side("No", false, "lar")] }] };
+    const ms = usMarkets(ev, "nfl"), g = parseGame(ms, "LA", "SEA"), td = ms.filter((m) => m.sportsMarketType === "anytime_touchdowns"), st = statPropsFromMarkets(ms);
+    ok(g.ml && g.ml.away === 0.61 && g.ml.home === 0.4 && g.spread.homeSpread === 2.5 && g.spread.away === 0.51 && g.spread.home === 0.5 && g.total.line === 44.5 && g.total.over === 0.5 && g.total.under === 0.51
+      && g.alts.some((a) => a.team === "SEA" && a.line === 3.5 && a.price === 0.58) && !g.alts.some((a) => a.price === 0.31) && g.talts.some((a) => a.side === "under" && a.line === 45.5 && a.price === 0.55)
+      && g._mkt.spread.tok.slug === "asc-x--2.5" && g._mkt.spread.tok.flip === true && td.length === 1 && td[0].question === "Puka Nacua 1+ touchdowns" && st[0].line === 59.5 && st[0].stat === "rec_yds",
+      "Polymarket US: moneyline / spread / total at the ask (other side = 1 - bid), every alternate, no half markets, TD 1+ only, 60+ yards = Over 59.5", { g, td, st }); }
   { // 10/16 (owner's pass): ESPN "ruled out" news joins the starters-out count before the official report says Out (Hurts: official "DNP" Thursday, ESPN Out)
     const { withEspnOuts } = await import("../lib/paper.js"); const { startersOut } = await import("../lib/snaps.js");
     const rows = [{ home: "PHI", away: "DEN", kickoff: "2026-10-05T17:00:00Z" }], kick = "2026-10-18T17:00:00Z";
