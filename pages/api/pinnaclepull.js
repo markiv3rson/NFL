@@ -4,7 +4,8 @@
 import { savePinnacle, pinnacleFailed, pinnacleOk } from "../../lib/pinnacle";
 import { SEASON } from "../../lib/games";
 import { getRedis } from "../../lib/redis";
-import { fetchEvents, gameLines, bookDepth, tdProps } from "../../lib/poly";
+import { fetchEvents, gameLines, bookDepth, playerProps } from "../../lib/poly";
+import { recordProps } from "../../lib/props";
 import { getJSON, setJSON, pushCapped, K } from "../../lib/redis";
 import { isThinMarket } from "../../lib/odds";
 import { lineMovePick, lineMoveTotalPick } from "../../lib/stack";
@@ -57,7 +58,9 @@ export default async function handler(req, res) {
       const [sb, tb] = await Promise.all([mk(M.spread), mk(M.total)]);
       if (g.week != null && (raw.alts || raw.talts)) await getRedis().set(`alts:${SEASON}:${g.week}:${g.key}`, JSON.stringify({ t, alts: raw.alts || null, talts: raw.talts || null })).catch(() => 0);   // 10/15: alternate prices refresh every 30 min (the card drops them after 3 h; snapshots alone left them stale)
       await recordShadow(getRedis(), SEASON, g, p, pin, sb, tb, t).catch(() => 0);
-      await tdProps(events, g.away, g.home).then((px) => mergeTdPrices(getRedis(), SEASON, g, px, t)).catch(() => 0);   // TD prices every 30 min (10/16)
+      const pp = await playerProps(events, g.away, g.home).catch(() => null);   // one read of the "-player-props" event
+      if (pp) { await mergeTdPrices(getRedis(), SEASON, g, pp.td, t).catch(() => 0);   // TD prices every 15 min (10/16)
+        await recordProps(getRedis(), SEASON, g, pp.stats, t).catch(() => 0); }   // player stat props, first + latest price (10/17)
       return { hs: p.spread ? p.spread.homeSpread : null, h: p.spread ? p.spread.home : null, tl: p.total ? p.total.line : null, o: p.total ? p.total.over : null,
         ...(sb ? { sb } : {}), ...(tb ? { tb } : {}) }; };
     const n = await savePinnacle(getRedis(), SEASON, t, "pin30", polyFor); await pinnacleOk(getRedis());
