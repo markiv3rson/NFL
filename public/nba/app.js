@@ -1,6 +1,6 @@
 // NBA Slate — front end. The NFL app's current layout (10/15), NBA data only.
 // Data (merged site: every NBA route lives under /api/nba): /api/slate (Polymarket lines + model + cards + parlays), /api/models, /api/mybets, /api/modelbets, /api/alerts.
-let S = null, TEAMS = {}, DETAIL = null, LASTY = 0, MODELS = null, BETS = null, MODELBETS = null, FUT = null;
+let S = null, TEAMS = {}, DETAIL = null, LASTY = 0, MODELS = null, BETS = null, MODELBETS = null, FUT = null, MBDAY = null;
 const $ = (id) => document.getElementById(id);
 const dash = '<span class="dim">—</span>';
 const esc = (t) => String(t == null ? "" : t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -178,8 +178,18 @@ function renderLines() {
   if (DETAIL) { const g = S.games.find((x) => x.key === DETAIL); if (g) return renderDetail(g); DETAIL = null; }
   setBg(null); linesBg();
   $("detail").style.display = "none"; $("lines").style.display = "";
-  $("lines").innerHTML = changedBox() + `<div class="tiles">${S.games.length ? S.games.map(tile).join("") : '<div class="s dim">No NBA games on Polymarket right now.</div>'}</div>`;
+  $("lines").innerHTML = changedBox() + (S.games.length ? linesByDay() : '<div class="tiles"><div class="s dim">No NBA games on Polymarket right now.</div></div>');
 }
+// 10/17 (owner: "make everything consistent"): Game Lines stacked one game per row under a header per day with its tip times, like NFL's time slots
+const tipTime = (iso) => (!iso || isNaN(new Date(iso)) ? "TBD" : new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }));
+function linesByDay() {
+  const days = [], by = {};
+  for (const g of [...S.games].sort((a, b) => String(a.date).localeCompare(String(b.date)) || (Date.parse(a.start) || 0) - (Date.parse(b.start) || 0))) { const d = g.date || "TBD"; if (!by[d]) { by[d] = []; days.push(d); } by[d].push(g); }
+  return days.map((d) => { const times = [...new Set(by[d].filter((g) => g.start).map((g) => tipTime(g.start)))];
+    return `<div class="sh labslot">${esc(dayName(d).toUpperCase())}${times.length ? ` <span class="lst">· ${times.map(esc).join(" · ")}</span>` : ""}</div><div class="tiles stack">${by[d].map(tile).join("")}</div>`; }).join("");
+}
+// Model bets headers inside a day (Eastern tip time): EARLY before 7 PM, NIGHT 7-9:59 PM, LATE 10 PM on
+function nbaSlot(iso) { const h = Number(new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone: "America/New_York" }).format(new Date(iso))); return h < 19 ? "EARLY GAMES" : h < 22 ? "NIGHT GAMES" : "LATE GAMES"; }
 
 // ---------- the game page: MONEYLINE / SPREAD / TOTALS, each MARKET left, MODEL right
 function startsIn(g) {
@@ -332,13 +342,20 @@ function renderBets() {
   const rowsOf = (a, settled) => a.map((e) => `<div class="betwrap"><div class="row"><span>${esc(e.title)}${e.outcome ? ` — ${esc(e.outcome)}` : ""}</span><span>${settled ? (e.result === "win" ? '<span class="g">Won</span>' : e.result === "loss" ? '<span class="r">Lost</span>' : '<span class="y">Sold</span>') + " " + cMoney(e.pl) : e.value != null ? "$" + e.value.toFixed(2) : ""}</span></div>` +
     `<div class="s" style="padding:0 0 6px 8px">${money(e.cost)}${e.price ? ` at ${Math.round(e.price * 100)}¢` : ""}${e.shares ? ` · ${e.shares} shares` : ""}</div>${stampFor(e)}</div>`).join("");
   const open = [...document.querySelectorAll("#record-mine .drop.open")].map((e) => e.id);
-  $("record-mine").innerHTML = ticketRow() + `<div class="stats" style="margin-top:10px"><div class="stat"><div class="k">RECORD</div><div class="v ${rc.pct >= 55 ? "g" : rc.pct >= 50 ? "y" : "r"}">${rc.w || 0}–${rc.l || 0}</div><div class="k2">${rc.pct == null ? "—" : rc.pct + "% won"}</div></div>` +
+  // 10/17 (owner: "make everything consistent"): a day drop-down like NFL's week drop-down; it picks which settled bets show (open bets always show)
+  const dayOf = (e) => { const t = e.closedAt || (e.resolved && e.resolved.t) || (e.sold && e.sold.t); return t ? new Date(t).toLocaleDateString("en-CA", { timeZone: "America/New_York" }) : null; };
+  const days = [...new Set((j.settled || []).map(dayOf).filter(Boolean))].sort();
+  const sel = MBDAY === "all" || days.includes(MBDAY) ? MBDAY : (days[days.length - 1] || "all");
+  const settled = (j.settled || []).filter((e) => sel === "all" || dayOf(e) === sel);
+  const dayPick = `<div class="wksel"><select id="mb-day" aria-label="Day">${days.map((d) => `<option value="${d}"${sel === d ? " selected" : ""}>${dayName(d)}</option>`).join("")}<option value="all"${sel === "all" ? " selected" : ""}>Season</option></select></div>`;
+  $("record-mine").innerHTML = dayPick + ticketRow() + `<div class="stats" style="margin-top:10px"><div class="stat"><div class="k">RECORD</div><div class="v ${rc.pct >= 55 ? "g" : rc.pct >= 50 ? "y" : "r"}">${rc.w || 0}–${rc.l || 0}</div><div class="k2">${rc.pct == null ? "—" : rc.pct + "% won"}</div></div>` +
     `<div class="stat"><div class="k">PROFIT</div><div class="v ${(rc.pl || 0) >= 0 ? "g" : "r"}">${(rc.pl || 0) >= 0 ? "+" : "−"}$${Math.abs(rc.pl || 0).toFixed(2)}</div><div class="k2">settled</div></div>` +
     `<div class="stat"><div class="k">STAKED</div><div class="v">$${(rc.staked || 0).toFixed(2)}</div><div class="k2">settled</div></div></div>` +
     `<div class="card" style="margin-top:10px"><div class="sec"><div class="sh">Open</div>${(j.open || []).length ? rowsOf(j.open, false) : '<div class="s dim">None.</div>'}</div>` +
-    `<div class="fold" data-drop="settled"><span>Settled bets</span><span>▾</span></div><div class="drop" id="settled">${(j.settled || []).length ? rowsOf(j.settled, true) : '<div class="s dim">None yet.</div>'}</div></div>` +
+    `<div class="fold" data-drop="settled"><span>Settled bets</span><span>▾</span></div><div class="drop" id="settled">${settled.length ? rowsOf(settled, true) : '<div class="s dim">None yet.</div>'}</div></div>` +
     `<div class="center"><button class="btn" id="sync-btn">↻ Sync account</button></div>`;
   for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
+  const md = $("mb-day"); if (md && md.tagName === "SELECT") md.onchange = () => { MBDAY = md.value; renderBets(); };
   $("sync-btn").onclick = async () => { toast("Syncing…", 0); try { const d = await (await fetch("/api/nba/mybets?sync=1", { cache: "no-store" })).json(); BETS = d; renderBets(); toast(d.sync && d.sync.ok ? `Synced ${d.sync.positions} positions.` : `Sync: ${(d.sync && d.sync.note) || "done"}`); } catch (e) { toast("Sync failed: " + e.message, 10000); } };
 }
 // Model bets: day tabs at the top, type sub-tabs docked above the bottom bar, one list in tip-off order (lib/parlays.js)
@@ -375,7 +392,9 @@ function renderLabList() {
   const sel = LABDAY && days.includes(LABDAY) ? LABDAY : order.find((d) => labParlays(d, LABTYPE).length) || (S && S.dates && S.dates[0]) || days[0];
   const chips = `<div class="wksel"><select id="lab-wk" aria-label="Day">${[...days].reverse().map((d) => `<option value="${esc(d)}"${sel === d ? " selected" : ""}>${dayName(d)}</option>`).join("")}</select></div>`;   // 10/17 (owner): a drop-down, first recorded day first
   const xs = sel ? labParlays(sel, LABTYPE) : [];
-  $("lab").innerHTML = chips + (xs.length ? `<div class="pgrid" style="margin-top:6px">${xs.map((x) => pBlock(x.title, x.p, x.across)).join("")}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
+  const slotTimes = {}; for (const x of xs) if (x.start && !x.across) { const sl = nbaSlot(x.start), tt = tipTime(x.start); (slotTimes[sl] = slotTimes[sl] || []).includes(tt) || slotTimes[sl].push(tt); }
+  let lastSlot = null; const blocks = xs.map((x) => { const sl = x.start && !x.across ? nbaSlot(x.start) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl; return h + pBlock(x.title, x.p, x.across); });
+  $("lab").innerHTML = chips + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
   const lw = $("lab-wk"); if (lw && lw.tagName === "SELECT") lw.onchange = () => { LABDAY = lw.value; renderLabList(); };
 }
 

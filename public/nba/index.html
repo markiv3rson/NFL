@@ -129,6 +129,10 @@
   .mcard { border-color:rgba(183,148,255,.6); }
   /* tiles */
   .tiles { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:10px; }
+  .tiles.stack { grid-template-columns:1fr !important; margin-top:8px; }   /* 10/17 (owner): Game Lines stacked, one game per row */
+  #lines > .labslot:first-of-type { margin-top:10px; }
+  .labslot { grid-column:1 / -1; margin:26px 2px 4px; padding-bottom:7px; font-size:17px; font-weight:900; letter-spacing:.07em; color:#fff; border-bottom:2px solid #a98bff; }   /* 10/17 (owner): bigger, white, purple line -- it blended in with the parlays */
+  .pgrid > .labslot:first-child { margin-top:8px; } .labslot .lst { font-size:12.5px; color:var(--faint); font-weight:600; letter-spacing:0; text-transform:none; }
   @media (min-width:760px) { .tiles { grid-template-columns:repeat(3,minmax(0,1fr)); } }
   .tile { position:relative; overflow:hidden; background:var(--card); border:1px solid rgba(255,255,255,.28); border-radius:16px; padding:12px; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.3); text-align:left; font:inherit; color:inherit; }
   .tile .mid.lvmid { display:inline-flex; flex-direction:column; align-items:center; line-height:1.15; } .tile .sr { white-space:nowrap; } .tile .lv { font-size:10.5px; font-weight:800; letter-spacing:.04em; margin-top:2px; } .tile .lv.r { color:var(--red); }
