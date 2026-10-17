@@ -302,6 +302,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
 { const { tdCodeName } = await import("../lib/mybets.js"); const N = ["D'Andre Swift", "Cam Skattebo", "Jacory Croskey-Merritt", "Caleb Williams", "Darnell Mooney", "Dan Moore"];
   ok(tdCodeName("dswi", N) === "D'Andre Swift" && tdCodeName("camska", N) === "Cam Skattebo" && tdCodeName("jacomer", N) === "Jacory Croskey-Merritt" && tdCodeName("dmoo", N) === null && tdCodeName("darmoo", N) === "Darnell Mooney",
     "bets: Polymarket TD codes map to names (1-letter first names too); a tie keeps the code"); }
+{ const { usPlayerNames } = await import("../lib/mybets.js");
+  const ev = { markets: [{ slug: "astatc-nfl-lac-kc-2026-10-18-td-ladmcc-gte1", titleShort: "Ladd McConkey 1+ TD", marketSides: [{ long: true, team: { abbreviation: "lac" } }, { long: false, team: { abbreviation: "lac" } }] },
+    { slug: "astatc-nfl-ari-lar-2026-10-18-td-pucnac-gte1", titleShort: "Puka Nacua 1+ TD", marketSides: [{ long: true, team: { abbreviation: "lar" } }] }, { slug: "asc-nfl-lac-kc-2026-10-18-neg-4pt5", marketSides: [] }] };
+  const u = usPlayerNames(ev);
+  ok(u["astatc-nfl-lac-kc-2026-10-18-td-ladmcc-gte1"].name === "Ladd McConkey" && u["astatc-nfl-lac-kc-2026-10-18-td-ladmcc-gte1"].team === "LAC" && u["astatc-nfl-ari-lar-2026-10-18-td-pucnac-gte1"].team === "LA" && !u["asc-nfl-lac-kc-2026-10-18-neg-4pt5"],
+    "bets: a TD leg's real name and team come from the Polymarket US event (ladmcc -> Ladd McConkey, LAC)"); }
 { const { buildPaper, gradePaper } = await import("../lib/paper.js");
   const game = (k, hs, ml, win, extra = {}) => ({ key: k, away: k.split(" @ ")[0], home: k.split(" @ ")[1], started: false, final: false, poly: { spread: { homeSpread: hs }, ml: { home: ml, away: 1 - ml } }, winPct: win, td: [], ...extra });
   const data = { games: [game("A @ B", -10.5, 0.86, 86), game("C @ D", -12, 0.9, 90), game("E @ F", -3, 0.6, 60), game("G @ H", -7, 0.8, 79),

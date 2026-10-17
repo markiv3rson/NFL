@@ -272,7 +272,7 @@ function totalCard(g, i) {
 const GAME_STATUS = /out|doubtful|questionable/i;
 // team logo, transparent PNG, keyed off the same team code the row already carries. WAS/KC have no
 // clean current mark on the ESPN CDN, so those two come from a community alt-logo set instead.
-const LOGO_OVERRIDES = { WAS: "https://raw.githubusercontent.com/ajreinhard/data-viz/master/alt-logo/WAS.png", KC: "https://raw.githubusercontent.com/ajreinhard/data-viz/master/alt-logo/KC.png" };
+const LOGO_OVERRIDES = { WAS: "https://raw.githubusercontent.com/ajreinhard/data-viz/master/alt-logo/WAS.png", KC: "/kc.png?v=1" };   // KC = the owner's logo (10/17)
 const logoUrl = (team) => (team ? LOGO_OVERRIDES[team] || `https://a.espncdn.com/i/teamlogos/nfl/500/${team}.png` : "");
 // Team logo next to team names on every card (game header + TD team headers). Same logo source as the TD rows.
 function tlogo(team) { return team ? `<img class="tlogo" src="${logoUrl(team)}" alt="" onerror="this.style.display='none'">` : ""; }
@@ -447,12 +447,12 @@ function tdTeam(name) {
     if ((m && m[1].toLowerCase() === ini && normNm(m[2]) === last) || full === normNm(name)) hits.add(r.team); }
   return hits.size === 1 ? [...hits][0] : null;
 }
-function logoLabel(label) {
+function logoLabel(label, team = null) {
   const L = String(label || "");
   let m = L.match(/^([A-Z]{2,4}) ([+-]\d[\d.]*)(.*)$/); if (m) return `${tlogo(m[1])}${esc(m[1])} ${esc(m[2])}${esc(m[3])}`;
   m = L.match(/^([A-Z]{2,4}) ML$/); if (m) return `${tlogo(m[1])}${esc(L)}`;
   m = L.match(/^(.*?)(\b[A-Z]{2,4}\b) @ ([A-Z]{2,4})\b(.*)$/); if (m) return `${esc(m[1])}${tlogo(m[2])}${esc(m[2])} @ ${tlogo(m[3])}${esc(m[3])}${esc(m[4])}`;
-  m = L.match(/^(.+?) 1\+ TD(.*)$/); if (m) { const tm0 = tdTeam(m[1]); return `${tlogo(tm0)}${esc(L)}`; }
+  m = L.match(/^(.+?) \d\+ TD(.*)$/); if (m) { const tm0 = team || tdTeam(m[1]); return `${tlogo(tm0)}${esc(L)}`; }
   return esc(L);
 }
 function betRow(b) { return `<div class="betwrap">${betRowInner(b)}${stampFor(b)}</div>`; }
@@ -460,7 +460,7 @@ function betRowInner(b) {
   if (b.source === "account") {   // bet recorded automatically from your Polymarket account
     const st = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Even" : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : (b.waiting ? '<span class="y">waiting for TD results</span>' : '<span class="dim">open</span>');
     const name = b.picks && b.picks.length ? `Combo · ${b.picks.length} picks` : `${esc(b.title)}${b.outcome ? ` — ${esc(b.outcome)}` : ""}`;
-    const picks = b.picks && b.picks.length ? b.picks.map((p) => `<div class="s" style="padding:0 0 0 16px">${p.result ? RESMARK[p.result] + " " : "• "}${logoLabel(p.label)}${!p.result && legFlipped(p.label) ? ' <span class="y">⚠ app now picks the other side</span>' : ""}</div>`).join("") : "";
+    const picks = b.picks && b.picks.length ? b.picks.map((p) => `<div class="s" style="padding:0 0 0 16px">${p.result ? RESMARK[p.result] + " " : "• "}${logoLabel(p.label, p.team)}${!p.result && legFlipped(p.label) ? ' <span class="y">⚠ app now picks the other side</span>' : ""}</div>`).join("") : "";
     return `<div class="row"><span>${name} <span class="dim">wk ${b.week ?? "?"}</span></span><span>${st}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
       `<div class="s" style="padding:0 0 ${picks ? 2 : 6}px 8px">${money(b.cost)}${b.price != null ? ` at ${b.price < 0.005 ? "<1" : Math.round(b.price * 100)}¢` : ""} · ${b.sold ? `sold early for ${money(Math.max(0, (b.cost || 0) + (b.pl || 0)))}` : `pays ${money(b.toWin)} if it wins`}</div>` + (picks ? `<div style="padding-bottom:6px">${picks}</div>` : "");
   }
