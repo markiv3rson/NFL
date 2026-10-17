@@ -452,6 +452,14 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   const none = fu.buildFutures(sim, []);
   ok(none.ok && none.sections.every((x) => x.rows.every((r) => r.market === null)) && none.polymarket === false, "futures: still works when Polymarket can't be read (model numbers only)");
   const rp = sim.report; ok(rp.vs_market["2025"] && rp.champion.avg_chance_given_to_real_champion_pct > rp.champion.uniform_pct && rp.wins.mae_prior_with_roster <= rp.wins.mae_prior_without_roster, "futures: the shipped backtest beats guessing, and the roster term helps", rp.champion);
+  { // 10/17: Polymarket US futures events -> the same sections (title from Polymarket US, "Boston 51+ wins" = Over 50.5, no quote = no price)
+    const q = (v) => ({ value: String(v) }), mk = (slug, t, bid, ask, line) => ({ slug, line: line ?? null, bestBidQuote: bid == null ? null : q(bid), bestAskQuote: ask == null ? null : q(ask), marketSides: [{ long: true, team: { abbreviation: t } }, { long: false, team: { abbreviation: t } }] });
+    const us = fu.usFutures([{ slug: "nba-champ-2027-06-18-w", markets: [mk("a", "okc", 0.23, 0.24), mk("b", "sa", 0.22, 0.23), mk("c", "atl", null, null)] },
+      { slug: "nba-2027-04-11-wintotals", markets: [mk("d", "bos", 0.55, 0.57, 51)] }, { slug: "nba-mvp-2027-05-17-w", markets: [mk("e", "okc", 0.3, 0.31)] }, { slug: "nba-bos-det-2026-10-20", markets: [] }]);
+    const g = fu.buildFutures(sim, us), chU = g.sections.find((x) => x.id === "champion"), okc = chU.rows.find((r) => r.team === "OKC"), sas = chU.rows.find((r) => r.team === "SAS"), atl = chU.rows.find((r) => r.team === "ATL");
+    const bos = g.wins.find((w) => w.team === "BOS");
+    ok(us.length === 2 && chU.market && okc.market === 23.5 && sas.market === 22.5 && atl.market === null && bos.line === 50.5 && bos.marketOver === 56,
+      "futures: Polymarket US events read (champion midpoints, GS/SA codes mapped, 51+ wins = Over 50.5, no quote = no price; MVP and games skipped)", { okc, sas, atl, bos }); }
   const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
   ok(/\/api\/nba\/futures/.test(app) && /m-fut/.test(app) && /futuresRows\(/.test(app), "page: Futures section on the Models tab (rows, no notes)"); }
 
