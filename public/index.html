@@ -223,6 +223,8 @@
   .tdl { margin-top:10px; padding:0; }
   .tdr { position:relative; overflow:hidden; padding:9px 12px; border-top:1px solid var(--line2); cursor:pointer; }
   .tdr:first-child { border-top:none; }
+  .tdr .tlogo { width:20px; height:20px; flex:0 0 20px; margin:0; } .tdr .l1 { display:flex; align-items:center; gap:5px; white-space:nowrap; overflow:hidden; } .tdr .l1 .pill { flex:0 0 auto; }   /* 10/17 (owner): one row look for both TD boxes */
+  .tdr.best .bp { font-size:15px; font-weight:800; } .tdr .nogap { font-size:12px; }
   .tdr .wmc { position:absolute; left:46%; top:50%; width:84px; height:84px; margin:-42px 0 0 -42px; opacity:.14; object-fit:contain; pointer-events:none; }
   .tdr .in { position:relative; display:flex; align-items:center; gap:8px; }
   .tdr .rk { width:20px; font-size:11px; font-weight:700; color:var(--faint); }
@@ -273,6 +275,10 @@
   .pagewm { position:fixed; inset:0; z-index:-1; pointer-events:none; display:flex; align-items:center; overflow:hidden; }
   .pagewm img { width:50%; height:100%; object-fit:contain; transform:scale(1.25); opacity:.2; }
   .pagewm::after { content:""; position:absolute; inset:0; background:rgba(0,0,0,.4); }
+  /* 10/17 (owner): NFL Game Lines (the list, not a game page) gets the home screen's Raiders photo, the game cards see-through over it */
+  html.lines-on .pagewm { background:linear-gradient(180deg,rgba(0,0,0,.30),rgba(0,0,0,.50) 60%,rgba(0,0,0,.70)),url(/home-bg.jpg) center 22%/cover no-repeat,#000; }
+  html.lines-on .pagewm::after { display:none; }
+  html.lines-on #lines .tile, html.lines-on #panel-td .card { background:rgba(8,8,12,.22); border-color:rgba(255,255,255,.12); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* see-through, no frosted haze */
   .dtop .t .tlogo { width:30px; height:30px; vertical-align:-6px; margin:0 8px 0 0; } .dtop .t:last-child .tlogo { margin:0 0 0 8px; }
   .prl > .s { text-transform:uppercase; letter-spacing:.04em; font-size:13px; font-weight:700; color:#eef0f4; }
   /* game page: the two team logos split the whole page in half behind the cards (away left, home right) */
