@@ -94,7 +94,7 @@
   .p-n { color:var(--dim); border-color:var(--line); }
   .warn { font-size:12px; color:var(--yellow); margin-top:6px; }
   .warn-t { color:var(--yellow); }
-  .live { width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); display:inline-block; margin-right:4px; vertical-align:1px; }
+  .live:not(.tile) { width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); display:inline-block; margin-right:4px; vertical-align:1px; }   /* 10/17: the dot rule no longer crushes a live game tile into a 7px circle */
   .cover { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; text-align:center; background:rgba(255,107,107,.1); padding:10px; }
   .cover b { color:var(--red); font-size:15px; letter-spacing:.08em; } .cover.won { background:rgba(74,222,128,.1); } .cover.won b { color:var(--green); }
   .fin .inner { opacity:.22; }
@@ -132,7 +132,8 @@
   /* 10/16 (owner): on a computer the page uses the whole screen; the phone layout (under 1100px) is unchanged */
   @media (min-width:1100px) { .wrap { max-width:none; padding-left:28px; padding-right:28px; } .tiles { grid-template-columns:repeat(4,minmax(0,1fr)); } .chips.dock { justify-content:center; } }
   @media (min-width:1600px) { .tiles { grid-template-columns:repeat(5,minmax(0,1fr)); } }
-  .labslot { grid-column:1 / -1; margin:14px 2px 0; padding-bottom:6px; border-bottom:1px solid var(--line); } .labslot .lst { color:var(--faint); font-weight:600; letter-spacing:0; text-transform:none; }
+  .labslot { grid-column:1 / -1; margin:26px 2px 4px; padding-bottom:7px; font-size:17px; font-weight:900; letter-spacing:.07em; color:#fff; border-bottom:2px solid #a98bff; }   /* 10/17 (owner): bigger, white, purple line -- it blended in with the parlays */
+  .pgrid > .labslot:first-child { margin-top:8px; } .labslot .lst { font-size:12.5px; color:var(--faint); font-weight:600; letter-spacing:0; text-transform:none; }
   .tile { position:relative; overflow:hidden; background:var(--card); border:1px solid rgba(255,255,255,.28); border-radius:16px; padding:12px; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.3); text-align:left; font:inherit; color:inherit; }
   .tile .mid.lvmid { display:inline-flex; flex-direction:column; align-items:center; line-height:1.15; } .tile .sr { white-space:nowrap; } .tile .lv { font-size:10.5px; font-weight:800; letter-spacing:.04em; margin-top:2px; } .tile .lv.r { color:var(--red); }
   .dtop .s3.r { color:var(--red); }

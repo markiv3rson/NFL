@@ -1174,5 +1174,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
 { const rj = (f) => JSON.parse(readFileSync(new URL("../" + f, import.meta.url), "utf8")).build.watchPatterns;
   ok(JSON.stringify(rj("railway.json")) === '["/railway-model-service/**"]' && JSON.stringify(rj("railway-model-service/railway.json")) === '["/railway-model-service/**"]', "NFL model service redeploys only on NFL model changes");
   ok(JSON.stringify(rj("nba/railway-model-service/railway.json")) === '["/nba/railway-model-service/**"]', "NBA model service redeploys only on NBA model changes"); }
+// ---------- 10/17: live tiles keep their size; NFL time-slot headers stand out
+{ const h = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
+  ok(/\.live:not\(\.tile\) \{ width:7px/.test(h) && !/\n  \.live \{ width:7px/.test(h), "the 7px 'live' dot rule never applies to a live game tile (it crushed live tiles into small circles)");
+  ok(/\.labslot \{[^}]*font-size:17px;[^}]*color:#fff;[^}]*border-bottom:2px solid #a98bff;/.test(h), "Model bets time-slot headers: 17px, white, purple line"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);

@@ -45,6 +45,7 @@ Read this first in every new chat. It carries the owner's rules and what has alr
 7. "Tests pass" only means the code runs — never say it as if the predictions are right. Give accuracy numbers instead.
 8. Be upfront about gaps: say what a model can't see.
 9. Phone alerts / login: don't build or ask unless the owner raises it.
+11. **ONE SPORT PER REQUEST (owner 10/17): "when I tell you to make an update on one thing, you better not update the other."** An NFL request changes only NFL files (`lib/`, `pages/api/` outside `nba/`, `public/index.html`, `public/app.js`, `railway-model-service/`); an NBA request only NBA files (`nba/`, `pages/api/nba/`, `public/nba/`). The shared pieces (`public/shell.js`, `public/shell.css`, the home screen) serve both: say so and ask before changing them. A fix that would also apply to the other sport: ask first ("fix NBA too?").
 10. The owner handles Railway settings. Never paste secrets (an Odds API key was once shared in a screenshot — don't repeat it).
 
 ## What the app shows (owner's layout rules) [HISTORY -- bullets dated before 10/15 may be stale; where one disagrees with CURRENT STATE, CURRENT STATE wins]

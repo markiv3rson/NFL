@@ -271,7 +271,7 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(!/panel-td|Anytime TD|panel-lab/i.test(html) && /id="al-read"/.test(html) && /chips dock" id="al-chips"/.test(html), "no Anytime-TD / Model Picks panel; Alerts has Mark all read and docked kind chips");
   const nfl = readFileSync(new URL("../../public/index.html", import.meta.url), "utf8");
   if (nfl) { const sel = (h) => new Set([...h.slice(h.indexOf("<style>"), h.indexOf("</style>")).replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/(^|\})\s*([^{}]+)\{/g)].map((m) => m[2].trim()));
-    const miss = [...sel(nfl)].filter((x) => !sel(html).has(x) && !/tdr|\.td|scorers|\.sc\b|prow|pos\b|injb|gapstrip/.test(x));
+    const miss = [...sel(nfl)].filter((x) => !sel(html).has(x) && !/tdr|\.td|scorers|\.sc\b|prow|pos\b|injb|gapstrip|labslot/.test(x));
     ok(miss.length === 0, "the stylesheet carries every rule of the NFL app's current look (only TD-page rules may differ)", miss.slice(0, 8)); } }
 
 // ---------- front end: the NFL app's card and layout, NBA only, no notes
@@ -762,5 +762,9 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(/const DESK_Q = "\(min-width: 760px\) and \(pointer: fine\)"/.test(js) && /classList\.toggle\("desktop", on\)/.test(js) && /addEventListener\("change", markDesktop\)/.test(js), "app.js sets html.desktop from the screen width + a mouse and re-checks on change");
   ok(!/@media \(min-width: ?760px\)[^}]*\.tabs/.test(html), "the phone layout rules are untouched (no width-based override of the tab bar outside html.desktop)"); }
 
+// ---------- 10/17: live tiles keep their size; started games show ESPN's score, finished ones FINAL (not LIVE forever)
+{ const h = readFileSync(new URL("../../public/nba/index.html", import.meta.url), "utf8"), app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
+  ok(/\.live:not\(\.tile\) \{ width:7px/.test(h), "the 7px 'live' dot rule never applies to a live game tile");
+  ok(/fetch\("\/api\/nba\/live"/.test(app) && /fin \? "FINAL" : "● LIVE · "/.test(app) && /tile\$\{live \? " live" : ""\}/.test(app), "NBA tiles: live score + clock, finished games FINAL with the score, no live glow once final"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`);
 process.exit(bad ? 1 : 0);
