@@ -1,4 +1,4 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
-  "build": { "watchPatterns": ["railway-model-service/**"] }
+  "build": { "watchPatterns": ["/nba/railway-model-service/**"] }
 }
