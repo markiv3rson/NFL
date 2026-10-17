@@ -132,6 +132,8 @@
   /* 10/16 (owner): on a computer the page uses the whole screen; the phone layout (under 1100px) is unchanged */
   @media (min-width:1100px) { .wrap { max-width:none; padding-left:28px; padding-right:28px; } .tiles { grid-template-columns:repeat(4,minmax(0,1fr)); } .chips.dock { justify-content:center; } }
   @media (min-width:1600px) { .tiles { grid-template-columns:repeat(5,minmax(0,1fr)); } }
+  .tiles.stack { grid-template-columns:1fr !important; margin-top:8px; }   /* 10/17 (owner): Game Lines stacked, one game per row */
+  #lines > .labslot:first-of-type { margin-top:10px; }
   .labslot { grid-column:1 / -1; margin:26px 2px 4px; padding-bottom:7px; font-size:17px; font-weight:900; letter-spacing:.07em; color:#fff; border-bottom:2px solid #a98bff; }   /* 10/17 (owner): bigger, white, purple line -- it blended in with the parlays */
   .pgrid > .labslot:first-child { margin-top:8px; } .labslot .lst { font-size:12.5px; color:var(--faint); font-weight:600; letter-spacing:0; text-transform:none; }
   .tile { position:relative; overflow:hidden; background:var(--card); border:1px solid rgba(255,255,255,.28); border-radius:16px; padding:12px; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.3); text-align:left; font:inherit; color:inherit; }

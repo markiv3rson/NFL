@@ -311,9 +311,9 @@ function ticketRow() {
 // ---------- Bets: My bets | Model bets
 let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
 function applyBetsView() {
-  const bt = $("bets-title"); if (bt) bt.textContent = BETSVIEW === "model" ? "Model bets" : "My bets";
+  const bt = $("bets-title"); if (bt) bt.textContent = BETSVIEW === "model" ? `Model bets · ${(LAB_TABS.find(([k]) => k === LABTYPE) || [, ""])[1]}` : "My bets";
   const m = BETSVIEW === "model", set = (id, on) => { const e = $(id); if (e) e.style.display = on ? "" : "none"; };
-  set("record-mine", !m); set("lab", m); set("lab-sub", m);
+  set("record-mine", !m); set("lab", m);   // 10/17 (owner): the parlay types are menu sub tabs under Model bets (the docked strip is gone)
   document.querySelectorAll("#bets-sw [data-bv]").forEach((b) => b.classList.toggle("on", b.dataset.bv === BETSVIEW));
   if (m) renderLabList();
 }
@@ -371,10 +371,10 @@ function renderLabList() {
   // opens on the first day that has parlays of this type: today, then the next days, then the most recent past day (never an empty day when a full one exists)
   const order = [...((S && S.dates) || []), ...days.filter((d) => !(S && S.dates && S.dates.includes(d)))];
   const sel = LABDAY && days.includes(LABDAY) ? LABDAY : order.find((d) => labParlays(d, LABTYPE).length) || (S && S.dates && S.dates[0]) || days[0];
-  const chips = `<div class="chips" id="lab-wk">${days.map((d) => `<button data-labw="${esc(d)}" class="${sel === d ? "on" : ""}">${dayName(d)}</button>`).join("")}</div>`;
+  const chips = `<div class="wksel"><select id="lab-wk" aria-label="Day">${[...days].reverse().map((d) => `<option value="${esc(d)}"${sel === d ? " selected" : ""}>${dayName(d)}</option>`).join("")}</select></div>`;   // 10/17 (owner): a drop-down, first recorded day first
   const xs = sel ? labParlays(sel, LABTYPE) : [];
   $("lab").innerHTML = chips + (xs.length ? `<div class="pgrid" style="margin-top:6px">${xs.map((x) => pBlock(x.title, x.p, x.across)).join("")}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
-  if ($("lab-sub")) $("lab-sub").innerHTML = LAB_TABS.map(([k, t]) => `<button data-labt="${k}" class="${LABTYPE === k ? "on" : ""}">${t}</button>`).join("");
+  const lw = $("lab-wk"); if (lw && lw.tagName === "SELECT") lw.onchange = () => { LABDAY = lw.value; renderLabList(); };
 }
 
 // ---------- Models: four tiles, then flat sections (headers with a line, rows two across)
@@ -499,8 +499,10 @@ async function loadSlate() {
 }
 function showPanel(name) {
   let sub = null;   // 10/17 (owner): My bets and Model bets are separate pages under Bets in the menu
-  if (name === "mybets" || name === "modelbets") { sub = name; BETSVIEW = name === "modelbets" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} name = "record"; }
-  if (name === "record" && !sub) sub = BETSVIEW === "model" ? "modelbets" : "mybets";
+  if (/^modelbets-/.test(name)) { const k = name.slice(10); if (LAB_TABS.some(([t]) => t === k)) LABTYPE = k; name = "modelbets"; }   // 10/17 (owner): the parlay types are menu sub tabs under Model bets
+  if (name === "modelbets") sub = `modelbets-${LABTYPE}`;
+  if (name === "mybets" || name === "modelbets") { sub = sub || name; BETSVIEW = name === "modelbets" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} name = "record"; }
+  if (name === "record" && !sub) sub = BETSVIEW === "model" ? `modelbets-${LABTYPE}` : "mybets";
   if (!$("panel-" + name)) name = "lines";
   Shell.setActive(sub || name);   // 10/17: the menu replaces the tab bar
   if (name === "alerts") { ALPREV = alSeen(); if (ALERTS.length) { try { localStorage.setItem("alSeen", ALERTS[0].t); } catch {} } }
@@ -513,7 +515,7 @@ function showPanel(name) {
   if (S) setBg(name === "lines" && DETAIL ? S.games.find((x) => x.key === DETAIL) : null);
 }
 // 10/17: pages switch by the address' #name (the menu links set it): #alerts, #lines, #record, #models; #game=KEY opens a game (from the home screen)
-const PANELS = ["alerts", "lines", "record", "mybets", "modelbets", "models"];
+const PANELS = ["alerts", "lines", "record", "mybets", "modelbets", ...LAB_TABS.map(([k]) => `modelbets-${k}`), "models"];
 let OPEN_GAME = null;
 function routeHash() {
   const h = location.hash || "";
@@ -530,8 +532,6 @@ document.addEventListener("click", (e) => {
   const gt = e.target.closest("[data-game]"); if (gt) { if (!$("panel-lines").classList.contains("on")) showPanel("lines"); openGame(gt.dataset.game); return; }
   const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k && S && S.games.some((x) => x.key === k)) { showPanel("lines"); openGame(k); } return; }
   const bv = e.target.closest("[data-bv]"); if (bv) { BETSVIEW = bv.dataset.bv === "model" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} applyBetsView(); try { window.scrollTo(0, 0); } catch {} return; }
-  const lt = e.target.closest("[data-labt]"); if (lt) { LABTYPE = lt.dataset.labt; renderLabList(); return; }
-  const lw = e.target.closest("[data-labw]"); if (lw) { LABDAY = lw.dataset.labw; renderLabList(); return; }
   const ch = e.target.closest("[data-alk]"); if (ch) { ALFILTER = ch.dataset.alk; renderAlerts(); return; }
   const fu = e.target.closest("[data-fut]"); if (fu) { FUTSEC = fu.dataset.fut; renderModels(); const el = $("m-fut"); if (el) el.classList.add("open"); }
 });

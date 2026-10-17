@@ -17,8 +17,9 @@
   };
   const URL_ = { nfl: "/index.html", nba: "/nba/index.html" };
   const SUB = [["mybets", "My bets"], ["modelbets", "Model bets"]];
-  // 10/17 (owner): the Model bets parlay types are sub tabs under Model bets in the menu (NFL; the NBA page keeps its docked strip)
-  const TYPES = { nfl: [["2", "2 legs"], ["3", "3 legs"], ["4", "4 legs"], ["style", "My style"], ["pts", "Bought"], ["diff", "Diff"]] };
+  // 10/17 (owner): the Model bets parlay types are sub tabs under Model bets in the menu (both sports)
+  const TYPES = { nfl: [["2", "2 legs"], ["3", "3 legs"], ["4", "4 legs"], ["style", "My style"], ["pts", "Bought"], ["diff", "Diff"]],
+    nba: [["sgp", "Same game"], ["sgp_pts", "Bought"], ["best4", "Parlay"], ["fav4", "Favorites"]] };
   const types = (sp) => (TYPES[sp] || []).map(([k, label]) => `<a class="mi ${sp} msub2" data-msp="${sp}" data-mp="modelbets-${k}" href="${URL_[sp]}#modelbets-${k}">${label}</a>`).join("");
   const subs = (sp) => `<div class="mi ${sp} mpar"><span class="ic">${svg("bets")}</span>Bets</div>` + SUB.map(([id, label]) => `<a class="mi ${sp} msub" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><i></i>${label}</a>` + (id === "modelbets" ? types(sp) : "")).join("");
   const item = (sp, id, label, ic) => id === "record" ? subs(sp) : `<a class="mi ${sp}" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><span class="ic">${svg(ic)}</span>${label}<b class="cnt" id="mcnt-${sp}-${id}"></b></a>`;
