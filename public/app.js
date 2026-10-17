@@ -1078,30 +1078,48 @@ function setBg(g) {
 //     • K.Williams TD · 67%
 //                                                         ✓ Won / ✗ Lost
 const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;   // 10/14 audit: "1 picks" / "1 players" / "1 games"
-// Polymarket's payout with the same-game links (10/17; same math as lib/combo.js comboPay -- tests check they agree): a team's win, the Over
-// and its scorers ride together, so Polymarket pays less than the prices multiplied (NO ML + Over + 2 NO TDs: 62x multiplied, Polymarket 33.92x).
+// Polymarket's payout (10/17; same math as lib/combo.js comboPay -- tests check they agree): the links where legs HELP each other count, legs that
+// work AGAINST each other add nothing (Polymarket does not pay for them), minus Polymarket's small cut (0.977, fitted on the owner's two real quotes).
 const LIFT_FE = { tdCover: 1.19, tdOppCover: 0.81, tdOver: 1.23, tdUnder: 0.77 };
 function linkedPay(legs) {
   if (!legs || !legs.length || !legs.every((l) => l.price > 0 && l.price < 1)) return null;
   const side = (l) => l.kind === "spread" || l.kind === "ml";
-  let c = legs.reduce((a, l) => a * l.price, 1), up = 1, down = 1;
+  let c = legs.reduce((a, l) => a * l.price, 1), up = 1;
   for (let i = 0; i < legs.length; i++) for (let j = i + 1; j < legs.length; j++) {
     const a = legs[i], b = legs[j]; let f = 1;
     if (a.game && a.game === b.game) {
-      if (side(a) && side(b)) { f = (a.team === b.team ? Math.min(a.price, b.price) : Math.max(0, a.price + b.price - 1)) / (a.price * b.price); c *= f; continue; }
+      if (side(a) && side(b)) { c *= (a.team === b.team ? Math.min(a.price, b.price) : Math.max(0, a.price + b.price - 1)) / (a.price * b.price); continue; }
       const [x, y] = a.kind === "td" ? [a, b] : [b, a];
       if (x.kind === "td") f = side(y) ? (y.team === x.team ? LIFT_FE.tdCover : LIFT_FE.tdOppCover) : y.kind === "total" ? (y.side === "under" || /^Under/.test(y.label || "") ? LIFT_FE.tdUnder : LIFT_FE.tdOver) : 1;
     }
-    if (f > 1) up *= f; else down *= f;
+    if (f > 1) up *= f;
   }
-  c = Math.min(c * Math.pow(up, 0.75) * down, ...legs.map((l) => l.price));
-  return c > 0 ? 1 / c : null;
+  c = Math.min(c * Math.pow(up, 0.75), ...legs.map((l) => l.price));
+  return c > 0 ? (legs.length > 1 ? 0.977 : 1) / c : null;
 }
+const plText = (x, st) => `PL: ${x >= 10 ? Math.round(x) : x.toFixed(1)}x<span class="plw"> · $${st} → </span><span class="g">$${Math.round(st * x)}</span>`;   // owner 10/15: logo + "PL: 7.7x" blue, "$10 →" white, payout green
 const plPay = (p) => {
   const x = p && linkedPay(p.legs); if (x == null) return "PL: —";
-  const st = p.stake || 10;   // the owner's stake for this parlay type (lib/sgp.js STAKES)
-  return `PL: ${x >= 10 ? Math.round(x) : x.toFixed(1)}x<span class="plw"> · $${st} → </span><span class="g">$${Math.round(st * x)}</span>`;   // owner 10/15: logo + "PL: 7.7x" blue, "$10 →" white, payout green
+  return plText(x, p.stake || 10);   // the owner's stake for this parlay type (lib/sgp.js STAKES)
 };
+// 10/17 (owner: "I need the real price"): tapping the PL line asks Polymarket for a live quote of these exact legs (/api/comboquote: asks and
+// closes the request, never buys) and the line switches to Polymarket's real payout. Only before kickoff, 2+ legs.
+const PLQ = [];
+function plTap(p) {
+  if (!p || p.result || !Array.isArray(p.legs) || p.legs.length < 2) return "";
+  const games = (S && S.games) || [], gs = p.legs.map((l) => games.find((g) => g.key === l.game));
+  if (gs.some((g) => !g || !g.kickoff || g.started || g.final || Date.now() >= new Date(g.kickoff).getTime())) return "";
+  PLQ.push(p); return ` data-q="${PLQ.length - 1}" onclick="plQuote(this)" style="cursor:pointer"`;
+}
+async function plQuote(el) {
+  const p = PLQ[Number(el.dataset.q)]; if (!p || el.dataset.busy) return; el.dataset.busy = "1"; el.style.opacity = ".5";
+  try {
+    const kick = {}; for (const g of (S && S.games) || []) if (p.legs.some((l) => l.game === g.key)) kick[g.key] = g.kickoff;
+    const legs = p.legs.map((l) => ({ game: l.game, kind: l.kind, team: l.team || null, side: l.side || null, label: l.label, player: l.player || null }));
+    const r = await fetch("/api/comboquote", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ legs, kick, stake: p.stake || 10 }) }).then((x) => x.json());
+    if (r && r.ok && r.pay > 1) el.innerHTML = `${pmLogo()} ${plText(r.pay, p.stake || 10)}`; else el.title = (r && r.why) || "";
+  } catch {} finally { el.style.opacity = ""; delete el.dataset.busy; }
+}
 const legMark = (r) => (r === "W" ? '<span class="g">✓</span>' : r === "L" ? '<span class="r">✗</span>' : r === "P" ? '<span class="dim">–</span>' : "•");
 const gameLogos = (key) => { const m = String(key || "").match(/^([A-Z]{2,4}) @ ([A-Z]{2,4})$/); return m ? `${tlogo(m[1])}${esc(m[1])} @ ${tlogo(m[2])}${esc(m[2])}` : esc(key); };
 // 10/16 (owner, final): NO logo on any leg line -- logos sit only on the parlay's header (the game names). Plain text legs.
@@ -1112,7 +1130,7 @@ function pBlock(title, p, showGame) {
   const pr = typeof p.prob === "number" && isFinite(p.prob) ? p.prob : null;
   const legs = p.legs.map((l) => `<div class="pbl">${legMark(l.result)} ${legLogoLabel(l)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · ${Math.round((l.prob || 0) * 100)}%${showGame && l.game ? ` <span class="dim">${gameLogos(l.game)}</span>` : ""}</div>`).join("");
   const res = p.result === "W" ? '<span class="g">✓ Won</span>' : p.result === "L" ? '<span class="r">✗ Lost</span>' : p.result === "P" ? '<span class="dim">Push</span>' : "";
-  return `<div class="par"><div class="pbh"><span class="pbn">${title}${pr == null ? "" : ` <span class="${pr >= 0.3 ? "g" : pr >= 0.15 ? "lg" : "y"}">· ${Math.round(pr * 100)}%</span>`}</span><span class="plb">${pmLogo()} ${plPay(p)}</span></div>${legs}<div class="pbr">${res}</div></div>`;
+  return `<div class="par"><div class="pbh"><span class="pbn">${title}${pr == null ? "" : ` <span class="${pr >= 0.3 ? "g" : pr >= 0.15 ? "lg" : "y"}">· ${Math.round(pr * 100)}%</span>`}</span><span class="plb"${plTap(p)}>${pmLogo()} ${plPay(p)}</span></div>${legs}<div class="pbr">${res}</div></div>`;
 }
 function sgpBox(g) {
   const x = g.sgp; if (!x || g.started || g.final) return "";
