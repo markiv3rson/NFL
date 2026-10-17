@@ -83,3 +83,21 @@ body.menu-open .mscrim { opacity:1; pointer-events:auto; } body.menu-open .mdraw
 .hnext .m { display:flex; align-items:center; gap:8px; font-size:17px; font-weight:800; font-style:italic; } .hnext .m img { width:22px; height:22px; object-fit:contain; }
 .hnext .t { font-size:12px; color:#8d95a3; margin-top:4px; }
 .hempty { padding:14px 2px; font-size:13px; color:#8d95a3; }
+
+/* 10/17 (owner: "why is the menu so long? make it more compact, to the left, only on iPhone"): phones get a narrower drawer that hugs the left edge,
+   shorter rows, smaller logo and buttons. Computers and tablets keep the full-size menu. */
+@media (max-width:500px) {
+  .mdraw { width:min(262px,72vw); padding:calc(env(safe-area-inset-top,0px) + 14px) 12px calc(env(safe-area-inset-bottom,0px) + 14px) 10px; }
+  .mtop { padding-bottom:4px; gap:6px; }
+  .mlogo { font-size:28px; }
+  .mref, .mclose { width:32px; height:32px; }
+  .mrun { font-size:10.5px; padding:0 2px 12px; }
+  .msec { padding:0 2px 6px; gap:8px; } .msec span:first-child { font-size:11.5px; letter-spacing:.22em; } .msec.gap { padding-top:14px; }
+  .mi { height:38px; gap:10px; padding:0 6px; font-size:15px; border-radius:10px; }
+  .mi .ic { width:26px; height:26px; flex:0 0 26px; }
+  .mi .cnt { min-width:18px; height:18px; font-size:10.5px; }
+  .mi.msub, .mi.msub.on { height:33px; padding-left:42px; font-size:14px; }
+  .mi.msub2, .mi.msub2.on { height:29px; padding-left:58px; font-size:13px; }
+  .mi .car { margin-left:4px; font-size:11px; }
+  .mspace { min-height:10px; }
+}
