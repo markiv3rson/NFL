@@ -450,6 +450,7 @@ function tdTeam(name) {
 function logoLabel(label) {
   const L = String(label || "");
   let m = L.match(/^([A-Z]{2,4}) ([+-]\d[\d.]*)(.*)$/); if (m) return `${tlogo(m[1])}${esc(m[1])} ${esc(m[2])}${esc(m[3])}`;
+  m = L.match(/^([A-Z]{2,4}) ML$/); if (m) return `${tlogo(m[1])}${esc(L)}`;
   m = L.match(/^(.*?)(\b[A-Z]{2,4}\b) @ ([A-Z]{2,4})\b(.*)$/); if (m) return `${esc(m[1])}${tlogo(m[2])}${esc(m[2])} @ ${tlogo(m[3])}${esc(m[3])}${esc(m[4])}`;
   m = L.match(/^(.+?) 1\+ TD(.*)$/); if (m) { const tm0 = tdTeam(m[1]); return `${tlogo(tm0)}${esc(L)}`; }
   return esc(L);
