@@ -1101,6 +1101,7 @@ let MODELBETS = null, LABTYPE = "2", LABWEEK = null;
 // 10/15 (owner): ONE Bets tab -- My bets on the left (the list as before), Model bets on the right (the model's parlays). The choice is remembered.
 let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
 function applyBetsView() {
+  const bt = $("bets-title"); if (bt) bt.textContent = BETSVIEW === "model" ? "Model bets" : "My bets";
   const m = BETSVIEW === "model", set = (id, on) => { const e = $(id); if (e) e.style.display = on ? "" : "none"; };
   set("record-mine", !m); set("lab", m); set("lab-sub", m);
   document.querySelectorAll("#bets-sw [data-bv]").forEach((b) => b.classList.toggle("on", b.dataset.bv === BETSVIEW));
@@ -1158,11 +1159,13 @@ function closeGame() { DETAIL = null; renderLines(); if (window.scrollTo) window
 // ---------- HOME (10/17, owner's sketch): SLATEZZ header, then NFL and NBA live games as a list -- logos, team, its spread from the
 // sportsbooks before kickoff, the total in the middle, the score and clock. Each section's title row: LIVE NOW + NEXT GAME logos and clock.
 // Nothing live in a sport: its next game only. NBA data comes from the NBA side's own routes (/api/nba/slate, /api/nba/live).
-let NB = null, NBL = {}, HOME_T = 0;
+let NB = null, NBL = {}, NBC = {}, HOME_T = 0;   // NBC: NBA games' last Polymarket line before tip-off (no sportsbook line, e.g. preseason)
 async function loadHome() {
   if (Date.now() - HOME_T < 25000 && NB) return; HOME_T = Date.now();
   try { const d = await (await fetch("/api/nba/slate", { cache: "no-store" })).json(); if (d && d.ok) NB = d; } catch {}
   try { const d = await (await fetch("/api/nba/live", { cache: "no-store" })).json(); if (d && d.ok) NBL = d.scores || {}; } catch {}
+  try { const since = new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10), d = await (await fetch("/api/nba/closes?since=" + since, { cache: "no-store" })).json();
+    if (d && d.ok) { NBC = {}; for (const c of d.closes || []) NBC[c.game] = c; } } catch {}
   if ($("panel-home").classList.contains("on")) renderHome();
   clearTimeout(loadHome._h); loadHome._h = setTimeout(() => { if (!document.hidden && $("panel-home").classList.contains("on")) { HOME_T = 0; loadHome(); } }, 30000);
 }
@@ -1198,8 +1201,9 @@ function renderHome() {
     const T = NB.teams || {}, lg = (t) => Shell.nbaLogo(t, T), bt = NB.books && NB.books.t ? Date.parse(NB.books.t) : null;
     const live = NB.games.filter((g) => Date.now() >= Date.parse(g.start) && !(NBL[g.key] && NBL[g.key].st === "post"));
     const nx = NB.games.filter((g) => Date.parse(g.start) > Date.now()).sort((a, b) => Date.parse(a.start) - Date.parse(b.start))[0];
-    const line = (g) => { const b = bt != null && bt <= Date.parse(g.start) ? g.books || {} : {};   // sportsbook numbers from before tip-off only
-      const hs = b.spread ? Number(b.spread.homeSpread) : null; return { hSp: hs, aSp: hs == null ? null : -hs, tot: b.total ? b.total.line : null }; };
+    const line = (g) => { const b = bt != null && bt <= Date.parse(g.start) ? g.books || {} : {}, c = NBC[g.key] || {};   // sportsbook numbers from before tip-off; none (preseason) -> Polymarket's last line before tip-off (10/17, owner)
+      const hs = b.spread ? Number(b.spread.homeSpread) : c.hs != null ? Number(c.hs) : null, tot = b.total ? b.total.line : c.tl != null ? c.tl : null;
+      return { hSp: hs, aSp: hs == null ? null : -hs, tot }; };
     const rows = live.sort((a, b) => Date.parse(a.start) - Date.parse(b.start)).map((g) => homeRow({ key: g.key, attr: "data-nbagame", away: g.away, home: g.home, aLogo: lg(g.away), hLogo: lg(g.home), ...line(g), sc: NBL[g.key] || null })).join("");
     const next = nx ? { aLogo: lg(nx.away), hLogo: lg(nx.home), ts: Date.parse(nx.start) } : null;
     const nextRow = nx ? `<button class="hnext" data-nbagame="${esc(nx.key)}"><div><div class="m"><img src="${lg(nx.away)}" alt="" onerror="this.style.visibility='hidden'">${esc(nx.away)} @ ${esc(nx.home)}<img src="${lg(nx.home)}" alt="" onerror="this.style.visibility='hidden'"></div><div class="t">${tm(nx.start)}</div></div></button>` : "";
@@ -1278,8 +1282,11 @@ if ($("lever")) {
   lv.addEventListener("pointerdown", (e) => { y0 = e.clientY; }); lv.addEventListener("pointermove", (e) => { if (y0 != null && e.clientY - y0 > 25) { y0 = null; pull(); } }); lv.addEventListener("pointerup", () => { y0 = null; });
 }
 function showPanel(name) {
+  let sub = null;   // 10/17 (owner): My bets and Model bets are separate pages under Bets in the menu
+  if (name === "mybets" || name === "modelbets") { sub = name; BETSVIEW = name === "modelbets" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} name = "record"; }
+  if (name === "record" && !sub) sub = BETSVIEW === "model" ? "modelbets" : "mybets";
   if (!$("panel-" + name)) name = "home";
-  Shell.setActive(name);   // 10/17: the menu replaces the tab bar
+  Shell.setActive(sub || name);   // 10/17: the menu replaces the tab bar
   if (name === "alerts") { ALPREV = alSeen(); if (ALERTS.length) { try { localStorage.setItem("alSeen", ALERTS[0].t); } catch {} } }   // opening Alerts marks them read (was the bell)
   document.querySelectorAll(".panel").forEach((p) => p.classList.remove("on")); $("panel-" + name).classList.add("on");
   if (name === "alerts") renderAlerts();
@@ -1293,7 +1300,7 @@ function showPanel(name) {
   if (S && S.games) setBg(name === "lines" && DETAIL ? S.games.find((x) => x.key === DETAIL) : null);   // game background only on an open game page
 }
 // 10/17: pages switch by the address' #name (the menu links set it): #home (or none), #alerts, #lines, #td, #record, #models
-const PANELS = ["home", "alerts", "lines", "td", "record", "models"];
+const PANELS = ["home", "alerts", "lines", "td", "record", "mybets", "modelbets", "models"];
 function routeHash() {
   const name = Shell.hashPanel(PANELS, "home");
   if (name === "lines" && DETAIL && $("panel-lines").classList.contains("on")) closeGame();   // choosing Game Lines while on a game goes back to the games

@@ -311,6 +311,7 @@ function ticketRow() {
 // ---------- Bets: My bets | Model bets
 let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
 function applyBetsView() {
+  const bt = $("bets-title"); if (bt) bt.textContent = BETSVIEW === "model" ? "Model bets" : "My bets";
   const m = BETSVIEW === "model", set = (id, on) => { const e = $(id); if (e) e.style.display = on ? "" : "none"; };
   set("record-mine", !m); set("lab", m); set("lab-sub", m);
   document.querySelectorAll("#bets-sw [data-bv]").forEach((b) => b.classList.toggle("on", b.dataset.bv === BETSVIEW));
@@ -497,8 +498,11 @@ async function loadSlate() {
   try { localStorage.setItem("lastSeen", new Date().toISOString()); } catch {}
 }
 function showPanel(name) {
+  let sub = null;   // 10/17 (owner): My bets and Model bets are separate pages under Bets in the menu
+  if (name === "mybets" || name === "modelbets") { sub = name; BETSVIEW = name === "modelbets" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} name = "record"; }
+  if (name === "record" && !sub) sub = BETSVIEW === "model" ? "modelbets" : "mybets";
   if (!$("panel-" + name)) name = "lines";
-  Shell.setActive(name);   // 10/17: the menu replaces the tab bar
+  Shell.setActive(sub || name);   // 10/17: the menu replaces the tab bar
   if (name === "alerts") { ALPREV = alSeen(); if (ALERTS.length) { try { localStorage.setItem("alSeen", ALERTS[0].t); } catch {} } }
   document.querySelectorAll(".panel").forEach((p) => p.classList.remove("on")); $("panel-" + name).classList.add("on");
   if (name === "alerts") renderAlerts();
@@ -509,7 +513,7 @@ function showPanel(name) {
   if (S) setBg(name === "lines" && DETAIL ? S.games.find((x) => x.key === DETAIL) : null);
 }
 // 10/17: pages switch by the address' #name (the menu links set it): #alerts, #lines, #record, #models; #game=KEY opens a game (from the home screen)
-const PANELS = ["alerts", "lines", "record", "models"];
+const PANELS = ["alerts", "lines", "record", "mybets", "modelbets", "models"];
 let OPEN_GAME = null;
 function routeHash() {
   const h = location.hash || "";

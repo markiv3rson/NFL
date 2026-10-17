@@ -1178,5 +1178,19 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
 { const h = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
   ok(/\.live:not\(\.tile\) \{ width:7px/.test(h) && !/\n  \.live \{ width:7px/.test(h), "the 7px 'live' dot rule never applies to a live game tile (it crushed live tiles into small circles)");
   ok(/\.labslot \{[^}]*font-size:17px;[^}]*color:#fff;[^}]*border-bottom:2px solid #a98bff;/.test(h), "Model bets time-slot headers: 17px, white, purple line"); }
+// ---------- 10/17: menu "Last model refresh" (newest of NFL / NBA); NBA home rows fall back to Polymarket's pre-tip line
+{ const sh = readFileSync(new URL("../public/shell.js", import.meta.url), "utf8"), app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  const sctx = { window: {}, document: {}, Date, Math, Number, String, JSON, Promise, Object, Array, isNaN }; sctx.window = sctx; vm.createContext(sctx); vm.runInContext(sh, sctx);
+  const t = sctx.Shell.runTxt("2026-10-18T04:45:00Z");
+  ok(/fetch\("\/api\/lastrun"/.test(sh) && /Last model refresh · /.test(sh) && /^[A-Z][a-z]{2} \d{1,2}\/\d{1,2} \d{1,2}:\d{2} [AP]M$/.test(t) && sctx.Shell.runTxt(null) === "—", "menu: 'Last model refresh · Sat 10/17 9:45 PM' from /api/lastrun", t);
+  const lr = readFileSync(new URL("../pages/api/lastrun.js", import.meta.url), "utf8");
+  ok(/K\.model\(SEASON, w\)/.test(lr) && /status:snapshot/.test(lr) && /\.sort\(\)\.pop\(\)/.test(lr), "last refresh = the newer of NFL's last model rerun and NBA's last snapshot with a model answer");
+  ok(/\/api\/nba\/closes\?since=/.test(app) && /c\.hs != null \? Number\(c\.hs\)/.test(app), "home: an NBA game without a sportsbook line shows Polymarket's last line before tip-off"); }
+// ---------- 10/17: My bets and Model bets are separate pages under Bets in the menu (NFL + NBA)
+{ const sh = readFileSync(new URL("../public/shell.js", import.meta.url), "utf8");
+  ok(/const SUB = \[\["mybets", "My bets"\], \["modelbets", "Model bets"\]\]/.test(sh) && /id === "record" \? subs\(sp\)/.test(sh), "menu: Bets heads two pages, My bets and Model bets, for each sport");
+  for (const f of ["../public/app.js", "../public/nba/app.js"]) { const a = readFileSync(new URL(f, import.meta.url), "utf8");
+    ok(/name === "mybets" \|\| name === "modelbets"/.test(a) && /"record", "mybets", "modelbets"/.test(a) && /bt\.textContent = BETSVIEW === "model" \? "Model bets" : "My bets"/.test(a), `${f}: #mybets / #modelbets open their own page with its own title`); }
+  for (const f of ["../public/index.html", "../public/nba/index.html"]) ok(/id="bets-sw" style="display:none"/.test(readFileSync(new URL(f, import.meta.url), "utf8")), `${f}: the old My bets | Model bets switch is hidden (the menu picks)`); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);
