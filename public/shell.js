@@ -30,7 +30,7 @@
   const sub = (sp, id, label) => id === "modelbets" ? `<div class="mi ${sp} msub mtog" data-tog="${sp}-mb" data-msp="${sp}" data-mp="modelbets"><i></i>${label}${car}</div>` + types(sp)
     : `<a class="mi ${sp} msub" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><i></i>${label}</a>`;
   const subs = (sp) => `<div class="mi ${sp} mpar mtog" data-tog="${sp}-bets"><span class="ic">${svg("bets")}</span>Bets${car}</div>` + group(`${sp}-bets`, SUB.map(([id, label]) => sub(sp, id, label)).join(""));
-  const alerts = (sp) => `<div class="mi ${sp} mpar mtog" data-tog="${sp}-alerts" data-msp="${sp}" data-mp="alerts"><span class="ic">${svg("bell")}</span>Alerts<b class="cnt" id="mcnt-${sp}-alerts"></b>${car}</div>` +
+  const alerts = (sp) => `<div class="mi ${sp} mpar mtog" data-tog="${sp}-alerts" data-msp="${sp}" data-mp="alerts"><span class="ic">${svg("bell")}</span>Alerts${car}<b class="cnt" id="mcnt-${sp}-alerts"></b></div>` +
     group(`${sp}-alerts`, ALERTK[sp].map(([k, label]) => `<a class="mi ${sp} msub" data-msp="${sp}" data-mp="alerts-${k}" href="${URL_[sp]}#alerts-${k}"><i></i>${label}</a>`).join(""));
   const item = (sp, id, label, ic) => id === "record" ? subs(sp) : id === "alerts" ? alerts(sp) : `<a class="mi ${sp}" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><span class="ic">${svg(ic)}</span>${label}<b class="cnt" id="mcnt-${sp}-${id}"></b></a>`;
   const NFL_LOGO_FIX = { WSH: "wsh", WAS: "wsh", LA: "lar", LAR: "lar" };

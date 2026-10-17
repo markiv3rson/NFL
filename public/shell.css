@@ -2,16 +2,16 @@
    the home screen lists. Used by /index.html (NFL + home) and /nba/index.html. The bottom tab bar and the lever are gone. */
 .shead { position:relative; display:flex; align-items:center; gap:12px; padding:4px 4px 14px; margin-bottom:6px; }
 .shead::after { content:""; position:absolute; left:0; right:0; bottom:0; height:1px; background:linear-gradient(90deg,rgba(181,140,255,.55),rgba(124,183,255,.45) 55%,rgba(255,255,255,.06)); }
-.mbtn { width:44px; height:44px; flex:0 0 44px; border-radius:12px; border:1px solid rgba(181,140,255,.55); background:rgba(181,140,255,.08); display:flex; flex-direction:column; justify-content:center; align-items:center; gap:5px; padding:0; cursor:pointer; }
+.mbtn { width:44px; height:44px; flex:0 0 44px; border-radius:12px; border:0; background:none; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:5px; padding:0; cursor:pointer; }   /* 10/17 (owner): no box on the menu button */
 .mbtn i { display:block; width:18px; height:2px; border-radius:1px; background:#d9c4ff; }
 .sgrad { background:linear-gradient(90deg,#ffffff 0%,#ffd0da 50%,#b58cff 100%); -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent; }
 .shome { flex:1 1 auto; min-width:0; text-align:center; font-size:clamp(40px,15vw,60px); font-weight:900; font-style:italic; letter-spacing:.01em; line-height:1; white-space:nowrap; }
 .shome span { display:inline-block; padding-right:.08em; }
-.snext { flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:8px; white-space:nowrap; }
-.snext img, .snext .nl { width:30px; height:30px; flex:0 0 30px; object-fit:contain; }
+.snext { flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:6px; white-space:nowrap; }
+.snext img, .snext .nl { width:26px; height:26px; flex:0 0 26px; object-fit:contain; }
 .snext .vs { font-size:11px; font-weight:700; color:var(--faint,#8d95a3); }
-.snext .nglab { margin-left:4px; font-size:10px; font-weight:800; letter-spacing:.1em; color:#aab0bd; }
-.snext .ngclk { margin-left:auto; font-size:32px; font-weight:800; letter-spacing:-.03em; line-height:1; font-variant-numeric:tabular-nums; padding-right:2px; }
+.snext .nglab { margin-left:2px; font-size:9px; font-weight:800; letter-spacing:.1em; color:#aab0bd; }
+.snext .ngclk { margin-left:auto; font-size:clamp(20px,6.8vw,32px); font-weight:800; letter-spacing:-.03em; line-height:1; font-variant-numeric:tabular-nums; padding-right:2px; }
 .snext .none { font-size:13px; color:#8d95a3; }
 body.home-on { background:transparent !important; } html.home-on { background:#000 !important; }
 /* 10/17 (owner): the Raiders photo behind the home screen; the NFL / NBA lists are see-through so it shows under them */
@@ -59,8 +59,7 @@ body.menu-open .mscrim { opacity:1; pointer-events:auto; } body.menu-open .mdraw
 .mi.msub2.on { padding-left:76px; }
 .msubs { display:none; } .msubs.open { display:block; }   /* 10/17 (owner): Alerts / Bets / Model bets open and close their lists */
 .mtog { user-select:none; -webkit-user-select:none; }
-.mi .car { font-style:normal; margin-left:auto; padding-left:8px; font-size:12px; color:#8d95a3; transition:transform .15s ease; } .mtog.open > .car { transform:rotate(180deg); }
-.mtog .cnt[style*="flex"] + .car { margin-left:0; }
+.mi .car { font-style:normal; margin-left:6px; font-size:12px; color:#8d95a3; transition:transform .15s ease; } .mtog.open > .car { transform:rotate(180deg); }   /* the arrow sits right after the name (owner 10/17) */
 
 @media (min-width:1100px) { #home { max-width:760px; margin:0 auto; } }   /* a computer: the lists stay readable instead of spanning the whole screen */
 /* home: NFL / NBA live lists (sketch "Home, games live") */
