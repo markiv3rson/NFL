@@ -1,3 +1,11 @@
+# MOVED 10/17: NBA now lives inside the SLATEZZ repo (markiv3rson/NFL), folder `nba/`
+
+- Site code `nba/lib/*`, routes `pages/api/nba/*` (every route is `/api/nba/...`), pages `public/nba/*`, model service `nba/railway-model-service/*`, tests `nba/tests/*` (`npm run test:nba`).
+- Settings on the combined Vercel project: `NBA_REDIS_URL`, `NBA_MODEL_SERVICE_URL`, `NBA_MODEL_SERVICE_TOKEN`, `NBA_ODDS_API_KEY` (NBA never reads NFL's database, model service or odds key).
+- Railway NBA service: source `markiv3rson/NFL`, root directory `/nba/railway-model-service`, config file `/nba/railway-model-service/railway.json`, variables `SITE_URL` (the combined site), `SITE_API=/api/nba`, `SITE_LOGIN`.
+- The old repo markiv3rson/NBA and the old Vercel project nba-nfl9 are no longer used once the above runs. Paths in the notes below are the OLD repo's (prefix them with `nba/`; the site's `public/` is now `public/nba/`).
+- The owner's rules and the root CLAUDE.md of the combined repo apply.
+
 # NBA betting app — notes for Claude
 
 Read this first in every new chat. It carries the owner's rules and what has already been tried.

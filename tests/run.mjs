@@ -1170,5 +1170,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(/NFL · LIVE NOW/.test(hh) && /<b>BUF<\/b><span>−5\.5<\/span>/.test(hh) && /<b>LV<\/b><span>\+5\.5<\/span>/.test(hh) && /O\/U<b>46\.5<\/b>/.test(hh) && />17</.test(hh) && />10</.test(hh) && /Q3 8:42/.test(hh), "home: live row = team + its sportsbook spread, total in the middle, score, clock", hh.slice(0, 600));
   ok(/NEXT GAME <img[^>]+dal\.png[^>]*><span class="at">@<\/span><img[^>]+gb\.png/i.test(hh) && /data-hclk="\d+">2h 14m</.test(hh), "home: NFL title row shows the next game's logos and clock");
   ok(/<span class="sp">NBA<\/span>/.test(hh) && /No games scheduled/.test(hh), "home: NBA section with nothing live and nothing scheduled says so"); }
+// ---------- 10/17: Railway config files -- each service watches only its own folder (patterns are from the repo root; the config path is set per service)
+{ const rj = (f) => JSON.parse(readFileSync(new URL("../" + f, import.meta.url), "utf8")).build.watchPatterns;
+  ok(JSON.stringify(rj("railway.json")) === '["/railway-model-service/**"]' && JSON.stringify(rj("railway-model-service/railway.json")) === '["/railway-model-service/**"]', "NFL model service redeploys only on NFL model changes");
+  ok(JSON.stringify(rj("nba/railway-model-service/railway.json")) === '["/nba/railway-model-service/**"]', "NBA model service redeploys only on NBA model changes"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);
