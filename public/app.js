@@ -1150,9 +1150,15 @@ function renderLines() {
   if (DETAIL) { const g = S.games.find((x) => x.key === DETAIL); if (g) return renderDetail(g); DETAIL = null; }
   setBg(null);
   $("detail").style.display = "none"; $("lines").style.display = "";
-  $("lines").innerHTML = changedBox() + `<div class="tiles">${[...S.games].sort(order).map(tile).join("")}</div>` +
-
-    '';
+  $("lines").innerHTML = changedBox() + linesBySlot();
+}
+// 10/17 (owner): Game Lines stacked one per row, grouped under the time-slot headers (same slots and header look as Model bets);
+// the slots keep the old order (upcoming first, then live, then finished), games inside a slot by kickoff
+function linesBySlot() {
+  const slots = [], by = {};
+  for (const g of [...S.games].sort(order)) { const sl = g.kickoff ? labSlot(g.kickoff) : "GAMES"; if (!by[sl]) { by[sl] = []; slots.push(sl); } by[sl].push(g); }
+  return slots.map((sl) => { const times = [...new Set(by[sl].filter((g) => g.kickoff).map((g) => tm(g.kickoff)))];
+    return `<div class="sh labslot">${sl}${times.length ? ` <span class="lst">· ${times.map(esc).join(" · ")}</span>` : ""}</div><div class="tiles stack">${by[sl].map(tile).join("")}</div>`; }).join("");
 }
 let ROLL_ON_OPEN = false;
 function openGame(key) { ROLL_ON_OPEN = true; LASTY = (typeof window !== "undefined" && window.scrollY) || 0; DETAIL = key; renderLines(); if (window.scrollTo) window.scrollTo(0, 0); const g = S.games.find((x) => x.key === key); if (g && g.started && !g.final) liveLoop(); }
