@@ -3,7 +3,7 @@
 import { getRedis, getJSON } from "../../lib/redis";
 import { SEASON } from "../../lib/games";
 
-const GROUP = { sgp_best: "2", sgp_best_fill: "2", sgp_3: "3", sgp_linked: "4", sgp_style: "style", sgp_style_pts: "pts", leg4_fav: "diff", leg4_green_fav: "diff", leg4_fav_td: "diff" };
+const GROUP = { sgp_best: "2", sgp_best_fill: "2", sgp_3: "3", sgp_linked: "4", sgp_style: "style", sgp_style_pts: "pts", leg4_fav: "diff", leg4_green_fav: "diff", leg4_fav_td: "diff", leg4_td4: "diff", sgp_upset: "upset" };
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   try {

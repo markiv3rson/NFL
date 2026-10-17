@@ -927,12 +927,12 @@ function renderLab() {
   if (!PAPER) { renderLabList(); return; }
   const names = PAPER.names || {}, board = PAPER.board || {};
   // Scoreboard (10/14, owner: "organize it"): the parlays still built, grouped; this season W-L and hit %, then the tested history.
-  const GROUPS = [["SAME GAME", [["sgp_best", "2 legs"], ["sgp_best_fill", "2 legs · filled"], ["sgp_3", "3 legs"], ["sgp_linked", "4 legs"], ["sgp_style", "4 legs · my style"], ["sgp_style_pts", "4 legs · my style · bought lines"]]],
-    ["4 LEGS · DIFFERENT GAMES", [["leg4_fav", "4 biggest favorites"], ["leg4_green_fav", "Green pick + 3 favorites"], ["leg4_fav_td", "3 favorites + top TD"]]],
+  const GROUPS = [["SAME GAME", [["sgp_best", "2 legs"], ["sgp_best_fill", "2 legs · filled"], ["sgp_3", "3 legs"], ["sgp_linked", "4 legs"], ["sgp_style", "4 legs · my style"], ["sgp_style_pts", "4 legs · my style · bought lines"], ["sgp_upset", "Upset · dog wins + its RB scores"]]],
+    ["4 LEGS · DIFFERENT GAMES", [["leg4_fav", "4 biggest favorites"], ["leg4_green_fav", "Green pick + 3 favorites"], ["leg4_fav_td", "3 favorites + top TD"], ["leg4_td4", "4 most likely TD scorers"]]],
     ["BEST BETS", [["best_2", "Top 2 picks"], ["best_3", "Top 3 picks"], ["best_4", "Top 4 (Parlay of the week)"]]],
     ["FAVORITES", [["home_fav_95_single", "Home fav 9.5+ · single"], ["home_fav_95_2", "Home fav 9.5+ · 2 legs"], ["home_fav_95_3", "Home fav 9.5+ · 3 legs"], ["top3_home_75", "Top 3 home favs (75%+)"]]],
     ["TOUCHDOWNS", [["td_edge_3", "3 TD value picks"], ["td_likely_2", "2 likeliest scorers"], ["td_likely_3", "3 likeliest scorers"], ["model_best_4", "4 most likely legs"]]]];
-  const TESTED = { sgp_3: 18.8, sgp_linked: 7.9, leg4_fav: 42.5, leg4_green_fav: 32.2, leg4_fav_td: 31.4 };   // 2014-25 research (CLAUDE.md)
+  const TESTED = { sgp_3: 18.8, sgp_linked: 7.9, leg4_fav: 42.5, leg4_green_fav: 32.2, leg4_fav_td: 31.4, sgp_upset: 17.6, leg4_td4: 17.7 };   // 2014-25 research (CLAUDE.md)
   const hist = (k) => { if (TESTED[k] != null) return `${TESTED[k]}%`; const h = REPLAY && REPLAY.parlays && REPLAY.parlays.find((x) => x.id === k); return h && h.n ? `${Math.round(h.hit * 100)}%` : "—"; };
   const now = (k) => { const b = board[k]; if (!b || !b.decided) return '<span class="dim">waiting</span>'; const l = b.decided - b.hits;
     return `${b.hits}–${l} · ${Math.round((b.hits / b.decided) * 100)}%${b.money != null ? ` <span class="${b.money >= 0 ? "g" : "r"}">${b.money >= 0 ? "+" : "−"}$${Math.abs(Math.round(b.money))}</span>` : ""}`; };
@@ -941,7 +941,11 @@ function renderLab() {
   const rows = `<div style="${grid};margin-bottom:6px"><span></span><span class="dim" style="font-size:11px;text-align:right">THIS SEASON</span><span class="dim" style="font-size:11px;text-align:right">PAST SEASONS</span></div>` +
     GROUPS.map(([title, ks]) => { const live = ks.filter(([k]) => names[k]); return live.length ? `<div class="dim" style="font-size:11px;letter-spacing:.06em;margin:10px 0 4px">${title}</div><div style="${grid}">` +
       live.map(([k, label]) => `<span>${esc(label)}${tag(k)}</span><span style="text-align:right">${now(k)}</span><span class="dim" style="text-align:right">${hist(k)}</span>`).join("") + `</div>` : ""; }).join("");
-  LAB_SB = `${rows}`;   // 10/15 (owner): lives in the Models tab, closed until you open it
+  // 10/17 (owner: "are you learning from it"): every graded leg this season by kind, and which kind lost the parlays
+  const LK = [["td", "TD"], ["spread", "Spread"], ["ml", "Moneyline"], ["over", "Over"], ["under", "Under"]], lg = PAPER.legs || {}, kl = PAPER.killers || {};
+  const legRows = LK.filter(([k]) => lg[k] && lg[k].w + lg[k].l).map(([k, lab]) => { const x = lg[k], n = x.w + x.l, pct = Math.round((x.w / n) * 100); return `<span>${lab} legs</span><span style="text-align:right">${x.w}–${x.l} · <span class="${pct >= 56 ? "g" : pct >= 50 ? "y" : "r"}">${pct}%</span></span><span class="dim" style="text-align:right">${kl[k] ? `lost ${kl[k]} parlay${kl[k] === 1 ? "" : "s"}` : "—"}</span>`; }).join("");
+  const legBlock = legRows ? `<div class="dim" style="font-size:11px;letter-spacing:.06em;margin:0 0 4px">LEGS · THIS SEASON</div><div style="${grid};margin-bottom:12px">${legRows}</div>` : "";
+  LAB_SB = `${legBlock}${rows}`;   // 10/15 (owner): lives in the Models tab, closed until you open it
   renderLabList();
   if (MB && RES) renderModel();   // the Models tab reads the same data
 }
@@ -1164,14 +1168,14 @@ function pBlock(title, p, showGame) {
 }
 function sgpBox(g) {
   const x = g.sgp; if (!x || g.started || g.final) return "";
-  const blocks = [["2 legs", x.best], ["3 legs", x.three], ["4 legs", x.linked], ["4 legs · my style", x.style], ["4 legs · my style · bought lines", x.stylePts]].map(([t, p]) => pBlock(esc(t), p, false)).join("");
+  const blocks = [["2 legs", x.best], ["3 legs", x.three], ["4 legs", x.linked], ["4 legs · my style", x.style], ["4 legs · my style · bought lines", x.stylePts], ["Upset", x.upset]].map(([t, p]) => pBlock(esc(t), p, false)).join("");
   return blocks ? `<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAYS</div><div class="pgrid" style="margin-top:6px">${blocks}</div>` : "";
 }
 // Model Picks tab (10/15, owner): six sub-tabs docked above the bottom bar (2 legs, 3 legs, 4 legs, My style, Bought, Diff) and week chips at the top;
 // each shows only its parlays, one column, in kickoff order. The current week comes from the live slate (results from the saved copies once a game starts); past weeks from /api/modelbets.
-const FOUR_NAMES = { leg4_fav: "4 biggest favorites", leg4_green_fav: "Best green pick + 3 favorites", leg4_fav_td: "3 favorites + top TD scorer" };
+const FOUR_NAMES = { leg4_fav: "4 biggest favorites", leg4_green_fav: "Best green pick + 3 favorites", leg4_fav_td: "3 favorites + top TD scorer", leg4_td4: "4 most likely TD scorers" };
 // 10/17 (owner): Over/Under first, then the parlays in this order and with these names
-const LAB_TABS = [["ou", "Over/Under"], ["style", "4 Leg (My Style)"], ["pts", "4 Leg (Bought)"], ["4", "4 Leg"], ["3", "3 Leg"], ["2", "2 Leg"], ["diff", "Different Game Parlays"]];
+const LAB_TABS = [["ou", "Over/Under"], ["style", "4 Leg (My Style)"], ["pts", "4 Leg (Bought)"], ["4", "4 Leg"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"], ["diff", "Different Game Parlays"]];   // 10/17 parlay lab: Upset (underdog wins + its lead RB scores)
 let MODELBETS = null, LABTYPE = "ou", LABWEEK = null;
 // 10/15 (owner): ONE Bets tab -- My bets on the left (the list as before), Model bets on the right (the model's parlays). The choice is remembered.
 let BETSVIEW = (() => { try { return ["model", "props"].includes(localStorage.getItem("betsView")) ? localStorage.getItem("betsView") : "mine"; } catch { return "mine"; } })();
@@ -1221,7 +1225,7 @@ function labParlays(week, type) {
   if (type === "ou") return S && Number(week) === Number(S.week) ? ((S && S.games) || []).map((g) => ({ p: { legs: ouLegs(g) }, game: g.key, kick: g.kickoff, title: gameLogos(g.key), ou: true })).filter((x) => x.p.legs.length) : [];
   const rec = (MODELBETS && MODELBETS.weeks && MODELBETS.weeks[week] && MODELBETS.weeks[week][type]) || [];
   if (!(S && Number(week) === Number(S.week))) return rec.map((p) => ({ p, game: p.game, kick: p.kickoff, title: p.game ? gameLogos(p.game) : esc(FOUR_NAMES[p.strategy] || p.strategy), across: !p.game }));
-  const pick = { 2: (g) => g.sgp.best, 3: (g) => g.sgp.three, 4: (g) => g.sgp.linked, style: (g) => g.sgp.style, pts: (g) => g.sgp.stylePts };
+  const pick = { 2: (g) => g.sgp.best, 3: (g) => g.sgp.three, 4: (g) => g.sgp.linked, style: (g) => g.sgp.style, pts: (g) => g.sgp.stylePts, upset: (g) => g.sgp.upset };
   if (type === "diff") { const F = ((S && S.fourLeg) || []).filter((p) => p && Array.isArray(p.legs));
     const done = (st) => rec.find((r) => r.strategy === st);   // a saved copy carries the results
     return (F.length ? F.map((p) => ({ ...p, ...(done(p.strategy) ? { result: done(p.strategy).result, legs: done(p.strategy).legs } : {}) })) : rec).map((p) => ({ p, game: null, kick: null, title: esc(FOUR_NAMES[p.strategy] || p.strategy), across: true })); }
