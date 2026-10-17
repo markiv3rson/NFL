@@ -116,11 +116,31 @@ def _feat_season(x, prior):
         prev = gg[s].cumsum() - al[s]
         al["o_" + s] = (prev + 4 * al.pos.map(lg[s])) / (al.d_g + 4)
     x = x.merge(al[["opp", "game_id", "pos"] + ["o_" + s for s in STATS]], on=["opp", "game_id", "pos"], how="left")
-    return x
+    return _vacated(x)
+
+
+def _vacated(x):
+    """10/17 (owner: injury input): targets / carries a game of the team's regulars (4+ targets or 8+ carries a game) who played one of the
+    team's last 2 games but not this one -- injured or inactive. The model alone missed it: when a top target sat, his teammates beat the
+    prediction every season 2020-25 (receiving yards +1.3 to +4.5). Live, the Out / Doubtful list removes those players (live_rows)."""
+    tg = x[["team", "game_id", "week", "season"]].drop_duplicates(["team", "game_id"]).sort_values(["team", "season", "week"])
+    tg["k"] = tg.groupby(["team", "season"]).cumcount()
+    x = x.drop(columns=[c for c in ("vac_tgt", "vac_car", "k") if c in x]).merge(tg[["team", "game_id", "k"]], on=["team", "game_id"], how="left")
+    R = x[["season", "team", "k", "pid", "b_tgt", "b_car"]]
+    reg = R[(R.b_tgt.fillna(0) >= 4) | (R.b_car.fillna(0) >= 8)]
+    prev = pd.concat([reg.assign(k=reg.k + lag, lag=lag) for lag in (1, 2)]).sort_values("lag").drop_duplicates(["season", "team", "k", "pid"])
+    here = R[["season", "team", "k", "pid"]].assign(here=1)
+    gone = prev.merge(here, on=["season", "team", "k", "pid"], how="left")
+    gone = gone[gone.here.isna()]
+    gone = gone.assign(vt=np.where(gone.b_tgt.fillna(0) >= 4, gone.b_tgt.fillna(0), 0.0), vc=np.where(gone.b_car.fillna(0) >= 8, gone.b_car.fillna(0), 0.0))
+    v = gone.groupby(["season", "team", "k"]).agg(vac_tgt=("vt", "sum"), vac_car=("vc", "sum")).reset_index()
+    x = x.merge(v, on=["season", "team", "k"], how="left")
+    x["vac_tgt"] = x.vac_tgt.fillna(0.0); x["vac_car"] = x.vac_car.fillna(0.0)
+    return x.drop(columns=["k"])
 
 
 FEATS_COMMON = ["imp", "tm_margin", "total_line", "home", "dome", "gp", "prior_g", "snap1", "snap3", "b_tgt", "b_car", "l3_tgt", "l3_car",
-                "tgt_sh", "car_sh", "b_t_att", "b_pass_att", "l3_pass_att"]
+                "tgt_sh", "car_sh", "b_t_att", "b_pass_att", "l3_pass_att", "vac_tgt", "vac_car"]
 
 
 def feats_for(stat):

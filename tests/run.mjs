@@ -312,6 +312,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const td = { "LA @ JAX": { away: [{ name: "K.Williams" }, { name: "P.Nacua" }], home: [{ name: "T.Etienne" }] }, "BUF @ ATL": { away: [{ name: "J.Cook" }], home: [{ name: "Bi.Robinson" }] }, "X @ Y": { away: [{ name: "K.Williams" }], home: [] } };
   ok(tdTeamFromModel(td, "Bijan Robinson").team === "ATL" && tdTeamFromModel(td, "James Cook III").team === "BUF" && tdTeamFromModel(td, "Puka Nacua").game === "LA @ JAX" && tdTeamFromModel(td, "Kyren Williams") === null && tdTeamFromModel(td, "Nobody Here") === null,
     "bets: an old TD leg with no game gets its team from that week's TD lists, only when one team has him"); }
+{ const m = await import("../lib/mybets.js");
+  ok(m.isNbaBet("aec-nba-bos-det-2026-10-22") && m.isNbaBet("crossd-1", [{ eventSlug: "nba-bos-det-2026-10-22" }]) && !m.isNbaBet("crossd-1", [{ eventSlug: "nba-bos-det-2026-10-22" }, { eventSlug: "nfl-buf-lv-2026-10-18" }])
+    && !m.isNbaBet("aec-nfl-buf-lv-2026-10-18") && !m.isNbaBet("crossd-1", null), "NFL My bets leaves out NBA bets (they list on the NBA page)"); }
 { const fs = await import("node:fs"), app = fs.readFileSync(new URL("../public/app.js", import.meta.url), "utf8"), nba = fs.readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8");
   ok(/const legTxt = \(r, html\) => \(r === "W" \? `<span class="g">/.test(app) && /legTxt\(p\.result, logoLabel/.test(app) && /legTxt\(l\.result, legName/.test(app) && (app.match(/legTxt\(l\.result, `/g) || []).length === 2
     && /const legTxt = /.test(nba) && /legTxt\(l\.result, `\$\{tlogo/.test(nba), "bets: a won leg's text is green and a lost leg's red (My bets, Model bets, Over/Under; NBA Model bets)"); }

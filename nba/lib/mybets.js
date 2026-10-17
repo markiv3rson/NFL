@@ -3,6 +3,7 @@
 // have been running on real bets there). The sync itself is the same read-only calls (positions + activities).
 import { getJSON, setJSON } from "./redis";
 import { TEAMS } from "./teams";
+import { finalsFor } from "./espn";
 
 const KEY = { synced: "mybets:nba:synced", raw: "mybets:nba:raw", ledger: "mybets:nba:ledger" };
 
@@ -15,6 +16,36 @@ export function isNba(slug, meta) {
 }
 // A parlay / combo position is made of several markets; it isn't one NBA game's bet.
 export const isComboLeg = (slug, meta) => /combo|parlay/i.test(String(slug || "")) || !!(meta && /combo|parlay/i.test(String(meta.type || meta.title || "")));
+// 10/17 (owner: "NBA My bets shows the legs like NFL"): a Polymarket account combo ("caoc-..." / "crossd-...") has no title; its legs (comboLegDetails) name
+// the games. It is an NBA bet when every leg is an NBA game ("nba-bos-det-2026-10-22"). The legs are kept in the ledger at every sync, because
+// Polymarket drops them once the combo settles.
+export const isAcctCombo = (id) => /^(caoc|crossd)-/.test(String(id || ""));
+export const nbaLegs = (L) => Array.isArray(L) && L.length > 0 && L.every((l) => /^nba-/.test(String((l && l.eventSlug) || "")));
+export const slimLegs = (L) => (Array.isArray(L) ? L.map((l) => ({ slug: l.slug || "", eventSlug: l.eventSlug || "", title: l.title || "", outcome: l.outcome ?? "", state: l.state || "", team: l.team && l.team.abbreviation ? { abbreviation: l.team.abbreviation } : null })) : []);
+const US_CODE = { GS: "GSW", NO: "NOP", SA: "SAS", NY: "NYK", PHO: "PHX" }, usTeam = (t) => { const u = String(t || "").toUpperCase(); return US_CODE[u] || u; };
+const sgnLine = (x) => (x > 0 ? `+${x}` : `${x}`);
+// Legs -> { label, result, game, date, kind, team }: spread "asc-nba-..." outcome "+4.50" -> "BOS +4.5"; moneyline "aec-..." -> "BOS ML";
+// total "tsc-...-total-221pt5" outcome "Over" -> "Over 221.5". Result from the leg's own state (won / lost).
+export function comboPicks(L) {
+  return (Array.isArray(L) ? L : []).map((l) => {
+    const slug = l.slug || "", m = /^nba-([a-z]+)-([a-z]+)-(\d{4}-\d\d-\d\d)/.exec(l.eventSlug || ""), game = m ? `${usTeam(m[1])} @ ${usTeam(m[2])}` : "";
+    const result = /WON/.test(l.state || "") ? "W" : /LOST/.test(l.state || "") ? "L" : null, team = l.team && l.team.abbreviation ? usTeam(l.team.abbreviation) : null;
+    let label = l.title || slug, kind = "other";
+    if (/^asc-/.test(slug)) { const x = Number(l.outcome); label = `${team} ${isFinite(x) ? sgnLine(x) : l.outcome}`; kind = "spread"; }
+    else if (/^aec-/.test(slug)) { label = `${team} ML`; kind = "ml"; }
+    else if (/^tsc-/.test(slug)) { const t = /total-(\d+)pt(\d)/.exec(slug); label = `${l.outcome} ${t ? `${t[1]}.${t[2]}` : ""}`.trim(); kind = "total"; }
+    return { label, result, game, date: m ? m[3] : null, kind, ...(team && kind !== "total" ? { team } : {}) };
+  });
+}
+// A leg Polymarket never marked, graded from the game's final score (f = { away, home, final } from ESPN)
+export function markLeg(p, f) {
+  if (p.result || !f || !f.final || !p.game) return p;
+  const [a, h] = p.game.split(" @ "), tot = /^(Over|Under)\s+([\d.]+)$/.exec(p.label), sp = /^([A-Z]{2,3})\s+([+-][\d.]+|ML)$/.exec(p.label);
+  let x = null;
+  if (tot) x = (tot[1] === "Over" ? 1 : -1) * (f.away + f.home - Number(tot[2]));
+  else if (sp && (sp[1] === a || sp[1] === h)) x = (sp[1] === h ? f.home - f.away : f.away - f.home) + (sp[2] === "ML" ? 0 : Number(sp[2]));
+  return x == null || !isFinite(x) ? p : { ...p, result: x > 0 ? "W" : x < 0 ? "L" : "P" };
+}
 
 export function resolvedFrom(a) {
   const r = a && a.positionResolution; if (!r || !r.marketSlug || !r.beforePosition || !r.afterPosition) return null;
@@ -43,10 +74,10 @@ export async function syncAccount() {
   const t = new Date().toISOString();
   await setJSON(KEY.raw, { t, positions });
   const all = Object.entries(positions.positions || {}).map(([slug, p]) => ({ slug, p, meta: p.marketMetadata }));
-  const list = all.filter((x) => isNba(x.slug, x.meta) && !isComboLeg(x.slug, x.meta)).map(({ slug, p }) => ({
+  const list = all.filter((x) => (isNba(x.slug, x.meta) && !isComboLeg(x.slug, x.meta)) || (isAcctCombo(x.slug) && nbaLegs(x.p.comboLegDetails))).map(({ slug, p }) => ({
     id: slug, title: (p.marketMetadata && p.marketMetadata.title) || slug, outcome: p.marketMetadata && p.marketMetadata.outcome,
     shares: Number(p.netPosition), cost: Number(p.cost && p.cost.value), value: p.cashValue ? Number(p.cashValue.value) : null,
-    realized: p.realized ? Number(p.realized.value) : null, expired: !!p.expired, updated: p.updateTime || null }));
+    realized: p.realized ? Number(p.realized.value) : null, expired: !!p.expired, updated: p.updateTime || null, ...(isAcctCombo(slug) ? { legs: slimLegs(p.comboLegDetails) } : {}) }));
   await setJSON(KEY.synced, { t, list });
   // Permanent bet log: each position is saved the first time it appears and updated on every sync; when it expires/closes its final value is kept.
   const ledger = (await getJSON(KEY.ledger)) || {}, seen = new Set();
@@ -54,6 +85,7 @@ export async function syncAccount() {
     seen.add(p.id);
     const e = ledger[p.id] || { id: p.id, title: p.title, outcome: p.outcome, firstSeen: t };
     Object.assign(e, { cost: p.cost, shares: p.shares, value: p.value, realized: p.realized, expired: p.expired, lastSeen: t });
+    if (p.legs && p.legs.length) e.legs = p.legs;
     if (e.shares > 0 && e.cost > 0) e.price = e.cost / e.shares;
     delete e.closedAt; ledger[p.id] = e;
   }
@@ -62,7 +94,8 @@ export async function syncAccount() {
   const res = await client.portfolio.activities({ limit: 100, types: ["ACTIVITY_TYPE_POSITION_RESOLUTION"] }).catch(() => null);
   let resolved = 0;
   for (const a of (res && res.activities) || []) {
-    const x = resolvedFrom(a); if (!x || !(x.cost > 0) || !isNba(x.slug, x.meta) || isComboLeg(x.slug, x.meta)) continue;
+    const x = resolvedFrom(a); if (!x || !(x.cost > 0) || isComboLeg(x.slug, x.meta)) continue;
+    if (!isNba(x.slug, x.meta) && !(isAcctCombo(x.slug) && ledger[x.slug])) continue;   // a combo counts once it was seen open with NBA legs
     const e = ledger[x.slug] || (ledger[x.slug] = { id: x.slug, title: x.title, outcome: x.outcome, firstSeen: x.t || t, cost: x.cost, shares: x.shares, price: x.shares > 0 ? x.cost / x.shares : null });
     if (!e.resolved) resolved++;
     e.resolved = { win: x.win, pl: x.pl, t: x.t }; e.closedAt = e.closedAt || x.t || t;
@@ -80,7 +113,7 @@ export async function syncAccount() {
 
 // What the Bets tab shows: open bets, settled / sold bets, and the record.
 export function summarizeLedger(ledger) {
-  const rows = Object.values(ledger || {});
+  const rows = Object.values(ledger || {}).map((e) => (e.legs && e.legs.length ? { ...e, picks: comboPicks(e.legs) } : e));
   const open = rows.filter((e) => !e.closedAt && !e.resolved && !e.sold);
   const done = rows.filter((e) => e.resolved || e.sold).map((e) => ({ ...e, pl: e.resolved ? e.resolved.pl : e.sold.pl, result: e.resolved ? (e.resolved.win ? "win" : "loss") : "sold" }));
   const w = done.filter((e) => e.result === "win").length, l = done.filter((e) => e.result === "loss").length;
@@ -90,5 +123,10 @@ export function summarizeLedger(ledger) {
 }
 export async function loadMyBets() {
   const synced = await getJSON(KEY.synced).catch(() => null), ledger = (await getJSON(KEY.ledger).catch(() => null)) || {};
-  return { syncedAt: synced ? synced.t : null, ...summarizeLedger(ledger) };
+  const out = summarizeLedger(ledger), finals = {};
+  // Settled combos: legs Polymarket never marked are graded from the final scores (one ESPN read per game day)
+  for (const e of out.settled) { if (!e.picks || !e.picks.some((p) => !p.result && p.date)) continue;
+    for (const d of new Set(e.picks.filter((p) => !p.result && p.date).map((p) => p.date))) if (!(d in finals)) finals[d] = await finalsFor(d).catch(() => null);
+    e.picks = e.picks.map((p) => (p.result || !p.date ? p : markLeg(p, (finals[p.date] || {})[p.game]))); }
+  return { syncedAt: synced ? synced.t : null, ...out };
 }

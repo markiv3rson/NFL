@@ -339,8 +339,11 @@ function renderBets() {
   const j = BETS; if (!j || !j.ok) { $("record-mine").innerHTML = ticketRow() + '<div class="card" style="margin-top:10px"><div class="inner"><div class="s dim">Bets unavailable right now.</div></div></div>'; return; }
   $("upd-record").textContent = j.syncedAt ? "Synced " + hm(j.syncedAt) : j.keysSet ? "Not synced yet" : "Polymarket keys not set";
   const rc = j.record || {};
-  const rowsOf = (a, settled) => a.map((e) => `<div class="betwrap"><div class="row"><span>${esc(e.title)}${e.outcome ? ` — ${esc(e.outcome)}` : ""}</span><span>${settled ? (e.result === "win" ? '<span class="g">Won</span>' : e.result === "loss" ? '<span class="r">Lost</span>' : '<span class="y">Sold</span>') + " " + cMoney(e.pl) : e.value != null ? "$" + e.value.toFixed(2) : ""}</span></div>` +
-    `<div class="s" style="padding:0 0 6px 8px">${money(e.cost)}${e.price ? ` at ${Math.round(e.price * 100)}¢` : ""}${e.shares ? ` · ${e.shares} shares` : ""}</div>${stampFor(e)}</div>`).join("");
+  // 10/17 (owner): a Polymarket combo lists its legs under it like NFL's (✓ / ✗, team logo, won leg green, lost leg red)
+  const legRow = (p) => `<div class="s" style="padding:0 0 0 16px">${p.result ? legMark(p.result) + " " : "• "}${legTxt(p.result, `${p.team ? tlogo(p.team) : ""}${esc(p.label)}`)}${p.kind === "total" && p.game ? ` <span class="dim">${gameLogos(p.game)}</span>` : ""}</div>`;
+  const betName = (e) => (e.picks && e.picks.length ? `Combo · ${e.picks.length} picks` : `${esc(e.title)}${e.outcome ? ` — ${esc(e.outcome)}` : ""}`);
+  const rowsOf = (a, settled) => a.map((e) => `<div class="betwrap"><div class="row"><span>${betName(e)}</span><span>${settled ? (e.result === "win" ? '<span class="g">Won</span>' : e.result === "loss" ? '<span class="r">Lost</span>' : '<span class="y">Sold</span>') + " " + cMoney(e.pl) : e.value != null ? "$" + e.value.toFixed(2) : ""}</span></div>` +
+    `${(e.picks || []).map(legRow).join("")}<div class="s" style="padding:0 0 6px 8px">${money(e.cost)}${e.price ? ` at ${Math.round(e.price * 100)}¢` : ""}${e.shares ? ` · ${e.shares} shares` : ""}</div>${stampFor(e)}</div>`).join("");
   const open = [...document.querySelectorAll("#record-mine .drop.open")].map((e) => e.id);
   // 10/17 (owner: "make everything consistent"): a day drop-down like NFL's week drop-down; it picks which settled bets show (open bets always show)
   const dayOf = (e) => { const t = e.closedAt || (e.resolved && e.resolved.t) || (e.sold && e.sold.t); return t ? new Date(t).toLocaleDateString("en-CA", { timeZone: "America/New_York" }) : null; };
