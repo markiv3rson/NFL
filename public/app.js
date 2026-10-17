@@ -1077,9 +1077,28 @@ function setBg(g) {
 //     • K.Williams TD · 67%
 //                                                         ✓ Won / ✗ Lost
 const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;   // 10/14 audit: "1 picks" / "1 players" / "1 games"
+// Polymarket's payout with the same-game links (10/17; same math as lib/combo.js comboPay -- tests check they agree): a team's win, the Over
+// and its scorers ride together, so Polymarket pays less than the prices multiplied (NO ML + Over + 2 NO TDs: 62x multiplied, Polymarket 33.92x).
+const LIFT_FE = { tdCover: 1.19, tdOppCover: 0.81, tdOver: 1.23, tdUnder: 0.77 };
+function linkedPay(legs) {
+  if (!legs || !legs.length || !legs.every((l) => l.price > 0 && l.price < 1)) return null;
+  const side = (l) => l.kind === "spread" || l.kind === "ml";
+  let c = legs.reduce((a, l) => a * l.price, 1), up = 1, down = 1;
+  for (let i = 0; i < legs.length; i++) for (let j = i + 1; j < legs.length; j++) {
+    const a = legs[i], b = legs[j]; let f = 1;
+    if (a.game && a.game === b.game) {
+      if (side(a) && side(b)) { f = (a.team === b.team ? Math.min(a.price, b.price) : Math.max(0, a.price + b.price - 1)) / (a.price * b.price); c *= f; continue; }
+      const [x, y] = a.kind === "td" ? [a, b] : [b, a];
+      if (x.kind === "td") f = side(y) ? (y.team === x.team ? LIFT_FE.tdCover : LIFT_FE.tdOppCover) : y.kind === "total" ? (y.side === "under" || /^Under/.test(y.label || "") ? LIFT_FE.tdUnder : LIFT_FE.tdOver) : 1;
+    }
+    if (f > 1) up *= f; else down *= f;
+  }
+  c = Math.min(c * Math.pow(up, 0.75) * down, ...legs.map((l) => l.price));
+  return c > 0 ? 1 / c : null;
+}
 const plPay = (p) => {
-  if (!p || !p.legs || !p.legs.length || !p.legs.every((l) => l.price > 0 && l.price < 1)) return "PL: —";
-  const x = p.legs.reduce((a, l) => a / l.price, 1), st = p.stake || 10;   // the owner's stake for this parlay type (lib/sgp.js STAKES)
+  const x = p && linkedPay(p.legs); if (x == null) return "PL: —";
+  const st = p.stake || 10;   // the owner's stake for this parlay type (lib/sgp.js STAKES)
   return `PL: ${x >= 10 ? Math.round(x) : x.toFixed(1)}x<span class="plw"> · $${st} → </span><span class="g">$${Math.round(st * x)}</span>`;   // owner 10/15: logo + "PL: 7.7x" blue, "$10 →" white, payout green
 };
 const legMark = (r) => (r === "W" ? '<span class="g">✓</span>' : r === "L" ? '<span class="r">✗</span>' : r === "P" ? '<span class="dim">–</span>' : "•");
