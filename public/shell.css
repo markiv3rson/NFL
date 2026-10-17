@@ -17,7 +17,7 @@ body.home-on { background:transparent !important; } html.home-on { background:#0
 /* 10/17 (owner): the Raiders photo behind the home screen; the NFL / NBA lists are see-through so it shows under them */
 html.home-on::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
   background:linear-gradient(180deg,rgba(0,0,0,.30),rgba(0,0,0,.50) 60%,rgba(0,0,0,.70)),url(/home-bg.jpg) center 22%/cover no-repeat,#000; }
-html.home-on .hsec { background:rgba(10,10,14,.48); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:12px 12px 2px; -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px); }
+html.home-on .hsec { background:rgba(8,8,12,.22); border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:12px 12px 2px; }   /* see-through, no frosted haze (owner 10/17) */
 
 /* menu */
 .mscrim { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.55); opacity:0; pointer-events:none; transition:opacity .2s ease; }
@@ -45,10 +45,10 @@ body.menu-open .mscrim { opacity:1; pointer-events:auto; } body.menu-open .mdraw
 .msec.gap { padding-top:24px; }
 .mi { position:relative; display:flex; align-items:center; gap:14px; height:48px; padding:0 10px; border-radius:12px; color:#c9ced6; text-decoration:none; font-size:16px; }
 .mi .ic { width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex:0 0 32px; }
-.mi.nfl .ic { background:rgba(181,140,255,.12); color:#d9c4ff; } .mi.nba .ic { background:rgba(124,183,255,.12); color:#a9cfff; }
+.mi.nfl .ic { color:#d9c4ff; } .mi.nba .ic { color:#a9cfff; }   /* 10/17 (owner): no pills in the menu -- just the icons */
 .mi .cnt { margin-left:auto; min-width:20px; height:20px; border-radius:10px; padding:0 6px; box-sizing:border-box; display:none; align-items:center; justify-content:center; background:#b58cff; color:#0b0b12; font-size:11px; font-weight:900; }
-.mi.on { color:#fff; font-weight:800; background:linear-gradient(90deg,rgba(181,140,255,.32),rgba(124,183,255,.06)); box-shadow:inset 3px 0 0 #b58cff,0 0 22px rgba(181,140,255,.25); }
-.mi.on .ic { background:linear-gradient(135deg,#b58cff,#7cb7ff); color:#0b0b12; }
+.mi.on { color:#fff; font-weight:800; }
+.mi.on .ic { color:#fff; }
 .mspace { flex:1 1 auto; min-height:24px; }
 .mi.mpar { cursor:default; }   /* "Bets" heads its two pages (10/17, owner: My bets / Model bets separated) */
 .mi.msub { height:42px; padding-left:56px; font-size:15px; }

@@ -82,7 +82,8 @@
   .prl.mt { margin-top:6px; }
   .s { font-size:11.5px; color:var(--faint); margin-top:2px; }
   .btns { display:flex; gap:6px; margin-top:9px; flex-wrap:wrap; }
-  .tag { font:inherit; font-size:12px; font-weight:700; padding:4px 10px; min-height:26px; border-radius:999px; border:1px solid var(--line); color:#c9ced6; background:var(--card2); cursor:pointer; }
+  .tag { font:inherit; font-size:12px; font-weight:700; padding:4px 2px; min-height:26px; border:0; border-radius:0; color:#c9ced6; background:none; cursor:pointer; }   /* 10/17 (owner): no pills -- plain text */
+  .tdr .pill, .prow .pill { border:0 !important; background:none !important; padding:0 2px !important; }   /* 10/17 (owner): player tags as plain coloured text */
   .drop { display:none; margin-top:10px; border-top:1px solid var(--line2); padding-top:8px; font-size:12.5px; }
   .drop.open { display:block; }
   .drow { display:flex; justify-content:space-between; gap:10px; padding:4px 0; border-bottom:1px solid rgba(255,255,255,.05); }
@@ -121,7 +122,7 @@
   .phead svg { display:none; }
   .phead .pt { display:grid; gap:2px; min-width:0; flex:1; } .phead .pt b { font-size:28px; font-weight:800; color:#fff; line-height:1.05; letter-spacing:-.01em; }
   .phead .pt span { font-size:12.5px; color:var(--faint); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .phbtn { flex:0 0 auto; font:inherit; font-size:12px; font-weight:700; color:#fff; background:rgba(255,255,255,.12); border:1px solid rgba(170,182,255,.5); border-radius:999px; padding:6px 12px; cursor:pointer; }
+  .phbtn { flex:0 0 auto; font:inherit; font-size:12px; font-weight:700; color:#fff; background:none; border:0; border-radius:999px; padding:6px 0; cursor:pointer; }
   .banner { margin-top:10px; border-radius:14px; padding:11px 14px; display:flex; align-items:center; gap:10px; background:linear-gradient(90deg,rgba(150,100,255,.3),rgba(150,100,255,.08)); border:1px solid rgba(183,148,255,.6); box-shadow:0 0 18px rgba(150,100,255,.28); }
   .banner b { font-size:13px; font-weight:900; letter-spacing:.14em; color:var(--violet); text-shadow:var(--vglow); white-space:nowrap; }
   .banner span { font-size:12px; color:#c9ced6; line-height:1.35; }
@@ -154,7 +155,7 @@
   .chip { font-size:10px; font-weight:800; padding:2px 8px; border-radius:999px; white-space:nowrap; }
   .c-amb { color:var(--gold); background:rgba(242,207,102,.14); } .c-red { color:var(--red); background:rgba(255,107,107,.14); }
   .c-grn { color:var(--green); background:rgba(61,220,151,.14); } .c-cy { color:var(--cyan); background:rgba(79,227,208,.14); }
-  .back { min-height:28px; font:inherit; font-size:12.5px; font-weight:700; color:var(--rose); background:rgba(255,110,140,.12); border:1px solid rgba(170,182,255,.35); border-radius:999px; padding:2px 10px; cursor:pointer; margin-top:8px; margin-bottom:12px; }
+  .back { min-height:28px; font:inherit; font-size:12.5px; font-weight:700; color:var(--rose); background:none; border:0; border-radius:999px; padding:2px 0; cursor:pointer; margin-top:8px; margin-bottom:12px; }
   /* 10/14 Game Lines top: casino tickets + line-move chips */
   .jrow { margin-top:10px; display:grid; grid-template-columns:repeat(auto-fit,minmax(0,1fr)); gap:10px; }
   .ticket { position:relative; display:grid; gap:2px; justify-items:start; text-align:left; font:inherit; color:#fff; cursor:pointer; padding:12px 16px; border-radius:14px; border:0;
@@ -181,12 +182,9 @@
   .chips.dock { gap:0; padding:0 max(12px,env(safe-area-inset-right)) 0 max(12px,env(safe-area-inset-left)); border-top:1px solid var(--line); background:rgba(8,9,14,.97); -webkit-backdrop-filter:none; backdrop-filter:none; }
   .chips.dock button { flex:1 0 auto; min-width:0; position:relative; min-height:40px; padding:0 10px; border:0; border-radius:0; background:none; font-size:11.5px; font-weight:700; letter-spacing:.02em; color:var(--faint); white-space:nowrap; text-align:center; }   /* equal columns when they fit, the strip scrolls when they don't (Alerts on a phone) */
   .chips.dock button.on { color:#fff; background:none; border:0; } .chips.dock button.on::after { content:""; position:absolute; left:24%; right:24%; bottom:0; height:2px; border-radius:2px; background:#a98bff; }
-  .wksel { margin-top:12px; } .wksel select { -webkit-appearance:none; appearance:none; width:100%; min-height:44px; padding:0 40px 0 14px; border-radius:12px; border:1px solid rgba(181,140,255,.55); color:#fff; font:inherit; font-size:15px; font-weight:800;
-    background:rgba(181,140,255,.08) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23d9c4ff' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center; }   /* 10/17 (owner): week drop-downs on My bets / Model bets */
+  .wksel { margin-top:12px; } .wksel select { -webkit-appearance:none; appearance:none; width:auto; min-height:36px; padding:0 24px 0 2px; border:0; border-radius:0; color:#fff; font:inherit; font-size:17px; font-weight:800; cursor:pointer;
+    background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23d9c4ff' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 2px center; }   /* 10/17 (owner): week drop-downs on My bets / Model bets; no box, just the bold week and its arrow */
   .wksel select option { background:#0d0e12; color:#fff; }
-  #lab-wk { gap:20px; margin-top:6px; padding:0; border-bottom:1px solid var(--line2); overflow-x:auto; scrollbar-width:none; } #lab-wk::-webkit-scrollbar { display:none; }
-  #lab-wk button { position:relative; min-height:36px; padding:0 2px; border:0; border-radius:0; background:none; font-size:13px; font-weight:700; color:var(--faint); }
-  #lab-wk button.on { color:#fff; background:none; border:0; } #lab-wk button.on::after { content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; border-radius:2px; background:#a98bff; }
   .card.dd { margin-top:10px; padding:0; } .ddh { width:100%; display:flex; justify-content:space-between; align-items:center; gap:10px; font:inherit; color:#fff; background:none; border:0; padding:13px 14px; cursor:pointer; text-align:left; }
   .ddt { font-size:14px; font-weight:800; letter-spacing:.04em; } .ddm { font-size:12px; color:var(--faint); white-space:nowrap; } .card.dd .drop .inner { padding:0 14px 12px; }
   .pay { color:#ffcf4a; font-weight:700; white-space:nowrap; } .pay.dim { color:var(--faint); font-weight:400; }
@@ -226,6 +224,8 @@
   .tdl { margin-top:10px; padding:0; }
   .tdr { position:relative; overflow:hidden; padding:9px 12px; border-top:1px solid var(--line2); cursor:pointer; }
   .tdr:first-child { border-top:none; }
+  .tdr .tlogo { width:20px; height:20px; flex:0 0 20px; margin:0; } .tdr .l1 { display:flex; align-items:center; gap:5px; white-space:nowrap; overflow:hidden; } .tdr .l1 .pill { flex:0 0 auto; }   /* 10/17 (owner): one row look for both TD boxes */
+  .tdr.best .bp { font-size:15px; font-weight:800; } .tdr .nogap { font-size:12px; }
   .tdr .wmc { position:absolute; left:46%; top:50%; width:84px; height:84px; margin:-42px 0 0 -42px; opacity:.14; object-fit:contain; pointer-events:none; }
   .tdr .in { position:relative; display:flex; align-items:center; gap:8px; }
   .tdr .rk { width:20px; font-size:11px; font-weight:700; color:var(--faint); }
@@ -253,10 +253,9 @@
   .prow .logo { width:22px; height:22px; vertical-align:-6px; margin-right:6px; background:none; }
   .pm { display:inline-flex; width:14px; height:14px; border-radius:4px; background:#2e5cff; color:#fff; align-items:center; justify-content:center; font-size:10px; font-weight:800; vertical-align:-2px; margin-right:4px; overflow:hidden; }
   .pm img { width:14px; height:14px; }
-  .injb { position:relative; display:inline-flex; vertical-align:middle; margin-right:5px; border-radius:50%; box-shadow:0 0 0 2px var(--red); }
-  .injb img { width:20px; height:20px; border-radius:50%; }
-  .injb u { position:absolute; right:-5px; bottom:-5px; width:13px; height:13px; border-radius:50%; background:rgba(255,107,107,.28); border:1px solid var(--red); display:flex; align-items:center; justify-content:center; text-decoration:none; color:#ff9a9a; font-size:10px; font-weight:900; line-height:1; }
-  .pos { font-size:10px; font-weight:700; padding:0 5px; border-radius:4px; border:1px solid rgba(255,255,255,.2); color:#c9ced6; margin-left:5px; }
+  .injb { position:relative; display:inline-flex; vertical-align:middle; margin-right:5px; }   /* 10/17 (owner): just the logo, no red circle */
+  .injb img { width:20px; height:20px; object-fit:contain; } .injb u { display:none; }
+  .pos { font-size:10px; font-weight:700; padding:0; border:0; color:var(--faint); margin-left:5px; }   /* 10/17 (owner): no pills -- plain text */
   /* alerts */
   .al { display:flex; gap:10px; align-items:flex-start; padding:11px 12px; margin-top:8px; cursor:pointer; }
   .al .dot { width:8px; height:8px; border-radius:50%; margin-top:6px; flex-shrink:0; background:transparent; } .al.un .dot { background:var(--green); }
@@ -276,6 +275,10 @@
   .pagewm { position:fixed; inset:0; z-index:-1; pointer-events:none; display:flex; align-items:center; overflow:hidden; }
   .pagewm img { width:50%; height:100%; object-fit:contain; transform:scale(1.25); opacity:.2; }
   .pagewm::after { content:""; position:absolute; inset:0; background:rgba(0,0,0,.4); }
+  /* 10/17 (owner): NFL Game Lines (the list, not a game page) gets the home screen's Raiders photo, the game cards see-through over it */
+  html.lines-on .pagewm { background:linear-gradient(180deg,rgba(0,0,0,.30),rgba(0,0,0,.50) 60%,rgba(0,0,0,.70)),url(/home-bg.jpg) center 22%/cover no-repeat,#000; }
+  html.lines-on .pagewm::after { display:none; }
+  html.lines-on #lines .tile, html.lines-on #panel-td .card { background:rgba(8,8,12,.22); border-color:rgba(255,255,255,.12); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* see-through, no frosted haze */
   .dtop .t .tlogo { width:30px; height:30px; vertical-align:-6px; margin:0 8px 0 0; } .dtop .t:last-child .tlogo { margin:0 0 0 8px; }
   .prl > .s { text-transform:uppercase; letter-spacing:.04em; font-size:13px; font-weight:700; color:#eef0f4; }
   /* game page: the two team logos split the whole page in half behind the cards (away left, home right) */

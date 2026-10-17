@@ -324,6 +324,11 @@ function injTag(r) {
   const k = /^out/i.test(st) ? ["OUT", "var(--red)"] : /^doubt/i.test(st) ? ["D", "#ff9f43"] : ["Q", "var(--yellow)"];
   return ` <span class="pill" style="padding:0 6px;font-size:10px;font-weight:800;color:${k[1]};border:1px solid ${k[1]}">${k[0]}</span>`;
 }
+// 10/17 (owner): practice status as a short tag (DNP / LP / FP), never the long sentence that wrapped onto a second line
+function practTag(r) {
+  const t = String(r.injury || ""), k = /did not|dnp|not participate/i.test(t) ? "DNP" : /limited/i.test(t) ? "LP" : /full/i.test(t) ? "FP" : "";
+  return k ? ` <span class="pill" style="padding:0 6px;font-size:10px;font-weight:800;color:var(--faint);border:1px solid var(--line2)">${k}</span>` : "";
+}
 // 10/14 (owner): "Market disagrees" is a warning on the player's own row (Polymarket 20+ points from the model -- check the news)
 function mktWarn(r) {
   if (!r || r.fair == null || r.price == null || Math.abs(r.price * 100 - r.fair) < 20) return "";
@@ -332,10 +337,10 @@ function mktWarn(r) {
 }
 function tdRow(x, i) {
   const r = x.r, g = x.g;
-  return `<div class="tdr"><img class="wmc" loading="lazy" decoding="async" src="${logoUrl(r.team)}" alt="" onerror="this.style.display='none'"><div class="in"><span class="rk">${i + 1}</span>` +
-    `<div class="nmx"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos)}</span>${injTag(r)}${retPill(r)}<div class="g2">${esc(r.game)}</div>${mktWarn(r)}</div>` +
+  return `<div class="tdr"><div class="in"><span class="rk">${i + 1}</span>${tlogo(r.team)}` +
+    `<div class="nmx"><div class="l1"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos)}</span>${injTag(r)}${retPill(r)}</div><div class="g2">${esc(r.game)}</div>${mktWarn(r)}</div>` +
     `<div class="mp"><em>${tdPct(r.fair)}%</em><div class="bar"><i style="width:${Math.min(100, r.fair)}%"></i></div></div><div class="pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${(() => { const b = tdBlend(r); if (b && b.blend - r.price * 100 >= 5) return `<div class="g" style="font-size:10px">+${Math.round(b.blend - r.price * 100)} vs price</div>`;
-      return tdNoGap(r) != null ? `<div class="r" style="font-size:10px">No · ${tdNoGap(r)} under</div>` : ""; })()}</div></div>` +
+      return ""; })()}${tdNoGap(r) != null ? ` <span class="y nogap" title="No · ${tdNoGap(r)} under">⚠</span>` : ""}</div></div>` +
     `<div class="more" style="--tc:${TEAM_COLOR[r.team] || "#444"};--logo:url(${logoUrl(r.team)})">${prow(r, g, true)}</div></div>`;
 }
 const earlyNote = (g) => (g && g.early ? '<span class="pill p-y" style="padding:0 6px;font-size:10px">Early estimate</span>' : "");
@@ -351,7 +356,7 @@ function tdBody() {
   // Best TD picks (10/14, owner: "build now"): only the players the model gives 55%+ (shown chance, after injury discounts). Graded weeks 3-5:
   // 55%+ players scored 17 of 21 (said 65%) vs 22% for every listed player -- the model's most confident tier, not a smarter model.
   const best = rows.filter((x) => x.r.fair >= BEST_TD);
-  const bestBox = `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Best TD picks · model ${BEST_TD}%+</div>${best.length ? best.map((x) => `<div class="row"><span>${tlogo(x.r.team)}<b>${esc(x.r.player)}</b> <span class="dim">${esc(x.r.pos || "")} · ${esc(x.g.key)}${x.r.injury ? ` · ${esc(x.r.injury)}` : ""}</span>${mktWarn(x.r)}</span><b class="g">${Math.round(x.r.fair)}%</b></div>`).join("") : '<div class="s">No player at 55%+ right now.</div>'}</div></div>`;
+  const bestBox = `<div class="card tdl tdbest"><div class="tdh"><span style="flex:1;padding-left:6px">BEST TD PICKS · MODEL ${BEST_TD}%+</span></div>${best.length ? best.map((x) => `<div class="tdr best"><div class="in">${tlogo(x.r.team)}<div class="nmx"><div class="l1"><b>${esc(x.r.player)}</b><span class="pos">${esc(x.r.pos || "")}</span>${injTag(x.r) || practTag(x.r)}</div><div class="g2">${esc(x.g.key)}</div>${mktWarn(x.r)}</div><b class="g bp">${Math.round(x.r.fair)}%</b></div></div>`).join("") : '<div class="s" style="padding:10px 12px">No player at 55%+ right now.</div>'}</div>`;
   // Top 3 per team (10/5): beyond the three likeliest scorers the rest is noise.
   // 10/14 (owner): players already in Best TD picks are left out of this list (no repeats)
   const perTeam = {}, shown = rows.filter((x) => { const k = x.r.team; perTeam[k] = (perTeam[k] || 0) + 1; return perTeam[k] <= 3; }).filter((x) => x.r.fair < BEST_TD);
@@ -360,7 +365,7 @@ function tdBody() {
 }
 function renderTd() {
   const wk = S.week ? ` · Week ${S.week}` : "";
-  $("td-header").textContent = `${wk ? wk.replace(/^\s*·\s*/, "") + " · " : ""}top 3 per team · most likely first` + (S.games.some((g) => g.early) ? " · early-week estimates" : "");
+  $("td-header").textContent = "";   // 10/17 (owner): no subtitle
   let html = tdBody();
   $("td").innerHTML = html + '';
 }
@@ -1138,8 +1143,11 @@ function renderLabList() {
   $("lab").innerHTML = chips + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
   const lw = $("lab-wk"); if (lw && lw.tagName === "SELECT") lw.onchange = () => { LABWEEK = Number(lw.value); renderLabList(); };
 }
+// 10/17 (owner): the Raiders photo behind NFL Game Lines and Anytime TD -- Game Lines only the list, while it is the page showing (a game page keeps its team colours)
+function linesBg() { const on = (id) => { const p = $(id); return !!(p && p.classList.contains("on")); };
+  document.documentElement.classList.toggle("lines-on", (on("panel-lines") && !DETAIL) || on("panel-td")); }
 function renderDetail(g) {
-  $("lines").style.display = "none"; $("detail").style.display = "";
+  $("lines").style.display = "none"; $("detail").style.display = ""; linesBg();
   $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : ""}${gameCard(g, "x")}${totalCard(g, "x")}${tdTop3(g)}${sgpBox(g)}`;
   $("back-btn").onclick = closeGame;
   if (ROLL_ON_OPEN) { ROLL_ON_OPEN = false; slotify($("detail")); }   // 10/14: numbers roll in when you open a game
@@ -1148,7 +1156,7 @@ function renderDetail(g) {
 }
 function renderLines() {
   if (DETAIL) { const g = S.games.find((x) => x.key === DETAIL); if (g) return renderDetail(g); DETAIL = null; }
-  setBg(null);
+  setBg(null); linesBg();
   $("detail").style.display = "none"; $("lines").style.display = "";
   $("lines").innerHTML = changedBox() + linesBySlot();
 }
@@ -1307,6 +1315,7 @@ function showPanel(name) {
   if (name === "record") setTimeout(playStamps, 50);
   setTimeout(() => slotify($("panel-" + name)), 60);   // 10/14: numbers roll in when you open a tab
   if (S && S.games) setBg(name === "lines" && DETAIL ? S.games.find((x) => x.key === DETAIL) : null);   // game background only on an open game page
+  linesBg();
 }
 // 10/17: pages switch by the address' #name (the menu links set it): #home (or none), #alerts, #lines, #td, #record, #models
 const PANELS = ["home", "alerts", "lines", "td", "record", "mybets", "modelbets", ...LAB_TABS.map(([k]) => `modelbets-${k}`), "models"];
