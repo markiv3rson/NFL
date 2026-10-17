@@ -308,6 +308,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const u = usPlayerNames(ev);
   ok(u["astatc-nfl-lac-kc-2026-10-18-td-ladmcc-gte1"].name === "Ladd McConkey" && u["astatc-nfl-lac-kc-2026-10-18-td-ladmcc-gte1"].team === "LAC" && u["astatc-nfl-ari-lar-2026-10-18-td-pucnac-gte1"].team === "LA" && !u["asc-nfl-lac-kc-2026-10-18-neg-4pt5"],
     "bets: a TD leg's real name and team come from the Polymarket US event (ladmcc -> Ladd McConkey, LAC)"); }
+{ const { tdTeamFromModel } = await import("../lib/mybets.js");
+  const td = { "LA @ JAX": { away: [{ name: "K.Williams" }, { name: "P.Nacua" }], home: [{ name: "T.Etienne" }] }, "BUF @ ATL": { away: [{ name: "J.Cook" }], home: [{ name: "Bi.Robinson" }] }, "X @ Y": { away: [{ name: "K.Williams" }], home: [] } };
+  ok(tdTeamFromModel(td, "Bijan Robinson").team === "ATL" && tdTeamFromModel(td, "James Cook III").team === "BUF" && tdTeamFromModel(td, "Puka Nacua").game === "LA @ JAX" && tdTeamFromModel(td, "Kyren Williams") === null && tdTeamFromModel(td, "Nobody Here") === null,
+    "bets: an old TD leg with no game gets its team from that week's TD lists, only when one team has him"); }
 { const { buildPaper, gradePaper } = await import("../lib/paper.js");
   const game = (k, hs, ml, win, extra = {}) => ({ key: k, away: k.split(" @ ")[0], home: k.split(" @ ")[1], started: false, final: false, poly: { spread: { homeSpread: hs }, ml: { home: ml, away: 1 - ml } }, winPct: win, td: [], ...extra });
   const data = { games: [game("A @ B", -10.5, 0.86, 86), game("C @ D", -12, 0.9, 90), game("E @ F", -3, 0.6, 60), game("G @ H", -7, 0.8, 79),

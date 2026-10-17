@@ -14,8 +14,9 @@
 const r1 = (x) => Math.round(x * 10) / 10;
 const sg = (x) => (x > 0 ? "+" : "") + x;
 export const PTS_BAR = 56, FAR_GAIN = 3, MIN_BUY = 2, RULE_POINTS = 2, MAX_BUY = 3.5, MAX_LIST = 7;
-// the model's own side at the main line: honest rate on games the fit never saw (official-report injury basis, 2025-26)
-export const MODEL_HIT = { spread: 50.3, total: 50.5 }, MODEL_N = 1783;
+// the model's own side at the main line: honest rate on games the fit never saw (official-report injury basis, 2025-26). 10/17 pass: updated to the
+// 10/17 rebuild's own report (trained 2022-24, tested 2025-26, 2,462 games: spread side 49.4%, total side 50.4%; it was 50.3 / 50.5 on 1,783 games)
+export const MODEL_HIT = { spread: 49.4, total: 50.4 }, MODEL_N = 2462;
 // LINE MOVE (Pinnacle moved 3+ points since its first sighting; 2024-25 + 2025-26 opening / closing lines, nothing fitted): the side the line moved
 // toward won 67.9% of 483 games at the OPENING number and 56.3% at the closing number (56.6 / 56.0 by season); totals 61.8% at the open only.
 export const MOVE_HIT = { spreadOpen: 67.9, spreadClose: 56.3, totalOpen: 61.8 }, MOVE_N = 483, MOVE_N_T = 1142;

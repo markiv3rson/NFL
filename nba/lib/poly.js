@@ -99,12 +99,15 @@ export function parseGame(markets, away, home) {
   return out;
 }
 
-// NBA games on Polymarket US from yesterday to 5 days ahead, each with its full market list (an NBA game event is a few KB). The event's slug says
+// NBA games on Polymarket US from yesterday to 10 days ahead (the All-Star break has ~7 days without games); the full market list (an NBA game
+// event is a few KB) is read for the first 3 game days only (the slate shows today + the next day with games), 8 at a time. The event's slug says
 // who is away / home ("nba-bos-det-2026-10-20" = BOS @ DET).
 export async function fetchEvents() {
-  const now = Date.now(), list = await usGames("nba", now - 86400e3, now + 5 * 86400e3);
-  const out = await Promise.all(list.map(async (e) => { const ev = await usEvent(e.slug).catch(() => null); if (!ev) return null;
-    return { slug: e.slug, startTime: e.start || ev.startTime, teams: [{ abbreviation: e.away, ordering: "away" }, { abbreviation: e.home, ordering: "home" }], markets: usMarkets(ev, "nba") }; }));
+  const now = Date.now(), list = await usGames("nba", now - 86400e3, now + 10 * 86400e3);
+  const days = [...new Set(list.map((e) => (e.slug.match(/(\d{4}-\d\d-\d\d)$/) || [])[1]).filter(Boolean))].sort().slice(0, 3);
+  const want = list.filter((e) => days.includes((e.slug.match(/(\d{4}-\d\d-\d\d)$/) || [])[1])), out = [];
+  for (let i = 0; i < want.length; i += 8) out.push(...(await Promise.all(want.slice(i, i + 8).map(async (e) => { const ev = await usEvent(e.slug).catch(() => null); if (!ev) return null;
+    return { slug: e.slug, startTime: e.start || ev.startTime, teams: [{ abbreviation: e.away, ordering: "away" }, { abbreviation: e.home, ordering: "home" }], markets: usMarkets(ev, "nba") }; }))));
   return out.filter(Boolean);
 }
 
