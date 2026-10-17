@@ -121,7 +121,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ctx.window = ctx; ctx.addEventListener = () => {}; ctx.body = undefined;
   vm.createContext(ctx);
   vm.runInContext(readFileSync(new URL("../public/shell.js", import.meta.url), "utf8"), ctx);   // 10/17: the shared menu / header script loads first, as on the page
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={tdPct,plural,pBlock,plPay,linkedPay,sgpBox,labParlays,renderLabList,logoLabel,tdTeam,legName,moreBox,slotOf,parlayPicks,parlayStrip,lineCheck,recLine,bestBets,injTag,weakLeg,kickLine,tdNoGap,trackedRows,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,leanCell,prow,betRow,changedBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gameCard,totalCard,detailTop,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByConfidence,mSec,legFlipped,betSlots,openBySlot,straightPicks,sgpBox,glowOf,stampFor,betRow};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={tdPct,plural,pBlock,plPay,linkedPay,plTap,sgpBox,labParlays,renderLabList,logoLabel,tdTeam,legName,moreBox,slotOf,parlayPicks,parlayStrip,lineCheck,recLine,bestBets,injTag,weakLeg,kickLine,tdNoGap,trackedRows,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,leanCell,prow,betRow,changedBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gameCard,totalCard,detailTop,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByConfidence,mSec,legFlipped,betSlots,openBySlot,straightPicks,sgpBox,glowOf,stampFor,betRow};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   g = { away: "A", home: "H", model: { total: 44.4, fix: { dome: 2.59, pace: 0.1, div: true } }, poly: { total: { line: 45.5 } } };
@@ -145,7 +145,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const P = buildPaper({ games: [gg("A @ B", "B", "A", [{ pick: "A +3.5", hit: 62 }, { pick: "Over 40.5", hit: 80, teaser: true }]), gg("C @ D", "D", "C", [{ pick: "Under 44.5", hit: 58 }]),
     gg("E @ F", "F", "E", [{ pick: "F -3.5", hit: 52 }]), gg("G @ H", "H", "G", [{ pick: "H -3.5", hit: 70 }])] });
   const b2 = P.find((p) => p.strategy === "best_2"), b3 = P.find((p) => p.strategy === "best_3"), b4 = P.find((p) => p.strategy === "best_4");
-  ok(b2 && b2.legs.map((l) => l.label).join(",") === "H -3.5,A +3.5" && b3 && b3.legs.length === 3 && !b4 && !b3.legs.some((l) => /40\.5|F -3\.5/.test(l.label)) && Math.abs(b2.pay - 4) < 1e-9,
+  ok(b2 && b2.legs.map((l) => l.label).join(",") === "H -3.5,A +3.5" && b3 && b3.legs.length === 3 && !b4 && !b3.legs.some((l) => /40\.5|F -3\.5/.test(l.label)) && Math.abs(b2.pay - 4 * 0.977) < 1e-9,
     "best-bets parlays: the card's PICK at Polymarket's line, green = win % 3+ above the price, one per game, no teasers, none when too few"); }
 { const { startersOut } = await import("../lib/snaps.js");
   const sn = { "Joe QB": { name: "Joe QB", pos: "QB", weeks: { 1: 1, 2: 1 }, dweeks: { 1: 0, 2: 0 } }, "Al CB": { name: "Al CB", pos: "CB", weeks: { 1: 0, 2: 0 }, dweeks: { 1: 0.9, 2: 0.8 } },
@@ -317,14 +317,14 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const Q = buildPaper(d2), l2 = Q.filter((p) => p.strategy === "td_likely_2"), l3 = Q.filter((p) => p.strategy === "td_likely_3");
     ok(l2.length === 1 && l2[0].legs.map((l) => l.player).join() === "Thin.X,Top.One" && l2[0].legs[0].thin === true, "likely-2: best player, one per game, injury-listed player skipped, thin markets allowed and marked", l2[0] && l2[0].legs.map((l) => l.player));
     ok(l3.length === 1 && l3[0].legs.map((l) => l.player).join() === "Thin.X,Top.One,Real.Two" && Math.abs(l3[0].prob - 0.9 * 0.7 * 0.55) < 1e-9, "likely-3: thin market allowed, chance = legs multiplied", l3[0] && l3[0].legs.map((l) => l.player)); }
-  ok(Math.abs(by("home_fav_95_2")[0].pay - 1 / (0.9 * 0.86)) < 1e-9, "payout = legs multiplied");
+  ok(Math.abs(by("home_fav_95_2")[0].pay - 0.977 / (0.9 * 0.86)) < 1e-9, "payout = legs multiplied, minus Polymarket's cut");
   await setJSON("paper:2026:9", { parlays: [{ strategy: "x", legs: [{ game: "A @ B", kind: "ml", team: "B", price: 0.8 }, { game: "C @ D", kind: "ml", team: "D", price: 0.5 }] },
     { strategy: "y", legs: [{ game: "A @ B", kind: "ml", team: "B", price: 0.8 }, { game: "I @ J", kind: "td", team: "J", player: "X.Back", price: 0.3 }] }] });
   await gradePaper(2026, 9, [{ key: "A @ B", homeScore: 24, awayScore: 20 }, { key: "C @ D", homeScore: 17, awayScore: 17 }, { key: "I @ J", homeScore: 10, awayScore: 3 }],
     async () => Object.assign(["X.Back"], { teams: { "X.Back": ["J"] } }));
   const { getJSON } = await import("../lib/redis.js"); const g = await getJSON("paper:2026:9");
   ok(g.parlays[0].result === "W" && Math.abs(g.parlays[0].ret - (1 / 0.8 - 1)) < 1e-9, "pushed leg drops out, parlay pays the rest");
-  ok(g.parlays[1].result === "W" && Math.abs(g.parlays[1].ret - (1 / (0.8 * 0.3) - 1)) < 1e-9, "TD leg graded from scorers"); }
+  ok(g.parlays[1].result === "W" && Math.abs(g.parlays[1].ret - (0.977 / (0.8 * 0.3) - 1)) < 1e-9, "TD leg graded from scorers"); }
 // ---------- Most likely winners
 { const ctx = globalThis.__ctx, { winnerFor, recordWinner, gradeWinnersWeek, winnersSummary } = await import("../lib/paper.js");
   const home = winnerFor({ key: "TEN @ BAL", away: "TEN", home: "BAL" }, { spread: { homeSpread: -10.5 } }), road = winnerFor({ key: "KC @ LV", away: "KC", home: "LV" }, { spread: { homeSpread: 7 } });
@@ -417,7 +417,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { const pb = ctx.T.pBlock("ARI @ LA", { prob: 0.67, stake: 20, legs: [{ label: "ARI +3.5", prob: 0.55, price: 0.55 }, { label: "Over 45", prob: 0.5, price: 0.5 }, { label: "K.Williams TD", prob: 0.67, price: 0.5 }] }, false);
     const pn = ctx.T.pBlock("WAS @ SF", { prob: 0.31, legs: [{ label: "SF -7.5", prob: 0.5, price: null }, { label: "C.McCaffrey TD", prob: 0.66 }] }, false);
     ok(ctx.T.tdPct(54.6) === 54 && ctx.T.tdPct(55) === 55 && ctx.T.tdPct(54.4) === 54 && ctx.T.tdPct(61.1) === 61 && ctx.T.plural(1, "pick") === "1 pick" && ctx.T.plural(0, "pick") === "0 picks" && ctx.T.plural(2, "player") === "2 players"
-      && /<span class="pbn">ARI @ LA <span class="g">· 67%<\/span>/.test(pb) && /ARI \+3\.5 · 55%/.test(pb) && /K\.Williams TD · 67%/.test(pb) && /PL: 7\.3x<span class="plw"> · \$20 → <\/span><span class="g">\$145<\/span>/.test(pb) && /PL: —/.test(pn) && !/hits ~|about \d|filled|Polymarket price not posted/.test(pb + pn),
+      && /<span class="pbn">ARI @ LA <span class="g">· 67%<\/span>/.test(pb) && /ARI \+3\.5 · 55%/.test(pb) && /K\.Williams TD · 67%/.test(pb) && /PL: 7\.1x<span class="plw"> · \$20 → <\/span><span class="g">\$142<\/span>/.test(pb) && /PL: —/.test(pn) && !/hits ~|about \d|filled|Polymarket price not posted/.test(pb + pn),
       "wording + parlay block: game with its HIT %, one line per leg with its %, then PL: payout (PL: — with no price); no notes; 54.6% TD shows 54; \"1 pick\" not \"1 picks\"", { pb, pn }); }
         }
       const { comboChance } = await import("../lib/combo.js");
@@ -438,7 +438,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
             "Model Picks: week drop-down on top (first recorded week first), one list in kickoff order with the blue PL line and Won at the bottom right; no docked type strip (the types are in the menu)", { h: h.slice(0, 300) });
           ctx.document.getElementById = oldGet;
           const pb = ctx.T.pBlock("X", P(0.5, [lg("A +1.5", 0.5, "W"), lg("Over 44.5", 0.5, "L"), lg("B.Tuten TD", 0.4)]), false);
-          ok(/<span class="g">✓<\/span> .*A \+1\.5/.test(pb) && /<span class="r">✗<\/span> .*Over 44\.5/.test(pb) && /• .*B\.Tuten TD/.test(pb) && /✗ Lost|✓ Won/.test(pb) === false && /class="pm"/.test(pb) && /PL: 8\.0x/.test(pb),
+          ok(/<span class="g">✓<\/span> .*A \+1\.5/.test(pb) && /<span class="r">✗<\/span> .*Over 44\.5/.test(pb) && /• .*B\.Tuten TD/.test(pb) && /✗ Lost|✓ Won/.test(pb) === false && /class="pm"/.test(pb) && /PL: 7\.8x/.test(pb),
             "parlay block: ✓ won, ✗ lost and • pending marks on the legs, Polymarket logo on the PL line; no result until the parlay is decided"); }
     ok(sameGameParlays({ ...g, started: true }) === null, "same-game: none once the game has started");
     const data = { season: 2099, week: 6, games: [{ ...g, sgp: x }, { key: "OLD @ GAME", started: true, sgp: x }] };
@@ -1015,7 +1015,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       ok(/class="pgrid"/.test(ctx.T.sgpBox({ key: "A @ B", sgp: { best: { legs: [{ label: "x", prob: .6 }, { label: "y", prob: .6 }], prob: .36 } } })), "game page: the same-game parlays are one plain list (10/15)"); }
     { const pp = { legs: [{ label: "A", prob: .6, price: .5 }, { label: "B", prob: .6, price: .4 }], prob: .36 };
       const h = ctx.T.sgpBox({ key: "A @ B", sgp: { best: pp } });
-      ok(/PL: 5\.0x<span class="plw"> · \$10 → <\/span><span class="g">\$50<\/span>/.test(h) && /· \$20 → <\/span><span class="g">\$100/.test(ctx.T.sgpBox({ key: "A @ B", sgp: { best: { ...pp, stake: 20 } } })) && /PL: —/.test(ctx.T.sgpBox({ key: "A @ B", sgp: { best: { ...pp, legs: [pp.legs[0], { label: "C", prob: .5, price: null }] } } })), "payout: legs' Polymarket prices multiplied (1/0.5 x 1/0.4 = 5x, $10 -> $50); a leg without a price says so"); }
+      ok(/PL: 4\.9x<span class="plw"> · \$10 → <\/span><span class="g">\$49<\/span>/.test(h) && /· \$20 → <\/span><span class="g">\$98/.test(ctx.T.sgpBox({ key: "A @ B", sgp: { best: { ...pp, stake: 20 } } })) && /PL: —/.test(ctx.T.sgpBox({ key: "A @ B", sgp: { best: { ...pp, legs: [pp.legs[0], { label: "C", prob: .5, price: null }] } } })), "payout: legs' Polymarket prices multiplied minus Polymarket's cut (1/0.5 x 1/0.4 x 0.977 = 4.9x, $10 -> $49); a leg without a price says so"); }
     { const p = { legs: [{ label: "Bi.Robinson TD", prob: 0.62 }, { label: "ATL +3.5", prob: 0.581, rule: "KEY NUMBER" }], prob: 0.43 };
       const h = ctx.T.sgpBox({ key: "CHI @ ATL", sgp: { best: p, style: { ...p, prob: 0.05 } } });
       const h3 = ctx.T.sgpBox({ key: "CHI @ ATL", sgp: { best: p, three: { ...p, prob: 0.2 }, linked: { ...p, prob: 0.08 }, style: { ...p, prob: 0.05 } } });
@@ -1078,7 +1078,36 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       { game: "NO @ NYG", kind: "td", team: "NO", player: "D.Vele", label: "D.Vele TD", price: 0.25 }, { game: "NO @ NYG", kind: "td", team: "NO", player: "J.Johnson", label: "J.Johnson TD", price: 0.27 }];
     const x = comboPay(L); ok(x > 32 && x < 36 && Math.abs(ctx.T.linkedPay(L) - x) < 1e-9, "same-game payout: links counted (about 34x, Polymarket 33.92x), page = server", x);
     const D = [{ game: "A @ B", kind: "ml", team: "B", price: 0.8 }, { game: "C @ D", kind: "ml", team: "D", price: 0.7 }];
-    ok(Math.abs(comboPay(D) - 1 / 0.56) < 1e-9 && Math.abs(ctx.T.linkedPay(D) - 1 / 0.56) < 1e-9, "payout across games = prices multiplied");
+    ok(Math.abs(comboPay(D) - 0.977 / 0.56) < 1e-9 && Math.abs(ctx.T.linkedPay(D) - 0.977 / 0.56) < 1e-9, "payout across games = prices multiplied, minus Polymarket's cut");
+    const PT = [{ game: "PIT @ TB", kind: "spread", team: "TB", label: "TB +2.5", price: 0.495 }, { game: "PIT @ TB", kind: "total", side: "over", label: "Over 38.5", price: 0.525 },
+      { game: "PIT @ TB", kind: "td", team: "PIT", player: "J.Warren", label: "J.Warren TD", price: 0.46 }, { game: "PIT @ TB", kind: "td", team: "TB", player: "B.Irving", label: "B.Irving TD", price: 0.35 }];
+    const y = comboPay(PT); ok(Math.abs(y / 14.79 - 1) < 0.03 && Math.abs(x / 33.92 - 1) < 0.03 && Math.abs(ctx.T.linkedPay(PT) - y) < 1e-9, "payout: both real Polymarket quotes within 3% (PIT @ TB 14.79x with a leg against the others, NO @ NYG 33.92x)", [x, y]);
+    { // tap -> real Polymarket quote (lib/comboquote.js)
+      const { legSymbol, eventSlugs, payoutAt, bestBuyPrice, realQuote } = await import("../lib/comboquote.js");
+      const side = (d, long, team) => ({ description: d, long, ...(team ? { team: { abbreviation: team } } : {}) });
+      const mk = (slug, t, line, sides) => ({ slug, sportsMarketType: t, line, marketSides: sides.map((x) => ({ ...x, identifier: slug })) });
+      const M = [mk("asc-nfl-pit-tb-2026-10-18-neg-2pt5", "football_team_full_game_spread", -2.5, [side("-2.50", true, "pit"), side("+2.50", false, "tb")]),
+        mk("asc-nfl-pit-tb-2026-10-18-1h-neg-2pt5", "football_team_first_half_spread", -2.5, [side("-2.50", true, "pit"), side("+2.50", false, "tb")]),
+        mk("tsc-nfl-pit-tb-2026-10-18-total-38pt5", "football_team_full_game_total", 38.5, [side("Over", true), side("Under", false)]),
+        mk("astatc-nfl-pit-tb-2026-10-18-td-jaywar-gte1", "football_player_touchdowns", 1, [side("Yes", true, "pit"), side("No", false, "pit")]),
+        mk("aec-nfl-pit-tb-2026-10-18", "football_team_full_game_winner", null, [side("Steelers", true, "pit"), side("Buccaneers", false, "tb")])];
+      M[3].titleShort = "Jaylen Warren 1+ TD";
+      const sym = (l) => JSON.stringify(legSymbol({ game: "PIT @ TB", ...l }, M));
+      ok(sym({ kind: "spread", team: "TB", label: "TB +2.5" }) === '{"symbol":"asc-nfl-pit-tb-2026-10-18-neg-2pt5","side":"SIDE_SELL"}' && sym({ kind: "total", side: "under", label: "Under 38.5" }) === '{"symbol":"tsc-nfl-pit-tb-2026-10-18-total-38pt5","side":"SIDE_SELL"}'
+        && sym({ kind: "td", team: "PIT", player: "J.Warren", label: "J.Warren TD" }) === '{"symbol":"astatc-nfl-pit-tb-2026-10-18-td-jaywar-gte1","side":"SIDE_BUY"}' && sym({ kind: "ml", team: "TB", label: "TB ML" }) === '{"symbol":"aec-nfl-pit-tb-2026-10-18","side":"SIDE_SELL"}'
+        && legSymbol({ game: "PIT @ TB", kind: "total", side: "over", label: "Over 39.5" }, M) === null && legSymbol({ game: "PIT @ TB", kind: "td", team: "TB", player: "J.Warren", label: "J.Warren TD" }, M) === null,
+        "real quote: legs -> Polymarket US markets (TB +2.5 = NO side of PIT -2.5, full game only, wrong team / no market -> none)");
+      ok(eventSlugs("LA @ WAS", "2026-10-19T00:20:00Z")[0] === "nfl-lar-wsh-2026-10-18" && eventSlugs("PIT @ TB", "2026-10-18T17:00:00Z").join() === "nfl-pit-tb-2026-10-18", "real quote: event slug uses Polymarket team codes and the Eastern date of kickoff");
+      ok(Math.abs(payoutAt(0.0263) - 33.92) < 0.01 && Math.abs(payoutAt(0.0784) - 115.17 / 9.999) < 0.01 && Math.abs(payoutAt(0.0927) - 97.73 / 9.997) < 0.01, "real quote: Polymarket's fee on a combo matches the owner's bought combos (Saints 33.92x)");
+      ok(bestBuyPrice({ quotes: [{ buyPrice: "0.02", sellPrice: "0.031" }, { sellPrice: { value: "0.0263", currency: "USD" } }] }) === 0.0263 && bestBuyPrice({ quotes: [] }) === null, "real quote: best price to buy = the lowest sell quote");
+      const calls = [], fake = { get: async () => ({ event: { markets: M } }), request: async (method, path) => { calls.push(`${method} ${path.split("?")[0]}`);
+        if (path === "/v1/combos") return { combo: { id: "caoc-x" } }; if (path === "/v1/rfqs") return { rfqId: "r1" }; if (method === "GET") return { quotes: [{ sellPrice: "0.0263" }] }; return {}; } };
+      const q = await realQuote(fake, [{ game: "PIT @ TB", kind: "spread", team: "TB", label: "TB +2.5" }, { game: "PIT @ TB", kind: "td", team: "PIT", player: "J.Warren", label: "J.Warren TD" }], { "PIT @ TB": "2026-10-18T17:00:00Z" }, 10);
+      ok(q.ok && Math.abs(q.pay - 33.92) < 0.01 && calls[0] === "POST /v1/combos" && calls[1] === "POST /v1/rfqs" && calls[calls.length - 1] === "DELETE /v1/rfqs/r1" && !calls.some((c) => /^PUT|accept/i.test(c)), "real quote: makes the combo, asks, reads, always closes the request, never accepts", calls);
+      const before = calls.length, miss = await realQuote(fake, [{ game: "PIT @ TB", kind: "total", side: "over", label: "Over 39.5" }, { game: "PIT @ TB", kind: "spread", team: "TB", label: "TB +2.5" }], { "PIT @ TB": "2026-10-18T17:00:00Z" }, 10);
+      ok(!miss.ok && /Over 39\.5/.test(miss.why) && calls.length === before, "real quote: a leg Polymarket does not list -> no quote asked", calls);
+      vm.runInContext(`S = { games: [ { key: "PIT @ TB", kickoff: "2099-01-01T00:00:00Z" }, { key: "A @ B", kickoff: "2000-01-01T00:00:00Z" } ] }`, ctx);
+      ok(/onclick="plQuote\(this\)"/.test(ctx.T.plTap({ legs: [{ game: "PIT @ TB" }, { game: "PIT @ TB" }] })) && ctx.T.plTap({ legs: [{ game: "A @ B" }, { game: "A @ B" }] }) === "" && ctx.T.plTap({ result: "W", legs: [{ game: "PIT @ TB" }, { game: "PIT @ TB" }] }) === "", "real quote: the PL line is tappable only before kickoff and before the parlay is decided"); }
     ok(comboPay([{ ...L[0] }, { ...L[2], price: null }]) == null && ctx.T.linkedPay([{ ...L[0] }, { ...L[2], price: null }]) == null && /PL: —/.test(ctx.T.plPay({ legs: [{ ...L[2], price: null }] })), "payout: a leg without a price -> none");
     let worst = 0; const kinds = ["ml", "spread", "total", "td"], teams = ["NO", "NYG"];
     for (let i = 0; i < 3000; i++) { const g = Math.random() < 0.7 ? "NO @ NYG" : "X @ Y"; const n = 2 + Math.floor(Math.random() * 4);

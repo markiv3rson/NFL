@@ -66,7 +66,8 @@ for wk, gs in by_week.items():
             gm = gs[s + j]; kind = legtypes[(n + j) % len(legtypes)]; leg, r = leg_expect(gm, kind); leg["game"] = gm["key"]; legs.append(leg); exp.append(r)
         if "L" in exp: result, ret = "L", -1.0
         elif all(x == "P" for x in exp): result, ret = "P", 0.0
-        else: result, ret = "W", math.prod(1 / l["price"] for l, r in zip(legs, exp) if r == "W") - 1
+        else:   # 10/17: Polymarket keeps a small cut on a combo of 2+ legs (lib/combo.js PM_CUT 0.977); these legs are all in different games (no links)
+            won = [l for l, r in zip(legs, exp) if r == "W"]; result, ret = "W", math.prod(1 / l["price"] for l in won) * (0.977 if len(won) > 1 else 1) - 1
         combos.append(dict(week=wk, legs=legs, expected=dict(result=result, ret=ret, legs=exp)))
 json.dump(dict(games=games, combos=combos), open(os.path.join(os.path.dirname(__file__), "fixtures", "grading_2025.json"), "w"))
 print(f"{len(games)} games, {len(combos)} combos; pushes among spread picks:", sum(1 for g in games if g['expected'].get('spread', {}).get('result') == 'P'))
