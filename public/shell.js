@@ -18,7 +18,7 @@
   const URL_ = { nfl: "/index.html", nba: "/nba/index.html" };
   const SUB = [["mybets", "My bets"], ["modelbets", "Model bets"]];
   // 10/17 (owner): the Model bets parlay types are sub tabs under Model bets in the menu (both sports)
-  const TYPES = { nfl: [["2", "2 legs"], ["3", "3 legs"], ["4", "4 legs"], ["style", "My style"], ["pts", "Bought"], ["diff", "Diff"]],
+  const TYPES = { nfl: [["ou", "Over/Under"], ["style", "4 Leg (My Style)"], ["pts", "4 Leg (Bought)"], ["4", "4 Leg"], ["3", "3 Leg"], ["2", "2 Leg"], ["diff", "Different Game Parlays"]],
     nba: [["sgp", "Same game"], ["sgp_pts", "Bought"], ["best4", "Parlay"], ["fav4", "Favorites"]] };
   // 10/17 (owner): the alert kinds are sub tabs under Alerts too (ids match the pages' ALK keys, lower case without spaces)
   const ALERTK = { nfl: [["all", "All"], ["injury", "Injury"], ["qbchange", "QB change"], ["linemove", "Line move"], ["weather", "Weather"], ["result", "Result"], ["tdno", "TD No"], ["tdjump", "TD jump"], ["qbtd", "QB TD"]],
