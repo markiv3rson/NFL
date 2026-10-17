@@ -87,17 +87,17 @@ body.menu-open .mscrim { opacity:1; pointer-events:auto; } body.menu-open .mdraw
 /* 10/17 (owner: "why is the menu so long? make it more compact, to the left, only on iPhone"): phones get a narrower drawer that hugs the left edge,
    shorter rows, smaller logo and buttons. Computers and tablets keep the full-size menu. */
 @media (max-width:500px) {
-  .mdraw { width:min(250px,70vw); padding:calc(env(safe-area-inset-top,0px) + 12px) 8px calc(env(safe-area-inset-bottom,0px) + 12px) 4px; }
-  .mtop { padding:0 0 4px 4px; gap:6px; }
-  .mlogo { font-size:26px; }
-  .mref, .mclose { width:30px; height:30px; }
-  .mrun { font-size:10.5px; padding:0 4px 10px; }
-  .msec { padding:0 0 6px 4px; gap:8px; } .msec span:first-child { font-size:11.5px; letter-spacing:.2em; } .msec.gap { padding-top:12px; }
-  .mi { height:36px; gap:8px; padding:0 4px; font-size:15px; border-radius:8px; }
-  .mi .ic { width:24px; height:24px; flex:0 0 24px; }
-  .mi .cnt { min-width:18px; height:18px; font-size:10.5px; }
-  .mi.msub, .mi.msub.on { height:31px; padding-left:28px; font-size:14px; }
-  .mi.msub2, .mi.msub2.on { height:28px; padding-left:42px; font-size:13px; }
-  .mi .car { margin-left:4px; font-size:11px; }
-  .mspace { min-height:10px; }
+  .mdraw { width:min(208px,54vw); padding:calc(env(safe-area-inset-top,0px) + 10px) 6px calc(env(safe-area-inset-bottom,0px) + 10px) 2px; }
+  .mtop { padding:0 0 2px 4px; gap:4px; }
+  .mlogo { font-size:22px; }
+  .mref, .mclose { width:28px; height:28px; } .mref svg, .mclose svg { width:14px; height:14px; }
+  .mrun { font-size:9.5px; padding:0 4px 8px; white-space:normal; line-height:1.2; }
+  .msec { padding:0 0 4px 4px; gap:6px; } .msec span:first-child { font-size:10.5px; letter-spacing:.18em; } .msec.gap { padding-top:10px; }
+  .mi { height:34px; gap:7px; padding:0 4px; font-size:14px; border-radius:8px; }
+  .mi .ic { width:22px; height:22px; flex:0 0 22px; } .mi .ic svg { width:15px; height:15px; }
+  .mi .cnt { min-width:17px; height:17px; font-size:10px; padding:0 5px; }
+  .mi.msub, .mi.msub.on { height:29px; padding-left:24px; font-size:13px; }
+  .mi.msub2, .mi.msub2.on { height:26px; padding-left:36px; font-size:12px; }
+  .mi .car { margin-left:3px; font-size:10px; }
+  .mspace { min-height:8px; }
 }
