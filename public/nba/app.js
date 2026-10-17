@@ -176,7 +176,7 @@ function tile(g) {
 function renderLines() {
   if (!S) { $("lines").innerHTML = '<div class="s dim center">Loading…</div>'; return; }
   if (DETAIL) { const g = S.games.find((x) => x.key === DETAIL); if (g) return renderDetail(g); DETAIL = null; }
-  setBg(null);
+  setBg(null); linesBg();
   $("detail").style.display = "none"; $("lines").style.display = "";
   $("lines").innerHTML = changedBox() + `<div class="tiles">${S.games.length ? S.games.map(tile).join("") : '<div class="s dim">No NBA games on Polymarket right now.</div>'}</div>`;
 }
@@ -280,8 +280,10 @@ function sgpBox(g) {
   const blocks = S.parlays.filter((p) => p.game === g.key).map((p) => pBlock(esc(PTYPES[p.type] || p.type), p, false)).join("");
   return blocks ? secRow("SAME-GAME PARLAYS") + `<div class="pgrid" style="margin-top:6px">${blocks}</div>` : "";
 }
+// 10/17 (owner): the NBA photo behind the Game Lines list, like NFL (a game page keeps its team colours)
+function linesBg() { const p = $("panel-lines"); document.documentElement.classList.toggle("lines-on", !!(p && p.classList.contains("on")) && !DETAIL); }
 function renderDetail(g) {
-  $("lines").style.display = "none"; $("detail").style.display = "";
+  $("lines").style.display = "none"; $("detail").style.display = ""; linesBg();
   $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}` +
     secRow("MONEYLINE", injPill(g, "inj")) + `<div class="grid">${marketCard(g, "ml", "inj")}</div>` +
     secRow("SPREAD") + `<div class="grid">${marketCard(g, "spread")}</div>` +
@@ -513,6 +515,7 @@ function showPanel(name) {
   if (name === "record") { loadBets(); applyBetsView(); }
   setTimeout(() => slotify($("panel-" + name)), 60);
   if (S) setBg(name === "lines" && DETAIL ? S.games.find((x) => x.key === DETAIL) : null);
+  linesBg();
 }
 // 10/17: pages switch by the address' #name (the menu links set it): #alerts, #lines, #record, #models; #game=KEY opens a game (from the home screen)
 const PANELS = ["alerts", "lines", "record", "mybets", "modelbets", ...LAB_TABS.map(([k]) => `modelbets-${k}`), "models"];

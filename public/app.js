@@ -1143,9 +1143,9 @@ function renderLabList() {
   $("lab").innerHTML = chips + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
   const lw = $("lab-wk"); if (lw && lw.tagName === "SELECT") lw.onchange = () => { LABWEEK = Number(lw.value); renderLabList(); };
 }
-// 10/17 (owner): the Raiders photo behind NFL Game Lines and Anytime TD -- Game Lines only the list, while it is the page showing (a game page keeps its team colours)
+// 10/17 (owner): the NFL logo photo behind every NFL page but home (home keeps the Raiders photo); a game page keeps its team colours
 function linesBg() { const on = (id) => { const p = $(id); return !!(p && p.classList.contains("on")); };
-  document.documentElement.classList.toggle("lines-on", (on("panel-lines") && !DETAIL) || on("panel-td")); }
+  document.documentElement.classList.toggle("lines-on", !on("panel-home") && !(on("panel-lines") && DETAIL)); }
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = ""; linesBg();
   $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : ""}${gameCard(g, "x")}${totalCard(g, "x")}${tdTop3(g)}${sgpBox(g)}`;
