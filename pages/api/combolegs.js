@@ -3,14 +3,14 @@
 // any legs it finds (`combolegs:<id>`, the same place the account sync saves them), so the Bets tab can show and count them.
 // Read-only toward Polymarket. Safe to run again: combos that already have legs are skipped. ?raw=1 adds one sample reply.
 import { getJSON, setJSON } from "../../lib/redis";
-import { slimLegs } from "../../lib/mybets";
+import { slimLegs, isAcctCombo } from "../../lib/mybets";
 export const config = { maxDuration: 60 };
 
 // Any array of leg-like objects (Polymarket market slugs asc- / tsc- / astatc-) anywhere in the reply
 export function findLegs(x, depth = 0) {
   if (!x || typeof x !== "object" || depth > 6) return null;
   if (Array.isArray(x)) {
-    if (x.length && x.every((l) => l && typeof l === "object" && /^(asc|tsc|astatc|aml|mlc|sc)-/.test(String(l.slug || l.marketSlug || "")))) return x.map((l) => ({ ...l, slug: l.slug || l.marketSlug }));
+    if (x.length && x.every((l) => l && typeof l === "object" && /^(asc|tsc|astatc|aec|aml|mlc|sc)-/.test(String(l.slug || l.marketSlug || "")))) return x.map((l) => ({ ...l, slug: l.slug || l.marketSlug }));
     for (const v of x) { const f = findLegs(v, depth + 1); if (f) return f; }
     return null;
   }
@@ -36,7 +36,7 @@ async function lookup(id, client) {
 export default async function handler(req, res) {
   try {
     const ledger = (await getJSON("mybets:ledger")) || {};
-    const ids = Object.values(ledger).map((e) => e && e.id).filter((id) => /^caoc-/.test(id || ""));
+    const ids = Object.values(ledger).map((e) => e && e.id).filter(isAcctCombo);
     let client = null;
     try { if (process.env.POLYMARKET_KEY_ID && process.env.POLYMARKET_SECRET_KEY) { const { PolymarketUS } = await import("polymarket-us"); client = new PolymarketUS({ keyId: process.env.POLYMARKET_KEY_ID, secretKey: process.env.POLYMARKET_SECRET_KEY }); } } catch {}
     const todo = [];

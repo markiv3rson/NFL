@@ -533,6 +533,17 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       const m = await markFromFinals([{ label: "Drake London 1+ TD", result: null }, { label: "Zay Flowers 1+ TD", result: null }, { label: "BAL +3.5", result: null }], 2026, 5);
       ok(m[0].result === "W" && m[1].result === "L" && m[2].result === "L", "old combos: TD legs saved without a game are graded from that week's scorers (whole week over)");
       globalThis.fetch = realFetch; resetGamesCache(); await R.del("tdscorers:2026:5"); }
+    { // 10/17 (owner: "why can't I see my legs"): "crossd-..." combos are read like "caoc-..."; a moneyline leg ("aec-...") is "NO ML" and graded from the final score
+      const L2 = [{ slug: "aec-nfl-no-nyg-2026-10-18", eventSlug: "nfl-no-nyg-2026-10-18", title: "NO Saints vs. NY Giants", outcome: "Saints", team: { abbreviation: "no" }, state: "COMBO_LEG_STATE_PENDING" }, legs[1]];
+      await saveComboLegs({ "crossd-t2": { comboLegDetails: L2 } }); const sv = await getJSON("combolegs:crossd-t2");
+      const cp2 = await comboPicks({ positions: { positions: { "crossd-t2": { comboLegDetails: L2 } } } }, "crossd-t2", 2026, 6);
+      ok(sv && sv.length === 2 && cp2 && cp2[0].label === "NO ML" && cp2[0].kind === "ml" && cp2[0].game === "NO @ NYG", "crossd combos: legs saved and shown; moneyline leg = NO ML", cp2);
+      const { markFromFinals } = await import("../lib/mybets.js"); const { resetGamesCache } = await import("../lib/games.js"); const realFetch = globalThis.fetch;
+      const H = "season,game_type,week,gameday,gametime,away_team,away_score,home_team,home_score,roof,stadium,location,surface\n";
+      resetGamesCache(); globalThis.fetch = async (u) => (String(u).includes("games.csv") ? { ok: true, text: async () => H + "2026,REG,5,2026-10-05,13:00,BAL,20,ATL,27,dome,X,Home,turf\n" } : { ok: false, status: 404, json: async () => ({}), text: async () => "" });
+      const m2 = await markFromFinals([{ label: "ATL ML", game: "BAL @ ATL", kind: "ml", result: null }, { label: "BAL ML", game: "BAL @ ATL", kind: "ml", result: null }], 2026, 5);
+      ok(m2[0].result === "W" && m2[1].result === "L", "crossd combos: moneyline legs graded from the final score", m2);
+      globalThis.fetch = realFetch; resetGamesCache(); await R.del("combolegs:crossd-t2"); }
     await R.del("combolegs:caoc-t1"); }
   { // bets analysis: hand-worked numbers
     const L = (kind, result, price) => ({ kind, result, price });
