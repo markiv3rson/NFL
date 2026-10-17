@@ -16,9 +16,9 @@
     nba: [["alerts", "Alerts", "bell"], ["lines", "Game Lines", "grid"], ["record", "Bets", "bets"]],
   };
   const URL_ = { nfl: "/index.html", nba: "/nba/index.html" };
-  const SUB = [["mybets", "My bets"], ["modelbets", "Model bets"]];
+  const SUB = [["mybets", "My bets"], ["modelbets", "Model bets"], ["props", "Props"]];   // 10/17 (owner): Props is a third page under Bets, both sports
   // 10/17 (owner): the Model bets parlay types are sub tabs under Model bets in the menu (both sports)
-  const TYPES = { nfl: [["ou", "Over/Under"], ["style", "4 Leg (My Style)"], ["pts", "4 Leg (Bought)"], ["4", "4 Leg"], ["3", "3 Leg"], ["2", "2 Leg"], ["diff", "Different Game Parlays"]],
+  const TYPES = { nfl: [["ou", "Over/Under"], ["style", "4 Leg (My Style)"], ["pts", "4 Leg (Bought)"], ["4", "4 Leg"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"], ["diff", "Different Game Parlays"]],
     nba: [["sgp", "Same game"], ["sgp_pts", "Bought"], ["best4", "Parlay"], ["fav4", "Favorites"]] };
   // 10/17 (owner): the alert kinds are sub tabs under Alerts too (ids match the pages' ALK keys, lower case without spaces)
   const ALERTK = { nfl: [["all", "All"], ["injury", "Injury"], ["qbchange", "QB change"], ["linemove", "Line move"], ["weather", "Weather"], ["result", "Result"], ["tdno", "TD No"], ["tdjump", "TD jump"], ["qbtd", "QB TD"]],
@@ -83,14 +83,14 @@
       Shell.loadRun();
       if (typeof Shell.onRefreshed === "function") { try { await Shell.onRefreshed(); } catch {} }
     },
-    // "Last model refresh · Sat 10/17 9:45 PM" under SLATEZZ: the newer of the NFL and NBA model runs (10/17, owner: one line, newest time)
+    // "Model Refresh: 4:10pm 10/17" under SLATEZZ: the newer of the NFL and NBA model runs (10/17, owner: one short line, newest time)
     runTxt(iso) {
       const d = iso ? new Date(iso) : null; if (!d || isNaN(d)) return "—";
-      return `${d.toLocaleDateString("en-US", { weekday: "short" })} ${d.getMonth() + 1}/${d.getDate()} ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
+      return `${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).replace(/\s?([AP]M)$/, (m, x) => x.toLowerCase())} ${d.getMonth() + 1}/${d.getDate()}`;
     },
     async loadRun() {
       const e = document.getElementById("mrun"); if (!e) return;
-      try { const d = await (await fetch("/api/lastrun", { cache: "no-store" })).json(); e.textContent = "Last model refresh · " + Shell.runTxt(d && d.newest); } catch {}
+      try { const d = await (await fetch("/api/lastrun", { cache: "no-store" })).json(); e.textContent = "Model Refresh: " + Shell.runTxt(d && d.newest); } catch {}
     },
     init(sport) {
       Shell.sport = sport;
@@ -98,14 +98,21 @@
       d.innerHTML = `<div class="mscrim" id="mscrim"></div><nav class="mdraw" id="mdraw" aria-label="Main menu">` +
         `<div class="mtop"><a class="mlogo sgrad" href="/index.html#home">SLATEZZ</a><div class="mbts">` +
         `<button class="mref" id="mref" aria-label="Rerun both models"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>` +
-        `<button class="mclose" id="mclose" aria-label="Close menu"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>` +
-        `<div class="mrun" id="mrun">Last model refresh · —</div>` +
+        `</div></div>` +   // 10/17 (owner): no X button -- the menu closes with a swipe to the left, a tap outside it, or Escape; it opens with a swipe from the left edge
+        `<div class="mrun" id="mrun">Model Refresh: —</div>` +
         `<div class="msec nfl"><span>NFL</span><span class="ml"></span></div>${ITEMS.nfl.map((x) => item("nfl", ...x)).join("")}` +
         `<div class="msec nba gap"><span>NBA</span><span class="ml"></span></div>${ITEMS.nba.map((x) => item("nba", ...x)).join("")}` +
         `<div class="mspace"></div><div class="msec mod"><span>MODEL ANALYSIS</span><span class="ml"></span></div>${item("nfl", "models", "NFL", "bars")}${item("nba", "models", "NBA", "bars")}</nav>`;
       while (d.firstChild) document.body.appendChild(d.firstChild);
       const mb = document.getElementById("menu-btn"); if (mb) mb.onclick = Shell.open;
-      document.getElementById("mclose").onclick = Shell.close; document.getElementById("mscrim").onclick = Shell.close;
+      document.getElementById("mscrim").onclick = Shell.close;
+      // 10/17 (owner: "I should just be able to slide it"): swipe from the left edge opens the menu, a swipe to the left on it closes it
+      let sx = null, sy = null, edge = false;
+      document.addEventListener("touchstart", (e) => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; edge = sx <= 28 && !document.body.classList.contains("menu-open"); }, { passive: true });
+      document.addEventListener("touchend", (e) => { if (sx == null) return; const t = e.changedTouches[0], dx = t.clientX - sx, dy = Math.abs(t.clientY - sy); sx = null;
+        if (dy > Math.abs(dx)) return;
+        if (edge && dx > 40) { Shell.open(); Shell.loadRun(); }
+        else if (document.body.classList.contains("menu-open") && dx < -40) Shell.close(); }, { passive: true });
       document.getElementById("mref").onclick = Shell.refresh;
       Shell.loadRun(); document.getElementById("menu-btn") && document.getElementById("menu-btn").addEventListener("click", Shell.loadRun);   // fresh each time the menu opens
       document.getElementById("mdraw").addEventListener("click", (e) => {

@@ -223,6 +223,21 @@ ok(redisUrl({ UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://a:1", REDIS_URL: "redis
   ok(near(mb.soldFrom({ trade: { marketSlug: "nba-y", realizedPnl: { value: "1.25" }, qty: "5", price: { value: "0.6" } } }).pl, 1.25) && mb.soldFrom({ trade: { marketSlug: "z", realizedPnl: { value: "0" } } }) === null, "sold bet P&L");
   const s = mb.summarizeLedger({ a: { id: "a", cost: 4, resolved: { win: true, pl: 6, t: "2026-10-20" } }, b: { id: "b", cost: 5, resolved: { win: false, pl: -5, t: "2026-10-21" } }, c: { id: "c", cost: 2, sold: { pl: 0.5, t: "2026-10-22" } }, d: { id: "d", cost: 3 } });
   ok(s.record.w === 1 && s.record.l === 1 && s.record.sold === 1 && near(s.record.pl, 1.5) && s.record.staked === 11 && s.open.length === 1 && s.settled[0].id === "c", "ledger summary", s.record); }
+// 10/17: a Polymarket account combo with NBA legs is an NBA bet; its legs are labeled (spread / moneyline / total) and listed under it
+{ const L = [{ slug: "asc-nba-gs-sa-2026-10-22-neg-4pt5", eventSlug: "nba-gs-sa-2026-10-22", outcome: "+4.50", state: "COMBO_LEG_STATE_WON", team: { abbreviation: "gs" } },
+    { slug: "aec-nba-bos-det-2026-10-22", eventSlug: "nba-bos-det-2026-10-22", outcome: "Pistons", state: "", team: { abbreviation: "det" } },
+    { slug: "tsc-nba-bos-det-2026-10-22-total-221pt5", eventSlug: "nba-bos-det-2026-10-22", outcome: "Over", state: "COMBO_LEG_STATE_LOST" }];
+  ok(mb.isAcctCombo("crossd-1") && mb.isAcctCombo("caoc-1") && !mb.isAcctCombo("aec-nba-x") && mb.nbaLegs(L) && !mb.nbaLegs([...L, { eventSlug: "nfl-buf-lv-2026-10-18" }]) && !mb.nbaLegs([]), "NBA combo = every leg an NBA game");
+  const P = mb.comboPicks(mb.slimLegs(L));
+  ok(P[0].label === "GSW +4.5" && P[0].team === "GSW" && P[0].result === "W" && P[0].game === "GSW @ SAS" && P[1].label === "DET ML" && P[1].result === null
+    && P[2].label === "Over 221.5" && P[2].kind === "total" && !P[2].team && P[2].result === "L" && P[2].date === "2026-10-22", "NBA combo legs labeled", P);
+  const f = { away: 110, home: 115, final: true };
+  ok(mb.markLeg(P[1], f).result === "W" && mb.markLeg({ ...P[0], result: null }, f).result === "L" && mb.markLeg({ ...P[2], result: null }, f).result === "W"
+    && mb.markLeg({ label: "Under 230.5", game: "BOS @ DET" }, f).result === "W" && mb.markLeg(P[1], { ...f, final: false }).result === null, "unmarked NBA legs graded from the final score");
+  const s2 = mb.summarizeLedger({ "crossd-1": { id: "crossd-1", title: "", cost: 5, legs: mb.slimLegs(L) } });
+  ok(s2.open[0].picks.length === 3, "ledger combo carries its legs");
+  const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
+  ok(/Combo · \$\{e\.picks\.length\} picks/.test(app) && /\(e\.picks \|\| \[\]\)\.map\(legRow\)/.test(app) && /legTxt\(p\.result, `\$\{p\.team \? tlogo/.test(app), "NBA My bets lists a combo's legs (✓ / ✗, logo, green / red)"); }
 
 // ---------- sign-in (same as the NFL app: Basic login, then a 1-year "remember this phone" cookie of its own)
 if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (await import("typescript")).default, { writeFileSync, mkdtempSync } = await import("node:fs"), { tmpdir } = await import("node:os"), { join } = await import("node:path");

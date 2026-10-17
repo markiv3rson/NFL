@@ -31,7 +31,8 @@ FIRST_TRAIN = 2019          # first season with a full prior season of features 
 K_PRIOR = 3.0               # last season counts as 3 games
 NEIGH = 2000                # player-games used to shape the chance of a line
 CACHE = os.path.expanduser("~/.nfl_cache")
-MODEL_FILE = os.path.join(CACHE, "prop_model_v1.pkl")
+MODEL_DIR = os.environ.get("MODEL_DIR", "/data")   # the Railway volume (same place as the TD model), so a deploy keeps the built model
+MODEL_FILE = os.path.join(MODEL_DIR if os.path.isdir(MODEL_DIR) else CACHE, "prop_model_v2.pkl")   # v2: vacated-usage inputs (10/17)
 
 
 def _pos_map(season):
@@ -116,11 +117,31 @@ def _feat_season(x, prior):
         prev = gg[s].cumsum() - al[s]
         al["o_" + s] = (prev + 4 * al.pos.map(lg[s])) / (al.d_g + 4)
     x = x.merge(al[["opp", "game_id", "pos"] + ["o_" + s for s in STATS]], on=["opp", "game_id", "pos"], how="left")
-    return x
+    return _vacated(x)
+
+
+def _vacated(x):
+    """10/17 (owner: injury input): targets / carries a game of the team's regulars (4+ targets or 8+ carries a game) who played one of the
+    team's last 2 games but not this one -- injured or inactive. The model alone missed it: when a top target sat, his teammates beat the
+    prediction every season 2020-25 (receiving yards +1.3 to +4.5). Live, the Out / Doubtful list removes those players (live_rows)."""
+    tg = x[["team", "game_id", "week", "season"]].drop_duplicates(["team", "game_id"]).sort_values(["team", "season", "week"])
+    tg["k"] = tg.groupby(["team", "season"]).cumcount()
+    x = x.drop(columns=[c for c in ("vac_tgt", "vac_car", "k") if c in x]).merge(tg[["team", "game_id", "k"]], on=["team", "game_id"], how="left")
+    R = x[["season", "team", "k", "pid", "b_tgt", "b_car"]]
+    reg = R[(R.b_tgt.fillna(0) >= 4) | (R.b_car.fillna(0) >= 8)]
+    prev = pd.concat([reg.assign(k=reg.k + lag, lag=lag) for lag in (1, 2)]).sort_values("lag").drop_duplicates(["season", "team", "k", "pid"])
+    here = R[["season", "team", "k", "pid"]].assign(here=1)
+    gone = prev.merge(here, on=["season", "team", "k", "pid"], how="left")
+    gone = gone[gone.here.isna()]
+    gone = gone.assign(vt=np.where(gone.b_tgt.fillna(0) >= 4, gone.b_tgt.fillna(0), 0.0), vc=np.where(gone.b_car.fillna(0) >= 8, gone.b_car.fillna(0), 0.0))
+    v = gone.groupby(["season", "team", "k"]).agg(vac_tgt=("vt", "sum"), vac_car=("vc", "sum")).reset_index()
+    x = x.merge(v, on=["season", "team", "k"], how="left")
+    x["vac_tgt"] = x.vac_tgt.fillna(0.0); x["vac_car"] = x.vac_car.fillna(0.0)
+    return x.drop(columns=["k"])
 
 
 FEATS_COMMON = ["imp", "tm_margin", "total_line", "home", "dome", "gp", "prior_g", "snap1", "snap3", "b_tgt", "b_car", "l3_tgt", "l3_car",
-                "tgt_sh", "car_sh", "b_t_att", "b_pass_att", "l3_pass_att"]
+                "tgt_sh", "car_sh", "b_t_att", "b_pass_att", "l3_pass_att", "vac_tgt", "vac_car"]
 
 
 def feats_for(stat):
@@ -235,7 +256,7 @@ def build_live(season=None, log=print):
         spreads[stat] = (O.mu.values.astype(np.float32), O[stat].values.astype(np.float32))
         info[stat] = {"train": int(len(E)), "oof": int(len(O))}
     obj = {"built": time.time(), "season": season, "models": models, "spreads": spreads, "info": info}
-    os.makedirs(CACHE, exist_ok=True)
+    os.makedirs(os.path.dirname(MODEL_FILE), exist_ok=True)
     with open(MODEL_FILE, "wb") as f: pickle.dump(obj, f)
     with _LOCK: _LIVE.update(obj)
     log(f"[props] built {season}: {info}")
@@ -253,38 +274,88 @@ def load_live():
         return None
 
 
-def live_rows(team, opp, imp, tm_margin, total, home):
-    """This week's input row for every player of `team` (from his season so far + last season)."""
+_SG = {}
+def _stat_games_cached(season, max_age=1800):
+    """stat_games(season) reused for max_age seconds (a rerun asks for 28 teams at once; each call re-aggregated the whole season before)."""
+    hit = _SG.get(season)
+    if hit and (season < td_prob.CUR or time.time() - hit[0] < max_age): return hit[1]
+    x = stat_games(season); _SG[season] = (time.time(), x); return x
+
+
+def _names_now():
+    _, ros = _pos_map(td_prob.CUR)
+    return ros.set_index("gsis_id").full_name.map(td_prob._nn)
+
+
+def live_rows_many(teams, outs_by_team=None):
+    """This week's input row for every player of each team in `teams` = {team: (opp, imp, tm_margin, total, home)}, from his season so far
+    + last season, in ONE feature pass. outs_by_team = {team: [full names Out / Doubtful]}: those players get no row, so the vacated-usage
+    inputs (vac_tgt / vac_car) count them as missing and their teammates' numbers rise (10/17, owner: injury input)."""
     season = td_prob.CUR
-    T = table([season])
-    cur = T[T.team == team]
-    if not len(cur): return pd.DataFrame()
-    last = cur.sort_values("week").groupby("pid").tail(1).copy()
-    # roll each player's numbers forward one game: rebuild the season-to-date averages including his last game
-    allp = stat_games(season); prior = None
-    try: prior = stat_games(season - 1)
+    allp = _stat_games_cached(season); prior = None
+    try: prior = _stat_games_cached(season - 1)
     except Exception: pass
-    nxt_week = int(allp.week.max()) + 1
-    fake = last[["pid", "team", "pos"]].copy()
-    fake["opp"] = opp; fake["game_id"] = f"NEXT_{team}"; fake["week"] = nxt_week; fake["home"] = int(home); fake["season"] = season
-    for col in STATS + ["tgt", "car", "snap"]: fake[col] = np.nan if col == "snap" else 0.0
-    fake["home_team"] = team if home else opp; fake["away_team"] = opp if home else team
-    fake["spread_line"] = tm_margin if home else -tm_margin; fake["total_line"] = total
-    fake["imp"] = imp; fake["tm_margin"] = tm_margin; fake["dome"] = 0
-    both = pd.concat([allp, fake], ignore_index=True)
+    if not len(allp): return pd.DataFrame()
+    nm = _names_now(); nxt_week = int(allp.week.max()) + 1; fakes = []
+    for team, (opp, imp, tm_margin, total, home) in teams.items():
+        cur = allp[allp.team == team]
+        if not len(cur): continue
+        last = cur.sort_values("week").groupby("pid").tail(1).copy()
+        outs = {td_prob._nn(n) for n in (outs_by_team or {}).get(team, []) if n}
+        if outs: last = last[~last.pid.map(nm).isin(outs)]
+        fake = last[["pid", "team", "pos"]].copy()
+        fake["opp"] = opp; fake["game_id"] = f"NEXT_{team}"; fake["week"] = nxt_week; fake["home"] = int(home); fake["season"] = season
+        for col in STATS + ["tgt", "car", "snap"]: fake[col] = np.nan if col == "snap" else 0.0
+        fake["home_team"] = team if home else opp; fake["away_team"] = opp if home else team
+        fake["spread_line"] = tm_margin if home else -tm_margin; fake["total_line"] = total
+        fake["imp"] = imp; fake["tm_margin"] = tm_margin; fake["dome"] = 0
+        fakes.append(fake)
+    if not fakes: return pd.DataFrame()
+    both = pd.concat([allp] + fakes, ignore_index=True)
     F = _feat_season(both, prior)
-    return F[F.game_id == f"NEXT_{team}"]
+    F = F[F.game_id.str.startswith("NEXT_")]
+    return F.assign(nn=F.pid.map(nm))
 
 
-def chances(team, opp, imp, tm_margin, total, home, lines):
-    """lines: [{"name": full name, "stat": one of STATS, "line": 59.5}, ...] -> each with "over" / "under" chance (0-1) and "mu"."""
+def live_rows(team, opp, imp, tm_margin, total, home, outs=()):
+    return live_rows_many({team: (opp, imp, tm_margin, total, home)}, {team: list(outs)})
+
+
+def chances_many(games):
+    """games: [{"away", "home", "spread" (away spread: home favored = positive), "total", "outs": [names], "lines": [{"name", "stat", "line"}]}]
+    -> [{"game", "rows": [{name, team, stat, line, mu, over, under}]}]. An Out / Doubtful player's own lines are skipped (he is not playing)."""
     L = load_live()
     if not L or not L.get("models"): return []
-    rows = live_rows(team, opp, imp, tm_margin, total, home)
+    teams, outs_by = {}, {}
+    for g in games:
+        a, h, sp, tot = g["away"], g["home"], float(g["spread"]), float(g["total"])
+        teams[a] = (h, tot / 2 - sp / 2, -sp, tot, 0); teams[h] = (a, tot / 2 + sp / 2, sp, tot, 1)
+        outs_by[a] = outs_by[h] = list(g.get("outs") or [])
+    rows = live_rows_many(teams, outs_by)
+    out = []
+    for g in games:
+        res = []
+        if len(rows):
+            mine = rows[rows.team.isin([g["away"], g["home"]])]
+            outs = {td_prob._nn(n) for n in (g.get("outs") or [])}
+            for ln in g.get("lines") or []:
+                stat = ln.get("stat"); nn = td_prob._nn(ln.get("name", ""))
+                if stat not in L["models"] or nn in outs: continue
+                r = mine[mine.nn == nn]
+                if len(r) != 1: continue
+                mu = float(predict_mu(L["models"][stat], r, stat)[0])
+                po = float(Spread(*L["spreads"][stat]).over([mu], [float(ln["line"])])[0])
+                res.append({"name": ln.get("name"), "team": str(r.team.iloc[0]), "stat": stat, "line": float(ln["line"]), "mu": round(mu, 1), "over": round(po, 4), "under": round(1 - po, 4)})
+        out.append({"game": f"{g['away']} @ {g['home']}", "rows": res})
+    return out
+
+
+def chances(team, opp, imp, tm_margin, total, home, lines, outs=()):
+    """One team (kept for the research scripts): lines [{"name", "stat", "line"}] -> each with "over" / "under" chance (0-1) and "mu"."""
+    L = load_live()
+    if not L or not L.get("models"): return []
+    rows = live_rows(team, opp, imp, tm_margin, total, home, outs)
     if not len(rows): return []
-    _, ros = _pos_map(td_prob.CUR)
-    nm = ros.set_index("gsis_id").full_name.map(td_prob._nn)
-    rows = rows.assign(nn=rows.pid.map(nm))
     out = []
     for ln in lines:
         stat = ln.get("stat")
@@ -292,7 +363,19 @@ def chances(team, opp, imp, tm_margin, total, home, lines):
         r = rows[rows.nn == td_prob._nn(ln.get("name", ""))]
         if len(r) != 1: continue
         mu = float(predict_mu(L["models"][stat], r, stat)[0])
-        sp = Spread(*L["spreads"][stat])
-        po = float(sp.over([mu], [float(ln["line"])])[0])
+        po = float(Spread(*L["spreads"][stat]).over([mu], [float(ln["line"])])[0])
         out.append({**ln, "mu": round(mu, 1), "over": round(po, 4), "under": round(1 - po, 4)})
+    return out
+
+
+def week_stats(season, week):
+    """Official stats of one finished week for grading: { "AWAY @ HOME": { "<normalized full name>": { pass_yds, ..., long_rec } } }.
+    A player who did not play has no entry (Polymarket settles that as Under)."""
+    x = _stat_games_cached(season); x = x[x.week == int(week)]
+    nm = _names_now(); out = {}
+    for r in x.itertuples():
+        n = nm.get(r.pid)
+        if not n: continue
+        key = f"{r.away_team} @ {r.home_team}"
+        out.setdefault(key, {})[n] = {s: float(getattr(r, s)) for s in STATS}
     return out
