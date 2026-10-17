@@ -1,0 +1,76 @@
+{
+ "periods": [
+  "2008-2013",
+  "2014-2019",
+  "2020-2026"
+ ],
+ "min_games_per_period": 60,
+ "break_even": 52.38,
+ "kinds": {
+  "spread": {
+   "tested": 2305,
+   "kept": 25,
+   "persistence": {
+    "found_2008_2019": 22,
+    "still_beat_rate_2020_on": 45.5,
+    "their_rate_2020_on": 52.1,
+    "expected_2020_on": 52.4
+   },
+   "luck_only_mean": 7.6,
+   "luck_only_max": 18,
+   "unseen": {
+    "win_rate": 51.2,
+    "games": 10209,
+    "seasons_above_50": 14,
+    "seasons": 17,
+    "pick_tier_games": 1239,
+    "pick_tier_win_rate": 49.4,
+    "claimed": 54.4
+   }
+  },
+  "moneyline": {
+   "tested": 2305,
+   "kept": 1,
+   "persistence": {
+    "found_2008_2019": 7,
+    "still_beat_rate_2020_on": 14.3,
+    "their_rate_2020_on": 57.9,
+    "expected_2020_on": 57.6
+   },
+   "luck_only_mean": 1.2,
+   "luck_only_max": 4,
+   "unseen": {
+    "win_rate": 50.1,
+    "games": 471,
+    "seasons_above_50": 7,
+    "seasons": 13,
+    "pick_tier_games": 471,
+    "pick_tier_win_rate": 50.1,
+    "claimed": 62.4
+   }
+  },
+  "total": {
+   "tested": 167,
+   "kept": 1,
+   "persistence": {
+    "found_2008_2019": 3,
+    "still_beat_rate_2020_on": 33.3,
+    "their_rate_2020_on": 50.7,
+    "expected_2020_on": 52.4
+   },
+   "luck_only_mean": 2.3,
+   "luck_only_max": 15,
+   "unseen": {
+    "win_rate": 47.8,
+    "games": 569,
+    "seasons_above_50": 5,
+    "seasons": 17,
+    "pick_tier_games": 58,
+    "pick_tier_win_rate": 29.3,
+    "claimed": 54.9
+   }
+  }
+ },
+ "built": "2026-10-16",
+ "patterns": 27
+}

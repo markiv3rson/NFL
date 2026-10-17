@@ -1,0 +1,120 @@
+// Pick tracking and grading. Every pick the card shows is saved the first time it is seen (before tip-off) and graded after the game,
+// with the Polymarket price it was shown at (so the Models tab can show W-L AND money per $100). Win rate is the judge, never price.
+// Ids: ml (the moneyline PICK = the market's win chance), cardpick|spread / cardpick|total (a tested rule's side at Polymarket's line),
+// modelpick|spread / modelpick|total (no rule: the model's side), ptspick|spread / ptspick|total (PICK w/ POINTS). Preseason rows are tier "test".
+import { getRedis, jparse, mgetAll } from "./redis";
+import { staleDate } from "./pinnacle";
+import { finalsFor } from "./espn";
+import { alertForResult } from "./alerts";
+import { cardLegs, ptsLeg } from "./cardpick";
+const KEY = (date, game, id) => `pick:${date}:${game}:${id}`;
+const IDS = "pick:ids";
+export const pickRows = (g) => {
+  const rows = [], test = !!g.preseason, base = (id, market, x) => ({ date: g.date, game: g.key, id, market, label: x.label || x.pick, team: x.team || null, side: x.side || null, line: x.line ?? null,
+    pct: x.pct ?? x.hit, tier: test ? "test" : "pick", ruleId: x.ruleId || null, points: x.points || 0, price: x.price > 0 && x.price < 1 ? x.price : null, savedAt: new Date().toISOString() });
+  const ml = g.ml && g.ml.pick;
+  if (ml && (ml.tier === "pick" || ml.tier === "lean" || ml.tier === "test") && ml.team) rows.push(base("ml", "ml", { ...ml, price: g.priceFor ? g.priceFor("ml", ml) : ml.price, pct: ml.pct }));
+  const card = g.card; if (!card) return rows;
+  for (const k of ["spread", "total"]) { const c = card[k]; if (!c) continue;
+    if (c.plain && c.plain.line != null) rows.push(base(c.plain.id, k, c.plain));
+    if (c.pts && c.pts.line != null) rows.push(base(c.pts.id, k, c.pts)); }
+  return rows;
+};
+export async function recordPicks(games, now = Date.now()) {
+  const r = getRedis(); let n = 0;
+  for (const g of games) {
+    if (g.start && now >= Date.parse(g.start)) continue;       // only picks seen before tip-off count
+    for (const row of pickRows(g)) {
+      const key = KEY(row.date, row.game, row.id);
+      if (!(await r.set(key, JSON.stringify(row), "NX"))) continue;   // the first sighting stands (NX: saved only when new, one command)
+      await r.sadd(IDS, key); n++;
+    }
+  }
+  return n;
+}
+// result of one pick given the final score: "win" | "loss" | "push"
+export function gradePick(p, away, home, f) {
+  const margin = { [away]: f.away - f.home, [home]: f.home - f.away };
+  if (p.market === "ml") { const m = margin[p.team]; return m === 0 ? "push" : m > 0 ? "win" : "loss"; }
+  if (p.market === "spread") { const d = margin[p.team] + p.line; return d === 0 ? "push" : d > 0 ? "win" : "loss"; }
+  if (p.market === "total") { const t = f.away + f.home; if (t === p.line) return "push"; return (t > p.line) === (p.side === "over") ? "win" : "loss"; }
+  return null;
+}
+export async function loadPicks() {
+  const r = getRedis(); const ids = await r.smembers(IDS); const out = [];
+  const vals = await mgetAll(r, ids);                                   // one batch per 200 picks, not one read per pick
+  ids.forEach((k, i) => { const v = jparse(vals[i]); if (v) out.push({ ...v, id: v.id || v.market, _k: k }); });
+  return out.sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+export async function gradeAll(fetchFinals = finalsFor) {
+  const r = getRedis(), picks = await loadPicks(), byDate = {};
+  for (const p of picks) if (!p.result) (byDate[p.date] = byDate[p.date] || []).push(p);
+  let graded = 0;
+  for (const [date, list] of Object.entries(byDate)) {
+    let finals; try { finals = await fetchFinals(date); } catch { continue; }
+    for (const p of list) {
+      const f = finals[p.game], { _k, ...row } = p;
+      if (!f || !f.final) { if (staleDate(date)) { row.result = "void"; await r.set(_k || KEY(row.date, row.game, row.id), JSON.stringify(row)); graded++; } continue; }   // postponed / moved game: closed out as void, not pending forever
+      const [away, home] = p.game.split(" @ ");
+      row.result = gradePick(row, away, home, f); row.final = { away: f.away, home: f.home }; row.gradedAt = new Date().toISOString();
+      await r.set(_k || KEY(row.date, row.game, row.id), JSON.stringify(row)); graded++; await alertForResult(row);
+    }
+  }
+  return graded;
+}
+// money per pick at the saved Polymarket price, $100 a pick: a win pays 100 / price - 100, a loss -100
+export const retOf = (p) => (!p.result || p.result === "push" || p.result === "void" ? 0 : p.result === "win" ? (p.price > 0 && p.price < 1 ? 100 / p.price - 100 : null) : -100);
+export function summarize(picks) {
+  const by = {};
+  const add = (k, p) => { const e = (by[k] = by[k] || { w: 0, l: 0, push: 0, pending: 0, saidSum: 0, saidN: 0, stk: 0, ret: 0 });
+    if (p.result === "win" || p.result === "loss") { e.saidSum += Number(p.pct) || 0; e.saidN++; const m = retOf(p); if (m != null) { e.stk += 100; e.ret += m; } }
+    if (!p.result) e.pending++; else if (p.result === "win") e.w++; else if (p.result === "loss") e.l++; else if (p.result !== "void") e.push++; };
+  for (const p of picks) {
+    const id = p.id || p.market;
+    if (p.result === "void") continue;                                           // a postponed game's pick is in no row
+    if (p.tier === "test") { add("test", p); add(`test:${id}`, p); continue; }
+    add(id, p);
+    if (/^ptspick\|/.test(id)) { add("pts", p); continue; }                       // bought lines are their own record
+    add("all", p); if (p.market !== id) add(p.market, p); if (Number(p.pct) >= 56) add("green", p);
+    if (/^modelpick\|/.test(id)) add("model", p); else if (/^cardpick\|/.test(id)) { add("rule", p); if (p.ruleId) add(`rule:${p.ruleId}`, p); }   // each tested rule keeps its own record
+  }
+  for (const e of Object.values(by)) { e.pct = e.w + e.l ? Math.round((e.w / (e.w + e.l)) * 1000) / 10 : null; e.said = e.saidN ? Math.round((e.saidSum / e.saidN) * 10) / 10 : null;
+    e.per100 = e.stk ? Math.round((e.ret / e.stk) * 100) : null; delete e.saidSum; delete e.saidN; delete e.stk; delete e.ret; }
+  return by;
+}
+
+// Closing-line value (CLV): the number the pick was first shown at vs where Polymarket closed (+ = beat the close). Spread: the team's own line,
+// e.g. +4.5 first and +3.5 at the close = +1. Total: over gains when the line closes higher, under when it closes lower. Moneyline has no line.
+export function clvOf(p, close) {
+  if (!p || !close || p.line == null || p.tier === "test" || (p.points || 0) > 0) return null;
+  if (p.market === "spread") {
+    if (close.hs == null) return null;
+    const [away, home] = p.game.split(" @ "); const cl = p.team === home ? close.hs : p.team === away ? -close.hs : null;
+    return cl == null ? null : Math.round((p.line - cl) * 100) / 100;
+  }
+  if (p.market === "total") {
+    if (close.tl == null) return null;
+    return Math.round((p.side === "under" ? p.line - close.tl : close.tl - p.line) * 100) / 100;
+  }
+  return null;
+}
+export function clvSummary(picks, closes) {
+  const by = {}; for (const c of closes || []) by[`${c.date}|${c.game}`] = c;
+  let n = 0, sum = 0, beat = 0, same = 0;
+  for (const p of picks) { const v = clvOf(p, by[`${p.date}|${p.game}`]); if (v == null) continue; n++; sum += v; if (v > 0) beat++; else if (v === 0) same++; }
+  return { n, avg: n ? Math.round((sum / n) * 100) / 100 : null, beat, same, worse: n - beat - same, beatPct: n ? Math.round((beat / n) * 1000) / 10 : null };
+}
+
+// After tip-off the card shows the picks that were saved before it (first sighting), with W / L once graded.
+const LOCK_IDS = ["ml", "cardpick|spread", "modelpick|spread", "ptspick|spread", "cardpick|total", "modelpick|total", "ptspick|total"];
+export async function lockedFor(date, game) {
+  const r = getRedis(), out = {};
+  const vals = await mgetAll(r, LOCK_IDS.map((id) => KEY(date, game, id))).catch(() => []);   // one command per game
+  for (const [i, id] of LOCK_IDS.entries()) {
+    const v = jparse(vals[i]); if (!v) continue;
+    const k = v.market, slot = /^ptspick\|/.test(id) ? "pts" : "plain";
+    if (slot === "plain" && /^modelpick\|/.test(id) && out[k] && out[k].plain) continue;   // a rule pick saved later outranks the earlier model pick
+    (out[k] = out[k] || {})[slot] = { label: v.label, pct: v.pct, result: v.result || null, price: v.price ?? null };
+  }
+  return Object.keys(out).length ? out : null;
+}

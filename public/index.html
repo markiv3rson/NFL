@@ -29,7 +29,7 @@
   body::before { content:""; position:fixed; top:0; left:0; right:0; height:env(safe-area-inset-top,0px); background:linear-gradient(to bottom,rgba(8,9,14,.97),rgba(8,9,14,.9)); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); z-index:90; pointer-events:none; }   /* 10/13: once only (it was on html AND body = double gap); the bottom bar has its own */
   html { background:linear-gradient(160deg,#1e2025 0%,#121418 50%,#08090b 100%) fixed #08090b; }
   body { background:transparent; min-height:100vh; }
-  .wrap { position:relative; z-index:0; max-width:980px; margin:0 auto; padding:14px max(12px,env(safe-area-inset-right)) 170px max(12px,env(safe-area-inset-left)); }
+  .wrap { position:relative; z-index:0; max-width:980px; margin:0 auto; padding:14px max(12px,env(safe-area-inset-right)) 96px max(12px,env(safe-area-inset-left)); }   /* 10/17: no tab bar -> less room needed at the bottom */
   /* header: translucent maroon panel, countdown on the right, tabs under it */
   .hero { position:relative; overflow:hidden; border-radius:18px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; gap:10px;
     background:radial-gradient(120% 140% at 0% 0%,rgba(140,120,255,.5) 0%,rgba(0,0,0,0) 60%),linear-gradient(135deg,rgba(72,62,168,.55) 0%,rgba(46,42,118,.42) 55%,rgba(24,24,64,.34) 100%);
@@ -204,7 +204,7 @@
   .hero.h6 .lever .larm { left:9px; bottom:12px; width:4px; height:42px; background:linear-gradient(90deg,#6b7280,#e5e7eb,#6b7280); }
   .hero.h6 .lever .lknob { width:16px; height:16px; margin-left:-8px; top:-8px; background:radial-gradient(circle at 35% 30%,#e4e7ff,#8f9bff 55%,#33358f); }
   /* 10/14 (owner, phone): a page's filter chips (Bets weeks, Alerts kinds) sit right above the bottom tabs, where the thumb is */
-  .chips.dock { position:fixed; left:0; right:0; bottom:calc(max(8px,env(safe-area-inset-bottom,0px)) + 66px); z-index:54; margin:0; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
+  .chips.dock { position:fixed; left:0; right:0; bottom:0; padding-bottom:max(8px,env(safe-area-inset-bottom,0px)) !important; z-index:54; margin:0; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }   /* 10/17: tab bar gone -> the strip sits at the very bottom */
   .chips.dock::-webkit-scrollbar { display:none; }
   .gapstrip { margin-top:10px; border-radius:14px; padding:7px 12px; min-height:32px; background:rgba(79,227,208,.08); border:1px solid rgba(79,227,208,.35); cursor:pointer; }
   .gapstrip .t { font-size:12.5px; font-weight:800; color:var(--cyan); }
@@ -319,20 +319,16 @@
   @keyframes mglow { 0%,100% { box-shadow:0 0 10px rgba(181,140,255,.4), inset 0 0 0 1px rgba(181,140,255,.3); } 50% { box-shadow:0 0 22px rgba(181,140,255,.8), inset 0 0 0 1px rgba(181,140,255,.5); } }
   @media (prefers-reduced-motion: reduce) { .tile.live, .card.modelglow, .mreel, .cdn b.flip, .stamp.go { animation:none; } .reelpct .rd > span { transition:none; } }
 </style>
+<link rel="stylesheet" href="/shell.css">
 </head>
 <body>
 <div class="pagewm" id="bgwm"></div>
 <div class="wrap">
-  <div class="hero h6">
-    <div class="hl"><div class="live" id="hero-wk">WEEK</div>
-      <div class="cdt" aria-label="Time until the next kickoff"><b id="cd-d">--</b><span>:</span><b id="cd-h">--</b><span>:</span><b id="cd-m">--</b><span>:</span><b id="cd-s">--</b></div>
-      <div class="cdg" id="cd-g"></div></div>
-    <div class="hr"><button class="lever" id="lever" aria-label="Pull to rerun the model"><span class="lmount"></span><span class="larm"><span class="lknob"></span></span></button>
-      <div class="upd" id="hero-upd">Loading…</div></div>
-  </div>
+  <div class="shead" id="shead"><button class="mbtn" id="menu-btn" aria-label="Menu"><i></i><i></i><i></i></button><div class="shome" id="shead-home"><span class="sgrad">SLATEZZ</span></div><div class="snext" id="shead-next" style="display:none"></div></div>
   <div id="weekline" style="display:none"></div>
 
-  <div class="panel on" id="panel-lines"><div id="lines"></div><div id="detail" style="display:none"></div></div>
+  <div class="panel on" id="panel-home"><div id="home"></div></div>
+  <div class="panel" id="panel-lines"><div id="lines"></div><div id="detail" style="display:none"></div></div>
   <div class="panel" id="panel-td"><div class="phead"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg><div class="pt"><b>Anytime TD</b><span id="td-header"></span></div></div><div id="td"></div></div>
   <div class="panel" id="panel-record">
     <div class="phead"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a1.5 1.5 0 0 1 1.5-1.5h13A1.5 1.5 0 0 1 20 7v2.5a2.5 2.5 0 0 0 0 5V17a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17v-2.5a2.5 2.5 0 0 0 0-5z"/><path d="M14.5 6v2M14.5 11v2M14.5 16v2"/></svg><div class="pt"><b>Bets</b><span id="upd-record"></span></div></div>
@@ -351,16 +347,10 @@
     <div id="alerts"></div>
   </div>
 </div>
-<nav class="tabs">
-  <button data-tab="lines" class="on"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M3.5 12h17M12 4.5v15"/></svg><span>Game Lines</span></button>
-  <button data-tab="td"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg><span>Anytime TD</span></button>
-  <button data-tab="record"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a1.5 1.5 0 0 1 1.5-1.5h13A1.5 1.5 0 0 1 20 7v2.5a2.5 2.5 0 0 0 0 5V17a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17v-2.5a2.5 2.5 0 0 0 0-5z"/><path d="M14.5 6v2M14.5 11v2M14.5 16v2"/></svg><span>Bets</span></button>
-  <button class="bell" id="bell" aria-label="Alerts"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span>Alerts</span><b class="cnt" id="bell-cnt"></b></button>
-  <button data-tab="models"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20V11M12 20V5M18 20v-6"/></svg><span>Models</span></button>
-</nav>
 <div class="fab">
   <div id="toast" class="toast"></div>
 </div>
+<script src="/shell.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

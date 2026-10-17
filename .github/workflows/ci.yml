@@ -14,5 +14,5 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: pip install -r railway-model-service/requirements.txt
       - run: npm run build
-      - run: python -m py_compile railway-model-service/*.py
+      - run: python -m py_compile railway-model-service/*.py nba/railway-model-service/*.py
       - run: npm test

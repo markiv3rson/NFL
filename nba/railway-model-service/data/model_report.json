@@ -1,0 +1,128 @@
+{
+ "trained_on": "2022-2024",
+ "tested_on": "2025-2026",
+ "games": 2462,
+ "injury_basis": "the official injury report before tip-off (2022-2026, 819 game days)",
+ "rows": [
+  {
+   "model": "Spread (margin)",
+   "what": "average miss, points",
+   "ours": 10.99,
+   "ours_same_games": 10.99,
+   "market": 10.68,
+   "games": 2462
+  },
+  {
+   "model": "Total",
+   "what": "average miss, points",
+   "ours": 14.92,
+   "ours_same_games": 14.92,
+   "market": 14.32,
+   "games": 2462
+  },
+  {
+   "model": "Moneyline (win chance)",
+   "what": "Brier score (lower is better)",
+   "ours": 0.2034,
+   "ours_same_games": 0.2034,
+   "market": 0.1972,
+   "games": 2462
+  }
+ ],
+ "spread_side": {
+  "overall": 49.9,
+  "break_even": 52.4,
+  "by_gap": [
+   {
+    "gap": "0-1",
+    "games": 629,
+    "model_side_covers": 49.9
+   },
+   {
+    "gap": "1-2",
+    "games": 569,
+    "model_side_covers": 51.3
+   },
+   {
+    "gap": "2-3",
+    "games": 435,
+    "model_side_covers": 47.1
+   },
+   {
+    "gap": "3-5",
+    "games": 502,
+    "model_side_covers": 48.8
+   },
+   {
+    "gap": "5-+",
+    "games": 299,
+    "model_side_covers": 52.8
+   }
+  ]
+ },
+ "total_side": {
+  "overall": 50.4,
+  "break_even": 52.4,
+  "by_gap": [
+   {
+    "gap": "0-2",
+    "games": 698,
+    "model_side_hits": 50.7
+   },
+   {
+    "gap": "2-4",
+    "games": 675,
+    "model_side_hits": 52.4
+   },
+   {
+    "gap": "4-6",
+    "games": 439,
+    "model_side_hits": 47.2
+   },
+   {
+    "gap": "6-+",
+    "games": 637,
+    "model_side_hits": 50.1
+   }
+  ]
+ },
+ "win_calibration": [
+  {
+   "said": "0-30%",
+   "games": 334,
+   "home_won": 18.6,
+   "avg_said": 21.6
+  },
+  {
+   "said": "30-40%",
+   "games": 321,
+   "home_won": 35.5,
+   "avg_said": 35.2
+  },
+  {
+   "said": "40-50%",
+   "games": 386,
+   "home_won": 47.7,
+   "avg_said": 45.0
+  },
+  {
+   "said": "50-60%",
+   "games": 401,
+   "home_won": 57.4,
+   "avg_said": 55.1
+  },
+  {
+   "said": "60-70%",
+   "games": 384,
+   "home_won": 65.4,
+   "avg_said": 64.8
+  },
+  {
+   "said": "70-100%",
+   "games": 636,
+   "home_won": 80.3,
+   "avg_said": 79.3
+  }
+ ],
+ "built": "2026-10-16"
+}
