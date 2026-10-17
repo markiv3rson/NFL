@@ -1174,13 +1174,36 @@ const FOUR_NAMES = { leg4_fav: "4 biggest favorites", leg4_green_fav: "Best gree
 const LAB_TABS = [["ou", "Over/Under"], ["style", "4 Leg (My Style)"], ["pts", "4 Leg (Bought)"], ["4", "4 Leg"], ["3", "3 Leg"], ["2", "2 Leg"], ["diff", "Different Game Parlays"]];
 let MODELBETS = null, LABTYPE = "ou", LABWEEK = null;
 // 10/15 (owner): ONE Bets tab -- My bets on the left (the list as before), Model bets on the right (the model's parlays). The choice is remembered.
-let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
+let BETSVIEW = (() => { try { return ["model", "props"].includes(localStorage.getItem("betsView")) ? localStorage.getItem("betsView") : "mine"; } catch { return "mine"; } })();
 function applyBetsView() {
-  const bt = $("bets-title"); if (bt) bt.textContent = BETSVIEW === "model" ? `Model bets · ${(LAB_TABS.find(([k]) => k === LABTYPE) || [, ""])[1]}` : "My bets";
-  const m = BETSVIEW === "model", set = (id, on) => { const e = $(id); if (e) e.style.display = on ? "" : "none"; };
-  set("record-mine", !m); set("lab", m); set("lab-sub", false);   // 10/17: the types moved from the docked strip into the menu
+  const bt = $("bets-title"); if (bt) bt.textContent = BETSVIEW === "model" ? `Model bets · ${(LAB_TABS.find(([k]) => k === LABTYPE) || [, ""])[1]}` : BETSVIEW === "props" ? "Props" : "My bets";
+  const m = BETSVIEW === "model", pr = BETSVIEW === "props", set = (id, on) => { const e = $(id); if (e) e.style.display = on ? "" : "none"; };
+  set("record-mine", !m && !pr); set("lab", m); set("props", pr); set("lab-sub", false);   // 10/17: the types moved from the docked strip into the menu
   document.querySelectorAll("#bets-sw [data-bv]").forEach((b) => b.classList.toggle("on", b.dataset.bv === BETSVIEW));
   if (m) renderLabList();
+  if (pr) { renderProps(); loadProps(); }
+}
+// Props (10/17, owner: "Add props as a new sub tab for bets"; option A): receiving-yards Unders the model gives 65%+ (/api/props), one row per prop,
+// the week's games under the kickoff headers, ✓ / ✗ (green / red) once the game is graded. A week drop-down like My bets / Model bets.
+let PROPS = null, PROPWEEK = null;
+const PROP_STAT = { rec_yds: "Rec Yds", rec: "Rec", rush_yds: "Rush Yds", pass_yds: "Pass Yds", pass_att: "Pass Att", pass_cmp: "Comp", long_rec: "Long Rec" };
+async function loadProps() {
+  try { const d = await (await fetch(`/api/props${PROPWEEK ? `?week=${PROPWEEK}` : ""}`, { cache: "no-store" })).json(); if (d && d.ok) { PROPS = d; renderProps(); } } catch {}
+}
+function renderProps() {
+  const el = $("props"); if (!el) return;
+  const d = PROPS; if (!d) { el.innerHTML = '<div class="s dim" style="margin-top:12px">Loading…</div>'; return; }
+  const weeks = d.weeks && d.weeks.length ? d.weeks : [d.week], sel = Number(d.week);
+  const wk = `<div class="wksel"><select id="props-wk" aria-label="Week">${weeks.map((w) => `<option value="${w}"${sel === Number(w) ? " selected" : ""}>Week ${w}</option>`).join("")}</select></div>`;
+  const rc = d.record || {}, stats = `<div class="stats" style="margin-top:10px"><div class="stat"><div class="k">RECORD</div><div class="v ${rc.pct >= 65 ? "g" : rc.pct >= 55 ? "lg" : rc.pct == null ? "" : "y"}">${rc.w || 0}–${rc.l || 0}</div><div class="k2">${rc.pct == null ? "—" : rc.pct + "% won"}</div></div></div>`;
+  const games = [...(d.games || [])].sort((a, b) => new Date(a.kickoff || 0) - new Date(b.kickoff || 0));
+  const slotTimes = {}; for (const g of games) if (g.kickoff) { const sl = labSlot(g.kickoff), tt = tm(g.kickoff); (slotTimes[sl] = slotTimes[sl] || []).includes(tt) || slotTimes[sl].push(tt); }
+  let lastSlot = null;
+  const row = (p) => `<div class="pbl">${p.result ? legMark(p.result) : "•"} ${legTxt(p.result, `${tlogo(p.team || "")}${esc(p.name)} · ${PROP_STAT[p.stat] || esc(p.stat)} ${p.side === "over" ? "Over" : "Under"} ${p.line} · ${Math.round(p.chance * 100)}%${p.price != null ? ` · ${Math.round(p.price * 100)}¢` : ""}`)}${p.result && p.actual != null ? ` <span class="dim">${p.actual}</span>` : ""}</div>`;
+  const blocks = games.map((g) => { const sl = g.kickoff ? labSlot(g.kickoff) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
+    return h + `<div class="par"><div class="pbh"><span class="pbn">${gameLogos(g.game)}</span></div>${g.picks.map(row).join("")}</div>`; });
+  el.innerHTML = wk + stats + (games.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
+  const pw = $("props-wk"); if (pw && pw.tagName === "SELECT") pw.onchange = () => { PROPWEEK = Number(pw.value); loadProps(); };
 }
 // Over/Under (10/17, owner: option C): each game's total PICK at Polymarket's main line and its total PICK w/ POINTS, stacked by game under the
 // kickoff headers. Before kickoff from the card, after kickoff the picks locked at kickoff with W / L. This week only (the slate carries them).
@@ -1384,8 +1407,8 @@ function showPanel(name) {
   if (name === "alerts") sub = `alerts-${ALFILTER === "all" ? "all" : alSlug(ALFILTER)}`;
   if (/^modelbets-/.test(name)) { const k = name.slice(10); if (LAB_TABS.some(([t]) => t === k)) LABTYPE = k; name = "modelbets"; }   // 10/17 (owner): the parlay types are menu sub tabs under Model bets
   if (name === "modelbets") sub = `modelbets-${LABTYPE}`;
-  if (name === "mybets" || name === "modelbets") { sub = sub || name; BETSVIEW = name === "modelbets" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} name = "record"; }
-  if (name === "record" && !sub) sub = BETSVIEW === "model" ? `modelbets-${LABTYPE}` : "mybets";
+  if (name === "mybets" || name === "modelbets" || name === "props") { sub = sub || name; BETSVIEW = name === "modelbets" ? "model" : name === "props" ? "props" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} name = "record"; }   // 10/17: Props is the third page under Bets
+  if (name === "record" && !sub) sub = BETSVIEW === "model" ? `modelbets-${LABTYPE}` : BETSVIEW === "props" ? "props" : "mybets";
   if (!$("panel-" + name)) name = "home";
   Shell.setActive(sub || name);   // 10/17: the menu replaces the tab bar
   if (name === "alerts") { ALPREV = alSeen(); if (ALERTS.length) { try { localStorage.setItem("alSeen", ALERTS[0].t); } catch {} } }   // opening Alerts marks them read (was the bell)
@@ -1402,7 +1425,7 @@ function showPanel(name) {
   linesBg();
 }
 // 10/17: pages switch by the address' #name (the menu links set it): #home (or none), #alerts, #lines, #td, #record, #models
-const PANELS = ["home", "alerts", "lines", "td", "record", "mybets", "modelbets", ...LAB_TABS.map(([k]) => `modelbets-${k}`), "alerts-all", ...Object.keys(ALK).map((k) => `alerts-${alSlug(k)}`), "models"];
+const PANELS = ["home", "alerts", "lines", "td", "record", "mybets", "modelbets", "props", ...LAB_TABS.map(([k]) => `modelbets-${k}`), "alerts-all", ...Object.keys(ALK).map((k) => `alerts-${alSlug(k)}`), "models"];
 function routeHash() {
   const name = Shell.hashPanel(PANELS, "home");
   if (name === "lines" && DETAIL && $("panel-lines").classList.contains("on")) closeGame();   // choosing Game Lines while on a game goes back to the games

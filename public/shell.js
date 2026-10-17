@@ -16,7 +16,7 @@
     nba: [["alerts", "Alerts", "bell"], ["lines", "Game Lines", "grid"], ["record", "Bets", "bets"]],
   };
   const URL_ = { nfl: "/index.html", nba: "/nba/index.html" };
-  const SUB = [["mybets", "My bets"], ["modelbets", "Model bets"]];
+  const SUB = [["mybets", "My bets"], ["modelbets", "Model bets"], ["props", "Props"]];   // 10/17 (owner): Props is a third page under Bets, both sports
   // 10/17 (owner): the Model bets parlay types are sub tabs under Model bets in the menu (both sports)
   const TYPES = { nfl: [["ou", "Over/Under"], ["style", "4 Leg (My Style)"], ["pts", "4 Leg (Bought)"], ["4", "4 Leg"], ["3", "3 Leg"], ["2", "2 Leg"], ["diff", "Different Game Parlays"]],
     nba: [["sgp", "Same game"], ["sgp_pts", "Bought"], ["best4", "Parlay"], ["fav4", "Favorites"]] };

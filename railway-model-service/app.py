@@ -233,5 +233,48 @@ def rerun_td_probs():
             out.append({"game": f"{g.get('away')} @ {g.get('home')}", "error": str(e)})
     return jsonify({"ok": True, "results": out})
 
+# ---- Player props (10/17, owner: Props sub tab under Bets) ----
+# The prop model (prop_model.py) is built in the background when missing (about 10 minutes) and rebuilt weekly by the scheduler.
+import prop_model
+_PROP_BUILD = {"running": False}
+def _prop_build_bg():
+    if _PROP_BUILD["running"]: return
+    _PROP_BUILD["running"] = True
+    def go():
+        try: prop_model.build_live(log=lambda m: print(m, flush=True))
+        except Exception as e: print(f"[props] build failed: {e}", flush=True)
+        finally: _PROP_BUILD["running"] = False
+    threading.Thread(target=go, daemon=True).start()
+if os.environ.get("PROPS_ON_START", "1") == "1" and prop_model.load_live() is None:
+    threading.Thread(target=lambda: (__import__("time").sleep(240), _prop_build_bg()), daemon=True).start()
+
+@app.route("/prop-probs", methods=["POST"])
+def prop_probs():
+    """body: {"games": [{"away","home","spread" (away spread, home favored = positive),"total","outs":[names],"lines":[{"name","stat","line"}]}]}
+    -> {"ok", "built", "results": [{"game", "rows": [{name, team, stat, line, mu, over, under}]}]}. 503 while the model is still being built."""
+    try:
+        if prop_model.load_live() is None:
+            _prop_build_bg(); return jsonify({"ok": False, "error": "prop model not built yet", "building": True}), 503
+        body = request.get_json(force=True) or {}
+        games = [{**g, "away": nv(g["away"]), "home": nv(g["home"])} for g in body.get("games", []) if g.get("spread") is not None and g.get("total") is not None]
+        res = prop_model.chances_many(games)
+        for r in res: r["game"] = " @ ".join(r["game"].split(" @ "))
+        return jsonify({"ok": True, "built": prop_model._LIVE.get("built"), "results": res})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/player-stats", methods=["GET"])
+def player_stats():
+    """Official passing / rushing / receiving stats of one week (nflverse play-by-play + snap counts), to grade prop picks (lib/props.js)."""
+    try:
+        season = int(request.args.get("season") or _season.data_season()); week = int(request.args.get("week"))
+        return jsonify({"ok": True, "season": season, "week": week, "games": prop_model.week_stats(season, week)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/build-props", methods=["POST"])
+def build_props():
+    _prop_build_bg(); return jsonify({"ok": True, "note": "started" if _PROP_BUILD["running"] else "already running"})
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))

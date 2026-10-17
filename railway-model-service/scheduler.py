@@ -95,6 +95,15 @@ def _retrain():
         print(f"[scheduler] retrain-td failed: {e}", flush=True)
         _call(f"/api/status?retrain={urllib.parse.quote('failed: ' + str(e))}", tries=1)
 
+def _build_props():
+    """Weekly prop-model build (10/17), in-process: new week's stats in, model + chance spreads refit."""
+    try:
+        import prop_model
+        r = prop_model.build_live(log=lambda m: print(m, flush=True))
+        print(f"[scheduler] prop model built -> {r}", flush=True)
+    except Exception as e:
+        print(f"[scheduler] prop model build failed: {e}", flush=True)
+
 def _rebuild_combos():
     """Weekly combo / upgraded-model rebuild (10/9), in-process. Opening lines for this season come from the site's own first saved lines."""
     try:
@@ -276,6 +285,10 @@ def _loop():
             if now_pt.weekday() in (1, 2) and now_pt.hour == 7 and 15 <= now_pt.minute < 20:
                 tag = f"rt:{now_pt:%Y-%m-%d}"
                 if tag not in fired: fired[tag] = time.time(); _bg("retrain", _retrain)
+            # Weekly prop-model build (10/17): Tuesday 5 AM PT, after the combo rebuild, before the 7:30 rerun asks it for chances.
+            if now_pt.weekday() == 1 and now_pt.hour == 5 and now_pt.minute < 5:
+                tag = f"props:{now_pt:%Y-%m-%d}"
+                if tag not in fired: fired[tag] = time.time(); _bg("props", _build_props)
             # Nightly backup at 12:05 AM
             if now_pt.hour == 0 and 5 <= now_pt.minute < 10:
                 tag = f"b:{now_pt:%Y-%m-%d}"

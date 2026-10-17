@@ -321,14 +321,17 @@ function ticketRow() {
 }
 
 // ---------- Bets: My bets | Model bets
-let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
+let BETSVIEW = (() => { try { return ["model", "props"].includes(localStorage.getItem("betsView")) ? localStorage.getItem("betsView") : "mine"; } catch { return "mine"; } })();
 function applyBetsView() {
-  const bt = $("bets-title"); if (bt) bt.textContent = BETSVIEW === "model" ? `Model bets · ${(LAB_TABS.find(([k]) => k === LABTYPE) || [, ""])[1]}` : "My bets";
-  const m = BETSVIEW === "model", set = (id, on) => { const e = $(id); if (e) e.style.display = on ? "" : "none"; };
-  set("record-mine", !m); set("lab", m);   // 10/17 (owner): the parlay types are menu sub tabs under Model bets (the docked strip is gone)
+  const bt = $("bets-title"); if (bt) bt.textContent = BETSVIEW === "model" ? `Model bets · ${(LAB_TABS.find(([k]) => k === LABTYPE) || [, ""])[1]}` : BETSVIEW === "props" ? "Props" : "My bets";
+  const m = BETSVIEW === "model", pr = BETSVIEW === "props", set = (id, on) => { const e = $(id); if (e) e.style.display = on ? "" : "none"; };
+  set("record-mine", !m && !pr); set("lab", m); set("props", pr);   // 10/17 (owner): the parlay types are menu sub tabs under Model bets (the docked strip is gone)
   document.querySelectorAll("#bets-sw [data-bv]").forEach((b) => b.classList.toggle("on", b.dataset.bv === BETSVIEW));
   if (m) renderLabList();
+  if (pr) renderProps();
 }
+// Props (10/17, owner: the same page as NFL's, both sports): Polymarket US lists no NBA player props yet, so the list is empty until it does
+function renderProps() { const el = $("props"); if (el) el.innerHTML = '<div class="s dim" style="margin-top:12px">None yet.</div>'; }
 async function loadBets() {
   try { BETS = await (await fetch("/api/nba/mybets", { cache: "no-store" })).json(); } catch { BETS = { ok: false }; }
   try { const d = await (await fetch("/api/nba/modelbets", { cache: "no-store" })).json(); if (d && d.ok) MODELBETS = d; } catch {}
@@ -567,8 +570,8 @@ function showPanel(name) {
   if (name === "alerts") sub = `alerts-${ALFILTER === "all" ? "all" : alSlug(ALFILTER)}`;
   if (/^modelbets-/.test(name)) { const k = name.slice(10); if (LAB_TABS.some(([t]) => t === k)) LABTYPE = k; name = "modelbets"; }   // 10/17 (owner): the parlay types are menu sub tabs under Model bets
   if (name === "modelbets") sub = `modelbets-${LABTYPE}`;
-  if (name === "mybets" || name === "modelbets") { sub = sub || name; BETSVIEW = name === "modelbets" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} name = "record"; }
-  if (name === "record" && !sub) sub = BETSVIEW === "model" ? `modelbets-${LABTYPE}` : "mybets";
+  if (name === "mybets" || name === "modelbets" || name === "props") { sub = sub || name; BETSVIEW = name === "modelbets" ? "model" : name === "props" ? "props" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} name = "record"; }   // 10/17: Props is the third page under Bets
+  if (name === "record" && !sub) sub = BETSVIEW === "model" ? `modelbets-${LABTYPE}` : BETSVIEW === "props" ? "props" : "mybets";
   if (!$("panel-" + name)) name = "lines";
   Shell.setActive(sub || name);   // 10/17: the menu replaces the tab bar
   if (name === "alerts") { ALPREV = alSeen(); if (ALERTS.length) { try { localStorage.setItem("alSeen", ALERTS[0].t); } catch {} } }
@@ -582,7 +585,7 @@ function showPanel(name) {
   linesBg();
 }
 // 10/17: pages switch by the address' #name (the menu links set it): #alerts, #lines, #record, #models; #game=KEY opens a game (from the home screen)
-const PANELS = ["alerts", "lines", "record", "mybets", "modelbets", ...LAB_TABS.map(([k]) => `modelbets-${k}`), "alerts-all", ...Object.keys(ALK).map((k) => `alerts-${alSlug(k)}`), "models"];
+const PANELS = ["alerts", "lines", "record", "mybets", "modelbets", "props", ...LAB_TABS.map(([k]) => `modelbets-${k}`), "alerts-all", ...Object.keys(ALK).map((k) => `alerts-${alSlug(k)}`), "models"];
 let OPEN_GAME = null;
 function routeHash() {
   const h = location.hash || "";

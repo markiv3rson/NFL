@@ -11,6 +11,7 @@ import { alertsFromRerun, alertsQbJump, alertsTdJump } from "../../lib/alerts";
 import { windAtKickoff, venue, isNeutral } from "../../lib/wind";
 import { loadSnaps, qbFirstStart, sameName } from "../../lib/snaps";
 import { loadEspnInjuries, espnOutFor, espnQuestionableFor } from "../../lib/espn";
+import { propLinesFor, K_PROPMODEL } from "../../lib/props";
 export const config = { maxDuration: 300 };
 
 // Railway answers 502/503 "Application failed to respond" while the service restarts after a deploy (10/7 8:33 PM).
@@ -139,6 +140,18 @@ export default async function handler(req, res) {
       nTd++;
     });
     if (td && td.error) errors.push(`TD: ${String(td.error).slice(0, 120)}`);
+    // Player props (10/17, owner: Props sub tab): the model's chance of every recorded receiving-yards line, with this week's Out list, saved per game.
+    // Reruns skip started games, so the last copy before kickoff is the one graded. A 503 (model still being built) is not an error.
+    let nProps = 0;
+    if (!early) try {
+      const withLines = (await Promise.all(tdIn.map(async (x) => ({ x, lines: await propLinesFor(season, week, x.key) })))).filter((q) => q.lines.length);
+      if (withLines.length) {
+        const pr = await post(base, "/prop-probs", { games: withLines.map(({ x, lines }) => ({ away: x.away, home: x.home, spread: x.spread, total: x.total, outs: x.outs, lines })) }, []);
+        if (pr && pr.ok) for (const r of pr.results || []) { const q = withLines.find((z) => z.x.key === r.game); if (!q || !Array.isArray(r.rows)) continue;
+          await setJSON(K_PROPMODEL(season, week, q.x.key), { runAt, rows: r.rows }); nProps++; }
+        else if (pr && !pr.building) errors.push(`props: ${String(pr.error || "no reply").slice(0, 120)}`);
+      }
+    } catch (e) { errors.push(`props: ${String(e.message || e).slice(0, 120)}`); }
     if (!nLines && !errors.length) errors.push(`model service returned 0 results for ${payload.length} game(s)`);
     store.runAt = runAt;
     await Promise.all(alertJobs);
@@ -150,6 +163,6 @@ export default async function handler(req, res) {
         model: store.games[x.key] || null, td: (store.td[x.key] ? [...store.td[x.key].away, ...store.td[x.key].home].map((p) => [p.name, p.fair]) : null) })) }));
     await getRedis().ltrim(`rerunlog:${season}:${week}`, 0, 60);
     await getRedis().del(SLATE_CACHE).catch(() => {}); await getRedis().del(`${SLATE_CACHE}:w${week}`).catch(() => {});   // new model numbers show immediately (also the per-week copy the Next week view reads)
-    res.status(200).json({ ok: true, week, rerun: nLines, td: nTd, early, skippedTd: payload.length - tdIn.length, locked: all.length - games.length, errors });
+    res.status(200).json({ ok: true, week, rerun: nLines, td: nTd, props: nProps, early, skippedTd: payload.length - tdIn.length, locked: all.length - games.length, errors });
   } catch (err) { await logError("rerun", err).catch(() => {}); res.status(500).json({ ok: false, error: String(err) }); }
 }
