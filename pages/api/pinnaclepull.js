@@ -34,10 +34,11 @@ export async function recordShadow(redis, season, g, p, pin, sb, tb, t) {
 // added, ordinary moves are taken, a price that HALVED is left to the snapshot's glitch guard (3 checks). Same history list as the snapshot (src "pin30").
 export async function mergeTdPrices(redis, season, g, px, t) {
   if (!px || !g || g.week == null) return 0; const key = K.tdpx(season, g.week, g.key), old = (await getJSON(key)) || null, rec = (v) => (v == null ? null : typeof v === "number" ? { ask: v } : v);
-  const real = (v) => v && !isThinMarket(v.ask, v.bid ?? null), out = { ...(old || {}) }; let changed = 0;
-  for (const [q, v] of Object.entries(px)) { const n = rec(v), o = old ? rec(old[q]) : null; if (!n || !(n.ask > 0)) continue;
-    if (o && real(o) && real(n) && n.ask < o.ask * 0.5) continue;   // a halving waits for the snapshot guard
-    if (!o || o.ask !== n.ask || (o.bid ?? null) !== (n.bid ?? null)) { out[q] = v; changed++; } }
+  // 10/17: a player Polymarket no longer lists (or the old source's wording) is dropped, as the snapshot does
+  const real = (v) => v && !isThinMarket(v.ask, v.bid ?? null), out = {}; let changed = Object.keys(old || {}).filter((q) => !(q in px)).length;
+  for (const [q, v] of Object.entries(px)) { const n = rec(v), o = old ? rec(old[q]) : null; if (!n || !(n.ask > 0)) { if (o) out[q] = old[q]; continue; }
+    if (o && real(o) && real(n) && n.ask < o.ask * 0.5) { out[q] = old[q]; continue; }   // a halving waits for the snapshot guard
+    out[q] = v; if (!o || o.ask !== n.ask || (o.bid ?? null) !== (n.bid ?? null)) changed++; }
   if (!changed) return 0;
   await setJSON(key, out);
   const compact = {}; for (const [q, v] of Object.entries(out)) { const o = rec(v); if (o && o.ask > 0) compact[q] = [o.ask, o.bid ?? null]; }
@@ -56,6 +57,9 @@ export default async function handler(req, res) {
       if (raw._mkt) Object.defineProperty(p, "_mkt", { value: { ...(raw._mkt.spread && p.spread ? { spread: raw._mkt.spread } : {}), ...(raw._mkt.total && p.total ? { total: raw._mkt.total } : {}) }, enumerable: false });
       const M = p._mkt || {}, mk = async (x) => (x ? { ...((await bookDepth(x.tok).catch(() => null)) || {}), vol: x.vol, liq: x.liq } : null);
       const [sb, tb] = await Promise.all([mk(M.spread), mk(M.total)]);
+      // 10/17 (owner: "Polymarket prices should update in the background"): the main spread / total / moneyline read here every 15 min is kept as the
+      // game's newest Polymarket line (`polynow:`); the slate shows it when it is newer than the last snapshot (lib/week.js). Snapshots stay as they were.
+      if (g.week != null && (p.spread || p.total || p.ml)) await getRedis().set(`polynow:${SEASON}:${g.week}:${g.key}`, JSON.stringify({ t, poly: { ...(p.spread ? { spread: p.spread } : {}), ...(p.total ? { total: p.total } : {}), ...(p.ml ? { ml: p.ml } : {}) } }), "EX", 4 * 86400).catch(() => 0);
       if (g.week != null && (raw.alts || raw.talts)) await getRedis().set(`alts:${SEASON}:${g.week}:${g.key}`, JSON.stringify({ t, alts: raw.alts || null, talts: raw.talts || null })).catch(() => 0);   // 10/15: alternate prices refresh every 30 min (the card drops them after 3 h; snapshots alone left them stale)
       await recordShadow(getRedis(), SEASON, g, p, pin, sb, tb, t).catch(() => 0);
       const pp = await playerProps(events, g.away, g.home).catch(() => null);   // one read of the "-player-props" event
