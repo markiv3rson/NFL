@@ -1102,23 +1102,48 @@ const plPay = (p) => {
   const x = p && linkedPay(p.legs); if (x == null) return "PL: —";
   return plText(x, p.stake || 10);   // the owner's stake for this parlay type (lib/sgp.js STAKES)
 };
-// 10/17 (owner: "I need the real price"): tapping the PL line asks Polymarket for a live quote of these exact legs (/api/comboquote: asks and
-// closes the request, never buys) and the line switches to Polymarket's real payout. Only before kickoff, 2+ legs.
-const PLQ = [];
-function plTap(p) {
-  if (!p || p.result || !Array.isArray(p.legs) || p.legs.length < 2) return "";
+// Real Polymarket price (10/17, owner: "I need the real price" / "I need it to update automatically"): every PL line on screen asks Polymarket for a
+// live quote of its exact legs by itself (/api/comboquote: asks and closes the request, never buys), one parlay after another, and again every
+// 3 minutes while the page is open; the line shows Polymarket's real payout as soon as it comes back (kept across page refreshes). A tap asks
+// again right away. Only before kickoff, 2+ legs. Until the first quote (or when Polymarket has none) the line is the estimate above.
+const PLQ = {}, PLC = {}, PL_FRESH = 180e3;   // parlays and their real quotes ({ pay, t } or { fail, t }) by legs + stake
+const plKey = (p) => p.legs.map((l) => [l.game, l.kind, l.team || "", l.side || "", l.label].join("|")).sort().join("~") + "|" + (p.stake || 10);
+function plQuotable(p) {
+  if (!p || p.result || !Array.isArray(p.legs) || p.legs.length < 2) return false;
   const games = (S && S.games) || [], gs = p.legs.map((l) => games.find((g) => g.key === l.game));
-  if (gs.some((g) => !g || !g.kickoff || g.started || g.final || Date.now() >= new Date(g.kickoff).getTime())) return "";
-  PLQ.push(p); return ` data-q="${PLQ.length - 1}" onclick="plQuote(this)" style="cursor:pointer"`;
+  return !gs.some((g) => !g || !g.kickoff || g.started || g.final || Date.now() >= new Date(g.kickoff).getTime());
 }
-async function plQuote(el) {
-  const p = PLQ[Number(el.dataset.q)]; if (!p || el.dataset.busy) return; el.dataset.busy = "1"; el.style.opacity = ".5";
+function plTap(p) {
+  if (!plQuotable(p)) return "";
+  const k = plKey(p); PLQ[k] = p; return ` data-q="${encodeURIComponent(k)}" onclick="plQuote(this, true)" style="cursor:pointer"`;
+}
+// the PL line: Polymarket's real payout once it has come back, else the estimate
+function plShown(p) { const c = plQuotable(p) ? PLC[plKey(p)] : null; return c && c.pay > 1 ? plText(c.pay, p.stake || 10) : plPay(p); }
+const PLBUSY = new Set();
+async function plQuote(el, fresh) {
+  const k = decodeURIComponent(el.dataset.q || ""), p = PLQ[k]; if (!p || PLBUSY.has(k)) return; PLBUSY.add(k);
+  const same = () => [...document.querySelectorAll(".plb[data-q]")].filter((x) => x.dataset.q === el.dataset.q);
+  if (fresh) same().forEach((x) => { x.style.opacity = ".5"; });
   try {
     const kick = {}; for (const g of (S && S.games) || []) if (p.legs.some((l) => l.game === g.key)) kick[g.key] = g.kickoff;
     const legs = p.legs.map((l) => ({ game: l.game, kind: l.kind, team: l.team || null, side: l.side || null, label: l.label, player: l.player || null }));
-    const r = await fetch("/api/comboquote", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ legs, kick, stake: p.stake || 10 }) }).then((x) => x.json());
-    if (r && r.ok && r.pay > 1) el.innerHTML = `${pmLogo()} ${plText(r.pay, p.stake || 10)}`; else el.title = (r && r.why) || "";
-  } catch {} finally { el.style.opacity = ""; delete el.dataset.busy; }
+    const r = await fetch("/api/comboquote", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ legs, kick, stake: p.stake || 10, fresh: !!fresh }) }).then((x) => x.json());
+    if (r && r.ok && r.pay > 1) { PLC[k] = { pay: r.pay, t: Date.now() }; same().forEach((x) => { x.innerHTML = `${pmLogo()} ${plText(r.pay, p.stake || 10)}`; x.title = ""; }); }
+    else { PLC[k] = { ...(PLC[k] && PLC[k].pay ? PLC[k] : {}), fail: (r && r.why) || "no quote", t: Date.now() }; same().forEach((x) => { x.title = PLC[k].fail; }); }
+  } catch { PLC[k] = { ...(PLC[k] || {}), t: Date.now() }; } finally { same().forEach((x) => { x.style.opacity = ""; }); PLBUSY.delete(k); }
+}
+// one parlay at a time: the first PL line on screen whose quote is missing or older than 3 minutes
+let PLAUTO = false;
+async function plAuto() {
+  if (PLAUTO) return; PLAUTO = true;
+  for (;;) {
+    let el = null;
+    if (!document.hidden) for (const x of document.querySelectorAll(".plb[data-q]")) {
+      if (!x.offsetParent) continue;   // on a page that is not open
+      const c = PLC[decodeURIComponent(x.dataset.q)]; if (!c || Date.now() - c.t > PL_FRESH) { el = x; break; }
+    }
+    if (el) { await plQuote(el, false); await new Promise((r) => setTimeout(r, 300)); } else await new Promise((r) => setTimeout(r, 3000));
+  }
 }
 const legMark = (r) => (r === "W" ? '<span class="g">✓</span>' : r === "L" ? '<span class="r">✗</span>' : r === "P" ? '<span class="dim">–</span>' : "•");
 const gameLogos = (key) => { const m = String(key || "").match(/^([A-Z]{2,4}) @ ([A-Z]{2,4})$/); return m ? `${tlogo(m[1])}${esc(m[1])} @ ${tlogo(m[2])}${esc(m[2])}` : esc(key); };
@@ -1130,7 +1155,7 @@ function pBlock(title, p, showGame) {
   const pr = typeof p.prob === "number" && isFinite(p.prob) ? p.prob : null;
   const legs = p.legs.map((l) => `<div class="pbl">${legMark(l.result)} ${legLogoLabel(l)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · ${Math.round((l.prob || 0) * 100)}%${showGame && l.game ? ` <span class="dim">${gameLogos(l.game)}</span>` : ""}</div>`).join("");
   const res = p.result === "W" ? '<span class="g">✓ Won</span>' : p.result === "L" ? '<span class="r">✗ Lost</span>' : p.result === "P" ? '<span class="dim">Push</span>' : "";
-  return `<div class="par"><div class="pbh"><span class="pbn">${title}${pr == null ? "" : ` <span class="${pr >= 0.3 ? "g" : pr >= 0.15 ? "lg" : "y"}">· ${Math.round(pr * 100)}%</span>`}</span><span class="plb"${plTap(p)}>${pmLogo()} ${plPay(p)}</span></div>${legs}<div class="pbr">${res}</div></div>`;
+  return `<div class="par"><div class="pbh"><span class="pbn">${title}${pr == null ? "" : ` <span class="${pr >= 0.3 ? "g" : pr >= 0.15 ? "lg" : "y"}">· ${Math.round(pr * 100)}%</span>`}</span><span class="plb"${plTap(p)}>${pmLogo()} ${plShown(p)}</span></div>${legs}<div class="pbr">${res}</div></div>`;
 }
 function sgpBox(g) {
   const x = g.sgp; if (!x || g.started || g.final) return "";
@@ -1389,5 +1414,5 @@ Shell.init("nfl");
 document.querySelectorAll("[data-mp]").forEach((a) => a.addEventListener("click", () => { if (a.dataset.msp === "nfl" && location.hash === "#" + a.dataset.mp) setTimeout(routeHash, 0); }));   // same item again: still go back from a game page
 Shell.onRefreshed = async () => { await loadSlate(); if ($("panel-home").classList.contains("on")) await loadHome(); };
 routeHash();
-loadSlate().then(loadAlerts).then(() => { catchUp(); autoRefresh(); }).catch((e) => toast("Couldn't load this week: " + e.message, 12000));
+loadSlate().then(loadAlerts).then(() => { catchUp(); autoRefresh(); plAuto(); }).catch((e) => toast("Couldn't load this week: " + e.message, 12000));
 document.addEventListener("visibilitychange", () => { if (!document.hidden && Date.now() - LOADED_AT > 60e3) refreshAll(); });

@@ -1,6 +1,6 @@
 // Real Polymarket combo price for one parlay (10/17, owner: "I need the real price"). POST { legs, kick: { game: kickoff }, stake } ->
 // { ok, pay, price } from a live Polymarket US quote (lib/comboquote.js). Asks for a quote and closes it: never accepts, nothing is bought.
-// ?raw=1 adds every Polymarket reply (to check the format).
+// The same parlay's quote is shared for 2.5 min (lib/comboquote.js); { fresh: true } (a tap) asks again. ?raw=1 adds every Polymarket reply.
 import { realQuote } from "../../lib/comboquote";
 export const config = { maxDuration: 30 };
 
@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     if (legs.length < 2 || legs.length > 10) return res.status(200).json({ ok: false, why: "a combo has 2 to 10 legs" });
     const { PolymarketUS } = await import("polymarket-us");
     const client = new PolymarketUS({ keyId: process.env.POLYMARKET_KEY_ID, secretKey: process.env.POLYMARKET_SECRET_KEY, timeout: 8000 });
-    const log = [], out = await realQuote(client, legs, b.kick || {}, stake, log);
+    const log = [], out = await realQuote(client, legs, b.kick || {}, stake, log, { fresh: !!b.fresh });
     res.status(200).json({ ...out, ...(req.query.raw ? { log } : {}) });
   } catch (err) { res.status(500).json({ ok: false, why: String(err) }); }
 }
