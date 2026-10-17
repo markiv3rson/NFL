@@ -497,7 +497,8 @@ async function loadAlerts() {
 }
 function renderAlerts() {
   const dots = ALPREV != null ? ALPREV : alSeen(), unread = ALERTS.filter((a) => a.t > alSeen()).length;
-  Shell.setCount("nba", "alerts", unread);   // 10/17: the unread count sits on the menu's NBA Alerts row
+  Shell.setCount("nba", "alerts", unread);
+  for (const k of Object.keys(ALK)) Shell.setCount("nba", `alerts-${alSlug(k)}`, ALERTS.filter((a) => a.kind === k && a.t > alSeen()).length);   // 10/17 (owner): the unread number on each kind's own line   // 10/17: the unread count sits on the menu's NBA Alerts row
   const list = ALERTS.filter((a) => ALFILTER === "all" || a.kind === ALFILTER);
   $("alerts").innerHTML = list.length ? list.map((a) => { const [lab, col] = ALK[a.kind] || [a.kind, "var(--dim)"];
     const ic = a.kind === "INJURY" && a.team ? tlogo(a.team) : a.kind === "LINE MOVE" ? pmLogo() : "";
