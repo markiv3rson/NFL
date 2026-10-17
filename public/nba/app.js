@@ -280,8 +280,8 @@ function sgpBox(g) {
   const blocks = S.parlays.filter((p) => p.game === g.key).map((p) => pBlock(esc(PTYPES[p.type] || p.type), p, false)).join("");
   return blocks ? secRow("SAME-GAME PARLAYS") + `<div class="pgrid" style="margin-top:6px">${blocks}</div>` : "";
 }
-// 10/17 (owner): the NBA photo behind the Game Lines list, like NFL (a game page keeps its team colours)
-function linesBg() { const p = $("panel-lines"); document.documentElement.classList.toggle("lines-on", !!(p && p.classList.contains("on")) && !DETAIL); }
+// 10/17 (owner): the NBA photo behind every NBA page (a game page keeps its team colours)
+function linesBg() { const p = $("panel-lines"); document.documentElement.classList.toggle("lines-on", !(p && p.classList.contains("on") && DETAIL)); }
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = ""; linesBg();
   $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}` +

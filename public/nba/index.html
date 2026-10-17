@@ -230,10 +230,10 @@
   .pagewm { position:fixed; inset:0; z-index:-1; pointer-events:none; display:flex; align-items:center; overflow:hidden; }
   .pagewm img { width:50%; height:100%; object-fit:contain; transform:scale(1.25); opacity:.2; }
   .pagewm::after { content:""; position:absolute; inset:0; background:rgba(0,0,0,.4); }
-  /* 10/17 (owner): NBA Game Lines (the list, not a game page) gets its photo behind it, like NFL; the game cards see-through over it */
+  /* 10/17 (owner): every NBA page (not a game page) gets its photo behind it, like NFL; the cards see-through over it */
   html.lines-on .pagewm { background:linear-gradient(180deg,rgba(0,0,0,.30),rgba(0,0,0,.50) 60%,rgba(0,0,0,.70)),url(/nba/lines-bg.jpg) center 20%/cover no-repeat,#000; }
   html.lines-on .pagewm::after { display:none; }
-  html.lines-on #lines .tile { background:rgba(8,8,12,.55); border-color:rgba(255,255,255,.12); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* see-through, no frosted haze */
+  html.lines-on .panel .tile, html.lines-on .panel .card, html.lines-on .panel .stat { background:rgba(8,8,12,.55); border-color:rgba(255,255,255,.12); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* see-through, no frosted haze */
   .dtop .t .tlogo { width:30px; height:30px; vertical-align:-6px; margin:0 8px 0 0; } .dtop .t:last-child .tlogo { margin:0 0 0 8px; }
   .prl > .s { text-transform:uppercase; letter-spacing:.04em; font-size:13px; font-weight:700; color:#eef0f4; }
   /* game page: the two team logos split the whole page in half behind the cards (away left, home right) */
