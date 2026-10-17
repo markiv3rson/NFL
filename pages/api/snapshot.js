@@ -11,7 +11,7 @@ import { tdRows } from "../../lib/picks";
 import { SEASON, currentWeek, loadGames, started } from "../../lib/games";
 import { getRedis, jparse, getJSON, setJSON, K, SLATE_CACHE, pushCapped } from "../../lib/redis";
 import { fetchEvents, gameLines, tdProps } from "../../lib/poly";
-import { sanePoly } from "../../lib/sane";
+import { sanePoly, spreadJumped } from "../../lib/sane";
 import { fetchBooks, booksFresh } from "../../lib/books";
 import { savePinnacle, pinnacleFailed, pinnacleOk } from "../../lib/pinnacle";
 import { gradeRecent } from "../../lib/grade";
@@ -111,7 +111,7 @@ export default async function handler(req, res) {
       const prevRaw = await redis.lindex(K.snaps(season, week, g.key), -1), prev = prevRaw ? (jparse(prevRaw) || {}).poly || null : null;
       if (prev && poly) {
         const why = [];
-        if (prev.spread && poly.spread && Math.abs(prev.spread.homeSpread - poly.spread.homeSpread) >= 3) why.push(`spread jumped ${prev.spread.homeSpread} → ${poly.spread.homeSpread}`);
+        if (prev.spread && poly.spread && spreadJumped(prev.spread.homeSpread, poly.spread.homeSpread)) why.push(`spread jumped ${prev.spread.homeSpread} → ${poly.spread.homeSpread}`);
         if (prev.total && poly.total && Math.abs(prev.total.line - poly.total.line) >= 4) why.push(`total jumped ${prev.total.line} → ${poly.total.line}`);
         if (prev.ml && poly.ml && Math.abs(prev.ml.home - poly.ml.home) >= 0.25) why.push("moneyline jumped 25+ cents");
         if (why.length) snap.suspect = `Data check failed: ${why.join(", ")}. Bet held until next refresh.`;

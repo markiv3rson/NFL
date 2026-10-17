@@ -7,6 +7,7 @@ import { getRedis, jparse } from "./redis";
 import { recordPicks, lockedFor } from "./record";
 import { buildCard, cardLegs, isGreen } from "./cardpick";
 import { buildParlays, recordParlays } from "./parlays";
+import { saveParlayList } from "../../lib/comboquote";   // 10/17: real Polymarket parlay prices (shared with NFL: one Polymarket account, one request a second)
 import { recordCloses } from "./closes";
 import { moveSignal } from "./pinnacle";
 import { alertsFromSlate } from "./alerts";
@@ -164,6 +165,8 @@ export async function buildSlate({ now = Date.now(), days = 1, events = null, in
   if (record && svc) await alertsFromSlate(soon, now).catch((e) => logError("alerts", e));
   if (record && svc) await recordPicks(soon.filter((g) => !g.inProgress).map((g) => ({ ...g, priceFor: (mk, p) => polyPrice(g, mk, p) })), now).catch((e) => logError("record", e));
   if (record && svc) for (const d of dates.filter((x) => win.has(x))) await recordParlays(d, parlays.filter((p) => p.date === d), out, now).catch((e) => logError("parlays", e));
+  if (record && svc) { const st = Object.fromEntries(out.map((g) => [g.key, g.start]));   // the parlays on the pages, for the background job that keeps their real prices fresh
+    await saveParlayList("nba", parlays.filter((p) => p.legs.every((l) => st[l.game])).map((p) => ({ ...p, kick: Object.fromEntries(p.legs.map((l) => [l.game, st[l.game]])) }))).catch((e) => logError("parlays", e)); }
   return { ok: true, now: new Date(now).toISOString(), dates, teams: TEAMS, games: out, bestBets: best, parlay: parlay(picks), parlays, tests: collectTests(out),
     books: bk ? { t: bk.t, remaining: bk.remaining } : null, booksPull,
     modelOk: payload.games.length ? !!svc : null, modelError, seasonStart, modelBuiltAt: svc ? svc.builtAt : null, fitThrough: svc ? svc.fitThrough : null, patternsBuilt: svc ? svc.patternsBuilt : null,

@@ -121,7 +121,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ctx.window = ctx; ctx.addEventListener = () => {}; ctx.body = undefined;
   vm.createContext(ctx);
   vm.runInContext(readFileSync(new URL("../public/shell.js", import.meta.url), "utf8"), ctx);   // 10/17: the shared menu / header script loads first, as on the page
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={tdPct,plural,pBlock,plPay,linkedPay,plTap,plShown,plKey,PLC,sgpBox,labParlays,renderLabList,logoLabel,tdTeam,legName,moreBox,slotOf,parlayPicks,parlayStrip,lineCheck,recLine,bestBets,injTag,weakLeg,kickLine,tdNoGap,trackedRows,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,leanCell,prow,betRow,changedBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gameCard,totalCard,detailTop,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByConfidence,mSec,legFlipped,betSlots,openBySlot,straightPicks,sgpBox,glowOf,stampFor,betRow};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={mktHome,tdPct,plural,pBlock,plPay,linkedPay,plTap,plShown,plKey,PLC,sgpBox,labParlays,renderLabList,logoLabel,tdTeam,legName,moreBox,slotOf,parlayPicks,parlayStrip,lineCheck,recLine,bestBets,injTag,weakLeg,kickLine,tdNoGap,trackedRows,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,leanCell,prow,betRow,changedBox,winnersBox,winnerOf,tile,tdTop3,tdRow,gameCard,totalCard,detailTop,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByConfidence,mSec,legFlipped,betSlots,openBySlot,straightPicks,sgpBox,glowOf,stampFor,betRow};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   g = { away: "A", home: "H", model: { total: 44.4, fix: { dome: 2.59, pace: 0.1, div: true } }, poly: { total: { line: 45.5 } } };
@@ -1112,6 +1112,24 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
         "real quote: the same parlay is shared for 2.5 min (no Polymarket call); a refresh reuses the combo symbol and asks ONE quote", calls.slice(n1));
       const before = calls.length, miss = await realQuote(fake, [{ game: "PIT @ TB", kind: "total", side: "over", label: "Over 39.5" }, { game: "PIT @ TB", kind: "spread", team: "TB", label: "TB +2.5" }], { "PIT @ TB": "2026-10-18T17:00:00Z" }, 10);
       ok(!miss.ok && /Over 39\.5/.test(miss.why) && calls.length === before, "real quote: a leg Polymarket does not list -> no quote asked", calls);
+      { // NBA (10/17, owner: "I need this for the nba also") + the background refresh
+        const { saveParlayList, refreshQuotes } = await import("../lib/comboquote.js");
+        const nb = [mk("asc-nba-gs-lal-2026-10-21-neg-3pt5", "basketball_team_full_game_spread", -3.5, [side("-3.50", true, "gs"), side("+3.50", false, "lal")]),
+          mk("tsc-nba-gs-lal-2026-10-21-224pt5", "basketball_team_full_game_total", 224.5, [side("Over", true), side("Under", false)]),
+          mk("aec-nba-gs-lal-2026-10-21", "basketball_team_full_game_winner", null, [side("Warriors", true, "gs"), side("Lakers", false, "lal")])];
+        const ns = (l) => JSON.stringify(legSymbol({ game: "GSW @ LAL", ...l }, nb, "nba"));
+        ok(eventSlugs("GSW @ LAL", "2026-10-22T02:00:00Z", "nba")[0] === "nba-gs-lal-2026-10-21" && ns({ market: "spread", team: "LAL", line: 3.5, label: "LAL +3.5" }) === '{"symbol":"asc-nba-gs-lal-2026-10-21-neg-3pt5","side":"SIDE_SELL"}'
+          && ns({ market: "total", side: "under", line: 224.5, label: "Under 224.5" }) === '{"symbol":"tsc-nba-gs-lal-2026-10-21-224pt5","side":"SIDE_SELL"}' && ns({ market: "ml", team: "GSW", label: "GSW ML" }) === '{"symbol":"aec-nba-gs-lal-2026-10-21","side":"SIDE_BUY"}'
+          && legSymbol({ game: "GSW @ LAL", kind: "spread", team: "LAL", label: "LAL +3.5" }, M, "nba") === null,
+          "real quote, NBA: Polymarket's NBA codes (GSW = gs) and Eastern date of tip-off; spread / total / moneyline legs -> NBA markets; football markets never used");
+        const R = globalThis.__TEST_REDIS__, soon = new Date(Date.now() + 5 * 3600e3).toISOString(), later = new Date(Date.now() + 20 * 3600e3).toISOString(), past = new Date(Date.now() - 3600e3).toISOString();
+        const L1 = [{ game: "PIT @ TB", kind: "spread", team: "TB", label: "TB +2.5" }, { game: "PIT @ TB", kind: "td", team: "PIT", player: "J.Warren", label: "J.Warren TD" }];
+        const n = await saveParlayList("nflx", [{ stake: 10, legs: L1, kick: { "PIT @ TB": soon } }, { stake: 5, legs: L1, kick: { "PIT @ TB": soon } }, { stake: 10, legs: [L1[0], { ...L1[1], label: "J.Warren 2+ TD" }], kick: { "PIT @ TB": later } },
+          { stake: 10, legs: L1, kick: { "PIT @ TB": past } }, { stake: 10, legs: [L1[0]], kick: { "PIT @ TB": soon } }]);
+        const before = calls.length, r1 = await refreshQuotes(fake, "nflx", { budgetMs: 20000 }), mid = calls.length, r2 = await refreshQuotes(fake, "nflx", { budgetMs: 20000 });
+        ok(n === 4 && r1.parlays === 2 && r1.quoted === 2 && calls.slice(before, mid).filter((c) => c === "POST /v1/rfqs").length === 2 && r2.stale === 0 && calls.length === mid && !calls.some((c) => /^PUT|accept/i.test(c)),
+          "background: re-quotes each parlay on the pages (games starting in the next 12 h, not started, 2+ legs), skips ones quoted in the last 4 min, never accepts", { n, r1, r2 });
+        for (const k of await R.keys("cq*")) await R.del(k); }
       vm.runInContext(`S = { games: [ { key: "PIT @ TB", kickoff: "2099-01-01T00:00:00Z" }, { key: "A @ B", kickoff: "2000-01-01T00:00:00Z" } ] }`, ctx);
       const pq = { stake: 10, legs: [{ game: "PIT @ TB", kind: "spread", team: "TB", label: "TB +2.5", price: 0.5 }, { game: "PIT @ TB", kind: "td", team: "PIT", label: "J.Warren TD", price: 0.45 }] };
       const est = ctx.T.plShown(pq); ctx.T.PLC[ctx.T.plKey(pq)] = { pay: 14.713, t: Date.now() };
@@ -1123,6 +1141,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       const R = Array.from({ length: n }, () => { const k = kinds[Math.floor(Math.random() * 4)]; return { game: Math.random() < 0.8 ? "NO @ NYG" : g, kind: k, team: teams[Math.floor(Math.random() * 2)], side: Math.random() < 0.5 ? "over" : "under", label: k, price: 0.05 + Math.random() * 0.9 }; });
       const a = comboPay(R), b = ctx.T.linkedPay(R); worst = Math.max(worst, a == null || b == null ? (a === b ? 0 : 1) : Math.abs(a - b) / a); }
     ok(worst < 1e-9, "payout: page and server agree on 3,000 random parlays", worst); }
+  { // 10/17 (owner): market's win chance from Polymarket's moneyline (fee out); a favorite flip in a coin-flip game is not a data-check jump
+    const { spreadJumped } = await import("../lib/sane.js");
+    const T2 = ctx.T, g1 = { winPct: 56.2, poly: { ml: { home: 0.5, away: 0.51 }, spread: { homeSpread: 1.5 } } };
+    ok(Math.abs(T2.mktHome(g1) - 49.5) < 0.01 && T2.mktHome({ winPct: 56.2, poly: {} }) === 56.2 && T2.mktHome({ winPct: null, poly: { ml: { home: 0, away: 0.5 } } }) === null,
+      "win chance: NO @ NYG (NYG -100 / NO -104) reads 50/50 from the moneyline, not NO 56% from the spread; no moneyline -> the spread's %");
+    ok(!spreadJumped(1.5, -1.5) && !spreadJumped(-1.5, 1.5) && spreadJumped(-1.5, 2.5) && spreadJumped(-3, 0) && spreadJumped(-7, -3.5) && !spreadJumped(-2.5, -1) && !spreadJumped(null, 3),
+      "data check: NYG +1.5 -> NYG -1.5 in a coin flip is not a jump; real 3+ point moves still are"); }
   { // earlier week: a bet that is final but waiting for touchdown data stays visible; no slate yet must not break Bets; sections keep their state
     const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "record-mine" ? box : old(id));
     vm.runInContext(`S = { week: 5, games: [] }; MBWEEK = 4; MB = { summary: {}, synced: null, bets: [ { id: "a", week: 4, source: "account", title: "Waiting combo", cost: 10, toWin: 100, result: "pending", waiting: true, legs: [] }, { id: "b", week: 4, source: "account", title: "Lost combo", cost: 5, toWin: 50, result: "L", pl: -5, legs: [] }, { id: "c", week: 4, cost: 8, toWin: 80, result: "pending", waiting: true, legs: [ { kind: "td", player: "Q", game: "A @ B", team: "B", result: "pending", price: 0.5 } ] } ] }`, ctx);

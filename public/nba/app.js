@@ -362,11 +362,48 @@ function renderBets() {
 const PTYPES = { sgp: "Same game · 2 legs", sgp_pts: "Same game · bought lines", best4: "Parlay · top 4 picks", fav4: "4 biggest favorites" };
 const LAB_TABS = [["sgp", "Same game"], ["sgp_pts", "Bought"], ["best4", "Parlay"], ["fav4", "Favorites"]];
 let LABTYPE = "sgp", LABDAY = null;
+const plText = (x, st) => `PL: ${x >= 10 ? Math.round(x) : x.toFixed(1)}x<span class="plw"> · $${st} → </span><span class="g">$${Math.round(st * x)}</span>`;
 const plPay = (p) => {
   if (!p || !p.legs || !p.legs.length || !p.legs.every((l) => l.price > 0 && l.price < 1)) return "PL: —";
-  const x = p.legs.reduce((a, l) => a / l.price, 1), st = p.stake || 10;
-  return `PL: ${x >= 10 ? Math.round(x) : x.toFixed(1)}x<span class="plw"> · $${st} → </span><span class="g">$${Math.round(st * x)}</span>`;
+  return plText(p.legs.reduce((a, l) => a / l.price, 1), p.stake || 10);
 };
+// Real Polymarket price (10/17, owner: "I need this for the nba also", same as the NFL page): every PL line on screen asks Polymarket for a live quote
+// of its exact legs by itself (/api/nba/comboquote: asks and closes the request, never buys), one parlay after another, again every 3 minutes, and
+// the server's background job keeps them fresh even with no page open. A tap asks again right away. Only before tip-off, 2+ legs.
+const PLQ = {}, PLC = {}, PL_FRESH = 180e3;
+const plKey = (p) => p.legs.map((l) => [l.game, l.market || l.kind || "", l.team || "", l.side || "", l.line ?? "", l.label].join("|")).sort().join("~") + "|" + (p.stake || 10);
+function plQuotable(p) {
+  if (!p || p.result || !Array.isArray(p.legs) || p.legs.length < 2) return false;
+  const games = (S && S.games) || [], gs = p.legs.map((l) => games.find((g) => g.key === l.game));
+  return !gs.some((g) => !g || !g.start || g.inProgress || Date.now() >= new Date(g.start).getTime());
+}
+function plTap(p) { if (!plQuotable(p)) return ""; const k = plKey(p); PLQ[k] = p; return ` data-q="${encodeURIComponent(k)}" onclick="plQuote(this, true)" style="cursor:pointer"`; }
+function plShown(p) { const c = plQuotable(p) ? PLC[plKey(p)] : null; return c && c.pay > 1 ? plText(c.pay, p.stake || 10) : plPay(p); }
+const PLBUSY = new Set();
+async function plQuote(el, fresh) {
+  const k = decodeURIComponent(el.dataset.q || ""), p = PLQ[k]; if (!p || PLBUSY.has(k)) return; PLBUSY.add(k);
+  const same = () => [...document.querySelectorAll(".plb[data-q]")].filter((x) => x.dataset.q === el.dataset.q);
+  if (fresh) same().forEach((x) => { x.style.opacity = ".5"; });
+  try {
+    const kick = {}; for (const g of (S && S.games) || []) if (p.legs.some((l) => l.game === g.key)) kick[g.key] = g.start;
+    const legs = p.legs.map((l) => ({ game: l.game, market: l.market || l.kind || null, team: l.team || null, side: l.side || null, line: l.line ?? null, label: l.label }));
+    const r = await fetch("/api/nba/comboquote", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ legs, kick, stake: p.stake || 10, fresh: !!fresh }) }).then((x) => x.json());
+    if (r && r.ok && r.pay > 1) { PLC[k] = { pay: r.pay, t: Date.now() }; same().forEach((x) => { x.innerHTML = `${pmLogo()} ${plText(r.pay, p.stake || 10)}`; x.title = ""; }); }
+    else { PLC[k] = { ...(PLC[k] && PLC[k].pay ? PLC[k] : {}), fail: (r && r.why) || "no quote", t: Date.now() }; same().forEach((x) => { x.title = PLC[k].fail; }); }
+  } catch { PLC[k] = { ...(PLC[k] || {}), t: Date.now() }; } finally { same().forEach((x) => { x.style.opacity = ""; }); PLBUSY.delete(k); }
+}
+let PLAUTO = false;
+async function plAuto() {
+  if (PLAUTO) return; PLAUTO = true;
+  for (;;) {
+    let el = null;
+    if (!document.hidden) for (const x of document.querySelectorAll(".plb[data-q]")) {
+      if (!x.offsetParent) continue;
+      const c = PLC[decodeURIComponent(x.dataset.q)]; if (!c || Date.now() - c.t > PL_FRESH) { el = x; break; }
+    }
+    if (el) { await plQuote(el, false); await new Promise((r) => setTimeout(r, 300)); } else await new Promise((r) => setTimeout(r, 3000));
+  }
+}
 const legMark = (r) => (r === "W" ? '<span class="g">✓</span>' : r === "L" ? '<span class="r">✗</span>' : r === "P" ? '<span class="dim">–</span>' : "•");
 const gameLogos = (key) => { const m = String(key || "").match(/^([A-Z]{2,4}) @ ([A-Z]{2,4})$/); return m ? `${tlogo(m[1])}${esc(m[1])} @ ${tlogo(m[2])}${esc(m[2])}` : esc(key); };
 function pBlock(title, p, showGame) {
@@ -374,7 +411,7 @@ function pBlock(title, p, showGame) {
   const pr = typeof p.prob === "number" && isFinite(p.prob) ? p.prob : null;
   const legs = p.legs.map((l) => `<div class="pbl">${legMark(l.result)} ${tlogo(l.team || "")}${esc(l.label)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · ${Math.round((l.prob || 0) * 100)}%${showGame && l.game ? ` <span class="dim">${gameLogos(l.game)}</span>` : ""}</div>`).join("");
   const res = p.result === "W" ? '<span class="g">✓ Won</span>' : p.result === "L" ? '<span class="r">✗ Lost</span>' : p.result === "P" ? '<span class="dim">Push</span>' : "";
-  return `<div class="par"><div class="pbh"><span class="pbn">${title}${pr == null ? "" : ` <span class="${pr >= 0.3 ? "g" : pr >= 0.15 ? "lg" : "y"}">· ${Math.round(pr * 100)}%</span>`}</span><span class="plb">${pmLogo()} ${plPay(p)}</span></div>${legs}<div class="pbr">${res}</div></div>`;
+  return `<div class="par"><div class="pbh"><span class="pbn">${title}${pr == null ? "" : ` <span class="${pr >= 0.3 ? "g" : pr >= 0.15 ? "lg" : "y"}">· ${Math.round(pr * 100)}%</span>`}</span><span class="plb"${plTap(p)}>${pmLogo()} ${plShown(p)}</span></div>${legs}<div class="pbr">${res}</div></div>`;
 }
 function labParlays(day, type) {
   const rec = (MODELBETS && MODELBETS.days && MODELBETS.days[day] && MODELBETS.days[day][type]) || [];
@@ -566,4 +603,4 @@ Shell.init("nba");
 document.querySelectorAll("[data-mp]").forEach((a) => a.addEventListener("click", () => { if (a.dataset.msp === "nba" && location.hash === "#" + a.dataset.mp) setTimeout(routeHash, 0); }));
 Shell.onRefreshed = () => loadSlate();
 routeHash();
-loadSlate().then(() => { autoRefresh(); catchUp(); setTimeout(() => slotify($("panel-lines")), 60); if (OPEN_GAME) routeHash(); }).catch((e) => toast("Couldn't load: " + e.message, 12000));
+loadSlate().then(() => { autoRefresh(); catchUp(); plAuto(); setTimeout(() => slotify($("panel-lines")), 60); if (OPEN_GAME) routeHash(); }).catch((e) => toast("Couldn't load: " + e.message, 12000));
