@@ -1113,7 +1113,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       const before = calls.length, miss = await realQuote(fake, [{ game: "PIT @ TB", kind: "total", side: "over", label: "Over 39.5" }, { game: "PIT @ TB", kind: "spread", team: "TB", label: "TB +2.5" }], { "PIT @ TB": "2026-10-18T17:00:00Z" }, 10);
       ok(!miss.ok && /Over 39\.5/.test(miss.why) && calls.length === before, "real quote: a leg Polymarket does not list -> no quote asked", calls);
       { // NBA (10/17, owner: "I need this for the nba also") + the background refresh
-        const { saveParlayList, refreshQuotes } = await import("../lib/comboquote.js");
+        const { saveParlayList, refreshQuotes, legsSig: legsSigOf } = await import("../lib/comboquote.js");
         const nb = [mk("asc-nba-gs-lal-2026-10-21-neg-3pt5", "basketball_team_full_game_spread", -3.5, [side("-3.50", true, "gs"), side("+3.50", false, "lal")]),
           mk("tsc-nba-gs-lal-2026-10-21-224pt5", "basketball_team_full_game_total", 224.5, [side("Over", true), side("Under", false)]),
           mk("aec-nba-gs-lal-2026-10-21", "basketball_team_full_game_winner", null, [side("Warriors", true, "gs"), side("Lakers", false, "lal")])];
@@ -1129,6 +1129,15 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
         const before = calls.length, r1 = await refreshQuotes(fake, "nflx", { budgetMs: 20000 }), mid = calls.length, r2 = await refreshQuotes(fake, "nflx", { budgetMs: 20000 });
         ok(n === 4 && r1.parlays === 2 && r1.quoted === 2 && calls.slice(before, mid).filter((c) => c === "POST /v1/rfqs").length === 2 && r2.stale === 0 && calls.length === mid && !calls.some((c) => /^PUT|accept/i.test(c)),
           "background: re-quotes each parlay on the pages (games starting in the next 12 h, not started, 2+ legs), skips ones quoted in the last 4 min, never accepts", { n, r1, r2 });
+        { // 10/17 (owner: "I want right Friday morning"): NFL games up to 4 days out every 30 min, NBA 1 day; near games every 5 min, first
+          for (const k of await R.keys("cqq:*")) await R.del(k);   // quotes cached by the checks above
+          const far = new Date(Date.now() + 50 * 3600e3).toISOString(), tooFar = new Date(Date.now() + 100 * 3600e3).toISOString();
+          await saveParlayList("nfl", [{ stake: 10, legs: L1, kick: { "PIT @ TB": far } }, { stake: 5, legs: L1, kick: { "PIT @ TB": tooFar } }]);
+          const b0 = calls.length, f1 = await refreshQuotes(fake, "nfl", { budgetMs: 20000 }), b1 = calls.length, f2 = await refreshQuotes(fake, "nfl", { budgetMs: 20000 });
+          const ttl = await R.ttl(`cqq:nfl:${legsSigOf(L1)}|10`), f3 = await refreshQuotes(fake, "nfl", { budgetMs: 20000, now: Date.now() + 31 * 60e3 });
+          await saveParlayList("nba", [{ stake: 20, legs: L1, kick: { "PIT @ TB": far } }]); const n1 = await refreshQuotes(fake, "nba", { budgetMs: 20000 });
+          ok(f1.parlays === 1 && f1.quoted === 1 && f2.stale === 0 && calls.length > b1 && ttl > 1800 && f3.stale === 1 && n1.parlays === 0,
+            "background: NFL parlays up to 4 days out are quoted, kept ~40 min and re-quoted after 30 min (not every 5); 4+ days out skipped; NBA only 1 day out", { f1, f2, f3, ttl, n1 }); }
         for (const k of await R.keys("cq*")) await R.del(k); }
       vm.runInContext(`S = { games: [ { key: "PIT @ TB", kickoff: "2099-01-01T00:00:00Z" }, { key: "A @ B", kickoff: "2000-01-01T00:00:00Z" } ] }`, ctx);
       const pq = { stake: 10, legs: [{ game: "PIT @ TB", kind: "spread", team: "TB", label: "TB +2.5", price: 0.5 }, { game: "PIT @ TB", kind: "td", team: "PIT", label: "J.Warren TD", price: 0.45 }] };
@@ -1148,6 +1157,15 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       "win chance: NO @ NYG (NYG -100 / NO -104) reads 50/50 from the moneyline, not NO 56% from the spread; no moneyline -> the spread's %");
     ok(!spreadJumped(1.5, -1.5) && !spreadJumped(-1.5, 1.5) && spreadJumped(-1.5, 2.5) && spreadJumped(-3, 0) && spreadJumped(-7, -3.5) && !spreadJumped(-2.5, -1) && !spreadJumped(null, 3),
       "data check: NYG +1.5 -> NYG -1.5 in a coin flip is not a jump; real 3+ point moves still are"); }
+  { // 10/17 (owner): Model bets Over/Under tab = each game's total PICK + PICK w/ POINTS, stacked by game under the kickoff headers; tabs in the owner's order
+    const box = { innerHTML: "" }, oldGet = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "lab" ? box : oldGet(id));
+    const card = { plain: { pick: "Over 46.5", hit: 51.7, price: 0.49 }, pts: { pick: "Under 48.5", hit: 57.2, price: 0.61, points: 2 }, rows: [{ pick: "Under 48.5", hit: 57.2, price: 0.61, points: 2 }] };
+    vm.runInContext(`S = { week: 6, games: [ { key: "NO @ NYG", away: "NO", home: "NYG", kickoff: "2026-10-18T17:00:00Z", card: { total: ${JSON.stringify(card)} } }, { key: "SEA @ DEN", away: "SEA", home: "DEN", kickoff: "2026-10-16T00:15:00Z", started: true, final: true, lockedPicks: { total: { pick: "Under 40.5", hit: 51.7, result: "W", price: 0.5, pts: { pick: "Under 42.5", hit: 58, result: "W", points: 2, price: 0.6 } } } } ] }; MODELBETS = { ok: true, weeks: {} }; LABTYPE = "ou"; LABWEEK = null`, ctx);
+    ctx.T.renderLabList(); const h = box.innerHTML;
+    ok(/Over 46\.5 · 52% · 49¢/.test(h) && /Under 48\.5 · 2 pts · 57% · 61¢/.test(h) && /✓<\/span> Under 40\.5/.test(h) && h.indexOf("SEA") < h.indexOf("NYG") && /labslot/.test(h) && !/PL:/.test(h) && !/plQuote/.test(h),
+      "Model bets Over/Under: total PICK + PICK w/ POINTS per game, kickoff order with slot headers, ✓ / ✗ after the game, price shown, no parlay payout or quote", h.slice(0, 400));
+    ok(vm.runInContext("LAB_TABS.map(([k, t]) => t).join('|')", ctx) === "Over/Under|4 Leg (My Style)|4 Leg (Bought)|4 Leg|3 Leg|2 Leg|Different Game Parlays", "Model bets tabs in the owner's order and names");
+    ctx.document.getElementById = oldGet; vm.runInContext(`LABTYPE = "2"`, ctx); }
   { // earlier week: a bet that is final but waiting for touchdown data stays visible; no slate yet must not break Bets; sections keep their state
     const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "record-mine" ? box : old(id));
     vm.runInContext(`S = { week: 5, games: [] }; MBWEEK = 4; MB = { summary: {}, synced: null, bets: [ { id: "a", week: 4, source: "account", title: "Waiting combo", cost: 10, toWin: 100, result: "pending", waiting: true, legs: [] }, { id: "b", week: 4, source: "account", title: "Lost combo", cost: 5, toWin: 50, result: "L", pl: -5, legs: [] }, { id: "c", week: 4, cost: 8, toWin: 80, result: "pending", waiting: true, legs: [ { kind: "td", player: "Q", game: "A @ B", team: "B", result: "pending", price: 0.5 } ] } ] }`, ctx);
@@ -1283,7 +1301,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(/changedBox\(\) \+ \(S\.games\.length \? linesByDay\(\)/.test(nb) && /class="tiles stack"/.test(nb) && /function nbaSlot\(/.test(nb) && /id="mb-day"/.test(nb) && /\.tiles\.stack \{/.test(readFileSync(new URL("../public/nba/index.html", import.meta.url), "utf8")), "NBA matches NFL: Game Lines stacked under day headers, Model bets time headers, My bets day drop-down"); }
   for (const f of ["../public/app.js", "../public/nba/app.js"]) { const a2 = readFileSync(new URL(f, import.meta.url), "utf8");
     ok(/\^alerts-/.test(a2) && /"alerts-all", \.\.\.Object\.keys\(ALK\)\.map\(\(k\) => `alerts-\$\{alSlug\(k\)\}`\)/.test(a2) && !/al-chips/.test(a2), `${f}: #alerts-<kind> opens Alerts on that kind; no docked kind strip`); }
-  ok(/nfl: \[\["2", "2 legs"\], \["3", "3 legs"\], \["4", "4 legs"\], \["style", "My style"\], \["pts", "Bought"\], \["diff", "Diff"\]\]/.test(sh) && /nba: \[\["sgp", "Same game"\], \["sgp_pts", "Bought"\], \["best4", "Parlay"\], \["fav4", "Favorites"\]\]/.test(sh) && /#modelbets-\$\{k\}/.test(sh), "menu: the Model bets parlay types are sub tabs under Model bets (NFL and NBA)");
+  ok(/nfl: \[\["ou", "Over\/Under"\], \["style", "4 Leg \(My Style\)"\], \["pts", "4 Leg \(Bought\)"\], \["4", "4 Leg"\], \["3", "3 Leg"\], \["2", "2 Leg"\], \["diff", "Different Game Parlays"\]\]/.test(sh) && /nba: \[\["sgp", "Same game"\], \["sgp_pts", "Bought"\], \["best4", "Parlay"\], \["fav4", "Favorites"\]\]/.test(sh) && /#modelbets-\$\{k\}/.test(sh), "menu: the Model bets types are sub tabs under Model bets (NFL: Over/Under first, then the owner's order and names; NBA)");
   { const a = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
     ok(/function linesBg\(\)/.test(a) && /classList\.toggle\("lines-on"/.test(a) && /html\.lines-on \.pagewm \{ background:[^}]*url\(\/nfl-bg\.jpg\)/.test(readFileSync(new URL("../public/index.html", import.meta.url), "utf8")), "NFL pages: the NFL logo photo behind every page but home and a game page, cards see-through");
     ok(/changedBox\(\) \+ linesBySlot\(\)/.test(a) && /class="sh labslot">\$\{sl\}/.test(a) && /class="tiles stack"/.test(a) && /\.tiles\.stack \{ grid-template-columns:1fr !important/.test(readFileSync(new URL("../public/index.html", import.meta.url), "utf8")), "NFL Game Lines: games stacked one per row under the time-slot headers");
