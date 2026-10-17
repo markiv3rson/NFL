@@ -13,7 +13,11 @@
 .snext .nglab { margin-left:4px; font-size:10px; font-weight:800; letter-spacing:.1em; color:#aab0bd; }
 .snext .ngclk { margin-left:auto; font-size:32px; font-weight:800; letter-spacing:-.03em; line-height:1; font-variant-numeric:tabular-nums; padding-right:2px; }
 .snext .none { font-size:13px; color:#8d95a3; }
-body.home-on { background:#000; } html.home-on { background:#000 !important; }
+body.home-on { background:transparent !important; } html.home-on { background:#000 !important; }
+/* 10/17 (owner): the Raiders photo behind the home screen; the NFL / NBA lists are see-through so it shows under them */
+html.home-on::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,0,0,.30),rgba(0,0,0,.50) 60%,rgba(0,0,0,.70)),url(/home-bg.jpg) center 22%/cover no-repeat,#000; }
+html.home-on .hsec { background:rgba(10,10,14,.48); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:12px 12px 2px; -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px); }
 
 /* menu */
 .mscrim { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.55); opacity:0; pointer-events:none; transition:opacity .2s ease; }
