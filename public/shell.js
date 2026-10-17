@@ -9,14 +9,15 @@
     td: '<circle cx="12" cy="7" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/>',
     bets: '<path d="M4 7a1.5 1.5 0 0 1 1.5-1.5h13A1.5 1.5 0 0 1 20 7v2.5a2.5 2.5 0 0 0 0 5V17a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17v-2.5a2.5 2.5 0 0 0 0-5z"/>',
     bars: '<path d="M6 20V11M12 20V5M18 20v-6"/>',
+    props: '<path d="M4 17l5-6 4 4 7-9"/><path d="M15 6h5v5"/>',
   };
   const svg = (k, w = 17) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
   const ITEMS = {
-    nfl: [["alerts", "Alerts", "bell"], ["lines", "Game Lines", "grid"], ["td", "Anytime TD", "td"], ["record", "Bets", "bets"]],
-    nba: [["alerts", "Alerts", "bell"], ["lines", "Game Lines", "grid"], ["record", "Bets", "bets"]],
+    nfl: [["alerts", "Alerts", "bell"], ["lines", "Game Lines", "grid"], ["td", "Anytime TD", "td"], ["props", "Props", "props"], ["record", "Bets", "bets"]],   // 10/17 (owner): Props is its own page, between Anytime TD and Bets
+    nba: [["alerts", "Alerts", "bell"], ["lines", "Game Lines", "grid"], ["props", "Props", "props"], ["record", "Bets", "bets"]],   // NBA: between Game Lines and Bets
   };
   const URL_ = { nfl: "/index.html", nba: "/nba/index.html" };
-  const SUB = [["mybets", "My bets"], ["modelbets", "Model bets"], ["props", "Props"]];   // 10/17 (owner): Props is a third page under Bets, both sports
+  const SUB = [["mybets", "My bets"], ["modelbets", "Model bets"]];
   // 10/17 (owner): the Model bets parlay types are sub tabs under Model bets in the menu (both sports)
   const TYPES = { nfl: [["ou", "Over/Under"], ["style", "4 Leg (My Style)"], ["pts", "4 Leg (Bought)"], ["4", "4 Leg"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"], ["diff", "Different Game Parlays"]],
     nba: [["sgp", "Same game"], ["sgp_pts", "Bought"], ["best4", "Parlay"], ["fav4", "Favorites"]] };

@@ -1178,16 +1178,15 @@ const FOUR_NAMES = { leg4_fav: "4 biggest favorites", leg4_green_fav: "Best gree
 const LAB_TABS = [["ou", "Over/Under"], ["style", "4 Leg (My Style)"], ["pts", "4 Leg (Bought)"], ["4", "4 Leg"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"], ["diff", "Different Game Parlays"]];   // 10/17 parlay lab: Upset (underdog wins + its lead RB scores)
 let MODELBETS = null, LABTYPE = "ou", LABWEEK = null;
 // 10/15 (owner): ONE Bets tab -- My bets on the left (the list as before), Model bets on the right (the model's parlays). The choice is remembered.
-let BETSVIEW = (() => { try { return ["model", "props"].includes(localStorage.getItem("betsView")) ? localStorage.getItem("betsView") : "mine"; } catch { return "mine"; } })();
+let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
 function applyBetsView() {
-  const bt = $("bets-title"); if (bt) bt.textContent = BETSVIEW === "model" ? `Model bets · ${(LAB_TABS.find(([k]) => k === LABTYPE) || [, ""])[1]}` : BETSVIEW === "props" ? "Props" : "My bets";
-  const m = BETSVIEW === "model", pr = BETSVIEW === "props", set = (id, on) => { const e = $(id); if (e) e.style.display = on ? "" : "none"; };
-  set("record-mine", !m && !pr); set("lab", m); set("props", pr); set("lab-sub", false);   // 10/17: the types moved from the docked strip into the menu
+  const bt = $("bets-title"); if (bt) bt.textContent = BETSVIEW === "model" ? `Model bets · ${(LAB_TABS.find(([k]) => k === LABTYPE) || [, ""])[1]}` : "My bets";
+  const m = BETSVIEW === "model", set = (id, on) => { const e = $(id); if (e) e.style.display = on ? "" : "none"; };
+  set("record-mine", !m); set("lab", m); set("lab-sub", false);   // 10/17: the types moved from the docked strip into the menu
   document.querySelectorAll("#bets-sw [data-bv]").forEach((b) => b.classList.toggle("on", b.dataset.bv === BETSVIEW));
   if (m) renderLabList();
-  if (pr) { renderProps(); loadProps(); }
 }
-// Props (10/17, owner: "Add props as a new sub tab for bets"; option A): receiving-yards Unders the model gives 65%+ (/api/props), one row per prop,
+// Props (10/17, owner: its own page in the menu, between Anytime TD and Bets; option A): receiving-yards Unders the model gives 65%+ (/api/props), one row per prop,
 // the week's games under the kickoff headers, ✓ / ✗ (green / red) once the game is graded. A week drop-down like My bets / Model bets.
 let PROPS = null, PROPWEEK = null;
 const PROP_STAT = { rec_yds: "Rec Yds", rec: "Rec", rush_yds: "Rush Yds", pass_yds: "Pass Yds", pass_att: "Pass Att", pass_cmp: "Comp", long_rec: "Long Rec" };
@@ -1411,8 +1410,8 @@ function showPanel(name) {
   if (name === "alerts") sub = `alerts-${ALFILTER === "all" ? "all" : alSlug(ALFILTER)}`;
   if (/^modelbets-/.test(name)) { const k = name.slice(10); if (LAB_TABS.some(([t]) => t === k)) LABTYPE = k; name = "modelbets"; }   // 10/17 (owner): the parlay types are menu sub tabs under Model bets
   if (name === "modelbets") sub = `modelbets-${LABTYPE}`;
-  if (name === "mybets" || name === "modelbets" || name === "props") { sub = sub || name; BETSVIEW = name === "modelbets" ? "model" : name === "props" ? "props" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} name = "record"; }   // 10/17: Props is the third page under Bets
-  if (name === "record" && !sub) sub = BETSVIEW === "model" ? `modelbets-${LABTYPE}` : BETSVIEW === "props" ? "props" : "mybets";
+  if (name === "mybets" || name === "modelbets") { sub = sub || name; BETSVIEW = name === "modelbets" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} name = "record"; }
+  if (name === "record" && !sub) sub = BETSVIEW === "model" ? `modelbets-${LABTYPE}` : "mybets";
   if (!$("panel-" + name)) name = "home";
   Shell.setActive(sub || name);   // 10/17: the menu replaces the tab bar
   if (name === "alerts") { ALPREV = alSeen(); if (ALERTS.length) { try { localStorage.setItem("alSeen", ALERTS[0].t); } catch {} } }   // opening Alerts marks them read (was the bell)
@@ -1424,6 +1423,7 @@ function showPanel(name) {
   if (name === "record" || name === "models") loadRecord();
   if (name === "record") applyBetsView();
   if (name === "record") setTimeout(playStamps, 50);
+  if (name === "props") { renderProps(); loadProps(); }   // 10/17 (owner): Props is its own page
   setTimeout(() => slotify($("panel-" + name)), 60);   // 10/14: numbers roll in when you open a tab
   if (S && S.games) setBg(name === "lines" && DETAIL ? S.games.find((x) => x.key === DETAIL) : null);   // game background only on an open game page
   linesBg();
