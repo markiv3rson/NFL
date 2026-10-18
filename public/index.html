@@ -142,8 +142,6 @@
   .tile .mid.lvmid { display:inline-flex; flex-direction:column; align-items:center; line-height:1.15; } .tile .sr { white-space:nowrap; } .tile .lv { font-size:10.5px; font-weight:800; letter-spacing:.04em; margin-top:2px; } .tile .lv.r { color:var(--red); }
   .dtop .s3.r { color:var(--red); }
   .rp { display:grid; grid-template-columns:1.5fr .9fr .8fr .8fr; gap:4px 6px; align-items:center; padding:7px 0; border-top:1px solid rgba(255,255,255,.1); font-size:12.5px; font-variant-numeric:tabular-nums; } .rp > span:not(:first-child) { text-align:right; } .rp .rn { font-size:10px; display:block; } .rph { border-top:0; font-size:10px; font-weight:800; color:var(--faint); letter-spacing:.06em; padding:2px 0; }
-  .tile .wmk { position:absolute; top:50%; width:46%; height:150px; margin-top:-75px; opacity:.2; object-fit:contain; pointer-events:none; }   /* 10/18 (owner): the game page's big faded logos */
-  .tile .wmk.l { left:-10px; } .tile .wmk.r { right:-10px; }
   .tile .t .tlogo { width:26px; height:26px; vertical-align:-5px; margin:0 7px 0 0; } .tile .t.hm .tlogo { margin:0 0 0 7px; }
   .tile .tmid { text-align:center; line-height:1.3; min-width:0; } .tile .tmid .s2 { font-size:12px; margin-top:3px; white-space:nowrap; } .tile .tmid .tmt { color:#c9ced6; font-weight:600; }   /* 10/18: the kickoff / tip time on the tile */
   body.game-on .shead { display:none; }   /* 10/18 (owner): on a game page the game card is the header */
@@ -283,9 +281,10 @@
   .pagewm img { width:50%; height:100%; object-fit:contain; transform:scale(1.25); opacity:.2; }
   .pagewm::after { content:""; position:absolute; inset:0; background:rgba(0,0,0,.4); }
   /* 10/17 (owner): every NFL page but home (and a game page) gets the NFL logo photo, the cards see-through over it */
-  html.lines-on .pagewm { background:linear-gradient(180deg,rgba(0,0,0,.68),rgba(0,0,0,.76) 60%,rgba(0,0,0,.86)),url(/nfl-bg.jpg?v=3) center/cover no-repeat,#000; }
+  html.lines-on .pagewm { background:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.1)),url(/nfl-bg.jpg?v=3) center/cover no-repeat,#000; }   /* 10/18 evening (owner): only a 10% shade -- "why is it so dark in the app"; it was 68-86% */
   html.lines-on .pagewm::after { display:none; }
-  html.lines-on .panel .tile, html.lines-on .panel .card, html.lines-on .panel .stat { background:rgba(8,8,12,.8); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 80% dark so the text reads (owner 10/17), no frosted haze */
+  html.lines-on .panel .card, html.lines-on .panel .stat { background:rgba(8,8,12,.8); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 80% dark so the text reads (owner 10/17), no frosted haze */
+  html.lines-on .panel .tile { background:rgba(8,8,12,.55); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 10/18 evening (owner, sketch D): game tiles 55% dark, no team colours, no faded logos */
   html.lines-on .panel .pgrid > .par { background:rgba(8,8,12,.8); border-radius:14px; padding:11px 12px; margin-bottom:8px; }   /* 10/17 (owner): Model bets parlays get the same dark backing as the cards */
   .dtop .t .tlogo { width:30px; height:30px; vertical-align:-6px; margin:0 8px 0 0; } .dtop .t:last-child .tlogo { margin:0 0 0 8px; }
   .prl > .s { text-transform:uppercase; letter-spacing:.04em; font-size:13px; font-weight:700; color:#eef0f4; }
