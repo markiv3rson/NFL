@@ -1293,19 +1293,24 @@ async function loadHome() {
   clearTimeout(loadHome._h); loadHome._h = setTimeout(() => { if (!document.hidden && $("panel-home").classList.contains("on")) { HOME_T = 0; loadHome(); } }, 30000);
 }
 const hsp = (x) => (x == null || !isFinite(x) ? "" : x === 0 ? "PK" : (x > 0 ? "+" : "−") + Math.abs(x));
-function homeRow(o) {   // o: { key, attr, away, home, aLogo, hLogo, aSp, hSp, tot, sc }
-  const sc = o.sc, a = sc ? sc.a : null, h = sc ? sc.h : null;
-  return `<button class="hrow" ${o.attr}="${esc(o.key)}"><div class="hteams">` +
-    `<div class="hteam"><img src="${o.aLogo}" alt="" onerror="this.style.visibility='hidden'"><b>${esc(o.away)}</b><span>${hsp(o.aSp)}</span></div>` +
-    `<div class="hteam"><img src="${o.hLogo}" alt="" onerror="this.style.visibility='hidden'"><b>${esc(o.home)}</b><span>${hsp(o.hSp)}</span></div></div>` +
-    `<div class="hou">${o.tot != null ? `O/U<b>${o.tot}</b>` : ""}</div>` +
-    `<div class="hsc"><span class="${a != null && h != null && a < h ? "lo" : ""}">${a ?? ""}</span><span class="${a != null && h != null && h < a ? "lo" : ""}">${h ?? ""}</span></div>` +
-    `<div class="hclk">${esc(sc && sc.lbl ? sc.lbl : "LIVE")}</div></button>`;
+// 10/18 night (owner): the home screen uses the Game Lines tile look -- logo + code + record each side, the % (or live score) in the middle with the
+// kickoff time (live: each team's pre-kickoff spread + the total) under it, the green bar. o: { key, attr, away, home, aLogo, hLogo, aRec, hRec, pct (away %), time, sc, aSp, hSp, tot }
+function homeTile(o) {
+  const sc = o.sc && (o.sc.st === "in" || o.sc.st === "post") ? o.sc : null, live = !!o.live, ap = o.pct == null || !isFinite(o.pct) ? null : Math.round(o.pct), hp = ap == null ? null : 100 - ap;
+  const lead = (v, w) => (v >= w ? "mkt" : "dim");
+  const mid = sc ? `<span class="mid lvmid"><span class="sr"><span class="${sc.a > sc.h ? "g" : "dim"}">${sc.a}</span><span class="dim"> – </span><span class="${sc.h > sc.a ? "g" : "dim"}">${sc.h}</span></span><span class="lv ${sc.st === "post" ? "dim" : "r"}">${sc.st === "post" ? "FINAL" : "● LIVE · " + esc(sc.lbl || "")}</span></span>`
+    : live ? '<span class="mid lvmid"><span class="lv r">● LIVE</span></span>' : ap == null ? '<span class="mid dim">—</span>' : `<span class="mid"><span class="${lead(ap, hp)}">${ap}</span><span class="dim"> · </span><span class="${lead(hp, ap)}">${hp}</span><span class="dim" style="font-size:11px">%</span></span>`;
+  const under = live ? [o.aSp != null ? `${esc(o.away)} ${hsp(o.aSp)}` : "", o.tot != null ? `O/U ${o.tot}` : ""].filter(Boolean).join(" · ") : o.time ? esc(o.time) : "";
+  const team = (code, logo, rec, hm) => `<span class="t${hm ? " hm" : ""}">${hm ? "" : `<img class="tlogo" src="${logo}" alt="" onerror="this.style.display='none'">`}${esc(code)}${hm ? `<img class="tlogo" src="${logo}" alt="" onerror="this.style.display='none'">` : ""}${rec ? `<small class="rec">${esc(rec)}</small>` : ""}</span>`;
+  return `<button class="tile${live ? " live" : ""}" ${o.attr}="${esc(o.key)}"><div class="in"><div class="nm">${team(o.away, o.aLogo, o.aRec, false)}<div class="tmid">${mid}${under ? `<div class="s2"><span class="tmt">${under}</span></div>` : ""}</div>${team(o.home, o.hLogo, o.hRec, true)}</div>${live || ap == null ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
 }
-function homeSection(sport, live, next, rows, nextRow) {
-  const head = `<div class="hsh">${live ? `<span class="lv"><i></i>${sport} · LIVE NOW</span>` : `<span class="sp">${sport}</span>`}` +
-    (next ? `<span class="ng">NEXT GAME <img src="${next.aLogo}" alt="" onerror="this.style.visibility='hidden'"><span class="at">@</span><img src="${next.hLogo}" alt="" onerror="this.style.visibility='hidden'"><b class="sgrad" data-hclk="${next.ts}">${Shell.clockTxt(next.ts - Date.now())}</b></span>` : "") + "</div>";
-  return `<div class="hsec">${head}${live ? rows : nextRow || '<div class="hempty">No games scheduled.</div>'}</div>`;
+// the clock's parts as spans, so a part that changes can flip ("2d 14h 30m" -> 2d | 14h | 30m)
+const flipSpans = (txt) => String(txt).split(" ").map((p) => `<span>${esc(p)}</span>`).join("");
+// 10/18 night (owner): the header above each sport's tiles = "NFL NEXT GAME" + a flipping clock (live: "● NFL · LIVE NOW")
+function homeSection(sport, live, next, tiles) {
+  const head = live ? `<div class="hsh2"><span class="lv"><i></i>${sport} · LIVE NOW</span></div>`
+    : next ? `<div class="hsh2"><span>${sport} NEXT GAME</span><b class="fclk sgrad" data-hclk="${next.ts}">${flipSpans(Shell.clockTxt(next.ts - Date.now()))}</b></div>` : `<div class="hsh2"><span>${sport}</span></div>`;
+  return `<div class="hsec">${head}<div class="tiles stack">${tiles || '<div class="hempty">No games scheduled.</div>'}</div></div>`;
 }
 function renderHome() {
   if (!$("home")) return;
@@ -1315,10 +1320,10 @@ function renderHome() {
     const nx = S.games.filter((g) => !g.started && g.kickoff && new Date(g.kickoff) > Date.now()).sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff))[0];
     const line = (g) => { const b = g.books || {}, p = g.poly || {}, hs = b.spread ? b.spread.homeSpread : p.spread ? p.spread.homeSpread : null, tl = b.total ? b.total.line : p.total ? p.total.line : null;
       return { hSp: hs == null ? null : Number(hs), aSp: hs == null ? null : -Number(hs), tot: tl }; };
-    const rows = live.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff)).map((g) => homeRow({ key: g.key, attr: "data-game", away: g.away, home: g.home, aLogo: logoUrl(g.away), hLogo: logoUrl(g.home), ...line(g), sc: LIVE_SC[g.key] || null })).join("");
-    const next = nx ? { aLogo: logoUrl(nx.away), hLogo: logoUrl(nx.home), ts: new Date(nx.kickoff).getTime() } : null;
-    const nextRow = nx ? `<button class="hnext" data-game="${esc(nx.key)}"><div><div class="m"><img src="${logoUrl(nx.away)}" alt="" onerror="this.style.visibility='hidden'">${esc(nx.away)} @ ${esc(nx.home)}<img src="${logoUrl(nx.home)}" alt="" onerror="this.style.visibility='hidden'"></div><div class="t">${tm(nx.kickoff)}</div></div></button>` : "";
-    out += homeSection("NFL", live.length > 0, next, rows, nextRow);
+    const base = (g) => ({ key: g.key, attr: "data-game", away: g.away, home: g.home, aLogo: logoUrl(g.away), hLogo: logoUrl(g.home), aRec: g.rec && g.rec[g.away], hRec: g.rec && g.rec[g.home], pct: mktHome(g) == null ? null : 100 - mktHome(g) });
+    const tiles = live.length ? live.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff)).map((g) => homeTile({ ...base(g), live: true, ...line(g), sc: LIVE_SC[g.key] || null })).join("")
+      : nx ? homeTile({ ...base(nx), time: tm(nx.kickoff) }) : "";
+    out += homeSection("NFL", live.length > 0, nx ? { ts: new Date(nx.kickoff).getTime() } : null, tiles);
   }
   if (NB && Array.isArray(NB.games)) {   // NBA (its own data)
     const T = NB.teams || {}, lg = (t) => Shell.nbaLogo(t, T), bt = NB.books && NB.books.t ? Date.parse(NB.books.t) : null;
@@ -1327,14 +1332,23 @@ function renderHome() {
     const line = (g) => { const b = bt != null && bt <= Date.parse(g.start) ? g.books || {} : {}, c = NBC[g.key] || {};   // sportsbook numbers from before tip-off; none (preseason) -> Polymarket's last line before tip-off (10/17, owner)
       const hs = b.spread ? Number(b.spread.homeSpread) : c.hs != null ? Number(c.hs) : null, tot = b.total ? b.total.line : c.tl != null ? c.tl : null;
       return { hSp: hs, aSp: hs == null ? null : -hs, tot }; };
-    const rows = live.sort((a, b) => Date.parse(a.start) - Date.parse(b.start)).map((g) => homeRow({ key: g.key, attr: "data-nbagame", away: g.away, home: g.home, aLogo: lg(g.away), hLogo: lg(g.home), ...line(g), sc: NBL[g.key] || null })).join("");
-    const next = nx ? { aLogo: lg(nx.away), hLogo: lg(nx.home), ts: Date.parse(nx.start) } : null;
-    const nextRow = nx ? `<button class="hnext" data-nbagame="${esc(nx.key)}"><div><div class="m"><img src="${lg(nx.away)}" alt="" onerror="this.style.visibility='hidden'">${esc(nx.away)} @ ${esc(nx.home)}<img src="${lg(nx.home)}" alt="" onerror="this.style.visibility='hidden'"></div><div class="t">${tm(nx.start)}</div></div></button>` : "";
-    out += homeSection("NBA", live.length > 0, next, rows, nextRow);
+    const rec = (g, t) => { const c = g.context && g.context[t === g.home ? "home" : "away"]; if (!c || !c.gp) return ""; const w = Math.round((c.win_pct || 0) * c.gp); return `${w}–${c.gp - w}`; };
+    const pct = (g) => { const m = g.poly && g.poly.ml; if (!m) return null; const h = m.midHome ?? m.home, a = m.midAway ?? m.away; return h > 0 && a > 0 ? (100 * a) / (a + h) : null; };
+    const base = (g) => ({ key: g.key, attr: "data-nbagame", away: g.away, home: g.home, aLogo: lg(g.away), hLogo: lg(g.home), aRec: rec(g, g.away), hRec: rec(g, g.home), pct: pct(g) });
+    const tiles = live.length ? live.sort((a, b) => Date.parse(a.start) - Date.parse(b.start)).map((g) => homeTile({ ...base(g), live: true, ...line(g), sc: NBL[g.key] || null })).join("")
+      : nx ? homeTile({ ...base(nx), time: tm(nx.start) }) : "";
+    out += homeSection("NBA", live.length > 0, nx ? { ts: Date.parse(nx.start) } : null, tiles);
   }
   $("home").innerHTML = out || '<div class="hempty">Loading…</div>';
 }
-function homeClocks() { document.querySelectorAll("[data-hclk]").forEach((e) => { const t = Shell.clockTxt(Number(e.dataset.hclk) - Date.now()); if (e.textContent !== t) e.textContent = t; }); }
+// the flip clock: a part that changed is replaced and flips (10/18 night, owner: "a flipping clock as their header")
+function homeClocks() {
+  document.querySelectorAll("[data-hclk]").forEach((e) => {
+    const parts = Shell.clockTxt(Number(e.dataset.hclk) - Date.now()).split(" "), spans = e.querySelectorAll("span");
+    if (spans.length !== parts.length) { e.innerHTML = flipSpans(parts.join(" ")); return; }
+    spans.forEach((sp, i) => { if (sp.textContent !== parts[i]) { sp.textContent = parts[i]; sp.classList.remove("flip"); void sp.offsetWidth; sp.classList.add("flip"); } });
+  });
+}
 // countdown to the next game that has not started -> the header (10/17: [away logo] vs [home logo] · NEXT GAME · clock; the home screen has its own clocks)
 function tickCd() {
   clearTimeout(tickCd._h);
