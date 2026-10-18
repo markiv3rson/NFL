@@ -778,6 +778,36 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const wk = await R.hgetall(`winners:${SEASON}:4`);
     ok(!wk["LAC @ SEA"] && JSON.parse(wk["DEN @ SF"]).result === "W", "winners: a stored 95% road pick that doesn't fit the closing spread is removed; a real one is graded");
     globalThis.fetch = realFetch; resetGamesCache(); for (const k of await R.keys(`*${SEASON}:4*`)) await R.del(k); }
+  { // 10/18 (owner: "fix the gaps"): a parlay type added after the week's save is added once, before its games; a graded game missing its TD list gets it once
+    const P = await import("../lib/paper.js"), { getJSON, setJSON } = await import("../lib/redis.js"), R = globalThis.__TEST_REDIS__;
+    const mk = (k, a, h, fair) => ({ key: k, away: a, home: h, started: false, final: false, kickoff: "2099-10-18T17:00:00Z", poly: { ml: { home: 0.7, away: 0.32 } }, td: [{ player: a + ".RB", team: a, pos: "RB", fair, price: fair / 100 }, { player: h + ".RB", team: h, pos: "RB", fair: fair - 5, price: (fair - 5) / 100 }] });
+    const data = { games: [mk("A @ B", "A", "B", 60), mk("C @ D", "C", "D", 58), mk("E @ F", "E", "F", 56), mk("G @ H", "G", "H", 54), { ...mk("I @ J", "I", "J", 70), started: true }] };
+    const old = { strategy: "leg4_fav", legs: [{ game: "A @ B", kind: "ml", team: "B", price: 0.7 }] };
+    await setJSON("paper:2097:6", { t: "2026-10-17T14:00:00Z", season: 2097, week: 6, parlays: [old] });
+    const miss1 = await P.paperMissingLate(2097, 6), n1 = await P.recordPaper(2097, 6, data), rec1 = await getJSON("paper:2097:6");
+    const n2 = await P.recordPaper(2097, 6, data), miss2 = await P.paperMissingLate(2097, 6);
+    ok(miss1 && n1 === 1 && rec1.parlays.length === 2 && JSON.stringify(rec1.parlays[0]) === JSON.stringify(old) && rec1.parlays[1].strategy === "leg4_td4" && rec1.parlays[1].addedAt && !rec1.parlays.some((p) => p.strategy === "leg4_fav_td") && n2 === 0 && !miss2,
+      "weekly parlays: the late 4-scorers type is added once (saved parlays untouched, a type that just had no legs at the save stays out)", rec1.parlays.map((p) => p.strategy));
+    await setJSON("paper:2097:7", { t: "2026-10-18T14:00:00Z", season: 2097, week: 7, parlays: [old] });
+    await setJSON("paper:2097:8", { t: "2026-10-17T14:00:00Z", season: 2097, week: 8, parlays: [old] });
+    const d8 = { games: data.games.map((g) => (g.key === "C @ D" ? { ...g, started: true } : g)) };
+    const n7 = await P.recordPaper(2097, 7, data), n8 = await P.recordPaper(2097, 8, d8), r8 = await getJSON("paper:2097:8");
+    ok(!(await P.paperMissingLate(2097, 7)) && n7 === 0 && (n8 === 0 || r8.parlays.every((p) => p.strategy !== "leg4_td4" || p.legs.every((l) => l.game !== "C @ D"))), "weekly parlays: nothing added to a week saved after the type existed; never a leg from a started game");
+    for (const k of await R.keys("paper:2097:*")) await R.del(k);
+    const g = await import("../lib/grade.js"), { SEASON, resetGamesCache } = await import("../lib/games.js"), realFetch = globalThis.fetch, oldUrl = process.env.MODEL_SERVICE_URL;
+    process.env.MODEL_SERVICE_URL = "https://svc.test";
+    const H = "season,game_type,week,gameday,gametime,away_team,away_score,home_team,home_score,spread_line,total_line,roof,stadium,location,surface\n";
+    resetGamesCache(); globalThis.fetch = async (u) => (String(u).includes("games.csv") ? { ok: true, text: async () => H + `${SEASON},REG,3,2026-09-28,20:15,PHI,7,CHI,27,-3,44.5,o,s,Home,g\n` }
+      : String(u).includes("/td-scorers") ? { ok: true, json: async () => ({ ok: true, games: { "PHI @ CHI": ["D.Swift"] }, teams: { "PHI @ CHI": { "D.Swift": ["CHI"] } }, counts: { "PHI @ CHI": { "D.Swift": 1 } }, first: { "PHI @ CHI": "D.Swift" } }) }
+      : { ok: false, status: 404, json: async () => ({}), text: async () => "" });
+    await setJSON(`model:${SEASON}:3`, { games: {}, td: { "PHI @ CHI": { away: [{ name: "S.Barkley", pos: "RB", fair: 48 }], home: [{ name: "D.Swift", pos: "RB", fair: 52 }] } } });
+    const before = { v: 2, game: "PHI @ CHI", awayScore: 7, homeScore: 27, spread: { basis: "model", label: "CHI -3", result: "W", clvPts: 0 }, lineChecked: true, mlChecked: true, clvChecked: true, mlModelChecked: true };
+    await setJSON(`res:${SEASON}:3:PHI @ CHI`, before);
+    await g.gradeWeek(SEASON, 3); const after = await getJSON(`res:${SEASON}:3:PHI @ CHI`);
+    ok(after.tdBackfill && after.td && after.td.length === 2 && after.td.find((p) => p.player === "D.Swift").scored === true && after.td.find((p) => p.player === "S.Barkley").scored === false && JSON.stringify(after.spread) === JSON.stringify(before.spread),
+      "grading: a game graded without its TD list gets it once (scored / not scored), nothing else re-graded", after);
+    globalThis.fetch = realFetch; resetGamesCache(); if (oldUrl === undefined) delete process.env.MODEL_SERVICE_URL; else process.env.MODEL_SERVICE_URL = oldUrl;
+    for (const k of await R.keys(`*${SEASON}:3*`)) await R.del(k); }
   { // Anytime TD tab: the four likeliest scorers per team, everyone one tap away
     const box = { innerHTML: "" }, hdr = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "td" ? box : id === "td-header" ? hdr : old(id));
     const pl = (team, i) => ({ player: `${team}.P${i}`, team, pos: "RB", fair: 50 - i * 5, price: 0.5, bid: 0.48, teamRank: i + 1, game: "A @ B", flags: [] });

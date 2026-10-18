@@ -20,7 +20,7 @@ import { logError } from "../../lib/status";
 import { loadModel } from "../../lib/week";
 import { isThinMarket } from "../../lib/odds";
 import { nameMatches } from "../../lib/picks";
-import { recordPaper, recordWinner, situationFor } from "../../lib/paper";
+import { recordPaper, recordWinner, situationFor, paperMissingLate } from "../../lib/paper";
 import { buildWeek } from "../../lib/week";
 import { loadInjuriesMeta } from "../../lib/injuries";
 import { alertsFromLines } from "../../lib/alerts";
@@ -187,7 +187,10 @@ export default async function handler(req, res) {
     // and the Record tab has its own Sync button) so the button comes back fast.
     // Parlay Lab: record this week's PAPER parlays once, on the scheduled snapshot within ~26 h of the first Sunday kickoff
     let paper = 0;
-    if (src !== "manual" && !(await redis.exists(`paper:${season}:${week}`))) {
+    if (src !== "manual" && (await redis.exists(`paper:${season}:${week}`)) && (await paperMissingLate(season, week).catch(() => false))) {   // 10/18: a parlay type added after the week's save, once, before its games
+      const inj = await loadInjuriesMeta().catch(() => null);
+      paper = await recordPaper(season, week, await buildWeek({ season, week, injuries: inj ? inj.teams : null })).catch((e) => { logError("paper", e); return 0; });
+    } else if (src !== "manual" && !(await redis.exists(`paper:${season}:${week}`))) {
       const sun = games.filter((g) => g.kickoff && new Date(g.kickoff).getUTCDay() === 0 && !started(g)).map((g) => new Date(g.kickoff).getTime());
       const hrs = sun.length ? (Math.min(...sun) - Date.now()) / 3600e3 : -1;
       if (hrs >= 0 && hrs <= 26) {
