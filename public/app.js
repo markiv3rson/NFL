@@ -390,34 +390,7 @@ function legFlipped(label) {
 // ---------- casino look (10/14, owner) ----------
 const glowOf = (p) => (p >= 0.61 ? 1 : p >= 0.58 ? 0.75 : 0.45);   // stronger pick -> brighter glow
 const REDUCE = (() => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } })();
-function rollReels(root) {   // the green pick's % spins and lands (runs when a game page opens)
-  if (!root || !root.querySelectorAll || REDUCE) return;
-  root.querySelectorAll(".reelpct[data-v]").forEach((el) => {
-    const v = el.dataset.v; el.innerHTML = "";
-    [...v].forEach((ch, i) => { const d = document.createElement("span"); d.className = "rd";
-      if (!/\d/.test(ch)) { d.innerHTML = `<span><b>${ch}</b></span>`; el.appendChild(d); return; }
-      const seq = []; for (let k = 0; k < 16 + i * 6; k++) seq.push(k % 10); seq.push(+ch);
-      d.innerHTML = `<span>${seq.map((x) => `<b>${x}</b>`).join("")}</span>`; el.appendChild(d);
-      const inner = d.firstChild; requestAnimationFrame(() => requestAnimationFrame(() => { inner.style.transform = `translateY(-${(seq.length - 1) * 1.25}em)`; })); });
-    setTimeout(() => { if (el.parentNode && el.dataset.keep == null && el.replaceWith) el.replaceWith(document.createTextNode(v)); else el.textContent = v; }, 1700);   // back to plain text once it lands (no odd line breaks)
-  });
-}
-// 10/14 (owner): numbers across the app roll in like slot machine reels when a page opens (not on the 2-minute background refresh)
-const SLOT_SKIP = ".reelpct,.cdn,.stamp,.mreel,script,style,input,textarea,select,svg,.lever";
-function slotify(root, max = 250) {
-  if (REDUCE || !root || typeof document === "undefined" || !document.createTreeWalker) return;
-  const walk = document.createTreeWalker(root, 4), nodes = [];
-  while (walk.nextNode()) { const n = walk.currentNode; if (/\d/.test(n.nodeValue) && n.parentElement && !n.parentElement.closest(SLOT_SKIP)) nodes.push(n); }
-  let used = 0;
-  for (const n of nodes) {
-    if (used >= max) break;
-    const parts = n.nodeValue.split(/(\d+(?:\.\d+)?)/); if (parts.length < 2) continue;
-    const frag = document.createDocumentFragment();
-    parts.forEach((t, i) => { if (i % 2 && used < max) { const sp = document.createElement("span"); sp.className = "reelpct"; sp.dataset.v = t; sp.textContent = t; frag.appendChild(sp); used++; } else frag.appendChild(document.createTextNode(t)); });
-    n.parentNode.replaceChild(frag, n);
-  }
-  rollReels(root);
-}
+// 10/18 night (owner: "why every time I load onto here it does this"): the slot-reel roll (10/14 casino look) is gone -- numbers just appear
 function coinBurst(el) {   // gold coins fly from a winning bet's stamp
   if (REDUCE || !el || !el.getBoundingClientRect) return;
   const e = el.getBoundingClientRect(), cv = document.createElement("canvas"); cv.className = "coinfx"; document.body.appendChild(cv);
@@ -1259,7 +1232,6 @@ function renderDetail(g) {
   document.body.classList.add("game-on");   // 10/18 (owner): on a game page the game card IS the header -- the NEXT GAME strip is hidden, ← Games sits under the card
   $("detail").innerHTML = `${detailTop(g)}<button class="back" id="back-btn">← Games</button>${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : ""}${gameCard(g, "x")}${totalCard(g, "x")}${tdTop3(g)}${sgpBox(g)}`;
   $("back-btn").onclick = closeGame;
-  if (ROLL_ON_OPEN) { ROLL_ON_OPEN = false; slotify($("detail")); }   // 10/14: numbers roll in when you open a game
   if (g.final) ensureGrades();
   setBg($("panel-lines").classList.contains("on") ? g : null);   // 10/14 fix: the background redraw ran while another tab was showing (SEA/DEN logos on Models)
 }
@@ -1276,8 +1248,7 @@ function linesBySlot() {
   for (const g of [...S.games].sort(order)) { const sl = g.kickoff ? labSlot(g.kickoff) : "GAMES"; if (!by[sl]) { by[sl] = []; slots.push(sl); } by[sl].push(g); }
   return slots.map((sl) => `<div class="sh labslot">${sl}</div><div class="tiles stack">${by[sl].map(tile).join("")}</div>`).join("");   // 10/18 (owner): just the slot name -- the time sits on each tile
 }
-let ROLL_ON_OPEN = false;
-function openGame(key) { ROLL_ON_OPEN = true; LASTY = (typeof window !== "undefined" && window.scrollY) || 0; DETAIL = key; renderLines(); if (window.scrollTo) window.scrollTo(0, 0); const g = S.games.find((x) => x.key === key); if (g && g.started && !g.final) liveLoop(); }
+function openGame(key) { LASTY = (typeof window !== "undefined" && window.scrollY) || 0; DETAIL = key; renderLines(); if (window.scrollTo) window.scrollTo(0, 0); const g = S.games.find((x) => x.key === key); if (g && g.started && !g.final) liveLoop(); }
 function closeGame() { DETAIL = null; renderLines(); if (window.scrollTo) window.scrollTo(0, LASTY); }
 // ---------- HOME (10/17, owner's sketch): SLATEZZ header, then NFL and NBA live games as a list -- logos, team, its spread from the
 // sportsbooks before kickoff, the total in the middle, the score and clock. Each section's title row: LIVE NOW + NEXT GAME logos and clock.
@@ -1402,7 +1373,6 @@ async function loadSlate() {
   const open = [...document.querySelectorAll(".drop.open")].map((e) => e.id).filter(Boolean);   // keep your open dropdowns
   const openTd = [...document.querySelectorAll(".tdr")].map((e, i) => (e.classList.contains("open") ? i : -1)).filter((i) => i >= 0);   // and open player rows
   renderAll(); for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
-  if (!loadSlate._rolled) { loadSlate._rolled = true; setTimeout(() => slotify($("panel-lines")), 60); }   // 10/14: numbers roll in on first open
   if (openTd.length) { const rows = document.querySelectorAll(".tdr"); for (const i of openTd) if (rows[i]) rows[i].classList.add("open"); }
   try { localStorage.setItem("lastSeen", new Date().toISOString()); } catch {} }   // next visit's "What changed" starts from now
 // The lever (10/14, owner: "this should only update the model"): reruns the model with the latest injuries and lines, then reloads.
@@ -1448,7 +1418,6 @@ function showPanel(name) {
   if (name === "record") applyBetsView();
   if (name === "record") setTimeout(playStamps, 50);
   if (name === "props") { renderProps(); loadProps(); }   // 10/17 (owner): Props is its own page
-  setTimeout(() => slotify($("panel-" + name)), 60);   // 10/14: numbers roll in when you open a tab
   if (S && S.games) setBg(name === "lines" && DETAIL ? S.games.find((x) => x.key === DETAIL) : null);   // game background only on an open game page
   linesBg();
 }
