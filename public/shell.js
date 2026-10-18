@@ -46,7 +46,7 @@
       const d = Math.floor(ms / 864e5), h = Math.floor((ms % 864e5) / 36e5), m = Math.floor((ms % 36e5) / 6e4), s = Math.floor((ms % 6e4) / 1e3);
       return d ? `${d}d ${h}h ${m}m` : h ? `${h}h ${m}m` : m ? `${m}m` : `${s}s`;
     },
-    // header on every page but home: [away logo] vs [home logo]  NEXT GAME  clock
+    // 10/18 night (owner): the NEXT GAME header strip is gone from every page -- no #shead-next exists, so this returns at once (the callers still drive the home clocks)
     setNext(awayLogo, homeLogo, ms) {
       const el = document.getElementById("shead-next"); if (!el) return;
       if (awayLogo == null) { if (el.dataset.k !== "none") { el.dataset.k = "none"; el.innerHTML = '<span class="none">No upcoming games</span>'; } return; }
@@ -60,8 +60,7 @@
       document.querySelectorAll(".mi").forEach((a) => { const me = a.dataset.msp === Shell.sport; a.classList.toggle("on", me && a.dataset.mp === panel); a.classList.toggle("pon", me && par !== panel && a.dataset.mp === par); });
       const home = Shell.sport === "nfl" && panel === "home";
       document.body.classList.toggle("home-on", home); document.documentElement.classList.toggle("home-on", home);
-      const h = document.getElementById("shead-home"), n = document.getElementById("shead-next");
-      if (h) h.style.display = home ? "" : "none"; if (n) n.style.display = home ? "none" : "";
+      const sh = document.getElementById("shead"); if (sh) sh.style.display = home ? "" : "none";   // 10/18 night (owner): the header strip shows on home only (SLATEZZ); the NEXT GAME strip is gone
     },
     setCount(sp, id, n) { const e = document.getElementById(`mcnt-${sp}-${id}`); if (!e) return; e.textContent = n > 9 ? "9+" : String(n || ""); e.style.display = n ? "flex" : "none"; },
     open() { document.body.classList.add("menu-open"); },

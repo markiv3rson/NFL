@@ -142,17 +142,15 @@ function greenPicks(g) {
 
 // ---------- Game Lines: line-move chips, tiles
 let LAST_SEEN = null; try { LAST_SEEN = localStorage.getItem("lastSeen"); } catch {}
-function changedBox() {
-  const out = [];
-  for (const g of S.games.filter((x) => !x.inProgress && x.move)) {
-    const bits = [];
-    if (g.move.spread) bits.push(`spread ${g.home} ${sgn(g.move.spread.open)} → ${sgn(g.move.spread.now)}`);
-    if (g.move.total) bits.push(`total ${g.move.total.open} → ${g.move.total.now}`);
-    if (bits.length) out.push(`<span class="mv" data-game="${esc(g.key)}"><b>${esc(g.key)}</b> ${bits.map(esc).join(" · ")}</span>`);
-  }
-  if (!out.length) return "";
-  return `<div class="moves"><div class="mvl">LINE MOVES <span>since the first line seen</span></div><div class="mvs">${out.join("")}</div></div>`;
+// 10/18 night (owner): the LINE MOVES strip is gone -- a game's own move since the first line seen sits inside its tile (one line each)
+function moveBits(g) {
+  if (g.inProgress || !g.move) return [];
+  const bits = [];
+  if (g.move.spread) bits.push(`spread ${g.home} ${sgn(g.move.spread.open)} → ${sgn(g.move.spread.now)}`);
+  if (g.move.total) bits.push(`total ${g.move.total.open} → ${g.move.total.now}`);
+  return bits;
 }
+const moveLines = (bits) => (bits.length ? `<div class="mvt">${bits.map((b) => `<span>${esc(b)}</span>`).join("")}</div>` : "");
 // Live scores (10/17): ESPN's scoreboard via /api/nba/live -- a started game shows its score + clock, a finished one its final score
 // (before, a game counted as "live" from tip-off until the slate dropped it, so last night's games stayed LIVE).
 let NBL = {};
@@ -172,14 +170,14 @@ function tile(g) {
   // 10/18 (owner, same as NFL): logo + code + record each side, the % (or score) in the middle with the tip time + the pick / PRESEASON tag under it, the bar.
   // 10/18 evening (owner, sketch D): NO big faded logos and NO team colours behind the tile -- a plain 55% dark card so the page picture shows through.
   return `<button class="tile${live ? " live" : ""}" data-game="${esc(g.key)}">` +
-    `<div class="in"><div class="nm"><span class="t">${tlogo(g.away)}${g.away}${recOf(g, g.away)}</span><div class="tmid">${mid}${chips ? `<div class="s2">${chips}</div>` : ""}</div><span class="t hm">${g.home}${tlogo(g.home)}${recOf(g, g.home)}</span></div>${hp == null || sc ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
+    `<div class="in"><div class="nm"><span class="t">${tlogo(g.away)}${g.away}${recOf(g, g.away)}</span><div class="tmid">${mid}${chips ? `<div class="s2">${chips}</div>` : ""}${moveLines(moveBits(g))}</div><span class="t hm">${g.home}${tlogo(g.home)}${recOf(g, g.home)}</span></div>${hp == null || sc ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
 }
 function renderLines() {
   if (!S) { $("lines").innerHTML = '<div class="s dim center">Loading…</div>'; return; }
   if (DETAIL) { const g = S.games.find((x) => x.key === DETAIL); if (g) return renderDetail(g); DETAIL = null; }
   setBg(null); linesBg(); document.body.classList.remove("game-on");
   $("detail").style.display = "none"; $("lines").style.display = "";
-  $("lines").innerHTML = changedBox() + (S.games.length ? linesByDay() : '<div class="tiles"><div class="s dim">No NBA games on Polymarket right now.</div></div>');
+  $("lines").innerHTML = (S.games.length ? linesByDay() : '<div class="tiles"><div class="s dim">No NBA games on Polymarket right now.</div></div>');
 }
 // 10/17 (owner: "make everything consistent"): Game Lines stacked one game per row under a header per day with its tip times, like NFL's time slots
 const tipTime = (iso) => (!iso || isNaN(new Date(iso)) ? "TBD" : new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }));

@@ -222,22 +222,18 @@ function winnersBox() {
 // "What changed" (9/30): Polymarket line moves since your last visit on this device.
 let LAST_SEEN = null;
 try { LAST_SEEN = localStorage.getItem("lastSeen"); } catch {}
-function changedBox() {
-  if (!LAST_SEEN) return "";
-  const since = new Date(LAST_SEEN), out = []; let newWeek = 0;
-  for (const g of S.games.filter((x) => !x.started)) {
-    const before = [...(g.history || [])].filter((h) => h.poly && new Date(h.t) <= since).pop(), now = g.poly;
-    if (!before || !now) { if (now) newWeek++; continue; }
-    const a = before.poly, bits = [];
-    if (a.spread && now.spread && a.spread.homeSpread !== now.spread.homeSpread) bits.push(`spread ${g.home} ${sgn(a.spread.homeSpread)} → ${sgn(now.spread.homeSpread)}`);
-    if (a.total && now.total && a.total.line !== now.total.line) bits.push(`total ${a.total.line} → ${now.total.line}`);
-    if (a.ml && now.ml && Math.abs(a.ml.home - now.ml.home) >= 0.05) bits.push(`${g.home} moneyline ${Math.round(a.ml.home * 100)}¢ → ${Math.round(now.ml.home * 100)}¢`);
-    if (bits.length) out.push(`<span class="mv"><b>${esc(g.key)}</b> ${bits.map(esc).join(" · ")}</span>`);
-  }
-  if (!out.length && !newWeek) return "";   // nothing to say: no strip
-  // 10/14 redesign: a strip of chips, one per game whose line moved since your last visit
-  return `<div class="moves"><div class="mvl">LINE MOVES <span>since ${hm(LAST_SEEN)}</span></div><div class="mvs">${out.join("") || `<span class="mv">${newWeek} new game line${newWeek === 1 ? "" : "s"} opened</span>`}</div></div>`;
+// 10/18 night (owner): the LINE MOVES strip is gone -- a game's own moves since your last visit sit inside its tile (one line each)
+function moveBits(g) {
+  if (!LAST_SEEN || g.started) return [];
+  const since = new Date(LAST_SEEN), before = [...(g.history || [])].filter((h) => h.poly && new Date(h.t) <= since).pop(), now = g.poly;
+  if (!before || !now) return [];
+  const a = before.poly, bits = [];
+  if (a.spread && now.spread && a.spread.homeSpread !== now.spread.homeSpread) bits.push(`spread ${g.home} ${sgn(a.spread.homeSpread)} → ${sgn(now.spread.homeSpread)}`);
+  if (a.total && now.total && a.total.line !== now.total.line) bits.push(`total ${a.total.line} → ${now.total.line}`);
+  if (a.ml && now.ml && Math.abs(a.ml.home - now.ml.home) >= 0.05) bits.push(`${g.home} moneyline ${Math.round(a.ml.home * 100)}¢ → ${Math.round(now.ml.home * 100)}¢`);
+  return bits;
 }
+const moveLines = (bits) => (bits.length ? `<div class="mvt">${bits.map((b) => `<span>${esc(b)}</span>`).join("")}</div>` : "");
 function gameCard(g, i) {
   {
     const lv = liveFor(g), p = (lv && lv.poly) || g.poly || {}, b = g.books || {};   // live numbers for a game in progress; model and kickoff line stay locked
@@ -996,7 +992,7 @@ function tile(g) {
   // 10/18 (owner): logo + code + record each side, the % (or score) in the middle with the kickoff time + the pick / London tag under it, the bar; no "starts in".
   // 10/18 evening (owner, sketch D): NO big faded logos and NO team colours behind the tile -- a plain 55% dark card so the page picture shows through.
   return `<button class="tile${g.started && !g.final ? " live" : ""}" data-game="${esc(g.key)}">` +
-    `<div class="in"><div class="nm"><span class="t">${tlogo(g.away)}${g.away}${recOf(g, g.away)}</span><div class="tmid">${mid2}${chips ? `<div class="s2">${chips}</div>` : ""}</div><span class="t hm">${g.home}${tlogo(g.home)}${recOf(g, g.home)}</span></div>${g.final || hp == null ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
+    `<div class="in"><div class="nm"><span class="t">${tlogo(g.away)}${g.away}${recOf(g, g.away)}</span><div class="tmid">${mid2}${chips ? `<div class="s2">${chips}</div>` : ""}${moveLines(moveBits(g))}</div><span class="t hm">${g.home}${tlogo(g.home)}${recOf(g, g.home)}</span></div>${g.final || hp == null ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
 }
 // Graded touchdown results for a finished game (same records the Models tab uses). Loaded once, only when a finished game page opens.
 let GRADES = null, GRADES_AT = 0;
@@ -1271,7 +1267,7 @@ function renderLines() {
   if (DETAIL) { const g = S.games.find((x) => x.key === DETAIL); if (g) return renderDetail(g); DETAIL = null; }
   setBg(null); linesBg(); document.body.classList.remove("game-on");
   $("detail").style.display = "none"; $("lines").style.display = "";
-  $("lines").innerHTML = changedBox() + linesBySlot();
+  $("lines").innerHTML = linesBySlot();
 }
 // 10/17 (owner): Game Lines stacked one per row, grouped under the time-slot headers (same slots and header look as Model bets);
 // the slots keep the old order (upcoming first, then live, then finished), games inside a slot by kickoff

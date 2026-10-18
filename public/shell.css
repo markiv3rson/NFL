@@ -1,4 +1,4 @@
-/* SLATEZZ shell (10/17, owner): one menu for NFL + NBA (sketch "Menu A · Neon"), the header (home: SLATEZZ; other pages: logo vs logo · NEXT GAME · clock),
+/* SLATEZZ shell (10/17, owner): one menu for NFL + NBA (sketch "Menu A · Neon"), the SLATEZZ header (home only since 10/18 night: the NEXT GAME strip is gone),
    the home screen lists. Used by /index.html (NFL + home) and /nba/index.html. The bottom tab bar and the lever are gone. */
 .shead { position:relative; display:flex; align-items:center; gap:12px; padding:4px 4px 14px; margin-bottom:6px; }
 :root { --ggrad:linear-gradient(90deg,#f2c14e,#ffffff 50%,#3ddc97); }   /* 10/18 (owner): "gold and white and green, like a gradient", no glow, no filled circles; purple only on MODEL ANALYSIS */
@@ -7,16 +7,9 @@
 .mgrip { position:fixed; left:0; top:50%; transform:translateY(-50%); z-index:150; width:22px; height:92px; border:0; padding:0; margin:0; background:none; cursor:pointer; display:flex; align-items:center; justify-content:flex-start; }
 .mgrip i { display:block; width:5px; height:64px; border-radius:0 4px 4px 0; background:linear-gradient(180deg,#f2c14e,#ffffff 50%,#3ddc97); }
 body.menu-open .mgrip { display:none; }
-.shead .snext { justify-content:center; }
 .sgrad { background:var(--ggrad); -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent; }
 .shome { flex:1 1 auto; min-width:0; text-align:center; font-size:clamp(40px,15vw,60px); font-weight:900; font-style:italic; letter-spacing:.01em; line-height:1; white-space:nowrap; -webkit-text-stroke:.8px rgba(255,255,255,.55); }
 .shome span { display:inline-block; padding-right:.08em; }
-.snext { flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:6px; white-space:nowrap; }
-.snext img, .snext .nl { width:26px; height:26px; flex:0 0 26px; object-fit:contain; }
-.snext .vs { font-size:11px; font-weight:700; color:var(--faint,#8d95a3); }
-.snext .nglab { margin-left:2px; font-size:9px; font-weight:800; letter-spacing:.1em; color:#aab0bd; }
-.snext .ngclk { margin-left:auto; font-size:clamp(20px,6.8vw,32px); font-weight:800; letter-spacing:-.03em; line-height:1; font-variant-numeric:tabular-nums; padding-right:2px; }
-.snext .none { font-size:13px; color:#8d95a3; }
 body.home-on { background:transparent !important; } html.home-on { background:#000 !important; }
 /* 10/17 (owner): the Raiders photo behind the home screen; the NFL / NBA lists are see-through so it shows under them */
 html.home-on::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
