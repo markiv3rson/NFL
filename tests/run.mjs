@@ -370,6 +370,18 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { const lt = ctx.T.tile({ ...tg, started: true }), dt = ctx.T.detailTop({ ...tg, started: true });
     ok(/>14<\/span>/.test(lt) && />10<\/span>/.test(lt) && /LIVE · Q3 4:12/.test(lt) && lt.indexOf('class="ft"') < lt.indexOf('class="bar"') && !/chip c-red">LIVE/.test(lt), "live tile: score, LIVE · Q3 under it, bar at the bottom", lt);
     ok(/14 – 10/.test(dt) && /LIVE · Q3 4:12/.test(dt) && !/Live · locked/.test(dt), "live game page: score and quarter in the matchup card"); }
+  { // 10/18 (owner): an open combo whose game is being played says ● LIVE · quarter clock, no team scores
+    vm.runInContext(`LIVE_SC = { "PIT @ CLE": { a: 14, h: 10, st: "in", lbl: "Q3 4:12" }, "BUF @ LV": { a: 3, h: 0, st: "in", lbl: "Q1 2:05" }, "SEA @ DEN": { a: 20, h: 17, st: "post", lbl: "FINAL" } }`, ctx);
+    const one = ctx.T.betRow({ source: "account", title: "c", week: 6, cost: 5, toWin: 50, price: 0.1, result: "pending", picks: [{ label: "PIT +3.5", game: "PIT @ CLE" }, { label: "Over 40.5 · PIT @ CLE", game: "PIT @ CLE" }] });
+    ok(/class="r">● LIVE · Q3 4:12</.test(one) && !/14/.test(one) && !/>open</.test(one), "open combo, one live game: ● LIVE · Q3 4:12 in place of open, no score", one);
+    const two = ctx.T.betRow({ source: "account", title: "c", week: 6, cost: 5, toWin: 50, price: 0.1, result: "pending", picks: [{ label: "PIT +3.5", game: "PIT @ CLE" }, { label: "BUF ML", game: "BUF @ LV" }, { label: "J.Cook 1+ TD", game: "BUF @ LV", result: "W" }] });
+    ok(/class="r">● LIVE</.test(two) && /PIT \+3\.5[\s\S]*· Q3 4:12/.test(two) && /BUF ML[\s\S]*· Q1 2:05/.test(two) && (two.match(/· Q1 2:05/g) || []).length === 1, "open combo, two live games: ● LIVE on the bet, each undecided leg its own clock", two);
+    const fin = ctx.T.betRow({ source: "account", title: "c", week: 6, cost: 5, toWin: 50, price: 0.1, result: "pending", picks: [{ label: "SEA +2.5", game: "SEA @ DEN" }] });
+    ok(!/LIVE/.test(fin) && />open</.test(fin), "a finished or unstarted game: still open, no LIVE", fin);
+    const won = ctx.T.betRow({ source: "account", title: "c", week: 6, cost: 5, toWin: 50, price: 0.1, result: "W", pl: 45, picks: [{ label: "PIT +3.5", game: "PIT @ CLE", result: "W" }] });
+    ok(!/LIVE/.test(won), "a settled bet never says LIVE", won);
+    const typed = ctx.T.betRow({ source: "preloaded", legs: [{ result: "pending", kind: "spread", team: "PIT", line: 3.5, game: "PIT @ CLE" }], result: "pending", cost: 5, toWin: 9, pl: null });
+    ok(/● LIVE · Q3 4:12/.test(typed), "typed-in bet: LIVE · quarter too", typed); }
   vm.runInContext(`LIVE_SC = {}`, ctx);
   ok(!/LIVE · Q/.test(ctx.T.tile({ ...tg, started: true })) && /class="chip c-red">LIVE/.test(ctx.T.tile({ ...tg, started: true })), "live tile: no score yet -> still just the LIVE tag, never a made-up score");
   vm.runInContext(`REPLAY = { seasons: [2007, 2025], rows: [ { id: "dog", name: "Road dogs +3 to +6.5", kind: "ats", n: 1424, hit: 0.535, periods: [{ label: "2007–12", n: 445, hit: 0.557 }, { label: "2013–18", n: 457, hit: 0.501 }, { label: "2019–25", n: 506, hit: 0.547 }], verdict: "UNSTABLE" }, { id: "wind", name: "Under, wind 12+ mph", kind: "ats", n: 792, hit: 0.562, periods: [], verdict: "YES" }, { id: "favorite", name: "Moneyline · market favorite wins", kind: "win", n: 4973, hit: 0.669, periods: [], verdict: "INFO" } ] }; PICKS = { dog: { graded: 4, w: 3, l: 1, hit: 0.75 }, wind: { graded: 0, recorded: 2 } }; S.winners = { all: { n: 10, w: 7, l: 3, hit: 0.7 } }`, ctx);

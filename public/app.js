@@ -434,19 +434,26 @@ function logoLabel(label, team = null) {
   m = L.match(/^(.+?) \d\+ TD(.*)$/); if (m) { const tm0 = team || tdTeam(m[1]); return `${tlogo(tm0)}${esc(L)}`; }
   return esc(L);
 }
+// 10/18 (owner: "just put live and the quarter time"): an open bet whose game is being played says ● LIVE · Q3 8:42 (no scores).
+// One live game -> the clock sits on the bet's line; two or more -> ● LIVE there and each undecided leg of a live game carries its own clock.
+const liveSc = (k) => { const sc = k && LIVE_SC[k]; return sc && sc.st === "in" ? sc : null; };
+function liveOf(legs) { const ks = [...new Set(legs.map((l) => l.game).filter((k) => liveSc(k)))]; return ks; }
+const liveHeadTxt = (ks) => (ks.length === 1 ? `<span class="r">● LIVE · ${esc(liveSc(ks[0]).lbl || "")}</span>` : '<span class="r">● LIVE</span>');
+const liveLegTxt = (ks, l, done) => (ks.length > 1 && !done && liveSc(l.game) ? ` <span class="r">· ${esc(liveSc(l.game).lbl || "")}</span>` : "");
 function betRow(b) { return `<div class="betwrap">${betRowInner(b)}${stampFor(b)}</div>`; }
 function betRowInner(b) {
   if (b.source === "account") {   // bet recorded automatically from your Polymarket account
-    const st = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Even" : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : (b.waiting ? '<span class="y">waiting for TD results</span>' : '<span class="dim">open</span>');
+    const lk = !b.sold && (!b.result || b.result === "pending") ? liveOf(b.picks || []) : [];
+    const st = lk.length ? liveHeadTxt(lk) : b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Even" : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : (b.waiting ? '<span class="y">waiting for TD results</span>' : '<span class="dim">open</span>');
     const name = b.picks && b.picks.length ? `Combo · ${b.picks.length} picks` : `${esc(b.title)}${b.outcome ? ` — ${esc(b.outcome)}` : ""}`;
-    const picks = b.picks && b.picks.length ? b.picks.map((p) => `<div class="s" style="padding:0 0 0 16px">${p.result ? RESMARK[p.result] + " " : "• "}${legTxt(p.result, logoLabel(p.label, p.team))}${!p.result && legFlipped(p.label) ? ' <span class="y">⚠ app now picks the other side</span>' : ""}</div>`).join("") : "";
+    const picks = b.picks && b.picks.length ? b.picks.map((p) => `<div class="s" style="padding:0 0 0 16px">${p.result ? RESMARK[p.result] + " " : "• "}${legTxt(p.result, logoLabel(p.label, p.team))}${liveLegTxt(lk, p, !!p.result)}${!p.result && legFlipped(p.label) ? ' <span class="y">⚠ app now picks the other side</span>' : ""}</div>`).join("") : "";
     return `<div class="row"><span>${name} <span class="dim">wk ${b.week ?? "?"}</span></span><span>${st}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
       `<div class="s" style="padding:0 0 ${picks ? 2 : 6}px 8px">${money(b.cost)}${b.price != null ? ` at ${b.price < 0.005 ? "<1" : Math.round(b.price * 100)}¢` : ""} · ${b.sold ? `sold early for ${money(Math.max(0, (b.cost || 0) + (b.pl || 0)))}` : `pays ${money(b.toWin)} if it wins`}</div>` + (picks ? `<div style="padding-bottom:6px">${picks}</div>` : "");
   }
-  const hit = b.legs.filter((l) => l.result === "W").length;
-  const state = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? (b.pushUnconfirmed ? '<span class="y">Push leg</span>' : "Push") : (b.waiting ? '<span class="y">waiting for TD results</span>' : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : `<span class="dim">${hit} of ${b.legs.length} hit</span>`);
+  const hit = b.legs.filter((l) => l.result === "W").length, lk = !b.sold && b.result === "pending" ? liveOf(b.legs) : [];
+  const state = lk.length ? liveHeadTxt(lk) : b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? (b.pushUnconfirmed ? '<span class="y">Push leg</span>' : "Push") : (b.waiting ? '<span class="y">waiting for TD results</span>' : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : `<span class="dim">${hit} of ${b.legs.length} hit</span>`);
   return `<div class="row"><span>${b.legs.length > 1 ? "Combo" : "Single"} · ${money(b.cost)} → ${money(b.toWin)}</span><span>${state}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
-    `<div class="s" style="padding:0 0 6px 8px">${b.legs.map((l) => `${RESMARK[l.result]} ${weakLeg(b) === l ? '<b class="y">⚠</b> ' : ""}${legTxt(l.result, legName(l))}${l.clv != null ? ` <span class="${signCls(l.clv)}">(${(l.clv * 100).toFixed(0)}%)</span>` : ""}`).join(" · ")}</div>`;
+    `<div class="s" style="padding:0 0 6px 8px">${b.legs.map((l) => `${RESMARK[l.result]} ${weakLeg(b) === l ? '<b class="y">⚠</b> ' : ""}${legTxt(l.result, legName(l))}${liveLegTxt(lk, l, l.result !== "pending")}${l.clv != null ? ` <span class="${signCls(l.clv)}">(${(l.clv * 100).toFixed(0)}%)</span>` : ""}`).join(" · ")}</div>`;
 }
 // Re-rendering a tab must not close what you opened (auto-refresh every 2 min, "Show all games", Sync): remember each section's state
 // by id, run the render, put the state back.
@@ -921,9 +928,10 @@ const liveTail = (g, lv, kind) => (liveHas(lv, kind) ? lockedNote(g, kind) : "")
 function refreshDetail() { const open = [...document.querySelectorAll(".drop.open")].map((e) => e.id).filter(Boolean); renderLines(); for (const id of open) { const e = $(id); if (e) e.classList.add("open"); } }
 const anyLive = () => !!(S && S.games && S.games.some((g) => g.started && !g.final));
 async function loadLive() {
-  if (!anyLive() || document.hidden || !($("panel-lines").classList.contains("on") || $("panel-home").classList.contains("on"))) return;
+  const rec = $("panel-record").classList.contains("on");
+  if (!anyLive() || document.hidden || !($("panel-lines").classList.contains("on") || $("panel-home").classList.contains("on") || rec)) return;
   try { const d = await (await fetch("/api/live", { cache: "no-store" })).json();
-    if (d.ok) { LIVE = d.games || {}; LIVE_SC = d.scores || {}; LIVE_T = d.t; if ($("panel-home").classList.contains("on")) renderHome(); else if (DETAIL) refreshDetail(); else renderLines(); } } catch {}
+    if (d.ok) { LIVE = d.games || {}; LIVE_SC = d.scores || {}; LIVE_T = d.t; if ($("panel-home").classList.contains("on")) renderHome(); else if (rec) { if (MB) renderMine(); } else if (DETAIL) refreshDetail(); else renderLines(); } } catch {}
 }
 function liveLoop() { clearTimeout(liveLoop._h); loadLive().finally(() => { liveLoop._h = setTimeout(liveLoop, 30000); }); }
 let DETAIL = null, LASTY = 0, ALERTS = [], ALPREV = null;
