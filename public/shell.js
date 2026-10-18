@@ -117,7 +117,15 @@
       document.getElementById("mdraw").addEventListener("click", (e) => {
         const t = e.target.closest(".mtog");
         if (t) { const g = document.querySelector(`.msubs[data-grp="${t.dataset.tog}"]`); const open = !(g && g.classList.contains("open")); t.classList.toggle("open", open); if (g) g.classList.toggle("open", open); return; }
-        if (e.target.closest("a")) Shell.close();   // same-page links change the hash; the page switches
+        const a = e.target.closest("a"); if (!a) return;
+        // 10/18 night (owner: a swipe "changes pages ... brings me back to a different page"): that was the phone's back / forward gesture walking
+        // through history. Pages now switch WITHOUT adding history (replaceState on this page, location.replace to the other sport's page), so a
+        // swipe has nothing to go back to; only the left grip moves.
+        const href = a.getAttribute("href") || ""; if (!href || /^https?:/.test(href)) { Shell.close(); return; }
+        e.preventDefault(); Shell.close();
+        const u = new URL(href, location.href), norm = (p) => p.replace(/\/index\.html$/, "/");
+        if (norm(u.pathname) === norm(location.pathname)) { if (u.hash !== location.hash) { history.replaceState(null, "", u.hash || "#"); window.dispatchEvent(new HashChangeEvent("hashchange")); } }
+        else location.replace(u.href);
       });
       document.addEventListener("keydown", (e) => { if (e.key === "Escape") Shell.close(); });
     },

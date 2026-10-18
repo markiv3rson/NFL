@@ -302,3 +302,5 @@ Every PL line on the NBA pages fills in Polymarket's real combo price by itself 
 - **10/18 night (owner, both sports):** the gradient is red -> white -> green (`--ggrad`), NBA menu icons are white, Alerts is one menu item with no kind sub tabs (the page still accepts `#alerts-<kind>`), no per-kind unread counts.
 - **10/18 night (owner):** the gradient is plain red -> green (no white). The home screen's NBA block = "NBA NEXT GAME" + flip clock header over a Game Lines-style tile (`homeTile` in `public/app.js`; NBA win % from `poly.ml.midHome / midAway`, records from `context`).
 - **10/18 night (owner):** every menu icon white (NBA rows too), the NBA word solid red with a red -> green line.
+- **10/18 night (owner, both sports):** menu taps no longer add history (no back-swipe page changes); Models sections sit on 80% dark cards like the stat tiles.
+- **10/18 night (owner, both sports):** game-page cards 55% dark see-through (`#detail .card:not(.dtop)`).
