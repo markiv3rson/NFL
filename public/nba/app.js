@@ -12,7 +12,6 @@ const money = (v) => (v == null ? "—" : (v < 0 ? "−" : "") + "$" + Math.abs(
 const cMoney = (v) => (v == null ? "—" : `<span class="${v >= 0 ? "g" : "r"}">${v >= 0 ? "+" : "−"}$${Math.abs(v).toFixed(2)}</span>`);
 const tm = (iso) => (!iso || isNaN(new Date(iso)) ? "TBD" : new Date(iso).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" }));
 const hm = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { weekday: "short", month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—");
-const clock = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { hour: "numeric", minute: "2-digit" }) : "—");
 const dayName = (d) => (d ? new Date(d + "T12:00:00").toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric" }) : "—");
 const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 function toast(msg, ms = 7000) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast._h); if (ms) toast._h = setTimeout(() => t.classList.remove("show"), ms); }
@@ -113,7 +112,6 @@ function greenPicks(g) {
 }
 
 // ---------- Game Lines: line-move chips, tiles
-let LAST_SEEN = null; try { LAST_SEEN = localStorage.getItem("lastSeen"); } catch {}
 // 10/18 night (owner): the LINE MOVES strip is gone -- a game's own move since the first line seen sits inside its tile (one line each)
 function moveBits(g) {
   if (g.inProgress || !g.move) return [];
