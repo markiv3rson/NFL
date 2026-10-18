@@ -93,3 +93,6 @@ body.menu-open .mscrim { opacity:1; pointer-events:auto; } body.menu-open .mdraw
   .mi .car { margin-left:4px; font-size:11px; }
   .mspace { flex:0 0 auto; min-height:14px; }   /* no empty gap: Model Analysis follows the NBA list instead of sitting at the bottom of the screen */
 }
+
+/* 10/18 (owner: "make the words smaller for the live"): the LIVE · quarter clock on My bets, both sports */
+#record-mine .lvb { font-size:11px; font-weight:700; letter-spacing:.03em; white-space:nowrap; }

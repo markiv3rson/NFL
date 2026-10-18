@@ -238,7 +238,7 @@ ok(redisUrl({ UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://a:1", REDIS_URL: "redis
   ok(s2.open[0].picks.length === 3, "ledger combo carries its legs");
   const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
   ok(/Combo · \$\{e\.picks\.length\} picks/.test(app) && /\(e\.picks \|\| \[\]\)\.map\(\(p\) => legRow\(p, lk\)\)/.test(app) && /legTxt\(p\.result, `\$\{p\.team \? tlogo/.test(app), "NBA My bets lists a combo's legs (✓ / ✗, logo, green / red)");
-  ok(/sc\.st === "in"/.test(app) && /● LIVE · \$\{esc\(liveSc\(lk\[0\]\)\.lbl/.test(app) && /const lk = settled \? \[\] : liveOf\(e\)/.test(app) && /panel-record"\)\.classList\.contains\("on"\) && BETS\) renderBets\(\)/.test(app), "NBA My bets: an open bet in a live game says ● LIVE · quarter clock (no score), refreshed with the live scores"); }
+  ok(/sc\.st === "in"/.test(app) && /● LIVE · \$\{esc\(liveSc\(lk\[0\]\)\.lbl/.test(app) && /const lk = settled \? \[\] : liveOf\(e\)/.test(app) && /\$\{betName\(e\)\}\$\{lv \? " " \+ lv\.trim\(\) : ""\}/.test(app) && /panel-record"\)\.classList\.contains\("on"\) && BETS\) renderBets\(\)/.test(app), "NBA My bets: an open bet in a live game says ● LIVE · quarter clock (no score), refreshed with the live scores"); }
 
 // ---------- sign-in (same as the NFL app: Basic login, then a 1-year "remember this phone" cookie of its own)
 if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (await import("typescript")).default, { writeFileSync, mkdtempSync } = await import("node:fs"), { tmpdir } = await import("node:os"), { join } = await import("node:path");
