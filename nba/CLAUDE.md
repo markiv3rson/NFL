@@ -305,3 +305,5 @@ Every PL line on the NBA pages fills in Polymarket's real combo price by itself 
 - **10/18 night (owner, both sports):** menu taps no longer add history (no back-swipe page changes); Models sections sit on 80% dark cards like the stat tiles.
 - **10/18 night (owner, both sports):** game-page cards 55% dark see-through (`#detail .card:not(.dtop)`).
 - **10/18 night (owner):** the home clock is sketch G -- mono digits, one red -> green run across the whole clock, a changed digit flips (shared `public/app.js` / `shell.css`; the NBA page also loads the Share Tech Mono font).
+- **10/18 night (owner, both sports):** self-reload -- the shared shell polls `/api/build` and reloads the page when a newer build is live (on return to the front or the next page switch).
+- **10/18 night (owner, both sports):** the slot-reel roll runs only on dollar amounts (`slotMoney` / `rollMoney` in `public/nba/app.js`); every other number just appears.

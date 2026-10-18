@@ -170,7 +170,7 @@
   .ticket .tk { font-size:10.5px; font-weight:800; letter-spacing:.14em; color:#ffcf4a; }
   .ticket .tb { font-size:30px; font-weight:900; line-height:1.05; color:#fff; font-variant-numeric:tabular-nums; }
   .ticket .ts { font-size:11px; color:#e9dcc0; }
-  .tile .tmid .mvt { font-size:11px; color:#c9ced6; margin-top:2px; line-height:1.3; } .tile .tmid .mvt span { display:block; white-space:nowrap; }   /* 10/18 night (owner): a game's line move sits inside its tile (the LINE MOVES strip is gone) */
+  .tile .tmid .mvt { font-size:11px; color:#c9ced6; margin-top:2px; line-height:1.3; } .tile .tmid .mvt > span { display:block; white-space:nowrap; }   /* 10/18 night (owner): a game's line move sits inside its tile (the LINE MOVES strip is gone) */
   .mwarn { margin-top:4px; font-size:11px; font-weight:700; color:var(--yellow); white-space:normal; line-height:1.3; }
   .cols { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:start; } .cols .card.dd { margin-top:10px; } .cols .ddh { flex-direction:column; align-items:flex-start; gap:4px; padding:12px; } .cols .ddm { white-space:normal; }
   #lab > .drop { margin-top:10px; border-top:0; padding-top:0; }
@@ -309,8 +309,9 @@
   /* 10/14 casino look (owner): green pick pulse (glow brighter for stronger picks), slot-reel %, HIT/MISS stamps on Bets, flip-clock
      countdown, slot lever refresh, purple glow on the model's parlay cards */
   .pulse { --gl:.6; }   /* 10/18 (owner): no glow -- the green PICK no longer pulses */
-  .reelpct { display:inline-flex; vertical-align:text-top; } .reelpct .rd { display:inline-block; height:1.25em; overflow:hidden; }
-  .reelpct .rd > span { display:block; transition:transform 1.4s cubic-bezier(.2,.9,.2,1.04); } .reelpct .rd b { display:block; height:1.25em; line-height:1.25em; font-weight:inherit; }
+  .reelpct { display:inline; }   /* the PICK % is plain text */
+  .reelpct.money { display:inline-flex; vertical-align:text-top; } .reelpct.money .rd { display:inline-block; height:1.25em; overflow:hidden; }   /* 10/18 night (owner): only dollar amounts roll */
+  .reelpct.money .rd > span { display:block; transition:transform 1.4s cubic-bezier(.2,.9,.2,1.04); } .reelpct.money .rd b { display:block; height:1.25em; line-height:1.25em; font-weight:inherit; }
   .betwrap { position:relative; }
   .stamp { position:absolute; right:6px; top:50%; transform:translateY(-50%) rotate(-8deg); font-weight:900; font-size:18px; letter-spacing:.04em; line-height:1; padding:3px 9px;
     border:2.5px solid currentColor; border-radius:8px; background:rgba(10,8,11,.82); pointer-events:none; white-space:nowrap; z-index:2; }
@@ -331,7 +332,7 @@
   .mreel { display:inline-block; min-width:.6em; text-align:center; font-variant-numeric:tabular-nums; animation:mreel .1s steps(2) infinite; color:#ffcf4a; }
   @keyframes mreel { 50% { opacity:.4; } }
   .card.modelglow { border-color:rgba(255,255,255,.28); }   /* 10/18 (owner): no glow -- a model parlay card looks like any other card */
-  @media (prefers-reduced-motion: reduce) { .tile.live, .card.modelglow, .mreel, .cdn b.flip, .stamp.go { animation:none; } .reelpct .rd > span { transition:none; } }
+  @media (prefers-reduced-motion: reduce) { .tile.live, .card.modelglow, .mreel, .cdn b.flip, .stamp.go { animation:none; } }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap">
 <link rel="stylesheet" href="/shell.css">

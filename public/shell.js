@@ -124,10 +124,26 @@
         const href = a.getAttribute("href") || ""; if (!href || /^https?:/.test(href)) { Shell.close(); return; }
         e.preventDefault(); Shell.close();
         const u = new URL(href, location.href), norm = (p) => p.replace(/\/index\.html$/, "/");
+        if (Shell.stale) { location.replace(u.href); return; }   // a newer build is live: this page switch loads it
         if (norm(u.pathname) === norm(location.pathname)) { if (u.hash !== location.hash) { history.replaceState(null, "", u.hash || "#"); window.dispatchEvent(new HashChangeEvent("hashchange")); } }
         else location.replace(u.href);
       });
       document.addEventListener("keydown", (e) => { if (e.key === "Escape") Shell.close(); });
+      Shell.buildWatch();
+    },
+    // 10/18 night (owner: "I always have to close it then reopen"): the page asks /api/build every minute; when a newer build is live it reloads
+    // itself the next time the app comes back to the front or the next page switch -- never in the middle of reading.
+    build: null, stale: false,
+    async buildCheck(why) {
+      try { const d = await (await fetch("/api/build", { cache: "no-store" })).json(); if (!d || !d.build) return;
+        if (!Shell.build) Shell.build = d.build; else if (d.build !== Shell.build) Shell.stale = true;
+        if (Shell.stale && why === "visible") location.reload(); } catch {}
+    },
+    buildWatch() {
+      if (typeof fetch !== "function" || typeof setInterval !== "function") return;   // (the test harness has no timers)
+      Shell.buildCheck("init");
+      setInterval(() => { if (!document.hidden) Shell.buildCheck("poll"); }, 60e3);
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) { if (Shell.stale) location.reload(); else Shell.buildCheck("visible"); } });
     },
   };
   window.Shell = Shell;
