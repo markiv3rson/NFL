@@ -135,7 +135,7 @@ try {
   for (const c of Object.values(seen)) { const w = (c.rec || {}).w || 0, l = (c.rec || {}).l || 0;
     console.log(`     ${c.id.padEnd(20)} ${w}-${l}${w + l ? ` = ${pct(w, l).toFixed(1)}%` : " (none graded yet)"} · card says ${c.hit}%`); }
   const R = L && L.combos && L.combos.rules;
-  if (R && Object.keys(R).length) { console.log("\nLIVE per green rule (each pick once, at the line first shown; BELOW = 15+ graded and 10+ points under the card -- a flag, nothing is cut):");
+  if (R && Object.keys(R).length) { console.log("\nLIVE per green rule (each pick once: rules at the line first shown, the card's PICK / PICK w/ POINTS / MODEL SIDE as locked at kickoff; BELOW = 15+ graded and 10+ points under the card -- a flag, nothing is cut):");
     for (const [k, r] of Object.entries(R).sort()) console.log(`     ${r.flag === "BELOW" ? "BELOW" : "     "} ${k.padEnd(34)} ${r.w}-${r.l}${r.w + r.l ? ` = ${pct(r.w, r.l).toFixed(1)}%` : ""} · card says ${r.say}% · ${r.flag}`); }
   else console.log("\nLIVE per green rule: none graded yet");
   if (card) console.log(`     card picks (all rules) spread ${card.spread.w}-${card.spread.l} = ${(pct(card.spread.w, card.spread.l) || 0).toFixed(1)}% · total ${card.total.w}-${card.total.l} = ${(pct(card.total.w, card.total.l) || 0).toFixed(1)}%`);
@@ -145,7 +145,7 @@ try {
 // how often it hit vs how often its % said, and the money at the owner's stakes. Reported weekly in the Tuesday report card.
 try {
   const L = await getJSONurl(`${SITE}/api/results/list`), P = (L && L.paper) || {}, B = P.board || {}, names = P.names || {};
-  const keys = ["sgp_best", "sgp_best_fill", "sgp_3", "sgp_linked", "sgp_style", "sgp_style_pts", "leg4_fav", "leg4_green_fav", "leg4_fav_td", "best_2", "best_3", "best_4"];
+  const keys = ["sgp_best", "sgp_best_fill", "sgp_3", "sgp_linked", "sgp_style", "sgp_style_pts", "sgp_upset", "leg4_fav", "leg4_green_fav", "leg4_fav_td", "leg4_td4", "best_2", "best_3", "best_4"];
   console.log("\nPARLAYS this season (all legs must win):");
   for (const k of keys) { const b = B[k]; if (!b) continue; const d = b.decided || 0;
     console.log(`     ${(names[k] || k).slice(0, 44).padEnd(44)} ${d ? `${b.hits}-${d - b.hits} = ${(100 * b.hits / d).toFixed(1)}%` : "none graded yet"}${b.expRate != null && d ? ` · said ${(100 * b.expRate).toFixed(1)}%` : ""}${b.money != null ? ` · ${b.money >= 0 ? "+" : "-"}$${Math.abs(b.money).toFixed(0)}` : ""}${b.review && b.review.verdict && !/TOO FEW|WAITING/.test(b.review.verdict) ? ` · ${b.review.verdict}` : ""}`); }

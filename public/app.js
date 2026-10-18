@@ -1133,7 +1133,7 @@ let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model
 function applyBetsView() {
   const bt = $("bets-title"); if (bt) bt.textContent = BETSVIEW === "model" ? `Model bets · ${(LAB_TABS.find(([k]) => k === LABTYPE) || [, ""])[1]}` : "My bets";
   const m = BETSVIEW === "model", set = (id, on) => { const e = $(id); if (e) e.style.display = on ? "" : "none"; };
-  set("record-mine", !m); set("lab", m); set("lab-sub", false);   // 10/17: the types moved from the docked strip into the menu
+  set("record-mine", !m); set("lab", m);
 
   document.querySelectorAll("#bets-sw [data-bv]").forEach((b) => b.classList.toggle("on", b.dataset.bv === BETSVIEW));
   if (m) renderLabList();

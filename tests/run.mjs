@@ -211,6 +211,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     && t135 && t135.pick === "BUF +14.5" && t135.hit === 63.9 && /BEAT THE 14/.test(t135.why) && gone.every((x) => !x)
     && Object.keys(BUY_TIERS).length === 14 && [2, 4, 5, 6, 7, 7.5].every((A) => BUY_TIERS[A] && BUY_TIERS[A].side === "fav") && Object.entries(BUY_TIERS).every(([A, T]) => (T.side === "fav" ? +A - Math.abs(T.line) : Math.abs(T.line) - +A) <= 3.5),
     "BEAT THE 3 side rule (10/15): 14 tiers -- books 1, 1.5, 2.5, 3, 3.5, 4.5, 5.5, 13.5 plus the favorites added back (books 2, 4, 5, 6, 7, 7.5); never more than 3.5 points", { t45, t55 });
+  { const { ruleRecords } = await import("../lib/stack.js"), kick = [{ id: "modelpick|total", kind: "total", hit: 51.7, week: 6, game: "A @ B", result: "W", t: "2" }, { id: "keynum|spread", hit: 58, week: 6, game: "A @ B", result: "L", t: "2" }],
+      first = [{ id: "modelpick|total", kind: "total", hit: 51.7, week: 6, game: "A @ B", result: "L", t: "1" }, { id: "keynum|spread", hit: 58, week: 6, game: "A @ B", result: "W", t: "1" }], rr = ruleRecords(kick, first);
+    ok(rr["MODEL SIDE · total"].w === 1 && rr["MODEL SIDE · total"].l === 0 && rr["BEAT THE"].w === 1 && rr["BEAT THE"].l === 0, "rule records (10/18 fix): card picks count as locked at kickoff (= Card picks rows); timing rules keep the first-shown pick", rr); }
   { const { ruleRecords, ruleFlag } = await import("../lib/stack.js"), mk = (g, res, t, o = {}) => ({ id: "keynum|spread", tier: 3, hit: 55.6, week: 6, game: g, result: res, t, ...o });
     const rows = Array.from({ length: 16 }, (_, i) => mk(`G${i}`, i < 4 ? "W" : "L", "2"));   // 4-12 = 25%
     const seen = [mk("G0", "L", "1", { id: "chooser|spread" })];   // chooser picks are not green rules -> ignored
@@ -695,6 +698,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       const alts = { t: now, alts: [{ team: "NE", line: -6.5, price: 0.52 }, { team: "NE", line: -5.5, price: 0.56 }, { team: "NE", line: -4.5, price: 0.66 }, { team: "NE", line: -3.5, price: 0.7 }, { team: "NYJ", line: 8.5, price: 0.5 }] };
       const ch = [{ id: "linemove|spread", kind: "spread", team: "NE", pick: "NE -7.5", hit: 51.2, n: 2600, line: -7.5, why: "x" }];
       const c1 = buildCard(NE, ch, ps(-7.5, 0.5), { spread: { homeSpread: -7.5 } }, alts);
+      { const CA = { key: "CHI @ ATL", home: "ATL", away: "CHI", kickoff: "2026-10-18T17:00:00Z" };
+        const two = [{ id: "keynum|spread", kind: "spread", team: "ATL", pick: "ATL +3.5", hit: 63.9, n: 194, line: 3.5, why: "BEAT THE 3" }, { id: "bounceback|spread", kind: "spread", team: "CHI", pick: "CHI -1.5", hit: 61.3, n: 261, line: -1.5, why: "BOUNCE BACK" }];
+        const cc = buildCard(CA, two, ps(1.5, 0.5), { spread: { homeSpread: 1.5 } }, null);
+        ok(cc.spread.plain.team === "CHI" && cc.spread.plain.hit === 61.3 && cc.spread.plain.ruleId === "bounceback|spread", "card (10/18 fix): rules on opposite sides compare at the % the card shows -- BEAT THE's PICK sits at ATL +1.5 (~50%), so BOUNCE BACK CHI -1.5 61.3% wins", cc.spread.plain); }
       const bought = c1.spread.rows.filter((x) => x.points > 0), okRows = bought.filter((x) => x.hit >= 56), minP = okRows.length ? Math.min(...okRows.map((x) => x.points)) : null;
       ok(c1.spread.plain.pick === "NE -7.5" && c1.spread.plain.hit === 51.2 && c1.spread.plain.price === 0.5 && c1.spread.plain.id === "cardpick|spread"
         && new Set(c1.spread.rows.map((x) => x.team)).size === 2 && c1.spread.rows.every((x, _, a) => x.points >= 0 && x.points <= 3.5 && (x.points <= 2 || x.hit >= Math.max(...a.filter((y) => y.points <= 2).map((y) => y.hit)) + 3)) && c1.spread.rows.some((x) => x.team === "NYJ" && x.points === 1)
