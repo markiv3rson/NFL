@@ -1204,7 +1204,8 @@ function renderProps() {
   const games = [...(d.games || [])].sort((a, b) => new Date(a.kickoff || 0) - new Date(b.kickoff || 0));
   const slotTimes = {}; for (const g of games) if (g.kickoff) { const sl = labSlot(g.kickoff), tt = tm(g.kickoff); (slotTimes[sl] = slotTimes[sl] || []).includes(tt) || slotTimes[sl].push(tt); }
   let lastSlot = null;
-  const row = (p) => `<div class="pbl">${p.result ? legMark(p.result) : "•"} ${legTxt(p.result, `${tlogo(p.team || "")}${esc(p.name)} · ${PROP_STAT[p.stat] || esc(p.stat)} ${p.side === "over" ? "Over" : "Under"} ${p.line} · ${Math.round(p.chance * 100)}%${p.price != null ? ` · ${Math.round(p.price * 100)}¢` : ""}`)}${p.result && p.actual != null ? ` <span class="dim">${p.actual}</span>` : ""}</div>`;
+  // 10/18 (owner: "organize this, make it easier to read"): one row per player (lib/props.js onePerPlayer), columns lined up: player | line | win % | price
+  const row = (p) => `<div class="pbl ppr${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${tlogo(p.team || "")}${esc(p.name)}</span><span class="pp2">${p.side === "over" ? "Over" : "Under"} ${p.line}</span><span class="pp3">${Math.round(p.chance * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
   const blocks = games.map((g) => { const sl = g.kickoff ? labSlot(g.kickoff) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
     return h + `<div class="par"><div class="pbh"><span class="pbn">${gameLogos(g.game)}</span></div>${g.picks.map(row).join("")}</div>`; });
   el.innerHTML = wk + stats + (games.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
