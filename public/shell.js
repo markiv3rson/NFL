@@ -22,8 +22,8 @@
   const TYPES = { nfl: [["ou", "Over/Under"], ["style", "4 Leg (My Style)"], ["pts", "4 Leg (Bought)"], ["4", "4 Leg"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"], ["diff", "Different Game Parlays"]],
     nba: [["sgp", "Same game"], ["sgp_pts", "Bought"], ["best4", "Parlay"], ["fav4", "Favorites"]] };
   // 10/17 (owner): the alert kinds are sub tabs under Alerts too (ids match the pages' ALK keys, lower case without spaces)
-  const ALERTK = { nfl: [["all", "All"], ["injury", "Injury"], ["qbchange", "QB change"], ["linemove", "Line move"], ["weather", "Weather"], ["result", "Result"], ["tdno", "TD No"], ["tdjump", "TD jump"], ["qbtd", "QB TD"]],
-    nba: [["all", "All"], ["pick", "New pick"], ["linemove", "Line move"], ["injury", "Injury"], ["result", "Result"]] };
+  const ALERTK = { nfl: [["all", "All"], ["injury", "Injury"], ["qbchange", "QB change"], ["linemove", "Line move"], ["weather", "Weather"]],   // 10/18 (owner): the top 5 only
+    nba: [["all", "All"], ["pick", "New pick"], ["linemove", "Line move"], ["injury", "Injury"]] };   // 10/18 (owner): results moved to the top of My bets
   // 10/17 (owner): Alerts, Bets and Model bets open and close their lists (closed to start); tapping them only opens / closes
   const car = '<i class="car">▾</i>';
   const group = (key, inner) => `<div class="msubs" data-grp="${key}">${inner}</div>`;
@@ -104,12 +104,15 @@
         `<div class="msec nfl"><span>NFL</span><span class="ml"></span></div>${ITEMS.nfl.map((x) => item("nfl", ...x)).join("")}` +
         `<div class="msec nba gap"><span>NBA</span><span class="ml"></span></div>${ITEMS.nba.map((x) => item("nba", ...x)).join("")}` +
         `<div class="mspace"></div><div class="msec mod"><span>MODEL ANALYSIS</span><span class="ml"></span></div>${item("nfl", "models", "NFL", "bars")}${item("nba", "models", "NBA", "bars")}</nav>`;
+      // 10/18 (owner): no ☰ in the header -- a thin grip on the left edge opens the menu (tap or slide it right); SLATEZZ sits centered
+      d.innerHTML += `<button class="mgrip" id="menu-grip" aria-label="Menu"><i></i></button>`;
       while (d.firstChild) document.body.appendChild(d.firstChild);
       const mb = document.getElementById("menu-btn"); if (mb) mb.onclick = Shell.open;
+      document.getElementById("menu-grip").onclick = () => { Shell.open(); Shell.loadRun(); };
       document.getElementById("mscrim").onclick = Shell.close;
       // 10/17 (owner: "I should just be able to slide it"): swipe from the left edge opens the menu, a swipe to the left on it closes it
       let sx = null, sy = null, edge = false;
-      document.addEventListener("touchstart", (e) => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; edge = sx <= 28 && !document.body.classList.contains("menu-open"); }, { passive: true });
+      document.addEventListener("touchstart", (e) => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; edge = sx <= 44 && !document.body.classList.contains("menu-open"); }, { passive: true });   // the left edge = the grip's strip
       document.addEventListener("touchend", (e) => { if (sx == null) return; const t = e.changedTouches[0], dx = t.clientX - sx, dy = Math.abs(t.clientY - sy); sx = null;
         if (dy > Math.abs(dx)) return;
         if (edge && dx > 40) { Shell.open(); Shell.loadRun(); }

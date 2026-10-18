@@ -20,8 +20,12 @@ export async function addAlert(a, now = Date.now()) {
     return 1;
   } catch { return 0; }
 }
+// 10/18 (owner): RESULT lines show at the top of the Bets tab (My bets), not in Alerts
 export async function listAlerts(n = 100) {
-  try { return (await getRedis().lrange(KEY, 0, n - 1)).map((x) => jparse(x)).filter(Boolean); } catch { return []; }
+  try { return (await getRedis().lrange(KEY, 0, n - 1)).map((x) => jparse(x)).filter((x) => x && x.kind !== "RESULT"); } catch { return []; }
+}
+export async function listResults(n = 40) {
+  try { return (await getRedis().lrange(KEY, 0, CAP - 1)).map((x) => jparse(x)).filter((x) => x && x.kind === "RESULT").slice(0, n); } catch { return []; }
 }
 
 const lineNow = (g) => { const px = g.poly || {}; return { hs: px.spread ? px.spread.homeSpread : null, tl: px.total ? px.total.line : null, ml: px.ml ? px.ml.midHome / (px.ml.midHome + px.ml.midAway) : null }; };

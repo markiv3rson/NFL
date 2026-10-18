@@ -280,7 +280,7 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(depth === 0 && min === 0 && stray.length === 0, "stylesheet is well-formed (no half-cut rules; a stray fragment once hid the 'panel' rule and showed every tab at once)", { depth, min, stray });
   ok(/\.panel\s*\{\s*display:\s*none;?\s*\}/.test(css) && /\.panel\.on\s*\{\s*display:\s*block;?\s*\}/.test(css), "inactive panels are hidden, the active one shown");
   const panels = [...html.matchAll(/class="panel( on)?" id="panel-(\w+)"/g)].map((m) => [m[2], !!m[1]]), tabs = ["lines", "record", "models", "alerts"];
-  ok(!/class="tabs"/.test(html) && /id="menu-btn"/.test(html) && /id="shead-next"/.test(html) && /src="\/shell\.js"/.test(html) && /href="\/shell\.css"/.test(html), "merged site (10/17): no bottom tab bar; the shared menu button + header (logo vs logo · NEXT GAME · clock)");
+  ok(!/class="tabs"/.test(html) && !/id="menu-btn"/.test(html) && /id="shead-next"/.test(html) && /src="\/shell\.js"/.test(html) && /href="\/shell\.css"/.test(html), "merged site (10/17): no bottom tab bar; the shared menu button + header (logo vs logo · NEXT GAME · clock)");
   ok(tabs.every((t) => panels.some(([n]) => n === t)) && panels.length === 5 && panels.some(([n]) => n === "props") && panels.some(([n]) => n === "alerts") && panels.filter(([, on]) => on).length === 1 && panels.find(([, on]) => on)[0] === "lines", "every tab has a panel (plus the alerts panel) and only Game Lines starts open", panels);
   ok(/id="bets-sw"/.test(html) && /data-bv="mine"/.test(html) && /data-bv="model"/.test(html) && !/id="lab-sub"/.test(html) && /id="lab"/.test(html), "Bets tab: My bets | Model bets toggle and the model-bets list; the types are menu sub tabs (no docked strip)");
   ok(!/panel-td|Anytime TD|panel-lab/i.test(html) && /id="al-read"/.test(html) && !/id="al-chips"/.test(html), "no Anytime-TD / Model Picks panel; Alerts has Mark all read; the kinds are menu sub tabs (no docked strip) chips");
@@ -440,7 +440,7 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(await al.alertsFromSlate([{ ...pickGame(false), key: "X @ Y", inProgress: true }], T0 + 580e3) === 0, "alerts: games already under way are skipped");
   ok(await al.alertForResult({ tier: "pick", pct: 59.1, result: "win", label: "MIA +3", game: "MIA @ ORL", date: "2026-11-04", market: "spread", final: { away: 100, home: 101 } }, T0 + 640e3) === 1
     && await al.alertForResult({ tier: "test", pct: 70, result: "win", label: "x", game: "A @ B", date: "2026-11-04", market: "ml" }) === 0 && await al.alertForResult({ tier: "pick", pct: 50.3, result: "win", label: "y", game: "A @ B", date: "2026-11-04", market: "spread" }) === 0, "alerts: a graded green PICK alerts (a TEST or a 50% model side never does)");
-  const all = await al.listAlerts(); ok(all.length - before === 6 && all[0].kind === "RESULT" && all[0].t > all[1].t, "alerts: newest first", all.slice(0, 3).map((a) => a.kind));
+  const all = await al.listAlerts(), rs = await al.listResults(); ok(all.length - before === 5 && !all.some((a) => a.kind === "RESULT") && all[0].t > all[1].t && rs.length >= 1 && rs[0].kind === "RESULT", "alerts: newest first; RESULT lines go to the Bets tab (10/18)", all.slice(0, 3).map((a) => a.kind));
   const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
   ok(/\/api\/nba\/alerts/.test(app) && /Shell\.setCount\("nba", "alerts"/.test(app) && /alSeen/.test(app), "page: bell counts unread alerts and opens the Alerts panel"); }
 
