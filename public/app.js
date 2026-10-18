@@ -1311,7 +1311,9 @@ function clockParts(ms) {
   const d = Math.floor(ms / 864e5), h = Math.floor((ms % 864e5) / 36e5), m = Math.floor((ms % 36e5) / 6e4), s = Math.floor((ms % 6e4) / 1e3), p2 = (n) => String(n).padStart(2, "0");
   return (d ? [`${d}d`] : []).concat([...`${p2(h)}:${p2(m)}:${p2(s)}`]);
 }
-const flipSpans = (parts) => parts.map((p) => (p === ":" ? "<em>:</em>" : `<span><i class="sgrad">${esc(p)}</i></span>`)).join("");
+const flipSpans = (parts) => parts.map((p) => (p === ":" ? "<em>:</em>" : `<span${/d$/.test(p) ? ' class="d"' : ""}>${esc(p)}</span>`)).join("");   // the days span keeps a gap before the hours
+// one gradient run across the whole clock: every digit (and colon) shows its own slice of a gradient as wide as the clock (owner 10/18 night, sketch G)
+function clockRun(e) { const r = e.getBoundingClientRect(); if (!r.width) return; e.querySelectorAll("span, em").forEach((sp) => { const b = sp.getBoundingClientRect(); sp.style.backgroundSize = `${r.width}px 100%`; sp.style.backgroundPosition = `${r.left - b.left}px 0`; }); }
 // 10/18 night (owner): the header above each sport's tiles = "NFL NEXT GAME" + a flipping clock (live: "● NFL · LIVE NOW")
 function homeSection(sport, live, next, tiles) {
   const head = live ? `<div class="hsh2"><span class="lv"><i></i>${sport} · LIVE NOW</span></div>`
@@ -1346,13 +1348,15 @@ function renderHome() {
     out += homeSection("NBA", live.length > 0, nx ? { ts: Date.parse(nx.start) } : null, tiles);
   }
   $("home").innerHTML = out || '<div class="hempty">Loading…</div>';
+  document.querySelectorAll("#home .fclk").forEach(clockRun);
 }
 // the flip clock: a part that changed is replaced and flips (10/18 night, owner: "a flipping clock as their header")
 function homeClocks() {
   document.querySelectorAll("[data-hclk]").forEach((e) => {
     const all = clockParts(Number(e.dataset.hclk) - Date.now()), parts = all.filter((p) => p !== ":"), spans = e.querySelectorAll("span");
-    if (spans.length !== parts.length) { e.innerHTML = flipSpans(all); return; }
-    spans.forEach((sp, i) => { if (sp.textContent !== parts[i]) { sp.firstChild.textContent = parts[i]; sp.classList.remove("flip"); void sp.offsetWidth; sp.classList.add("flip"); } });
+    if (spans.length !== parts.length) { e.innerHTML = flipSpans(all); clockRun(e); return; }
+    spans.forEach((sp, i) => { if (sp.textContent !== parts[i]) { sp.textContent = parts[i]; sp.classList.remove("flip"); void sp.offsetWidth; sp.classList.add("flip"); } });
+    if (!e.dataset.run || e.dataset.run !== String(window.innerWidth)) { e.dataset.run = String(window.innerWidth); clockRun(e); }
   });
 }
 // countdown to the next game that has not started -> the header (10/17: [away logo] vs [home logo] · NEXT GAME · clock; the home screen has its own clocks)
