@@ -1,8 +1,7 @@
-// Alerts feed (the bell): a short newest-first list of "what just happened", NBA only. Four kinds:
+// Alerts feed (the bell): a short newest-first list of "what just happened", NBA only. Three kinds:
 //   PICK       a new PICK / LEAN appeared (regular season; preseason TEST picks never alert)
 //   LINE MOVE  a Polymarket line moved since the last time we told you (spread 1+ pt, total 2+ pts, moneyline 5+ cents)
 //   INJURY     a rotation player (10+ ppg) newly listed Out / Doubtful / Questionable
-//   RESULT     a PICK / LEAN was graded
 // Each job calls addAlert() when it notices a difference; the same id inside ttlH hours is skipped so a repeated snapshot never
 // re-alerts. Every call is wrapped so an alert problem can never break a snapshot or a grading run. Phone push is NOT built.
 import { getRedis, jparse } from "./redis";
@@ -20,12 +19,9 @@ export async function addAlert(a, now = Date.now()) {
     return 1;
   } catch { return 0; }
 }
-// 10/18 (owner): RESULT lines show at the top of the Bets tab (My bets), not in Alerts
+// Old RESULT lines (cut 10/18 with the Results page) stay hidden.
 export async function listAlerts(n = 100) {
   try { return (await getRedis().lrange(KEY, 0, n - 1)).map((x) => jparse(x)).filter((x) => x && x.kind !== "RESULT"); } catch { return []; }
-}
-export async function listResults(n = 40) {
-  try { return (await getRedis().lrange(KEY, 0, CAP - 1)).map((x) => jparse(x)).filter((x) => x && x.kind === "RESULT").slice(0, n); } catch { return []; }
 }
 
 const lineNow = (g) => { const px = g.poly || {}; return { hs: px.spread ? px.spread.homeSpread : null, tl: px.total ? px.total.line : null, ml: px.ml ? px.ml.midHome / (px.ml.midHome + px.ml.midAway) : null }; };
@@ -68,10 +64,4 @@ export async function alertsFromSlate(games, now = Date.now()) {
     await r.set(ikey, JSON.stringify([...new Set([...(had || []), ...listed.map((x) => x.k)])]), "EX", 4 * 86400).catch(() => {});
   }
   return n;
-}
-
-export async function alertForResult(p, now = Date.now()) {
-  if (!p || p.tier === "test" || !p.result || p.result === "void" || !(Number(p.pct) >= 56)) return 0;
-  const word = p.result === "win" ? "Won" : p.result === "loss" ? "Lost" : "Push";
-  return addAlert({ kind: "RESULT", game: p.game, id: `res|${p.date}|${p.game}|${p.market}`, ttlH: 72, title: `${word}: ${p.label} (${p.game})`, sub: p.final ? `Final ${p.final.away}–${p.final.home}.` : "" }, now);
 }

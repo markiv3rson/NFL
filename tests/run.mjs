@@ -66,7 +66,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(!("IND @ WAS" in out) && !("TEN @ BAL" in out), "live lines: games not started or already final are left out");
   ok(out["NE @ BUF"] === null, "live lines: no open Polymarket event -> null (shown as paused), not a stale number"); }
 // ---------- alerts feed
-{ const { addAlert, listAlerts, alertsFromRerun, alertsFromLines, alertResult } = await import("../lib/alerts.js");
+{ const { addAlert, listAlerts, alertsFromRerun, alertsFromLines } = await import("../lib/alerts.js");
   const g = { key: "PIT @ CLE", away: "PIT", home: "CLE" };
   ok(await addAlert(2026, { kind: "INJURY", game: g.key, title: "CLE: Jenkins ruled out" }) === 1 && await addAlert(2026, { kind: "INJURY", game: g.key, title: "CLE: Jenkins ruled out" }) === 0, "alerts: the same alert twice is kept once");
   const old = { homeMargin: 3.1, homeWinPct: 60, inj: { home: { players: [] }, away: { players: [] } }, fix: {}, wind: 5, outdoor: true };
@@ -78,8 +78,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(await alertsFromRerun(2026, { key: "A @ B", away: "A", home: "B" }, { homeMargin: 1.2, homeWinPct: 54, inj: {}, fix: {} }, { homeMargin: -1.5, homeWinPct: 47, inj: {}, fix: {} }) === 0, "alerts: model-move alerts were cut 10/13 (the model flipping sides adds nothing)");
   const lm = await alertsFromLines(2026, g, { spread: { homeSpread: 3 }, total: { line: 38.5 }, ml: { home: 0.40 } }, { spread: { homeSpread: 2.5 }, total: { line: 38.5 }, ml: { home: 0.41 } });
   ok(lm === 1 && (await listAlerts(2026))[0].title === "PIT @ CLE spread: CLE +3 → +2.5", "alerts: a half-point spread move, but not a 1-cent price move");
-  await alertResult(2026, { key: "TEN @ BAL", away: "TEN", home: "BAL", awayScore: 13, homeScore: 27 }, { ml: { label: "BAL ML", result: "W" }, spread: { label: "BAL -10.5", result: "W" } });
-  ok(!(await listAlerts(2026)).some((a) => a.kind === "RESULT") && (await listAlerts(2026))[0].title === "PIT @ CLE spread: CLE +3 → +2.5" && (await (await import("../lib/alerts.js")).listResults(2026))[0].title === "Final: TEN 13 @ BAL 27", "alerts (owner 10/18): a final is a RESULT line for the Bets tab, not an alert"); }
+  ok(await addAlert(2026, { kind: "RESULT", game: "TEN @ BAL", title: "Final: TEN 13 @ BAL 27" }) === 0 && !(await import("../lib/alerts.js")).alertResult && !(await import("../lib/alerts.js")).listResults, "alerts (cleanup 10/18): RESULT lines are no longer saved; the Final alert and the results reader are gone"); }
 // ---------- returning-from-injury label: last week's Out/Doubtful list comes from the same injury file
 { const { parseInjuryText } = await import("../lib/injuries.js");
   const csv = ["season,season_type,team,week,full_name,position,report_primary_injury,report_status,practice_primary_injury,practice_status",
@@ -638,13 +637,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       ok(a1 && a1.cost === 5.0018 && a1.result === "L" && Math.abs(a1.pl / a1.cost + 1) < 1e-9 && a2 && a2.cost === 5 && a2.toWin === 123 && a2.result === "W" && Math.abs(a2.pl - (a2.toWin - a2.cost)) < 1e-9,
         "bets: a settled bet's stake comes from its settlement (a loss never shows more than -100% of its stake)", { a1, a2 }); }
     globalThis.fetch = realFetch; resetGamesCache(); await R.del("mybets:ledger"); }
-  { // weekly recap text, hand-worked
-    const { weekRecap } = await import("../lib/grade.js");
-    const recs = [ { ml: { result: "W" }, spread: { basis: "model", result: "L" }, total: { basis: "model", result: "W" }, td: [ { fair: 40, scored: true, played: true }, { fair: 20, scored: false, played: true }, { fair: 90, scored: true, played: false }, { fair: 50, scored: false } ] },
-      { ml: { result: "L" }, spread: { basis: "model", result: "W" }, total: { basis: "stats", result: "L" }, td: [] }, { ml: { result: "W" }, spread: null, total: { basis: "model", result: "P" }, td: [{ fair: 10, scored: false, played: true }] } ];
-    const r = weekRecap(4, recs);
-    ok(r.title === "Week 4 recap: moneyline 2–1 · spread side 1–1 · total side 1–0" && r.sub === "TDs: 1 of 3 · exp 0.7", "weekly recap: records by model, touchdowns vs expected (players who did not play left out)");
-    ok(weekRecap(4, []) === null && weekRecap(4, null) === null, "weekly recap: nothing graded gives no recap"); }
+  ok(!("weekRecap" in (await import("../lib/grade.js"))), "weekly recap alert removed (cleanup 10/18: RESULT lines are not saved)");
   { // final but ungraded games are reported with the reason
     const { ungradedFinals } = await import("../lib/grade.js"); const { SEASON, resetGamesCache } = await import("../lib/games.js"); const R = globalThis.__TEST_REDIS__; const realFetch = globalThis.fetch;
     const H = "season,game_type,week,gameday,gametime,away_team,away_score,home_team,home_score,roof,stadium,location,surface\n", g = (a, as, h, hs, d) => `${SEASON},REG,4,${d},13:00,${a},${as},${h},${hs},o,s,Home,g\n`;
@@ -778,6 +771,36 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const wk = await R.hgetall(`winners:${SEASON}:4`);
     ok(!wk["LAC @ SEA"] && JSON.parse(wk["DEN @ SF"]).result === "W", "winners: a stored 95% road pick that doesn't fit the closing spread is removed; a real one is graded");
     globalThis.fetch = realFetch; resetGamesCache(); for (const k of await R.keys(`*${SEASON}:4*`)) await R.del(k); }
+  { // 10/18 (owner: "fix the gaps"): a parlay type added after the week's save is added once, before its games; a graded game missing its TD list gets it once
+    const P = await import("../lib/paper.js"), { getJSON, setJSON } = await import("../lib/redis.js"), R = globalThis.__TEST_REDIS__;
+    const mk = (k, a, h, fair) => ({ key: k, away: a, home: h, started: false, final: false, kickoff: "2099-10-18T17:00:00Z", poly: { ml: { home: 0.7, away: 0.32 } }, td: [{ player: a + ".RB", team: a, pos: "RB", fair, price: fair / 100 }, { player: h + ".RB", team: h, pos: "RB", fair: fair - 5, price: (fair - 5) / 100 }] });
+    const data = { games: [mk("A @ B", "A", "B", 60), mk("C @ D", "C", "D", 58), mk("E @ F", "E", "F", 56), mk("G @ H", "G", "H", 54), { ...mk("I @ J", "I", "J", 70), started: true }] };
+    const old = { strategy: "leg4_fav", legs: [{ game: "A @ B", kind: "ml", team: "B", price: 0.7 }] };
+    await setJSON("paper:2097:6", { t: "2026-10-17T14:00:00Z", season: 2097, week: 6, parlays: [old] });
+    const miss1 = await P.paperMissingLate(2097, 6), n1 = await P.recordPaper(2097, 6, data), rec1 = await getJSON("paper:2097:6");
+    const n2 = await P.recordPaper(2097, 6, data), miss2 = await P.paperMissingLate(2097, 6);
+    ok(miss1 && n1 === 1 && rec1.parlays.length === 2 && JSON.stringify(rec1.parlays[0]) === JSON.stringify(old) && rec1.parlays[1].strategy === "leg4_td4" && rec1.parlays[1].addedAt && !rec1.parlays.some((p) => p.strategy === "leg4_fav_td") && n2 === 0 && !miss2,
+      "weekly parlays: the late 4-scorers type is added once (saved parlays untouched, a type that just had no legs at the save stays out)", rec1.parlays.map((p) => p.strategy));
+    await setJSON("paper:2097:7", { t: "2026-10-18T14:00:00Z", season: 2097, week: 7, parlays: [old] });
+    await setJSON("paper:2097:8", { t: "2026-10-17T14:00:00Z", season: 2097, week: 8, parlays: [old] });
+    const d8 = { games: data.games.map((g) => (g.key === "C @ D" ? { ...g, started: true } : g)) };
+    const n7 = await P.recordPaper(2097, 7, data), n8 = await P.recordPaper(2097, 8, d8), r8 = await getJSON("paper:2097:8");
+    ok(!(await P.paperMissingLate(2097, 7)) && n7 === 0 && (n8 === 0 || r8.parlays.every((p) => p.strategy !== "leg4_td4" || p.legs.every((l) => l.game !== "C @ D"))), "weekly parlays: nothing added to a week saved after the type existed; never a leg from a started game");
+    for (const k of await R.keys("paper:2097:*")) await R.del(k);
+    const g = await import("../lib/grade.js"), { SEASON, resetGamesCache } = await import("../lib/games.js"), realFetch = globalThis.fetch, oldUrl = process.env.MODEL_SERVICE_URL;
+    process.env.MODEL_SERVICE_URL = "https://svc.test";
+    const H = "season,game_type,week,gameday,gametime,away_team,away_score,home_team,home_score,spread_line,total_line,roof,stadium,location,surface\n";
+    resetGamesCache(); globalThis.fetch = async (u) => (String(u).includes("games.csv") ? { ok: true, text: async () => H + `${SEASON},REG,3,2026-09-28,20:15,PHI,7,CHI,27,-3,44.5,o,s,Home,g\n` }
+      : String(u).includes("/td-scorers") ? { ok: true, json: async () => ({ ok: true, games: { "PHI @ CHI": ["D.Swift"] }, teams: { "PHI @ CHI": { "D.Swift": ["CHI"] } }, counts: { "PHI @ CHI": { "D.Swift": 1 } }, first: { "PHI @ CHI": "D.Swift" } }) }
+      : { ok: false, status: 404, json: async () => ({}), text: async () => "" });
+    await setJSON(`model:${SEASON}:3`, { games: {}, td: { "PHI @ CHI": { away: [{ name: "S.Barkley", pos: "RB", fair: 48 }], home: [{ name: "D.Swift", pos: "RB", fair: 52 }] } } });
+    const before = { v: 2, game: "PHI @ CHI", awayScore: 7, homeScore: 27, spread: { basis: "model", label: "CHI -3", result: "W", clvPts: 0 }, lineChecked: true, mlChecked: true, clvChecked: true, mlModelChecked: true };
+    await setJSON(`res:${SEASON}:3:PHI @ CHI`, before);
+    await g.gradeWeek(SEASON, 3); const after = await getJSON(`res:${SEASON}:3:PHI @ CHI`);
+    ok(after.tdBackfill && after.td && after.td.length === 2 && after.td.find((p) => p.player === "D.Swift").scored === true && after.td.find((p) => p.player === "S.Barkley").scored === false && JSON.stringify(after.spread) === JSON.stringify(before.spread),
+      "grading: a game graded without its TD list gets it once (scored / not scored), nothing else re-graded", after);
+    globalThis.fetch = realFetch; resetGamesCache(); if (oldUrl === undefined) delete process.env.MODEL_SERVICE_URL; else process.env.MODEL_SERVICE_URL = oldUrl;
+    for (const k of await R.keys(`*${SEASON}:3*`)) await R.del(k); }
   { // Anytime TD tab: the four likeliest scorers per team, everyone one tap away
     const box = { innerHTML: "" }, hdr = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "td" ? box : id === "td-header" ? hdr : old(id));
     const pl = (team, i) => ({ player: `${team}.P${i}`, team, pos: "RB", fair: 50 - i * 5, price: 0.5, bid: 0.48, teamRank: i + 1, game: "A @ B", flags: [] });
@@ -949,13 +972,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { // confidence: angles agreeing on one side (10/9)
     const g = { ...tg, combos: [{ pick: "TB +4.5", why: "a", hit: 58, n: 2535 }, { pick: "TB +4.5", why: "b", hit: 59, n: 2535 }, { pick: "Under 41.5", why: "c", hit: 57, n: 2580 }] };
     ok(/>TB \+4\.5</.test(ctx.T.tile(g)) && !/×2/.test(ctx.T.tile(g)), "tile chip: the game's best straight pick only"); }
-  { // news lag alert (10/9)
-    const { alertsTdJump } = await import("../lib/alerts.js"), { SEASON } = await import("../lib/games.js"); const { getRedis: gR } = await import("../lib/redis.js"); await gR().del(`alerts:${SEASON}`).catch(() => {});
-    const g = { key: "A @ B", away: "A", home: "B" };
-    const n = await alertsTdJump(SEASON, g, { away: [], home: [{ name: "B.Back", pos: "RB", fair: 20 }, { name: "B.QB", pos: "QB", fair: 10 }] }, { away: [], home: [{ name: "B.Back", pos: "RB", fair: 35 }, { name: "B.QB", pos: "QB", fair: 30 }] },
-      { "B.Back anytime touchdown?": { ask: 0.22 } });
-    const n2 = await alertsTdJump(SEASON, g, { away: [], home: [{ name: "B.Back", pos: "RB", fair: 20 }] }, { away: [], home: [{ name: "B.Back", pos: "RB", fair: 35 }] }, { "B.Back anytime touchdown?": { ask: 0.33 } });
-    ok(n === 0 && n2 === 0, "news lag (owner 10/18): TD JUMP alerts are cut -- nothing added"); }
+  { const A = await import("../lib/alerts.js"); ok(!A.alertsTdJump && !A.alertsTdNo && !A.alertsQbJump && !A.tdNoGapServer, "alerts (cleanup 10/18): the TD JUMP, TD NO and QB TD code is gone (those kinds were cut 10/18)"); }
   { // export includes line history (10/9)
     const R = globalThis.__TEST_REDIS__;
     await R.rpush("snap:2026:5:A @ B", JSON.stringify({ t: "2026-10-06T12:00:00Z", src: "schedule", poly: { spread: { homeSpread: -6.5, home: 0.5, away: 0.5, extra: 1 }, total: { line: 44.5, over: 0.5, under: 0.5 } } }),
@@ -1034,14 +1051,6 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const { overlayEspnKickoffs, resetKickCache } = await import("../lib/espnFinals.js"); const R = globalThis.__TEST_REDIS__;
     resetKickCache(); await overlayEspnKickoffs([{ key: "CHI @ GB", final: false, kickoff: new Date(Date.now() + 86400e3).toISOString() }], Date.now(), async () => { const e = new Error("t"); e.name = "TimeoutError"; throw e; });
     const kc = JSON.parse(await R.get("kickcheck")); ok(kc && kc.ok === false && /timed out/.test(kc.error), "kickoff check: a failure is recorded"); await R.del("kickcheck"); resetKickCache(); }
-  { // signal alerts: TD "No" mark, starting QB's TD chance jumping
-    const { alertsTdNo, alertsQbJump, listAlerts } = await import("../lib/alerts.js"), R = globalThis.__TEST_REDIS__;
-    const g = { key: "TB @ DAL", away: "TB", home: "DAL" };
-    await alertsTdNo(2032, g, [{ player: "G.Pickens", team: "DAL", fair: 30, price: 0.42, bid: 0.4 }, { player: "C.Lamb", team: "DAL", fair: 46, price: 0.49, bid: 0.47 }]);
-    await alertsQbJump(2032, g, { away: [{ name: "B.Mayfield", pos: "QB", fair: 13 }], home: [{ name: "D.Prescott", pos: "QB", fair: 10 }] }, { away: [{ name: "J.Daniels", pos: "QB", fair: 25 }], home: [{ name: "D.Prescott", pos: "QB", fair: 12 }] });
-    const L = await listAlerts(2032), k = (x) => L.filter((a) => a.kind === x);
-    ok(k("TD NO").length === 0 && k("QB TD").length === 0 && L.length === 0, "alerts (owner 10/18): TD NO and QB TD are cut -- nothing added");
-    for (const kk of await R.keys("*2032*")) await R.del(kk); }
   { // blended touchdown chance and "agrees with the market"
     const b1 = ctx.T.tdBlend({ fair: 40, price: 0.30, bid: 0.28 }), b2 = ctx.T.tdBlend({ fair: 40, price: 0.30, bid: 0.01, thin: true });
     ok(b1 && Math.abs(b1.mid - 29) < 1e-9 && Math.abs(b1.blend - 34.5) < 1e-9 && b2 === null && ctx.T.tdBlend({ fair: 40, price: 0.3, bid: 0.28, stale: true }) === null && ctx.T.tdBlend({ fair: 40, price: null }) === null, "touchdown blend: half the model, half the market mid, only on a real market");
@@ -1113,7 +1122,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     await R.del("alerts:2099"); await R.set("paper:2099:4:IND @ WAS", JSON.stringify({ season: 2099, week: 4, game: "IND @ WAS", parlays: [sg] }));
     await gradePaper(2099, 4, [{ key: "IND @ WAS", homeScore: 24, awayScore: 26 }], async () => ["Q.Scorer"]); await gradePaper(2099, 4, [{ key: "IND @ WAS", homeScore: 24, awayScore: 26 }], async () => ["Q.Scorer"]);
     const al = (await listAlerts(2099)).filter((a) => a.kind === "RESULT");
-    ok(al.length === 0 && (await (await import("../lib/alerts.js")).listResults(2099)).some((a) => /Model parlay hit/.test(a.title)), "alerts (owner 10/18): a decided model parlay is a RESULT line for the Bets tab, not an alert");
+    ok(al.length === 0 && (await R.lrange("alerts:2099", 0, -1)).length === 0 && JSON.parse(await R.get("paper:2099:4:IND @ WAS")).parlays[0].result === "W", "alerts (cleanup 10/18): a decided model parlay is graded and saves no RESULT line");
     for (const k of await R.keys("paper:2099:*")) await R.del(k); await R.del("alerts:2099");
     // the pick list shows the card's pick
     vm.runInContext(`S = { week: 4, games: [ { key: "LA @ PHI", away: "LA", home: "PHI", started: false, winPct: 38.1, model: { homeMargin: -3, total: 43.5, calHomeCover: 48.8, calUnder: 50.5 }, poly: { ml: { home: 0.42, away: 0.6 }, spread: { homeSpread: 3, home: 0.51, away: 0.51 }, total: { line: 43.5, over: 0.51, under: 0.51 } } } ], winners: null, picks: null }`, ctx);
@@ -1292,10 +1301,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(!/class="tabs"/.test(html) && !/class="tabs"/.test(nbaHtml) && !/id="lever"/.test(html) && !/id="lever"/.test(nbaHtml), "no bottom tab bar and no lever on either page");
   ok(/class="panel on" id="panel-home"/.test(html) && /id="shead-home"><span class="sgrad">SLATEZZ</.test(html) && !/shead-next/.test(html) && !/shead/.test(nbaHtml) && !/id="menu-btn"/.test(html) && !/id="menu-btn"/.test(nbaHtml) && /getElementById\("shead"\); if \(sh\) sh\.style\.display = home \? "" : "none"/.test(shell), "home opens first with SLATEZZ; the NEXT GAME header strip is gone from every page (owner 10/18 night), no menu button");
   ok(/src="\/shell\.js"/.test(html) && /src="\/shell\.js"/.test(nbaHtml) && /href="\/shell\.css"/.test(html) && /href="\/shell\.css"/.test(nbaHtml), "both pages load the one shared menu / header");
-  ok(/\.chips\.dock \{ position:fixed; left:0; right:0; bottom:0;/.test(html) && /\.chips\.dock \{ position:fixed; left:0; right:0; bottom:0;/.test(nbaHtml), "docked sub tabs sit at the very bottom on both pages");
+  ok(!/chips dock|\.chips\.dock/.test(html + nbaHtml), "no docked sub-tab strips left (cleanup 10/18: the menu holds the sub tabs)");
   const sctx = { window: {}, document: {}, location: { hash: "" }, Date, Math, Number, String, JSON, Promise, Object, Array }; sctx.window = sctx; vm.createContext(sctx); vm.runInContext(shell, sctx);
   const Sh = sctx.Shell, H = 36e5, M = 6e4;
-  ok(Sh.clockTxt(25 * H + 7 * M + 5000) === "1d 1h 7m" && Sh.clockTxt(2 * H + 14 * M) === "2h 14m" && Sh.clockTxt(26 * M + 30000) === "26m" && Sh.clockTxt(45000) === "45s" && Sh.clockTxt(-5) === "0s", "header clock text: 1d 1h 7m / 2h 14m / 26m / 45s");
+  ok(!Sh.clockTxt && !Sh.setNext && !/setNext|clockTxt|"lever"|rerunModel|weekline/.test(shell + readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8")), "cleanup 10/18: no NEXT GAME header strip, lever or old header-line code left");
   const items = [...shell.matchAll(/\["(\w+)", "([^"]+)", "\w+"\]/g)].map((m) => m[2]);
   ok(JSON.stringify(items) === JSON.stringify(["Alerts", "Game Lines", "Anytime TD", "Props", "Bets", "Alerts", "Game Lines", "Props", "Bets"]) && /MODEL ANALYSIS/.test(shell) && /item\("nfl", "models", "NFL", "bars"\)\}\$\{item\("nba", "models", "NBA", "bars"\)/.test(shell) && !/NFL Model|NBA Model/.test(shell), "menu: NFL (Alerts, Game Lines, Anytime TD, Props, Bets), NBA (Alerts, Game Lines, Props, Bets), MODEL ANALYSIS (NFL, NBA)", items);
   ok(/fetch\("\/api\/rerun", \{ method: "POST" \}\)/.test(shell) && /fetch\("\/api\/nba\/snapshot"/.test(shell), "the menu's refresh reruns both models (NFL /api/rerun, NBA /api/nba/snapshot)");
@@ -1344,20 +1353,20 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(/\/api\/nba\/closes\?since=/.test(app) && /c\.hs != null \? Number\(c\.hs\)/.test(app), "home: an NBA game without a sportsbook line shows Polymarket's last line before tip-off"); }
 { const { addAlert, listAlerts } = await import("../lib/alerts.js"), R = globalThis.__TEST_REDIS__; await R.del("alerts:2041");
   for (const kind of ["RESULT", "TD NO", "TD JUMP", "QB TD", "WEATHER"]) await addAlert(2041, { kind, game: "A @ B", title: kind });
-  const L = await listAlerts(2041), { listResults } = await import("../lib/alerts.js"), RS = await listResults(2041);
-  ok(L.length === 1 && L[0].kind === "WEATHER" && RS.length === 1 && RS[0].kind === "RESULT", "alerts (owner 10/18): Alerts = the top 5 kinds; RESULT lines go to the Bets tab (listResults); TD No, TD jump, QB TD are never added");
+  const L = await listAlerts(2041), RAW = await R.lrange("alerts:2041", 0, -1);
+  ok(L.length === 1 && L[0].kind === "WEATHER" && RAW.length === 1, "alerts: Alerts = Injury, QB change, Line move, Weather; RESULT, TD No, TD jump, QB TD are never added (owner 10/18, cleanup 10/18)");
   const apj = readFileSync(new URL("../pages/api/alerts.js", import.meta.url), "utf8"), nap = readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8");
   const app0 = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
-  ok(/req\.query\.results === "1"/.test(apj) && /listResults\(SEASON, 40\)/.test(apj) && !/results=1|renderResults|resultsBlock|record-results|"results"/.test(app0) && !/results=1|renderResults|resultsBlock|record-results|"results"/.test(nap) && !/RESULT: \["Result"/.test(nap)
+  ok(!/results/.test(apj) && !/results/.test(readFileSync(new URL("../pages/api/nba/alerts.js", import.meta.url), "utf8")) && !/results=1|renderResults|resultsBlock|record-results|"results"/.test(app0) && !/results=1|renderResults|resultsBlock|record-results|"results"/.test(nap) && !/RESULT: \["Result"/.test(nap)
     && !/record-results/.test(readFileSync(new URL("../public/index.html", import.meta.url), "utf8")) && !/record-results/.test(readFileSync(new URL("../public/nba/index.html", import.meta.url), "utf8")),
-    "RESULT lines (owner 10/18): kept out of Alerts, saved by listResults, shown NOWHERE -- the Results page under Bets was built and deleted the same day (both sports)");
+    "RESULT lines (owner 10/18): no Results page, no results reader, not saved (cleanup 10/18; both sports)");
   const sh2 = readFileSync(new URL("../public/shell.js", import.meta.url), "utf8"), sc2 = readFileSync(new URL("../public/shell.css", import.meta.url), "utf8");
   for (const f of ["../public/app.js", "../public/nba/app.js"]) { const a = readFileSync(new URL(f, import.meta.url), "utf8"); ok(!/slotify|rollReels|ROLL_ON_OPEN/.test(a) && /function slotMoney\(root/.test(a) && /\/\\\$\\d\/\.test\(n\.nodeValue\)/.test(a) && /split\(\/\(\\\$\\d\[\\d,\]\*\(\?:\\\.\\d\+\)\?\)\/\)/.test(a) && /querySelectorAll\("\.reelpct\.money\[data-v\]"\)/.test(a) && (a.match(/slotMoney\(\$\(/g) || []).length === 3, `${f}: the slot roll runs only on dollar amounts (owner 10/18 night), on game open, page open and first load`); }
   for (const f of ["../public/index.html", "../public/nba/index.html"]) { const h = readFileSync(new URL(f, import.meta.url), "utf8"); ok(/\.tile \.tmid \.mvt > span \{ display:block/.test(h) && !/\.reelpct \.rd/.test(h) && /\.reelpct\.money \.rd > span \{ display:block; transition:transform/.test(h), `${f}: move-line rule hits only its own lines; reel styles only for money`); }
   ok(/import \{ BUILD \} from "\.\.\/\.\.\/lib\/redis"/.test(readFileSync(new URL("../pages/api/build.js", import.meta.url), "utf8")) && /Cache-Control", "no-store"/.test(readFileSync(new URL("../pages/api/build.js", import.meta.url), "utf8")) && /fetch\("\/api\/build", \{ cache: "no-store" \}\)/.test(sh2) && /else if \(d\.build !== Shell\.build\) Shell\.stale = true;/.test(sh2) && /if \(Shell\.stale\) location\.reload\(\); else Shell\.buildCheck\("visible"\)/.test(sh2) && /if \(Shell\.stale\) \{ location\.replace\(u\.href\); return; \}/.test(sh2) && /setInterval\(\(\) => \{ if \(!document\.hidden\) Shell\.buildCheck\("poll"\); \}, 60e3\)/.test(sh2) && /Shell\.buildWatch\(\);/.test(sh2), "self-reload (owner 10/18 night): /api/build every minute; a newer build reloads the page when the app comes back to the front or on the next page switch");
   ok(/history\.replaceState\(null, "", u\.hash \|\| "#"\); window\.dispatchEvent\(new HashChangeEvent\("hashchange"\)\)/.test(sh2) && /else location\.replace\(u\.href\)/.test(sh2) && /e\.preventDefault\(\); Shell\.close\(\);/.test(sh2) && /location\.replace\("\/nba\/index\.html#game="/.test(readFileSync(new URL("../public/app.js", import.meta.url), "utf8")) && !/location\.href = "\/nba/.test(readFileSync(new URL("../public/app.js", import.meta.url), "utf8")), "menu (owner 10/18 night): pages switch without history entries, so the phone's back swipe has nothing to walk through");
   ok(/id="menu-grip"/.test(sh2) && /\.mgrip \{ position:fixed; left:0; top:50%/.test(sc2) && !/\.mbtn/.test(sc2) && /top:50%; bottom:auto; max-height:100dvh; transform:translate\(-104%,-50%\)/.test(sc2) && /body\.menu-open \.mdraw \{ transform:translate\(0,-50%\); \}/.test(sc2) && /sx <= 44/.test(sh2), "menu (owner 10/18): no ☰; a grip on the left edge opens it; the phone menu is centered top to bottom");
-  const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8"); ok(/const ALK = \{ INJURY: \["Injury", "var\(--red\)"\], "QB CHANGE": \["QB change", "#fff"\], "LINE MOVE": \["Line move", "#fff"\], WEATHER: \["Weather", "#fff"\] \};/.test(app) && /ALK\[a\.kind\] && \(ALFILTER === "all"/.test(app), "alerts page: the four kinds + All; unknown kinds hidden"); await R.del("alerts:2041"); }
+  const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8"); ok(/const ALK = \{ INJURY: \["Injury", "var\(--red\)"\], "QB CHANGE": \["QB change", "#fff"\], "LINE MOVE": \["Line move", "#fff"\], WEATHER: \["Weather", "#fff"\] \};/.test(app) && /ALERTS\.filter\(\(a\) => ALK\[a\.kind\]\)/.test(app) && !/ALFILTER/.test(app), "alerts page: the four kinds; unknown kinds hidden"); await R.del("alerts:2041"); }
 // ---------- 10/17: My bets and Model bets are separate pages under Bets in the menu (NFL + NBA)
 { const sh = readFileSync(new URL("../public/shell.js", import.meta.url), "utf8");
   { const css = readFileSync(new URL("../public/shell.css", import.meta.url), "utf8"), ph = css.slice(css.indexOf("@media (max-width:500px)"));
@@ -1381,7 +1390,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { const nb = readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8");
     ok(/innerHTML = \(S\.games\.length \? linesByDay\(\)/.test(nb) && /class="tiles stack"/.test(nb) && /function nbaSlot\(/.test(nb) && /id="mb-day"/.test(nb) && /\.tiles\.stack \{/.test(readFileSync(new URL("../public/nba/index.html", import.meta.url), "utf8")), "NBA matches NFL: Game Lines stacked under day headers, Model bets time headers, My bets day drop-down"); }
   for (const f of ["../public/app.js", "../public/nba/app.js"]) { const a2 = readFileSync(new URL(f, import.meta.url), "utf8");
-    ok(/\^alerts-/.test(a2) && /"alerts-all", \.\.\.Object\.keys\(ALK\)\.map\(\(k\) => `alerts-\$\{alSlug\(k\)\}`\)/.test(a2) && !/al-chips/.test(a2) && !/setCount\("n(fl|ba)", `alerts-/.test(a2), `${f}: an old #alerts-<kind> link still opens Alerts; no docked kind strip, no per-kind counts (owner 10/18 night: one Alerts item)`); }
+    ok(!/alerts-|alSlug|ALFILTER/.test(a2) && !/al-chips/.test(a2), `${f}: one Alerts page -- no kind sub tabs, no kind filter, no docked kind strip (owner 10/18 night; cleanup 10/18)`); }
   ok(/nfl: \[\["ou", "Over\/Under"\], \["style", "4 Leg \(My Style\)"\], \["pts", "4 Leg \(Bought\)"\], \["4", "4 Leg"\], \["3", "3 Leg"\], \["2", "2 Leg"\], \["upset", "Upset"\], \["diff", "Different Game Parlays"\]\]/.test(sh) && /nba: \[\["sgp", "Same game"\], \["sgp_pts", "Bought"\], \["best4", "Parlay"\], \["fav4", "Favorites"\]\]/.test(sh) && /#modelbets-\$\{k\}/.test(sh), "menu: the Model bets types are sub tabs under Model bets (NFL: Over/Under first, then the owner's order and names; NBA)");
   { const a = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
     ok(/function linesBg\(\)/.test(a) && /classList\.toggle\("lines-on"/.test(a) && /html\.lines-on \.pagewm \{ background:[^}]*url\(\/nfl-bg\.jpg\?v=3\)/.test(readFileSync(new URL("../public/index.html", import.meta.url), "utf8")), "NFL pages: the NFL RedZone picture (10/18) behind every page but home and a game page, cards see-through");

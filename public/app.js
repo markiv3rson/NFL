@@ -68,7 +68,6 @@ function injLine(g, kind) {
   const one = (team, t) => (t.pts ? `${team} ${t.pts.toFixed(1)} (${who(t)}${t.capped ? ", capped" : ""})` : `${team} 0`);
   return `Injuries: ${one(g.home, inj.home)} · ${one(g.away, inj.away)}`;
 }
-const injApplied = (g, kind) => !!(g.model && g.model.inj && (kind === "total" ? Math.abs(g.model.inj.total || 0) >= 0.05 : (g.model.inj.home.players.length || g.model.inj.away.players.length)));
 // This season's record for the pick's type (10/9).
 function recLine(r) { return r && r.w + r.l ? `<div class="s" style="margin-top:6px">This season: <b>${r.w}–${r.l}</b></div>` : ""; }   // nothing until a pick of this kind is graded (10/12: "0–0" was noise)
 // Line check (10/9): the pick's line vs the week's first saved line for the same side; better or worse number since it opened.
@@ -85,16 +84,6 @@ function lineCheck(g, kind, pick) {
   if (!isFinite(open) || Math.abs(now - open) < 0.5) return "";
   const lab = (x) => (kind === "total" ? `${m[1]} ${x}` : `${t[1]} ${x > 0 ? "+" : ""}${x}`);
   return `<div class="s ${better ? "g" : "y"}" style="margin-top:4px">${better ? "✓" : "⚠"} Line moved: opened ${esc(lab(open))}, now ${esc(lab(now))} · ${better ? "better number now" : "worse number now"}</div>`;
-}
-// 10/14 (owner): another green rule takes the OTHER side of the same market (e.g. ATL +3.5 KEY NUMBER vs CHI -2.5 BOUNCE BACK) -> say so
-// 10/14 (owner, "D"): warn when a pick costs more than it wins -- over time that loses money even if the win rate holds.
-// Price = the pick's own price (bought-point lines) or Polymarket's main line when the pick sits on it.
-function pickPrice(g, P) {
-  if (P.price > 0 && P.price < 1) return P.price;
-  const m = String(P.pick).match(/^(\S+) ([+-]?\d+(?:\.\d+)?)$/), sp = g.poly && g.poly.spread, to = g.poly && g.poly.total;
-  if (/^Over|^Under/.test(P.pick)) { const ln = Number(String(P.pick).split(" ")[1]); return to && Number(to.line) === ln ? (/^Over/.test(P.pick) ? to.over : to.under) : null; }
-  if (!m || !sp) return null; const home = m[1] === g.home, main = home ? sp.homeSpread : -sp.homeSpread;
-  return Number(m[2]) === Number(main) ? (home ? sp.home : sp.away) : null;
 }
 // 10/14 (owner: "organize the cards, too much noise"): the card keeps the model number, the PICK + %, one short reason;
 // everything else (without-the-points %, this rule's record, line moved, cost warning) sits behind a "More" tap.
@@ -115,7 +104,6 @@ function cardOf(g, kind) {
 }
 const clsOf = (hit) => (hit >= 56 ? "g" : hit >= 53 ? "lg" : "y");   // 10/15 (owner): colors by win rate only
 const hitTxt = (hit, cls) => `${cls === "g" ? Math.round(hit) : Math.floor(hit)}%`;
-const cushTxt = (c) => (c == null ? "" : `${c > 0 ? "+" : c < 0 ? "−" : ""}${Math.abs(Math.round(c))}`);
 const ptsWord = (n) => (n === 0 ? "main" : `${n} pt${n === 1 ? "" : "s"}`);   // short, so a list row fits on one line (owner 10/15)
 function cardBody(g, kind, C) {
   const x = C.plain, p = C.pts;
@@ -272,7 +260,6 @@ const LOGO_OVERRIDES = { WAS: "https://raw.githubusercontent.com/ajreinhard/data
 const logoUrl = (team) => (team ? LOGO_OVERRIDES[team] || `https://a.espncdn.com/i/teamlogos/nfl/500/${team}.png` : "");
 // Team logo next to team names on every card (game header + TD team headers). Same logo source as the TD rows.
 function tlogo(team) { return team ? `<img class="tlogo" src="${logoUrl(team)}" alt="" onerror="this.style.display='none'">` : ""; }
-function matchup(g) { return `${g.away} @ ${g.home}`; }
 const retPill = (r) => (r.returning ? (r.returningState === "practicing" ? ' <span class="pill p-g" style="padding:0 6px;font-size:10px">↩ RETURNING</span>' : ' <span class="pill p-y" style="padding:0 6px;font-size:10px">↩ WAS OUT · NOT PRACTICING</span>') : "");
 // Blended touchdown chance (10/5): half the model's number, half the market's mid price, only on a real market (a bidder within 5c of the ask).
 // On 123 real-market players (Weeks 3-4) the 50/50 mix scored slightly better than either alone (0.2154 vs model 0.2158, market 0.2174):
@@ -404,7 +391,7 @@ function rollMoney(root) {
     setTimeout(() => { if (el.parentNode && el.replaceWith) el.replaceWith(document.createTextNode(v)); else el.textContent = v; }, 1700);   // back to plain text once it lands
   });
 }
-const SLOT_SKIP = ".reelpct,.cdn,.stamp,.mreel,.fclk,script,style,input,textarea,select,svg";
+const SLOT_SKIP = ".reelpct,.stamp,.fclk,script,style,input,textarea,select,svg";
 function slotMoney(root, max = 120) {
   if (REDUCE || !root || typeof document === "undefined" || !document.createTreeWalker) return;
   const walk = document.createTreeWalker(root, 4), nodes = [];
@@ -816,19 +803,6 @@ async function loadRecord(sync = false) {
     if (sync && mb.sync) toast(mb.sync.ok ? `Synced ${mb.sync.positions} positions.` : `Sync: ${mb.sync.note}`);
   } catch (e) { toast("Record failed: " + e.message, 10000); }
 }
-// ---------- header / load / buttons ----------
-function weekline() {
-  const ks = S.games.map((g) => new Date(g.kickoff)).sort((a, b) => a - b), f = (d) => d.toLocaleString(undefined, { month: "short", day: "numeric" });
-  // Week spanning two months (e.g. Sep 28 – Oct 2): repeat the month; before, it read "Sep 28–2".
-  const a = ks[0], z = ks[ks.length - 1];
-  const range = ks.length ? (a.getMonth() === z.getMonth() ? `${f(a)}–${z.getDate()}` : `${f(a)} – ${f(z)}`) : "";
-  const m = S.meta || {};
-  const round = { 19: "Wild Card", 20: "Divisional round", 21: "Conference Championships", 22: "Super Bowl" }[S.week];
-  const live = S.games.some((g) => !g.started && g.poly);   // 10/14 header: "LINES LIVE" while Polymarket has open lines
-  if ($("hero-wk")) $("hero-wk").textContent = `${live ? "Lines live · " : ""}${round || `Week ${S.week}`} · ${range}`.toUpperCase();
-  const hu = $("hero-upd"); if (!hu) return; const detail = `Updated (your time): Polymarket ${clock(m.lastSnapshot)} · sportsbooks ${clock(S.booksAt)} · model ${clock(S.modelRunAt)}`;
-  hu.textContent = `Model ${clock(S.modelRunAt)} ›`; hu.onclick = () => toast(detail, 8000);   // 10/14: the lever reruns the model, so it shows the model's time; tap for all three
-}
 const hitCls = (h) => (h == null ? "dim" : h >= 0.55 ? "g" : h >= 0.5 ? "y" : "r");   // green 55%+, amber 50-55%, red under 50%
 function statTile(label, w, l, hit, sub) {
   return `<div class="stat"><div class="k">${label}</div><div class="v ${hitCls(hit)}">${hit == null ? "—" : `${w}–${l}`}</div><div class="k2">${hit == null ? "—" : `${Math.round(hit * 100)}% ${sub}`}</div></div>`;
@@ -974,7 +948,7 @@ async function loadLive() {
     if (d.ok) { LIVE = d.games || {}; LIVE_SC = d.scores || {}; LIVE_T = d.t; if ($("panel-home").classList.contains("on")) renderHome(); else if (DETAIL) refreshDetail(); else renderLines(); } } catch {}
 }
 function liveLoop() { clearTimeout(liveLoop._h); loadLive().finally(() => { liveLoop._h = setTimeout(liveLoop, 30000); }); }
-let DETAIL = null, LASTY = 0, ALERTS = [], ALFILTER = "all", ALPREV = null;
+let DETAIL = null, LASTY = 0, ALERTS = [], ALPREV = null;
 const pmLogo = () => '<span class="pm"><img src="https://polymarket.com/favicon.ico" alt="" onerror="this.parentNode.textContent=\'P\'"></span>';
 const injBadge = (team) => `<span class="injb"><img src="${logoUrl(team)}" alt="" onerror="this.style.visibility='hidden'"><u>+</u></span>`;
 const injBadgeFor = (g) => { const inj = g.model && g.model.inj; if (!inj) return ""; const t = inj.home.players.length ? g.home : inj.away.players.length ? g.away : null; return t ? injBadge(t) : ""; };
@@ -1170,7 +1144,7 @@ function sgpBox(g) {
   const blocks = [["2 legs", x.best], ["3 legs", x.three], ["4 legs", x.linked], ["4 legs · my style", x.style], ["4 legs · my style · bought lines", x.stylePts], ["Upset", x.upset]].map(([t, p]) => pBlock(esc(t), p, false)).join("");
   return blocks ? `<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAYS</div><div class="pgrid" style="margin-top:6px">${blocks}</div>` : "";
 }
-// Model Picks tab (10/15, owner): six sub-tabs docked above the bottom bar (2 legs, 3 legs, 4 legs, My style, Bought, Diff) and week chips at the top;
+// Model bets: the parlay types are menu sub tabs (Over/Under, 4 Leg (My Style), 4 Leg (Bought), 4 Leg, 3 Leg, 2 Leg, Upset, Different Game Parlays), the week a drop-down;
 // each shows only its parlays, one column, in kickoff order. The current week comes from the live slate (results from the saved copies once a game starts); past weeks from /api/modelbets.
 const FOUR_NAMES = { leg4_fav: "4 biggest favorites", leg4_green_fav: "Best green pick + 3 favorites", leg4_fav_td: "3 favorites + top TD scorer", leg4_td4: "4 most likely TD scorers" };
 // 10/17 (owner): Over/Under first, then the parlays in this order and with these names
@@ -1189,7 +1163,6 @@ function applyBetsView() {
 // Props (10/17, owner: its own page in the menu, between Anytime TD and Bets; option A): receiving-yards Unders the model gives 65%+ (/api/props), one row per prop,
 // the week's games under the kickoff headers, ✓ / ✗ (green / red) once the game is graded. A week drop-down like My bets / Model bets.
 let PROPS = null, PROPWEEK = null;
-const PROP_STAT = { rec_yds: "Rec Yds", rec: "Rec", rush_yds: "Rush Yds", pass_yds: "Pass Yds", pass_att: "Pass Att", pass_cmp: "Comp", long_rec: "Long Rec" };
 async function loadProps() {
   try { const d = await (await fetch(`/api/props${PROPWEEK ? `?week=${PROPWEEK}` : ""}`, { cache: "no-store" })).json(); if (d && d.ok) { PROPS = d; renderProps(); } } catch {}
 }
@@ -1358,21 +1331,18 @@ function homeClocks() {
     if (!e.dataset.run || e.dataset.run !== String(window.innerWidth)) { e.dataset.run = String(window.innerWidth); clockRun(e); }
   });
 }
-// countdown to the next game that has not started -> the header (10/17: [away logo] vs [home logo] · NEXT GAME · clock; the home screen has its own clocks)
+// the next game that has not started: drives the home clocks and refreshes the slate once when it kicks off
 function tickCd() {
   clearTimeout(tickCd._h);
   if (!S) return;
   const nxt = S.games.filter((g) => !g.started && g.kickoff && new Date(g.kickoff) > Date.now()).sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff))[0];   // by the clock, so it moves on at kickoff even before the next data load
-  if (!nxt) { Shell.setNext(null); tickCd._cur = null; }
-  else Shell.setNext(logoUrl(nxt.away), logoUrl(nxt.home), new Date(nxt.kickoff) - Date.now());
   if (nxt && tickCd._cur && tickCd._cur !== nxt.key && Date.now() - (tickCd._last || 0) > 15000) { tickCd._last = Date.now(); setTimeout(() => loadSlate().catch(() => {}), 4000); }   // the game we were counting to just kicked off: refresh once
   tickCd._cur = nxt ? nxt.key : null;
   if ($("panel-home").classList.contains("on")) homeClocks();
   tickCd._h = setTimeout(tickCd, 1000);
 }
-// alerts: built on the server from changes it already sees between pulls (injuries, lines, wind, results)
-const ALK = { INJURY: ["Injury", "var(--red)"], "QB CHANGE": ["QB change", "#fff"], "LINE MOVE": ["Line move", "#fff"], WEATHER: ["Weather", "#fff"] };   // 10/18 night (owner): no gold -- injury red, the rest white;   // 10/18 (owner): Vegas gold, no blue -- line move white, weather pale gold   // 10/18 (owner): the top 5 only -- Result, TD No, TD jump, QB TD are cut (lib/alerts.js CUT_KINDS)
-const alSlug = (k) => String(k).toLowerCase().replace(/ /g, "");   // "QB CHANGE" -> "qbchange" (menu: #alerts-qbchange)
+// alerts: built on the server from changes it already sees between pulls (injuries, QB changes, lines, weather)
+const ALK = { INJURY: ["Injury", "var(--red)"], "QB CHANGE": ["QB change", "#fff"], "LINE MOVE": ["Line move", "#fff"], WEATHER: ["Weather", "#fff"] };   // injury red, the rest white (owner 10/18 night); TD No, TD jump, QB TD and Result are cut (lib/alerts.js CUT_KINDS)
 const alSeen = () => { try { return localStorage.getItem("alSeen") || ""; } catch { return ""; } };
 async function loadAlerts() {
   try { const d = await (await fetch("/api/alerts", { cache: "no-store" })).json(); if (d.ok) { ALERTS = d.alerts || []; renderAlerts(); } } catch {}
@@ -1380,14 +1350,14 @@ async function loadAlerts() {
 function renderAlerts() {
   const dots = ALPREV != null ? ALPREV : alSeen(), unread = ALERTS.filter((a) => a.t > alSeen()).length;
   Shell.setCount("nfl", "alerts", unread);
-  const list = ALERTS.filter((a) => ALK[a.kind] && (ALFILTER === "all" || a.kind === ALFILTER));   // 10/18: only the kept kinds show
+  const list = ALERTS.filter((a) => ALK[a.kind]);   // only the kept kinds show
   $("alerts").innerHTML = list.map((a) => { const [lab, col] = ALK[a.kind] || [a.kind, "var(--dim)"];
     const ic = a.kind === "INJURY" && a.team ? injBadge(a.team) : a.kind === "LINE MOVE" ? pmLogo() : "";
     return `<div class="card al${a.t > dots ? " un" : ""}" data-algame="${esc(a.game || "")}"><span class="dot"></span><div style="flex:1"><div class="kd" style="color:${col}"><span>${ic}${lab.toUpperCase()}</span><span class="dim" style="font-weight:600;letter-spacing:0">${hm(a.t)}</span></div>` +
       `<div class="ti">${esc(a.title)}</div>${a.sub ? `<div class="su">${esc(a.sub)}</div>` : ""}${a.game ? `<div style="font-size:11px;font-weight:700;margin-top:6px;color:var(--blue)">${esc(a.game)} ›</div>` : ""}</div></div>`; }).join("") ||
     '<div class="card" style="margin-top:10px"><div class="s">No alerts.</div></div>';
 }
-function renderAll() { weekline(); if ($("panel-home").classList.contains("on")) renderHome(); renderLines(); renderTd(); if (PAPER) renderLab(); else renderLabList(); if (MB) renderRecord(); applyBetsView(); tickCd(); renderAlerts(); }
+function renderAll() { if ($("panel-home").classList.contains("on")) renderHome(); renderLines(); renderTd(); if (PAPER) renderLab(); else renderLabList(); if (MB) renderRecord(); applyBetsView(); tickCd(); renderAlerts(); }
 // Newest version all the time (9/30): if a new deploy went live while this page was open (or sat in a phone tab),
 // reload once to pick it up; data refreshes on its own when you come back to the tab after 2+ minutes.
 let BUILD = null, LOADED_AT = 0, LOAD_SEQ = 0;
@@ -1404,40 +1374,16 @@ async function loadSlate() {
   renderAll(); for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
   if (openTd.length) { const rows = document.querySelectorAll(".tdr"); for (const i of openTd) if (rows[i]) rows[i].classList.add("open"); }
   try { localStorage.setItem("lastSeen", new Date().toISOString()); } catch {} }   // next visit's "What changed" starts from now
-// The lever (10/14, owner: "this should only update the model"): reruns the model with the latest injuries and lines, then reloads.
-// Polymarket and sportsbook lines and injuries refresh on their own (scheduled snapshots, 30-min Pinnacle/Polymarket pull).
-let REFRESHING = false;
-async function rerunModel() {
-  if (REFRESHING) return; REFRESHING = true; toast("Rerunning the model…", 0);
-  try { const d = await (await fetch("/api/rerun", { method: "POST" })).json(); if (!d.ok) throw new Error(d.error); await loadSlate();
-    toast(d.note && !d.rerun ? `Model: ${d.note}.` : `Model updated: ${plural(d.rerun, "game")}, TD for ${d.td ?? 0}.${d.errors && d.errors.length ? " Errors: " + d.errors.join("; ") : ""}`, 8000);
-  } catch (e) { toast("Model rerun failed: " + e.message, 12000); }
-  REFRESHING = false;
-}
-// 10/14 casino look: the slot lever reruns the model; the model time under it spins like reels until it lands
-if ($("lever")) {
-  const lv = $("lever");
-  const pull = async () => {
-    if (lv.disabled || REFRESHING) return; lv.disabled = true; lv.classList.add("pull"); setTimeout(() => lv.classList.remove("pull"), 260);
-    const hu = $("hero-upd"); hu.innerHTML = `Model <span class="mreel">7</span><span class="mreel">7</span>:<span class="mreel">7</span><span class="mreel">7</span>`;
-    const iv = setInterval(() => hu.querySelectorAll(".mreel").forEach((m) => { m.textContent = Math.floor(Math.random() * 10); }), 70);
-    try { await rerunModel(); } finally { clearInterval(iv); if (S) weekline(); lv.disabled = false; }
-  };
-  lv.onclick = pull; let y0 = null;
-  lv.addEventListener("pointerdown", (e) => { y0 = e.clientY; }); lv.addEventListener("pointermove", (e) => { if (y0 != null && e.clientY - y0 > 25) { y0 = null; pull(); } }); lv.addEventListener("pointerup", () => { y0 = null; });
-}
 function showPanel(name) {
   setTimeout(() => slotMoney($("panel-" + String(name).split("-")[0])), 80);   // dollar amounts roll in when a page opens (owner 10/18 night)
   let sub = null;   // 10/17 (owner): My bets and Model bets are separate pages under Bets in the menu
-  if (/^alerts-/.test(name)) { const k = name.slice(7); ALFILTER = k === "all" ? "all" : Object.keys(ALK).find((x) => alSlug(x) === k) || "all"; name = "alerts"; }   // 10/17 (owner): the alert kinds are menu sub tabs under Alerts
-  if (name === "alerts") sub = `alerts-${ALFILTER === "all" ? "all" : alSlug(ALFILTER)}`;
   if (/^modelbets-/.test(name)) { const k = name.slice(10); if (LAB_TABS.some(([t]) => t === k)) LABTYPE = k; name = "modelbets"; }   // 10/17 (owner): the parlay types are menu sub tabs under Model bets
   if (name === "modelbets") sub = `modelbets-${LABTYPE}`;
   if (name === "mybets" || name === "modelbets") { sub = sub || name; BETSVIEW = name === "modelbets" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} name = "record"; }
   if (name === "record" && !sub) sub = BETSVIEW === "model" ? `modelbets-${LABTYPE}` : "mybets";
   if (!$("panel-" + name)) name = "home";
   Shell.setActive(sub || name);   // 10/17: the menu replaces the tab bar
-  document.body.classList.toggle("game-on", name === "lines" && !!DETAIL);   // the NEXT GAME header hides only while a game page is open
+  document.body.classList.toggle("game-on", name === "lines" && !!DETAIL);   // a game page is open (the game card sits at the top)
   if (name === "alerts") { ALPREV = alSeen(); if (ALERTS.length) { try { localStorage.setItem("alSeen", ALERTS[0].t); } catch {} } }   // opening Alerts marks them read (was the bell)
   document.querySelectorAll(".panel").forEach((p) => p.classList.remove("on")); $("panel-" + name).classList.add("on");
   if (name === "alerts") renderAlerts();
@@ -1452,7 +1398,7 @@ function showPanel(name) {
   linesBg();
 }
 // 10/17: pages switch by the address' #name (the menu links set it): #home (or none), #alerts, #lines, #td, #record, #models
-const PANELS = ["home", "alerts", "lines", "td", "record", "mybets", "modelbets", "props", ...LAB_TABS.map(([k]) => `modelbets-${k}`), "alerts-all", ...Object.keys(ALK).map((k) => `alerts-${alSlug(k)}`), "models"];
+const PANELS = ["home", "alerts", "lines", "td", "record", "mybets", "modelbets", "props", ...LAB_TABS.map(([k]) => `modelbets-${k}`), "models"];
 function routeHash() {
   const name = Shell.hashPanel(PANELS, "home");
   if (name === "lines" && DETAIL && $("panel-lines").classList.contains("on")) closeGame();   // choosing Game Lines while on a game goes back to the games

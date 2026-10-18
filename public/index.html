@@ -20,7 +20,7 @@
     --violet:#b794ff; --rose:#ffffff; --ggrad:linear-gradient(90deg,#ff3b4a,#3ddc97);   /* 10/18 (owner): Vegas gold -- --blue and --rose hold the gold / pale gold now (every former blue or purple-blue is gold); purple (--violet) stays on the model's own numbers, the Models page and MODEL ANALYSIS; no glow anywhere */ }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html { -webkit-text-size-adjust:100%; text-size-adjust:100%; overscroll-behavior:none; }   /* 10/18 night: no sideways overscroll / back gesture either */
-  button, .tile, .tdr, .gapstrip, .al { touch-action:manipulation; -webkit-touch-callout:none; }
+  button, .tile, .tdr, .al { touch-action:manipulation; -webkit-touch-callout:none; }
   button { -webkit-appearance:none; appearance:none; }
   html, body { margin:0; padding:0; color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
   body { padding-top:env(safe-area-inset-top,0px); }
@@ -30,43 +30,10 @@
   html { background:linear-gradient(160deg,#1e2025 0%,#121418 50%,#08090b 100%) fixed #08090b; }
   body { background:transparent; min-height:100vh; }
   .wrap { position:relative; z-index:0; max-width:980px; margin:0 auto; padding:14px max(12px,env(safe-area-inset-right)) 96px max(12px,env(safe-area-inset-left)); }   /* 10/17: no tab bar -> less room needed at the bottom */
-  /* header: translucent maroon panel, countdown on the right, tabs under it */
-  .hero { position:relative; overflow:hidden; border-radius:18px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; gap:10px;
-    background:radial-gradient(120% 140% at 0% 0%,rgba(242,193,78,.5) 0%,rgba(0,0,0,0) 60%),linear-gradient(135deg,rgba(90,70,20,.45) 0%,rgba(60,48,14,.36) 55%,rgba(30,26,10,.3) 100%);
-    border:1px solid rgba(242,193,78,.42); }
-  .hero .wk { font-size:10.5px; font-weight:700; letter-spacing:.16em; color:var(--rose); }
-  .hero h1 { font-size:28px; font-weight:800; line-height:1.05; margin:4px 0 0; white-space:nowrap; }
-  .hero .upd { font-size:11px; color:var(--faint); margin-top:6px; cursor:pointer; white-space:nowrap; }
-  #cd-g .tlogo { width:26px; height:26px; vertical-align:-7px; margin:0 4px 0 2px; }
-  .hero .cd { text-align:right; }
-  .hero .cdl { font-size:10px; font-weight:700; letter-spacing:.14em; color:var(--rose); margin-bottom:6px; }
-  .cdn { display:flex; gap:5px; align-items:flex-start; justify-content:flex-end; }
-  .cdn div { text-align:center; } .cdn b { display:block; font-size:25px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; }
-  .cdn i { display:block; font-style:normal; font-size:8px; font-weight:700; letter-spacing:.1em; color:var(--faint); margin-top:3px; }
-  .cdn span { font-size:21px; font-weight:700; color:var(--faint); line-height:1; }
-  .cdg { font-size:11px; color:#c9ced6; margin-top:6px; }
-  /* Bottom tab bar (10/13, owner's picture): icon over the name; the open tab green with a green bar under it */
-  /* 10/14 (owner): tab bar without the box -- the page fades into a dark strip, a purple-to-blue hairline on top, nothing else */
-  .tabs { position:fixed; left:0; right:0; bottom:0; z-index:55; display:flex; max-width:none; margin:0 auto;
-    padding:10px max(12px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left)); border:0; border-radius:0; overflow:visible;
-    -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); background:linear-gradient(to top,rgba(8,9,14,.97) 55%,rgba(8,9,14,.82)); }
-  .tabs::before { content:""; position:absolute; left:0; right:0; top:0; height:1px; background:linear-gradient(90deg,transparent,rgba(242,193,78,.7),rgba(255,233,168,.7),transparent); }
-  .tabs button { flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:4px; font:inherit; font-size:10.5px; letter-spacing:-.3px; font-weight:700; white-space:nowrap; padding:8px 0 10px; cursor:pointer;
-    color:rgba(242,193,78,.62); background:transparent; border:0; border-bottom:3px solid transparent; border-radius:0; }
-  .tabs button span { overflow:hidden; text-overflow:ellipsis; max-width:100%; }
-  .tabs button.on { color:#fff3cc; border-bottom-color:transparent; } .tabs button.on svg { color:#f2c14e; }
-  /* 10/14 (owner): Models and Model Picks tabs are purple (the model's color) */
-  .tabs button[data-tab="models"] { color:rgba(242,193,78,.75); }
-  .tabs button[data-tab="models"].on { color:#f2c14e; border-bottom-color:transparent; }
-  .tabs .bell { position:relative; }
-  .tabs .bell.on { color:var(--rose); border-bottom-color:var(--rose); }
-  .bell .cnt { position:absolute; top:3px; left:calc(50% + 4px); min-width:16px; height:16px; border-radius:8px; padding:0 4px; font-size:10px; font-weight:800; display:none; align-items:center; justify-content:center;
-    background:rgba(255,93,93,.3); border:1px solid rgba(255,130,130,.75); color:#ffc2c2; }
     .panel { display:none; } .panel.on { display:block; }
   .grid { display:grid; grid-template-columns:1fr; gap:10px; margin-top:10px; }
   .card { background:var(--card); border:1px solid rgba(255,255,255,.28); border-radius:14px; padding:9px 12px; position:relative; overflow:hidden; -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); }
   .card.fin { border-color:rgba(255,107,107,.6); } .card.fin.won { border-color:rgba(74,222,128,.6); }   /* 10/16 (owner): green when the locked PICK won */
-  .gh { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:16px; font-weight:700; }
   .badge { font-size:10.5px; font-weight:700; padding:1px 8px; border-radius:999px; background:rgba(242,207,102,.14); color:var(--gold); }
   .sub { font-size:12px; color:var(--faint); margin-top:2px; }
   .k { font-size:13px; font-weight:700; color:#eef0f4; text-transform:uppercase; letter-spacing:.04em; }
@@ -92,7 +59,6 @@
   .p-g { color:var(--green); }
   .p-y { color:var(--yellow); }
   .p-r { color:var(--red); }
-  .p-n { color:var(--dim); border-color:var(--line); }
   .warn { font-size:12px; color:var(--yellow); margin-top:6px; }
   .warn-t { color:var(--yellow); }
   .live:not(.tile) { width:7px; height:7px; border-radius:50%; background:var(--green); display:inline-block; margin-right:4px; vertical-align:1px; }   /* 10/17: the dot rule no longer crushes a live game tile into a 7px circle */
@@ -101,11 +67,10 @@
   .fin .inner { opacity:.22; }
   .sec { padding:10px 0 8px; border-top:1px solid var(--line2); } .sec:first-child { border-top:none; padding-top:2px; }
   .sh { font-size:12.5px; font-weight:800; color:#d3d8e0; letter-spacing:.06em; margin-bottom:4px; text-transform:uppercase; }
-  .sh.mdl { color:var(--violet); }
   .row { display:flex; justify-content:space-between; gap:10px; font-size:13px; padding:4px 0; } .row > .dim:first-child { color:var(--text); } .row > span:first-child { min-width:0; overflow-wrap:anywhere; } .bb { padding:7px 0; border-bottom:1px solid var(--line2); } .bb:last-child { border-bottom:0; } .bb .t1 { display:flex; justify-content:space-between; gap:8px; } .bb .t2 { font-size:11.5px; color:var(--faint); margin-top:2px; } .row > span:last-child { text-align:right; } #models .fold b { color:var(--text); font-size:14px; letter-spacing:.02em; } #models .fold { padding:13px 2px; }
   #models .fold { border-top:0; border-bottom:1px solid var(--line); padding:16px 0 7px; font-size:14px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; }
-  #models .mgrid, #models .drop.open { display:grid; grid-template-columns:1fr 1fr; column-gap:18px; row-gap:0; padding-top:4px; }
-  #models .drop.open > *, #models .mgrid > .s { grid-column:1 / -1; } #models .drop.open > .row, #models .mgrid > .row { grid-column:auto; font-size:12.5px; }
+  #models .drop.open { display:grid; grid-template-columns:1fr 1fr; column-gap:18px; row-gap:0; padding-top:4px; }
+  #models .drop.open > * { grid-column:1 / -1; } #models .drop.open > .row { grid-column:auto; font-size:12.5px; }
   #models .row > span:first-child { overflow-wrap:break-word; flex:0 0 auto; max-width:50%; } #models .row > span:last-child { min-width:0; text-align:right; }
   #models .card { background:none; border:0; box-shadow:none; border-radius:0; padding:0; margin-top:6px; } #models .card .inner { padding:0; }
   #models .drop.open > .s { margin-top:12px; } #models .drop.open > .s > b { display:block; color:var(--text); font-size:11.5px; letter-spacing:.09em; text-transform:uppercase; border-bottom:1px solid var(--line2); padding-bottom:3px; }
@@ -124,15 +89,12 @@
   .phead .pt { display:grid; gap:2px; min-width:0; flex:1; } .phead .pt b { font-size:36px; font-weight:800; color:#fff; line-height:1.05; letter-spacing:-.01em; }
   .phead .pt span { font-size:12.5px; color:var(--faint); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .phbtn { flex:0 0 auto; font:inherit; font-size:12px; font-weight:700; color:#fff; background:none; border:0; border-radius:999px; padding:6px 0; cursor:pointer; }
-  .banner { margin-top:10px; border-radius:14px; padding:11px 14px; display:flex; align-items:center; gap:10px; background:linear-gradient(90deg,rgba(242,193,78,.3),rgba(242,193,78,.08)); border:1px solid rgba(242,193,78,.6); }
-  .banner b { font-size:13px; font-weight:900; letter-spacing:.14em; color:var(--blue); white-space:nowrap; }
-  .banner span { font-size:12px; color:#c9ced6; line-height:1.35; }
   .mcard { border-color:rgba(255,255,255,.28); }
   /* tiles */
   .tiles { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:10px; }
   @media (min-width:760px) { .tiles { grid-template-columns:repeat(3,minmax(0,1fr)); } }
   /* 10/16 (owner): on a computer the page uses the whole screen; the phone layout (under 1100px) is unchanged */
-  @media (min-width:1100px) { .wrap { max-width:none; padding-left:28px; padding-right:28px; } .tiles { grid-template-columns:repeat(4,minmax(0,1fr)); } .chips.dock { justify-content:center; } }
+  @media (min-width:1100px) { .wrap { max-width:none; padding-left:28px; padding-right:28px; } .tiles { grid-template-columns:repeat(4,minmax(0,1fr)); }  }
   @media (min-width:1600px) { .tiles { grid-template-columns:repeat(5,minmax(0,1fr)); } }
   .tiles.stack { grid-template-columns:1fr !important; margin-top:8px; }   /* 10/17 (owner): Game Lines stacked, one game per row */
   #lines > .labslot:first-of-type { margin-top:10px; }
@@ -142,7 +104,7 @@
   .tile { position:relative; overflow:hidden; background:var(--card); border:1px solid rgba(255,255,255,.28); border-radius:16px; padding:12px; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.3); text-align:left; font:inherit; color:inherit; }
   .tile .mid.lvmid { display:inline-flex; flex-direction:column; align-items:center; line-height:1.15; } .tile .sr { white-space:nowrap; } .tile .lv { font-size:10.5px; font-weight:800; letter-spacing:.04em; margin-top:2px; } .tile .lv.r { color:var(--red); }
   .dtop .s3.r { color:var(--red); }
-  .rp { display:grid; grid-template-columns:1.5fr .9fr .8fr .8fr; gap:4px 6px; align-items:center; padding:7px 0; border-top:1px solid rgba(255,255,255,.1); font-size:12.5px; font-variant-numeric:tabular-nums; } .rp > span:not(:first-child) { text-align:right; } .rp .rn { font-size:10px; display:block; } .rph { border-top:0; font-size:10px; font-weight:800; color:var(--faint); letter-spacing:.06em; padding:2px 0; }
+  .rp { display:grid; grid-template-columns:1.5fr .9fr .8fr .8fr; gap:4px 6px; align-items:center; padding:7px 0; border-top:1px solid rgba(255,255,255,.1); font-size:12.5px; font-variant-numeric:tabular-nums; } .rp > span:not(:first-child) { text-align:right; }
   .tile .t .tlogo { width:26px; height:26px; vertical-align:-5px; margin:0 7px 0 0; } .tile .t.hm .tlogo { margin:0 0 0 7px; }
   .tile .tmid { text-align:center; line-height:1.3; min-width:0; } .tile .tmid .s2 { font-size:12px; margin-top:3px; white-space:nowrap; } .tile .tmid .tmt { color:#c9ced6; font-weight:600; }   /* 10/18: the kickoff / tip time on the tile */
   #detail .back { margin-top:10px; margin-bottom:4px; }
@@ -154,11 +116,9 @@
   .t .rec { display:block; font-size:11px; font-weight:600; font-style:normal; color:#9aa3b2; letter-spacing:0; margin-top:1px; } .t.hm .rec { text-align:right; }
   .tile .mid { font-size:14px; font-weight:800; white-space:nowrap; }
   .tile .bar { height:4px; border-radius:2px; background:rgba(255,255,255,.14); overflow:hidden; } .tile .bar i { display:block; height:4px; background:var(--green); }   /* 10/18 (owner): the bars are solid green */
-  .tile .ft { display:flex; justify-content:space-between; align-items:center; font-size:12px; color:#c9ced6; gap:4px 6px; flex-wrap:wrap; }
-  .tile .ft > span:first-child { white-space:nowrap; }
   .chip { font-size:10px; font-weight:800; padding:0; border-radius:0; white-space:nowrap; letter-spacing:.04em; }
   .c-amb { color:var(--gold); } .c-red { color:var(--red); }
-  .c-grn { color:var(--green); } .c-cy { color:var(--cyan); }
+  .c-grn { color:var(--green); }
   .back { min-height:28px; font:inherit; font-size:12.5px; font-weight:700; color:var(--rose); background:none; border:0; border-radius:999px; padding:2px 0; cursor:pointer; margin-top:8px; margin-bottom:12px; }
   /* 10/14 Game Lines top: casino tickets + line-move chips */
   .jrow { margin-top:10px; display:grid; grid-template-columns:repeat(auto-fit,minmax(0,1fr)); gap:10px; }
@@ -166,13 +126,12 @@
     background:linear-gradient(135deg,rgba(255,207,74,.16),rgba(255,207,74,.05)); outline:1.5px dashed rgba(255,207,74,.6); outline-offset:-6px;
     -webkit-mask:radial-gradient(circle at 0 50%,transparent 8px,#000 8.5px) left/51% 100% no-repeat,radial-gradient(circle at 100% 50%,transparent 8px,#000 8.5px) right/51% 100% no-repeat;
             mask:radial-gradient(circle at 0 50%,transparent 8px,#000 8.5px) left/51% 100% no-repeat,radial-gradient(circle at 100% 50%,transparent 8px,#000 8.5px) right/51% 100% no-repeat; }
-  .ticket.one { width:100%; margin-top:10px; gap:6px; } .ticket .tpair { display:flex; gap:22px; flex-wrap:wrap; } .ticket .tpair > span { display:grid; gap:2px; }
+  .ticket.one { width:100%; margin-top:10px; gap:6px; }
   .ticket .tk { font-size:10.5px; font-weight:800; letter-spacing:.14em; color:#ffcf4a; }
   .ticket .tb { font-size:30px; font-weight:900; line-height:1.05; color:#fff; font-variant-numeric:tabular-nums; }
   .ticket .ts { font-size:11px; color:#e9dcc0; }
   .tile .tmid .mvt { font-size:11px; color:#c9ced6; margin-top:2px; line-height:1.3; } .tile .tmid .mvt > span { display:block; white-space:nowrap; }   /* 10/18 night (owner): a game's line move sits inside its tile (the LINE MOVES strip is gone) */
   .mwarn { margin-top:4px; font-size:11px; font-weight:700; color:var(--yellow); white-space:normal; line-height:1.3; }
-  .cols { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:start; } .cols .card.dd { margin-top:10px; } .cols .ddh { flex-direction:column; align-items:flex-start; gap:4px; padding:12px; } .cols .ddm { white-space:normal; }
   #lab > .drop { margin-top:10px; border-top:0; padding-top:0; }
   .pgrid { display:block; } .par { padding:11px 0; font-size:13.5px; } .pgrid > .par:first-child { padding-top:2px; }   /* 10/16 (owner): no lines between parlays, only the line under each time-slot header */
   .pbh { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:4px; } .pbn { font-weight:700; font-size:14.5px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
@@ -180,43 +139,14 @@
   .pbl { margin-top:3px; padding-left:12px; overflow-wrap:anywhere; } .pbr { text-align:right; font-weight:800; min-height:4px; }
   @media (max-width:500px) { .par { font-size:12.5px; } .pbn { font-size:13px; } .pbh { gap:6px; } .plb { font-size:12px; } .labslot { font-size:19px; } .labslot .lst { font-size:11px; } }   /* 10/17 (owner): everything fits on the iPhone */
   /* 10/16 (owner): EVERY docked strip -- Model bets sub-tabs, My bets weeks, Alerts kinds -- is the same flat strip: equal columns, bold text, purple underline, no pills */
-  .chips.dock { gap:0; padding:0 max(12px,env(safe-area-inset-right)) 0 max(12px,env(safe-area-inset-left)); border-top:1px solid var(--line); background:rgba(8,9,14,.97); -webkit-backdrop-filter:none; backdrop-filter:none; }
-  .chips.dock button { flex:1 0 auto; min-width:0; position:relative; min-height:40px; padding:0 10px; border:0; border-radius:0; background:none; font-size:11.5px; font-weight:700; letter-spacing:.02em; color:var(--faint); white-space:nowrap; text-align:center; }   /* equal columns when they fit, the strip scrolls when they don't (Alerts on a phone) */
-  .chips.dock button.on { color:#fff; background:none; border:0; } .chips.dock button.on::after { content:""; position:absolute; left:24%; right:24%; bottom:0; height:2px; border-radius:2px; background:rgba(255,255,255,.85); }
   .wksel { position:relative; display:inline-block; margin-top:12px; padding-right:20px; } .wksel select { -webkit-appearance:none; appearance:none; width:auto; max-width:100%; min-height:36px; padding:0 2px; border:0; border-radius:0; color:#fff; font:inherit; font-size:17px; font-weight:800; cursor:pointer; background:transparent; }
   .wksel::after { content:""; position:absolute; right:2px; top:50%; width:14px; height:14px; margin-top:-7px; pointer-events:none; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23d9c4ff' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat center; }   /* 10/17 (owner): no box; the arrow sits after the text and never covers it */
   .wksel select option { background:#0d0e12; color:#fff; }
-  .card.dd { margin-top:10px; padding:0; } .ddh { width:100%; display:flex; justify-content:space-between; align-items:center; gap:10px; font:inherit; color:#fff; background:none; border:0; padding:13px 14px; cursor:pointer; text-align:left; }
-  .ddt { font-size:14px; font-weight:800; letter-spacing:.04em; } .ddm { font-size:12px; color:var(--faint); white-space:nowrap; } .card.dd .drop .inner { padding:0 14px 12px; }
   .pay { color:#ffcf4a; font-weight:700; white-space:nowrap; } .pay.dim { color:var(--faint); font-weight:400; }
   .tile.live { border-color:rgba(255,70,90,.95) !important; box-shadow:0 0 18px rgba(255,60,80,.75), inset 0 0 0 1px rgba(255,90,110,.6); animation:livepulse 1.6s ease-in-out infinite; }
   @keyframes livepulse { 0%,100% { box-shadow:0 0 12px rgba(255,60,80,.55), inset 0 0 0 1px rgba(255,90,110,.5); } 50% { box-shadow:0 0 26px rgba(255,60,80,.95), inset 0 0 0 1px rgba(255,90,110,.8); } }
-  /* 10/14 (owner picked sketch 6): header with no box -- a green "lines live" line, the countdown in a white-to-purple gradient,
-     the next game under it, a slim brushed-metal lever with "Updated" under it on the right */
-  .hero.h6 { background:none !important; border:0 !important; border-radius:0; padding:6px 4px 14px; overflow:visible; }
-  .hero.h6::after { content:""; position:absolute; left:0; right:0; bottom:0; height:1px; background:linear-gradient(90deg,rgba(242,193,78,.55),rgba(255,233,168,.45) 55%,rgba(255,255,255,.06)); }   /* 10/14 owner: line under the header */
-  .hero.h6 .hl { display:grid; gap:6px; min-width:0; flex:1 1 auto; }
-  .hero.h6 .live { display:flex; align-items:center; gap:7px; white-space:nowrap; font-size:11px; font-weight:800; letter-spacing:.14em; color:#3fe08a; }
-  .hero.h6 .live::before { content:""; width:6px; height:6px; border-radius:50%; background:#3fe08a; box-shadow:0 0 0 3px rgba(63,224,138,.18); flex:0 0 auto; }
-  .hero.h6 .cdt { display:flex; align-items:baseline; gap:2px; font-size:42px; font-weight:800; letter-spacing:-.03em; line-height:1; font-variant-numeric:tabular-nums; }
-  .hero.h6 .cdt b, .hero.h6 .cdt span { background:linear-gradient(90deg,#fff 0%,#ffe9a8 50%,#f2c14e 100%); background-attachment:fixed; -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:800; display:inline-block; }
-  .hero.h6 .cdt span { opacity:.7; }
-  .hero.h6 .cdt b.flip { animation:cdflip .4s ease; }
-  .hero.h6 .cdg { font-size:13px; color:#c9ced8; margin-top:0; }
-  .hero.h6 .hr .upd { font-size:11px; color:#5d6574; }
-  .hero.h6 .lever { width:22px; height:62px; flex:0 0 22px; }
-  .hero.h6 .lever .lmount { left:3px; width:16px; height:16px; border-radius:5px; background:linear-gradient(90deg,#3a3f49,#9aa3b2,#3a3f49); }
-  .hero.h6 .lever .larm { left:9px; bottom:12px; width:4px; height:42px; background:linear-gradient(90deg,#6b7280,#e5e7eb,#6b7280); }
-  .hero.h6 .lever .lknob { width:16px; height:16px; margin-left:-8px; top:-8px; background:radial-gradient(circle at 35% 30%,#fff3cc,#f2c14e 55%,#7a5a1a); }
-  /* 10/14 (owner, phone): a page's filter chips (Bets weeks, Alerts kinds) sit right above the bottom tabs, where the thumb is */
-  .chips.dock { position:fixed; left:0; right:0; bottom:0; padding-bottom:max(8px,env(safe-area-inset-bottom,0px)) !important; z-index:54; margin:0; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }   /* 10/17: tab bar gone -> the strip sits at the very bottom */
-  .chips.dock::-webkit-scrollbar { display:none; }
-  .gapstrip { margin-top:10px; border-radius:14px; padding:7px 12px; min-height:32px; background:rgba(79,227,208,.08); border:1px solid rgba(79,227,208,.35); cursor:pointer; }
-  .gapstrip .t { font-size:12.5px; font-weight:800; color:var(--cyan); }
   .sc { position:relative; overflow:hidden; border-radius:16px; padding:10px; background:var(--card); }
-  .sc .wmc { position:absolute; left:50%; top:50%; width:96px; height:96px; margin:-48px 0 0 -48px; opacity:.13; object-fit:contain; pointer-events:none; }
   .sc .in { position:relative; }
-  .sc .hh { font-size:11px; font-weight:800; letter-spacing:.06em; color:var(--violet); text-transform:uppercase; margin-bottom:4px; }
   .sc .p { padding:7px 0; border-top:1px solid var(--line2); }
   .sc .p .a { display:flex; align-items:center; gap:6px; } .sc .p .a b { flex:1; font-size:13px; } .sc .p .a em { font-style:normal; font-size:15px; font-weight:800; }
   .sc .p .b { font-size:10px; color:var(--faint); margin:2px 0 0 53px; }
@@ -227,7 +157,6 @@
   .tdr:first-child { border-top:none; }
   .tdr .tlogo { width:20px; height:20px; flex:0 0 20px; margin:0; } .tdr .l1 { display:flex; align-items:center; gap:5px; white-space:nowrap; overflow:hidden; } .tdr .l1 .pill { flex:0 0 auto; }   /* 10/17 (owner): one row look for both TD boxes */
   .tdr.best .bp { font-size:15px; font-weight:800; } .tdr .nogap { font-size:12px; }
-  .tdr .wmc { position:absolute; left:46%; top:50%; width:84px; height:84px; margin:-42px 0 0 -42px; opacity:.14; object-fit:contain; pointer-events:none; }
   .tdr .in { position:relative; display:flex; align-items:center; gap:8px; }
   .tdr .rk { width:20px; font-size:11px; font-weight:700; color:var(--faint); }
   .tdr .nmx { flex:1; min-width:0; } .tdr .nmx b { font-size:14px; } .tdr .nmx .g2 { font-size:10px; color:var(--faint); }
@@ -236,7 +165,6 @@
   .tdr .pxc { width:60px; text-align:right; font-size:13px; font-weight:700; color:var(--blue); }
   .tdr .more .prow { background:linear-gradient(rgba(6,8,10,.86),rgba(6,8,10,.86)), var(--logo) center / contain no-repeat; border:1px solid color-mix(in srgb, var(--tc,#444) 80%, #000); }
   .tdr.open { background:rgba(0,0,0,.4); }
-  .tdr.open .wmc { display:none; }
   .tdr .more .prow, .tdr .more .prow .s, .tdr .more .prow .dim, .tdr .more .prow .why, .tdr .more .prow .lbl { color:#fff; }
   .tdr .more .prow { font-size:15px; font-weight:600; padding:11px 12px; }
   .tdr .more .prow .lbl { font-size:13px; font-weight:600; } .tdr .more .prow .why, .tdr .more .prow .s { font-size:13.5px; }
@@ -267,7 +195,6 @@
   .chips button.on { color:#fff; background:none; } .chips button.on::after { content:""; position:absolute; left:0; right:0; bottom:0; height:2px; border-radius:2px; background:rgba(255,255,255,.85); }
   /* the toast box (the old Lines / Model buttons here were removed 10/14) */
   .fab { position:fixed; right:max(12px,env(safe-area-inset-right)); bottom:calc(max(10px,env(safe-area-inset-bottom,0px)) + 84px); z-index:50; display:flex; flex-direction:row; align-items:center; gap:8px; }
-  .fab .fb { display:flex; }
   .fab button { height:34px; padding:0 14px 0 12px; border-radius:999px; cursor:pointer; color:var(--rose); background:rgba(30,26,10,.62); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(242,193,78,.45); box-shadow:0 4px 14px rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; gap:6px; font:inherit; font-size:12.5px; font-weight:700; }
   .fab button:disabled { opacity:.5; }
   .toast { position:fixed; right:max(12px,env(safe-area-inset-right)); bottom:calc(max(10px,env(safe-area-inset-bottom,0px)) + 132px); max-width:300px; font-size:12px; line-height:1.45; padding:9px 12px; border-radius:12px; background:rgba(20,22,26,.95); border:1px solid var(--line); display:none; z-index:60; }
@@ -292,7 +219,7 @@
   /* game page: the two team logos split the whole page in half behind the cards (away left, home right) */
   .sc { border:1px solid rgba(255,255,255,.28); }
   .mcard { border-color:rgba(255,255,255,.28); }   /* 10/14 owner: Model Picks cards plain (no purple) */
-  #detail .gh, #detail .sub { display:none; }
+  #detail .sub { display:none; }
   .dtop .dwm { position:absolute; top:50%; width:46%; height:150px; margin-top:-75px; object-fit:contain; opacity:.2; pointer-events:none; } .dtop .dwm.l { left:-10px; } .dtop .dwm.r { right:-10px; }
   .dtop .nm { display:flex; align-items:center; justify-content:space-between; }
   .dtop .t { font-size:28px; font-weight:800; font-style:italic; }
@@ -306,8 +233,7 @@
   .pbars { display:flex; gap:3px; align-items:flex-end; height:64px; margin-top:10px; } .pb { flex:1; display:flex; flex-direction:column; justify-content:flex-end; } .pb i { display:block; width:100%; border-radius:3px; }
   .pyrs { display:flex; gap:3px; margin-top:4px; } .pyrs span { flex:1; text-align:center; font-size:8px; color:var(--faint); }
   .price-link { cursor:pointer; border-bottom:1px dotted var(--faint); }
-  /* 10/14 casino look (owner): green pick pulse (glow brighter for stronger picks), slot-reel %, HIT/MISS stamps on Bets, flip-clock
-     countdown, slot lever refresh, purple glow on the model's parlay cards */
+  /* 10/14 casino look, trimmed 10/18: HIT/MISS stamps on Bets, dollar amounts roll in */
   .pulse { --gl:.6; }   /* 10/18 (owner): no glow -- the green PICK no longer pulses */
   .reelpct { display:inline; }   /* the PICK % is plain text */
   .reelpct.money { display:inline-flex; vertical-align:text-top; } .reelpct.money .rd { display:inline-block; height:1.25em; overflow:hidden; }   /* 10/18 night (owner): only dollar amounts roll */
@@ -319,20 +245,10 @@
   .stamp.go { animation:stampin .5s cubic-bezier(.2,1.6,.4,1) both; }
   @keyframes stampin { from { transform:translateY(-50%) rotate(-8deg) scale(3); opacity:0; } to { transform:translateY(-50%) rotate(-8deg) scale(1); opacity:1; } }
   canvas.coinfx { position:fixed; inset:0; width:100vw; height:100vh; pointer-events:none; z-index:9999; }
-  .cdn b { background:linear-gradient(rgba(255,255,255,.10) 50%, rgba(255,255,255,.04) 50%); border-radius:6px; padding:3px 4px; box-shadow:0 2px 0 rgba(0,0,0,.6); }
-  .cdn b.flip { animation:cdflip .4s ease; } @keyframes cdflip { 0% { transform:rotateX(0); } 50% { transform:rotateX(90deg); } 100% { transform:rotateX(0); } }
-  /* 10/14 (owner): no title; week, countdown, next game and "Updated" all on the left; slot lever on the right */
-  .hero .hl { display:grid; gap:4px; min-width:0; } .hero .hl .cdl { margin:4px 0 0; } .hero .hl .cdn { justify-content:flex-start; } .hero .hl .upd { margin-top:2px; }
-  .hero .hr { display:grid; justify-items:center; gap:4px; align-self:center; } .hero .hr .upd { margin-top:0; text-align:center; white-space:nowrap; }
-  .lever { position:relative; flex:0 0 30px; width:30px; height:84px; border:0; background:none; padding:0; cursor:pointer; touch-action:none; align-self:center; }
-  .lever .lmount { position:absolute; left:5px; bottom:2px; width:20px; height:26px; border-radius:6px; background:linear-gradient(90deg,#7a5a1a,#e7c46a,#7a5a1a); box-shadow:0 2px 0 #000; }
-  .lever .larm { position:absolute; left:12px; bottom:18px; width:6px; height:54px; transform-origin:bottom center; background:linear-gradient(90deg,#777,#f2f2f2,#777); border-radius:3px; transition:transform .45s cubic-bezier(.3,1.6,.5,1); }
-  .lever .lknob { position:absolute; left:50%; top:-12px; width:22px; height:22px; margin-left:-11px; border-radius:50%; background:radial-gradient(circle at 35% 30%,#fff3cc,#f2c14e 55%,#7a5a1a); box-shadow:0 2px 4px rgba(0,0,0,.6); }
-  .lever.pull .larm { transform:scaleY(-.5); transition:transform .18s ease-in; } .lever:disabled { opacity:.6; }
-  .mreel { display:inline-block; min-width:.6em; text-align:center; font-variant-numeric:tabular-nums; animation:mreel .1s steps(2) infinite; color:#ffcf4a; }
+   @keyframes cdflip { 0% { transform:rotateX(0); } 50% { transform:rotateX(90deg); } 100% { transform:rotateX(0); } }
   @keyframes mreel { 50% { opacity:.4; } }
   .card.modelglow { border-color:rgba(255,255,255,.28); }   /* 10/18 (owner): no glow -- a model parlay card looks like any other card */
-  @media (prefers-reduced-motion: reduce) { .tile.live, .card.modelglow, .mreel, .cdn b.flip, .stamp.go { animation:none; } }
+  @media (prefers-reduced-motion: reduce) { .tile.live, .card.modelglow, .stamp.go { animation:none; } }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap">
 <link rel="stylesheet" href="/shell.css">
