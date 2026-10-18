@@ -715,7 +715,17 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       { const CA = { key: "CHI @ ATL", home: "ATL", away: "CHI", kickoff: "2026-10-18T17:00:00Z" };
         const two = [{ id: "keynum|spread", kind: "spread", team: "ATL", pick: "ATL +3.5", hit: 63.9, n: 194, line: 3.5, why: "BEAT THE 3" }, { id: "bounceback|spread", kind: "spread", team: "CHI", pick: "CHI -1.5", hit: 61.3, n: 261, line: -1.5, why: "BOUNCE BACK" }];
         const cc = buildCard(CA, two, ps(1.5, 0.5), { spread: { homeSpread: 1.5 } }, null);
-        ok(cc.spread.plain.team === "CHI" && cc.spread.plain.hit === 61.3 && cc.spread.plain.ruleId === "bounceback|spread", "card (10/18 fix): rules on opposite sides compare at the % the card shows -- BEAT THE's PICK sits at ATL +1.5 (~50%), so BOUNCE BACK CHI -1.5 61.3% wins", cc.spread.plain); }
+        ok(cc.spread.plain.team === "ATL" && cc.spread.plain.pick === "ATL +1.5" && cc.spread.plain.ruleId === "keynum|spread" && cc.spread.plain.hit < 56, "card (10/18, owner option B): spread rules on opposite teams -> the UNDERDOG's rule (ATL +1.5 over BOUNCE BACK CHI -1.5 61.3%), shown at its own %", cc.spread.plain);
+        const TI = { key: "TEN @ IND", home: "IND", away: "TEN", kickoff: "2026-10-18T17:00:00Z" };
+        const tie = [{ id: "injury|spread", kind: "spread", team: "IND", pick: "IND -6.5", hit: 56.5, n: 260, line: -6.5, why: "INJURY" }, { id: "floordog|spread", kind: "spread", team: "TEN", pick: "TEN +6.5", hit: 56.5, n: 285, line: 6.5, why: "BOUNCE BACK DOG" }];
+        const ct = buildCard(TI, tie, ps(-6.5, 0.5), { spread: { homeSpread: -6.5 } }, null);
+        ok(ct.spread.plain.pick === "TEN +6.5" && ct.spread.plain.ruleId === "floordog|spread", "card (owner B): TEN @ IND INJURY IND -6.5 vs BOUNCE BACK DOG TEN +6.5 -> TEN +6.5 (the underdog)", ct.spread.plain);
+        const hi = buildCard(TI, [{ ...tie[0], hit: 61 }, tie[1]], ps(-6.5, 0.5), { spread: { homeSpread: -6.5 } }, null);
+        ok(hi.spread.plain.team === "TEN", "card (owner B): the underdog wins even when the favorite's rule has the higher %", hi.spread.plain);
+        const same = buildCard(TI, [tie[0], { ...tie[0], id: "bounceback|spread", hit: 61.3, why: "BOUNCE BACK" }], ps(-6.5, 0.5), { spread: { homeSpread: -6.5 } }, null);
+        ok(same.spread.plain.team === "IND" && same.spread.plain.ruleId === "bounceback|spread", "card (owner B): rules on the SAME team keep the highest % (favorite stays)", same.spread.plain);
+        const tt = buildCard({ ...TI }, [{ id: "linemove|total", kind: "total", pick: "Over 44.5", hit: 66.1, n: 460, line: 44.5, why: "LINE MOVE" }, { id: "movepred|total", kind: "total", pick: "Under 44.5", hit: 57.6, n: 507, line: 44.5, why: "TOTAL MOVE" }], { ...ps(-6.5, 0.5), total: { line: 44.5, over: 0.5, under: 0.5 } }, { spread: { homeSpread: -6.5 }, total: { line: 44.5 } }, null);
+        ok(tt.total && tt.total.plain && /^Over/.test(tt.total.plain.pick), "card (owner B): totals keep the highest % (Over 66.1% over Under 57.6%)", tt.total && tt.total.plain); }
       const bought = c1.spread.rows.filter((x) => x.points > 0), okRows = bought.filter((x) => x.hit >= 56), minP = okRows.length ? Math.min(...okRows.map((x) => x.points)) : null;
       ok(c1.spread.plain.pick === "NE -7.5" && c1.spread.plain.hit === 51.2 && c1.spread.plain.price === 0.5 && c1.spread.plain.id === "cardpick|spread"
         && new Set(c1.spread.rows.map((x) => x.team)).size === 2 && c1.spread.rows.every((x, _, a) => x.points >= 0 && x.points <= 3.5 && (x.points <= 2 || x.hit >= Math.max(...a.filter((y) => y.points <= 2).map((y) => y.hit)) + 3)) && c1.spread.rows.some((x) => x.team === "NYJ" && x.points === 1)
