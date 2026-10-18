@@ -169,9 +169,11 @@ function tile(g) {
   const chips = [g.preseason ? '<span class="chip c-amb">PRESEASON</span>' : "", green ? `<span class="chip c-grn">${esc(green.pick)}</span>` : "", live && !sc ? '<span class="chip c-red">LIVE</span>' : ""].filter(Boolean).join('<span style="display:inline-block;width:6px"></span>');
   const mid0 = hp == null ? '<span class="mid dim">—</span>' : `<span class="mid"><span class="${lead(ap, hp)}">${Math.round(ap)}</span><span class="dim"> · </span><span class="${lead(hp, ap)}">${100 - Math.round(ap)}</span><span class="dim" style="font-size:11px">%</span></span>`;
   const mid = sc && (sc.st === "in" || sc.st === "post") ? `<span class="mid lvmid"><span class="sr"><span class="${sc.a > sc.h ? "g" : "dim"}">${sc.a}</span><span class="dim"> – </span><span class="${sc.h > sc.a ? "g" : "dim"}">${sc.h}</span></span><span class="lv ${fin ? "dim" : "r"}">${fin ? "FINAL" : "● LIVE · " + esc(sc.lbl)}</span></span>` : mid0;
-  const foot = live ? "In progress" : tm(g.start);
-  return `<button class="tile${live ? " live" : ""}" data-game="${esc(g.key)}"><img class="wmk l" loading="lazy" decoding="async" src="${esc(logoUrl(g.away))}" alt="" onerror="this.style.display='none'"><img class="wmk r" loading="lazy" decoding="async" src="${esc(logoUrl(g.home))}" alt="" onerror="this.style.display='none'">` +
-    `<div class="in"><div class="nm"><span class="t">${g.away}${recOf(g, g.away)}</span>${mid}<span class="t hm">${g.home}${recOf(g, g.home)}</span></div><div class="ft"><span>${foot}</span><span>${chips}</span></div>${hp == null || sc ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
+  // 10/18 (owner, same as NFL): the tile looks like the game page's header card -- team colours, big faded logos, logo + code + record each side, the %
+  // (or score) in the middle with the pick / PRESEASON tag under it, the bar; NO date, time or "starts in" (the day header above carries the tip times)
+  const ca = teamColor(g.away), ch = teamColor(g.home);
+  return `<button class="tile${live ? " live" : ""}" style="background:linear-gradient(90deg,${ca}40 0%,${ca}14 50%,${ch}14 50%,${ch}40 100%),var(--card)" data-game="${esc(g.key)}"><img class="wmk l" loading="lazy" decoding="async" src="${esc(logoUrl(g.away))}" alt="" onerror="this.style.display='none'"><img class="wmk r" loading="lazy" decoding="async" src="${esc(logoUrl(g.home))}" alt="" onerror="this.style.display='none'">` +
+    `<div class="in"><div class="nm"><span class="t">${tlogo(g.away)}${g.away}${recOf(g, g.away)}</span><div class="tmid">${mid}${chips ? `<div class="s2">${chips}</div>` : ""}</div><span class="t hm">${g.home}${tlogo(g.home)}${recOf(g, g.home)}</span></div>${hp == null || sc ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
 }
 function renderLines() {
   if (!S) { $("lines").innerHTML = '<div class="s dim center">Loading…</div>'; return; }
