@@ -16,7 +16,7 @@
 <title>NBA SLATE</title>
 <style>
   :root { --bg:#08090b; --card:rgba(3,8,7,.68); --card2:rgba(255,255,255,.04); --line:rgba(255,255,255,.1); --line2:rgba(255,255,255,.07);
-    --text:#ececef; --dim:#aab0bd; --faint:#8d95a3; --red:#ff6b6b; --green:#3ddc97; --yellow:#f2cf66; --blue:#f2c14e; --gold:#f2cf66; --cyan:#4fe3d0;
+    --text:#ececef; --dim:#aab0bd; --faint:#8d95a3; --red:#ff6b6b; --green:#3ddc97; --yellow:#f2cf66; --blue:#ffffff; --gold:#f2cf66; --cyan:#4fe3d0;
     --violet:#b794ff; --rose:#ffe9a8; --ggrad:linear-gradient(90deg,#f2c14e,#ffffff 50%,#3ddc97);   /* 10/18 (owner): Vegas gold -- --blue and --rose hold the gold / pale gold now (every former blue or purple-blue is gold); purple (--violet) stays on the model's own numbers, the Models page and MODEL ANALYSIS; no glow anywhere */ }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html { -webkit-text-size-adjust:100%; text-size-adjust:100%; overscroll-behavior-y:none; }
@@ -73,10 +73,8 @@
   .trow { display:flex; justify-content:space-between; align-items:center; gap:8px; margin:16px 2px 0; } .trow .sh { margin:0; } .trow .btns { margin-top:0; flex-shrink:0; }
   .mk { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 14px; margin-top:10px; font-size:14px; }
   #detail .card .inner > .drop.open { margin:0 0 10px; border-top:0; padding-top:0; border-bottom:1px solid var(--line2); padding-bottom:8px; }
-  .hd { font-size:13px; font-weight:800; letter-spacing:.07em; color:var(--blue); border-bottom:1px solid transparent; border-image:var(--ggrad) 1; padding-bottom:3px; }
-  .hd:not(.hm), .mkt, .plb, .tdr .pxc, .prow .px, .mvl, .cy { background:var(--ggrad); -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent; }   /* 10/18 (owner): gold-white-green gradient text where it was blue / gold */
-  .plb .plw, .mvl span { -webkit-text-fill-color:#fff; color:#fff; }
-  .hd.hm { color:var(--violet); border-image:none; border-color:rgba(183,148,255,.6); margin-top:14px; }
+  .hd { font-size:13px; font-weight:800; letter-spacing:.07em; color:#fff; border-bottom:1px solid rgba(255,255,255,.35); padding-bottom:3px; }   /* 10/18 (owner): numbers and headers are regular white -- no gradient text; the gradient lives only on SLATEZZ, the clock, the header line, the grip and the menu titles */
+  .hd.hm { color:var(--violet); border-color:rgba(183,148,255,.6); margin-top:14px; }
   .modelcell { padding:4px 0 0; font-size:14px; }
   .mod { color:var(--violet); }
   .mkt { color:var(--blue); } .mlc { color:var(--gold); }
@@ -89,7 +87,7 @@
   .drop { display:none; margin-top:10px; border-top:1px solid var(--line2); padding-top:8px; font-size:12.5px; }
   .drop.open { display:block; }
   .drow { display:flex; justify-content:space-between; gap:10px; padding:4px 0; border-bottom:1px solid rgba(255,255,255,.05); }
-  .g { color:var(--green); } .r { color:var(--red); } .y { color:var(--yellow); } .lg { color:#a6efc4; } .dim { color:var(--faint); } .cy { color:var(--cyan); }
+  .g { color:var(--green); } .r { color:var(--red); } .y { color:var(--yellow); } .lg { color:#a6efc4; } .dim { color:var(--faint); } .cy { color:#fff; }
   .pill { display:inline-block; font-size:11.5px; font-weight:700; padding:0 2px; border:0; border-radius:0; background:none; }   /* 10/17 (owner): no pills anywhere -- plain coloured text */
   .p-g { color:var(--green); }
   .p-y { color:var(--yellow); }
@@ -120,7 +118,7 @@
   /* 10/14 (owner): page headers styled like the bottom tab bar (rose glass, icon + title) */
   /* 10/14 (owner): page headers are just the words, big and clear, with a line under them */
   .phead { margin-top:16px; display:flex; align-items:flex-end; gap:12px; padding:0 2px 10px; position:relative; }
-  .phead::after { content:""; position:absolute; left:0; right:0; bottom:0; height:2px; border-radius:2px; background:var(--ggrad); }
+  .phead::after { content:""; position:absolute; left:0; right:0; bottom:0; height:2px; border-radius:2px; background:rgba(255,255,255,.85); }
   .phead svg { display:none; }
   .phead .pt { display:grid; gap:2px; min-width:0; flex:1; } .phead .pt b { font-size:28px; font-weight:800; color:#fff; line-height:1.05; letter-spacing:-.01em; }
   .phead .pt span { font-size:12.5px; color:var(--faint); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -133,7 +131,7 @@
   .tiles { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:10px; }
   .tiles.stack { grid-template-columns:1fr !important; margin-top:8px; }   /* 10/17 (owner): Game Lines stacked, one game per row */
   #lines > .labslot:first-of-type { margin-top:10px; }
-  .labslot { grid-column:1 / -1; margin:26px 2px 4px; padding-bottom:7px; font-size:17px; font-weight:900; letter-spacing:.07em; color:#fff; border-bottom:2px solid transparent; border-image:var(--ggrad) 1; }   /* 10/17 (owner): bigger, white; 10/18: gold-white-green line -- it blended in with the parlays */
+  .labslot { grid-column:1 / -1; margin:26px 2px 4px; padding-bottom:7px; font-size:17px; font-weight:900; letter-spacing:.07em; color:#fff; border-bottom:2px solid rgba(255,255,255,.85); }   /* 10/17 (owner): bigger, white; 10/18 (owner): plain white line -- it blended in with the parlays */
   .pgrid > .labslot:first-child { margin-top:8px; } .labslot .lst { font-size:12.5px; color:var(--faint); font-weight:600; letter-spacing:0; text-transform:none; }
   @media (min-width:760px) { .tiles { grid-template-columns:repeat(3,minmax(0,1fr)); } }
   .tile { position:relative; overflow:hidden; background:var(--card); border:1px solid rgba(255,255,255,.28); border-radius:16px; padding:12px; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.3); text-align:left; font:inherit; color:inherit; }
@@ -148,7 +146,7 @@
   .tile .t { font-size:19px; font-weight:800; font-style:italic; }
   .t .rec { display:block; font-size:11px; font-weight:600; font-style:normal; color:#9aa3b2; letter-spacing:0; margin-top:1px; } .t.hm .rec { text-align:right; }
   .tile .mid { font-size:14px; font-weight:800; white-space:nowrap; }
-  .tile .bar { height:4px; border-radius:2px; background:rgba(255,255,255,.14); overflow:hidden; } .tile .bar i { display:block; height:4px; background:var(--ggrad); }
+  .tile .bar { height:4px; border-radius:2px; background:rgba(255,255,255,.14); overflow:hidden; } .tile .bar i { display:block; height:4px; background:var(--green); }   /* 10/18 (owner): the bars are solid green */
   .tile .ft { display:flex; justify-content:space-between; align-items:center; font-size:12px; color:#c9ced6; gap:4px 6px; flex-wrap:wrap; }
   .tile .ft > span:first-child { white-space:nowrap; }
   .chip { font-size:10px; font-weight:800; padding:0; border-radius:0; white-space:nowrap; letter-spacing:.04em; }
@@ -180,13 +178,13 @@
   @media (max-width:500px) { .par { font-size:12.5px; } .pbn { font-size:13px; } .pbh { gap:6px; } .plb { font-size:12px; } .labslot { font-size:15px; } .labslot .lst { font-size:11px; } }   /* 10/17 (owner): everything fits on the iPhone */
   #lab-sub { gap:0; padding:0; border-top:1px solid var(--line); background:rgba(8,9,14,.97); -webkit-backdrop-filter:none; backdrop-filter:none; }
   #lab-sub button { flex:1 1 0; min-width:0; position:relative; min-height:40px; padding:0 2px; border:0; border-radius:0; background:none; font-size:11.5px; font-weight:700; letter-spacing:.02em; color:var(--faint); white-space:nowrap; text-align:center; }
-  #lab-sub button.on { color:#fff; background:none; border:0; } #lab-sub button.on::after { content:""; position:absolute; left:24%; right:24%; bottom:0; height:2px; border-radius:2px; background:var(--ggrad); }
+  #lab-sub button.on { color:#fff; background:none; border:0; } #lab-sub button.on::after { content:""; position:absolute; left:24%; right:24%; bottom:0; height:2px; border-radius:2px; background:rgba(255,255,255,.85); }
   .wksel { position:relative; display:inline-block; margin-top:12px; padding-right:20px; } .wksel select { -webkit-appearance:none; appearance:none; width:auto; max-width:100%; min-height:36px; padding:0 2px; border:0; border-radius:0; color:#fff; font:inherit; font-size:17px; font-weight:800; cursor:pointer; background:transparent; }
   .wksel::after { content:""; position:absolute; right:2px; top:50%; width:14px; height:14px; margin-top:-7px; pointer-events:none; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23d9c4ff' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat center; }   /* 10/17 (owner): no box; the arrow sits after the text and never covers it */
   .wksel select option { background:#0d0e12; color:#fff; }
   #lab-wk { gap:20px; margin-top:6px; padding:0; border-bottom:1px solid var(--line2); overflow-x:auto; scrollbar-width:none; } #lab-wk::-webkit-scrollbar { display:none; }
   #lab-wk button { position:relative; min-height:36px; padding:0 2px; border:0; border-radius:0; background:none; font-size:13px; font-weight:700; color:var(--faint); }
-  #lab-wk button.on { color:#fff; background:none; border:0; } #lab-wk button.on::after { content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; border-radius:2px; background:var(--ggrad); }
+  #lab-wk button.on { color:#fff; background:none; border:0; } #lab-wk button.on::after { content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; border-radius:2px; background:rgba(255,255,255,.85); }
   .card.dd { margin-top:10px; padding:0; } .ddh { width:100%; display:flex; justify-content:space-between; align-items:center; gap:10px; font:inherit; color:#fff; background:none; border:0; padding:13px 14px; cursor:pointer; text-align:left; }
   .ddt { font-size:14px; font-weight:800; letter-spacing:.04em; } .ddm { font-size:12px; color:var(--faint); white-space:nowrap; } .card.dd .drop .inner { padding:0 14px 12px; }
   .pay { color:#ffcf4a; font-weight:700; white-space:nowrap; } .pay.dim { color:var(--faint); font-weight:400; }
@@ -225,7 +223,7 @@
   .al .ti { font-size:14px; font-weight:700; margin-top:3px; line-height:1.3; } .al .su { font-size:12px; color:#c9ced6; margin-top:3px; line-height:1.4; }
   .chips { display:flex; gap:18px; overflow:auto; margin-top:10px; padding-bottom:2px; }
   .chips button { flex-shrink:0; position:relative; min-height:30px; font:inherit; font-size:12px; font-weight:700; padding:5px 2px; border:0; border-radius:0; cursor:pointer; color:var(--faint); background:none; }   /* tabs as plain text, like the menu (owner 10/17) */
-  .chips button.on { color:#fff; background:none; } .chips button.on::after { content:""; position:absolute; left:0; right:0; bottom:0; height:2px; border-radius:2px; background:var(--ggrad); }
+  .chips button.on { color:#fff; background:none; } .chips button.on::after { content:""; position:absolute; left:0; right:0; bottom:0; height:2px; border-radius:2px; background:rgba(255,255,255,.85); }
   /* the toast box (the old Lines / Model buttons here were removed 10/14) */
   .fab { position:fixed; right:max(12px,env(safe-area-inset-right)); bottom:calc(max(10px,env(safe-area-inset-bottom,0px)) + 84px); z-index:50; display:flex; flex-direction:row; align-items:center; gap:8px; }
   .fab .fb { display:flex; }
@@ -253,7 +251,7 @@
   .dtop .t { font-size:28px; font-weight:800; font-style:italic; }
   .dtop .mid { text-align:center; line-height:1.35; } .dtop .s2 { font-size:12px; color:#c9ced6; margin-top:4px; } .dtop .s3 { font-size:11px; color:var(--green); }
   .dtop .wc { margin-top:12px; } .dtop .wl { display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; } .dtop .wl span:nth-child(2) { font-size:10px; letter-spacing:.06em; }
-  .dtop .bar { height:7px; border-radius:4px; background:rgba(255,255,255,.14); overflow:hidden; } .dtop .bar i { display:block; height:7px; background:var(--ggrad); }
+  .dtop .bar { height:7px; border-radius:4px; background:rgba(255,255,255,.14); overflow:hidden; } .dtop .bar i { display:block; height:7px; background:var(--green); }
   .stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:10px; }
   .stat { background:var(--card); border:1px solid rgba(255,255,255,.28); border-radius:16px; padding:10px 8px; text-align:center; }
   .stat .k { font-size:10px; font-weight:800; letter-spacing:.06em; color:var(--faint); text-transform:none; } .stat .v { font-size:19px; font-weight:800; margin-top:2px; } .stat .k2 { font-size:10px; color:var(--faint); }
@@ -307,7 +305,7 @@
   .labslot { grid-column:1 / -1; margin:14px 2px 0; padding-bottom:6px; border-bottom:1px solid var(--line); } .labslot .lst { color:var(--faint); font-weight:600; letter-spacing:0; text-transform:none; }
   .chips.dock { gap:0; padding:0 max(12px,env(safe-area-inset-right)) 0 max(12px,env(safe-area-inset-left)); border-top:1px solid var(--line); background:rgba(8,9,14,.97); -webkit-backdrop-filter:none; backdrop-filter:none; }
   .chips.dock button { flex:1 0 auto; min-width:0; position:relative; min-height:40px; padding:0 10px; border:0; border-radius:0; background:none; font-size:11.5px; font-weight:700; letter-spacing:.02em; color:var(--faint); white-space:nowrap; text-align:center; }   /* equal columns when they fit, the strip scrolls when they don't (Alerts on a phone) */
-  .chips.dock button.on { color:#fff; background:none; border:0; } .chips.dock button.on::after { content:""; position:absolute; left:24%; right:24%; bottom:0; height:2px; border-radius:2px; background:var(--ggrad); }
+  .chips.dock button.on { color:#fff; background:none; border:0; } .chips.dock button.on::after { content:""; position:absolute; left:24%; right:24%; bottom:0; height:2px; border-radius:2px; background:rgba(255,255,255,.85); }
 </style>
 <link rel="stylesheet" href="/shell.css">
 </head>
