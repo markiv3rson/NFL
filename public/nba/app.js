@@ -331,7 +331,15 @@ function applyBetsView() {
 }
 // Props (10/17, owner: its own page in the menu, between Game Lines and Bets, same as NFL's): Polymarket US lists no NBA player props yet, so the list is empty until it does
 function renderProps() { const el = $("props"); if (el) el.innerHTML = '<div class="s dim" style="margin-top:12px">None yet.</div>'; }
+// Results at the top of My bets (10/18, owner, same as NFL): the graded-pick lines that used to sit in Alerts (/api/nba/alerts?results=1), newest first
+let RESULTS = null;
+async function loadResults() { try { const d = await (await fetch("/api/nba/alerts?results=1", { cache: "no-store" })).json(); if (d && d.ok) { RESULTS = d.results || []; renderBets(); } } catch {} }
+function resultsBlock() {
+  const rs = RESULTS || []; if (!rs.length) return "";
+  return `<div class="sh labslot" style="margin-top:14px">RESULTS</div><div class="card"><div class="sec">${rs.slice(0, 12).map((a) => `<div class="s" style="padding:5px 0"><div><b>${esc(a.title)}</b> <span class="dim">· ${esc(hm(a.t))}</span></div>${a.sub ? `<div class="dim">${esc(a.sub)}</div>` : ""}</div>`).join("")}</div></div>`;
+}
 async function loadBets() {
+  loadResults();
   try { BETS = await (await fetch("/api/nba/mybets", { cache: "no-store" })).json(); } catch { BETS = { ok: false }; }
   try { const d = await (await fetch("/api/nba/modelbets", { cache: "no-store" })).json(); if (d && d.ok) MODELBETS = d; } catch {}
   renderBets(); renderLabList(); setTimeout(playStamps, 50);
@@ -353,7 +361,7 @@ function renderBets() {
   const sel = MBDAY === "all" || days.includes(MBDAY) ? MBDAY : (days[days.length - 1] || "all");
   const settled = (j.settled || []).filter((e) => sel === "all" || dayOf(e) === sel);
   const dayPick = `<div class="wksel"><select id="mb-day" aria-label="Day">${days.map((d) => `<option value="${d}"${sel === d ? " selected" : ""}>${dayName(d)}</option>`).join("")}<option value="all"${sel === "all" ? " selected" : ""}>Season</option></select></div>`;
-  $("record-mine").innerHTML = dayPick + ticketRow() + `<div class="stats" style="margin-top:10px"><div class="stat"><div class="k">RECORD</div><div class="v ${rc.pct >= 55 ? "g" : rc.pct >= 50 ? "y" : "r"}">${rc.w || 0}–${rc.l || 0}</div><div class="k2">${rc.pct == null ? "—" : rc.pct + "% won"}</div></div>` +
+  $("record-mine").innerHTML = dayPick + resultsBlock() + ticketRow() + `<div class="stats" style="margin-top:10px"><div class="stat"><div class="k">RECORD</div><div class="v ${rc.pct >= 55 ? "g" : rc.pct >= 50 ? "y" : "r"}">${rc.w || 0}–${rc.l || 0}</div><div class="k2">${rc.pct == null ? "—" : rc.pct + "% won"}</div></div>` +
     `<div class="stat"><div class="k">PROFIT</div><div class="v ${(rc.pl || 0) >= 0 ? "g" : "r"}">${(rc.pl || 0) >= 0 ? "+" : "−"}$${Math.abs(rc.pl || 0).toFixed(2)}</div><div class="k2">settled</div></div>` +
     `<div class="stat"><div class="k">STAKED</div><div class="v">$${(rc.staked || 0).toFixed(2)}</div><div class="k2">settled</div></div></div>` +
     `<div class="card" style="margin-top:10px"><div class="sec"><div class="sh">Open</div>${(j.open || []).length ? rowsOf(j.open, false) : '<div class="s dim">None.</div>'}</div>` +
@@ -534,7 +542,7 @@ function renderModels() {
 
 // ---------- Alerts
 let ALERTS = [], ALFILTER = "all", ALPREV = null;
-const ALK = { PICK: ["New pick", "var(--green)"], "LINE MOVE": ["Line move", "var(--blue)"], INJURY: ["Injury", "var(--red)"], RESULT: ["Result", "var(--gold)"] };
+const ALK = { PICK: ["New pick", "var(--green)"], "LINE MOVE": ["Line move", "var(--blue)"], INJURY: ["Injury", "var(--red)"] };   // 10/18 (owner): results moved to the top of My bets
 const alSlug = (k) => String(k).toLowerCase().replace(/ /g, "");   // "QB CHANGE" -> "qbchange" (menu: #alerts-qbchange)
 const alSeen = () => { try { return localStorage.getItem("alSeen") || ""; } catch { return ""; } };
 async function loadAlerts() {
@@ -544,7 +552,7 @@ function renderAlerts() {
   const dots = ALPREV != null ? ALPREV : alSeen(), unread = ALERTS.filter((a) => a.t > alSeen()).length;
   Shell.setCount("nba", "alerts", unread);
   for (const k of Object.keys(ALK)) Shell.setCount("nba", `alerts-${alSlug(k)}`, ALERTS.filter((a) => a.kind === k && a.t > alSeen()).length);   // 10/17 (owner): the unread number on each kind's own line   // 10/17: the unread count sits on the menu's NBA Alerts row
-  const list = ALERTS.filter((a) => ALFILTER === "all" || a.kind === ALFILTER);
+  const list = ALERTS.filter((a) => ALK[a.kind] && (ALFILTER === "all" || a.kind === ALFILTER));
   $("alerts").innerHTML = list.length ? list.map((a) => { const [lab, col] = ALK[a.kind] || [a.kind, "var(--dim)"];
     const ic = a.kind === "INJURY" && a.team ? tlogo(a.team) : a.kind === "LINE MOVE" ? pmLogo() : "";
     return `<div class="card al${a.t > dots ? " un" : ""}" data-algame="${esc(a.game || "")}"><span class="dot"></span><div style="flex:1"><div class="kd" style="color:${col}"><span>${ic}${lab.toUpperCase()}</span><span class="dim" style="font-weight:600;letter-spacing:0">${hm(a.t)}</span></div>` +

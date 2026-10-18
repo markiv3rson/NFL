@@ -2,8 +2,11 @@
    the home screen lists. Used by /index.html (NFL + home) and /nba/index.html. The bottom tab bar and the lever are gone. */
 .shead { position:relative; display:flex; align-items:center; gap:12px; padding:4px 4px 14px; margin-bottom:6px; }
 .shead::after { content:""; position:absolute; left:0; right:0; bottom:0; height:1px; background:linear-gradient(90deg,rgba(181,140,255,.55),rgba(124,183,255,.45) 55%,rgba(255,255,255,.06)); }
-.mbtn { width:44px; height:44px; flex:0 0 44px; border-radius:12px; border:0; background:none; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:5px; padding:0; cursor:pointer; }   /* 10/17 (owner): no box on the menu button */
-.mbtn i { display:block; width:18px; height:2px; border-radius:1px; background:#d9c4ff; }
+/* 10/18 (owner): the ☰ is gone -- a thin grip on the left edge, centered top to bottom, opens the menu (tap, or slide it right) */
+.mgrip { position:fixed; left:0; top:50%; transform:translateY(-50%); z-index:150; width:22px; height:92px; border:0; padding:0; margin:0; background:none; cursor:pointer; display:flex; align-items:center; justify-content:flex-start; }
+.mgrip i { display:block; width:5px; height:64px; border-radius:0 4px 4px 0; background:linear-gradient(180deg,#b58cff,#7cb7ff); box-shadow:0 0 10px rgba(181,140,255,.6); }
+body.menu-open .mgrip { display:none; }
+.shead .snext { justify-content:center; }
 .sgrad { background:linear-gradient(90deg,#ffffff 0%,#ffd0da 50%,#b58cff 100%); -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent; }
 .shome { flex:1 1 auto; min-width:0; text-align:center; font-size:clamp(40px,15vw,60px); font-weight:900; font-style:italic; letter-spacing:.01em; line-height:1; white-space:nowrap; }
 .shome span { display:inline-block; padding-right:.08em; }
@@ -86,7 +89,8 @@ body.menu-open .mscrim { opacity:1; pointer-events:auto; } body.menu-open .mdraw
 /* 10/17 (owner: "why is the menu so long? make it more compact, to the left, only on iPhone"): phones get a narrower drawer that hugs the left edge,
    shorter rows, smaller logo and buttons. Computers and tablets keep the full-size menu. */
 @media (max-width:500px) {
-  .mdraw { width:auto; min-width:0; max-width:74vw; bottom:auto; max-height:100dvh; border-bottom:1px solid rgba(181,140,255,.5); border-bottom-right-radius:18px; padding:calc(env(safe-area-inset-top,0px) + 14px) 12px 16px 8px; }   /* only as wide as its words and as tall as its rows: no empty space (owner 10/17) */
+  .mdraw { width:auto; min-width:0; max-width:74vw; top:50%; bottom:auto; max-height:100dvh; transform:translate(-104%,-50%); border-top:1px solid rgba(181,140,255,.5); border-bottom:1px solid rgba(181,140,255,.5); border-radius:0 18px 18px 0; padding:14px 12px 16px 8px; }   /* only as wide as its words and as tall as its rows, centered top to bottom (owner 10/17 + 10/18) */
+  body.menu-open .mdraw { transform:translate(0,-50%); }
   .mtop { padding:0 0 4px 2px; gap:10px; }
   .mlogo { font-size:34px; }   /* fills the header (owner: the yellow mark) */
   .mref { width:34px; height:34px; }

@@ -577,7 +577,7 @@ function renderMineNow() {
   const tiles = `<div class="stats" style="margin-top:10px">` + (past ? `<div class="stat"><div class="k">BETS</div><div class="v mkt">${shown.length}</div><div class="k2">Week ${sel}</div></div>` : `<div class="stat"><div class="k">OPEN BETS</div><div class="v mkt">${nOpen}</div><div class="k2">${money(s.openCost)} staked</div></div>`) +
     `<div class="stat"><div class="k">RECORD</div><div class="v ${tot ? (s.wins / tot >= 0.5 ? "g" : "r") : "dim"}">${tot ? `${s.wins}–${s.losses}` : "—"}</div><div class="k2">settled</div></div>` +
     `<div class="stat"><div class="k">PROFIT</div><div class="v">${cMoney(s.pl)}</div><div class="k2">${sel === "all" ? "this season" : "Week " + sel}</div></div></div>`;
-  $("record-mine").innerHTML = wkChips + ticketRow() + tiles + `<div class="card" style="margin-top:10px">` +
+  $("record-mine").innerHTML = wkChips + resultsBlock() + ticketRow() + tiles + `<div class="card" style="margin-top:10px">` +
     `<div class="sec"><div class="sh">Summary</div>` +
     `<div class="row"><span class="dim">Return · CLV</span><span>${cPct(s.roi)} · ${cPct(s.avgClv)}</span></div>` +
     (() => { const sc = MB.summary && MB.summary.settleCheck; if (!sc || !(sc.agree + sc.disagree)) return "";
@@ -596,6 +596,14 @@ function renderMineNow() {
     `<div class="center"><button class="btn" id="sync-btn">↻ Sync account</button></div>`;
   $("sync-btn").onclick = () => loadRecord(true);
   const mw = $("mb-wk"); if (mw) mw.onchange = () => { MBWEEK = mw.value === "all" ? "all" : Number(mw.value); renderMine(); };
+}
+// Results at the top of My bets (10/18, owner: "the results for alert should be in the Bets tab, at the top of the list"): finals with the card's
+// picks, settled bets, decided model parlays, the weekly recap -- the RESULT lines that used to sit in Alerts (/api/alerts?results=1), newest first.
+let RESULTS = null;
+async function loadResults() { try { const d = await (await fetch("/api/alerts?results=1", { cache: "no-store" })).json(); if (d && d.ok) { RESULTS = d.results || []; renderMine(); } } catch {} }
+function resultsBlock() {
+  const rs = RESULTS || []; if (!rs.length) return "";
+  return `<div class="sh labslot" style="margin-top:14px">RESULTS</div><div class="card"><div class="sec">${rs.slice(0, 12).map((a) => `<div class="s" style="padding:5px 0"><div><b>${esc(a.title)}</b> <span class="dim">· ${esc(hm(a.t))}</span></div>${a.sub ? `<div class="dim">${esc(a.sub)}</div>` : ""}</div>`).join("")}</div></div>`;
 }
 // ---------- Record: Model ----------
 function rec(list) { const c = { W: 0, L: 0, P: 0 }; list.forEach((x) => c[x.result]++); return `${c.W}–${c.L}${c.P ? "–" + c.P : ""}`; }
@@ -1421,6 +1429,7 @@ function showPanel(name) {
   if (name === "home" || name === "lines") liveLoop();
   try { if (window.scrollTo) window.scrollTo(0, 0); } catch {}   // 10/14 (owner): every tab change starts at the top of the page
   if (name === "record" || name === "models") loadRecord();
+  if (name === "record") loadResults();   // 10/18: the result lines at the top of My bets
   if (name === "record") applyBetsView();
   if (name === "record") setTimeout(playStamps, 50);
   if (name === "props") { renderProps(); loadProps(); }   // 10/17 (owner): Props is its own page
