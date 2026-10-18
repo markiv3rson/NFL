@@ -34,15 +34,14 @@ body.menu-open .mscrim { opacity:1; pointer-events:auto; } body.menu-open .mdraw
 .msec { display:flex; align-items:center; gap:10px; padding:0 2px 10px; } .msec + * { margin-top:0; }
 .msec span:first-child { font-size:13px; font-weight:900; letter-spacing:.3em; white-space:nowrap; }
 .msec .ml { flex:1 1 auto; height:1px; }
-.msec.nfl span:first-child, .msec.nba span:first-child { background:var(--ggrad); -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent; }
-.msec.nfl .ml, .msec.nba .ml { background:var(--ggrad); opacity:.7; }
+.msec.nfl span:first-child, .msec.nba span:first-child { color:#ff3b4a; }   /* 10/18 night (owner): the NFL / NBA words solid red; only the line next to them is the red -> green gradient */
+.msec.nfl .ml, .msec.nba .ml { background:var(--ggrad); opacity:.85; }
 .msec.mod span:first-child { color:#b58cff; }   /* the one purple left in the menu: the model's section and its two rows */
 .msec.mod .ml { background:linear-gradient(90deg,rgba(181,140,255,.8),rgba(181,140,255,0)); }
-.mi[data-mp="models"] .ic { color:#b58cff; }
 .msec.gap { padding-top:24px; }
 .mi { position:relative; display:flex; align-items:center; gap:14px; height:48px; padding:0 10px; border-radius:12px; color:#c9ced6; text-decoration:none; font-size:16px; }
 .mi .ic { width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex:0 0 32px; }
-.mi.nfl .ic { color:#3ddc97; } .mi.nba .ic { color:#fff; }   /* 10/18 night (owner): NFL green, NBA white -- no gold left */   /* 10/17 (owner): no pills in the menu -- just the icons */
+.mi .ic { color:#fff; }   /* 10/18 night (owner): "keep them white" -- every menu icon white, MODEL ANALYSIS rows too */   /* 10/17 (owner): no pills in the menu -- just the icons */
 .mi .cnt { margin-left:auto; min-width:20px; height:20px; border-radius:10px; padding:0 6px; box-sizing:border-box; display:none; align-items:center; justify-content:center; background:none; color:#fff; font-size:12px; font-weight:800; }   /* 10/18 (owner: "stop filling in the circles"): the unread number is plain text */
 .mi.on { color:#fff; font-weight:800; }
 .mi.on .ic { color:#fff; }
