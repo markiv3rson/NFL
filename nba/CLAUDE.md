@@ -304,3 +304,4 @@ Every PL line on the NBA pages fills in Polymarket's real combo price by itself 
 - **10/18 night (owner):** every menu icon white (NBA rows too), the NBA word solid red with a red -> green line.
 - **10/18 night (owner, both sports):** menu taps no longer add history (no back-swipe page changes); Models sections sit on 80% dark cards like the stat tiles.
 - **10/18 night (owner, both sports):** game-page cards 55% dark see-through (`#detail .card:not(.dtop)`).
+- **10/18 night (owner):** the home clock is sketch G -- mono digits, one red -> green run across the whole clock, a changed digit flips (shared `public/app.js` / `shell.css`; the NBA page also loads the Share Tech Mono font).
