@@ -166,11 +166,11 @@ function tile(g) {
   const hp0 = mktWin(g), hp = hp0 ? hp0.home * 100 : null, ap = hp == null ? null : 100 - hp;
   const lead = (v, o) => (v >= o ? "mkt" : "dim");
   const green = greenPicks(g)[0];
-  const chips = [g.preseason ? '<span class="chip c-amb">PRESEASON</span>' : "", green ? `<span class="chip c-grn">${esc(green.pick)}</span>` : "", live && !sc ? '<span class="chip c-red">LIVE</span>' : ""].filter(Boolean).join('<span style="display:inline-block;width:6px"></span>');
+  const chips = [!g.inProgress && !fin && g.start ? `<span class="chip tmt">${esc(tipTime(g.start))}</span>` : "", g.preseason ? '<span class="chip c-amb">PRESEASON</span>' : "", green ? `<span class="chip c-grn">${esc(green.pick)}</span>` : "", live && !sc ? '<span class="chip c-red">LIVE</span>' : ""].filter(Boolean).join('<span style="display:inline-block;width:6px"></span>');
   const mid0 = hp == null ? '<span class="mid dim">—</span>' : `<span class="mid"><span class="${lead(ap, hp)}">${Math.round(ap)}</span><span class="dim"> · </span><span class="${lead(hp, ap)}">${100 - Math.round(ap)}</span><span class="dim" style="font-size:11px">%</span></span>`;
   const mid = sc && (sc.st === "in" || sc.st === "post") ? `<span class="mid lvmid"><span class="sr"><span class="${sc.a > sc.h ? "g" : "dim"}">${sc.a}</span><span class="dim"> – </span><span class="${sc.h > sc.a ? "g" : "dim"}">${sc.h}</span></span><span class="lv ${fin ? "dim" : "r"}">${fin ? "FINAL" : "● LIVE · " + esc(sc.lbl)}</span></span>` : mid0;
   // 10/18 (owner, same as NFL): the tile looks like the game page's header card -- team colours, big faded logos, logo + code + record each side, the %
-  // (or score) in the middle with the pick / PRESEASON tag under it, the bar; NO date, time or "starts in" (the day header above carries the tip times)
+  // (or score) in the middle with the tip time (10/18, owner) + the pick / PRESEASON tag under it, the bar; no "starts in"
   const ca = teamColor(g.away), ch = teamColor(g.home);
   return `<button class="tile${live ? " live" : ""}" style="background:linear-gradient(90deg,${ca}40 0%,${ca}14 50%,${ch}14 50%,${ch}40 100%),var(--card)" data-game="${esc(g.key)}"><img class="wmk l" loading="lazy" decoding="async" src="${esc(logoUrl(g.away))}" alt="" onerror="this.style.display='none'"><img class="wmk r" loading="lazy" decoding="async" src="${esc(logoUrl(g.home))}" alt="" onerror="this.style.display='none'">` +
     `<div class="in"><div class="nm"><span class="t">${tlogo(g.away)}${g.away}${recOf(g, g.away)}</span><div class="tmid">${mid}${chips ? `<div class="s2">${chips}</div>` : ""}</div><span class="t hm">${g.home}${tlogo(g.home)}${recOf(g, g.home)}</span></div>${hp == null || sc ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
@@ -178,7 +178,7 @@ function tile(g) {
 function renderLines() {
   if (!S) { $("lines").innerHTML = '<div class="s dim center">Loading…</div>'; return; }
   if (DETAIL) { const g = S.games.find((x) => x.key === DETAIL); if (g) return renderDetail(g); DETAIL = null; }
-  setBg(null); linesBg();
+  setBg(null); linesBg(); document.body.classList.remove("game-on");
   $("detail").style.display = "none"; $("lines").style.display = "";
   $("lines").innerHTML = changedBox() + (S.games.length ? linesByDay() : '<div class="tiles"><div class="s dim">No NBA games on Polymarket right now.</div></div>');
 }
@@ -187,8 +187,7 @@ const tipTime = (iso) => (!iso || isNaN(new Date(iso)) ? "TBD" : new Date(iso).t
 function linesByDay() {
   const days = [], by = {};
   for (const g of [...S.games].sort((a, b) => String(a.date).localeCompare(String(b.date)) || (Date.parse(a.start) || 0) - (Date.parse(b.start) || 0))) { const d = g.date || "TBD"; if (!by[d]) { by[d] = []; days.push(d); } by[d].push(g); }
-  return days.map((d) => { const times = [...new Set(by[d].filter((g) => g.start).map((g) => tipTime(g.start)))];
-    return `<div class="sh labslot">${esc(dayName(d).toUpperCase())}${times.length ? ` <span class="lst">· ${times.map(esc).join(" · ")}</span>` : ""}</div><div class="tiles stack">${by[d].map(tile).join("")}</div>`; }).join("");
+  return days.map((d) => `<div class="sh labslot">${esc(dayName(d).toUpperCase())}</div><div class="tiles stack">${by[d].map(tile).join("")}</div>`).join("");   // 10/18 (owner): just the day -- the tip time sits on each tile
 }
 // Model bets headers inside a day (Eastern tip time): EARLY before 7 PM, NIGHT 7-9:59 PM, LATE 10 PM on
 function nbaSlot(iso) { const h = Number(new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone: "America/New_York" }).format(new Date(iso))); return h < 19 ? "EARLY GAMES" : h < 22 ? "NIGHT GAMES" : "LATE GAMES"; }
@@ -296,7 +295,8 @@ function sgpBox(g) {
 function linesBg() { const p = $("panel-lines"); document.documentElement.classList.toggle("lines-on", !(p && p.classList.contains("on") && DETAIL)); }
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = ""; linesBg();
-  $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}` +
+  document.body.classList.add("game-on");   // 10/18 (owner, same as NFL): the game card is the header; ← Games under it
+  $("detail").innerHTML = `${detailTop(g)}<button class="back" id="back-btn">← Games</button>` +
     secRow("MONEYLINE", injPill(g, "inj")) + `<div class="grid">${marketCard(g, "ml", "inj")}</div>` +
     secRow("SPREAD") + `<div class="grid">${marketCard(g, "spread")}</div>` +
     secRow("TOTALS") + `<div class="grid">${marketCard(g, "total")}</div>` + sgpBox(g);
@@ -577,6 +577,7 @@ function showPanel(name) {
   if (name === "record" && !sub) sub = BETSVIEW === "model" ? `modelbets-${LABTYPE}` : "mybets";
   if (!$("panel-" + name)) name = "lines";
   Shell.setActive(sub || name);   // 10/17: the menu replaces the tab bar
+  document.body.classList.toggle("game-on", name === "lines" && !!DETAIL);
   if (name === "alerts") { ALPREV = alSeen(); if (ALERTS.length) { try { localStorage.setItem("alSeen", ALERTS[0].t); } catch {} } }
   document.querySelectorAll(".panel").forEach((p) => p.classList.remove("on")); $("panel-" + name).classList.add("on");
   if (name === "alerts") renderAlerts();
