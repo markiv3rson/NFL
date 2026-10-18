@@ -21,9 +21,7 @@
   // 10/17 (owner): the Model bets parlay types are sub tabs under Model bets in the menu (both sports)
   const TYPES = { nfl: [["ou", "Over/Under"], ["style", "4 Leg (My Style)"], ["pts", "4 Leg (Bought)"], ["4", "4 Leg"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"], ["diff", "Different Game Parlays"]],
     nba: [["sgp", "Same game"], ["sgp_pts", "Bought"], ["best4", "Parlay"], ["fav4", "Favorites"]] };
-  // 10/17 (owner): the alert kinds are sub tabs under Alerts too (ids match the pages' ALK keys, lower case without spaces)
-  const ALERTK = { nfl: [["all", "All"], ["injury", "Injury"], ["qbchange", "QB change"], ["linemove", "Line move"], ["weather", "Weather"]],   // 10/18 (owner): the top 5 only
-    nba: [["all", "All"], ["pick", "New pick"], ["linemove", "Line move"], ["injury", "Injury"]] };   // 10/18 (owner): RESULT lines are not shown anywhere (the Results page was deleted)
+  // 10/18 night (owner): Alerts is ONE menu item on both sports -- no kind sub tabs (the pages still accept an old #alerts-<kind> link)
   // 10/17 (owner): Alerts, Bets and Model bets open and close their lists (closed to start); tapping them only opens / closes
   const car = '<i class="car">▾</i>';
   const group = (key, inner) => `<div class="msubs" data-grp="${key}">${inner}</div>`;
@@ -31,9 +29,7 @@
   const sub = (sp, id, label) => id === "modelbets" ? `<div class="mi ${sp} msub mtog" data-tog="${sp}-mb" data-msp="${sp}" data-mp="modelbets"><i></i>${label}${car}</div>` + types(sp)
     : `<a class="mi ${sp} msub" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><i></i>${label}</a>`;
   const subs = (sp) => `<div class="mi ${sp} mpar mtog" data-tog="${sp}-bets"><span class="ic">${svg("bets")}</span>Bets${car}</div>` + group(`${sp}-bets`, SUB.map(([id, label]) => sub(sp, id, label)).join(""));
-  const alerts = (sp) => `<div class="mi ${sp} mpar mtog" data-tog="${sp}-alerts" data-msp="${sp}" data-mp="alerts"><span class="ic">${svg("bell")}</span>Alerts${car}<b class="cnt" id="mcnt-${sp}-alerts"></b></div>` +
-    group(`${sp}-alerts`, ALERTK[sp].map(([k, label]) => `<a class="mi ${sp} msub" data-msp="${sp}" data-mp="alerts-${k}" href="${URL_[sp]}#alerts-${k}"><i></i>${label}${k === "all" ? "" : `<b class="cnt" id="mcnt-${sp}-alerts-${k}"></b>`}</a>`).join(""));   // 10/17 (owner): each kind shows its own unread number
-  const item = (sp, id, label, ic) => id === "record" ? subs(sp) : id === "alerts" ? alerts(sp) : `<a class="mi ${sp}" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><span class="ic">${svg(ic)}</span>${label}<b class="cnt" id="mcnt-${sp}-${id}"></b></a>`;
+  const item = (sp, id, label, ic) => id === "record" ? subs(sp) : `<a class="mi ${sp}" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><span class="ic">${svg(ic)}</span>${label}<b class="cnt" id="mcnt-${sp}-${id}"></b></a>`;
   const NFL_LOGO_FIX = { WSH: "wsh", WAS: "wsh", LA: "lar", LAR: "lar" };
   const Shell = {
     sport: "nfl", panel: "home",

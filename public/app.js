@@ -1348,7 +1348,7 @@ function tickCd() {
   tickCd._h = setTimeout(tickCd, 1000);
 }
 // alerts: built on the server from changes it already sees between pulls (injuries, lines, wind, results)
-const ALK = { INJURY: ["Injury", "var(--red)"], "QB CHANGE": ["QB change", "var(--gold)"], "LINE MOVE": ["Line move", "#fff"], WEATHER: ["Weather", "var(--rose)"] };   // 10/18 (owner): Vegas gold, no blue -- line move white, weather pale gold   // 10/18 (owner): the top 5 only -- Result, TD No, TD jump, QB TD are cut (lib/alerts.js CUT_KINDS)
+const ALK = { INJURY: ["Injury", "var(--red)"], "QB CHANGE": ["QB change", "#fff"], "LINE MOVE": ["Line move", "#fff"], WEATHER: ["Weather", "#fff"] };   // 10/18 night (owner): no gold -- injury red, the rest white;   // 10/18 (owner): Vegas gold, no blue -- line move white, weather pale gold   // 10/18 (owner): the top 5 only -- Result, TD No, TD jump, QB TD are cut (lib/alerts.js CUT_KINDS)
 const alSlug = (k) => String(k).toLowerCase().replace(/ /g, "");   // "QB CHANGE" -> "qbchange" (menu: #alerts-qbchange)
 const alSeen = () => { try { return localStorage.getItem("alSeen") || ""; } catch { return ""; } };
 async function loadAlerts() {
@@ -1357,7 +1357,6 @@ async function loadAlerts() {
 function renderAlerts() {
   const dots = ALPREV != null ? ALPREV : alSeen(), unread = ALERTS.filter((a) => a.t > alSeen()).length;
   Shell.setCount("nfl", "alerts", unread);
-  for (const k of Object.keys(ALK)) Shell.setCount("nfl", `alerts-${alSlug(k)}`, ALERTS.filter((a) => a.kind === k && a.t > alSeen()).length);   // 10/17 (owner): the unread number on each kind's own line   // 10/17: the unread count sits on the menu's NFL Alerts row (the bell went with the tab bar)
   const list = ALERTS.filter((a) => ALK[a.kind] && (ALFILTER === "all" || a.kind === ALFILTER));   // 10/18: only the kept kinds show
   $("alerts").innerHTML = list.map((a) => { const [lab, col] = ALK[a.kind] || [a.kind, "var(--dim)"];
     const ic = a.kind === "INJURY" && a.team ? injBadge(a.team) : a.kind === "LINE MOVE" ? pmLogo() : "";
