@@ -5,7 +5,6 @@
 import { getRedis, jparse, mgetAll } from "./redis";
 import { staleDate } from "./pinnacle";
 import { finalsFor } from "./espn";
-import { alertForResult } from "./alerts";
 import { cardLegs, ptsLeg } from "./cardpick";
 const KEY = (date, game, id) => `pick:${date}:${game}:${id}`;
 const IDS = "pick:ids";
@@ -57,7 +56,7 @@ export async function gradeAll(fetchFinals = finalsFor) {
       if (!f || !f.final) { if (staleDate(date)) { row.result = "void"; await r.set(_k || KEY(row.date, row.game, row.id), JSON.stringify(row)); graded++; } continue; }   // postponed / moved game: closed out as void, not pending forever
       const [away, home] = p.game.split(" @ ");
       row.result = gradePick(row, away, home, f); row.final = { away: f.away, home: f.home }; row.gradedAt = new Date().toISOString();
-      await r.set(_k || KEY(row.date, row.game, row.id), JSON.stringify(row)); graded++; await alertForResult(row);
+      await r.set(_k || KEY(row.date, row.game, row.id), JSON.stringify(row)); graded++;
     }
   }
   return graded;

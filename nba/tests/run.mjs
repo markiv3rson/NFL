@@ -438,9 +438,8 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(await al.alertsFromSlate([pickGame(true)], T0 + 400e3) === 0, "alerts: a preseason TEST pick never alerts");
   ok(await al.alertsFromSlate([pickGame(false)], T0 + 460e3) === 1 && await al.alertsFromSlate([pickGame(false)], T0 + 520e3) === 0, "alerts: a new green PICK alerts once (the model's 50% side does not)");
   ok(await al.alertsFromSlate([{ ...pickGame(false), key: "X @ Y", inProgress: true }], T0 + 580e3) === 0, "alerts: games already under way are skipped");
-  ok(await al.alertForResult({ tier: "pick", pct: 59.1, result: "win", label: "MIA +3", game: "MIA @ ORL", date: "2026-11-04", market: "spread", final: { away: 100, home: 101 } }, T0 + 640e3) === 1
-    && await al.alertForResult({ tier: "test", pct: 70, result: "win", label: "x", game: "A @ B", date: "2026-11-04", market: "ml" }) === 0 && await al.alertForResult({ tier: "pick", pct: 50.3, result: "win", label: "y", game: "A @ B", date: "2026-11-04", market: "spread" }) === 0, "alerts: a graded green PICK alerts (a TEST or a 50% model side never does)");
-  const all = await al.listAlerts(), rs = await al.listResults(); ok(all.length - before === 5 && !all.some((a) => a.kind === "RESULT") && all[0].t > all[1].t && rs.length >= 1 && rs[0].kind === "RESULT", "alerts: newest first; RESULT lines go to the Bets tab (10/18)", all.slice(0, 3).map((a) => a.kind));
+  ok(!al.alertForResult && !al.listResults, "alerts (cleanup 10/18): graded picks save no RESULT line and there is no results reader");
+  const all = await al.listAlerts(); ok(all.length - before === 5 && !all.some((a) => a.kind === "RESULT") && all[0].t > all[1].t, "alerts: newest first, no RESULT lines", all.slice(0, 3).map((a) => a.kind));
   const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
   ok(/\/api\/nba\/alerts/.test(app) && /Shell\.setCount\("nba", "alerts"/.test(app) && /alSeen/.test(app), "page: bell counts unread alerts and opens the Alerts panel"); }
 
@@ -790,7 +789,7 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
 
 // ---------- computer layout (10/16): the page marks itself desktop on a wide screen with a mouse; the app fits the whole screen there
 { const html = readFileSync(new URL("../../public/nba/index.html", import.meta.url), "utf8"), js = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
-  ok(/html\.desktop \.wrap \{[^}]*max-width:none/.test(html) && /html\.desktop \.tabs, html\.desktop \.chips\.dock \{[^}]*left:0; right:0;[^}]*max-width:none/.test(html) && /html\.desktop \.tiles \{[^}]*auto-fit, minmax\(300px, 1fr\)/.test(html), "on a computer the content, the tab bar and the docked chip bars span the whole screen and the game tiles use every column that fits (owner: fit the whole screen)");
+  ok(/html\.desktop \.wrap \{[^}]*max-width:none/.test(html) && !/\.tabs\b|chips\.dock/.test(html) && /html\.desktop \.tiles \{[^}]*auto-fit, minmax\(300px, 1fr\)/.test(html), "on a computer the content spans the whole screen and the game tiles use every column that fits (owner: fit the whole screen); no tab bar or docked strip styles left");
   ok(/html\.desktop \.mk \.prl \{[^}]*flex-start/.test(html) && /html\.desktop \.mk \.prl > \.s \{[^}]*flex:0 0 118px/.test(html), "on a computer the market numbers sit next to their labels (fixed label width), not at the far right");
   ok(/\.trow \{ display:flex; justify-content:space-between/.test(html) && /\.mk \{ display:grid; grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/.test(html) && /#detail \.card \.inner > \.drop\.open \{/.test(html) && /\.hd\.hm \{[^}]*margin-top:14px/.test(html) && !/\.f \{/.test(html), "game page v3 styles: title row, two-column market grid, drop-down at the top of the card, MODEL header spaced below the market");
   ok(/html\.desktop \.fab, html\.desktop \.toast \{[^}]*right:24px/.test(html) && !/980px/.test(html.slice(html.indexOf("html.desktop"))), "the lever and toast sit at the window's right edge on a computer; no 980px column remains in the computer rules");

@@ -21,7 +21,7 @@
   // 10/17 (owner): the Model bets parlay types are sub tabs under Model bets in the menu (both sports)
   const TYPES = { nfl: [["ou", "Over/Under"], ["style", "4 Leg (My Style)"], ["pts", "4 Leg (Bought)"], ["4", "4 Leg"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"], ["diff", "Different Game Parlays"]],
     nba: [["sgp", "Same game"], ["sgp_pts", "Bought"], ["best4", "Parlay"], ["fav4", "Favorites"]] };
-  // 10/18 night (owner): Alerts is ONE menu item on both sports -- no kind sub tabs (the pages still accept an old #alerts-<kind> link)
+  // 10/18 night (owner): Alerts is ONE menu item on both sports -- no kind sub tabs
   // 10/17 (owner): Alerts, Bets and Model bets open and close their lists (closed to start); tapping them only opens / closes
   const car = '<i class="car">▾</i>';
   const group = (key, inner) => `<div class="msubs" data-grp="${key}">${inner}</div>`;
@@ -37,19 +37,6 @@
     nbaLogo: (t, teams) => (teams && teams[t] && teams[t].logo) || (t ? `https://a.espncdn.com/i/teamlogos/nba/500/${String(t).toLowerCase()}.png` : ""),
     img: (src) => (src ? `<img src="${src}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '<span class="nl"></span>'),
     // countdown text: "1d 1h 7m", "2h 14m", "26m", "45s"
-    clockTxt(ms) {
-      if (!(ms > 0)) return "0s";
-      const d = Math.floor(ms / 864e5), h = Math.floor((ms % 864e5) / 36e5), m = Math.floor((ms % 36e5) / 6e4), s = Math.floor((ms % 6e4) / 1e3);
-      return d ? `${d}d ${h}h ${m}m` : h ? `${h}h ${m}m` : m ? `${m}m` : `${s}s`;
-    },
-    // 10/18 night (owner): the NEXT GAME header strip is gone from every page -- no #shead-next exists, so this returns at once (the callers still drive the home clocks)
-    setNext(awayLogo, homeLogo, ms) {
-      const el = document.getElementById("shead-next"); if (!el) return;
-      if (awayLogo == null) { if (el.dataset.k !== "none") { el.dataset.k = "none"; el.innerHTML = '<span class="none">No upcoming games</span>'; } return; }
-      const k = awayLogo + "|" + homeLogo;
-      if (el.dataset.k !== k) { el.dataset.k = k; el.innerHTML = `${Shell.img(awayLogo)}<span class="vs">vs</span>${Shell.img(homeLogo)}<span class="nglab">NEXT GAME</span><b class="ngclk sgrad" id="shead-clk"></b>`; }
-      const c = document.getElementById("shead-clk"); if (c) { const t = Shell.clockTxt(ms); if (c.textContent !== t) c.textContent = t; }
-    },
     setActive(panel) {
       Shell.panel = panel;
       const par = String(panel).split("-")[0];   // "modelbets-2": the type is on, Model bets above it is marked as its parent

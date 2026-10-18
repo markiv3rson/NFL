@@ -5,9 +5,6 @@ import { buildCard, cardPicks } from "../../lib/cardpick";
 import { comboFactors, totalMovePick, recordStack, lineMovePick, lineMoveTotalPick, keyNumberPick, injuryPick, bounceBackPick, floorDogPick } from "../../lib/stack";
 import { venue, windAtKickoff } from "../../lib/wind";
 import { loadComboModel } from "../../lib/combomodel";
-import { alertsTdNo } from "../../lib/alerts";
-import { applyCalibration } from "../../lib/calibration";
-import { tdRows } from "../../lib/picks";
 import { SEASON, currentWeek, loadGames, started } from "../../lib/games";
 import { getRedis, jparse, getJSON, setJSON, K, SLATE_CACHE, pushCapped } from "../../lib/redis";
 import { fetchEvents, gameLines, tdProps } from "../../lib/poly";
@@ -154,9 +151,6 @@ export default async function handler(req, res) {
         } else await redis.del(`tdrej:${season}:${week}:${g.key}`);
         if (msg) await logError("snapshot", msg);
         if (accept) { await setJSON(K.tdpx(season, week, g.key), px); props++;
-          { const calib = await getJSON(`calib:${season}`).catch(() => null);   // "No" marks on the new prices, from the numbers the tab shows (10/7)
-            const rows = tdRows(g.key, g.away, g.home, (model && model.td && model.td[g.key]) || null, px, {}).map((r) => ({ ...r, fair: r.fair != null && calib ? applyCalibration(r.fair, calib) : r.fair }));
-            await alertsTdNo(season, g, rows).catch(() => 0); }
           // TD price HISTORY (added 9/29): before, each snapshot overwrote the last, so only the latest/closing TD prices
           // existed. Compact rows {t, p: {market: [ask, bid]}}, last 150 snapshots per game (a week uses ~35).
           const compact = {}; for (const [q, v] of Object.entries(px)) { const o = typeof v === "number" ? { ask: v } : v; if (o && o.ask > 0) compact[q] = [o.ask, o.bid ?? null]; }

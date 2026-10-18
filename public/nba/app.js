@@ -50,7 +50,7 @@ function rollMoney(root) {
     setTimeout(() => { if (el.parentNode && el.replaceWith) el.replaceWith(document.createTextNode(v)); else el.textContent = v; }, 1700);   // back to plain text once it lands
   });
 }
-const SLOT_SKIP = ".reelpct,.cdn,.stamp,.mreel,.fclk,script,style,input,textarea,select,svg";
+const SLOT_SKIP = ".reelpct,.stamp,.fclk,script,style,input,textarea,select,svg";
 function slotMoney(root, max = 120) {
   if (REDUCE || !root || typeof document === "undefined" || !document.createTreeWalker) return;
   const walk = document.createTreeWalker(root, 4), nodes = [];
@@ -82,43 +82,13 @@ function playStamps() {
   if (added) { try { localStorage.setItem("stampSeen", JSON.stringify([...set].slice(-500))); } catch {} }
 }
 
-// ---------- header: dates line, countdown, lever (reruns lines + model)
-function weekline() {
-  const dates = [...new Set(S.games.map((g) => g.date))].sort(), f = (d) => new Date(d + "T12:00:00").toLocaleString(undefined, { month: "short", day: "numeric" });
-  const range = !dates.length ? "" : dates.length === 1 ? f(dates[0]) : `${f(dates[0])}–${new Date(dates[dates.length - 1] + "T12:00:00").getDate()}`;
-  const live = S.games.some((g) => !started(g) && g.poly), pre = S.games.some((g) => g.preseason);
-  if ($("hero-wk")) $("hero-wk").textContent = `${live ? "Lines live · " : ""}${pre ? "Preseason · " : ""}${range || "No games"}`.toUpperCase();
-  const hu = $("hero-upd"); if (!hu) return; const detail = `Lines + model ${clock(S.now)} · injuries ${clock(S.injuriesUpdated)} · fitted through ${S.fitThrough || "—"}`;
-  hu.textContent = `Model ${clock(S.now)} ›`; hu.onclick = () => toast(detail, 8000);
-}
-function tickCd() {   // 10/17 (merged site): the header shows [away logo] vs [home logo] · NEXT GAME · clock
+function tickCd() {   // refreshes the slate once when the next game tips off
   clearTimeout(tickCd._h);
   if (!S) return;
   const nxt = S.games.filter((g) => !started(g)).sort((a, b) => Date.parse(a.start) - Date.parse(b.start))[0];
-  if (!nxt) { Shell.setNext(null); tickCd._cur = null; }
-  else Shell.setNext(logoUrl(nxt.away), logoUrl(nxt.home), Date.parse(nxt.start) - Date.now());
   if (nxt && tickCd._cur && tickCd._cur !== nxt.key && Date.now() - (tickCd._last || 0) > 15000) { tickCd._last = Date.now(); setTimeout(() => loadSlate().catch(() => {}), 4000); }
   tickCd._cur = nxt ? nxt.key : null;
   tickCd._h = setTimeout(tickCd, 1000);
-}
-let REFRESHING = false;
-async function rerunModel() {
-  if (REFRESHING) return; REFRESHING = true; toast("Rerunning the model…", 0);
-  try { const d = await (await fetch("/api/nba/snapshot", { cache: "no-store" })).json(); if (!d.ok) throw new Error(d.error); await loadSlate();
-    toast(d.modelOk ? `Model updated: ${plural(d.games, "game")}.` : "Lines refreshed; the model service did not answer.", 7000);
-  } catch (e) { toast("Rerun failed: " + e.message, 12000); }
-  REFRESHING = false;
-}
-if ($("lever")) {
-  const lv = $("lever");
-  const pull = async () => {
-    if (lv.disabled || REFRESHING) return; lv.disabled = true; lv.classList.add("pull"); setTimeout(() => lv.classList.remove("pull"), 260);
-    const hu = $("hero-upd"); hu.innerHTML = `Model <span class="mreel">7</span><span class="mreel">7</span>:<span class="mreel">7</span><span class="mreel">7</span>`;
-    const iv = setInterval(() => hu.querySelectorAll(".mreel").forEach((m) => { m.textContent = Math.floor(Math.random() * 10); }), 70);
-    try { await rerunModel(); } finally { clearInterval(iv); if (S) weekline(); lv.disabled = false; }
-  };
-  lv.onclick = pull; let y0 = null;
-  lv.addEventListener("pointerdown", (e) => { y0 = e.clientY; }); lv.addEventListener("pointermove", (e) => { if (y0 != null && e.clientY - y0 > 25) { y0 = null; pull(); } }); lv.addEventListener("pointerup", () => { y0 = null; });
 }
 
 // ---------- the card's picks (lib/cardpick.js output on each game)
@@ -364,7 +334,7 @@ function renderBets() {
   const md = $("mb-day"); if (md && md.tagName === "SELECT") md.onchange = () => { MBDAY = md.value; renderBets(); };
   $("sync-btn").onclick = async () => { toast("Syncing…", 0); try { const d = await (await fetch("/api/nba/mybets?sync=1", { cache: "no-store" })).json(); BETS = d; renderBets(); toast(d.sync && d.sync.ok ? `Synced ${d.sync.positions} positions.` : `Sync: ${(d.sync && d.sync.note) || "done"}`); } catch (e) { toast("Sync failed: " + e.message, 10000); } };
 }
-// Model bets: day tabs at the top, type sub-tabs docked above the bottom bar, one list in tip-off order (lib/parlays.js)
+// Model bets: day drop-down at the top, the types are menu sub tabs, one list in tip-off order (lib/parlays.js)
 const PTYPES = { sgp: "Same game · 2 legs", sgp_pts: "Same game · bought lines", best4: "Parlay · top 4 picks", fav4: "4 biggest favorites" };
 const LAB_TABS = [["sgp", "Same game"], ["sgp_pts", "Bought"], ["best4", "Parlay"], ["fav4", "Favorites"]];
 let LABTYPE = "sgp", LABDAY = null;
@@ -534,9 +504,8 @@ function renderModels() {
 }
 
 // ---------- Alerts
-let ALERTS = [], ALFILTER = "all", ALPREV = null;
-const ALK = { PICK: ["New pick", "var(--green)"], "LINE MOVE": ["Line move", "#fff"], INJURY: ["Injury", "var(--red)"] };   // 10/18 (owner): Results is its own page under Bets; Vegas gold, no blue -- line move white
-const alSlug = (k) => String(k).toLowerCase().replace(/ /g, "");   // "QB CHANGE" -> "qbchange" (menu: #alerts-qbchange)
+let ALERTS = [], ALPREV = null;
+const ALK = { PICK: ["New pick", "var(--green)"], "LINE MOVE": ["Line move", "#fff"], INJURY: ["Injury", "var(--red)"] };   // injury red, line move white; Result is cut (10/18)
 const alSeen = () => { try { return localStorage.getItem("alSeen") || ""; } catch { return ""; } };
 async function loadAlerts() {
   try { const d = await (await fetch("/api/nba/alerts", { cache: "no-store" })).json(); if (d.ok) { ALERTS = d.alerts || []; renderAlerts(); } } catch {}
@@ -544,7 +513,7 @@ async function loadAlerts() {
 function renderAlerts() {
   const dots = ALPREV != null ? ALPREV : alSeen(), unread = ALERTS.filter((a) => a.t > alSeen()).length;
   Shell.setCount("nba", "alerts", unread);
-  const list = ALERTS.filter((a) => ALK[a.kind] && (ALFILTER === "all" || a.kind === ALFILTER));
+  const list = ALERTS.filter((a) => ALK[a.kind]);
   $("alerts").innerHTML = list.length ? list.map((a) => { const [lab, col] = ALK[a.kind] || [a.kind, "var(--dim)"];
     const ic = a.kind === "INJURY" && a.team ? tlogo(a.team) : a.kind === "LINE MOVE" ? pmLogo() : "";
     return `<div class="card al${a.t > dots ? " un" : ""}" data-algame="${esc(a.game || "")}"><span class="dot"></span><div style="flex:1"><div class="kd" style="color:${col}"><span>${ic}${lab.toUpperCase()}</span><span class="dim" style="font-weight:600;letter-spacing:0">${hm(a.t)}</span></div>` +
@@ -559,15 +528,13 @@ async function loadSlate() {
   const build = r.headers.get("x-build"); if (window.__build && build && build !== window.__build) return location.reload(); window.__build = build;
   S = j; TEAMS = j.teams || TEAMS;
   const open = [...document.querySelectorAll(".drop.open")].map((e) => e.id).filter(Boolean);
-  weekline(); tickCd(); renderLines(); loadLiveScores(); if ($("panel-record").classList.contains("on")) { renderBets(); renderLabList(); }
+  tickCd(); renderLines(); loadLiveScores(); if ($("panel-record").classList.contains("on")) { renderBets(); renderLabList(); }
   for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
   try { localStorage.setItem("lastSeen", new Date().toISOString()); } catch {}
 }
 function showPanel(name) {
   setTimeout(() => slotMoney($("panel-" + String(name).split("-")[0])), 80);   // dollar amounts roll in when a page opens (owner 10/18 night)
   let sub = null;   // 10/17 (owner): My bets and Model bets are separate pages under Bets in the menu
-  if (/^alerts-/.test(name)) { const k = name.slice(7); ALFILTER = k === "all" ? "all" : Object.keys(ALK).find((x) => alSlug(x) === k) || "all"; name = "alerts"; }   // 10/17 (owner): the alert kinds are menu sub tabs under Alerts
-  if (name === "alerts") sub = `alerts-${ALFILTER === "all" ? "all" : alSlug(ALFILTER)}`;
   if (/^modelbets-/.test(name)) { const k = name.slice(10); if (LAB_TABS.some(([t]) => t === k)) LABTYPE = k; name = "modelbets"; }   // 10/17 (owner): the parlay types are menu sub tabs under Model bets
   if (name === "modelbets") sub = `modelbets-${LABTYPE}`;
   if (name === "mybets" || name === "modelbets") { sub = sub || name; BETSVIEW = name === "modelbets" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} name = "record"; }
@@ -586,7 +553,7 @@ function showPanel(name) {
   linesBg();
 }
 // 10/17: pages switch by the address' #name (the menu links set it): #alerts, #lines, #record, #models; #game=KEY opens a game (from the home screen)
-const PANELS = ["alerts", "lines", "record", "mybets", "modelbets", "props", ...LAB_TABS.map(([k]) => `modelbets-${k}`), "alerts-all", ...Object.keys(ALK).map((k) => `alerts-${alSlug(k)}`), "models"];
+const PANELS = ["alerts", "lines", "record", "mybets", "modelbets", "props", ...LAB_TABS.map(([k]) => `modelbets-${k}`), "models"];
 let OPEN_GAME = null;
 function routeHash() {
   const h = location.hash || "";
