@@ -140,6 +140,7 @@
         if (Shell.stale && why === "visible") location.reload(); } catch {}
     },
     buildWatch() {
+      if (typeof fetch !== "function" || typeof setInterval !== "function") return;   // (the test harness has no timers)
       Shell.buildCheck("init");
       setInterval(() => { if (!document.hidden) Shell.buildCheck("poll"); }, 60e3);
       document.addEventListener("visibilitychange", () => { if (!document.hidden) { if (Shell.stale) location.reload(); else Shell.buildCheck("visible"); } });
