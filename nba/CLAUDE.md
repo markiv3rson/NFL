@@ -296,5 +296,5 @@ Every PL line on the NBA pages fills in Polymarket's real combo price by itself 
 
 ## 10/18 (owner): gold-white-green gradient + Results page (design = both sports; see the NFL CLAUDE.md "VEGAS GOLD, NO GLOW + RESULTS SUB TAB")
 
-- `public/nba/index.html`: `--ggrad` (gold -> white -> green) on lines, bars and market text, `--blue` = gold `#f2c14e` for the leftovers; no glow (`.card.modelglow` plain, no PICK pulse, no ticket / stamp glow); purple only on the model's numbers and the Models page. `public/nba/app.js`: Results is its own page under Bets (`#results`, `renderResults`, `/api/nba/alerts?results=1`), nothing on My bets; alert kind Line move is white.
+- `public/nba/index.html`: `--ggrad` (gold -> white -> green) on lines, bars and market text, `--blue` = gold `#f2c14e` for the leftovers; no glow (`.card.modelglow` plain, no PICK pulse, no ticket / stamp glow); purple only on the model's numbers and the Models page. `public/nba/app.js`: the Results page under Bets was built and deleted the same day (RESULT lines are shown nowhere; `/api/nba/alerts?results=1` still answers); alert kind Line move is white; bars solid green, numbers plain white, menu a white box with rounded right corners.
 
