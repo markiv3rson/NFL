@@ -1,6 +1,6 @@
 // SLATEZZ shell (10/17, owner): the side menu for NFL + NBA ("Menu A · Neon"), the refresh button (reruns BOTH models), the header's next-game
 // clock and the logo helpers. Loaded by /index.html (NFL + home) and /nba/index.html before each page's app.js.
-// Pages: NFL #home (no hash) #alerts #lines #td #mybets #modelbets #models on /index.html; NBA #alerts #lines #mybets #modelbets #models on /nba/index.html.
+// Pages: NFL #home (no hash) #alerts #lines #td #props #results #mybets #modelbets #models on /index.html; NBA #alerts #lines #props #results #mybets #modelbets #models on /nba/index.html.
 // (10/17, owner: My bets and Model bets are separate pages, listed under Bets in the menu.)
 (function () {
   const ICON = {
@@ -17,13 +17,13 @@
     nba: [["alerts", "Alerts", "bell"], ["lines", "Game Lines", "grid"], ["props", "Props", "props"], ["record", "Bets", "bets"]],   // NBA: between Game Lines and Bets
   };
   const URL_ = { nfl: "/index.html", nba: "/nba/index.html" };
-  const SUB = [["mybets", "My bets"], ["modelbets", "Model bets"]];
+  const SUB = [["results", "Results"], ["mybets", "My bets"], ["modelbets", "Model bets"]];   // 10/18 (owner): Results is its own sub tab under Bets, first (the RESULT lines that used to sit in Alerts)
   // 10/17 (owner): the Model bets parlay types are sub tabs under Model bets in the menu (both sports)
   const TYPES = { nfl: [["ou", "Over/Under"], ["style", "4 Leg (My Style)"], ["pts", "4 Leg (Bought)"], ["4", "4 Leg"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"], ["diff", "Different Game Parlays"]],
     nba: [["sgp", "Same game"], ["sgp_pts", "Bought"], ["best4", "Parlay"], ["fav4", "Favorites"]] };
   // 10/17 (owner): the alert kinds are sub tabs under Alerts too (ids match the pages' ALK keys, lower case without spaces)
   const ALERTK = { nfl: [["all", "All"], ["injury", "Injury"], ["qbchange", "QB change"], ["linemove", "Line move"], ["weather", "Weather"]],   // 10/18 (owner): the top 5 only
-    nba: [["all", "All"], ["pick", "New pick"], ["linemove", "Line move"], ["injury", "Injury"]] };   // 10/18 (owner): results moved to the top of My bets
+    nba: [["all", "All"], ["pick", "New pick"], ["linemove", "Line move"], ["injury", "Injury"]] };   // 10/18 (owner): RESULT lines live on the Results page under Bets
   // 10/17 (owner): Alerts, Bets and Model bets open and close their lists (closed to start); tapping them only opens / closes
   const car = '<i class="car">▾</i>';
   const group = (key, inner) => `<div class="msubs" data-grp="${key}">${inner}</div>`;
