@@ -142,12 +142,15 @@
   .tile .mid.lvmid { display:inline-flex; flex-direction:column; align-items:center; line-height:1.15; } .tile .sr { white-space:nowrap; } .tile .lv { font-size:10.5px; font-weight:800; letter-spacing:.04em; margin-top:2px; } .tile .lv.r { color:var(--red); }
   .dtop .s3.r { color:var(--red); }
   .rp { display:grid; grid-template-columns:1.5fr .9fr .8fr .8fr; gap:4px 6px; align-items:center; padding:7px 0; border-top:1px solid rgba(255,255,255,.1); font-size:12.5px; font-variant-numeric:tabular-nums; } .rp > span:not(:first-child) { text-align:right; } .rp .rn { font-size:10px; display:block; } .rph { border-top:0; font-size:10px; font-weight:800; color:var(--faint); letter-spacing:.06em; padding:2px 0; }
-  .tile .wmk { position:absolute; top:50%; width:110px; height:110px; margin-top:-55px; opacity:.17; object-fit:contain; pointer-events:none; }
-  .tile .wmk.l { left:-22px; } .tile .wmk.r { right:-22px; }
+  .tile .wmk { position:absolute; top:50%; width:46%; height:150px; margin-top:-75px; opacity:.2; object-fit:contain; pointer-events:none; }   /* 10/18 (owner): the game page's big faded logos */
+  .tile .wmk.l { left:-10px; } .tile .wmk.r { right:-10px; }
+  .tile .t .tlogo { width:26px; height:26px; vertical-align:-5px; margin:0 7px 0 0; } .tile .t.hm .tlogo { margin:0 0 0 7px; }
+  .tile .tmid { text-align:center; line-height:1.3; min-width:0; } .tile .tmid .s2 { font-size:12px; margin-top:3px; white-space:nowrap; }
+  .tile .nm { min-height:50px; }
   .tile { display:flex; flex-direction:column; justify-content:flex-start; align-items:stretch; }
   .tile .in { position:relative; display:flex; flex-direction:column; gap:9px; width:100%; }
   .tile .nm { display:flex; align-items:center; justify-content:space-between; gap:6px; }
-  .tile .t { font-size:19px; font-weight:800; font-style:italic; }
+  .tile .t { font-size:24px; font-weight:800; font-style:italic; }   /* 10/18: the game-page size */
   .t .rec { display:block; font-size:11px; font-weight:600; font-style:normal; color:#9aa3b2; letter-spacing:0; margin-top:1px; } .t.hm .rec { text-align:right; }
   .tile .mid { font-size:14px; font-weight:800; white-space:nowrap; }
   .tile .bar { height:4px; border-radius:2px; background:rgba(255,255,255,.14); overflow:hidden; } .tile .bar i { display:block; height:4px; background:var(--green); }   /* 10/18 (owner): the bars are solid green */

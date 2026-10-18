@@ -1404,4 +1404,10 @@ process.exit(bad ? 1 : 0);
 // ---------- 10/18 (owner): tiles over the page photos and the home boxes carry the same 28% white outline as a game-page card (both sports)
 { for (const f of ["../public/index.html", "../public/nba/index.html"]) ok(/html\.lines-on \.panel \.tile, html\.lines-on \.panel \.card, html\.lines-on \.panel \.stat \{ background:rgba\(8,8,12,\.8\); border-color:rgba\(255,255,255,\.28\);/.test(readFileSync(new URL(f, import.meta.url), "utf8")), `${f}: tiles over the photo have the card's 28% white outline`);
   ok(/html\.home-on \.hsec \{ background:rgba\(8,8,12,\.8\); border:1px solid rgba\(255,255,255,\.28\);/.test(readFileSync(new URL("../public/shell.css", import.meta.url), "utf8")), "home boxes: the same 28% white outline"); }
+// ---------- 10/18 (owner): Game Lines tiles look like the game page's header card -- team colours, big logos, % in the middle, no date / time / starts-in
+{ for (const [f, col] of [["../public/app.js", "TEAM_COLOR\\[g\\.away\\] \\|\\| \"#444\""], ["../public/nba/app.js", "teamColor\\(g\\.away\\)"]]) { const a = readFileSync(new URL(f, import.meta.url), "utf8"), t = a.slice(a.indexOf("function tile(g)"), a.indexOf("\n}", a.indexOf("function tile(g)")));
+    ok(new RegExp("const ca = " + col).test(t) && /class="tile\$\{[^`]*style="background:linear-gradient\(90deg,\$\{ca\}40 0%/.test(t) && /class="tmid">\$\{mid2?\}/.test(t) && /\$\{tlogo\(g\.away\)\}\$\{g\.away\}/.test(t) && !/const foot/.test(t) && !/class="ft"/.test(t) && !/tm\(g\.(kickoff|start)\)/.test(t),
+      `${f}: tile = team-colour gradient, logo + code + record each side, the % in the middle with the tag under it, no kickoff time / foot row`); }
+  for (const f of ["../public/index.html", "../public/nba/index.html"]) { const h = readFileSync(new URL(f, import.meta.url), "utf8");
+    ok(/\.tile \.wmk \{ position:absolute; top:50%; width:46%; height:150px/.test(h) && /\.tile \.t \{ font-size:24px/.test(h) && /\.tile \.tmid \{ text-align:center/.test(h), `${f}: tile logos and names at the game-page size`); } }
 
