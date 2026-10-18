@@ -989,12 +989,12 @@ function tile(g) {
   const sc = g.started && !g.final ? LIVE_SC[g.key] : null;   // live score from ESPN (display only)
   const hp = mktHome(g), ap = hp == null ? null : 100 - hp;
   const lead = (v, o) => (v >= o ? "mkt" : "dim");
-  const chips = [g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : "", straightPicks(g).length ? `<span class="chip c-grn">${esc(straightPicks(g)[0].pick)}</span>` : "", g.started && !g.final && !sc ? '<span class="chip c-red">LIVE</span>' : ""].filter(Boolean).join('<span style="display:inline-block;width:6px"></span>');   // 10/14 audit: the "London" and pick pills touched
+  const chips = [!g.started && g.kickoff ? `<span class="chip tmt">${esc(tm(g.kickoff))}</span>` : "", g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : "", straightPicks(g).length ? `<span class="chip c-grn">${esc(straightPicks(g)[0].pick)}</span>` : "", g.started && !g.final && !sc ? '<span class="chip c-red">LIVE</span>' : ""].filter(Boolean).join('<span style="display:inline-block;width:6px"></span>');   // 10/14 audit: the "London" and pick pills touched
   const mid = g.final && g.awayScore != null && g.homeScore != null ? `<span class="mid lvmid"><span class="sr"><span class="${g.awayScore > g.homeScore ? "g" : "dim"}">${g.awayScore}</span><span class="dim"> – </span><span class="${g.homeScore > g.awayScore ? "g" : "dim"}">${g.homeScore}</span></span><span class="lv dim">FINAL</span></span>`
     : hp == null ? '<span class="mid dim">—</span>' : `<span class="mid"><span class="${lead(ap, hp)}">${Math.round(ap)}</span><span class="dim"> · </span><span class="${lead(hp, ap)}">${100 - Math.round(ap)}</span><span class="dim" style="font-size:11px">%</span></span>`;
   const mid2 = sc ? `<span class="mid lvmid"><span class="sr"><span class="${sc.a > sc.h ? "g" : "dim"}">${sc.a}</span><span class="dim"> – </span><span class="${sc.h > sc.a ? "g" : "dim"}">${sc.h}</span></span><span class="lv ${sc.st === "post" ? "dim" : "r"}">${sc.st === "post" ? "FINAL" : "● LIVE · " + esc(sc.lbl)}</span></span>` : mid;
   // 10/18 (owner): the tile looks like the game page's header card -- team colours, big faded logos, logo + code + record each side, the % (or score)
-  // in the middle with the pick / London tag under it, the bar; NO date, time or "starts in" (the time-slot header above carries the times)
+  // in the middle with the kickoff time (10/18, owner: "put the time in their cards") + the pick / London tag under it, the bar; no "starts in"
   const ca = TEAM_COLOR[g.away] || "#444", ch = TEAM_COLOR[g.home] || "#444";
   return `<button class="tile${g.started && !g.final ? " live" : ""}" style="background:linear-gradient(90deg,${ca}40 0%,${ca}14 50%,${ch}14 50%,${ch}40 100%),var(--card)" data-game="${esc(g.key)}"><img class="wmk l" loading="lazy" decoding="async" src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img class="wmk r" loading="lazy" decoding="async" src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'">` +
     `<div class="in"><div class="nm"><span class="t">${tlogo(g.away)}${g.away}${recOf(g, g.away)}</span><div class="tmid">${mid2}${chips ? `<div class="s2">${chips}</div>` : ""}</div><span class="t hm">${g.home}${tlogo(g.home)}${recOf(g, g.home)}</span></div>${g.final || hp == null ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
@@ -1261,7 +1261,8 @@ function linesBg() { const on = (id) => { const p = $(id); return !!(p && p.clas
   document.documentElement.classList.toggle("lines-on", !on("panel-home") && !(on("panel-lines") && DETAIL)); }
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = ""; linesBg();
-  $("detail").innerHTML = `<button class="back" id="back-btn">← Games</button>${detailTop(g)}${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : ""}${gameCard(g, "x")}${totalCard(g, "x")}${tdTop3(g)}${sgpBox(g)}`;
+  document.body.classList.add("game-on");   // 10/18 (owner): on a game page the game card IS the header -- the NEXT GAME strip is hidden, ← Games sits under the card
+  $("detail").innerHTML = `${detailTop(g)}<button class="back" id="back-btn">← Games</button>${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : ""}${gameCard(g, "x")}${totalCard(g, "x")}${tdTop3(g)}${sgpBox(g)}`;
   $("back-btn").onclick = closeGame;
   if (ROLL_ON_OPEN) { ROLL_ON_OPEN = false; slotify($("detail")); }   // 10/14: numbers roll in when you open a game
   if (g.final) ensureGrades();
@@ -1269,7 +1270,7 @@ function renderDetail(g) {
 }
 function renderLines() {
   if (DETAIL) { const g = S.games.find((x) => x.key === DETAIL); if (g) return renderDetail(g); DETAIL = null; }
-  setBg(null); linesBg();
+  setBg(null); linesBg(); document.body.classList.remove("game-on");
   $("detail").style.display = "none"; $("lines").style.display = "";
   $("lines").innerHTML = changedBox() + linesBySlot();
 }
@@ -1278,8 +1279,7 @@ function renderLines() {
 function linesBySlot() {
   const slots = [], by = {};
   for (const g of [...S.games].sort(order)) { const sl = g.kickoff ? labSlot(g.kickoff) : "GAMES"; if (!by[sl]) { by[sl] = []; slots.push(sl); } by[sl].push(g); }
-  return slots.map((sl) => { const times = [...new Set(by[sl].filter((g) => g.kickoff).map((g) => tm(g.kickoff)))];
-    return `<div class="sh labslot">${sl}${times.length ? ` <span class="lst">· ${times.map(esc).join(" · ")}</span>` : ""}</div><div class="tiles stack">${by[sl].map(tile).join("")}</div>`; }).join("");
+  return slots.map((sl) => `<div class="sh labslot">${sl}</div><div class="tiles stack">${by[sl].map(tile).join("")}</div>`).join("");   // 10/18 (owner): just the slot name -- the time sits on each tile
 }
 let ROLL_ON_OPEN = false;
 function openGame(key) { ROLL_ON_OPEN = true; LASTY = (typeof window !== "undefined" && window.scrollY) || 0; DETAIL = key; renderLines(); if (window.scrollTo) window.scrollTo(0, 0); const g = S.games.find((x) => x.key === key); if (g && g.started && !g.final) liveLoop(); }
@@ -1419,6 +1419,7 @@ function showPanel(name) {
   if (name === "record" && !sub) sub = BETSVIEW === "model" ? `modelbets-${LABTYPE}` : "mybets";
   if (!$("panel-" + name)) name = "home";
   Shell.setActive(sub || name);   // 10/17: the menu replaces the tab bar
+  document.body.classList.toggle("game-on", name === "lines" && !!DETAIL);   // the NEXT GAME header hides only while a game page is open
   if (name === "alerts") { ALPREV = alSeen(); if (ALERTS.length) { try { localStorage.setItem("alSeen", ALERTS[0].t); } catch {} } }   // opening Alerts marks them read (was the bell)
   document.querySelectorAll(".panel").forEach((p) => p.classList.remove("on")); $("panel-" + name).classList.add("on");
   if (name === "alerts") renderAlerts();
