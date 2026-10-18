@@ -20,7 +20,7 @@ body.menu-open .mgrip { display:none; }
 body.home-on { background:transparent !important; } html.home-on { background:#000 !important; }
 /* 10/17 (owner): the Raiders photo behind the home screen; the NFL / NBA lists are see-through so it shows under them */
 html.home-on::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
-  background:linear-gradient(180deg,rgba(0,0,0,.30),rgba(0,0,0,.50) 60%,rgba(0,0,0,.70)),url(/home-bg.jpg?v=2) center/cover no-repeat,#000; }
+  background:linear-gradient(180deg,rgba(0,0,0,.30),rgba(0,0,0,.50) 60%,rgba(0,0,0,.70)),url(/home-bg.jpg?v=3) center/cover no-repeat,#000; }
 html.home-on .hsec { background:rgba(8,8,12,.8); border:1px solid rgba(255,255,255,.28); border-radius:14px; padding:12px 12px 2px; }   /* darker so the text reads, no frosted haze (owner 10/17) */
 
 /* menu */
