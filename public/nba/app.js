@@ -36,7 +36,35 @@ const glowOf = (p) => (p >= 0.61 ? 1 : p >= 0.58 ? 0.75 : 0.45);
 const ptsWord = (n) => (n === 0 ? "main" : `${n} pt${n === 1 ? "" : "s"}`);
 
 // ---------- casino look (same as the NFL app): slot-reel numbers, coins, stamps
-// 10/18 night (owner: "why every time I load onto here it does this"): the slot-reel roll (10/14 casino look) is gone -- numbers just appear
+// 10/18 night (owner: "Only put the slot roll if there's a $. The rest no"): the slot-reel roll (10/14 casino look) runs ONLY on dollar amounts
+// ($33, +$101, -$1 per $100) when a page or game opens; every other number just appears.
+function rollMoney(root) {
+  if (!root || !root.querySelectorAll || REDUCE) return;
+  root.querySelectorAll(".reelpct.money[data-v]").forEach((el) => {
+    const v = el.dataset.v; el.innerHTML = "";
+    [...v].forEach((ch, i) => { const d = document.createElement("span"); d.className = "rd";
+      if (!/\d/.test(ch)) { d.innerHTML = `<span><b>${ch}</b></span>`; el.appendChild(d); return; }
+      const seq = []; for (let k = 0; k < 16 + i * 6; k++) seq.push(k % 10); seq.push(+ch);
+      d.innerHTML = `<span>${seq.map((x) => `<b>${x}</b>`).join("")}</span>`; el.appendChild(d);
+      const inner = d.firstChild; requestAnimationFrame(() => requestAnimationFrame(() => { inner.style.transform = `translateY(-${(seq.length - 1) * 1.25}em)`; })); });
+    setTimeout(() => { if (el.parentNode && el.replaceWith) el.replaceWith(document.createTextNode(v)); else el.textContent = v; }, 1700);   // back to plain text once it lands
+  });
+}
+const SLOT_SKIP = ".reelpct,.cdn,.stamp,.mreel,.fclk,script,style,input,textarea,select,svg";
+function slotMoney(root, max = 120) {
+  if (REDUCE || !root || typeof document === "undefined" || !document.createTreeWalker) return;
+  const walk = document.createTreeWalker(root, 4), nodes = [];
+  while (walk.nextNode()) { const n = walk.currentNode; if (/\$\d/.test(n.nodeValue) && n.parentElement && !n.parentElement.closest(SLOT_SKIP)) nodes.push(n); }
+  let used = 0;
+  for (const n of nodes) {
+    if (used >= max) break;
+    const parts = n.nodeValue.split(/(\$\d[\d,]*(?:\.\d+)?)/); if (parts.length < 2) continue;
+    const frag = document.createDocumentFragment();
+    parts.forEach((t, i) => { if (i % 2 && used < max) { const sp = document.createElement("span"); sp.className = "reelpct money"; sp.dataset.v = t; sp.textContent = t; frag.appendChild(sp); used++; } else frag.appendChild(document.createTextNode(t)); });
+    n.parentNode.replaceChild(frag, n);
+  }
+  rollMoney(root);
+}
 function coinBurst(el) {
   if (REDUCE || !el || !el.getBoundingClientRect) return;
   const e = el.getBoundingClientRect(), cv = document.createElement("canvas"); cv.className = "coinfx"; document.body.appendChild(cv);
@@ -274,7 +302,7 @@ function renderDetail(g) {
   $("back-btn").onclick = closeGame;
   setBg($("panel-lines").classList.contains("on") ? g : null);
 }
-function openGame(key) { LASTY = window.scrollY || 0; DETAIL = key; renderLines(); window.scrollTo(0, 0); }
+function openGame(key) { LASTY = window.scrollY || 0; DETAIL = key; renderLines(); window.scrollTo(0, 0); setTimeout(() => slotMoney($("detail")), 60); }
 function closeGame() { DETAIL = null; renderLines(); window.scrollTo(0, LASTY); }
 
 // ---------- Best bets + Parlay: two gold tickets at the top of the Bets tab (tap one to open its list)
@@ -536,6 +564,7 @@ async function loadSlate() {
   try { localStorage.setItem("lastSeen", new Date().toISOString()); } catch {}
 }
 function showPanel(name) {
+  setTimeout(() => slotMoney($("panel-" + String(name).split("-")[0])), 80);   // dollar amounts roll in when a page opens (owner 10/18 night)
   let sub = null;   // 10/17 (owner): My bets and Model bets are separate pages under Bets in the menu
   if (/^alerts-/.test(name)) { const k = name.slice(7); ALFILTER = k === "all" ? "all" : Object.keys(ALK).find((x) => alSlug(x) === k) || "all"; name = "alerts"; }   // 10/17 (owner): the alert kinds are menu sub tabs under Alerts
   if (name === "alerts") sub = `alerts-${ALFILTER === "all" ? "all" : alSlug(ALFILTER)}`;
@@ -584,4 +613,4 @@ Shell.init("nba");
 document.querySelectorAll("[data-mp]").forEach((a) => a.addEventListener("click", () => { if (a.dataset.msp === "nba" && location.hash === "#" + a.dataset.mp) setTimeout(routeHash, 0); }));
 Shell.onRefreshed = () => loadSlate();
 routeHash();
-loadSlate().then(() => { autoRefresh(); catchUp(); plAuto(); if (OPEN_GAME) routeHash(); }).catch((e) => toast("Couldn't load: " + e.message, 12000));
+loadSlate().then(() => { autoRefresh(); catchUp(); plAuto(); setTimeout(() => slotMoney($("panel-lines")), 120); if (OPEN_GAME) routeHash(); }).catch((e) => toast("Couldn't load: " + e.message, 12000));

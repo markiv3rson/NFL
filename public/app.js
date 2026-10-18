@@ -390,7 +390,35 @@ function legFlipped(label) {
 // ---------- casino look (10/14, owner) ----------
 const glowOf = (p) => (p >= 0.61 ? 1 : p >= 0.58 ? 0.75 : 0.45);   // stronger pick -> brighter glow
 const REDUCE = (() => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } })();
-// 10/18 night (owner: "why every time I load onto here it does this"): the slot-reel roll (10/14 casino look) is gone -- numbers just appear
+// 10/18 night (owner: "Only put the slot roll if there's a $. The rest no"): the slot-reel roll (10/14 casino look) runs ONLY on dollar amounts
+// ($33, +$101, -$1 per $100) when a page or game opens; every other number just appears.
+function rollMoney(root) {
+  if (!root || !root.querySelectorAll || REDUCE) return;
+  root.querySelectorAll(".reelpct.money[data-v]").forEach((el) => {
+    const v = el.dataset.v; el.innerHTML = "";
+    [...v].forEach((ch, i) => { const d = document.createElement("span"); d.className = "rd";
+      if (!/\d/.test(ch)) { d.innerHTML = `<span><b>${ch}</b></span>`; el.appendChild(d); return; }
+      const seq = []; for (let k = 0; k < 16 + i * 6; k++) seq.push(k % 10); seq.push(+ch);
+      d.innerHTML = `<span>${seq.map((x) => `<b>${x}</b>`).join("")}</span>`; el.appendChild(d);
+      const inner = d.firstChild; requestAnimationFrame(() => requestAnimationFrame(() => { inner.style.transform = `translateY(-${(seq.length - 1) * 1.25}em)`; })); });
+    setTimeout(() => { if (el.parentNode && el.replaceWith) el.replaceWith(document.createTextNode(v)); else el.textContent = v; }, 1700);   // back to plain text once it lands
+  });
+}
+const SLOT_SKIP = ".reelpct,.cdn,.stamp,.mreel,.fclk,script,style,input,textarea,select,svg";
+function slotMoney(root, max = 120) {
+  if (REDUCE || !root || typeof document === "undefined" || !document.createTreeWalker) return;
+  const walk = document.createTreeWalker(root, 4), nodes = [];
+  while (walk.nextNode()) { const n = walk.currentNode; if (/\$\d/.test(n.nodeValue) && n.parentElement && !n.parentElement.closest(SLOT_SKIP)) nodes.push(n); }
+  let used = 0;
+  for (const n of nodes) {
+    if (used >= max) break;
+    const parts = n.nodeValue.split(/(\$\d[\d,]*(?:\.\d+)?)/); if (parts.length < 2) continue;
+    const frag = document.createDocumentFragment();
+    parts.forEach((t, i) => { if (i % 2 && used < max) { const sp = document.createElement("span"); sp.className = "reelpct money"; sp.dataset.v = t; sp.textContent = t; frag.appendChild(sp); used++; } else frag.appendChild(document.createTextNode(t)); });
+    n.parentNode.replaceChild(frag, n);
+  }
+  rollMoney(root);
+}
 function coinBurst(el) {   // gold coins fly from a winning bet's stamp
   if (REDUCE || !el || !el.getBoundingClientRect) return;
   const e = el.getBoundingClientRect(), cv = document.createElement("canvas"); cv.className = "coinfx"; document.body.appendChild(cv);
@@ -1248,7 +1276,7 @@ function linesBySlot() {
   for (const g of [...S.games].sort(order)) { const sl = g.kickoff ? labSlot(g.kickoff) : "GAMES"; if (!by[sl]) { by[sl] = []; slots.push(sl); } by[sl].push(g); }
   return slots.map((sl) => `<div class="sh labslot">${sl}</div><div class="tiles stack">${by[sl].map(tile).join("")}</div>`).join("");   // 10/18 (owner): just the slot name -- the time sits on each tile
 }
-function openGame(key) { LASTY = (typeof window !== "undefined" && window.scrollY) || 0; DETAIL = key; renderLines(); if (window.scrollTo) window.scrollTo(0, 0); const g = S.games.find((x) => x.key === key); if (g && g.started && !g.final) liveLoop(); }
+function openGame(key) { LASTY = (typeof window !== "undefined" && window.scrollY) || 0; DETAIL = key; renderLines(); if (window.scrollTo) window.scrollTo(0, 0); setTimeout(() => slotMoney($("detail")), 60); const g = S.games.find((x) => x.key === key); if (g && g.started && !g.final) liveLoop(); }
 function closeGame() { DETAIL = null; renderLines(); if (window.scrollTo) window.scrollTo(0, LASTY); }
 // ---------- HOME (10/17, owner's sketch): SLATEZZ header, then NFL and NBA live games as a list -- logos, team, its spread from the
 // sportsbooks before kickoff, the total in the middle, the score and clock. Each section's title row: LIVE NOW + NEXT GAME logos and clock.
@@ -1369,6 +1397,7 @@ async function loadSlate() {
   if (seq !== LOAD_SEQ) return;                                         // a newer request already answered: never show older data
   if (BUILD && build && build !== BUILD) { location.reload(); return; }  // a new version went live while this page was open
   BUILD = BUILD || build; LOADED_AT = Date.now(); S = d;
+  if (!loadSlate._rolled) { loadSlate._rolled = true; setTimeout(() => slotMoney($("panel-lines")), 120); }
   if (anyLive() && !liveLoop._on) { liveLoop._on = true; liveLoop(); }   // scores + live lines every 30 s while a game is on
   const open = [...document.querySelectorAll(".drop.open")].map((e) => e.id).filter(Boolean);   // keep your open dropdowns
   const openTd = [...document.querySelectorAll(".tdr")].map((e, i) => (e.classList.contains("open") ? i : -1)).filter((i) => i >= 0);   // and open player rows
@@ -1398,6 +1427,7 @@ if ($("lever")) {
   lv.addEventListener("pointerdown", (e) => { y0 = e.clientY; }); lv.addEventListener("pointermove", (e) => { if (y0 != null && e.clientY - y0 > 25) { y0 = null; pull(); } }); lv.addEventListener("pointerup", () => { y0 = null; });
 }
 function showPanel(name) {
+  setTimeout(() => slotMoney($("panel-" + String(name).split("-")[0])), 80);   // dollar amounts roll in when a page opens (owner 10/18 night)
   let sub = null;   // 10/17 (owner): My bets and Model bets are separate pages under Bets in the menu
   if (/^alerts-/.test(name)) { const k = name.slice(7); ALFILTER = k === "all" ? "all" : Object.keys(ALK).find((x) => alSlug(x) === k) || "all"; name = "alerts"; }   // 10/17 (owner): the alert kinds are menu sub tabs under Alerts
   if (name === "alerts") sub = `alerts-${ALFILTER === "all" ? "all" : alSlug(ALFILTER)}`;

@@ -268,7 +268,9 @@
   /* 10/14 casino look (owner): green pick pulse (glow brighter for stronger picks), slot-reel %, HIT/MISS stamps on Bets, flip-clock
      countdown, slot lever refresh, purple glow on the model's parlay cards */
   .pulse { --gl:.6; }   /* 10/18 (owner): no glow -- the green PICK no longer pulses */
-  .reelpct { display:inline; }   /* 10/18 night: the slot-reel roll is gone; the PICK % is plain text */
+  .reelpct { display:inline; }   /* the PICK % is plain text */
+  .reelpct.money { display:inline-flex; vertical-align:text-top; } .reelpct.money .rd { display:inline-block; height:1.25em; overflow:hidden; }   /* 10/18 night (owner): only dollar amounts roll */
+  .reelpct.money .rd > span { display:block; transition:transform 1.4s cubic-bezier(.2,.9,.2,1.04); } .reelpct.money .rd b { display:block; height:1.25em; line-height:1.25em; font-weight:inherit; }
   .betwrap { position:relative; }
   .stamp { position:absolute; right:6px; top:50%; transform:translateY(-50%) rotate(-8deg); font-weight:900; font-size:18px; letter-spacing:.04em; line-height:1; padding:3px 9px;
     border:2.5px solid currentColor; border-radius:8px; background:rgba(10,8,11,.82); pointer-events:none; white-space:nowrap; z-index:2; }
