@@ -463,6 +463,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(b.result === "W" && b.ret === null && st.result === "L" && sm.board.sgp_best.hits === 1 && sm.board.sgp_best.roi === null && sm.board.sgp_style.graded === 1, "same-game: graded (ATL +3.5 and Bijan hit; your style lost on the Under/Swift), unpriced legs -> win/loss only");
     ok(!(await listAlerts(2099)).some((a) => /Same game · (best \(strong|your style)/.test(a.title || "")), "same-game: no bell alert");
     ok(sm.legs && sm.legs.td && sm.legs.td.w >= 1 && sm.legs.td.l >= 1 && sm.legs.spread && sm.legs.spread.w >= 1 && sm.killers.td >= 1, "scoreboard legs review: legs counted by kind; the TD leg that lost is the killer of the style parlay", { legs: sm.legs, killers: sm.killers });
+    { await R.set("paper:2099:9", JSON.stringify({ season: 2099, week: 9, parlays: [
+        { strategy: "leg4_fav", result: "W", legs: [{ game: "X @ Y", kind: "ml", team: "Y", label: "Y ML", result: "W" }] },
+        { strategy: "leg4_fav_td", result: "W", legs: [{ game: "X @ Y", kind: "ml", team: "Y", label: "Y ML", result: "W" }] },
+        { strategy: "angles_2", result: "L", legs: [{ game: "X @ Y", kind: "ml", team: "X", label: "X ML", result: "L" }] }] }));
+      const before = (sm.legs.ml || { w: 0, l: 0 }), s2 = await paperSummary(2099, 6), ml = s2.legs.ml || { w: 0, l: 0 };
+      ok(ml.w - before.w === 1 && ml.l - before.l === 0 && (s2.killers.ml || 0) === (sm.killers.ml || 0), "scoreboard legs review (10/18 fix): a leg in two parlays counts once; a cut parlay type (angles) is left out", { before, ml }); }
     for (const k of await R.keys("paper:2099:*")) await R.del(k); }
   { // 4-leg parlays (10/14 research): 4 biggest favorites skip a game where a green pick backs the dog; green+3 favs; 3 favs + top TD; linked same-game 4
     const { fourLegParlays, sameGameParlays } = await import("../lib/sgp.js");
