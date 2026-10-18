@@ -9,7 +9,7 @@
 body.menu-open .mgrip { display:none; }
 .shead .snext { justify-content:center; }
 .sgrad { background:var(--ggrad); -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent; }
-.shome { flex:1 1 auto; min-width:0; text-align:center; font-size:clamp(40px,15vw,60px); font-weight:900; font-style:italic; letter-spacing:.01em; line-height:1; white-space:nowrap; }
+.shome { flex:1 1 auto; min-width:0; text-align:center; font-size:clamp(40px,15vw,60px); font-weight:900; font-style:italic; letter-spacing:.01em; line-height:1; white-space:nowrap; -webkit-text-stroke:.8px rgba(255,255,255,.55); }
 .shome span { display:inline-block; padding-right:.08em; }
 .snext { flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:6px; white-space:nowrap; }
 .snext img, .snext .nl { width:26px; height:26px; flex:0 0 26px; object-fit:contain; }
@@ -28,11 +28,11 @@ html.home-on .hsec { background:rgba(8,8,12,.8); border:1px solid rgba(255,255,2
 .mdraw { position:fixed; left:0; top:0; bottom:0; z-index:201; width:min(318px,86vw); box-sizing:border-box; padding:calc(env(safe-area-inset-top,0px) + 22px) 18px calc(env(safe-area-inset-bottom,0px) + 22px);
   display:flex; flex-direction:column; overflow-y:auto; transform:translateX(-104%); transition:transform .24s ease;
   background:radial-gradient(120% 50% at 0% 0%,rgba(242,193,78,.16),rgba(0,0,0,0) 60%),radial-gradient(90% 40% at 100% 100%,rgba(255,233,168,.08),rgba(0,0,0,0) 60%),#07070a;
-  border-right:1px solid rgba(242,193,78,.5); }
+  border:1px solid #fff; border-left:0; }   /* 10/18 (owner): the menu outline is a solid white box; no line on the screen edge, rounded right corners on a phone */
 body.menu-open .mscrim { opacity:1; pointer-events:auto; } body.menu-open .mdraw { transform:none; }
 .mtop { display:flex; align-items:center; justify-content:space-between; gap:8px; padding-bottom:8px; }
 .mrun { font-size:11.5px; font-weight:600; color:#aab0bd; padding:0 2px 22px; white-space:nowrap; }
-.mlogo { font-size:38px; font-weight:900; font-style:italic; letter-spacing:.01em; line-height:1; white-space:nowrap; padding-right:.08em; text-decoration:none; }
+.mlogo { font-size:38px; font-weight:900; font-style:italic; letter-spacing:.01em; line-height:1; white-space:nowrap; padding-right:.08em; text-decoration:none; -webkit-text-stroke:.7px rgba(255,255,255,.55); }   /* 10/18 (owner): bolder -- 900 is the heaviest weight, so a thin white stroke thickens the letters */
 .mbts { display:flex; gap:8px; flex:0 0 auto; }
 .mref { width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; padding:0; cursor:pointer; }
 .mref { border:2px solid transparent; background:linear-gradient(#07070a,#07070a) padding-box,linear-gradient(135deg,#f2c14e,#ffffff 50%,#3ddc97) border-box; color:#fff; }   /* a ring, not a filled circle (owner 10/18) */
@@ -91,10 +91,10 @@ body.menu-open .mscrim { opacity:1; pointer-events:auto; } body.menu-open .mdraw
 /* 10/17 (owner: "why is the menu so long? make it more compact, to the left, only on iPhone"): phones get a narrower drawer that hugs the left edge,
    shorter rows, smaller logo and buttons. Computers and tablets keep the full-size menu. */
 @media (max-width:500px) {
-  .mdraw { width:auto; min-width:0; max-width:74vw; top:50%; bottom:auto; max-height:100dvh; transform:translate(-104%,-50%); border-top:1px solid rgba(242,193,78,.5); border-bottom:1px solid rgba(242,193,78,.5); border-radius:0 18px 18px 0; padding:14px 12px 16px 8px; }   /* only as wide as its words and as tall as its rows, centered top to bottom (owner 10/17 + 10/18) */
+  .mdraw { width:auto; min-width:0; max-width:74vw; top:50%; bottom:auto; max-height:100dvh; transform:translate(-104%,-50%); border:1px solid #fff; border-left:0; border-radius:0 18px 18px 0; padding:14px 12px 16px 8px; }   /* only as wide as its words and as tall as its rows, centered top to bottom (owner 10/17 + 10/18) */
   body.menu-open .mdraw { transform:translate(0,-50%); }
   .mtop { padding:0 0 4px 2px; gap:10px; }
-  .mlogo { font-size:34px; }   /* fills the header (owner: the yellow mark) */
+  .mlogo { font-size:36px; }   /* fills the header (owner: the yellow mark); 10/18: bolder, a size up */
   .mref { width:34px; height:34px; }
   .msec .ml { min-width:28px; }   /* the header line keeps a short tail when the drawer hugs its words */
   .mrun { font-size:11px; padding:0 2px 12px; white-space:normal; line-height:1.25; }
