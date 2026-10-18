@@ -22,7 +22,7 @@
   const TYPES = { nfl: [["ou", "Over/Under"], ["style", "4 Leg (My Style)"], ["pts", "4 Leg (Bought)"], ["4", "4 Leg"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"], ["diff", "Different Game Parlays"]],
     nba: [["sgp", "Same game"], ["sgp_pts", "Bought"], ["best4", "Parlay"], ["fav4", "Favorites"]] };
   // 10/17 (owner): the alert kinds are sub tabs under Alerts too (ids match the pages' ALK keys, lower case without spaces)
-  const ALERTK = { nfl: [["all", "All"], ["injury", "Injury"], ["qbchange", "QB change"], ["linemove", "Line move"], ["weather", "Weather"], ["result", "Result"], ["tdno", "TD No"], ["tdjump", "TD jump"], ["qbtd", "QB TD"]],
+  const ALERTK = { nfl: [["all", "All"], ["injury", "Injury"], ["qbchange", "QB change"], ["linemove", "Line move"], ["weather", "Weather"]],   // 10/18 (owner): the top 5 only
     nba: [["all", "All"], ["pick", "New pick"], ["linemove", "Line move"], ["injury", "Injury"], ["result", "Result"]] };
   // 10/17 (owner): Alerts, Bets and Model bets open and close their lists (closed to start); tapping them only opens / closes
   const car = '<i class="car">▾</i>';

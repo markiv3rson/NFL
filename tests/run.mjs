@@ -79,7 +79,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const lm = await alertsFromLines(2026, g, { spread: { homeSpread: 3 }, total: { line: 38.5 }, ml: { home: 0.40 } }, { spread: { homeSpread: 2.5 }, total: { line: 38.5 }, ml: { home: 0.41 } });
   ok(lm === 1 && (await listAlerts(2026))[0].title === "PIT @ CLE spread: CLE +3 → +2.5", "alerts: a half-point spread move, but not a 1-cent price move");
   await alertResult(2026, { key: "TEN @ BAL", away: "TEN", home: "BAL", awayScore: 13, homeScore: 27 }, { ml: { label: "BAL ML", result: "W" }, spread: { label: "BAL -10.5", result: "W" } });
-  ok((await listAlerts(2026))[0].title === "Final: TEN 13 @ BAL 27" && /Moneyline pick BAL won/.test((await listAlerts(2026))[0].sub), "alerts: a final result", (await listAlerts(2026))[0]); }
+  ok(!(await listAlerts(2026)).some((a) => a.kind === "RESULT") && (await listAlerts(2026))[0].title === "PIT @ CLE spread: CLE +3 → +2.5", "alerts (owner 10/18): RESULT alerts are cut -- a final adds nothing to the feed"); }
 // ---------- returning-from-injury label: last week's Out/Doubtful list comes from the same injury file
 { const { parseInjuryText } = await import("../lib/injuries.js");
   const csv = ["season,season_type,team,week,full_name,position,report_primary_injury,report_status,practice_primary_injury,practice_status",
@@ -955,7 +955,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const n = await alertsTdJump(SEASON, g, { away: [], home: [{ name: "B.Back", pos: "RB", fair: 20 }, { name: "B.QB", pos: "QB", fair: 10 }] }, { away: [], home: [{ name: "B.Back", pos: "RB", fair: 35 }, { name: "B.QB", pos: "QB", fair: 30 }] },
       { "B.Back anytime touchdown?": { ask: 0.22 } });
     const n2 = await alertsTdJump(SEASON, g, { away: [], home: [{ name: "B.Back", pos: "RB", fair: 20 }] }, { away: [], home: [{ name: "B.Back", pos: "RB", fair: 35 }] }, { "B.Back anytime touchdown?": { ask: 0.33 } });
-    ok(n === 1 && n2 === 0, "news lag: alert when a player's chance jumps 8+ and the price lags 5+, not for QBs or caught-up prices"); }
+    ok(n === 0 && n2 === 0, "news lag (owner 10/18): TD JUMP alerts are cut -- nothing added"); }
   { // export includes line history (10/9)
     const R = globalThis.__TEST_REDIS__;
     await R.rpush("snap:2026:5:A @ B", JSON.stringify({ t: "2026-10-06T12:00:00Z", src: "schedule", poly: { spread: { homeSpread: -6.5, home: 0.5, away: 0.5, extra: 1 }, total: { line: 44.5, over: 0.5, under: 0.5 } } }),
@@ -1040,8 +1040,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     await alertsTdNo(2032, g, [{ player: "G.Pickens", team: "DAL", fair: 30, price: 0.42, bid: 0.4 }, { player: "C.Lamb", team: "DAL", fair: 46, price: 0.49, bid: 0.47 }]);
     await alertsQbJump(2032, g, { away: [{ name: "B.Mayfield", pos: "QB", fair: 13 }], home: [{ name: "D.Prescott", pos: "QB", fair: 10 }] }, { away: [{ name: "J.Daniels", pos: "QB", fair: 25 }], home: [{ name: "D.Prescott", pos: "QB", fair: 12 }] });
     const L = await listAlerts(2032), k = (x) => L.filter((a) => a.kind === x);
-    ok(k("TD NO").length === 1 && /G\.Pickens/.test(k("TD NO")[0].title), "alerts: a TD 'No' mark alerts (model 10 under the bid), a close one doesn't");
-    ok(k("QB TD").length === 1 && /J\.Daniels TD chance now 25%/.test(k("QB TD")[0].title), "alerts: a new starting QB at 20%+ alerts; a 2-point move doesn't");
+    ok(k("TD NO").length === 0 && k("QB TD").length === 0 && L.length === 0, "alerts (owner 10/18): TD NO and QB TD are cut -- nothing added");
     for (const kk of await R.keys("*2032*")) await R.del(kk); }
   { // blended touchdown chance and "agrees with the market"
     const b1 = ctx.T.tdBlend({ fair: 40, price: 0.30, bid: 0.28 }), b2 = ctx.T.tdBlend({ fair: 40, price: 0.30, bid: 0.01, thin: true });
@@ -1114,7 +1113,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     await R.del("alerts:2099"); await R.set("paper:2099:4:IND @ WAS", JSON.stringify({ season: 2099, week: 4, game: "IND @ WAS", parlays: [sg] }));
     await gradePaper(2099, 4, [{ key: "IND @ WAS", homeScore: 24, awayScore: 26 }], async () => ["Q.Scorer"]); await gradePaper(2099, 4, [{ key: "IND @ WAS", homeScore: 24, awayScore: 26 }], async () => ["Q.Scorer"]);
     const al = (await listAlerts(2099)).filter((a) => a.kind === "RESULT");
-    ok(al.length === 1 && /Model parlay hit/.test(al[0].title) && /IND \+3\.5/.test(al[0].sub), "alerts: a decided model parlay posts one RESULT alert, not repeated");
+    ok(al.length === 0, "alerts (owner 10/18): a decided model parlay posts no alert (RESULT is cut)");
     for (const k of await R.keys("paper:2099:*")) await R.del(k); await R.del("alerts:2099");
     // the pick list shows the card's pick
     vm.runInContext(`S = { week: 4, games: [ { key: "LA @ PHI", away: "LA", home: "PHI", started: false, winPct: 38.1, model: { homeMargin: -3, total: 43.5, calHomeCover: 48.8, calUnder: 50.5 }, poly: { ml: { home: 0.42, away: 0.6 }, spread: { homeSpread: 3, home: 0.51, away: 0.51 }, total: { line: 43.5, over: 0.51, under: 0.51 } } } ], winners: null, picks: null }`, ctx);
@@ -1339,6 +1338,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const lr = readFileSync(new URL("../pages/api/lastrun.js", import.meta.url), "utf8");
   ok(/K\.model\(SEASON, w\)/.test(lr) && /status:snapshot/.test(lr) && /\.sort\(\)\.pop\(\)/.test(lr), "last refresh = the newer of NFL's last model rerun and NBA's last snapshot with a model answer");
   ok(/\/api\/nba\/closes\?since=/.test(app) && /c\.hs != null \? Number\(c\.hs\)/.test(app), "home: an NBA game without a sportsbook line shows Polymarket's last line before tip-off"); }
+{ const { addAlert, listAlerts } = await import("../lib/alerts.js"), R = globalThis.__TEST_REDIS__; await R.del("alerts:2041");
+  for (const kind of ["RESULT", "TD NO", "TD JUMP", "QB TD", "WEATHER"]) await addAlert(2041, { kind, game: "A @ B", title: kind });
+  const L = await listAlerts(2041); ok(L.length === 1 && L[0].kind === "WEATHER", "alerts (owner 10/18): only the top 5 kinds exist -- Result, TD No, TD jump, QB TD are never added");
+  const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8"); ok(/const ALK = \{ INJURY: \["Injury", "var\(--red\)"\], "QB CHANGE": \["QB change", "var\(--gold\)"\], "LINE MOVE": \["Line move", "var\(--blue\)"\], WEATHER: \["Weather", "#7fd1ff"\] \};/.test(app) && /ALK\[a\.kind\] && \(ALFILTER === "all"/.test(app), "alerts page: the four kinds + All; unknown kinds hidden"); await R.del("alerts:2041"); }
 // ---------- 10/17: My bets and Model bets are separate pages under Bets in the menu (NFL + NBA)
 { const sh = readFileSync(new URL("../public/shell.js", import.meta.url), "utf8");
   { const css = readFileSync(new URL("../public/shell.css", import.meta.url), "utf8"), ph = css.slice(css.indexOf("@media (max-width:500px)"));
@@ -1358,7 +1361,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const rr = readFileSync(new URL("../pages/api/rerun.js", import.meta.url), "utf8"), gr = readFileSync(new URL("../lib/grade.js", import.meta.url), "utf8"), ap = readFileSync(new URL("../railway-model-service/app.py", import.meta.url), "utf8"), pm = readFileSync(new URL("../railway-model-service/prop_model.py", import.meta.url), "utf8");
     ok(/post\(base, "\/prop-probs"/.test(rr) && /K_PROPMODEL\(season, week, q\.x\.key\)/.test(rr) && /outs: x\.outs, lines/.test(rr) && /gradePropsWeek\(getRedis\(\), season, week, games\)/.test(gr), "rerun saves the prop model's chances (with the week's Out list) per game; grading runs with the week");
     ok(/@app\.route\("\/prop-probs"/.test(ap) && /@app\.route\("\/player-stats"/.test(ap) && /def chances_many\(games\)/.test(pm) && /"vac_tgt", "vac_car"/.test(pm) && /def _vacated\(x\)/.test(pm) && /last\[~last\.pid\.map\(nm\)\.isin\(outs\)\]/.test(pm) && /_bg\("props", _build_props\)/.test(readFileSync(new URL("../railway-model-service/scheduler.py", import.meta.url), "utf8")), "model service: /prop-probs + /player-stats; Out players leave the rows so vacated usage counts; weekly build"); }
-  ok(/const ALERTK = \{ nfl: \[\["all", "All"\], \["injury", "Injury"\]/.test(sh) && /nba: \[\["all", "All"\], \["pick", "New pick"\]/.test(sh) && /#alerts-\$\{k\}/.test(sh) && /\.msubs \{ display:none; \} \.msubs\.open \{ display:block; \}/.test(readFileSync(new URL("../public/shell.css", import.meta.url), "utf8")) && /classList\.toggle\("open", open\)/.test(sh), "menu: Alerts kinds are sub tabs; Alerts, Bets and Model bets open and close their lists (closed to start)");
+  ok(/const ALERTK = \{ nfl: \[\["all", "All"\], \["injury", "Injury"\], \["qbchange", "QB change"\], \["linemove", "Line move"\], \["weather", "Weather"\]\],/.test(sh) && !/"tdno"|"qbtd"|"tdjump"/.test(sh) && /nba: \[\["all", "All"\], \["pick", "New pick"\]/.test(sh) && /#alerts-\$\{k\}/.test(sh) && /\.msubs \{ display:none; \} \.msubs\.open \{ display:block; \}/.test(readFileSync(new URL("../public/shell.css", import.meta.url), "utf8")) && /classList\.toggle\("open", open\)/.test(sh), "menu: Alerts kinds are sub tabs; Alerts, Bets and Model bets open and close their lists (closed to start)");
   { const nb = readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8");
     ok(/changedBox\(\) \+ \(S\.games\.length \? linesByDay\(\)/.test(nb) && /class="tiles stack"/.test(nb) && /function nbaSlot\(/.test(nb) && /id="mb-day"/.test(nb) && /\.tiles\.stack \{/.test(readFileSync(new URL("../public/nba/index.html", import.meta.url), "utf8")), "NBA matches NFL: Game Lines stacked under day headers, Model bets time headers, My bets day drop-down"); }
   for (const f of ["../public/app.js", "../public/nba/app.js"]) { const a2 = readFileSync(new URL(f, import.meta.url), "utf8");

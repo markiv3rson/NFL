@@ -1348,7 +1348,7 @@ function tickCd() {
   tickCd._h = setTimeout(tickCd, 1000);
 }
 // alerts: built on the server from changes it already sees between pulls (injuries, lines, wind, results)
-const ALK = { INJURY: ["Injury", "var(--red)"], "QB CHANGE": ["QB change", "var(--gold)"], "LINE MOVE": ["Line move", "var(--blue)"], WEATHER: ["Weather", "#7fd1ff"], RESULT: ["Result", "var(--green)"], "TD NO": ["TD No", "var(--red)"], "TD JUMP": ["TD jump", "var(--green)"], "QB TD": ["QB TD", "var(--gold)"] };
+const ALK = { INJURY: ["Injury", "var(--red)"], "QB CHANGE": ["QB change", "var(--gold)"], "LINE MOVE": ["Line move", "var(--blue)"], WEATHER: ["Weather", "#7fd1ff"] };   // 10/18 (owner): the top 5 only -- Result, TD No, TD jump, QB TD are cut (lib/alerts.js CUT_KINDS)
 const alSlug = (k) => String(k).toLowerCase().replace(/ /g, "");   // "QB CHANGE" -> "qbchange" (menu: #alerts-qbchange)
 const alSeen = () => { try { return localStorage.getItem("alSeen") || ""; } catch { return ""; } };
 async function loadAlerts() {
@@ -1358,7 +1358,7 @@ function renderAlerts() {
   const dots = ALPREV != null ? ALPREV : alSeen(), unread = ALERTS.filter((a) => a.t > alSeen()).length;
   Shell.setCount("nfl", "alerts", unread);
   for (const k of Object.keys(ALK)) Shell.setCount("nfl", `alerts-${alSlug(k)}`, ALERTS.filter((a) => a.kind === k && a.t > alSeen()).length);   // 10/17 (owner): the unread number on each kind's own line   // 10/17: the unread count sits on the menu's NFL Alerts row (the bell went with the tab bar)
-  const list = ALERTS.filter((a) => ALFILTER === "all" || a.kind === ALFILTER);
+  const list = ALERTS.filter((a) => ALK[a.kind] && (ALFILTER === "all" || a.kind === ALFILTER));   // 10/18: only the kept kinds show
   $("alerts").innerHTML = list.map((a) => { const [lab, col] = ALK[a.kind] || [a.kind, "var(--dim)"];
     const ic = a.kind === "INJURY" && a.team ? injBadge(a.team) : a.kind === "LINE MOVE" ? pmLogo() : "";
     return `<div class="card al${a.t > dots ? " un" : ""}" data-algame="${esc(a.game || "")}"><span class="dot"></span><div style="flex:1"><div class="kd" style="color:${col}"><span>${ic}${lab.toUpperCase()}</span><span class="dim" style="font-weight:600;letter-spacing:0">${hm(a.t)}</span></div>` +
