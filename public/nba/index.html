@@ -19,7 +19,7 @@
     --text:#ececef; --dim:#aab0bd; --faint:#8d95a3; --red:#ff6b6b; --green:#3ddc97; --yellow:#f2cf66; --blue:#ffffff; --gold:#f2cf66; --cyan:#4fe3d0;
     --violet:#b794ff; --rose:#ffffff; --ggrad:linear-gradient(90deg,#ff3b4a,#3ddc97);   /* 10/18 (owner): Vegas gold -- --blue and --rose hold the gold / pale gold now (every former blue or purple-blue is gold); purple (--violet) stays on the model's own numbers, the Models page and MODEL ANALYSIS; no glow anywhere */ }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html { -webkit-text-size-adjust:100%; text-size-adjust:100%; overscroll-behavior-y:none; }
+  html { -webkit-text-size-adjust:100%; text-size-adjust:100%; overscroll-behavior:none; }   /* 10/18 night: no sideways overscroll / back gesture either */
   button, .tile, .gapstrip, .al { touch-action:manipulation; -webkit-touch-callout:none; }
   button { -webkit-appearance:none; appearance:none; }
   html, body { margin:0; padding:0; color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
@@ -234,12 +234,17 @@
   .card .inner { position:relative; }
   .pagewm { position:fixed; inset:0; z-index:-1; pointer-events:none; display:flex; align-items:center; overflow:hidden; }
   .pagewm img { width:50%; height:100%; object-fit:contain; transform:scale(1.25); opacity:.2; }
-  .pagewm::after { content:""; position:absolute; inset:0; background:rgba(0,0,0,.4); }
+  .pagewm::after { content:""; position:absolute; inset:0; background:rgba(0,0,0,.1); }   /* 10/18 night (owner): the game page's backdrop carries only a 10% shade too (was 40%) */
   /* 10/17 (owner): every NBA page (not a game page) gets its photo behind it, like NFL; the cards see-through over it */
   html.lines-on .pagewm { background:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.1)),url(/nba/lines-bg.jpg?v=4) center/cover no-repeat,#000; }   /* 10/18 evening (owner): only a 10% shade -- "why is it so dark in the app"; it was 68-86% */
   html.lines-on .pagewm::after { display:none; }
   html.lines-on .panel .card, html.lines-on .panel .stat { background:rgba(8,8,12,.8); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 80% dark so the text reads (owner 10/17), no frosted haze */
   html.lines-on .panel .tile { background:rgba(8,8,12,.55); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 10/18 evening (owner, sketch D): game tiles 55% dark, no team colours, no faded logos */
+  #detail .card:not(.dtop) { background:rgba(8,8,12,.55); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 10/18 night (owner): game-page cards see-through like the tiles (55% dark); the team-colour header card stays */
+  /* 10/18 night (owner: "opacity don't look consistent"): on the photo pages every Models section sits on the same 80% dark card as the stat tiles -- the header row and its open list are one box */
+  html.lines-on #models .fold { background:rgba(8,8,12,.8); border:1px solid rgba(255,255,255,.28); border-radius:16px; padding:12px 12px 10px; margin-top:10px; }
+  html.lines-on #models .fold:has(+ .drop.open) { border-radius:16px 16px 0 0; border-bottom:1px solid var(--line); }
+  html.lines-on #models .drop.open { background:rgba(8,8,12,.8); border:1px solid rgba(255,255,255,.28); border-top:0; border-radius:0 0 16px 16px; margin-top:0; padding:6px 12px 12px; }
   html.lines-on .panel .pgrid > .par { background:rgba(8,8,12,.8); border-radius:14px; padding:11px 12px; margin-bottom:8px; }   /* 10/17 (owner): Model bets parlays get the same dark backing as the cards */
   .dtop .t .tlogo { width:30px; height:30px; vertical-align:-6px; margin:0 8px 0 0; } .dtop .t:last-child .tlogo { margin:0 0 0 8px; }
   .prl > .s { text-transform:uppercase; letter-spacing:.04em; font-size:13px; font-weight:700; color:#eef0f4; }

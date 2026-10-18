@@ -1304,12 +1304,18 @@ function homeTile(o) {
   const team = (code, logo, rec, hm) => `<span class="t${hm ? " hm" : ""}">${hm ? "" : `<img class="tlogo" src="${logo}" alt="" onerror="this.style.display='none'">`}${esc(code)}${hm ? `<img class="tlogo" src="${logo}" alt="" onerror="this.style.display='none'">` : ""}${rec ? `<small class="rec">${esc(rec)}</small>` : ""}</span>`;
   return `<button class="tile${live ? " live" : ""}" ${o.attr}="${esc(o.key)}"><div class="in"><div class="nm">${team(o.away, o.aLogo, o.aRec, false)}<div class="tmid">${mid}${under ? `<div class="s2"><span class="tmt">${under}</span></div>` : ""}</div>${team(o.home, o.hLogo, o.hRec, true)}</div>${live || ap == null ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
 }
-// the clock's parts as spans, so a part that changes can flip ("2d 14h 30m" -> 2d | 14h | 30m)
-const flipSpans = (txt) => String(txt).split(" ").map((p) => `<span>${esc(p)}</span>`).join("");
+// 10/18 night (owner: "I need the exact time and second ... a clock that flips its numbers, like a game clock"): the countdown is
+// [days]d HH:MM:SS, every digit its own flip tile; a tile whose digit changes flips (so the seconds tile flips every second)
+function clockParts(ms) {
+  if (!(ms > 0)) ms = 0;
+  const d = Math.floor(ms / 864e5), h = Math.floor((ms % 864e5) / 36e5), m = Math.floor((ms % 36e5) / 6e4), s = Math.floor((ms % 6e4) / 1e3), p2 = (n) => String(n).padStart(2, "0");
+  return (d ? [`${d}d`] : []).concat([...`${p2(h)}:${p2(m)}:${p2(s)}`]);
+}
+const flipSpans = (parts) => parts.map((p) => (p === ":" ? "<em>:</em>" : `<span><i class="sgrad">${esc(p)}</i></span>`)).join("");
 // 10/18 night (owner): the header above each sport's tiles = "NFL NEXT GAME" + a flipping clock (live: "● NFL · LIVE NOW")
 function homeSection(sport, live, next, tiles) {
   const head = live ? `<div class="hsh2"><span class="lv"><i></i>${sport} · LIVE NOW</span></div>`
-    : next ? `<div class="hsh2"><span>${sport} NEXT GAME</span><b class="fclk sgrad" data-hclk="${next.ts}">${flipSpans(Shell.clockTxt(next.ts - Date.now()))}</b></div>` : `<div class="hsh2"><span>${sport}</span></div>`;
+    : next ? `<div class="hsh2"><span>${sport} NEXT GAME</span><b class="fclk" data-hclk="${next.ts}">${flipSpans(clockParts(next.ts - Date.now()))}</b></div>` : `<div class="hsh2"><span>${sport}</span></div>`;
   return `<div class="hsec">${head}<div class="tiles stack">${tiles || '<div class="hempty">No games scheduled.</div>'}</div></div>`;
 }
 function renderHome() {
@@ -1344,9 +1350,9 @@ function renderHome() {
 // the flip clock: a part that changed is replaced and flips (10/18 night, owner: "a flipping clock as their header")
 function homeClocks() {
   document.querySelectorAll("[data-hclk]").forEach((e) => {
-    const parts = Shell.clockTxt(Number(e.dataset.hclk) - Date.now()).split(" "), spans = e.querySelectorAll("span");
-    if (spans.length !== parts.length) { e.innerHTML = flipSpans(parts.join(" ")); return; }
-    spans.forEach((sp, i) => { if (sp.textContent !== parts[i]) { sp.textContent = parts[i]; sp.classList.remove("flip"); void sp.offsetWidth; sp.classList.add("flip"); } });
+    const all = clockParts(Number(e.dataset.hclk) - Date.now()), parts = all.filter((p) => p !== ":"), spans = e.querySelectorAll("span");
+    if (spans.length !== parts.length) { e.innerHTML = flipSpans(all); return; }
+    spans.forEach((sp, i) => { if (sp.textContent !== parts[i]) { sp.firstChild.textContent = parts[i]; sp.classList.remove("flip"); void sp.offsetWidth; sp.classList.add("flip"); } });
   });
 }
 // countdown to the next game that has not started -> the header (10/17: [away logo] vs [home logo] · NEXT GAME · clock; the home screen has its own clocks)
@@ -1456,7 +1462,7 @@ document.addEventListener("click", (e) => {
       if (d.dataset.drop === "gamebest") { GAMEBEST_OPEN = el.classList.contains("open"); try { localStorage.setItem("gameBestOpen", GAMEBEST_OPEN ? "1" : "0"); } catch {} } } return; }
   const gt = e.target.closest("[data-game]"); if (gt) { if (!$("panel-lines").classList.contains("on")) { history.replaceState(null, "", "#lines"); showPanel("lines"); } openGame(gt.dataset.game); return; }
   const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k) { history.replaceState(null, "", "#lines"); showPanel("lines"); openGame(k); } return; }
-  const nb = e.target.closest("[data-nbagame]"); if (nb) { location.href = "/nba/index.html#game=" + encodeURIComponent(nb.dataset.nbagame); return; }
+  const nb = e.target.closest("[data-nbagame]"); if (nb) { location.replace("/nba/index.html#game=" + encodeURIComponent(nb.dataset.nbagame)); return; }   // 10/18 night: no history entry, so a swipe cannot "go back"
   const bv = e.target.closest("[data-bv]"); if (bv) { BETSVIEW = bv.dataset.bv === "model" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} applyBetsView(); try { window.scrollTo(0, 0); } catch {} return; }
   const lw = e.target.closest("[data-labw]"); if (lw) { LABWEEK = Number(lw.dataset.labw); renderLabList(); return; }
   const gb = e.target.closest("[data-gbw]"); if (gb) { GBGWEEK = gb.dataset.gbw === "all" ? "all" : Number(gb.dataset.gbw); $("gbg").innerHTML = gbgHtml(); return; }

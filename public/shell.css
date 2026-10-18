@@ -62,8 +62,12 @@ body.menu-open .mscrim { opacity:1; pointer-events:auto; } body.menu-open .mdraw
 .hsec { margin-top:6px; }
 /* 10/18 night (owner): "NFL NEXT GAME" + a flipping clock as the header above each sport's tiles; the same look as the Game Lines slot headers */
 .hsh2 { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin:22px 2px 2px; font-size:22px; font-weight:900; letter-spacing:.07em; color:#fff; white-space:nowrap; text-shadow:0 1px 2px rgba(0,0,0,.95),0 -1px 1px rgba(0,0,0,.6); }
-.hsh2 .fclk { font-variant-numeric:tabular-nums; letter-spacing:-.01em; text-shadow:none; }
-.hsh2 .fclk span { display:inline-block; margin-left:.22em; }
+.hsh2 .fclk { display:inline-flex; align-items:center; font-variant-numeric:tabular-nums; letter-spacing:0; text-shadow:none; }
+/* 10/18 night (owner): a game clock -- every digit on its own flip tile with a split line; the seconds tile flips every second */
+.hsh2 .fclk span { display:inline-block; position:relative; min-width:.78em; padding:0 .08em; margin-left:.1em; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.22); border-radius:5px; text-align:center; line-height:1.2; transform-style:preserve-3d; }
+.hsh2 .fclk span::after { content:""; position:absolute; left:0; right:0; top:50%; height:1px; background:rgba(0,0,0,.6); pointer-events:none; }
+.hsh2 .fclk span i { font-style:normal; }
+.hsh2 .fclk em { font-style:normal; margin:0 .02em 0 .12em; }
 .hsh2 .fclk span.flip { animation:hflip .4s ease; } @keyframes hflip { 0% { transform:rotateX(0); } 50% { transform:rotateX(90deg); } 100% { transform:rotateX(0); } }
 .hsh2 .lv { display:flex; align-items:center; gap:8px; color:#ff6b6b; } .hsh2 .lv i { width:8px; height:8px; border-radius:50%; background:#ff6b6b; display:inline-block; }
 .hsec .tiles.stack { margin-top:8px; }
