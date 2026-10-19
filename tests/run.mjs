@@ -1006,6 +1006,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const { soldFrom } = await import("../lib/mybets.js");
     const x = soldFrom({ type: "ACTIVITY_TYPE_TRADE", trade: { marketSlug: "caoc-1", price: { value: "0.4980" }, qty: "-50", realizedPnl: { value: "19.90" }, updateTime: "2026-10-09T02:00:00Z" } });
     ok(x && x.slug === "caoc-1" && x.pl === 19.9 && Math.abs(x.proceeds - 24.9) < 1e-9 && soldFrom({ trade: { marketSlug: "b", price: { value: "0.1" }, qty: "50", realizedPnl: { value: "0" } } }) === null, "sold: profit from the selling trade, buys ignored");
+    { const no = soldFrom({ type: "ACTIVITY_TYPE_TRADE", trade: { marketSlug: "aec-nfl-buf-lv-2026-10-18", price: { value: "0.9750" }, qty: "100", realizedPnl: { value: "63.08" }, effectiveRealizedPnl: { value: "-31.94" }, updateTime: "2026-10-18T23:23:24Z" } });
+      ok(no && no.pl === -31.94 && no.fixed, "sold (10/18): a NO-side bet (Raiders on the Bills market) uses effectiveRealizedPnl -31.94, not the YES-side +63.08", no); }
     const row = ctx.T.betRow ? ctx.T.betRow({ source: "account", title: "caoc-1", week: 5, cost: 5, price: 0.08, toWin: 59, result: "W", pl: 14.94, sold: { pl: 14.94, proceeds: 21.03 } }) : "";
     ok(/class="g">Sold<\/span> /.test(row) && /sold early for \$19\.94/.test(row), "sold: shown as Sold with the profit; paid back = stake + profit"); }
   { // linked combo legs (10/9)
