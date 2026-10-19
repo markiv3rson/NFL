@@ -445,9 +445,9 @@ const liveLegTxt = (ks, l, done) => (ks.length > 1 && !done && liveSc(l.game) ? 
 function betRow(b) { return `<div class="betwrap">${betRowInner(b)}${stampFor(b)}</div>`; }
 function betRowInner(b) {
   if (b.source === "account") {   // bet recorded automatically from your Polymarket account
-    const lk = !b.sold && (!b.result || b.result === "pending") ? liveOf(b.picks || []) : [];
+    const lk = !b.sold && (!b.result || b.result === "pending") ? liveOf(b.picks || (b.prop ? [b.prop] : [])) : [];
     const st = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : legLost(b) ? '<span class="r">Lost</span>' : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Even" : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : (b.waiting ? '<span class="y">waiting for TD results</span>' : '<span class="dim">open</span>');
-    const name = b.picks && b.picks.length ? `Combo · ${b.picks.length} picks` : `${esc(b.title)}${b.outcome ? ` — ${esc(b.outcome)}` : ""}`;
+    const name = b.picks && b.picks.length ? `Combo · ${b.picks.length} picks` : b.prop ? `${tlogo(b.prop.team)}${esc(b.prop.label)}` : `${esc(b.title)}${b.outcome ? ` — ${esc(b.outcome)}` : ""}`;   // 10/19: single player bet
     const picks = b.picks && b.picks.length ? b.picks.map((p) => `<div class="s" style="padding:0 0 0 16px">${p.result ? RESMARK[p.result] + " " : "• "}${legTxt(p.result, logoLabel(p.label, p.team))}${liveLegTxt(lk, p, !!p.result)}${!p.result && legFlipped(p.label) ? ' <span class="y">⚠ app now picks the other side</span>' : ""}</div>`).join("") : "";
     return `<div class="row"><span>${name} ${lk.length ? liveHeadTxt(lk) : `<span class="dim">wk ${b.week ?? "?"}</span>`}</span><span>${st}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
       `<div class="s" style="padding:0 0 ${picks ? 2 : 6}px 8px">${money(b.cost)}${b.price != null ? ` at ${b.price < 0.005 ? "<1" : Math.round(b.price * 100)}¢` : ""} · ${b.sold ? `sold early for ${money(Math.max(0, (b.cost || 0) + (b.pl || 0)))}` : legLost(b) ? `−${money(b.cost)}` : `pays ${money(b.toWin)} if it wins`}</div>` + (picks ? `<div style="padding-bottom:6px">${picks}</div>` : "");
