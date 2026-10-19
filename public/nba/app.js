@@ -338,8 +338,8 @@ function renderBets() {
   $("sync-btn").onclick = async () => { toast("Syncing…", 0); try { const d = await (await fetch("/api/nba/mybets?sync=1", { cache: "no-store" })).json(); BETS = d; renderBets(); toast(d.sync && d.sync.ok ? `Synced ${d.sync.positions} positions.` : `Sync: ${(d.sync && d.sync.note) || "done"}`); } catch (e) { toast("Sync failed: " + e.message, 10000); } };
 }
 // Model bets: day drop-down at the top, the types are menu sub tabs, one list in tip-off order (lib/parlays.js)
-const PTYPES = { sgp: "Same game · 2 legs", sgp_pts: "Same game · bought lines", best4: "Parlay · top picks", fav4: "4 biggest favorites" };
-const LAB_TABS = [["sgp", "Same game"], ["best4", "Parlay"], ["fav4", "Favorites"]];   // 10/19: the Bought tab left (PICK w/ POINTS only on the card)
+const PTYPES = { sgp: "Same game · 2 legs", sgp_pts: "Same game · bought lines", best4: "Parlay · top picks" };   // 10/19: 3 legs at most, the 4 biggest favorites (fav4) is no longer built
+const LAB_TABS = [["sgp", "Same game"], ["best4", "Parlay"]];   // 10/19: the Bought tab left (PICK w/ POINTS only on the card)
 let LABTYPE = "sgp", LABDAY = null;
 const plText = (x, st) => `PL: ${x >= 10 ? Math.round(x) : x.toFixed(1)}x<span class="plw"> · $${st} → </span><span class="g">$${Math.round(st * x)}</span>`;
 const plPay = (p) => {
@@ -465,7 +465,7 @@ function renderModels() {
   $("upd-models").textContent = `Updated ${new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
   const open = [...document.querySelectorAll("#models .drop.open")].map((e) => e.id);
   // parlay scoreboard (first, closed): this season's W-L, hit %, said %, money; past = tested history
-  const PH = { fav4: "36.4%", best4: null, sgp: null, sgp_pts: null };
+  const PH = { best4: null, sgp: null, sgp_pts: null };
   const board = `<div class="s"><b>This season · hit vs said · money · past</b></div>` + Object.entries(PTYPES).map(([k, lab]) => { const b = pl[k];
     return `<div class="row"><span>${esc(lab)}</span><span>${b && b.decided ? `${b.hits}–${b.decided - b.hits} · ${b.pct}% <span class="dim">said ${b.said}%</span> <span class="${b.money >= 0 ? "g" : "r"}">${b.money >= 0 ? "+" : "−"}$${Math.abs(Math.round(b.money))}</span>` : b && b.pending ? `<span class="dim">${plural(b.pending, "open")}</span>` : '<span class="dim">waiting</span>'}${PH[k] ? ` · <span class="dim">${PH[k]}</span>` : ""}</span></div>`; }).join("");
   // card picks: PICK (rule / model side), PICK w/ POINTS, moneyline; shadow trackers below

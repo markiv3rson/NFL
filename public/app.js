@@ -836,10 +836,10 @@ function bestBets() {
   for (const g of (S && S.games) || []) for (const x of straightPicks(g)) out.push({ ...x, slot: slotOf(g) });
   return out.sort((a, b) => (isSmall(a) - isSmall(b)) || b.p - a.p).slice(0, BEST_MAX);   // tested picks first (10/11)
 }
-// Parlay of the week (10/9): the strongest green picks, one per game (up to 4), and the chance all of them hit.
+// Parlay of the week (10/9): the strongest green picks, one per game (up to 3 -- 10/19 owner: "three max"), and the chance all of them hit.
 function parlayPicks() {
   const seen = new Set(), out = [];
-  for (const x of bestBets()) { if (seen.has(x.game)) continue; seen.add(x.game); out.push(x); if (out.length === 4) break; }
+  for (const x of bestBets()) { if (seen.has(x.game)) continue; seen.add(x.game); out.push(x); if (out.length === 3) break; }
   return out.length >= 2 ? out : [];
 }
 function parlayStrip() {
@@ -878,12 +878,11 @@ function renderLab() {
   if (!PAPER) { renderLabList(); return; }
   const names = PAPER.names || {}, board = PAPER.board || {};
   // Scoreboard (10/14, owner: "organize it"): the parlays still built, grouped; this season W-L and hit %, then the tested history.
-  const GROUPS = [["SAME GAME", [["sgp_best", "2 legs"], ["sgp_best_fill", "2 legs · filled"], ["sgp_3", "3 legs"], ["sgp_linked", "4 legs"], ["sgp_style", "4 legs · my style"], ["sgp_upset", "Upset · dog wins + its RB scores"]]],
-    ["4 LEGS · DIFFERENT GAMES", [["leg4_fav", "4 biggest favorites"], ["leg4_green_fav", "Green pick + 3 favorites"], ["leg4_fav_td", "3 favorites + top TD"], ["leg4_td4", "4 most likely TD scorers"]]],
-    ["BEST BETS", [["best_2", "Top 2 picks"], ["best_3", "Top 3 picks"], ["best_4", "Top 4 (Parlay of the week)"]]],
+  const GROUPS = [["SAME GAME", [["sgp_best", "2 legs"], ["sgp_best_fill", "2 legs · filled"], ["sgp_3", "3 legs"], ["sgp_upset", "Upset · dog wins + its RB scores"]]],
+    ["BEST BETS", [["best_2", "Top 2 picks"], ["best_3", "Top 3 picks"]]],
     ["FAVORITES", [["home_fav_95_single", "Home fav 9.5+ · single"], ["home_fav_95_2", "Home fav 9.5+ · 2 legs"], ["home_fav_95_3", "Home fav 9.5+ · 3 legs"], ["top3_home_75", "Top 3 home favs (75%+)"]]],
-    ["TOUCHDOWNS", [["td_edge_3", "3 TD value picks"], ["td_likely_2", "2 likeliest scorers"], ["td_likely_3", "3 likeliest scorers"], ["model_best_4", "4 most likely legs"]]]];
-  const TESTED = { sgp_best_fill: 49.5, sgp_3: 30.2, sgp_linked: 15.0, leg4_fav: 42.5, leg4_green_fav: 32.2, leg4_fav_td: 31.4, sgp_upset: 25.1, leg4_td4: 17.7 };   // research (CLAUDE.md); same-game rates = the 10/19 filters, 2019-25
+    ["TOUCHDOWNS", [["td_edge_3", "3 TD value picks"], ["td_likely_2", "2 likeliest scorers"], ["td_likely_3", "3 likeliest scorers"]]]];   // 10/19: 3 legs at most (the 4-leg rows are gone; their saved records stay)
+  const TESTED = { sgp_best_fill: 49.5, sgp_3: 30.2, sgp_upset: 25.1 };   // research (CLAUDE.md); same-game rates = the 10/19 filters, 2019-25
   const hist = (k) => { if (TESTED[k] != null) return `${TESTED[k]}%`; const h = REPLAY && REPLAY.parlays && REPLAY.parlays.find((x) => x.id === k); return h && h.n ? `${Math.round(h.hit * 100)}%` : "—"; };
   const now = (k) => { const b = board[k]; if (!b || !b.decided) return '<span class="dim">waiting</span>'; const l = b.decided - b.hits;
     return `${b.hits}–${l} · ${Math.round((b.hits / b.decided) * 100)}%${b.money != null ? ` <span class="${b.money >= 0 ? "g" : "r"}">${b.money >= 0 ? "+" : "−"}$${Math.abs(Math.round(b.money))}</span>` : ""}`; };
@@ -1122,15 +1121,14 @@ function pBlock(title, p, showGame) {
 }
 function sgpBox(g) {
   const x = g.sgp; if (!x || g.started || g.final) return "";
-  const blocks = [["2 legs", x.best], ["3 legs", x.three], ["4 legs", x.linked], ["4 legs · my style", x.style], ["Upset", x.upset]].map(([t, p]) => pBlock(esc(t), p, false)).join("");
+  const blocks = [["2 legs", x.best], ["3 legs", x.three], ["Upset", x.upset]].map(([t, p]) => pBlock(esc(t), p, false)).join("");
   return blocks ? `<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAYS</div><div class="pgrid" style="margin-top:6px">${blocks}</div>` : "";
 }
-// Model bets: the parlay types are menu sub tabs (Over/Under, 4 Leg (My Style), 4 Leg (Bought), 4 Leg, 3 Leg, 2 Leg, Upset, Different Game Parlays), the week a drop-down;
+// Model bets: the parlay types are menu sub tabs (Over/Under, Best Legs, 3 Leg, 2 Leg, Upset; 10/19: 3 legs at most, the 4-leg tabs are gone), the week a drop-down;
 // each shows only its parlays, one column, in kickoff order. The current week comes from the live slate (results from the saved copies once a game starts); past weeks from /api/modelbets.
-const FOUR_NAMES = { leg4_fav: "4 biggest favorites", leg4_green_fav: "Best green pick + 3 favorites", leg4_fav_td: "3 favorites + top TD scorer", leg4_td4: "4 most likely TD scorers",
-  best_2: "2 best green picks", best_3: "3 best green picks", td_likely_2: "2 most likely TD scorers", td_likely_3: "3 most likely TD scorers" };
+const FOUR_NAMES = { best_2: "2 best green picks", best_3: "3 best green picks", td_likely_2: "2 most likely TD scorers", td_likely_3: "3 most likely TD scorers" };
 // 10/17 (owner): Over/Under first, then the parlays in this order and with these names
-const LAB_TABS = [["ou", "Over/Under"], ["best", "Best Legs"], ["style", "4 Leg (My Style)"], ["4", "4 Leg"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"], ["diff", "Different Game Parlays"]];   // 10/17 parlay lab: Upset (underdog wins + its lead RB scores)
+const LAB_TABS = [["ou", "Over/Under"], ["best", "Best Legs"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"]];   // 10/17 parlay lab: Upset; 10/19 (owner: "three max ... cut all the four legs"): 4 Leg, 4 Leg (My Style), Different Game Parlays gone
 let MODELBETS = null, LABTYPE = "ou", LABWEEK = null;
 // 10/15 (owner): ONE Bets tab -- My bets on the left (the list as before), Model bets on the right (the model's parlays). The choice is remembered.
 let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
@@ -1180,13 +1178,10 @@ function labParlays(week, type) {
   if (type === "ou") return S && Number(week) === Number(S.week) ? ((S && S.games) || []).map((g) => ({ p: { legs: ouLegs(g) }, game: g.key, kick: g.kickoff, title: gameLogos(g.key), ou: true })).filter((x) => x.p.legs.length) : [];
   const rec = (MODELBETS && MODELBETS.weeks && MODELBETS.weeks[week] && MODELBETS.weeks[week][type]) || [];
   if (!(S && Number(week) === Number(S.week))) return rec.map((p) => ({ p, game: p.game, kick: p.kickoff, title: p.game ? gameLogos(p.game) : esc(FOUR_NAMES[p.strategy] || p.strategy), across: !p.game }));
-  const pick = { 2: (g) => g.sgp.best, 3: (g) => g.sgp.three, 4: (g) => g.sgp.linked, style: (g) => g.sgp.style, upset: (g) => g.sgp.upset };
+  const pick = { 2: (g) => g.sgp.best, 3: (g) => g.sgp.three, upset: (g) => g.sgp.upset };
   if (type === "best") {   // Best Legs (10/19): once the week's copy is saved (Saturday morning) only it shows -- the one graded; the live build before that
     const saved = MODELBETS && Array.isArray(MODELBETS.saved) && MODELBETS.saved.includes(Number(week));
     return (saved ? rec : ((S && S.bestLegs) || []).filter((p) => p && Array.isArray(p.legs))).map((p) => ({ p, game: null, kick: null, title: esc(FOUR_NAMES[p.strategy] || p.strategy), across: true })); }
-  if (type === "diff") { const F = ((S && S.fourLeg) || []).filter((p) => p && Array.isArray(p.legs));
-    const done = (st) => rec.find((r) => r.strategy === st);   // a saved copy carries the results
-    return (F.length ? F.map((p) => ({ ...p, ...(done(p.strategy) ? { result: done(p.strategy).result, legs: done(p.strategy).legs } : {}) })) : rec).map((p) => ({ p, game: null, kick: null, title: esc(FOUR_NAMES[p.strategy] || p.strategy), across: true })); }
   const out = [];
   for (const g of (S && S.games) || []) { const live = g.sgp && typeof g.sgp === "object" && !g.started && !g.final ? pick[type](g) : null;
     if (live && Array.isArray(live.legs)) out.push({ p: live, game: g.key, kick: g.kickoff, title: gameLogos(g.key), across: false });

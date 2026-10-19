@@ -40,10 +40,10 @@ if (games) {
     "BEAT THE 3": { claim: null, from: 1999, to: 2025, run: (g, G) => { const hs = -G.sp, T = BUY_TIERS[Math.abs(hs)]; if (!T) return null;
       const fav = hs < 0 ? g.home : g.away, dog = hs < 0 ? g.away : g.home, team = T.side === "fav" ? fav : dog, main = team === g.home ? T.line : -T.line;
       return keyNumberPick(g, { spread: { homeSpread: main, home: 0.5, away: 0.5 } }, { spread: { homeSpread: hs } }); } },
-    // the second candidates (books 3.5: the favorite at -2.5, 1 point), replayed on their own line
-    "BEAT THE 3 (alt)": { claim: null, from: 1999, to: 2025, run: (g, G) => { const hs = -G.sp, T = (BUY_ALT[Math.abs(hs)] || [])[0]; if (!T) return null;
+    // the second candidates (books 3.5: the favorite at -2.5, 1 point), replayed on their own line -- 10/19 rules cleanup: BUY_ALT is empty, so no replay
+    ...(Object.keys(BUY_ALT).length ? { "BEAT THE 3 (alt)": { claim: null, from: 1999, to: 2025, run: (g, G) => { const hs = -G.sp, T = (BUY_ALT[Math.abs(hs)] || [])[0]; if (!T) return null;
       const fav = hs < 0 ? g.home : g.away, dog = hs < 0 ? g.away : g.home, team = T.side === "fav" ? fav : dog, main = team === g.home ? T.line : -T.line;
-      return keyNumberPick(g, { spread: { homeSpread: main, home: 0.5, away: 0.5 } }, { spread: { homeSpread: hs } }); } },
+      return keyNumberPick(g, { spread: { homeSpread: main, home: 0.5, away: 0.5 } }, { spread: { homeSpread: hs } }); } } } : {}),
     "BOUNCE BACK": { claim: 61.3, from: 1999, to: 2025, run: (g, G) => bounceBackPick(g, -G.sp, { away: prevOf[`${G.id}|away`], home: prevOf[`${G.id}|home`] }) },
     "BOUNCE BACK DOG": { claim: 56.5, from: 1999, to: 2025, run: (g, G) => floorDogPick(g, -G.sp, { away: prevOf[`${G.id}|away`], home: prevOf[`${G.id}|home`] }) },
     // LINE MOVE: Polymarket "still has the old number" = the opening line; the books = the close. Graded at the opening number.
@@ -145,7 +145,7 @@ try {
 // how often it hit vs how often its % said, and the money at the owner's stakes. Reported weekly in the Tuesday report card.
 try {
   const L = await getJSONurl(`${SITE}/api/results/list`), P = (L && L.paper) || {}, B = P.board || {}, names = P.names || {};
-  const keys = ["sgp_best", "sgp_best_fill", "sgp_3", "sgp_linked", "sgp_style", "sgp_style_pts", "sgp_upset", "leg4_fav", "leg4_green_fav", "leg4_fav_td", "leg4_td4", "best_2", "best_3", "best_4"];
+  const keys = ["sgp_best", "sgp_best_fill", "sgp_3", "sgp_upset", "best_2", "best_3", "td_likely_2", "td_likely_3"];   // 10/19 (owner): 3 legs at most -- the 4-leg types are no longer built
   console.log("\nPARLAYS this season (all legs must win):");
   for (const k of keys) { const b = B[k]; if (!b) continue; const d = b.decided || 0;
     console.log(`     ${(names[k] || k).slice(0, 44).padEnd(44)} ${d ? `${b.hits}-${d - b.hits} = ${(100 * b.hits / d).toFixed(1)}%` : "none graded yet"}${b.expRate != null && d ? ` · said ${(100 * b.expRate).toFixed(1)}%` : ""}${b.money != null ? ` · ${b.money >= 0 ? "+" : "-"}$${Math.abs(b.money).toFixed(0)}` : ""}${b.review && b.review.verdict && !/TOO FEW|WAITING/.test(b.review.verdict) ? ` · ${b.review.verdict}` : ""}`); }

@@ -123,15 +123,14 @@ const mk = (away, home, over = {}) => ({ key: `${away} @ ${home}`, away, home, d
   const four = [mk("A1", "H1", { ml: { pick: { label: "H1 ML", pct: 74, tier: "pick", team: "H1" } } }), mk("A2", "H2"), mk("A3", "H3"), mk("A4", "H4"), mk("A5", "H5", { poly: { ml: { away: 0.5, home: 0.5, midAway: 0.5, midHome: 0.5 }, spread: { homeSpread: -8.5, home: 0.51, away: 0.49 }, total: { line: 223.5, over: 0.5, under: 0.5 } } })].map((g) => ({ ...g, card: cp.buildCard(g) }));
   const P = pl.buildParlays(four, slate.collectPicks([...games, ...four]));
   const fav = P.find((p) => p.type === "fav4"), sg = P.filter((p) => p.type === "sgp"), sgp = P.filter((p) => p.type === "sgp_pts");
-  ok(fav && fav.legs.length === 4 && fav.legs.every((l) => l.market === "ml" && l.prob === 0.74 && l.price === 0.74) && fav.stake === 10 && fav.pay === 3.33, "4 biggest favorites: moneyline legs at the market's chance, with Polymarket's payout", fav);
+  ok(!fav && P.every((p) => p.legs.length <= 3), "three legs max (10/19, owner: \"cut all the four legs\"): the 4 biggest favorites is no longer built; no NBA parlay has more than 3 legs", P.map((p) => [p.type, p.legs.length]));
   ok(sg.length === 0, "same game 2 legs (10/19): none when the legs are the model's 49-50% sides", sg.length);
   { const gG = (k, sp, tt) => ({ key: k, away: k.split(" @ ")[0], home: k.split(" @ ")[1], start: "2026-11-01T23:00:00Z", poly: { ml: { away: 0.4, home: 0.62, midAway: 0.39, midHome: 0.61 } }, card: { spread: { plain: { team: k.split(" @ ")[0], line: 4.5, pick: `${k.split(" @ ")[0]} +4.5`, hit: sp, price: 0.5 } }, total: { plain: { side: "over", line: 220.5, pick: "Over 220.5", hit: tt, price: 0.5 } } } });
     const G2 = pl.buildParlays([gG("X1 @ Y1", 61, 58), gG("X2 @ Y2", 61, 50.4)], []).filter((p) => p.type === "sgp");
     ok(G2.length === 1 && G2[0].game === "X1 @ Y1" && G2[0].legs.map((l) => l.label).join() === "X1 +4.5,Over 220.5" && Math.abs(G2[0].prob - 0.61 * 0.58) < 0.002 && G2[0].stake === 20, "same game 2 legs (10/19): built only when both legs are green (56%+); chance = product (independent)", G2);
     const fourG = ["A @ B", "C @ D", "E @ F", "G @ H", "I @ J"].map((k, i) => ({ ...gG(k, 50, 50), poly: { ml: { away: 0.2 + i * 0.02, home: 0.82 - i * 0.02, midAway: 0.2 + i * 0.02, midHome: 0.8 - i * 0.02 } } }));
     fourG[0].card.spread.plain.hit = 62;   // our green spread pick backs A, the underdog
-    const f4 = pl.buildParlays(fourG, []).find((p) => p.type === "fav4");
-    ok(f4 && !f4.legs.some((l) => l.game === "A @ B") && f4.legs.map((l) => l.team).join() === "D,F,H,J", "4 biggest favorites (10/19): skips a game where our green spread pick backs the underdog", f4 && f4.legs.map((l) => l.label)); }
+    ok(!pl.buildParlays(fourG, []).some((p) => p.type === "fav4"), "4 biggest favorites (10/19): no longer built (three legs max)"); }
   ok(sgp.length === 0, "same game bought lines (10/19): not built any more -- PICK w/ POINTS stays only on the card under MORE", sgp.length);
   { // 10/19 (owner: "I don't want the pick with points ... pick the right side"): the Parlay = the 4 strongest green side PICKs (the card's PICK), one per game; bought lines never
     const gP = (k, sp, tt, ptsHit = 70) => ({ key: k, away: k.split(" @ ")[0], home: k.split(" @ ")[1], start: "2026-11-01T23:00:00Z", card: {
@@ -139,7 +138,7 @@ const mk = (away, home, over = {}) => ({ key: `${away} @ ${home}`, away, home, d
       total: { plain: { side: "under", line: 224.5, pick: "Under 224.5", hit: tt, price: 0.52 }, pts: { side: "under", line: 226.5, points: 2, pick: "Under 226.5", hit: ptsHit, price: 0.6 } } } });
     const G = [gP("A @ B", 58, 57), gP("C @ D", 55, 60), gP("E @ F", 61, 50), gP("G @ H", 57, 56.5), gP("I @ J", 56.2, 52), gP("K @ L", 54, 55)];
     const b4 = pl.buildParlays(G, []).find((p) => p.type === "best4");
-    ok(b4 && b4.legs.map((l) => l.label).join() === "E +4.5,Under 224.5,A +4.5,G +4.5" && b4.legs.every((l) => !l.bought && l.market !== "ml") && b4.stake === 10, "the Parlay (10/19): 4 strongest green side PICKs (56%+), one per game, never a bought line (the 70% PICK w/ POINTS lines are ignored), no moneylines", b4 && b4.legs.map((l) => l.label));
+    ok(b4 && b4.legs.map((l) => l.label).join() === "E +4.5,Under 224.5,A +4.5" && b4.legs.every((l) => !l.bought && l.market !== "ml") && b4.stake === 10, "the Parlay (10/19, three legs max): 3 strongest green side PICKs (56%+), one per game, never a bought line (the 70% PICK w/ POINTS lines are ignored), no moneylines", b4 && b4.legs.map((l) => l.label));
     const b3 = pl.buildParlays(G.slice(2), []).find((p) => p.type === "best4");
     ok(b3 && b3.legs.map((l) => l.label).join() === "E +4.5,G +4.5,I +4.5" && Math.abs(b3.prob - 0.61 * 0.57 * 0.562) < 0.002, "the Parlay (10/19): 3 green side PICKs -> a 3-leg Parlay", b3 && b3.legs.map((l) => l.label));
     ok(!pl.buildParlays(G.slice(4), []).some((p) => p.type === "best4"), "the Parlay (10/19): 1 green side PICK -> no Parlay (a green PICK w/ POINTS does not count)");
