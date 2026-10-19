@@ -120,7 +120,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ctx.window = ctx; ctx.addEventListener = () => {}; ctx.body = undefined;
   vm.createContext(ctx);
   vm.runInContext(readFileSync(new URL("../public/shell.js", import.meta.url), "utf8"), ctx);   // 10/17: the shared menu / header script loads first, as on the page
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={injLine,mktHome,tdPct,plural,pBlock,plPay,linkedPay,plTap,plShown,plKey,PLC,sgpBox,labParlays,renderLabList,logoLabel,tdTeam,legName,moreBox,slotOf,parlayPicks,parlayStrip,lineCheck,recLine,bestBets,injTag,weakLeg,kickLine,tdNoGap,trackedRows,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,leanCell,prow,betRow,moveBits,winnersBox,winnerOf,tile,tdTop3,tdRow,gameCard,totalCard,detailTop,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,clvSummary,betsAnalysis,keepOpenState,modelsByConfidence,mSec,legFlipped,betSlots,openBySlot,straightPicks,sgpBox,glowOf,stampFor,betRow};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={injLine,mktHome,tdPct,plural,pBlock,plPay,linkedPay,plTap,plShown,plKey,PLC,sgpBox,labParlays,renderLabList,logoLabel,tdTeam,legName,moreBox,slotOf,parlayPicks,parlayStrip,lineCheck,recLine,bestBets,injTag,weakLeg,kickLine,tdNoGap,trackedRows,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,leanCell,prow,betRow,moveBits,winnersBox,winnerOf,tile,tdTop3,tdRow,gameCard,totalCard,detailTop,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,cardRecBox,betsAnalysis,keepOpenState,winnersBands,mSec,legFlipped,betSlots,openBySlot,straightPicks,sgpBox,glowOf,stampFor,betRow};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   g = { away: "A", home: "H", model: { total: 44.4, fix: { dome: 2.59, pace: 0.1, div: true } }, poly: { total: { line: 45.5 } } };
@@ -653,10 +653,11 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(/3-leg combos <span class="dim">· 1<\/span>/.test(h) && /2-leg combos <span class="dim">· 1<\/span>/.test(h) && !/settled legs of your typed-in combos/.test(h), "bets analysis: by combo size, no explanation footnote");
     ok(/None yet/.test(ctx.T.betsAnalysis([])) && /None yet/.test(ctx.T.betsAnalysis([{ source: "preloaded", legs: [L("td", "pending", 0.4)], result: "pending" }])), "bets analysis: says so when nothing has settled"); }
   { // closing-line value: hand-worked, and the grading helper
-    const mk = (k, c) => ({ [k]: { basis: "model", clvPts: c } });
-    const h = ctx.T.clvSummary([mk("spread", 0.5), mk("spread", -0.5), mk("spread", 1), mk("spread", 0), mk("total", -1), { spread: { basis: "stats", clvPts: 9 } }, { spread: { basis: "model", clvPts: null } }]);
-    ok(/SPREAD side[\s\S]*\+0\.25 pts<\/b> avg · 2 better, 1 worse, 1 same/.test(h) && /TOTAL side[\s\S]*−1\.00 pts<\/b> avg · 0 better, 1 worse, 0 same/.test(h), "closing line: average points and better/worse/same counts, ignoring non-model and missing values");
-    ok(ctx.T.clvSummary([]) === "", "closing line: nothing to show with no data");
+    vm.runInContext(`COMBOS = { cardRec: { "pick|spread": { w: 3, l: 1, stk: 4, ret: 0.4 }, "ptspick|total": { w: 1, l: 2, stk: 0, ret: 0 } }, card: { clv: { n: 3, sum: -1, beat: 1, same: 1, spread: { n: 2, sum: 0.5, beat: 1, same: 1 }, total: { n: 1, sum: -1.5, beat: 0, same: 0 } } } }`, ctx);
+    const h = ctx.T.cardRecBox();
+    ok(/PICK · spread<\/span><span>3–1 · <b class="g">75%<\/b> · <span class="g">\+\$10 per \$100/.test(h) && /PICK · total<\/span><span class="dim">—/.test(h) && /PICK w\/ POINTS · total<\/span><span>1–2/.test(h) && !/MODEL SIDE/.test(h)
+      && /Spread<\/span><span><b class="g">\+0\.25 pts<\/b> · 1 better, 0 worse, 1 same/.test(h) && /Total<\/span><span><b class="r">−1\.50 pts<\/b> · 0 better, 1 worse, 0 same/.test(h), "card picks (10/19): one PICK row per market (rule or model side), PICK w/ POINTS rows, line value split from the same picks; no separate MODEL SIDE rows", h);
+    vm.runInContext(`COMBOS = null`, ctx);
     const { clvPtsFor } = await import("../lib/grade.js");
     const op = { spread: { homeSpread: -3 }, total: { line: 44 } };
     ok(clvPtsFor("spread", "CLE +2.5", "CLE", { spread: { homeSpread: 3 } }) === 0.5 && clvPtsFor("spread", "PIT -3", "CLE", { spread: { homeSpread: 2.5 } }) === 0.5 && clvPtsFor("spread", "CLE -3.5", "CLE", op) === 0.5 && clvPtsFor("spread", "CLE -3.5", "CLE", { spread: { homeSpread: -4 } }) === -0.5, "closing line: spread points from the open (underdog +3 open, +2.5 close = +0.5; favorite −3 open, −3.5 close = +0.5; favorite −4 open, −3.5 close = −0.5)");
@@ -802,7 +803,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
         await recordStack(2099, 7, NE, pk, now); await noteFirstSeen(2099, 7, NE, pk, now);
         const fin = [{ key: "NYJ @ NE", homeScore: 31, awayScore: 20 }];   // NE wins by 11, total 51
         const n1 = await gradeStackWeek(2099, 7, fin), n2 = await gradeFirstSeenWeek(2099, 7, fin), sm = await stackSummary(2099);
-        ok(pk.length >= 2 && n1 === pk.length && n2 === pk.length && sm.cardRec["cardpick|spread"] && sm.cardRec["cardpick|spread"].w === 1 && sm.cardRec["cardpick|total"].w === 1 && sm.cardRec["cardpick|spread"].stk === 1 && sm.rules["PICK · spread"] && sm.rules["PICK · spread"].w === 1
+        ok(pk.length >= 2 && n1 === pk.length && n2 === pk.length && sm.cardRec["pick|spread"] && sm.cardRec["pick|spread"].w === 1 && sm.cardRec["pick|total"].w === 1 && sm.cardRec["pick|spread"].stk === 1 && !sm.cardRec["cardpick|spread"] && sm.rules["PICK · spread"] && sm.rules["PICK · spread"].w === 1
           && (!cc.spread.pts || (r => r && r.w + r.l === 1)(sm.rules[`PICK w/ POINTS · spread · ${cc.spread.pts.points} pt${cc.spread.pts.points === 1 ? "" : "s"}`])) && sm.card.spread.w === 1 && sm.card.total.w === 1 && sm.recorded >= pk.length,
           "recorded + graded: the card's PICK and PICK w/ POINTS are saved at kickoff, graded when the game ends, and counted in the Models tab (by id, by rule label and in the spread / total tiles)", { n1, n2, cardRec: sm.cardRec, rules: sm.rules });
         for (const k of await RR.keys("stack*:2099:7")) await RR.del(k); }
@@ -824,10 +825,21 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       await pinnacleOk(RR); await pinnacleFailed(RR, "403", lg); const one = logs.length; await pinnacleFailed(RR, "403", lg); const two = logs.length;
       await pinnacleOk(RR); await pinnacleFailed(RR, "403", lg);
       ok(one === 0 && two === 1 && logs.length === 1 && /2 times in a row/.test(logs[0]), "pinnacle: logged only on the 2nd failure in a row"); }
-    { const { stackSummary } = await import("../lib/stack.js"), RR = globalThis.__TEST_REDIS__;   // LINE VALUE leaves KEY NUMBER out (its line never moves)
-      await RR.hset("stack:2098:6", "A @ B|keynum|spread", JSON.stringify({ id: "keynum|spread", kind: "spread", team: "A", home: "B", game: "A @ B", week: 6, hit: 58.1, line: 3.5, first: { line: 3.5 }, result: "W" }),
-        "C @ D|linemove|spread", JSON.stringify({ id: "linemove|spread", kind: "spread", team: "C", home: "D", game: "C @ D", week: 6, hit: 63.2, line: 2.5, first: { line: 3.5 }, result: "W" }));
-      const sm = await stackSummary(2098); ok(sm.card.clv.n === 1 && sm.card.clv.sum === 1, "line value: KEY NUMBER (fixed +3.5) left out; a real line move counts", sm.card.clv); await RR.del("stack:2098:6"); }
+    { const { recordedFor } = await import("../lib/paper.js"), RR = globalThis.__TEST_REDIS__;   // 10/19: a game whose PICK is the model's side is not "PICK missing"
+      await RR.hset("stack:2097:6", "A @ B|modelpick|spread", "{}", "A @ B|ptspick|spread", "{}", "C @ D|ptspick|total", "{}");
+      const rf = await recordedFor(2097, 6, [{ key: "A @ B", started: true }, { key: "C @ D", final: true }], { close: () => "x" });
+      ok(rf[0].card === 1 && rf[1].card === 0, "System 'Recorded this week' (10/19): a model-side PICK counts as the card's PICK; a game with only PICK w/ POINTS still shows PICK missing", rf); await RR.del("stack:2097:6"); }
+    { const { stackSummary } = await import("../lib/stack.js"), RR = globalThis.__TEST_REDIS__;   // 10/19: tiles, LINE VALUE and game by game = the card's PICK locked at kickoff, one per game and market
+      await RR.hset("stack:2098:6", "A @ B|keynum|spread", JSON.stringify({ id: "keynum|spread", kind: "spread", team: "A", home: "B", game: "A @ B", week: 6, hit: 58.1, line: 3.5, first: { line: 3.5 }, result: "L" }),
+        "A @ B|cardpick|spread", JSON.stringify({ id: "cardpick|spread", kind: "spread", team: "A", home: "B", game: "A @ B", week: 6, hit: 56.5, line: 2.5, first: { line: 3.5 }, result: "W" }),
+        "A @ B|modelpick|total", JSON.stringify({ id: "modelpick|total", kind: "total", side: "over", game: "A @ B", week: 6, hit: 51.7, line: 44.5, first: { line: 44.5 }, result: "L", price: 0.5 }),
+        "A @ B|ptspick|total", JSON.stringify({ id: "ptspick|total", kind: "total", side: "over", game: "A @ B", week: 6, hit: 57, line: 42.5, points: 2, first: { line: 42.5 }, result: "W", price: 0.6 }),
+        "C @ D|chooser|spread", JSON.stringify({ id: "chooser|spread", kind: "spread", team: "C", home: "D", game: "C @ D", week: 5, hit: 52, line: 3, result: "W" }));
+      const sm = await stackSummary(2098), c = sm.card;
+      ok(c.from === 6 && c.spread.w === 1 && c.spread.l === 0 && c.total.w === 0 && c.total.l === 1 && c.clv.n === 2 && c.clv.spread.sum === 1 && c.clv.total.sum === 0
+        && sm.cardRec["pick|spread"].w === 1 && sm.cardRec["pick|total"].l === 1 && sm.cardRec["ptspick|total"].w === 1 && !sm.cardRec["modelpick|total"]
+        && c.byGame["6|A @ B"].length === 3 && c.byGame["6|A @ B"].some((x) => x.pts) && !c.byGame["6|A @ B"].some((x) => x.pick === "A +3.5") && c.byGame["5|C @ D"].length === 1,
+        "card record (10/19): tiles = the card's PICK (rule or model side) from the new card's first week; BEAT THE's own record and PICK w/ POINTS are not in the tiles; line value split by market; earlier weeks keep their old card pick in game by game", { card: c, cardRec: sm.cardRec }); await RR.del("stack:2098:6"); }
     // grading removes a bad stored pick but keeps the good one in the result record
     const { gradeWeek } = await import("../lib/grade.js"); const { SEASON, resetGamesCache } = await import("../lib/games.js"); const R = globalThis.__TEST_REDIS__; const realFetch = globalThis.fetch;
     const H = "season,game_type,week,gameday,gametime,away_team,away_score,home_team,home_score,spread_line,total_line,roof,stadium,location,surface\n";
@@ -915,7 +927,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const lone = ctx.T.tdPlayersWithDefense([{ game: "A @ B", awayScore: 10, homeScore: 40, td: [P("A", "A.RB", "RB", 40, false)] }]);
     ok(lone.length === 1 && lone[0].def === null, "by defense: an opponent with no OTHER graded game has no group (the game itself never counts)");
     const pos = ctx.T.tdByPosition(pl);
-    ok(/RB · 2 players/.test(pos) && /WR · 1 player/.test(pos) && /TE · 2 players/.test(pos) && /1 with no position/.test(pos), "by position: RB, WR and TE rows with sample size, margin and a no-position note");
+    ok(/RB · 2 players/.test(pos) && /WR · 1 player/.test(pos) && /TE · 2 players/.test(pos) && !/no position/.test(pos) && !/±/.test(pos), "by position: RB, WR and TE rows with sample size; no margin of error, no no-position line (10/19)");
     ok(ctx.T.tdByDefense([]).includes("None yet"), "by defense: rows flag small samples; empty says it fills in"); }
   { // one week only (10/6): Anytime TD and Game Lines show this week, no next-week section
     const bx = { innerHTML: "" }, hx = { innerHTML: "" }, oldG = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "td" ? bx : id === "td-header" ? hx : oldG(id));
@@ -1323,13 +1335,16 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     vm.runInContext(`S = { week: 4, games: [], status: { ok: true, errors: [] }, weekCheck: { games: 16, withLines: 16, modelRun: true, watch: [] }, missFinder: null, winners: { all: { n: 3, w: 2, l: 1, hit: 0.67 } } }; MB = { summary: { wins: 0, losses: 0, pushes: 0, pl: 0 }, bets: [] }; PAPER = { names: {}, board: {}, week: null }; PICKS = null; EDGES = null; REPLAY = null; WINALL = false`, ctx);
     vm.runInContext(`RES = ${JSON.stringify(res)}`, ctx);
     ctx.T.renderModel(); const h = box.innerHTML;
-    const order = ["★ Parlay scoreboard", "1 · Scoreboard", "2 · Winners", "3 · Spreads and totals", "4 · Touchdowns", "5 · Tracked angles", "6 · Trends and analysis", "7 · Misses and every game", "8 · System"].map((x) => h.indexOf(x));
-    ok(order.every((x, i) => x > 0 && (i === 0 || x > order[i - 1])) && !/Price gaps/.test(h), "models tab: the parlay scoreboard first, then the eight sections in order (Price gaps cut 10/13)");
-    ok((h.match(/class="fold" data-drop="m-/g) || []).length === 9 && !/class="s dim" style="margin:2px 0 6px"/.test(h) && !/break-even/i.test(h), "models tab: nine sections (parlay scoreboard + the eight), no explanation lines, no break-even talk");
-    ok(!/Hit rate by week/.test(h) && /Week 3/.test(h) && /Week 4/.test(h) && /Game-by-game results|id="gbg"/.test(h) && /Parlay scoreboard/.test(h), "models tab: every-game list present, the parlay scoreboard is in it (10/15), Hit rate by week cut 10/13");
-    const bc = ctx.T.modelsByConfidence(res);
-    ok(/Said 80\+% · 1 pick/.test(bc) && /Said 60–70% · 1 pick/.test(bc) && /100%/.test(bc), "models tab: confidence buckets use the chance the model said");
-    ok(/None yet/.test(ctx.T.modelsByConfidence([])), "models tab: empty data says so");
+    const order = ["1 · Card picks", "2 · Winners", "3 · Parlay scoreboard", "4 · Touchdowns", "5 · Tracked angles", "6 · Past seasons", "7 · System"].map((x) => h.indexOf(x));
+    ok(order.every((x, i) => x > 0 && (i === 0 || x > order[i - 1])) && !/Price gaps/.test(h) && !/Trends and analysis|Misses and every game|Scoreboard · Week|old model/.test(h), "models tab (10/19): seven sections in order, card picks first; no old-model rows", order);
+    ok((h.match(/class="fold" data-drop="m-/g) || []).length === 7 && !/class="s dim" style="margin:2px 0 6px"/.test(h) && !/break-even/i.test(h), "models tab: seven sections, no explanation lines, no break-even talk");
+    ok(!/Hit rate by week/.test(h) && /Week 3/.test(h) && /Week 4/.test(h) && /id="gbg"/.test(h) && /Parlay scoreboard/.test(h) && /Week 4 loaded/.test(h.slice(h.indexOf("7 · System"))), "models tab: every-game list under Card picks, the week check under System");
+    { const nb = readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8"), oi = ["1 · Card picks", "2 · Winners", "3 · Parlay scoreboard", "4 · Accuracy", "5 · Tested patterns", "6 · Futures", "7 · System"].map((x) => nb.indexOf(x));
+      ok(oi.every((x, i) => x > 0 && (i === 0 || x > oi[i - 1])), "NBA models tab (10/19, design = both sports): card picks, winners, parlay scoreboard first, same as NFL", oi); }
+    vm.runInContext(`S.winners = { all: { n: 3, w: 2, l: 1, hit: 0.67 }, bands: [{ label: "60-70%", n: 2, w: 1, l: 1, hit: 0.5, said: 0.65 }, { label: "80%+", n: 0 }] }`, ctx);
+    const bc = ctx.T.winnersBands();
+    ok(/Said 60-70% · 2 picks<\/span><span>1–1 · <b>50%<\/b> <span class="dim">· said 65%/.test(bc) && !/80%\+/.test(bc), "models tab: moneyline by chance = the same favorite record as the MONEYLINE tile");
+    vm.runInContext(`S.winners = {}`, ctx); ok(/None yet/.test(ctx.T.winnersBands()), "models tab: empty data says so");
     ctx.document.getElementById = old; }
   { // Record tab week filter: this week by default, Season shows everything, tiles recomputed from the bets shown
     const box = { innerHTML: "", onclick: null }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "record-mine" ? box : old(id));

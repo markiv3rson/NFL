@@ -494,13 +494,13 @@ function renderModels() {
   ].map(([a, b]) => `<div class="row"${/<div/.test(String(b)) ? ' style="grid-column:1/-1"' : ""}><span class="dim">${a}</span><span>${b}</span></div>`).join("") : '<div class="s dim">Status unavailable.</div>';
   const sysBad = !sy || !sy.railway || !sy.railway.ok || (sy.errors || []).length > 0 || watch.length > 0;
   $("models").innerHTML = labStats(rc, j.clv) +
-    mSec("m-board", "★ Parlay scoreboard · this season", board) +
-    mSec("m-win", "1 · Winners · moneyline", winnersBox()) +
-    mSec("m-line", "2 · Spreads and totals", cardRows) +
-    mSec("m-acc", "3 · Accuracy vs the market", accRows) +
-    mSec("m-pat", "4 · Tested patterns", patRows) +
-    mSec("m-fut", `5 · Futures · ${FUT && FUT.ok ? FUT.season : "season simulation"}`, futuresRows()) +
-    mSec("m-sys", "6 · System", sysRows, watch.length, sysBad);
+    mSec("m-line", "1 · Card picks", cardRows) +   // 10/19: same order as NFL -- card picks, winners, parlays first
+    mSec("m-win", "2 · Winners · moneyline", winnersBox()) +
+    mSec("m-board", "3 · Parlay scoreboard", board) +
+    mSec("m-acc", "4 · Accuracy vs the market", accRows) +
+    mSec("m-pat", "5 · Tested patterns", patRows) +
+    mSec("m-fut", `6 · Futures · ${FUT && FUT.ok ? FUT.season : "season simulation"}`, futuresRows()) +
+    mSec("m-sys", "7 · System", sysRows, watch.length, sysBad);
   $("models").innerHTML = paint($("models").innerHTML);
   for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
 }
