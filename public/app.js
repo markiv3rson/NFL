@@ -99,6 +99,8 @@ function cardOf(g, kind) {
 }
 const clsOf = (hit) => (hit >= 56 ? "g" : hit >= 53 ? "lg" : "y");   // 10/15 (owner): colors by win rate only
 const hitTxt = (hit, cls) => `${cls === "g" ? Math.round(hit) : Math.floor(hit)}%`;
+// 10/19: one rounding rule for every shown chance -- green (56%+) rounds, below green rounds DOWN (card, Over/Under, parlay legs); TD legs use the TD list's rule
+const legPct = (l) => { const v = (l.prob || 0) * 100; return l.kind === "td" ? tdPct(v) : l.kind === "spread" || l.kind === "total" ? (v >= 56 ? Math.round(v) : Math.floor(v)) : Math.round(v); };
 const ptsWord = (n) => (n === 0 ? "main" : `${n} pt${n === 1 ? "" : "s"}`);   // short, so a list row fits on one line (owner 10/15)
 function cardBody(g, kind, C) {
   const x = C.plain, p = C.pts;
@@ -113,7 +115,7 @@ function cardBody(g, kind, C) {
   const names = [...new Set(C.rows.map(grp))].sort((a, b) => (a === first ? -1 : 0) - (b === first ? -1 : 0));
   // one list split by team with a gap, no titles (owner 10/15); only the model's chosen row is green, all the way across
   const rows = names.map((nm, i) => `<div style="margin-top:${i ? 8 : 2}px">` + C.rows.filter((r) => grp(r) === nm).map((r) => { const pk = !!(p && r.pick === p.pick);
-    return `<div class="s${pk ? " g" : ""}" style="margin-top:2px;font-size:11px;white-space:nowrap">${esc(r.pick)} · ${ptsWord(r.points)} · ${hitTxt(r.hit, pk ? "g" : "lg")} · ${Math.round(r.price * 100)}¢</div>`; }).join("") + "</div>").join("");
+    return `<div class="s${pk ? " g" : ""}" style="margin-top:2px;font-size:11px;white-space:nowrap">${esc(r.pick)} · ${ptsWord(r.points)} · ${hitTxt(r.hit, clsOf(r.hit))} · ${Math.round(r.price * 100)}¢</div>`; }).join("") + "</div>").join("");
   return `<div style="margin-top:6px">${l1}</div>` + moreBox(`<div style="margin-top:4px">${l2}</div>` + (rows ? `<div style="margin-top:6px">${rows}</div>` : ""));
 }
 function leanCell(g, kind) {
@@ -142,7 +144,7 @@ function leanCell(g, kind) {
   if (LP) {   // 10/13: after kickoff, the pick that was locked in at kickoff and how it did
     const cls = LP.hit >= 56 ? "g" : LP.hit >= 53 ? "lg" : "y", pc = cls === "g" ? Math.round(LP.hit) : Math.floor(LP.hit), rs = LP.result === "W" ? ' · <span class="g">W</span>' : LP.result === "L" ? ' · <span class="r">L</span>' : LP.result === "P" ? " · push" : g.final ? "" : ' · <span class="dim">live</span>';
     const lp = LP.pts, lrs = lp ? (lp.result === "W" ? ' · <span class="g">W</span>' : lp.result === "L" ? ' · <span class="r">L</span>' : lp.result === "P" ? " · push" : g.final ? "" : ' · <span class="dim">live</span>') : "";
-    body = `<div style="margin-top:6px"><b class="${cls}" style="font-size:16px">PICK: ${esc(LP.pick)} · ${pc}%</b>${rs}</div>` + (lp ? `<div style="margin-top:4px"><b>PICK w/ POINTS: ${esc(lp.pick)} · ${Math.floor(lp.hit)}%</b>${lrs}</div>` : "") + `<div class="s dim" style="margin-top:4px">locked at kickoff</div>`;
+    body = `<div style="margin-top:6px"><b class="${cls}" style="font-size:16px">PICK: ${esc(LP.pick)} · ${pc}%</b>${rs}</div>` + (lp ? `<div style="margin-top:4px"><b>PICK w/ POINTS: ${esc(lp.pick)} · ${lp.hit >= 56 ? Math.round(lp.hit) : Math.floor(lp.hit)}%</b>${lrs}</div>` : "") + `<div class="s dim" style="margin-top:4px">locked at kickoff</div>`;
   }
   else if (!g.final && CC) body = cardBody(g, kind, CC);
   else if (!g.final) {
@@ -445,11 +447,11 @@ function betRow(b) { return `<div class="betwrap">${betRowInner(b)}${stampFor(b)
 function betRowInner(b) {
   if (b.source === "account") {   // bet recorded automatically from your Polymarket account
     const lk = !b.sold && (!b.result || b.result === "pending") ? liveOf(b.picks || []) : [];
-    const st = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Even" : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : (b.waiting ? '<span class="y">waiting for TD results</span>' : '<span class="dim">open</span>');
+    const st = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : legLost(b) ? '<span class="r">Lost</span>' : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Even" : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : (b.waiting ? '<span class="y">waiting for TD results</span>' : '<span class="dim">open</span>');
     const name = b.picks && b.picks.length ? `Combo · ${b.picks.length} picks` : `${esc(b.title)}${b.outcome ? ` — ${esc(b.outcome)}` : ""}`;
     const picks = b.picks && b.picks.length ? b.picks.map((p) => `<div class="s" style="padding:0 0 0 16px">${p.result ? RESMARK[p.result] + " " : "• "}${legTxt(p.result, logoLabel(p.label, p.team))}${liveLegTxt(lk, p, !!p.result)}${!p.result && legFlipped(p.label) ? ' <span class="y">⚠ app now picks the other side</span>' : ""}</div>`).join("") : "";
     return `<div class="row"><span>${name} ${lk.length ? liveHeadTxt(lk) : `<span class="dim">wk ${b.week ?? "?"}</span>`}</span><span>${st}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
-      `<div class="s" style="padding:0 0 ${picks ? 2 : 6}px 8px">${money(b.cost)}${b.price != null ? ` at ${b.price < 0.005 ? "<1" : Math.round(b.price * 100)}¢` : ""} · ${b.sold ? `sold early for ${money(Math.max(0, (b.cost || 0) + (b.pl || 0)))}` : `pays ${money(b.toWin)} if it wins`}</div>` + (picks ? `<div style="padding-bottom:6px">${picks}</div>` : "");
+      `<div class="s" style="padding:0 0 ${picks ? 2 : 6}px 8px">${money(b.cost)}${b.price != null ? ` at ${b.price < 0.005 ? "<1" : Math.round(b.price * 100)}¢` : ""} · ${b.sold ? `sold early for ${money(Math.max(0, (b.cost || 0) + (b.pl || 0)))}` : legLost(b) ? `−${money(b.cost)}` : `pays ${money(b.toWin)} if it wins`}</div>` + (picks ? `<div style="padding-bottom:6px">${picks}</div>` : "");
   }
   const hit = b.legs.filter((l) => l.result === "W").length, lk = !b.sold && b.result === "pending" ? liveOf(b.legs) : [];
   const state = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? (b.pushUnconfirmed ? '<span class="y">Push leg</span>' : "Push") : (b.waiting ? '<span class="y">waiting for TD results</span>' : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : `<span class="dim">${hit} of ${b.legs.length} hit</span>`);
@@ -503,10 +505,12 @@ function betsAnalysis(bets) {
     "";
 }
 // The numbers in the Bets tiles and Summary, from the bets being shown. One function so a week's numbers and the season's always add up.
+// 10/19: a combo with a lost leg can't win -- it counts as lost right away (record, profit), not as open money, even before Polymarket settles it
+const legLost = (b) => !b.sold && (!b.result || b.result === "pending") && [...(b.picks || []), ...(b.legs || [])].some((p) => p && p.result === "L");
 function betsSummary(shown) {
-  const open = shown.filter((b) => b.result === "pending"), gr = shown.filter((b) => b.pl != null), stk = gr.reduce((a, b) => a + b.cost, 0), cl = shown.filter((b) => b.clv != null).map((b) => b.clv);
+  const dead = shown.filter(legLost), open = shown.filter((b) => b.result === "pending" && !legLost(b)), gr = shown.filter((b) => b.pl != null).concat(dead.map((b) => ({ ...b, pl: -(b.cost || 0) }))), stk = gr.reduce((a, b) => a + b.cost, 0), cl = shown.filter((b) => b.clv != null).map((b) => b.clv);
   const wm = open.filter((b) => b.expModel != null);
-  return { wins: shown.filter((b) => b.result === "W").length, losses: shown.filter((b) => b.result === "L").length, pushes: shown.filter((b) => b.result === "P").length,
+  return { wins: shown.filter((b) => b.result === "W").length, losses: shown.filter((b) => b.result === "L").length + dead.length, pushes: shown.filter((b) => b.result === "P").length,
     openCost: open.reduce((a, b) => a + b.cost, 0), pl: gr.reduce((a, b) => a + b.pl, 0), roi: stk ? gr.reduce((a, b) => a + b.pl, 0) / stk : null,
     avgClv: cl.length ? cl.reduce((a, b) => a + b, 0) / cl.length : null, maxPayout: open.reduce((a, b) => a + b.toWin, 0), expMarket: open.reduce((a, b) => a + b.expMarket, 0),
     expModel: wm.reduce((a, b) => a + b.expModel, 0), expModelCost: wm.reduce((a, b) => a + b.cost, 0), modelCovered: wm.length };
@@ -546,7 +550,7 @@ function renderMineNow() {
   // Week filter: default is this week; "All" is the season. The summary is recomputed from the bets shown.
   const SW = S && S.week, wks = [...new Set(MB.bets.map((b) => b.week).filter((w) => w != null).concat(SW == null ? [] : [SW]))].sort((a, b) => a - b), sel = MBWEEK || SW || "all";
   const shown = MB.bets.filter((b) => sel === "all" || Number(b.week) === Number(sel));
-  const open = shown.filter((b) => b.result === "pending"), done = shown.filter((b) => b.result !== "pending");   // includes auto-recorded account bets
+  const open = shown.filter((b) => b.result === "pending" && !legLost(b)), done = shown.filter((b) => b.result !== "pending" || legLost(b));   // includes auto-recorded account bets; a combo with a lost leg is done
   const s = betsSummary(shown);
   // 10/17 (owner): the week picker is a drop-down, from the first recorded week to this week, then Season
   const wkChips = `<div class="wksel"><select id="mb-wk" aria-label="Week">${wks.map((w) => `<option value="${w}"${String(sel) === String(w) ? " selected" : ""}>Week ${w}</option>`).join("")}<option value="all"${sel === "all" ? " selected" : ""}>Season</option></select></div>`;
@@ -1113,7 +1117,7 @@ function legLogoLabel(l) { return esc(l.label); }
 function pBlock(title, p, showGame) {
   if (!p || !Array.isArray(p.legs) || !p.legs.length) return "";
   const pr = typeof p.prob === "number" && isFinite(p.prob) ? p.prob : null;
-  const legs = p.legs.map((l) => `<div class="pbl">${legMark(l.result)} ${legTxt(l.result, `${legLogoLabel(l)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · ${Math.round((l.prob || 0) * 100)}%`)}${showGame && l.game ? ` <span class="dim">${gameLogos(l.game)}</span>` : ""}</div>`).join("");
+  const legs = p.legs.map((l) => `<div class="pbl">${legMark(l.result)} ${legTxt(l.result, `${legLogoLabel(l)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · ${legPct(l)}%`)}${showGame && l.game ? ` <span class="dim">${gameLogos(l.game)}</span>` : ""}</div>`).join("");
   const res = p.result === "W" ? '<span class="g">✓ Won</span>' : p.result === "L" ? '<span class="r">✗ Lost</span>' : p.result === "P" ? '<span class="dim">Push</span>' : "";
   return `<div class="par"><div class="pbh"><span class="pbn">${title}${pr == null ? "" : ` <span class="${pr >= 0.3 ? "g" : pr >= 0.15 ? "lg" : "y"}">· ${Math.round(pr * 100)}%</span>`}</span><span class="plb"${plTap(p)}>${pmLogo()} ${plShown(p)}</span></div>${legs}<div class="pbr">${res}</div></div>`;
 }
@@ -1170,7 +1174,7 @@ function ouLegs(g) {
   return [...(C.plain ? [{ label: C.plain.pick, prob: C.plain.hit / 100, price: C.plain.price }] : []), ...(C.pts ? [{ label: C.pts.pick, prob: C.pts.hit / 100, price: C.pts.price, bought: true, points: C.pts.points }] : [])];
 }
 function ouBlock(title, legs) {   // same block look as a parlay; every line is its own bet: line · win % · Polymarket price, ✓ / ✗ once graded
-  const line = (l) => `<div class="pbl">${legMark(l.result)} ${legTxt(l.result, `${esc(l.label)}${l.bought && l.points ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · ${Math.round((l.prob || 0) * 100)}%${l.price > 0 && l.price < 1 ? ` · ${Math.round(l.price * 100)}¢` : ""}`)}</div>`;
+  const line = (l) => `<div class="pbl">${legMark(l.result)} ${legTxt(l.result, `${esc(l.label)}${l.bought && l.points ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · ${legPct({ kind: "total", ...l })}%${l.price > 0 && l.price < 1 ? ` · ${Math.round(l.price * 100)}¢` : ""}`)}</div>`;
   return `<div class="par"><div class="pbh"><span class="pbn">${title}</span></div>${legs.map(line).join("")}</div>`;
 }
 function labParlays(week, type) {

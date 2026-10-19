@@ -201,14 +201,14 @@ function cardBody(g, kind, C) {
   const grp = (r) => r.team || (r.side === "over" ? "Over" : "Under"), first = x ? x.team || (x.side === "over" ? "Over" : "Under") : null;
   const names = [...new Set(C.rows.map(grp))].sort((a, b) => (a === first ? -1 : 0) - (b === first ? -1 : 0));
   const rows = names.map((nm, i) => `<div style="margin-top:${i ? 8 : 2}px">` + C.rows.filter((r) => grp(r) === nm).map((r) => { const pk = !!(p && r.pick === p.pick);
-    return `<div class="s${pk && !TEST ? " g" : ""}" style="margin-top:2px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.pick)} · ${ptsWord(r.points)} · ${hitTxt(r.hit, pk ? "g" : "lg")} · ${Math.round(r.price * 100)}¢</div>`; }).join("") + "</div>").join("");
+    return `<div class="s${pk && !TEST ? " g" : ""}" style="margin-top:2px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.pick)} · ${ptsWord(r.points)} · ${hitTxt(r.hit, clsOf(r.hit))} · ${Math.round(r.price * 100)}¢</div>`; }).join("") + "</div>").join("");
   return `<div style="margin-top:6px">${l1}</div>${why}` + moreBox(`<div style="margin-top:4px">${l2}</div>` + (rows ? `<div style="margin-top:6px">${rows}</div>` : ""));
 }
 function lockedBody(g, kind) {   // after tip-off: the picks saved before it, with W / L once graded
   const L = g.locked && g.locked[kind]; if (!L) return `<div style="margin-top:6px"><b class="dim" style="font-size:13px">Game in progress</b></div>`;
   const rs = (x) => (x.result === "win" ? ' · <span class="g">W</span>' : x.result === "loss" ? ' · <span class="r">L</span>' : x.result === "push" ? " · push" : x.result === "void" ? ' · <span class="dim">void</span>' : ' · <span class="dim">live</span>');
   return (L.plain ? `<div style="margin-top:6px"><b class="${clsOf(L.plain.pct)}" style="font-size:13px">PICK: ${esc(L.plain.label)} · ${hitTxt(L.plain.pct, clsOf(L.plain.pct))}</b>${rs(L.plain)}</div>` : "") +
-    (L.pts ? `<div style="margin-top:4px"><b style="font-size:13px">PICK w/ POINTS: ${esc(L.pts.label)} · ${Math.floor(L.pts.pct)}%</b>${rs(L.pts)}</div>` : "");
+    (L.pts ? `<div style="margin-top:4px"><b style="font-size:13px">PICK w/ POINTS: ${esc(L.pts.label)} · ${hitTxt(L.pts.pct, clsOf(L.pts.pct))}</b>${rs(L.pts)}</div>` : "");
 }
 function modelCell(g, kind) {
   const m = g.model, k = g[kind];
