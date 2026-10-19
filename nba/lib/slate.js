@@ -80,6 +80,13 @@ export function parlay(picks) {          // top picks, one per game
   return out;
 }
 
+// the gold PARLAY ticket on My bets (10/19, owner: "make sure everything is agreeing"): the SAME legs as the Model bets Parlay tab (best4, the
+// earliest day that has one) -- it was the top best bets (moneylines), which no longer matched the Parlay
+export function parlayTicket(parlays, games) {
+  const p = (parlays || []).find((x) => x.type === "best4"); if (!p) return [];
+  return p.legs.map((l) => ({ game: l.game, market: l.market, team: l.team, label: l.label, pct: Math.round((l.prob || 0) * 1000) / 10, price: l.price, start: ((games || []).find((g) => g.key === l.game) || {}).start || null }));
+}
+
 // the day before a slate date (dates are US Eastern game days)
 export const dayBefore = (d) => new Date(Date.parse(d + "T12:00:00Z") - 86400e3).toISOString().slice(0, 10);
 // FATIGUE (10/16, tested 2008-26): a team on a back-to-back after OVERTIME, or an away team on a back-to-back after flying 1,500+ km.
@@ -167,7 +174,7 @@ export async function buildSlate({ now = Date.now(), days = 1, events = null, in
   if (record && svc) for (const d of dates.filter((x) => win.has(x))) await recordParlays(d, parlays.filter((p) => p.date === d), out, now).catch((e) => logError("parlays", e));
   if (record && svc) { const st = Object.fromEntries(out.map((g) => [g.key, g.start]));   // the parlays on the pages, for the background job that keeps their real prices fresh
     await saveParlayList("nba", parlays.filter((p) => p.legs.every((l) => st[l.game])).map((p) => ({ ...p, kick: Object.fromEntries(p.legs.map((l) => [l.game, st[l.game]])) }))).catch((e) => logError("parlays", e)); }
-  return { ok: true, now: new Date(now).toISOString(), dates, teams: TEAMS, games: out, bestBets: best, parlay: parlay(picks), parlays, tests: collectTests(out),
+  return { ok: true, now: new Date(now).toISOString(), dates, teams: TEAMS, games: out, bestBets: best, parlay: parlayTicket(parlays, out), parlays, tests: collectTests(out),
     books: bk ? { t: bk.t, remaining: bk.remaining } : null, booksPull,
     modelOk: payload.games.length ? !!svc : null, modelError, seasonStart, modelBuiltAt: svc ? svc.builtAt : null, fitThrough: svc ? svc.fitThrough : null, patternsBuilt: svc ? svc.patternsBuilt : null,
     injuriesUpdated: inj.t || null, injuriesSource: inj.source || null, injuriesStale: !!inj.stale, injuriesMissing: !inj.t };

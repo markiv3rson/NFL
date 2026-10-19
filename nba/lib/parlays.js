@@ -2,7 +2,8 @@
 // before the first leg tips off stands), graded when the games end, shown under Bets -> Model bets by day.
 //   best4    the Parlay: the 4 strongest green PICK w/ POINTS lines (56%+, spread or total), one per game   $10
 //            10/19 (owner: "1 yes 2 yes ... build now"): it was the top 4 green best bets, which on 10/20-21 were all moneylines = the same 4 legs as fav4;
-//            fewer than 4 green lines that day -> no Parlay (as before)
+//            fewer than 4 green lines that day -> a 3- or 2-leg Parlay with the ones there are (owner 10/19: "you decide what's best for me": fewer legs win more
+//            often -- each leg ~60% (said 60.5 / won 59.9 on 22,683 games), so 2 legs ~36%, 3 ~22%, 4 ~13%); 1 or 0 green lines -> none
 //   fav4     the 4 biggest moneyline favorites of the day (market win chance)              $10   (history 2008-26: all 4 won 36.4% of 2,583 days, the market said 35.5%)
 //   sgp      same game, 2 legs: the card's spread PICK + total PICK at Polymarket's lines  $20   (spread and total are independent: chance = product);
 //            10/19 (owner: "the same" as the NFL parlay fixes): only when BOTH legs are green (56%+) -- two of the model's 49-50% sides made a 25% coin flip on every game
@@ -27,7 +28,7 @@ export function buildParlays(games, bestBets) {
   const out = [];
   const greens = ahead.map((g) => [ptsLeg(g, "spread"), ptsLeg(g, "total")].filter((x) => x && x.line != null && x.pct >= GREEN).sort((a, b) => b.pct - a.pct).map((x) => ({ g, x }))[0]).filter(Boolean)
     .sort((a, b) => b.x.pct - a.x.pct).slice(0, 4);
-  if (greens.length === 4) out.push(mk("best4", greens.map(({ g, x }) => leg(g, x))));
+  if (greens.length >= 2) out.push(mk("best4", greens.map(({ g, x }) => leg(g, x))));
   const favs = ahead.map((g) => { const ph = mktHome(g); if (ph == null || ph === 0.5) return null; const home = ph > 0.5, team = home ? g.home : g.away;
     return { g, p: home ? ph : 1 - ph, leg: { game: g.key, market: "ml", team, side: null, line: null, label: `${team} ML`, prob: r3(home ? ph : 1 - ph), price: g.poly.ml[home ? "home" : "away"] > 0 && g.poly.ml[home ? "home" : "away"] < 1 ? g.poly.ml[home ? "home" : "away"] : null } }; })
     // 10/19 (same as the NFL 4 biggest favorites): skip a game where our own green spread pick backs the underdog

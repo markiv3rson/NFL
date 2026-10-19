@@ -138,8 +138,12 @@ const mk = (away, home, over = {}) => ({ key: `${away} @ ${home}`, away, home, d
     const G = [gP("A @ B", 58, 57), gP("C @ D", 55, 60), gP("E @ F", 61, 50), gP("G @ H", 57, 56.5), gP("I @ J", 56.2, 52), gP("K @ L", 54, 55)];
     const b4 = pl.buildParlays(G, []).find((p) => p.type === "best4");
     ok(b4 && b4.legs.map((l) => l.label).join() === "E +6.5,Under 226.5,A +6.5,G +6.5" && b4.legs.every((l) => l.bought && l.market !== "ml") && b4.stake === 10, "the Parlay (10/19): 4 strongest green PICK w/ POINTS lines (56%+), one per game, no moneylines", b4 && b4.legs.map((l) => l.label));
-    ok(!pl.buildParlays(G.slice(2), []).some((p) => p.type === "best4"), "the Parlay (10/19): fewer than 4 green lines -> no Parlay"); }
-  ok(pl.buildParlays(four.slice(0, 3), []).every((p) => p.type !== "fav4" && p.type !== "best4"), "fewer than 4 games / green picks: no 4-leg parlays");
+    const b3 = pl.buildParlays(G.slice(2), []).find((p) => p.type === "best4");
+    ok(b3 && b3.legs.map((l) => l.label).join() === "E +6.5,G +6.5,I +6.5" && Math.abs(b3.prob - 0.61 * 0.57 * 0.562) < 0.002, "the Parlay (10/19): 3 green lines -> a 3-leg Parlay", b3 && b3.legs.map((l) => l.label));
+    ok(!pl.buildParlays(G.slice(4), []).some((p) => p.type === "best4"), "the Parlay (10/19): 1 green line -> no Parlay");
+    const tk = slate.parlayTicket([{ type: "fav4", legs: [] }, b4], G);
+    ok(tk.map((x) => x.label).join() === b4.legs.map((l) => l.label).join() && tk[0].pct === 61 && tk[0].start === G[2].start && slate.parlayTicket([], G).length === 0, "My bets PARLAY ticket = the same legs as the Parlay tab (10/19)", tk); }
+  ok(pl.buildParlays(four.slice(0, 3), []).every((p) => p.type !== "fav4"), "fewer than 4 games: no 4 biggest favorites (the Parlay takes 2-4 legs since 10/19)");
   // grading a parlay: every leg must win; a push leg drops out
   const f = { away: 100, home: 90 };
   ok(pl.gradeLeg({ market: "spread", team: "A1", line: 8.5 }, "A1", "H1", f) === "W" && pl.gradeLeg({ market: "ml", team: "H1" }, "A1", "H1", f) === "L" && pl.gradeLeg({ market: "total", side: "under", line: 190 }, "A1", "H1", f) === "P", "parlay legs graded like picks"); }
