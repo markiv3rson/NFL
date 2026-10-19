@@ -468,7 +468,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
         ok(ok1.best && ok1.best.strategy === "sgp_best_fill" && ok1.best.legs.map((l) => l.label).join() === "B ML,B.RB TD" && !(lowTd.best), "same-game (10/19): filled 2 legs = favorite + its top scorer only at 55%+ (49% -> none)", ok1.best && ok1.best.legs.map((l) => l.label));
         ok(ok1.upset && ok1.upset.legs.map((l) => l.label).join() === "A ML,A.RB TD" && !lowTd.upset, "same-game (10/19): Upset only when the underdog's RB is 45%+");
         const gU = sameGameParlays({ ...base, combos: [{ pick: "Under 47.5", hit: 62, line: 47.5, why: "TOTAL MOVE: t" }] }), yU = sameGameParlays({ ...base, combos: [{ pick: "Under 47.5", hit: 51.7, line: 47.5, why: "model" }] });
-        ok(!gU.three && !gU.linked && yU.three && yU.linked, "same-game (10/19 agree): no Over 3 / 4 legs when the card's total PICK is a green Under (a yellow model-side Under keeps them)");
+        const yO = sameGameParlays({ ...base, combos: [{ pick: "Over 47.5", hit: 51.7, line: 47.5, why: "model" }] });
+        ok(!gU.three && !gU.linked && !yU.three && !yU.linked && yO.three && yO.linked, "same-game (10/19 agree): no Over 3 / 4 legs when the card's total PICK is an Under, green or yellow (an Over PICK keeps them)");
         const fS = sameGameParlays({ ...base, combos: [{ pick: "B -6.5", hit: 58, line: -6.5, why: "BOUNCE BACK: y" }] });
         ok(!fS.upset && ok1.upset, "same-game (10/19 agree): no Upset when our green spread pick backs the favorite");
         const { comboChance: cc } = await import("../lib/combo.js");

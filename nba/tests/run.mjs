@@ -133,7 +133,12 @@ const mk = (away, home, over = {}) => ({ key: `${away} @ ${home}`, away, home, d
     const f4 = pl.buildParlays(fourG, []).find((p) => p.type === "fav4");
     ok(f4 && !f4.legs.some((l) => l.game === "A @ B") && f4.legs.map((l) => l.team).join() === "D,F,H,J", "4 biggest favorites (10/19): skips a game where our green spread pick backs the underdog", f4 && f4.legs.map((l) => l.label)); }
   ok(sgp.length === 5 && sgp[0].legs.every((l) => l.bought && l.points > 0) && sgp[0].legs[0].label === "A1 +10.5" && sgp[0].stake === 5, "same game bought lines: both PICK w/ POINTS legs", sgp[0]);
-  const b4 = pl.buildParlays([...games, ...four], slate.collectPicks([...games, ...four])).find((p) => p.type === "best4"); ok(b4 && b4.legs.length === 4 && new Set(b4.legs.map((l) => l.game)).size === 4 && b4.legs[0].label === "H1 ML" && b4.legs[1].label === "TOR ML", "the Parlay: top 4 green picks, one per game", b4 && b4.legs.map((l) => l.label));
+  { // 10/19 (owner: "1 yes 2 yes"): the Parlay = the 4 strongest green PICK w/ POINTS lines, one per game (it was the top 4 best bets = the same moneylines as fav4)
+    const gP = (k, sp, tt) => ({ key: k, away: k.split(" @ ")[0], home: k.split(" @ ")[1], start: "2026-11-01T23:00:00Z", card: { spread: { pts: { team: k.split(" @ ")[0], line: 6.5, points: 2, pick: `${k.split(" @ ")[0]} +6.5`, hit: sp, price: 0.6 } }, total: { pts: { side: "under", line: 226.5, points: 2, pick: "Under 226.5", hit: tt, price: 0.6 } } } });
+    const G = [gP("A @ B", 58, 57), gP("C @ D", 55, 60), gP("E @ F", 61, 50), gP("G @ H", 57, 56.5), gP("I @ J", 56.2, 52), gP("K @ L", 54, 55)];
+    const b4 = pl.buildParlays(G, []).find((p) => p.type === "best4");
+    ok(b4 && b4.legs.map((l) => l.label).join() === "E +6.5,Under 226.5,A +6.5,G +6.5" && b4.legs.every((l) => l.bought && l.market !== "ml") && b4.stake === 10, "the Parlay (10/19): 4 strongest green PICK w/ POINTS lines (56%+), one per game, no moneylines", b4 && b4.legs.map((l) => l.label));
+    ok(!pl.buildParlays(G.slice(2), []).some((p) => p.type === "best4"), "the Parlay (10/19): fewer than 4 green lines -> no Parlay"); }
   ok(pl.buildParlays(four.slice(0, 3), []).every((p) => p.type !== "fav4" && p.type !== "best4"), "fewer than 4 games / green picks: no 4-leg parlays");
   // grading a parlay: every leg must win; a push leg drops out
   const f = { away: 100, home: 90 };

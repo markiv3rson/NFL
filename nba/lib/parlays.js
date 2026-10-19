@@ -1,6 +1,8 @@
 // The model's parlays (the NFL app's Model bets, NBA version). Built on every slate build, saved once per day and type (the first sighting
 // before the first leg tips off stands), graded when the games end, shown under Bets -> Model bets by day.
-//   best4    the Parlay: the top 4 green straight picks, one per game                   $10
+//   best4    the Parlay: the 4 strongest green PICK w/ POINTS lines (56%+, spread or total), one per game   $10
+//            10/19 (owner: "1 yes 2 yes ... build now"): it was the top 4 green best bets, which on 10/20-21 were all moneylines = the same 4 legs as fav4;
+//            fewer than 4 green lines that day -> no Parlay (as before)
 //   fav4     the 4 biggest moneyline favorites of the day (market win chance)              $10   (history 2008-26: all 4 won 36.4% of 2,583 days, the market said 35.5%)
 //   sgp      same game, 2 legs: the card's spread PICK + total PICK at Polymarket's lines  $20   (spread and total are independent: chance = product);
 //            10/19 (owner: "the same" as the NFL parlay fixes): only when BOTH legs are green (56%+) -- two of the model's 49-50% sides made a 25% coin flip on every game
@@ -23,9 +25,9 @@ const mktHome = (g) => { const m = g.poly && g.poly.ml; return m && m.midHome > 
 export function buildParlays(games, bestBets) {
   const ahead = games.filter((g) => !g.inProgress && !g.preseason);
   const out = [];
-  const seen = new Set(), legs4 = [];
-  for (const p of bestBets || []) { if (seen.has(p.game)) continue; const g = ahead.find((x) => x.key === p.game); if (!g) continue; seen.add(p.game); legs4.push(leg(g, p)); if (legs4.length === 4) break; }
-  if (legs4.length === 4) out.push(mk("best4", legs4));
+  const greens = ahead.map((g) => [ptsLeg(g, "spread"), ptsLeg(g, "total")].filter((x) => x && x.line != null && x.pct >= GREEN).sort((a, b) => b.pct - a.pct).map((x) => ({ g, x }))[0]).filter(Boolean)
+    .sort((a, b) => b.x.pct - a.x.pct).slice(0, 4);
+  if (greens.length === 4) out.push(mk("best4", greens.map(({ g, x }) => leg(g, x))));
   const favs = ahead.map((g) => { const ph = mktHome(g); if (ph == null || ph === 0.5) return null; const home = ph > 0.5, team = home ? g.home : g.away;
     return { g, p: home ? ph : 1 - ph, leg: { game: g.key, market: "ml", team, side: null, line: null, label: `${team} ML`, prob: r3(home ? ph : 1 - ph), price: g.poly.ml[home ? "home" : "away"] > 0 && g.poly.ml[home ? "home" : "away"] < 1 ? g.poly.ml[home ? "home" : "away"] : null } }; })
     // 10/19 (same as the NFL 4 biggest favorites): skip a game where our own green spread pick backs the underdog
