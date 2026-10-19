@@ -339,7 +339,7 @@ function renderBets() {
 }
 // Model bets: day drop-down at the top, the types are menu sub tabs, one list in tip-off order (lib/parlays.js)
 const PTYPES = { sgp: "Same game · 2 legs", sgp_pts: "Same game · bought lines", best4: "Parlay · top picks", fav4: "4 biggest favorites" };
-const LAB_TABS = [["sgp", "Same game"], ["sgp_pts", "Bought"], ["best4", "Parlay"], ["fav4", "Favorites"]];
+const LAB_TABS = [["sgp", "Same game"], ["best4", "Parlay"], ["fav4", "Favorites"]];   // 10/19: the Bought tab left (PICK w/ POINTS only on the card)
 let LABTYPE = "sgp", LABDAY = null;
 const plText = (x, st) => `PL: ${x >= 10 ? Math.round(x) : x.toFixed(1)}x<span class="plw"> · $${st} → </span><span class="g">$${Math.round(st * x)}</span>`;
 const plPay = (p) => {

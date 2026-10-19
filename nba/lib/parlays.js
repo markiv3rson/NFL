@@ -1,15 +1,15 @@
 // The model's parlays (the NFL app's Model bets, NBA version). Built on every slate build, saved once per day and type (the first sighting
 // before the first leg tips off stands), graded when the games end, shown under Bets -> Model bets by day.
-//   best4    the Parlay: the 4 strongest green lines (56%+, the card's PICK or PICK w/ POINTS, spread or total), one per game   $10
+//   best4    the Parlay: the 4 strongest green side PICKs (56%+, the card's PICK, spread or total), one per game   $10   (10/19: no PICK w/ POINTS)
 //            10/19 (owner: "1 yes 2 yes ... build now"): it was the top 4 green best bets, which on 10/20-21 were all moneylines = the same 4 legs as fav4;
 //            fewer than 4 green lines that day -> a 3- or 2-leg Parlay with the ones there are (owner 10/19: "you decide what's best for me": fewer legs win more
 //            often -- each leg ~60% (said 60.5 / won 59.9 on 22,683 games), so 2 legs ~36%, 3 ~22%, 4 ~13%); 1 or 0 green lines -> none
 //   fav4     the 4 biggest moneyline favorites of the day (market win chance)              $10   (history 2008-26: all 4 won 36.4% of 2,583 days, the market said 35.5%)
 //   sgp      same game, 2 legs: the card's spread PICK + total PICK at Polymarket's lines  $20   (spread and total are independent: chance = product);
 //            10/19 (owner: "the same" as the NFL parlay fixes): only when BOTH legs are green (56%+) -- two of the model's 49-50% sides made a 25% coin flip on every game
-//   sgp_pts  same game, 2 legs on bought lines: spread PICK w/ POINTS + total PICK w/ POINTS  $5
+//   sgp_pts  same game, 2 legs on bought lines -- NOT built since 10/19 (owner: PICK w/ POINTS only on the card); old ones stay graded history
 import { getRedis, jparse, mgetAll } from "./redis";
-import { cardLegs, ptsLeg } from "./cardpick";
+import { cardLegs } from "./cardpick";
 import { staleDate } from "./pinnacle";
 const GREEN = 56;   // the card's green bar (lib/cardpick.js)
 export const STAKES = { best4: 10, fav4: 10, sgp: 20, sgp_pts: 5 };
@@ -26,8 +26,8 @@ const mktHome = (g) => { const m = g.poly && g.poly.ml; return m && m.midHome > 
 export function buildParlays(games, bestBets) {
   const ahead = games.filter((g) => !g.inProgress && !g.preseason);
   const out = [];
-  // 10/19 check: the card's own green PICK counts too (UTA @ MEM: LINE MOVE MEM +1.5 67.9% was the day's strongest line and was left out)
-  const greens = ahead.map((g) => [...cardLegs(g), ptsLeg(g, "spread"), ptsLeg(g, "total")].filter((x) => x && x.line != null && x.pct >= GREEN).sort((a, b) => b.pct - a.pct).map((x) => ({ g, x }))[0]).filter(Boolean)
+  // 10/19 (owner: "I don't want the pick with points ... train the model to pick the right side"): the card's own green side PICKs only, no bought lines
+  const greens = ahead.map((g) => cardLegs(g).filter((x) => x && x.line != null && x.pct >= GREEN).sort((a, b) => b.pct - a.pct).map((x) => ({ g, x }))[0]).filter(Boolean)
     .sort((a, b) => b.x.pct - a.x.pct).slice(0, 4);
   if (greens.length >= 2) out.push(mk("best4", greens.map(({ g, x }) => leg(g, x))));
   const favs = ahead.map((g) => { const ph = mktHome(g); if (ph == null || ph === 0.5) return null; const home = ph > 0.5, team = home ? g.home : g.away;
@@ -39,8 +39,6 @@ export function buildParlays(games, bestBets) {
   for (const g of ahead) {
     const L = cardLegs(g), sp = L.find((x) => x.market === "spread"), tt = L.find((x) => x.market === "total");
     if (sp && tt && sp.pct >= GREEN && tt.pct >= GREEN) out.push(mk("sgp", [leg(g, sp), leg(g, tt)], g.key, g.start));
-    const bs = ptsLeg(g, "spread"), bt = ptsLeg(g, "total");
-    if (bs && bt) out.push(mk("sgp_pts", [leg(g, bs), leg(g, bt)], g.key, g.start));
   }
   return out.filter(Boolean);
 }

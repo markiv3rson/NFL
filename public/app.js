@@ -878,7 +878,7 @@ function renderLab() {
   if (!PAPER) { renderLabList(); return; }
   const names = PAPER.names || {}, board = PAPER.board || {};
   // Scoreboard (10/14, owner: "organize it"): the parlays still built, grouped; this season W-L and hit %, then the tested history.
-  const GROUPS = [["SAME GAME", [["sgp_best", "2 legs"], ["sgp_best_fill", "2 legs · filled"], ["sgp_3", "3 legs"], ["sgp_linked", "4 legs"], ["sgp_style", "4 legs · my style"], ["sgp_style_pts", "4 legs · my style · bought lines"], ["sgp_upset", "Upset · dog wins + its RB scores"]]],
+  const GROUPS = [["SAME GAME", [["sgp_best", "2 legs"], ["sgp_best_fill", "2 legs · filled"], ["sgp_3", "3 legs"], ["sgp_linked", "4 legs"], ["sgp_style", "4 legs · my style"], ["sgp_upset", "Upset · dog wins + its RB scores"]]],
     ["4 LEGS · DIFFERENT GAMES", [["leg4_fav", "4 biggest favorites"], ["leg4_green_fav", "Green pick + 3 favorites"], ["leg4_fav_td", "3 favorites + top TD"], ["leg4_td4", "4 most likely TD scorers"]]],
     ["BEST BETS", [["best_2", "Top 2 picks"], ["best_3", "Top 3 picks"], ["best_4", "Top 4 (Parlay of the week)"]]],
     ["FAVORITES", [["home_fav_95_single", "Home fav 9.5+ · single"], ["home_fav_95_2", "Home fav 9.5+ · 2 legs"], ["home_fav_95_3", "Home fav 9.5+ · 3 legs"], ["top3_home_75", "Top 3 home favs (75%+)"]]],
@@ -1122,7 +1122,7 @@ function pBlock(title, p, showGame) {
 }
 function sgpBox(g) {
   const x = g.sgp; if (!x || g.started || g.final) return "";
-  const blocks = [["2 legs", x.best], ["3 legs", x.three], ["4 legs", x.linked], ["4 legs · my style", x.style], ["4 legs · my style · bought lines", x.stylePts], ["Upset", x.upset]].map(([t, p]) => pBlock(esc(t), p, false)).join("");
+  const blocks = [["2 legs", x.best], ["3 legs", x.three], ["4 legs", x.linked], ["4 legs · my style", x.style], ["Upset", x.upset]].map(([t, p]) => pBlock(esc(t), p, false)).join("");
   return blocks ? `<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAYS</div><div class="pgrid" style="margin-top:6px">${blocks}</div>` : "";
 }
 // Model bets: the parlay types are menu sub tabs (Over/Under, 4 Leg (My Style), 4 Leg (Bought), 4 Leg, 3 Leg, 2 Leg, Upset, Different Game Parlays), the week a drop-down;
@@ -1130,7 +1130,7 @@ function sgpBox(g) {
 const FOUR_NAMES = { leg4_fav: "4 biggest favorites", leg4_green_fav: "Best green pick + 3 favorites", leg4_fav_td: "3 favorites + top TD scorer", leg4_td4: "4 most likely TD scorers",
   best_2: "2 best green picks", best_3: "3 best green picks", td_likely_2: "2 most likely TD scorers", td_likely_3: "3 most likely TD scorers" };
 // 10/17 (owner): Over/Under first, then the parlays in this order and with these names
-const LAB_TABS = [["ou", "Over/Under"], ["best", "Best Legs"], ["style", "4 Leg (My Style)"], ["pts", "4 Leg (Bought)"], ["4", "4 Leg"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"], ["diff", "Different Game Parlays"]];   // 10/17 parlay lab: Upset (underdog wins + its lead RB scores)
+const LAB_TABS = [["ou", "Over/Under"], ["best", "Best Legs"], ["style", "4 Leg (My Style)"], ["4", "4 Leg"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"], ["diff", "Different Game Parlays"]];   // 10/17 parlay lab: Upset (underdog wins + its lead RB scores)
 let MODELBETS = null, LABTYPE = "ou", LABWEEK = null;
 // 10/15 (owner): ONE Bets tab -- My bets on the left (the list as before), Model bets on the right (the model's parlays). The choice is remembered.
 let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
@@ -1164,13 +1164,13 @@ function renderProps() {
   el.innerHTML = wk + stats + (games.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
   const pw = $("props-wk"); if (pw && pw.tagName === "SELECT") pw.onchange = () => { PROPWEEK = Number(pw.value); loadProps(); };
 }
-// Over/Under (10/17, owner: option C): each game's total PICK at Polymarket's main line and its total PICK w/ POINTS, stacked by game under the
+// Over/Under (10/17, owner: option C; 10/19 the PICK w/ POINTS row left -- it stays on the card under MORE): each game's total PICK at Polymarket's main line, stacked by game under the
 // kickoff headers. Before kickoff from the card, after kickoff the picks locked at kickoff with W / L. This week only (the slate carries them).
 function ouLegs(g) {
   if (g.started || g.final) { const L = g.lockedPicks && g.lockedPicks.total; if (!L) return [];
-    return [{ label: L.pick, prob: L.hit / 100, result: L.result || null, price: L.price }, ...(L.pts ? [{ label: L.pts.pick, prob: L.pts.hit / 100, result: L.pts.result || null, price: L.pts.price, bought: true, points: L.pts.points }] : [])].filter((l) => l.label); }
+    return [{ label: L.pick, prob: L.hit / 100, result: L.result || null, price: L.price }].filter((l) => l.label); }
   const C = cardOf(g, "total"); if (!C) return [];
-  return [...(C.plain ? [{ label: C.plain.pick, prob: C.plain.hit / 100, price: C.plain.price }] : []), ...(C.pts ? [{ label: C.pts.pick, prob: C.pts.hit / 100, price: C.pts.price, bought: true, points: C.pts.points }] : [])];
+  return C.plain ? [{ label: C.plain.pick, prob: C.plain.hit / 100, price: C.plain.price }] : [];   // 10/19 (owner): PICK w/ POINTS only on the card, under MORE
 }
 function ouBlock(title, legs) {   // same block look as a parlay; every line is its own bet: line · win % · Polymarket price, ✓ / ✗ once graded
   const line = (l) => `<div class="pbl">${legMark(l.result)} ${legTxt(l.result, `${esc(l.label)}${l.bought && l.points ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · ${legPct({ kind: "total", ...l })}%${l.price > 0 && l.price < 1 ? ` · ${Math.round(l.price * 100)}¢` : ""}`)}</div>`;
@@ -1180,7 +1180,7 @@ function labParlays(week, type) {
   if (type === "ou") return S && Number(week) === Number(S.week) ? ((S && S.games) || []).map((g) => ({ p: { legs: ouLegs(g) }, game: g.key, kick: g.kickoff, title: gameLogos(g.key), ou: true })).filter((x) => x.p.legs.length) : [];
   const rec = (MODELBETS && MODELBETS.weeks && MODELBETS.weeks[week] && MODELBETS.weeks[week][type]) || [];
   if (!(S && Number(week) === Number(S.week))) return rec.map((p) => ({ p, game: p.game, kick: p.kickoff, title: p.game ? gameLogos(p.game) : esc(FOUR_NAMES[p.strategy] || p.strategy), across: !p.game }));
-  const pick = { 2: (g) => g.sgp.best, 3: (g) => g.sgp.three, 4: (g) => g.sgp.linked, style: (g) => g.sgp.style, pts: (g) => g.sgp.stylePts, upset: (g) => g.sgp.upset };
+  const pick = { 2: (g) => g.sgp.best, 3: (g) => g.sgp.three, 4: (g) => g.sgp.linked, style: (g) => g.sgp.style, upset: (g) => g.sgp.upset };
   if (type === "best") {   // Best Legs (10/19): once the week's copy is saved (Saturday morning) only it shows -- the one graded; the live build before that
     const saved = MODELBETS && Array.isArray(MODELBETS.saved) && MODELBETS.saved.includes(Number(week));
     return (saved ? rec : ((S && S.bestLegs) || []).filter((p) => p && Array.isArray(p.legs))).map((p) => ({ p, game: null, kick: null, title: esc(FOUR_NAMES[p.strategy] || p.strategy), across: true })); }
