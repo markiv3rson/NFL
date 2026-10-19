@@ -885,6 +885,21 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const wk = await R.hgetall(`winners:${SEASON}:4`);
     ok(!wk["LAC @ SEA"] && JSON.parse(wk["DEN @ SF"]).result === "W", "winners: a stored 95% road pick that doesn't fit the closing spread is removed; a real one is graded");
     globalThis.fetch = realFetch; resetGamesCache(); for (const k of await R.keys(`*${SEASON}:4*`)) await R.del(k); }
+  { // 10/19 (owner, option B): TEAM MODEL rule -- fires only when the team model is 58%+ sure, shows the tested band rate, only with this week's numbers
+    const { useTeamSide, teamSideProb } = await import("../lib/teammodel.js"), { teamModelPick, TEAM_BANDS } = await import("../lib/stack.js"), { buildCard } = await import("../lib/cardpick.js");
+    const ts = { season: 2026, week: 7, feat: ["d_s_marg", "hline"], mean: [0, 0], sd: [1, 1], coef: [0.5, 0], b0: 0, n: 3573, teams: { AAA: { s_marg: 1 }, BBB: { s_marg: 0 }, CCC: { s_marg: 0.2 }, DDD: { s_marg: 0 } } };
+    useTeamSide(ts);
+    const p = teamSideProb("AAA", "BBB", -3); ok(Math.abs(p - 1 / (1 + Math.exp(-0.5))) < 1e-9, "team model: logistic on home-minus-away numbers (standardized), as published by the rebuild", p);
+    const g = { key: "BBB @ AAA", away: "BBB", home: "AAA" }, pk = teamModelPick(g, -3, 7);
+    ok(pk && pk.id === "teammodel|spread" && pk.pick === "AAA -3" && pk.hit === 60.3 && pk.team === "AAA" && pk.line === -3, "team model 62% sure -> TEAM MODEL pick on that team at the line, shown at the tested 60%+ band rate (60.3%)", pk);
+    const away = teamModelPick({ key: "AAA @ BBB", away: "AAA", home: "BBB" }, 3, 7);
+    ok(away && away.pick === "AAA -3" && away.team === "AAA" && away.line === -3, "team model: the away side when it is the sure one (line from the away team's view)", away);
+    ok(teamModelPick({ key: "DDD @ CCC", away: "DDD", home: "CCC" }, -3, 7) === null, "team model under 58% sure (52.5%) -> no pick (a coin flip in the test)");
+    ok(teamModelPick(g, -3, 8) === null && teamModelPick(g, 0, 7) === null && teamModelPick({ key: "X @ Y", away: "X", home: "Y" }, -3, 7) === null, "team model: no pick with last week's numbers, at a pick'em, or for a team it has no numbers for");
+    ok(TEAM_BANDS[0][1] === 60.3 && TEAM_BANDS[1][0] === 0.58 && TEAM_BANDS[1][1] === 55.7, "team model band rates = the tested ones (60%+ 60.3%, 58-60% 55.7%)");
+    const card = buildCard({ key: "BBB @ AAA", away: "BBB", home: "AAA", poly: { spread: { homeSpread: -3, home: 0.5, away: 0.5 } } }, [pk], { spread: { homeSpread: -3, home: 0.5, away: 0.5 } }, null, null);
+    ok(card && card.spread && card.spread.plain && card.spread.plain.pick === "AAA -3" && card.spread.plain.hit === 60.3 && /^teammodel/.test(card.spread.plain.ruleId || card.spread.plain.id || "teammodel"), "the card's PICK comes from the TEAM MODEL rule when it is the only rule", card && card.spread && card.spread.plain);
+    useTeamSide(null); }
   { // 10/18 (owner: "fix the gaps"): a parlay type added after the week's save is added once, before its games; a graded game missing its TD list gets it once
     const P = await import("../lib/paper.js"), { getJSON, setJSON } = await import("../lib/redis.js"), R = globalThis.__TEST_REDIS__;
     const mk = (k, a, h, fair) => ({ key: k, away: a, home: h, started: false, final: false, kickoff: "2099-10-18T17:00:00Z", poly: { ml: { home: 0.7, away: 0.32 } }, td: [{ player: a + ".RB", team: a, pos: "RB", fair, price: fair / 100 }, { player: h + ".RB", team: h, pos: "RB", fair: fair - 5, price: (fair - 5) / 100 }] });
