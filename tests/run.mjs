@@ -183,34 +183,33 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     "line move on totals: books 3+ off Polymarket -> the books' direction at Polymarket's number; under 3 or a dead book -> nothing"); }
 { const { keyNumberPick, gradeStackPick } = await import("../lib/stack.js"); const G = { home: "LA", away: "BUF", key: "BUF @ LA" };
   const sp = (hs, h = 0.5, a = 0.5, alts) => ({ spread: { homeSpread: hs, home: h, away: a }, ...(alts ? { alts } : {}) }), bk = (hs) => ({ spread: { homeSpread: hs } });
-  const main = keyNumberPick(G, sp(-3.5, 0.48, 0.53), bk(-3)), alt = keyNumberPick(G, sp(-2.5), bk(-3), [{ team: "BUF", line: 3.5, price: 0.56 }]);
-  const homeDog = keyNumberPick(G, sp(2.5), bk(3), [{ team: "LA", line: 3.5, price: 0.55 }]);
+  const main = keyNumberPick(G, sp(-3.5, 0.48, 0.53), bk(-2.5)), alt = keyNumberPick(G, sp(-2.5), bk(-2.5), [{ team: "BUF", line: 3.5, price: 0.56 }]);
+  const homeDog = keyNumberPick(G, sp(2.5), bk(2.5), [{ team: "LA", line: 3.5, price: 0.55 }]);
   ok(main && main.pick === "BUF +3.5" && main.price === 0.53 && alt && alt.pick === "BUF +3.5" && alt.price === 0.56 && homeDog && homeDog.pick === "LA +3.5"
-    && !keyNumberPick(G, sp(-2.5), bk(-3)) && !keyNumberPick(G, sp(-2.5), bk(-3), [{ team: "BUF", line: 3.5, price: 0.95 }])
+    && !keyNumberPick(G, sp(-2.5), bk(-2.5)) && !keyNumberPick(G, sp(-2.5), bk(-2.5), [{ team: "BUF", line: 3.5, price: 0.95 }])
     && gradeStackPick({ ...main, home: "LA" }, 24, 21) === "W" && gradeStackPick({ ...main, home: "LA" }, 28, 21) === "L",
-    "key number: books at exactly 3 -> underdog +3.5 on Polymarket (main or alternate); wins when the favorite wins by exactly 3");
+    "key number: books at 2.5 -> underdog +3.5 on Polymarket (main or alternate); wins when the favorite wins by exactly 3");
   const k25 = keyNumberPick(G, sp(-2.5), bk(-2.5), [{ team: "BUF", line: 3.5, price: 0.6 }]);
-  ok(k25 && k25.pick === "BUF +3.5" && k25.hit === 56.9 && /books at BUF \+2\.5/.test(k25.why) && main.hit === 55.3 && !keyNumberPick(G, sp(-2.5), bk(-2)),
-    "key number: books at 2.5 -> underdog +3.5 at 56.9% (books at 3: 55.3%, all games, the lower of closing and opening; books at 2 is not a pick)");
-  const k15 = keyNumberPick(G, sp(-1.5), bk(-1.5), [{ team: "BUF", line: 3.5, price: 0.66 }]), k35 = keyNumberPick(G, sp(-3.5), bk(-3.5), [{ team: "BUF", line: 5.5, price: 0.6 }, { team: "LA", line: -2.5, price: 0.58 }]), k35f = keyNumberPick(G, sp(-3.5), bk(-3.5), [{ team: "LA", line: -2.5, price: 0.58 }]);   // books 3.5: the dog at +5.5 (2 points) or the favorite at -2.5 (1 point) -- the higher card % wins
-  ok(k15 && k15.pick === "BUF +3.5" && k15.hit === 63.0 && k15.price === 0.66 && k35 && k35.pick === "BUF +5.5" && k35.hit === 56.6 && k35.line === 5.5 && k35.price === 0.6 && /BEAT THE 5/.test(k35.why) && k35f && k35f.pick === "LA -2.5" && k35f.hit === 53.5 && k35f.bought === 1
+  ok(k25 && k25.pick === "BUF +3.5" && k25.hit === 56.9 && /books at BUF \+2\.5/.test(k25.why) && !keyNumberPick(G, sp(-2.5), bk(-3), [{ team: "BUF", line: 3.5, price: 0.6 }]) && !keyNumberPick(G, sp(-2.5), bk(-2)),
+    "key number: books at 2.5 -> underdog +3.5 at 56.9% (10/19: books 3 cut -- 55.3% at the open; books 2 is not a pick)");
+  const k15 = keyNumberPick(G, sp(-1.5), bk(-1.5), [{ team: "BUF", line: 3.5, price: 0.66 }]), k35 = keyNumberPick(G, sp(-3.5), bk(-3.5), [{ team: "BUF", line: 5.5, price: 0.6 }, { team: "LA", line: -2.5, price: 0.58 }]), k35f = keyNumberPick(G, sp(-3.5), bk(-3.5), [{ team: "LA", line: -2.5, price: 0.58 }]);
+  ok(k15 && k15.pick === "BUF +3.5" && k15.hit === 63.0 && k15.price === 0.66 && k35 && k35.pick === "BUF +5.5" && k35.hit === 56.6 && k35.line === 5.5 && k35.price === 0.6 && /BEAT THE 5/.test(k35.why) && !k35f
     && !keyNumberPick(G, sp(-3.5), bk(-3.5), [{ team: "BUF", line: 3.5, price: 0.4 }])
     && gradeStackPick({ ...k35, home: "LA" }, 24, 21) === "W" && gradeStackPick({ ...k35, home: "LA" }, 30, 21) === "L" && gradeStackPick({ ...k15, home: "LA" }, 23, 21) === "W",
-    "BEAT THE 3: books 1.5 -> dog +3.5 at 63.0%; books 3.5 -> dog +5.5 (2 points) or favorite -2.5 (1 point), the higher card % wins");
+    "BEAT THE 3: books 1.5 -> dog +3.5 at 63.0%; books 3.5 -> dog +5.5 (2 points); the favorite -2.5 there is cut (10/19)");
   const k1 = keyNumberPick(G, sp(-1.5), bk(-1), [{ team: "BUF", line: 3.5, price: 0.7 }]);
-  ok(k1 && k1.pick === "BUF +3.5" && k1.hit === 59.9 && !keyNumberPick(G, sp(-1.5), bk(-2), [{ team: "BUF", line: 3.5, price: 0.6 }]) && keyNumberPick(G, sp(-3.5), bk(-4), [{ team: "LA", line: -2.5, price: 0.6 }]).hit === 58.4 && keyNumberPick(G, sp(-3.5), bk(-5), [{ team: "LA", line: -2.5, price: 0.6 }]).hit === 65.7,
-    "BEAT THE 3: books 1 -> dog +3.5 at 59.9% (buys 2.5); books 2 has no underdog pick (its tier is the favorite); books 4 and 5 favorite -2.5 are picks again (10/15)");
-  // 10/15: tested tiers, all games (day / night split dropped)
+  ok(k1 && k1.pick === "BUF +3.5" && k1.hit === 59.9 && !keyNumberPick(G, sp(-1.5), bk(-2), [{ team: "BUF", line: 3.5, price: 0.6 }]) && !keyNumberPick(G, sp(-3.5), bk(-4), [{ team: "LA", line: -2.5, price: 0.6 }]) && !keyNumberPick(G, sp(-3.5), bk(-5), [{ team: "LA", line: -2.5, price: 0.6 }]),
+    "BEAT THE 3: books 1 -> dog +3.5 at 59.9% (buys 2.5); books 2 / 4 / 5 favorite tiers cut (10/19)");
   const { BUY_TIERS } = await import("../lib/stack.js");
   const day = { ...G, kickoff: "2026-10-18T17:00:00Z" }, snf = { ...G, kickoff: "2026-10-19T00:20:00Z" };
   { const kd = keyNumberPick(day, sp(-2.5), bk(-2.5), [{ team: "BUF", line: 3.5, price: 0.6 }]), kt = keyNumberPick(snf, sp(-2.5), bk(-2.5), [{ team: "BUF", line: 3.5, price: 0.6 }]);
     ok(kd && kt && kd.hit === 56.9 && kt.hit === 56.9 && kd.n === kt.n && !kt.night && !/night/.test(kt.why), "BEAT THE 3: a night game shows the same all-games rate as a day game (books 2.5: 56.9%)", { kd, kt }); }
   const t45 = keyNumberPick(day, sp(-4.5), bk(-4.5), [{ team: "LA", line: -2.5, price: 0.66 }]), t55 = keyNumberPick(day, sp(-5.5), bk(-5.5), [{ team: "BUF", line: 7.5, price: 0.64 }]), t135 = keyNumberPick(day, sp(-13.5), bk(-13.5), [{ team: "BUF", line: 14.5, price: 0.6 }]);
-  const gone = [[-6, "BUF", 7.5], [-6.5, "BUF", 8.5], [-8, "LA", -5.5], [-6.5, "LA", -2.5], [-9, "LA", -6.5]].map(([b, team, line]) => keyNumberPick(day, sp(b), bk(b), [{ team, line, price: 0.6 }]));
-  ok(t45 && t45.pick === "LA -2.5" && t45.hit === 63.8 && t55 && t55.pick === "BUF +7.5" && t55.hit === 56.1 && /BEAT THE 7/.test(t55.why)
+  const gone = [[-6, "BUF", 7.5], [-6.5, "BUF", 8.5], [-8, "LA", -5.5], [-6.5, "LA", -2.5], [-9, "LA", -6.5], [-7, "LA", -5.5], [-7.5, "LA", -5.5], [-6, "LA", -3.5], [-2, "LA", -0.5]].map(([b, team, line]) => keyNumberPick(day, sp(b), bk(b), [{ team, line, price: 0.6 }]));
+  ok(!t45 && t55 && t55.pick === "BUF +7.5" && t55.hit === 56.1 && /BEAT THE 7/.test(t55.why)
     && t135 && t135.pick === "BUF +14.5" && t135.hit === 63.9 && /BEAT THE 14/.test(t135.why) && gone.every((x) => !x)
-    && Object.keys(BUY_TIERS).length === 14 && [2, 4, 5, 6, 7, 7.5].every((A) => BUY_TIERS[A] && BUY_TIERS[A].side === "fav") && Object.entries(BUY_TIERS).every(([A, T]) => (T.side === "fav" ? +A - Math.abs(T.line) : Math.abs(T.line) - +A) <= 3.5),
-    "BEAT THE 3 side rule (10/15): 14 tiers -- books 1, 1.5, 2.5, 3, 3.5, 4.5, 5.5, 13.5 plus the favorites added back (books 2, 4, 5, 6, 7, 7.5); never more than 3.5 points", { t45, t55 });
+    && Object.keys(BUY_TIERS).length === 6 && Object.values(BUY_TIERS).every((T) => T.side === "dog") && Object.entries(BUY_TIERS).every(([A, T]) => Math.abs(T.line) - +A <= 3.5),
+    "BEAT THE (10/19): 6 underdog tiers -- books 1, 1.5, 2.5, 3.5, 5.5, 13.5; every favorite tier and books 3 cut; never more than 3.5 points", { t45, t55 });
   { const { ruleRecords } = await import("../lib/stack.js"), kick = [{ id: "modelpick|total", kind: "total", hit: 51.7, week: 6, game: "A @ B", result: "W", t: "2" }, { id: "keynum|spread", hit: 58, week: 6, game: "A @ B", result: "L", t: "2" }],
       first = [{ id: "modelpick|total", kind: "total", hit: 51.7, week: 6, game: "A @ B", result: "L", t: "1" }, { id: "keynum|spread", hit: 58, week: 6, game: "A @ B", result: "W", t: "1" }], rr = ruleRecords(kick, first);
     ok(rr["MODEL SIDE · total"].w === 1 && rr["MODEL SIDE · total"].l === 0 && rr["BEAT THE"].w === 1 && rr["BEAT THE"].l === 0, "rule records (10/18 fix): card picks count as locked at kickoff (= Card picks rows); timing rules keep the first-shown pick", rr); }
@@ -226,8 +225,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { const { mode } = await import("../lib/books.js");
     ok(mode([-1.5, -1.5, -1, -1, -1, 0, 0, 0, 1]) === -1 && mode([4.5, 4.5, 4.5, 5.5, 5.5]) === 4.5 && mode([3, 3, 2.5]) === 3 && mode([-3, -3.5]) === -3 && mode([7]) === 7,
       "books consensus: most common number; a tie goes to the number nearest the middle of all books (CAR @ PHI 0 vs -1)"); }
-  { const kp = keyNumberPick(day, sp(-4.5), bk(-4.5), [{ team: "LA", line: -2.5, price: 0.64 }]), kn = keyNumberPick(snf, sp(-4.5), bk(-4.5), [{ team: "LA", line: -2.5, price: 0.64 }]);
-    ok(kp && kp.plain === 50 && kn && kn.plain === 50, "bought-point pick carries how often it wins without the extra points (50.0% at books 4.5)", { kp, kn }); }
+  { const kp = keyNumberPick(day, sp(-5.5), bk(-5.5), [{ team: "BUF", line: 7.5, price: 0.64 }]);
+    ok(kp && kp.plain === 54.5, "bought-point pick carries how often it wins without the extra points (54.5% at books 5.5)", { kp }); }
 }
 { const { noteFirstSeen, recordStack, skey } = await import("../lib/stack.js"); const { getRedis } = await import("../lib/redis.js"); const G = { home: "DEN", away: "SEA", key: "SEA @ DEN" };
   await noteFirstSeen(2099, 6, G, [{ id: "keynumber|spread", team: "DEN", line: 3.5, kind: "spread" }], "2099-10-14T00:00:00Z");
@@ -803,8 +802,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
         && buildCard(NE, ch, ps(-7.5, 0.5), { spread: { homeSpread: -7.5 } }, null).spread.rows.every((x) => x.points === 0) && !buildCard({ ...NE, started: true }, ch, ps(-7.5, 0.5), null, alts),
         "card: no points line when the saved alternate prices are 3+ hours old or missing; no card once the game has started");
       { const rule = [{ id: "keynum|spread", kind: "spread", team: "NYJ", pick: "NYJ +5.5", hit: 56.2, n: 536, line: 5.5, plain: 50.6, why: "BEAT THE 5: x" }, ...ch], c = buildCard(NE, rule, ps(-7.5, 0.5), { spread: { homeSpread: -3.5 } }, alts);
-        ok(c.spread.plain.team === "NYJ" && c.spread.plain.pick === "NYJ +7.5" && c.spread.plain.ruleId === "keynum|spread" && c.spread.plain.hit === Math.round(spreadRate(3.5, false, 7.5).rate * 10) / 10 && c.spread.rows.filter((x) => x.team === "NYJ" && x.points > 0).every((x) => x.line > 7.5),
-          "card: a BEAT THE rule names the side, but the PICK is on Polymarket's own line (never the bought +5.5) and uses the line table's win % there; the buyable lines are listed", c.spread.plain); }
+        ok(c.spread.plain.ruleId !== "keynum|spread" && c.spread.plain.ruleId === "linemove|spread" && c.spread.rows.some((x) => x.team === "NYJ" && x.points > 0),
+          "card (10/19 rules cleanup): BEAT THE no longer names the PICK side -- the side-tested rule (LINE MOVE) does; the bought lines stay in the list", c.spread.plain);
+        const only = buildCard({ ...NE, model: { homeMargin: 9 } }, [rule[0]], ps(-7.5, 0.5), { spread: { homeSpread: -3.5 } }, alts);
+        ok(only.spread.plain && only.spread.plain.ruleId == null, "card (10/19 rules cleanup): a game with only BEAT THE gets the model's side, not BEAT THE's", only.spread.plain); }
       { const pm = (mar, tot) => buildCard({ ...NE, modelUp: { margin: mar, total: tot } }, [], { ...ps(-7.5, 0.5), total: { line: 42.5, over: 0.5, under: 0.5 } }, null, null);
         const a1 = pm(7.8, 44.8), a2 = pm(7.0, 40.0), a3 = pm(7.5, 42.5);
         ok(a1.spread.plain.pick === "NE -7.5" && a1.spread.plain.id === "modelpick|spread" && a1.spread.plain.hit === 50.6 && a1.total.plain.pick === "Over 42.5" && a1.total.plain.id === "modelpick|total" && a1.total.plain.hit === 51.7
