@@ -52,17 +52,17 @@ const PCT = (x) => (x == null ? null : Math.round(x * 10) / 10);
 // build the page data from the service's simulation + Polymarket's events
 export function buildFutures(sim, events) {
   const byAbbr = {}; for (const t of sim.teams || []) { const a = abbrOfName(t.team); if (a) byAbbr[a] = t; }
-  const section = (id, title, key, ev, note) => {
+  const section = (id, title, key, ev, note, conf) => {
     const mk = ev ? eventRows(ev) : {};
-    const rows = ABBRS.filter((a) => byAbbr[a]).map((a) => ({ team: a, model: PCT(byAbbr[a][key]), market: mk[a] && mk[a].p != null ? PCT(mk[a].p * 100) : null, thin: !!(mk[a] && mk[a].thin) }));
+    const rows = ABBRS.filter((a) => byAbbr[a] && (!conf || byAbbr[a].conf === conf)).map((a) => ({ team: a, model: PCT(byAbbr[a][key]), market: mk[a] && mk[a].p != null ? PCT(mk[a].p * 100) : null, thin: !!(mk[a] && mk[a].thin) }));
     rows.sort((x, y) => (y.model || 0) - (x.model || 0));
     return { id, title, note: note || "", market: !!ev, rows };
   };
   const ev = (re) => findEvent(events, re);
   const sections = [
     section("champion", "Champion", "champion", ev(/^NBA: \d{4} Champion$/)),
-    section("east", "East champion", "conf_champion", ev(/Eastern Conference Champion/)),
-    section("west", "West champion", "conf_champion", ev(/Western Conference Champion/)),
+    section("east", "East champion", "conf_champion", ev(/Eastern Conference Champion/), "", "East"),   // 10/19 check: each list holds only its own conference
+    section("west", "West champion", "conf_champion", ev(/Western Conference Champion/), "", "West"),   // (both listed all 30 teams, SAS / OKC on top of the East)
     section("playoffs", "Make the playoffs", "playoffs", ev(/Team to Make Playoffs/), "Counts the play-in: a team must win its way into the 7 or 8 seed."),
     section("playin", "Make the play-in", "play_in", ev(/Team to Make Play-In/), "Finish 7th to 10th in the conference."),
     section("seed1", "#1 seed", "seed1", ev(/Eastern Conference #1 Seed/), "East shown with the East market, West with the West market."),

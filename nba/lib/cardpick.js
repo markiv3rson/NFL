@@ -100,7 +100,9 @@ function spreadPart(g) {
     const hit = first && x.points === 0 ? plain.hit : x.hist;
     raw.push({ team: x.team, line: x.line, points: x.points, hit: r1(hit), n: x.n, price: priced(x.price), pick: x.label || `${x.team} ${sg(x.line)}`, first });
   }
-  const rows = finishRows(raw), b = pickPts(rows), pts = b ? { id: "ptspick|spread", kind: "spread", ...b, ruleId: plain ? plain.ruleId : null } : null;
+  // 10/19 (owner: "why is your decision making wrong" -- the NFL one-side rule of 10/18): PICK w/ POINTS sits on the PICK's team; BOS @ DET read PICK DET +1.5 and
+  // PICK w/ POINTS BOS +1.5, a guaranteed loser on one of the two. With no PICK it may still use either side.
+  const rows = finishRows(raw), b = pickPts(plain ? rows.filter((r) => r.team === plain.team) : rows), pts = b ? { id: "ptspick|spread", kind: "spread", ...b, ruleId: plain ? plain.ruleId : null } : null;
   if (!plain && !rows.length) return null;
   return { kind: "spread", plain, pts, rows };
 }
@@ -125,7 +127,7 @@ function totalPart(g) {
     const hit = first && x.points === 0 ? plain.hit : x.hist;
     raw.push({ side: x.side, line: x.line, points: x.points, hit: r1(hit), n: x.n, price: priced(x.price), pick: x.label || `${nm(x.side)} ${x.line}`, first });
   }
-  const rows = finishRows(raw), b = pickPts(rows), pts = b ? { id: "ptspick|total", kind: "total", ...b, ruleId: plain ? plain.ruleId : null } : null;
+  const rows = finishRows(raw), b = pickPts(plain ? rows.filter((r) => r.side === plain.side) : rows), pts = b ? { id: "ptspick|total", kind: "total", ...b, ruleId: plain ? plain.ruleId : null } : null;   // same side as the PICK (10/19)
   if (!plain && !rows.length) return null;
   return { kind: "total", plain, pts, rows };
 }

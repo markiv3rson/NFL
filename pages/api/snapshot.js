@@ -2,7 +2,7 @@
 // plus sportsbook consensus when books=1. Called by the Railway scheduler (7/12/3/7 PT, Sunday
 // 6/7/8/9/10/12/3 PT, and just before each kickoff with kickoff=<game>) and by the Refresh button.
 import { buildCard, cardPicks } from "../../lib/cardpick";
-import { comboFactors, totalMovePick, recordStack, lineMovePick, lineMoveTotalPick, keyNumberPick, injuryPick, bounceBackPick, floorDogPick } from "../../lib/stack";
+import { comboFactors, totalMovePick, recordStack, lineMovePick, lineMoveTotalPick, keyNumberPick, injuryPick, bounceBackPick, floorDogPick, teamModelPick } from "../../lib/stack";
 import { venue, windAtKickoff } from "../../lib/wind";
 import { loadComboModel } from "../../lib/combomodel";
 import { SEASON, currentWeek, loadGames, started } from "../../lib/games";
@@ -17,7 +17,7 @@ import { logError } from "../../lib/status";
 import { loadModel } from "../../lib/week";
 import { isThinMarket } from "../../lib/odds";
 import { nameMatches } from "../../lib/picks";
-import { recordPaper, recordWinner, situationFor, paperMissingLate } from "../../lib/paper";
+import { recordPaper, recordWinner, situationFor } from "../../lib/paper";
 import { buildWeek } from "../../lib/week";
 import { loadInjuriesMeta } from "../../lib/injuries";
 import { alertsFromLines } from "../../lib/alerts";
@@ -55,7 +55,7 @@ export async function writePrelog(season, week, g, t, poly, bk, model) {
         // Before, books came first, so a recorded pick could sit on a different number than the one shown.
         const hsNow = poly && poly.spread && poly.spread.homeSpread != null ? poly.spread.homeSpread : bk && bk.spread ? bk.spread.homeSpread : null;
         const tlNow = poly && poly.total && poly.total.line != null ? poly.total.line : now;
-        try { const altRec = (await getJSON(`alts:${season}:${week}:${g.key}`).catch(() => null)) || {}; const sitS = await situationFor(season, week, g).catch(() => null); const cf = comboFactors({ ...g, outdoor: !!v.outdoor }, mg, hsNow, tlNow, s0, open, sitS, Number(week)), lst = (cf ? totalMovePick(g, cf.mvT, tlNow, open, Number(week)) || [] : []).concat(injuryPick(g, hsNow, s0, sitS, Number(week)) || [], bounceBackPick(g, hsNow, sitS) || [], floorDogPick(g, hsNow, sitS) || [], ...(await timingAtKickoff(season, week, g, t, poly, bk)));
+        try { const altRec = (await getJSON(`alts:${season}:${week}:${g.key}`).catch(() => null)) || {}; const sitS = await situationFor(season, week, g).catch(() => null); const cf = comboFactors({ ...g, outdoor: !!v.outdoor }, mg, hsNow, tlNow, s0, open, sitS, Number(week)), lst = (cf ? totalMovePick(g, cf.mvT, tlNow, open, Number(week)) || [] : []).concat(injuryPick(g, hsNow, s0, sitS, Number(week)) || [], bounceBackPick(g, hsNow, sitS) || [], floorDogPick(g, hsNow, sitS) || [], teamModelPick(g, hsNow, Number(week)) || [], ...(await timingAtKickoff(season, week, g, t, poly, bk)));
           await recordStack(season, week, g, lst.concat(cardPicks(buildCard({ ...g, started: false, final: false, model: mg, modelUp: cf ? cf.up : null }, lst, poly, bk, altRec))), t); }
         catch (e) { await logError("kickoff", `${g.key}: card picks not saved at kickoff: ${String(e).slice(0, 160)}`).catch(() => {}); } }   // 10/16 audit: was silent   // + the card's PICK and PICK w/ POINTS (10/15); 10/16: the model numbers ride along so a game with no rule records its model-side PICK at kickoff too
   }
@@ -181,7 +181,7 @@ export default async function handler(req, res) {
     // and the Record tab has its own Sync button) so the button comes back fast.
     // Parlay Lab: record this week's PAPER parlays once, on the scheduled snapshot within ~26 h of the first Sunday kickoff
     let paper = 0;
-    if (src !== "manual" && (await redis.exists(`paper:${season}:${week}`)) && (await paperMissingLate(season, week).catch(() => false))) {   // 10/18: a parlay type added after the week's save, once, before its games
+    if (src !== "manual" && (await redis.exists(`paper:${season}:${week}`)) && games.some((g) => !started(g))) {   // 10/18 late types + 10/19 refresh of every type whose games have not started
       const inj = await loadInjuriesMeta().catch(() => null);
       paper = await recordPaper(season, week, await buildWeek({ season, week, injuries: inj ? inj.teams : null })).catch((e) => { logError("paper", e); return 0; });
     } else if (src !== "manual" && !(await redis.exists(`paper:${season}:${week}`))) {

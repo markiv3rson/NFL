@@ -138,7 +138,7 @@ try {
   if (R && Object.keys(R).length) { console.log("\nLIVE per green rule (each pick once: rules at the line first shown, the card's PICK / PICK w/ POINTS / MODEL SIDE as locked at kickoff; BELOW = 15+ graded and 10+ points under the card -- a flag, nothing is cut):");
     for (const [k, r] of Object.entries(R).sort()) console.log(`     ${r.flag === "BELOW" ? "BELOW" : "     "} ${k.padEnd(34)} ${r.w}-${r.l}${r.w + r.l ? ` = ${pct(r.w, r.l).toFixed(1)}%` : ""} · card says ${r.say}% · ${r.flag}`); }
   else console.log("\nLIVE per green rule: none graded yet");
-  if (card) console.log(`     card picks (all rules) spread ${card.spread.w}-${card.spread.l} = ${(pct(card.spread.w, card.spread.l) || 0).toFixed(1)}% · total ${card.total.w}-${card.total.l} = ${(pct(card.total.w, card.total.l) || 0).toFixed(1)}%`);
+  if (card) console.log(`     card PICK${card.from ? ` (week ${card.from}+, locked at kickoff)` : ""} spread ${card.spread.w}-${card.spread.l} = ${(pct(card.spread.w, card.spread.l) || 0).toFixed(1)}% · total ${card.total.w}-${card.total.l} = ${(pct(card.total.w, card.total.l) || 0).toFixed(1)}%`);
 } catch (e) { console.log(`\nLIVE: site not reachable (${String(e).slice(0, 80)})`); }
 
 // Parlays (10/14, owner: "make sure everything is graded ... see what works and what doesn't"): every saved parlay type's live record,

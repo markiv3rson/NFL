@@ -201,14 +201,14 @@ function cardBody(g, kind, C) {
   const grp = (r) => r.team || (r.side === "over" ? "Over" : "Under"), first = x ? x.team || (x.side === "over" ? "Over" : "Under") : null;
   const names = [...new Set(C.rows.map(grp))].sort((a, b) => (a === first ? -1 : 0) - (b === first ? -1 : 0));
   const rows = names.map((nm, i) => `<div style="margin-top:${i ? 8 : 2}px">` + C.rows.filter((r) => grp(r) === nm).map((r) => { const pk = !!(p && r.pick === p.pick);
-    return `<div class="s${pk && !TEST ? " g" : ""}" style="margin-top:2px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.pick)} · ${ptsWord(r.points)} · ${hitTxt(r.hit, pk ? "g" : "lg")} · ${Math.round(r.price * 100)}¢</div>`; }).join("") + "</div>").join("");
+    return `<div class="s${pk && !TEST ? " g" : ""}" style="margin-top:2px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.pick)} · ${ptsWord(r.points)} · ${hitTxt(r.hit, clsOf(r.hit))} · ${Math.round(r.price * 100)}¢</div>`; }).join("") + "</div>").join("");
   return `<div style="margin-top:6px">${l1}</div>${why}` + moreBox(`<div style="margin-top:4px">${l2}</div>` + (rows ? `<div style="margin-top:6px">${rows}</div>` : ""));
 }
 function lockedBody(g, kind) {   // after tip-off: the picks saved before it, with W / L once graded
   const L = g.locked && g.locked[kind]; if (!L) return `<div style="margin-top:6px"><b class="dim" style="font-size:13px">Game in progress</b></div>`;
   const rs = (x) => (x.result === "win" ? ' · <span class="g">W</span>' : x.result === "loss" ? ' · <span class="r">L</span>' : x.result === "push" ? " · push" : x.result === "void" ? ' · <span class="dim">void</span>' : ' · <span class="dim">live</span>');
   return (L.plain ? `<div style="margin-top:6px"><b class="${clsOf(L.plain.pct)}" style="font-size:13px">PICK: ${esc(L.plain.label)} · ${hitTxt(L.plain.pct, clsOf(L.plain.pct))}</b>${rs(L.plain)}</div>` : "") +
-    (L.pts ? `<div style="margin-top:4px"><b style="font-size:13px">PICK w/ POINTS: ${esc(L.pts.label)} · ${Math.floor(L.pts.pct)}%</b>${rs(L.pts)}</div>` : "");
+    (L.pts ? `<div style="margin-top:4px"><b style="font-size:13px">PICK w/ POINTS: ${esc(L.pts.label)} · ${hitTxt(L.pts.pct, clsOf(L.pts.pct))}</b>${rs(L.pts)}</div>` : "");
 }
 function modelCell(g, kind) {
   const m = g.model, k = g[kind];
@@ -216,7 +216,8 @@ function modelCell(g, kind) {
   if (!m || !k) return wrap(dash);
   const H = g.home, A = g.away;
   const line = kind === "total" ? `Model: <b class="mod">${m.total.toFixed(1)}</b>` : kind === "spread" ? `Model: <b class="mod">${m.margin >= 0 ? H : A} by ${Math.abs(m.margin).toFixed(1)}</b>`
-    : `Model: <b class="mod">${k.side} ${Math.max(k.modelWinPct[H], k.modelWinPct[A])}%</b>`;
+    : (() => { const h = m.modelOnlyWinPct;   // 10/19: the model's OWN win chance (from its margin), so it names the same team as "Model: X by N"; modelWinPct mixes in the market's line
+      return h != null ? `Model: <b class="mod">${h >= 50 ? H : A} ${Math.max(h, 100 - h).toFixed(1)}%</b>` : `Model: <b class="mod">${k.side} ${Math.max(k.modelWinPct[H], k.modelWinPct[A])}%</b>`; })();
   let body = "";
   if (kind === "ml") {
     const pick = k.pick;
@@ -337,8 +338,8 @@ function renderBets() {
   $("sync-btn").onclick = async () => { toast("Syncing…", 0); try { const d = await (await fetch("/api/nba/mybets?sync=1", { cache: "no-store" })).json(); BETS = d; renderBets(); toast(d.sync && d.sync.ok ? `Synced ${d.sync.positions} positions.` : `Sync: ${(d.sync && d.sync.note) || "done"}`); } catch (e) { toast("Sync failed: " + e.message, 10000); } };
 }
 // Model bets: day drop-down at the top, the types are menu sub tabs, one list in tip-off order (lib/parlays.js)
-const PTYPES = { sgp: "Same game · 2 legs", sgp_pts: "Same game · bought lines", best4: "Parlay · top 4 picks", fav4: "4 biggest favorites" };
-const LAB_TABS = [["sgp", "Same game"], ["sgp_pts", "Bought"], ["best4", "Parlay"], ["fav4", "Favorites"]];
+const PTYPES = { sgp: "Same game · 2 legs", sgp_pts: "Same game · bought lines", best4: "Parlay · top picks", fav4: "4 biggest favorites" };
+const LAB_TABS = [["sgp", "Same game"], ["best4", "Parlay"], ["fav4", "Favorites"]];   // 10/19: the Bought tab left (PICK w/ POINTS only on the card)
 let LABTYPE = "sgp", LABDAY = null;
 const plText = (x, st) => `PL: ${x >= 10 ? Math.round(x) : x.toFixed(1)}x<span class="plw"> · $${st} → </span><span class="g">$${Math.round(st * x)}</span>`;
 const plPay = (p) => {
@@ -494,13 +495,13 @@ function renderModels() {
   ].map(([a, b]) => `<div class="row"${/<div/.test(String(b)) ? ' style="grid-column:1/-1"' : ""}><span class="dim">${a}</span><span>${b}</span></div>`).join("") : '<div class="s dim">Status unavailable.</div>';
   const sysBad = !sy || !sy.railway || !sy.railway.ok || (sy.errors || []).length > 0 || watch.length > 0;
   $("models").innerHTML = labStats(rc, j.clv) +
-    mSec("m-board", "★ Parlay scoreboard · this season", board) +
-    mSec("m-win", "1 · Winners · moneyline", winnersBox()) +
-    mSec("m-line", "2 · Spreads and totals", cardRows) +
-    mSec("m-acc", "3 · Accuracy vs the market", accRows) +
-    mSec("m-pat", "4 · Tested patterns", patRows) +
-    mSec("m-fut", `5 · Futures · ${FUT && FUT.ok ? FUT.season : "season simulation"}`, futuresRows()) +
-    mSec("m-sys", "6 · System", sysRows, watch.length, sysBad);
+    mSec("m-line", "1 · Card picks", cardRows) +   // 10/19: same order as NFL -- card picks, winners, parlays first
+    mSec("m-win", "2 · Winners · moneyline", winnersBox()) +
+    mSec("m-board", "3 · Parlay scoreboard", board) +
+    mSec("m-acc", "4 · Accuracy vs the market", accRows) +
+    mSec("m-pat", "5 · Tested patterns", patRows) +
+    mSec("m-fut", `6 · Futures · ${FUT && FUT.ok ? FUT.season : "season simulation"}`, futuresRows()) +
+    mSec("m-sys", "7 · System", sysRows, watch.length, sysBad);
   $("models").innerHTML = paint($("models").innerHTML);
   for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
 }

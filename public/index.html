@@ -71,6 +71,7 @@
   #models .fold { border-top:0; border-bottom:1px solid var(--line); padding:16px 0 7px; font-size:14px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; }
   #models .drop.open { display:grid; grid-template-columns:1fr 1fr; column-gap:18px; row-gap:0; padding-top:4px; }
   #models .drop.open > * { grid-column:1 / -1; } #models .drop.open > .row { grid-column:auto; font-size:12.5px; }
+  @media (max-width:600px) { #models .drop.open { grid-template-columns:1fr; } }   /* 10/19 (owner: "organize it better"): one row per line on a phone, label left, numbers right */
   #models .row > span:first-child { overflow-wrap:break-word; flex:0 0 auto; max-width:50%; } #models .row > span:last-child { min-width:0; text-align:right; }
   #models .card { background:none; border:0; box-shadow:none; border-radius:0; padding:0; margin-top:6px; } #models .card .inner { padding:0; }
   #models .drop.open > .s { margin-top:12px; } #models .drop.open > .s > b { display:block; color:var(--text); font-size:11.5px; letter-spacing:.09em; text-transform:uppercase; border-bottom:1px solid var(--line2); padding-bottom:3px; }
