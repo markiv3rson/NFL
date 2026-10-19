@@ -2,7 +2,7 @@
 // the latest Polymarket spread/total (sportsbook consensus if Polymarket has none),
 // players listed OUT on the official injury report, and the kickoff wind forecast (outdoor only).
 import { modelBase, modelHeaders } from "../../lib/model";
-import { SEASON, currentWeek, loadGames, loadSeason, started } from "../../lib/games";
+import { SEASON, displayWeek, loadGames, loadSeason, started } from "../../lib/games";
 import { getRedis, getJSON, setJSON, K, SLATE_CACHE } from "../../lib/redis";
 import { logError } from "../../lib/status";
 import { history } from "../../lib/week";
@@ -28,13 +28,26 @@ export default async function handler(req, res) {
   const base = modelBase();
   if (!base) return res.status(500).json({ ok: false, error: "MODEL_SERVICE_URL not set in Vercel" });
   try {
-    const season = SEASON, curWeek = await currentWeek(season);
+    const season = SEASON, dw = await displayWeek(season), curWeek = dw.cur;
     // ?week=next runs the NEXT week early, before Polymarket lists lines or prices (10/5): the TD model then uses the game model's own
     // spread and total, and the result is flagged "early" until a normal rerun at real lines replaces it.
-    const early = req.query.week === "next" || (Number(req.query.week) > curWeek && Number(req.query.week) === curWeek + 1), week = early ? curWeek + 1 : curWeek;
+    const early = req.query.week === "next" || (Number(req.query.week) > curWeek && Number(req.query.week) === curWeek + 1);
+    // 10/19 (owner: week 7 on Monday): once only the current week's Monday game is left (lib/games.js displayWeek), a plain rerun does BOTH weeks --
+    // the Monday game (its kickoff-wave rerun still catches late scratches) and the whole next week (numbers on its cards from Monday).
+    const weeks = early ? [curWeek + 1] : dw.week !== curWeek ? [curWeek, dw.week] : [curWeek];
+    const out = [];
+    for (const week of weeks) {   // one week failing never stops the other (the error still shows in System)
+      try { out.push(await rerunWeek(req, base, season, week, early && week === curWeek + 1)); }
+      catch (e) { if (weeks.length === 1) throw e; await logError("rerun", `week ${week}: ${String(e).slice(0, 160)}`).catch(() => {}); out.push({ ok: false, week, error: String(e).slice(0, 200) }); } }
+    const o = out[0];
+    res.status(200).json(out.length > 1 ? { ...o, also: out.slice(1) } : o);
+  } catch (err) { await logError("rerun", err).catch(() => {}); res.status(500).json({ ok: false, error: String(err) }); }
+}
+async function rerunWeek(req, base, season, week, early) {
+  {
     const all = await loadGames(season, week), games = all.filter((g) => !started(g));
-    if (early && !games.length) return res.status(200).json({ ok: true, week, rerun: 0, early, note: "no games scheduled for that week yet" });
-    if (!games.length) return res.status(200).json({ ok: true, week, rerun: 0, note: "every game has started — nothing to rerun" });
+    if (early && !games.length) return { ok: true, week, rerun: 0, early, note: "no games scheduled for that week yet" };
+    if (!games.length) return { ok: true, week, rerun: 0, note: "every game has started — nothing to rerun" };
     const injMeta = await loadInjuriesMeta().catch(() => null), injuries = injMeta ? injMeta.teams : {}, injPrev = injMeta ? injMeta.prev || {} : {};
     const espn = await loadEspnInjuries().catch(() => null);
     const snaps = await loadSnaps().catch(() => ({}));
@@ -161,6 +174,6 @@ export default async function handler(req, res) {
         model: store.games[x.key] || null, td: (store.td[x.key] ? [...store.td[x.key].away, ...store.td[x.key].home].map((p) => [p.name, p.fair]) : null) })) }));
     await getRedis().ltrim(`rerunlog:${season}:${week}`, 0, 60);
     await getRedis().del(SLATE_CACHE).catch(() => {}); await getRedis().del(`${SLATE_CACHE}:w${week}`).catch(() => {});   // new model numbers show immediately (also the per-week copy the Next week view reads)
-    res.status(200).json({ ok: true, week, rerun: nLines, td: nTd, props: nProps, early, skippedTd: payload.length - tdIn.length, locked: all.length - games.length, errors });
-  } catch (err) { await logError("rerun", err).catch(() => {}); res.status(500).json({ ok: false, error: String(err) }); }
+    return { ok: true, week, rerun: nLines, td: nTd, props: nProps, early, skippedTd: payload.length - tdIn.length, locked: all.length - games.length, errors };
+  }
 }

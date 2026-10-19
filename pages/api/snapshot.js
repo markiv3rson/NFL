@@ -5,7 +5,7 @@ import { buildCard, cardPicks } from "../../lib/cardpick";
 import { comboFactors, totalMovePick, recordStack, lineMovePick, lineMoveTotalPick, keyNumberPick, injuryPick, bounceBackPick, floorDogPick, teamModelPick } from "../../lib/stack";
 import { venue, windAtKickoff } from "../../lib/wind";
 import { loadComboModel } from "../../lib/combomodel";
-import { SEASON, currentWeek, loadGames, started } from "../../lib/games";
+import { SEASON, displayWeek, loadGames, started } from "../../lib/games";
 import { getRedis, jparse, getJSON, setJSON, K, SLATE_CACHE, pushCapped } from "../../lib/redis";
 import { fetchEvents, gameLines, tdProps } from "../../lib/poly";
 import { sanePoly, spreadJumped } from "../../lib/sane";
@@ -21,7 +21,7 @@ import { recordPaper, recordWinner, situationFor } from "../../lib/paper";
 import { buildWeek } from "../../lib/week";
 import { loadInjuriesMeta } from "../../lib/injuries";
 import { alertsFromLines } from "../../lib/alerts";
-export const config = { maxDuration: 120 };
+export const config = { maxDuration: 300 };   // 10/19: two weeks on Mondays (the Monday game + next week)
 
 // Automatic pre-log (protocol 3.3): model vs Polymarket frozen at kickoff for every game. Used by the kickoff snapshot
 // AND the late-closing safety net below (added 9/29), so a missed kickoff (e.g. the scheduler down) still gets one.
@@ -65,27 +65,33 @@ export default async function handler(req, res) {
   try {
     await loadComboModel().catch(() => null);   // newest weekly rebuild for the combo / early-week picks (10/9)
     const src = req.query.src || "manual";
-    const season = SEASON, week = Number(req.query.week) || (await currentWeek(season));
-    const games = await loadGames(season, week);
+    // 10/19 (owner: week 7 on Monday): once only the current week's Monday game is left, the pages show the next week (lib/games.js displayWeek). The snapshot
+    // then covers BOTH weeks: the current one (the Monday game's lines, kickoff record and grading stay under its own week) and the next one (its lines, books,
+    // TD prices and parlays fill in from Monday morning). ?week=N still does just that week.
+    const season = SEASON, dw = req.query.week ? null : await displayWeek(season), week = Number(req.query.week) || dw.cur;
+    const weeks = dw && dw.week !== dw.cur ? [week, dw.week] : [week];
     const redis = getRedis(), t = new Date().toISOString();
     let books = null, booksNote = null;
     // Manual "Lines + injuries" refresh pulls sportsbooks too when this week has none or they're 6+ hours old
     // (before, only the scheduler's 2-a-day pulls ever fetched them, so a missed pull left "Books —" for hours).
-    if (req.query.books !== "1" && src === "manual") { const bk = await getJSON(K.books(season, week)); if (!bk || Date.now() - new Date(bk.t) > 6 * 3600e3) req.query.books = "1"; }
+    if (req.query.books !== "1" && src === "manual") { const bk = await getJSON(K.books(season, weeks[weeks.length - 1])); if (!bk || Date.now() - new Date(bk.t) > 6 * 3600e3) req.query.books = "1"; }
     const liteBooks = req.query.books === "2";   // 10/14: scheduler's extra pulls skip the moneyline (2 credits, not 3)
     if (liteBooks) req.query.books = "1";
     if (req.query.books === "1") {
       if (!process.env.ODDS_API_KEY) { booksNote = "ODDS_API_KEY not set"; await logError("books", "ODDS_API_KEY not set in Vercel"); }
       else {
-        try { const b = await fetchBooks(process.env.ODDS_API_KEY, liteBooks); books = b.games;
-          if (liteBooks) { const prev = ((await getJSON(K.books(season, week)).catch(() => null)) || {}).games || {};   // keep the last moneyline
-            for (const k of Object.keys(books)) if (!books[k].ml && prev[k] && prev[k].ml) books[k].ml = prev[k].ml; }
-          await setJSON(K.books(season, week), { t, games: books, remaining: b.remaining }); booksNote = `credits left ${b.remaining}`; }
+        try { const b = await fetchBooks(process.env.ODDS_API_KEY, liteBooks); books = b.games;   // one pull lists every upcoming game: saved under each week shown
+          for (const w of weeks) { const games_w = { ...books };
+            if (liteBooks) { const prev = ((await getJSON(K.books(season, w)).catch(() => null)) || {}).games || {};   // keep the last moneyline
+              for (const k of Object.keys(games_w)) if (!games_w[k].ml && prev[k] && prev[k].ml) games_w[k] = { ...games_w[k], ml: prev[k].ml }; }
+            await setJSON(K.books(season, w), { t, games: games_w, remaining: b.remaining }); }
+          booksNote = `credits left ${b.remaining}`; }
         catch (e) { booksNote = String(e); await logError("books", `Sportsbook pull failed: ${String(e).slice(0, 160)}`); }   // was silent: only the scheduler's log saw it
       }
     }
-    const open = games.filter((g) => !started(g));
-    const events = open.length ? await fetchEvents() : [];
+    const byWeek = {}; for (const w of weeks) byWeek[w] = await loadGames(season, w);
+    const anyOpen = weeks.some((w) => byWeek[w].some((g) => !started(g)));
+    const events = anyOpen ? await fetchEvents() : [];
     // Pinnacle main spread / total, 10/13: recorded the same way (Redis pinnacle:<season>:<week>:<game>, last 60) on every snapshot, for
     // EVERY not-started game Pinnacle lists -- next week's too, under that game's own week, so its early lines are kept (owner: "do it
     // now"). Not shown or used for picks until tested on unseen games. A failed pull is logged and never stops the snapshot.
@@ -94,6 +100,9 @@ export default async function handler(req, res) {
       const n = await savePinnacle(redis, season, t, src); await pinnacleOk(redis);
       pinNote = `${n} games`;
     } catch (e) { pinNote = String(e).slice(0, 120); await pinnacleFailed(redis, pinNote, logError); }
+    const snapWeek = async (week) => {
+    const games = byWeek[week];
+    const open = games.filter((g) => !started(g));
     const model = open.length ? await loadModel(season, week).catch(() => null) : null;
     let lines = 0, props = 0;
     await Promise.all(open.map(async (g) => {
@@ -175,8 +184,6 @@ export default async function handler(req, res) {
     const meta = (await getJSON(K.meta(season, week))) || {};
     meta.lastSnapshot = t; meta.lastSrc = src; if (books) { meta.lastBooks = t; meta.credits = (await getJSON(K.books(season, week)) || {}).remaining; }
     await setJSON(K.meta(season, week), meta);
-    if (src !== "manual") await setJSON("auto:last", { t, what: `snapshot (${src})` });   // "Last automatic run" + Watchdog
-    await redis.del(SLATE_CACHE).catch(() => {});   // the page shows the new prices immediately
     // Your Refresh button (src=manual) skips grading and the account sync (the scheduler does both several times a day,
     // and the Record tab has its own Sync button) so the button comes back fast.
     // Parlay Lab: record this week's PAPER parlays once, on the scheduled snapshot within ~26 h of the first Sunday kickoff
@@ -192,8 +199,15 @@ export default async function handler(req, res) {
         paper = await recordPaper(season, week, await buildWeek({ season, week, injuries: inj ? inj.teams : null })).catch((e) => { logError("paper", e); return 0; });
       }
     }
+    return { week, upcoming: open.length, locked: games.length - open.length, lines, props, closedLate, paper };
+    };
+    const out = []; for (const w of weeks) out.push(await snapWeek(w));
+    if (src !== "manual") await setJSON("auto:last", { t, what: `snapshot (${src})` });   // "Last automatic run" + Watchdog
+    await redis.del(SLATE_CACHE).catch(() => {});   // the page shows the new prices immediately
     const graded = src === "manual" ? 0 : await gradeRecent(season).catch(() => 0);
     const acct = src === "manual" ? { ok: false, note: "skipped on manual refresh" } : await syncAccount().catch((e) => ({ ok: false, note: String(e) }));  // auto-sync My Bets
-    res.status(200).json({ ok: true, week, upcoming: open.length, locked: games.length - open.length, lines, props, books: booksNote, pinnacle: pinNote, closedLate, graded, paper, account: acct.ok ? `synced ${acct.positions} positions` : acct.note });
+    const o = out[0];
+    res.status(200).json({ ok: true, week, upcoming: o.upcoming, locked: o.locked, lines: o.lines, props: o.props, books: booksNote, pinnacle: pinNote, closedLate: o.closedLate, graded, paper: o.paper,
+      ...(out.length > 1 ? { also: out.slice(1) } : {}), account: acct.ok ? `synced ${acct.positions} positions` : acct.note });
   } catch (err) { await logError("snapshot", err).catch(() => {}); res.status(500).json({ ok: false, error: String(err) }); }
 }
