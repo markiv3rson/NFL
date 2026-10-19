@@ -441,18 +441,35 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       td: [{ player: "Bi.Robinson", team: "ATL", fair: 62, price: null }, { player: "D.Swift", team: "CHI", fair: 49, price: 0.45 }, { player: "Hurt Guy", team: "CHI", fair: 70, injury: "Questionable" }] };
     const x = sameGameParlays(g);
     ok(x.best && x.best.legs.map((l) => l.label).join() === "Bi.Robinson TD,ATL +2.5" && Math.abs(x.best.prob - 0.62 * 0.581 * Math.pow(1.19, 0.75)) < 0.002, "same-game: best = Bijan TD + ATL +2.5 (they help each other: 62% x 58.1% x 1.19^0.75, 10/16)");
-    ok(x.style && x.style.legs.map((l) => l.label).join() === "ATL +2.5,Under 49.5,D.Swift TD,Bi.Robinson TD" && x.style.pay == null, "same-game: your style = spread + total + top TD each team (a Questionable player skipped; unpriced TD -> no payout shown)");
+    const xo = sameGameParlays({ ...g, combos: [g.combos[0], g.combos[1], { pick: "Over 49.5", hit: 52.1, line: 49.5, why: "z" }] });
+    ok(x.style === null && xo.style && xo.style.legs.map((l) => l.label).join() === "ATL +2.5,Over 49.5,D.Swift TD,Bi.Robinson TD" && xo.style.pay == null, "same-game: your style = spread + total + top TD each team (a Questionable player skipped; unpriced TD -> no payout shown); 10/19: none when the total is an Under");
+    ok(sameGameParlays({ ...g, combos: xo && [g.combos[0], { pick: "Over 49.5", hit: 52.1, line: 49.5, why: "z" }], td: [{ player: "Bi.Robinson", team: "ATL", fair: 62 }, { player: "D.Swift", team: "CHI", fair: 38 }] }).style === null, "same-game (10/19): no my-style parlay when a team's top scorer is under 40%");
     const y = sameGameParlays({ ...g, combos: [{ pick: "Under 49.5", hit: 62, line: 49.5, why: "TOTAL MOVE: t" }], td: [{ player: "Bi.Robinson", team: "ATL", fair: 64 }] });
-    ok(y.best && y.best.strategy === "sgp_best" && y.best.legs.map((l) => l.label).join() === "Bi.Robinson TD,Under 49.5" && Math.abs(y.best.prob - 0.64 * 0.62 * 0.77) < 0.002, "same-game: a TD with the Under is kept (owner: test everything); the chance counts the full 0.77 drag (drags are not shrunk, 10/16)");
+    ok(y.best === null, "same-game (10/19): two strong legs that work against each other (a TD with the Under) are not paired");
+    const yy = sameGameParlays({ ...g, combos: [{ pick: "CHI -2.5", hit: 61, line: -2.5, why: "BOUNCE BACK: y" }], td: [{ player: "Bi.Robinson", team: "ATL", fair: 64 }, { player: "D.Swift", team: "CHI", fair: 56 }] });
+    const y2 = sameGameParlays({ ...g, combos: [{ pick: "CHI -2.5", hit: 61, line: -2.5, why: "BOUNCE BACK: y" }], td: [{ player: "Bi.Robinson", team: "ATL", fair: 64 }] });
+    ok(yy.best && yy.best.legs.map((l) => l.label).join() === "Bi.Robinson TD,D.Swift TD" && y2.best === null, "same-game (10/19): Bijan's TD is never paired with CHI -2.5 (works against it); the next pair that does not work against each other is taken", yy.best && yy.best.legs.map((l) => l.label));
+    const { comboChance: cc0 } = await import("../lib/combo.js");
+    ok(Math.abs(cc0([{ game: "G", kind: "td", team: "A", prob: 0.64 }, { game: "G", kind: "total", side: "under", label: "Under 49.5", prob: 0.62 }]) - 0.64 * 0.62 * 0.77) < 1e-9, "parlay chance: a TD with the Under counts the full 0.77 drag (drags are not shrunk, 10/16)");
     const z = sameGameParlays({ ...g, poly: { ...g.poly, spread: { homeSpread: 2.5, home: 0.5, away: 0.5 } }, combos: [{ pick: "ATL +2.5", hit: 51, line: 2.5, why: "x" }, { pick: "Under 49.5", hit: 52, line: 49.5, why: "y" }], td: [{ player: "Bi.Robinson", team: "ATL", fair: 48 }] });
-    ok(z.best && z.best.strategy === "sgp_best_fill" && z.filled && z.best.legs.map((l) => l.label).join() === "Bi.Robinson TD,ATL +2.5", "same-game: no strong legs -> 2 legs filled (no moneyline here: a TD, then the same team's spread that goes with it), its own record");
+    ok(z.best === null && z.filled, "same-game (10/19): no strong legs and no tested pair -> no 2-leg parlay (it used to fill with a 48% TD and a 51% spread)");
     { // 10/14 fix: the filler never adds a leg that works against one already in (DEN +3.5 + SEA to win = SEA by 1-3 only)
       const d = sameGameParlays({ key: "SEA @ DEN", away: "SEA", home: "DEN", started: false, final: false, poly: { spread: { homeSpread: 2.5, home: 0.53, away: 0.47 }, ml: { home: 0.43, away: 0.5725 }, total: { line: 40.5, over: 0.5, under: 0.5 } },
         combos: [{ pick: "DEN +2.5", hit: 59.6, line: 2.5, why: "BOUNCE BACK: x" }], td: [{ player: "J.Smith-Njigba", team: "SEA", fair: 45 }, { player: "J.Dobbins", team: "DEN", fair: 38 }] });
       const e2 = sameGameParlays({ key: "BAL @ CLE", away: "BAL", home: "CLE", started: false, final: false, poly: { spread: { homeSpread: 4.5, home: 0.5, away: 0.5 }, ml: { home: 0.3, away: 0.72 }, total: { line: 44.5, over: 0.5, under: 0.5 } },
         combos: [{ pick: "BAL -4.5", hit: 65.6, line: -4.5, why: "BOUNCE BACK: x" }], td: [{ player: "D.Henry", team: "BAL", fair: 55 }] });
       ok(e2.best && e2.best.legs.map((l) => l.label).join() === "BAL -4.5,D.Henry TD", "same-game: no second bet on the same game's result (BAL -4.5 + BAL ML adds nothing)", e2.best && e2.best.legs.map((l) => l.label));
-      ok(d.best && d.best.legs.map((l) => l.label).join() === "DEN +2.5,J.Dobbins TD" && !d.best.legs.some((l) => l.label === "SEA ML"), "same-game: DEN +2.5 is filled with DEN's own top TD, never SEA to win", d.best && d.best.legs.map((l) => l.label));
+      ok(d.best === null && d.three === null && d.linked === null, "same-game (10/19): our green pick backs the underdog (DEN +2.5) -> no favorite-based parlay and no weak filler on that game", d.best && d.best.legs.map((l) => l.label));
+      { // 10/19 filters: 3 / 4 legs only with the favorite 60%+, its top scorer 50%+, total 45+; filled pair = favorite + its top scorer 55%+; Upset only with a 45%+ RB
+        const base = { key: "A @ B", away: "A", home: "B", started: false, final: false, poly: { spread: { homeSpread: -6.5, home: 0.5, away: 0.5 }, ml: { home: 0.72, away: 0.3 }, total: { line: 47.5, over: 0.5, under: 0.5 } }, combos: [],
+          td: [{ player: "B.RB", team: "B", pos: "RB", fair: 56 }, { player: "B.WR", team: "B", pos: "WR", fair: 41 }, { player: "A.RB", team: "A", pos: "RB", fair: 46 }] };
+        const ok1 = sameGameParlays(base), lowFav = sameGameParlays({ ...base, poly: { ...base.poly, ml: { home: 0.56, away: 0.46 } } }), lowTd = sameGameParlays({ ...base, td: [{ player: "B.RB", team: "B", pos: "RB", fair: 49 }, { player: "B.WR", team: "B", pos: "WR", fair: 41 }, { player: "A.RB", team: "A", pos: "RB", fair: 44 }] }), lowTot = sameGameParlays({ ...base, poly: { ...base.poly, total: { line: 42.5, over: 0.5, under: 0.5 } } });
+        ok(ok1.three && ok1.linked && !lowFav.three && !lowTd.three && !lowTd.linked && !lowTot.three, "same-game (10/19): 3 / 4 legs only when favorite 60%+, its top scorer 50%+, total 45+", [!!ok1.three, !!lowFav.three, !!lowTd.three, !!lowTot.three]);
+        ok(ok1.best && ok1.best.strategy === "sgp_best_fill" && ok1.best.legs.map((l) => l.label).join() === "B ML,B.RB TD" && !(lowTd.best), "same-game (10/19): filled 2 legs = favorite + its top scorer only at 55%+ (49% -> none)", ok1.best && ok1.best.legs.map((l) => l.label));
+        ok(ok1.upset && ok1.upset.legs.map((l) => l.label).join() === "A ML,A.RB TD" && !lowTd.upset, "same-game (10/19): Upset only when the underdog's RB is 45%+");
+        const { comboChance: cc } = await import("../lib/combo.js");
+        const heavy = cc([{ game: "G", kind: "ml", team: "B", prob: 0.8 }, { game: "G", kind: "td", team: "B", prob: 0.5 }]), long = cc([{ game: "G", kind: "ml", team: "A", prob: 0.3 }, { game: "G", kind: "td", team: "A", prob: 0.35 }]);
+        ok(Math.abs(heavy - 0.4 * Math.pow(1.05, 0.75)) < 1e-12 && Math.abs(long - 0.105 * Math.pow(1.7, 0.75)) < 1e-12, "parlay chance (10/19): a team's moneyline + its own scorer uses the measured link by win chance (heavy favorite 1.05x, long-shot dog 1.7x)", { heavy, long }); }
       { const G2 = { key: "NO @ NYG", home: "NYG", away: "NO", poly: { spread: { homeSpread: 1.5, home: 0.5, away: 0.5 }, total: { line: 46.5, over: 0.5, under: 0.5 } } };
   { const pb = ctx.T.pBlock("ARI @ LA", { prob: 0.67, stake: 20, legs: [{ label: "ARI +3.5", prob: 0.55, price: 0.55 }, { label: "Over 45", prob: 0.5, price: 0.5 }, { label: "K.Williams TD", prob: 0.67, price: 0.5 }] }, false);
     const pn = ctx.T.pBlock("WAS @ SF", { prob: 0.31, legs: [{ label: "SF -7.5", prob: 0.5, price: null }, { label: "C.McCaffrey TD", prob: 0.66 }] }, false);
@@ -481,11 +498,11 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
           ok(/<span class="g">✓<\/span> .*A \+1\.5/.test(pb) && /<span class="r">✗<\/span> .*Over 44\.5/.test(pb) && /• .*B\.Tuten TD/.test(pb) && /✗ Lost|✓ Won/.test(pb) === false && /class="pm"/.test(pb) && /PL: 7\.8x/.test(pb),
             "parlay block: ✓ won, ✗ lost and • pending marks on the legs, Polymarket logo on the PL line; no result until the parlay is decided"); }
     ok(sameGameParlays({ ...g, started: true }) === null, "same-game: none once the game has started");
-    const data = { season: 2099, week: 6, games: [{ ...g, sgp: x }, { key: "OLD @ GAME", started: true, sgp: x }] };
+    const data = { season: 2099, week: 6, games: [{ ...g, sgp: { ...x, style: xo.style } }, { key: "OLD @ GAME", started: true, sgp: x }] };
     ok(await recordSgp(data, setJSON) === 1, "same-game: saved for games not yet started only");
     await gradePaper(2099, 6, [{ key: "CHI @ ATL", homeScore: 24, awayScore: 21 }], async () => ["Bi.Robinson"]);
     const sm = await paperSummary(2099, 6), b = sm.week.parlays.find((p) => p.strategy === "sgp_best"), st = sm.week.parlays.find((p) => p.strategy === "sgp_style");
-    ok(b.result === "W" && b.ret === null && st.result === "L" && sm.board.sgp_best.hits === 1 && sm.board.sgp_best.roi === null && sm.board.sgp_style.graded === 1, "same-game: graded (ATL +3.5 and Bijan hit; your style lost on the Under/Swift), unpriced legs -> win/loss only");
+    ok(b.result === "W" && b.ret === null && st.result === "L" && sm.board.sgp_best.hits === 1 && sm.board.sgp_best.roi === null && sm.board.sgp_style.graded === 1, "same-game: graded (ATL +2.5 and Bijan hit; your style lost on the Over/Swift), unpriced legs -> win/loss only");
     ok(!(await listAlerts(2099)).some((a) => /Same game · (best \(strong|your style)/.test(a.title || "")), "same-game: no bell alert");
     ok(sm.legs && sm.legs.td && sm.legs.td.w >= 1 && sm.legs.td.l >= 1 && sm.legs.spread && sm.legs.spread.w >= 1 && sm.killers.td >= 1, "scoreboard legs review: legs counted by kind; the TD leg that lost is the killer of the style parlay", { legs: sm.legs, killers: sm.killers });
     { await R.set("paper:2099:9", JSON.stringify({ season: 2099, week: 9, parlays: [
@@ -521,10 +538,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(by.leg4_fav_td && by.leg4_fav_td.legs[3].label === "S.Barkley TD", "4-leg: 3 favorites + the top TD scorer from another game");
     const thu = fourLegParlays([G("KC", "LV", .85), G("BUF", "NYJ", .8), G("DET", "CHI", .75), G("SF", "ARI", .7), G("SEA", "DEN", .68, { kickoff: "2026-10-16T00:15:00Z" })]).find((f) => f.strategy === "leg4_fav");
     ok(thu && thu.legs.map((l) => l.label).join() === "KC ML,BUF ML,DET ML,SEA ML" && thu.legs[3].thu && Math.abs(thu.legs[3].prob - .72) < 1e-9, "4-leg: a Thursday favorite counts 4 points stronger (SEA 68% -> 72% passes SF 70%)");
-    const one = sameGameParlays({ ...G("PHI", "NYG", .7), td: [{ player: "S.Barkley", team: "PHI", fair: 62 }, { player: "A.Brown", team: "PHI", fair: 40 }, { player: "N.Out", team: "PHI", fair: 70, injury: "Out" }] });
-    ok(one.linked && one.linked.legs.map((l) => l.label).join() === "PHI ML,Over 44.5,S.Barkley TD,A.Brown TD", "linked 4: favorite wins + Over + its top 2 scorers (Out player skipped)");
+    const one = sameGameParlays({ ...G("PHI", "NYG", .7), poly: { ...G("PHI", "NYG", .7).poly, total: { line: 47.5, over: 0.5, under: 0.5 } }, td: [{ player: "S.Barkley", team: "PHI", fair: 62 }, { player: "A.Brown", team: "PHI", fair: 40 }, { player: "N.Out", team: "PHI", fair: 70, injury: "Out" }] });
+    ok(one.linked && one.linked.legs.map((l) => l.label).join() === "PHI ML,Over 47.5,S.Barkley TD,A.Brown TD" && sameGameParlays({ ...G("PHI", "NYG", .7), td: [{ player: "S.Barkley", team: "PHI", fair: 62 }, { player: "A.Brown", team: "PHI", fair: 40 }] }).linked === null, "linked 4: favorite wins + Over + its top 2 scorers (Out player skipped); 10/19: not with a total under 45");
     // 10/17 parlay lab: UPSET = underdog wins + its lead RB scores (hist 17.6%); 4 most likely scorers one per game (hist 17.7%)
-    const up = sameGameParlays({ ...G("PHI", "NYG", .7), td: [{ player: "S.Barkley", team: "PHI", pos: "RB", fair: 62 }, { player: "M.Nabers", team: "NYG", pos: "WR", fair: 45 }, { player: "T.Tracy", team: "NYG", pos: "RB", fair: 38, price: 0.41 }, { player: "C.Skattebo", team: "NYG", pos: "RB", fair: 50, injury: "Out" }] });
+    const up = sameGameParlays({ ...G("PHI", "NYG", .7), td: [{ player: "S.Barkley", team: "PHI", pos: "RB", fair: 62 }, { player: "M.Nabers", team: "NYG", pos: "WR", fair: 45 }, { player: "T.Tracy", team: "NYG", pos: "RB", fair: 46, price: 0.41 }, { player: "C.Skattebo", team: "NYG", pos: "RB", fair: 50, injury: "Out" }] });
     ok(up.upset && up.upset.strategy === "sgp_upset" && up.upset.legs.map((l) => l.label).join() === "NYG ML,T.Tracy TD" && up.upset.stake === 5 && Math.abs(up.upset.legs[0].prob - .3) < 1e-9 && up.upset.legs[1].kind === "td" && up.upset.legs[1].team === "NYG", "UPSET: the underdog's moneyline + its top RB (Out RB and the WR skipped)", up.upset);
     ok(sameGameParlays({ ...G("PHI", "NYG", .7), td: [{ player: "M.Nabers", team: "NYG", pos: "WR", fair: 45 }] }).upset === null, "UPSET: none without a healthy RB on the underdog");
     const t4 = fourLegParlays([G("KC", "LV", .85, { td: [{ player: "I.Pacheco", team: "KC", pos: "RB", fair: 55 }, { player: "T.Kelce", team: "KC", pos: "TE", fair: 40 }] }), G("BUF", "NYJ", .8, { td: [{ player: "J.Cook", team: "BUF", pos: "RB", fair: 60 }] }), G("DET", "CHI", .75, { td: [{ player: "J.Gibbs", team: "DET", pos: "RB", fair: 58, injury: "Questionable" }, { player: "A.St.Brown", team: "DET", pos: "WR", fair: 45 }] }), G("SF", "ARI", .7, { td: [{ player: "C.McCaffrey", team: "SF", pos: "RB", fair: 63 }] }), G("PHI", "NYG", .65, { td: [{ player: "S.Barkley", team: "PHI", pos: "RB", fair: 62 }] })]).find((f) => f.strategy === "leg4_td4");
@@ -535,7 +552,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(/best_2: "best", best_3: "best", td_likely_2: "best", td_likely_3: "best"/.test(mbj) && /\["best", "Best Legs"\]/.test(apx) && /if \(type === "best"\)/.test(apx) && /S\.bestLegs/.test(apx) && /MODELBETS\.saved\.includes\(Number\(week\)\)/.test(apx) && /\(saved \? rec :/.test(apx) && /td_likely_3: "3 most likely TD scorers"/.test(apx)
       && /\.\.\.\(data\.bestLegs \|\| \[\]\)/.test(readFileSync(new URL("../pages/api/slate.js", import.meta.url), "utf8")) && /bestLegs = bestLegParlays\(games\)/.test(readFileSync(new URL("../lib/week.js", import.meta.url), "utf8")),
       "Best Legs tab (10/19): saved best_2 / best_3 / td_likely_2 / td_likely_3 grouped as \"best\", the live slate's bestLegs before the week is saved, real quotes in the background");
-    ok(/leg4_td4: "diff", sgp_upset: "upset"/.test(mbj) && /\["upset", "Upset"\]/.test(apx) && /upset: \(g\) => g\.sgp\.upset/.test(apx) && /\["Upset", x\.upset\]/.test(apx) && /sgp_upset: 17\.6, leg4_td4: 17\.7/.test(apx) && /LEGS · THIS SEASON/.test(apx) && /PAPER\.killers/.test(apx), "Model bets: Upset tab + 4 most likely scorers under Different Game Parlays; game page shows Upset; scoreboard has the LEGS review"); }
+    ok(/leg4_td4: "diff", sgp_upset: "upset"/.test(mbj) && /\["upset", "Upset"\]/.test(apx) && /upset: \(g\) => g\.sgp\.upset/.test(apx) && /\["Upset", x\.upset\]/.test(apx) && /sgp_upset: 25\.1, leg4_td4: 17\.7/.test(apx) && /LEGS · THIS SEASON/.test(apx) && /PAPER\.killers/.test(apx), "Model bets: Upset tab + 4 most likely scorers under Different Game Parlays; game page shows Upset; scoreboard has the LEGS review"); }
   { // 10/14 risk fix: capped history lists keep the week's first readings (opening lines) and the newest
     const { pushCapped } = await import("../lib/redis.js"); const R = globalThis.__TEST_REDIS__; await R.del("cap:test");
     for (let i = 0; i < 30; i++) await pushCapped(R, "cap:test", String(i), 20, 5);
@@ -869,15 +886,16 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const data = { games: [mk("A @ B", "A", "B", 60), mk("C @ D", "C", "D", 58), mk("E @ F", "E", "F", 56), mk("G @ H", "G", "H", 54), { ...mk("I @ J", "I", "J", 70), started: true }] };
     const old = { strategy: "leg4_fav", legs: [{ game: "A @ B", kind: "ml", team: "B", price: 0.7 }] };
     await setJSON("paper:2097:6", { t: "2026-10-17T14:00:00Z", season: 2097, week: 6, parlays: [old] });
-    const miss1 = await P.paperMissingLate(2097, 6), n1 = await P.recordPaper(2097, 6, data), rec1 = await getJSON("paper:2097:6");
-    const n2 = await P.recordPaper(2097, 6, data), miss2 = await P.paperMissingLate(2097, 6);
-    ok(miss1 && n1 === 1 && rec1.parlays.length === 2 && JSON.stringify(rec1.parlays[0]) === JSON.stringify(old) && rec1.parlays[1].strategy === "leg4_td4" && rec1.parlays[1].addedAt && !rec1.parlays.some((p) => p.strategy === "leg4_fav_td") && n2 === 0 && !miss2,
-      "weekly parlays: the late 4-scorers type is added once (saved parlays untouched, a type that just had no legs at the save stays out)", rec1.parlays.map((p) => p.strategy));
-    await setJSON("paper:2097:7", { t: "2026-10-18T14:00:00Z", season: 2097, week: 7, parlays: [old] });
-    await setJSON("paper:2097:8", { t: "2026-10-17T14:00:00Z", season: 2097, week: 8, parlays: [old] });
+    const n1 = await P.recordPaper(2097, 6, data), rec1 = await getJSON("paper:2097:6"), n2 = await P.recordPaper(2097, 6, data);
+    const f1 = rec1.parlays.find((p) => p.strategy === "leg4_fav");
+    ok(n1 > 0 && n2 === 0 && f1 && f1.refreshedAt && f1.legs.length === 4 && rec1.parlays.some((p) => p.strategy === "leg4_td4") && rec1.parlays.every((p) => p.legs.every((l) => l.game !== "I @ J")),
+      "weekly parlays (10/19): every type is rebuilt before its games start (the Saturday copy is replaced, missing types added, never a started game; a second pass changes nothing)", rec1.parlays.map((p) => p.strategy));
+    const lockedOld = { strategy: "leg4_fav", legs: [{ game: "C @ D", kind: "ml", team: "D", price: 0.7, label: "D ML" }, { game: "A @ B", kind: "ml", team: "B", price: 0.7, label: "B ML" }] };
+    await setJSON("paper:2097:8", { t: "2026-10-17T14:00:00Z", season: 2097, week: 8, parlays: [lockedOld] });
     const d8 = { games: data.games.map((g) => (g.key === "C @ D" ? { ...g, started: true } : g)) };
-    const n7 = await P.recordPaper(2097, 7, data), n8 = await P.recordPaper(2097, 8, d8), r8 = await getJSON("paper:2097:8");
-    ok(!(await P.paperMissingLate(2097, 7)) && n7 === 0 && (n8 === 0 || r8.parlays.every((p) => p.strategy !== "leg4_td4" || p.legs.every((l) => l.game !== "C @ D"))), "weekly parlays: nothing added to a week saved after the type existed; never a leg from a started game");
+    await P.recordPaper(2097, 8, d8); const r8 = await getJSON("paper:2097:8");
+    ok(JSON.stringify(r8.parlays.find((p) => p.strategy === "leg4_fav")) === JSON.stringify(lockedOld) && r8.parlays.every((p) => p === r8.parlays[0] || p.legs.every((l) => l.game !== "C @ D")),
+      "weekly parlays (10/19): a type with a started leg is never changed; new types never use a started game");
     for (const k of await R.keys("paper:2097:*")) await R.del(k);
     const g = await import("../lib/grade.js"), { SEASON, resetGamesCache } = await import("../lib/games.js"), realFetch = globalThis.fetch, oldUrl = process.env.MODEL_SERVICE_URL;
     process.env.MODEL_SERVICE_URL = "https://svc.test";

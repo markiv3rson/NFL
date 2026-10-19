@@ -884,7 +884,7 @@ function renderLab() {
     ["BEST BETS", [["best_2", "Top 2 picks"], ["best_3", "Top 3 picks"], ["best_4", "Top 4 (Parlay of the week)"]]],
     ["FAVORITES", [["home_fav_95_single", "Home fav 9.5+ · single"], ["home_fav_95_2", "Home fav 9.5+ · 2 legs"], ["home_fav_95_3", "Home fav 9.5+ · 3 legs"], ["top3_home_75", "Top 3 home favs (75%+)"]]],
     ["TOUCHDOWNS", [["td_edge_3", "3 TD value picks"], ["td_likely_2", "2 likeliest scorers"], ["td_likely_3", "3 likeliest scorers"], ["model_best_4", "4 most likely legs"]]]];
-  const TESTED = { sgp_3: 18.8, sgp_linked: 7.9, leg4_fav: 42.5, leg4_green_fav: 32.2, leg4_fav_td: 31.4, sgp_upset: 17.6, leg4_td4: 17.7 };   // 2014-25 research (CLAUDE.md)
+  const TESTED = { sgp_best_fill: 49.5, sgp_3: 30.2, sgp_linked: 15.0, leg4_fav: 42.5, leg4_green_fav: 32.2, leg4_fav_td: 31.4, sgp_upset: 25.1, leg4_td4: 17.7 };   // research (CLAUDE.md); same-game rates = the 10/19 filters, 2019-25
   const hist = (k) => { if (TESTED[k] != null) return `${TESTED[k]}%`; const h = REPLAY && REPLAY.parlays && REPLAY.parlays.find((x) => x.id === k); return h && h.n ? `${Math.round(h.hit * 100)}%` : "—"; };
   const now = (k) => { const b = board[k]; if (!b || !b.decided) return '<span class="dim">waiting</span>'; const l = b.decided - b.hits;
     return `${b.hits}–${l} · ${Math.round((b.hits / b.decided) * 100)}%${b.money != null ? ` <span class="${b.money >= 0 ? "g" : "r"}">${b.money >= 0 ? "+" : "−"}$${Math.abs(Math.round(b.money))}</span>` : ""}`; };
