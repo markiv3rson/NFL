@@ -899,6 +899,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(TEAM_BANDS[0][1] === 60.3 && TEAM_BANDS[1][0] === 0.58 && TEAM_BANDS[1][1] === 55.7, "team model band rates = the tested ones (60%+ 60.3%, 58-60% 55.7%)");
     const card = buildCard({ key: "BBB @ AAA", away: "BBB", home: "AAA", poly: { spread: { homeSpread: -3, home: 0.5, away: 0.5 } } }, [pk], { spread: { homeSpread: -3, home: 0.5, away: 0.5 } }, null, null);
     ok(card && card.spread && card.spread.plain && card.spread.plain.pick === "AAA -3" && card.spread.plain.hit === 60.3 && /^teammodel/.test(card.spread.plain.ruleId || card.spread.plain.id || "teammodel"), "the card's PICK comes from the TEAM MODEL rule when it is the only rule", card && card.spread && card.spread.plain);
+    { const { recordStack, gradeStackWeek, stackSummary } = await import("../lib/stack.js"), RR = globalThis.__TEST_REDIS__, now = "2099-10-25T17:00:00Z";
+      for (const k of await RR.keys("stack*:2099:8")) await RR.del(k);
+      await recordStack(2099, 8, g, [pk], now);
+      const n = await gradeStackWeek(2099, 8, [{ key: "BBB @ AAA", homeScore: 24, awayScore: 17 }]), sm = await stackSummary(2099), r = sm.rules["TEAM MODEL"];
+      ok(n === 1 && r && r.w === 1 && r.l === 0, "TEAM MODEL pick saved at kickoff is graded (AAA -3, won by 7) and counted on its own Models row", { n, r });
+      for (const k of await RR.keys("stack*:2099:8")) await RR.del(k); }
     useTeamSide(null); }
   { // 10/18 (owner: "fix the gaps"): a parlay type added after the week's save is added once, before its games; a graded game missing its TD list gets it once
     const P = await import("../lib/paper.js"), { getJSON, setJSON } = await import("../lib/redis.js"), R = globalThis.__TEST_REDIS__;
