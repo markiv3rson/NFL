@@ -26,7 +26,7 @@ const secRow = (title, pills = "") => `<div class="trow"><div class="sh">${title
 function headDrops(g, id, noWarn = false) {
   // 10/19 (owner rule: no warnings on the cards): the "⚠ QB change ... not in the model yet" line is gone; a QB change is an alert (Alerts -> QB change)
   return (!noWarn && g.dataCheck ? `<div class="warn">⚠ ${esc(g.dataCheck)}</div>` : "") +
-    `<div class="drop" id="inj-${id}"><div class="s" style="margin-bottom:4px">Official report${(() => { const w = [...new Set((g.injuries || []).map((x) => x.week))]; return w.length ? ` · Week ${w.join("/")}` + (w.every((x) => Number(x) !== Number(S.week)) ? " (last week's)" : "") : ""; })()} · updated ${S.injuriesUpdated ? hm(S.injuriesUpdated) : "—"}</div>` +
+    `<div class="drop" id="inj-${id}"><div class="s" style="margin-bottom:4px">Official report${(() => { const w = [...new Set((g.injuries || []).map((x) => x.week))]; return w.length ? ` · Week ${w.join("/")}` + (w.every((x) => Number(x) !== Number(g.week ?? S.week)) ? " (last week's)" : "") : ""; })()} · updated ${S.injuriesUpdated ? hm(S.injuriesUpdated) : "—"}</div>` +
     (g.injuries || []).map((x) => `<div class="drow"><span>${injBadge(x.team)}${esc(x.name)} <span class="dim">${esc(x.pos || "")} · ${x.team}</span></span><span class="${x.shown ? "dim" : /out/i.test(x.status) ? "r" : /doubt/i.test(x.status) ? "r" : "y"}">${esc(x.shown || x.status)}</span></div>`).join("") + `</div>` +
     `<div class="drop" id="his-${id}">${historyRows(g)}</div>`;
 }
@@ -548,7 +548,7 @@ function renderMineNow() {
   if (!MB) { $("record-mine").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }
   // Week filter: default is this week; "All" is the season. The summary is recomputed from the bets shown.
   const SW = S && S.week, wks = [...new Set(MB.bets.map((b) => b.week).filter((w) => w != null).concat(SW == null ? [] : [SW]))].sort((a, b) => a - b), sel = MBWEEK || SW || "all";
-  const shown = MB.bets.filter((b) => sel === "all" || Number(b.week) === Number(sel));
+  const shown = MB.bets.filter((b) => sel === "all" || Number(b.week) === Number(sel) || (SW != null && Number(sel) === Number(SW) && b.result === "pending" && !legLost(b)));   // 10/19: open bets on last week's Monday game stay in view
   const open = shown.filter((b) => b.result === "pending" && !legLost(b)), done = shown.filter((b) => b.result !== "pending" || legLost(b));   // includes auto-recorded account bets; a combo with a lost leg is done
   const s = betsSummary(shown);
   // 10/17 (owner): the week picker is a drop-down, from the first recorded week to this week, then Season
@@ -1190,7 +1190,7 @@ function labParlays(week, type) {
   const out = [];
   for (const g of (S && S.games) || []) { const live = g.sgp && typeof g.sgp === "object" && !g.started && !g.final ? pick[type](g) : null;
     if (live && Array.isArray(live.legs)) out.push({ p: live, game: g.key, kick: g.kickoff, title: gameLogos(g.key), across: false });
-    else { const r = rec.filter((x) => x.game === g.key).pop(); if (r) out.push({ p: r, game: g.key, kick: g.kickoff || r.kickoff, title: gameLogos(g.key), across: false }); } }
+    else { const r = (g.carry ? ((MODELBETS && MODELBETS.weeks && MODELBETS.weeks[g.week] && MODELBETS.weeks[g.week][type]) || []) : rec).filter((x) => x.game === g.key).pop(); if (r) out.push({ p: r, game: g.key, kick: g.kickoff || r.kickoff, title: gameLogos(g.key), across: false }); } }
   return out;
 }
 // Time slot of a kickoff for the Model bets headers (your clock): Sunday before 9 = EARLY (London), before noon = 10 AM, before 4 PM = 1 PM, the rest and every weeknight = PRIME TIME
@@ -1231,7 +1231,7 @@ function renderLines() {
 // the slots keep the old order (upcoming first, then live, then finished), games inside a slot by kickoff
 function linesBySlot() {
   const slots = [], by = {};
-  for (const g of [...S.games].sort(order)) { const sl = g.kickoff ? labSlot(g.kickoff) : "GAMES"; if (!by[sl]) { by[sl] = []; slots.push(sl); } by[sl].push(g); }
+  for (const g of [...S.games].sort(order)) { const sl = (g.carry ? `WEEK ${g.week} · ` : "") + (g.kickoff ? labSlot(g.kickoff) : "GAMES"); if (!by[sl]) { by[sl] = []; slots.push(sl); } by[sl].push(g); }   // 10/19: the Monday game left from last week keeps its week in its header
   return slots.map((sl) => `<div class="sh labslot">${sl}</div><div class="tiles stack">${by[sl].map(tile).join("")}</div>`).join("");   // 10/18 (owner): just the slot name -- the time sits on each tile
 }
 function openGame(key) { LASTY = (typeof window !== "undefined" && window.scrollY) || 0; DETAIL = key; renderLines(); if (window.scrollTo) window.scrollTo(0, 0); setTimeout(() => slotMoney($("detail")), 60); const g = S.games.find((x) => x.key === key); if (g && g.started && !g.final) liveLoop(); }

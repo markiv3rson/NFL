@@ -1,4 +1,5 @@
 import { buildWeek } from "../../lib/week";
+import { displayWeek } from "../../lib/games";
 import { loadInjuriesMeta } from "../../lib/injuries";
 import { getStatus } from "../../lib/status";
 import { recordSgp } from "../../lib/sgp";
@@ -15,8 +16,18 @@ export default async function handler(req, res) {
     if (wkKey) { const c = await getRedis().get(wkKey).catch(() => null); if (c) { res.setHeader("Content-Type", "application/json"); return res.status(200).send(c); } }
     if (cacheable) { const c = await getRedis().get(SLATE_CACHE).catch(() => null); if (c) { res.setHeader("Content-Type", "application/json"); return res.status(200).send(c); } }
     const inj = await loadInjuriesMeta().catch(() => null), injuries = inj ? inj.teams : null;
-    const data = await buildWeek({ week: Number(req.query.week) || undefined, injuries, injuriesPrev: inj ? inj.prev : null });
+    // 10/19 (owner: "after sunday games are done i need to start seeing week 7 on monday except for the week 6 monday game"): the pages show
+    // lib/games.js displayWeek -- the next week once only the current week's Monday game is left, with that game on top (carry, its own week's data).
+    const dw = req.query.week ? null : await displayWeek().catch(() => null);
+    const data = await buildWeek({ week: Number(req.query.week) || (dw ? dw.week : undefined), injuries, injuriesPrev: inj ? inj.prev : null });
+    const carryData = dw && dw.carry.length ? await buildWeek({ week: dw.cur, injuries, injuriesPrev: inj ? inj.prev : null, only: dw.carry }).catch(() => null) : null;
     if (cacheable) await recordSgp(data, setJSON).catch(() => 0);   // same-game parlays saved until kickoff, then graded (10/14)
+    if (cacheable && carryData) await recordSgp(carryData, setJSON).catch(() => 0);   // the Monday game's own (week 6) copy
+    const own = data.games;   // the shown week's own games: status, week check and watchdog stay about them
+    if (carryData) {   // the Monday game(s) go on top, flagged with their own week (their parlays, picks and grading stay under that week)
+      const keep = new Set(dw.carry), carry = carryData.games.filter((g) => keep.has(g.key)).map((g) => ({ ...g, week: dw.cur, carry: true }));
+      data.games = [...carry, ...own]; data.carry = carry.map((g) => g.key); data.carryWeek = dw.cur;
+    }
     if (cacheable) {   // 10/17: the parlays on the pages, for the background job that keeps their real Polymarket prices fresh (lib/comboquote.js)
       const kick = Object.fromEntries(data.games.map((g) => [g.key, g.kickoff])), open = data.games.filter((g) => !g.started && !g.final);
       const list = [...open.flatMap((g) => Object.values(g.sgp || {}).filter((p) => p && Array.isArray(p.legs))), ...(data.fourLeg || []), ...(data.bestLegs || [])].map((p) => ({ ...p, kick: Object.fromEntries(p.legs.map((l) => [l.game, kick[l.game]])) }));
@@ -24,10 +35,10 @@ export default async function handler(req, res) {
     }
     const status = await getStatus(data.season, data.week, data.meta || {}, data.modelRunAt).catch(() => null);
     const missFinder = await getJSON(`missfinder:${data.season}`).catch(() => null);
-    const weekCheck = { games: data.games.length, withLines: data.games.filter((g) => g.poly).length, modelRun: !!data.modelRunAt };
-    const watch = await computeWatch(data, status, inj);
+    const weekCheck = { games: own.length, withLines: own.filter((g) => g.poly).length, modelRun: !!data.modelRunAt };
+    const watch = await computeWatch({ ...data, games: own }, status, inj);
     weekCheck.watch = watch;
-    weekCheck.recorded = await recordedFor(data.season, data.week, data.games, K).catch(() => []);
+    weekCheck.recorded = await recordedFor(data.season, data.week, own, K).catch(() => []);
     const winners = await winnersSummary(data.season).catch(() => null);
     const body = JSON.stringify({ ok: true, ...data, winners, injuries: undefined, injuriesUpdated: inj ? inj.updated : null, status, weekCheck, missFinder, now: new Date().toISOString() });
     if (cacheable) await getRedis().set(SLATE_CACHE, body, "EX", 60).catch(() => {});

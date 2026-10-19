@@ -1167,6 +1167,19 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       ok(/Combo · 4 picks/.test(row2) && /pays \$294\.00 if it wins/.test(row2) && !/Lost/.test(row2), "my bets: open combo shows its picks in a list");
       const sm = ctx.T.betsSummary([{ result: "pending", cost: 10, toWin: 294, expMarket: 1, picks: cp }, { result: "pending", cost: 5, toWin: 50, expMarket: 2, picks: [{ result: "W" }] }, { result: "W", cost: 2, pl: 3 }]);
       ok(sm.losses === 1 && sm.wins === 1 && sm.openCost === 5 && sm.maxPayout === 50 && sm.expMarket === 2 && Math.abs(sm.pl - (3 - 10)) < 1e-9, "my bets summary (10/19): a combo with a lost leg counts as a loss (-stake) and leaves open money / if-everything-hits", sm); }
+    { // 10/19 (owner: "after sunday games are done i need to start seeing week 7 on monday except for the week 6 monday game")
+      const { pickDisplayWeek } = await import("../lib/games.js");
+      const R = (key, week, kickoff, final) => ({ key, week, kickoff, final });
+      const rows = [R("A @ B", 6, "2026-10-16T00:15:00Z", true), R("C @ D", 6, "2026-10-18T17:00:00Z", true), R("E @ F", 6, "2026-10-19T00:20:00Z", true), R("WAS @ SF", 6, "2026-10-20T00:15:00Z", false),
+        R("G @ H", 7, "2026-10-23T00:15:00Z", false), R("I @ J", 7, "2026-10-25T17:00:00Z", false)];
+      const mon = pickDisplayWeek(rows, 6, Date.parse("2026-10-19T15:00:00Z"));
+      ok(mon.week === 7 && mon.carry.length === 1 && mon.carry[0] === "WAS @ SF", "week switch: Sunday games final, only the Monday game left -> pages show week 7 with the Monday game carried on top", mon);
+      const sun = pickDisplayWeek(rows.map((r) => r.key === "E @ F" ? { ...r, final: false } : r), 6, Date.parse("2026-10-19T02:00:00Z"));
+      ok(sun.week === 6 && !sun.carry.length, "week switch: the Sunday night game still going -> still week 6", sun);
+      const two = pickDisplayWeek([...rows, R("K @ L", 6, "2026-10-19T23:00:00Z", false)], 6, Date.parse("2026-10-19T15:00:00Z"));
+      ok(two.week === 7 && two.carry.length === 2, "week switch: two Monday games both carried", two);
+      const noNext = pickDisplayWeek(rows.filter((r) => r.week === 6), 6, Date.parse("2026-10-19T15:00:00Z"));
+      ok(noNext.week === 6, "week switch: no next week on the schedule -> stays", noNext); }
     { // 10/19 (owner: "why is my single bets not showing?"): single player bets ("astatc-" traded on their own) are bets; combo legs still are not
       const { isComboLeg, tradedSingles, propOf, resolvedFrom } = await import("../lib/mybets.js");
       const sl = "astatc-nfl-was-sf-2026-10-19-firsttd-termcl", meta = { slug: sl, title: "WAS Commanders vs. SF 49ers", outcome: "Yes", eventSlug: "nfl-was-sf-2026-10-19", subject: { name: "Terry McLaurin", image: "https://static.polymarket.us/images/teams/football/nfl/was/jerseys/17.png?v=1" } };
