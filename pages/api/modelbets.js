@@ -1,9 +1,9 @@
 // Model Picks (10/15): every parlay the app saved this season, grouped by week and by type, with its results.
-// types: "2" 2 legs, "3" 3 legs, "4" 4 legs, "style" my style, "pts" my style with bought lines, "diff" 4 legs across games.
+// types: "2" 2 legs, "3" 3 legs, "4" 4 legs, "style" my style, "pts" my style with bought lines, "diff" 4 legs across games, "best" Best Legs (green picks / most likely TD scorers, 2-3 legs across games).
 import { getRedis, getJSON } from "../../lib/redis";
 import { SEASON } from "../../lib/games";
 
-const GROUP = { sgp_best: "2", sgp_best_fill: "2", sgp_3: "3", sgp_linked: "4", sgp_style: "style", sgp_style_pts: "pts", leg4_fav: "diff", leg4_green_fav: "diff", leg4_fav_td: "diff", leg4_td4: "diff", sgp_upset: "upset" };
+const GROUP = { sgp_best: "2", sgp_best_fill: "2", sgp_3: "3", sgp_linked: "4", sgp_style: "style", sgp_style_pts: "pts", leg4_fav: "diff", leg4_green_fav: "diff", leg4_fav_td: "diff", leg4_td4: "diff", sgp_upset: "upset", best_2: "best", best_3: "best", td_likely_2: "best", td_likely_3: "best" };
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   try {

@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     if (cacheable) await recordSgp(data, setJSON).catch(() => 0);   // same-game parlays saved until kickoff, then graded (10/14)
     if (cacheable) {   // 10/17: the parlays on the pages, for the background job that keeps their real Polymarket prices fresh (lib/comboquote.js)
       const kick = Object.fromEntries(data.games.map((g) => [g.key, g.kickoff])), open = data.games.filter((g) => !g.started && !g.final);
-      const list = [...open.flatMap((g) => Object.values(g.sgp || {}).filter((p) => p && Array.isArray(p.legs))), ...(data.fourLeg || [])].map((p) => ({ ...p, kick: Object.fromEntries(p.legs.map((l) => [l.game, kick[l.game]])) }));
+      const list = [...open.flatMap((g) => Object.values(g.sgp || {}).filter((p) => p && Array.isArray(p.legs))), ...(data.fourLeg || []), ...(data.bestLegs || [])].map((p) => ({ ...p, kick: Object.fromEntries(p.legs.map((l) => [l.game, kick[l.game]])) }));
       await saveParlayList("nfl", list).catch(() => 0);
     }
     const status = await getStatus(data.season, data.week, data.meta || {}, data.modelRunAt).catch(() => null);
