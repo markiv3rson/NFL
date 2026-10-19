@@ -58,9 +58,11 @@ export function resolvedFrom(a) {
 }
 export function soldFrom(a) {
   const tr = a && a.trade; if (!tr || !tr.marketSlug) return null;
-  const pl = Number(tr.realizedPnl && tr.realizedPnl.value); if (!Number.isFinite(pl) || Math.abs(pl) < 0.005) return null;
+  // 10/19 (same fix as NFL 10/18): realizedPnl is the YES side's view; a NO-side sale's real result is effectiveRealizedPnl
+  const raw = Number(tr.realizedPnl && tr.realizedPnl.value), eff = Number(tr.effectiveRealizedPnl && tr.effectiveRealizedPnl.value);
+  const pl = Number.isFinite(eff) ? eff : raw; if (!Number.isFinite(pl) || Math.abs(pl) < 0.005) return null;
   const qty = Math.abs(Number(tr.qty)), px = Number(tr.price && tr.price.value);
-  return { slug: tr.marketSlug, pl, proceeds: Number.isFinite(qty * px) ? qty * px : null, t: tr.updateTime || tr.createTime || null };
+  return { slug: tr.marketSlug, pl, proceeds: Number.isFinite(qty * px) ? qty * px : null, t: tr.updateTime || tr.createTime || null, ...(Number.isFinite(eff) && Number.isFinite(raw) && Math.abs(eff - raw) >= 0.005 ? { fixed: true } : {}) };
 }
 
 export async function syncAccount() {
@@ -103,10 +105,12 @@ export async function syncAccount() {
   // Sales: a bet that vanished without a settlement because you sold it.
   const tr = await client.portfolio.activities({ limit: 100, types: ["ACTIVITY_TYPE_TRADE"] }).catch(() => null), sales = {};
   for (const a of (tr && tr.activities) || []) { const x = soldFrom(a); if (!x) continue;
-    const s = (sales[x.slug] = sales[x.slug] || { pl: 0, proceeds: 0, t: null }); s.pl += x.pl; s.proceeds += x.proceeds || 0; if (!s.t || (x.t && x.t > s.t)) s.t = x.t; }
+    const s = (sales[x.slug] = sales[x.slug] || { pl: 0, proceeds: 0, t: null }); s.pl += x.pl; s.proceeds += x.proceeds || 0; if (x.fixed) s.fixed = true; if (!s.t || (x.t && x.t > s.t)) s.t = x.t; }
   let sold = 0;
+  // A NO-side sale saved before the 10/19 fix (YES-side profit) is re-saved once with the right number while its trade is still in the window.
   for (const [slug, x] of Object.entries(sales)) { const e = ledger[slug]; if (!e || e.resolved || seen.has(slug)) continue;
-    if (!e.sold) sold++; e.sold = { pl: Math.round(x.pl * 100) / 100, proceeds: Math.round(((e.cost || 0) + x.pl) * 100) / 100, t: x.t }; e.closedAt = e.closedAt || x.t || t; }
+    if (e.sold && !(x.fixed && !e.sold.fx)) continue;
+    if (!e.sold) sold++; e.sold = { pl: Math.round(x.pl * 100) / 100, proceeds: Math.round(((e.cost || 0) + x.pl) * 100) / 100, t: x.t, ...(x.fixed ? { fx: 1 } : {}) }; e.closedAt = e.closedAt || x.t || t; }
   await setJSON(KEY.ledger, ledger);
   return { ok: true, positions: list.length, resolved, sold, t };
 }

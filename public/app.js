@@ -660,7 +660,7 @@ function cardRecBox() {
   return `<div class="s"><b>Card picks</b></div>` + row("PICK · spread", "cardpick|spread") + row("PICK w/ POINTS · spread", "ptspick|spread") + row("PICK · total", "cardpick|total") + row("PICK w/ POINTS · total", "ptspick|total") + row("MODEL SIDE · spread", "modelpick|spread") + row("MODEL SIDE · total", "modelpick|total");
 }
 function renderModelNow() {
-  if (!MB || !RES) { $("models").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }
+  if (!MB || !RES || !S) { $("models").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }   // no slate yet: renderAll draws it when the slate lands
   const res = RES;
   const weeks = [...new Set(res.map((r) => r.week))].sort((a, b) => b - a), lw = weeks[0];
   const wk = res.filter((r) => r.week === lw);
@@ -1134,9 +1134,10 @@ function sgpBox(g) {
 }
 // Model bets: the parlay types are menu sub tabs (Over/Under, 4 Leg (My Style), 4 Leg (Bought), 4 Leg, 3 Leg, 2 Leg, Upset, Different Game Parlays), the week a drop-down;
 // each shows only its parlays, one column, in kickoff order. The current week comes from the live slate (results from the saved copies once a game starts); past weeks from /api/modelbets.
-const FOUR_NAMES = { leg4_fav: "4 biggest favorites", leg4_green_fav: "Best green pick + 3 favorites", leg4_fav_td: "3 favorites + top TD scorer", leg4_td4: "4 most likely TD scorers" };
+const FOUR_NAMES = { leg4_fav: "4 biggest favorites", leg4_green_fav: "Best green pick + 3 favorites", leg4_fav_td: "3 favorites + top TD scorer", leg4_td4: "4 most likely TD scorers",
+  best_2: "2 best green picks", best_3: "3 best green picks", td_likely_2: "2 most likely TD scorers", td_likely_3: "3 most likely TD scorers" };
 // 10/17 (owner): Over/Under first, then the parlays in this order and with these names
-const LAB_TABS = [["ou", "Over/Under"], ["style", "4 Leg (My Style)"], ["pts", "4 Leg (Bought)"], ["4", "4 Leg"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"], ["diff", "Different Game Parlays"]];   // 10/17 parlay lab: Upset (underdog wins + its lead RB scores)
+const LAB_TABS = [["ou", "Over/Under"], ["best", "Best Legs"], ["style", "4 Leg (My Style)"], ["pts", "4 Leg (Bought)"], ["4", "4 Leg"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"], ["diff", "Different Game Parlays"]];   // 10/17 parlay lab: Upset (underdog wins + its lead RB scores)
 let MODELBETS = null, LABTYPE = "ou", LABWEEK = null;
 // 10/15 (owner): ONE Bets tab -- My bets on the left (the list as before), Model bets on the right (the model's parlays). The choice is remembered.
 let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
@@ -1187,6 +1188,9 @@ function labParlays(week, type) {
   const rec = (MODELBETS && MODELBETS.weeks && MODELBETS.weeks[week] && MODELBETS.weeks[week][type]) || [];
   if (!(S && Number(week) === Number(S.week))) return rec.map((p) => ({ p, game: p.game, kick: p.kickoff, title: p.game ? gameLogos(p.game) : esc(FOUR_NAMES[p.strategy] || p.strategy), across: !p.game }));
   const pick = { 2: (g) => g.sgp.best, 3: (g) => g.sgp.three, 4: (g) => g.sgp.linked, style: (g) => g.sgp.style, pts: (g) => g.sgp.stylePts, upset: (g) => g.sgp.upset };
+  if (type === "best") {   // Best Legs (10/19): once the week's copy is saved (Saturday morning) only it shows -- the one graded; the live build before that
+    const saved = MODELBETS && Array.isArray(MODELBETS.saved) && MODELBETS.saved.includes(Number(week));
+    return (saved ? rec : ((S && S.bestLegs) || []).filter((p) => p && Array.isArray(p.legs))).map((p) => ({ p, game: null, kick: null, title: esc(FOUR_NAMES[p.strategy] || p.strategy), across: true })); }
   if (type === "diff") { const F = ((S && S.fourLeg) || []).filter((p) => p && Array.isArray(p.legs));
     const done = (st) => rec.find((r) => r.strategy === st);   // a saved copy carries the results
     return (F.length ? F.map((p) => ({ ...p, ...(done(p.strategy) ? { result: done(p.strategy).result, legs: done(p.strategy).legs } : {}) })) : rec).map((p) => ({ p, game: null, kick: null, title: esc(FOUR_NAMES[p.strategy] || p.strategy), across: true })); }

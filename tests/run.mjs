@@ -218,6 +218,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const rows = Array.from({ length: 16 }, (_, i) => mk(`G${i}`, i < 4 ? "W" : "L", "2"));   // 4-12 = 25%
     const seen = [mk("G0", "L", "1", { id: "chooser|spread" })];   // chooser picks are not green rules -> ignored
     const green = Array.from({ length: 16 }, (_, i) => mk(`H${i}`, i < 4 ? "W" : "L", "2", { hit: 60 })), r = ruleRecords(green, [mk("H0", "L", "1", { hit: 60 })]);
+    { const avg = ruleRecords([mk("A1", "W", "2", { hit: 57 }), mk("A2", "L", "2", { hit: 61 })], [])["BEAT THE 3 · books 3"];
+      ok(avg && avg.say === 59 && avg.sn === undefined, "rule records (10/19 fix): 'card says' = the average of the picks' % (57 and 61 -> 59), not the last one", avg); }
     ok(ruleFlag(4, 12, 60) === "BELOW" && ruleFlag(9, 7, 60) === "OK" && ruleFlag(1, 5, 60) === "TOO FEW" && Object.keys(ruleRecords(rows.slice(0, 4).concat(seen), seen)).length === 1 && ruleRecords(rows, seen)["BEAT THE 3 · books 3"].say === 55.6
       && r["BEAT THE 3 · books 3"] && r["BEAT THE 3 · books 3"].w + r["BEAT THE 3 · books 3"].l === 16 && r["BEAT THE 3 · books 3"].w === 3 && r["BEAT THE 3 · books 3"].flag === "BELOW",
       "live rule records: each pick once at its first-shown line, flagged BELOW only with 15+ graded and 10+ points under the card", r); }
@@ -334,7 +336,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       game("E @ F", -3, 0.6, 60, { td: [td("Thin.X", "E", 90, { thin: true, bid: 0.01 }), td("Real.Three", "F", 40)] }), game("G @ H", -3, 0.6, 60, { td: [td("Late.Four", "G", 30)] })] };
     const Q = buildPaper(d2), l2 = Q.filter((p) => p.strategy === "td_likely_2"), l3 = Q.filter((p) => p.strategy === "td_likely_3");
     ok(l2.length === 1 && l2[0].legs.map((l) => l.player).join() === "Thin.X,Top.One" && l2[0].legs[0].thin === true, "likely-2: best player, one per game, injury-listed player skipped, thin markets allowed and marked", l2[0] && l2[0].legs.map((l) => l.player));
-    ok(l3.length === 1 && l3[0].legs.map((l) => l.player).join() === "Thin.X,Top.One,Real.Two" && Math.abs(l3[0].prob - 0.9 * 0.7 * 0.55) < 1e-9, "likely-3: thin market allowed, chance = legs multiplied", l3[0] && l3[0].legs.map((l) => l.player)); }
+    ok(l3.length === 1 && l3[0].legs.map((l) => l.player).join() === "Thin.X,Top.One,Real.Two" && Math.abs(l3[0].prob - 0.9 * 0.7 * 0.55) < 1e-9, "likely-3: thin market allowed, chance = legs multiplied", l3[0] && l3[0].legs.map((l) => l.player));
+    { const { bestLegParlays, BEST_LEGS } = await import("../lib/paper.js"), B = bestLegParlays(d2.games), bt = (k) => B.find((p) => p.strategy === k);
+      ok(BEST_LEGS.join() === "best_2,best_3,td_likely_2,td_likely_3" && bt("td_likely_2") && bt("td_likely_3") && JSON.stringify(bt("td_likely_3").legs) === JSON.stringify(l3[0].legs) && JSON.stringify(bt("td_likely_2").legs) === JSON.stringify(l2[0].legs),
+        "Best Legs (10/19): the live build = the saved paper parlays leg for leg", B.map((p) => p.strategy));
+      ok(B.every((p) => p.stake === 10) && Q.filter((p) => BEST_LEGS.includes(p.strategy)).every((p) => p.stake === 10) && Q.filter((p) => !BEST_LEGS.includes(p.strategy)).every((p) => p.stake == null || p.strategy.startsWith("leg4_")), "Best Legs: $10 stake saved on those types only");
+      const B2 = bestLegParlays(d2.games.map((g) => (g.key === "E @ F" ? { ...g, started: true } : g)));
+      ok(B2.find((p) => p.strategy === "td_likely_2").legs.map((l) => l.player).join() === "Top.One,Real.Two" && !B2.some((p) => p.legs.some((l) => l.game === "E @ F")), "Best Legs: a started game drops out of the live build"); } }
   ok(Math.abs(by("home_fav_95_2")[0].pay - 0.977 / (0.9 * 0.86)) < 1e-9, "payout = legs multiplied, minus Polymarket's cut");
   await setJSON("paper:2026:9", { parlays: [{ strategy: "x", legs: [{ game: "A @ B", kind: "ml", team: "B", price: 0.8 }, { game: "C @ D", kind: "ml", team: "D", price: 0.5 }] },
     { strategy: "y", legs: [{ game: "A @ B", kind: "ml", team: "B", price: 0.8 }, { game: "I @ J", kind: "td", team: "J", player: "X.Back", price: 0.3 }] }] });
@@ -486,6 +494,20 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
         { strategy: "angles_2", result: "L", legs: [{ game: "X @ Y", kind: "ml", team: "X", label: "X ML", result: "L" }] }] }));
       const before = (sm.legs.ml || { w: 0, l: 0 }), s2 = await paperSummary(2099, 6), ml = s2.legs.ml || { w: 0, l: 0 };
       ok(ml.w - before.w === 1 && ml.l - before.l === 0 && (s2.killers.ml || 0) === (sm.killers.ml || 0), "scoreboard legs review (10/18 fix): a leg in two parlays counts once; a cut parlay type (angles) is left out", { before, ml }); }
+    { await R.set("paper:2099:10", JSON.stringify({ season: 2099, week: 10, parlays: [
+        { strategy: "td_likely_2", result: "W", ret: 2, legs: [{ game: "X @ Y", kind: "td", label: "A TD", result: "W" }] },
+        { strategy: "best_2", result: "L", ret: -1, stake: 10, legs: [{ game: "X @ Y", kind: "spread", label: "Y -2.5", result: "L" }] }] }));
+      const s3 = await paperSummary(2099, 6), tl = s3.board.td_likely_2, b2 = s3.board.best_2;
+      ok(tl && Math.abs(tl.money - 20) < 1e-9 && tl.staked === 10 && b2 && Math.abs(b2.money + 10) < 1e-9, "Best Legs money (10/19 fix): a week saved before the $10 stake still counts $10 (td_likely_2 +$20); a saved stake is used as is", { tl, b2 });
+      await R.set("paper:2099:10:sgp|X @ Y", JSON.stringify({ season: 2099, week: 10, game: "X @ Y", parlays: [] }));
+      const mbh = (await import("../pages/api/modelbets.js")).default; let out = null;
+      const res = { setHeader() {}, status() { return { json: (j) => { out = j; } }; } };
+      const { SEASON: SN } = await import("../lib/games.js");
+      await R.set(`paper:${SN}:77`, JSON.stringify({ season: SN, week: 77, parlays: [{ strategy: "td_likely_3", legs: [{ game: "X @ Y", kind: "td", label: "A TD" }] }] }));
+      await R.set(`paper:${SN}:78:sgp|X @ Y`, JSON.stringify({ season: SN, week: 78, game: "X @ Y", parlays: [{ strategy: "sgp_best", legs: [] }] }));
+      await mbh({ query: {} }, res);
+      ok(out && out.ok && out.saved.includes(77) && !out.saved.includes(78) && out.weeks["77"].best[0].stake === 10, "modelbets (10/19): the week's own copy marks the week saved (a same-game record does not); an old Best Legs record carries the $10 stake", out && { saved: out.saved, best: out.weeks["77"] && out.weeks["77"].best });
+      await R.del(`paper:${SN}:77`); await R.del(`paper:${SN}:78:sgp|X @ Y`); }
     for (const k of await R.keys("paper:2099:*")) await R.del(k); }
   { // 4-leg parlays (10/14 research): 4 biggest favorites skip a game where a green pick backs the dog; green+3 favs; 3 favs + top TD; linked same-game 4
     const { fourLegParlays, sameGameParlays } = await import("../lib/sgp.js");
@@ -510,6 +532,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const { STRATEGIES: STN, legKind } = await import("../lib/paper.js");
     ok(STN.sgp_upset && STN.leg4_td4 && legKind({ kind: "total", side: "under" }) === "under" && legKind({ kind: "total", label: "Over 44.5" }) === "over" && legKind({ kind: "td" }) === "td" && legKind({ kind: "x" }) === null, "new types named; leg kinds for the review");
     const mbj = readFileSync(new URL("../pages/api/modelbets.js", import.meta.url), "utf8"), apx = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+    ok(/best_2: "best", best_3: "best", td_likely_2: "best", td_likely_3: "best"/.test(mbj) && /\["best", "Best Legs"\]/.test(apx) && /if \(type === "best"\)/.test(apx) && /S\.bestLegs/.test(apx) && /MODELBETS\.saved\.includes\(Number\(week\)\)/.test(apx) && /\(saved \? rec :/.test(apx) && /td_likely_3: "3 most likely TD scorers"/.test(apx)
+      && /\.\.\.\(data\.bestLegs \|\| \[\]\)/.test(readFileSync(new URL("../pages/api/slate.js", import.meta.url), "utf8")) && /bestLegs = bestLegParlays\(games\)/.test(readFileSync(new URL("../lib/week.js", import.meta.url), "utf8")),
+      "Best Legs tab (10/19): saved best_2 / best_3 / td_likely_2 / td_likely_3 grouped as \"best\", the live slate's bestLegs before the week is saved, real quotes in the background");
     ok(/leg4_td4: "diff", sgp_upset: "upset"/.test(mbj) && /\["upset", "Upset"\]/.test(apx) && /upset: \(g\) => g\.sgp\.upset/.test(apx) && /\["Upset", x\.upset\]/.test(apx) && /sgp_upset: 17\.6, leg4_td4: 17\.7/.test(apx) && /LEGS · THIS SEASON/.test(apx) && /PAPER\.killers/.test(apx), "Model bets: Upset tab + 4 most likely scorers under Different Game Parlays; game page shows Upset; scoreboard has the LEGS review"); }
   { // 10/14 risk fix: capped history lists keep the week's first readings (opening lines) and the newest
     const { pushCapped } = await import("../lib/redis.js"); const R = globalThis.__TEST_REDIS__; await R.del("cap:test");
@@ -1006,6 +1031,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const { soldFrom } = await import("../lib/mybets.js");
     const x = soldFrom({ type: "ACTIVITY_TYPE_TRADE", trade: { marketSlug: "caoc-1", price: { value: "0.4980" }, qty: "-50", realizedPnl: { value: "19.90" }, updateTime: "2026-10-09T02:00:00Z" } });
     ok(x && x.slug === "caoc-1" && x.pl === 19.9 && Math.abs(x.proceeds - 24.9) < 1e-9 && soldFrom({ trade: { marketSlug: "b", price: { value: "0.1" }, qty: "50", realizedPnl: { value: "0" } } }) === null, "sold: profit from the selling trade, buys ignored");
+    { const no = soldFrom({ type: "ACTIVITY_TYPE_TRADE", trade: { marketSlug: "aec-nfl-buf-lv-2026-10-18", price: { value: "0.9750" }, qty: "100", realizedPnl: { value: "63.08" }, effectiveRealizedPnl: { value: "-31.94" }, updateTime: "2026-10-18T23:23:24Z" } });
+      ok(no && no.pl === -31.94 && no.fixed, "sold (10/18): a NO-side bet (Raiders on the Bills market) uses effectiveRealizedPnl -31.94, not the YES-side +63.08", no); }
     const row = ctx.T.betRow ? ctx.T.betRow({ source: "account", title: "caoc-1", week: 5, cost: 5, price: 0.08, toWin: 59, result: "W", pl: 14.94, sold: { pl: 14.94, proceeds: 21.03 } }) : "";
     ok(/class="g">Sold<\/span> /.test(row) && /sold early for \$19\.94/.test(row), "sold: shown as Sold with the profit; paid back = stake + profit"); }
   { // linked combo legs (10/9)
@@ -1269,7 +1296,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ctx.T.renderLabList(); const h = box.innerHTML;
     ok(/Over 46\.5 · 52% · 49¢/.test(h) && /Under 48\.5 · 2 pts · 57% · 61¢/.test(h) && /✓<\/span> <span class="g">Under 40\.5/.test(h) && h.indexOf("SEA") < h.indexOf("NYG") && /labslot/.test(h) && !/PL:/.test(h) && !/plQuote/.test(h),
       "Model bets Over/Under: total PICK + PICK w/ POINTS per game, kickoff order with slot headers, ✓ / ✗ after the game, price shown, no parlay payout or quote", h.slice(0, 400));
-    ok(vm.runInContext("LAB_TABS.map(([k, t]) => t).join('|')", ctx) === "Over/Under|4 Leg (My Style)|4 Leg (Bought)|4 Leg|3 Leg|2 Leg|Upset|Different Game Parlays", "Model bets tabs in the owner's order and names");
+    ok(vm.runInContext("LAB_TABS.map(([k, t]) => t).join('|')", ctx) === "Over/Under|Best Legs|4 Leg (My Style)|4 Leg (Bought)|4 Leg|3 Leg|2 Leg|Upset|Different Game Parlays", "Model bets tabs in the owner's order and names");
     ctx.document.getElementById = oldGet; vm.runInContext(`LABTYPE = "2"`, ctx); }
   { // earlier week: a bet that is final but waiting for touchdown data stays visible; no slate yet must not break Bets; sections keep their state
     const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "record-mine" ? box : old(id));
@@ -1441,7 +1468,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(/innerHTML = \(S\.games\.length \? linesByDay\(\)/.test(nb) && /class="tiles stack"/.test(nb) && /function nbaSlot\(/.test(nb) && /id="mb-day"/.test(nb) && /\.tiles\.stack \{/.test(readFileSync(new URL("../public/nba/index.html", import.meta.url), "utf8")), "NBA matches NFL: Game Lines stacked under day headers, Model bets time headers, My bets day drop-down"); }
   for (const f of ["../public/app.js", "../public/nba/app.js"]) { const a2 = readFileSync(new URL(f, import.meta.url), "utf8");
     ok(!/alerts-|alSlug|ALFILTER/.test(a2) && !/al-chips/.test(a2), `${f}: one Alerts page -- no kind sub tabs, no kind filter, no docked kind strip (owner 10/18 night; cleanup 10/18)`); }
-  ok(/nfl: \[\["ou", "Over\/Under"\], \["style", "4 Leg \(My Style\)"\], \["pts", "4 Leg \(Bought\)"\], \["4", "4 Leg"\], \["3", "3 Leg"\], \["2", "2 Leg"\], \["upset", "Upset"\], \["diff", "Different Game Parlays"\]\]/.test(sh) && /nba: \[\["sgp", "Same game"\], \["sgp_pts", "Bought"\], \["best4", "Parlay"\], \["fav4", "Favorites"\]\]/.test(sh) && /#modelbets-\$\{k\}/.test(sh), "menu: the Model bets types are sub tabs under Model bets (NFL: Over/Under first, then the owner's order and names; NBA)");
+  ok(/nfl: \[\["ou", "Over\/Under"\], \["best", "Best Legs"\], \["style", "4 Leg \(My Style\)"\], \["pts", "4 Leg \(Bought\)"\], \["4", "4 Leg"\], \["3", "3 Leg"\], \["2", "2 Leg"\], \["upset", "Upset"\], \["diff", "Different Game Parlays"\]\]/.test(sh) && /nba: \[\["sgp", "Same game"\], \["sgp_pts", "Bought"\], \["best4", "Parlay"\], \["fav4", "Favorites"\]\]/.test(sh) && /#modelbets-\$\{k\}/.test(sh), "menu: the Model bets types are sub tabs under Model bets (NFL: Over/Under first, then the owner's order and names; NBA)");
   { const a = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
     ok(/function linesBg\(\)/.test(a) && /classList\.toggle\("lines-on"/.test(a) && /html\.lines-on \.pagewm \{ background:[^}]*url\(\/nfl-bg\.jpg\?v=3\)/.test(readFileSync(new URL("../public/index.html", import.meta.url), "utf8")), "NFL pages: the NFL RedZone picture (10/18) behind every page but home and a game page, cards see-through");
     ok(/innerHTML = linesBySlot\(\)/.test(a) && /class="sh labslot">\$\{sl\}/.test(a) && /class="tiles stack"/.test(a) && /\.tiles\.stack \{ grid-template-columns:1fr !important/.test(readFileSync(new URL("../public/index.html", import.meta.url), "utf8")), "NFL Game Lines: games stacked one per row under the time-slot headers");

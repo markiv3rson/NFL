@@ -221,6 +221,8 @@ ok(redisUrl({ UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://a:1", REDIS_URL: "redis
   const loss = mb.resolvedFrom({ positionResolution: { marketSlug: "nba-x", beforePosition: { netPosition: "10", cost: { value: "4.00" }, realized: { value: "0" } }, afterPosition: { realized: { value: "0" } } } });
   ok(win && win.win && near(win.pl, 6) && loss && !loss.win && near(loss.pl, -4), "resolved bet win / loss P&L", [win, loss]);
   ok(near(mb.soldFrom({ trade: { marketSlug: "nba-y", realizedPnl: { value: "1.25" }, qty: "5", price: { value: "0.6" } } }).pl, 1.25) && mb.soldFrom({ trade: { marketSlug: "z", realizedPnl: { value: "0" } } }) === null, "sold bet P&L");
+  { const no = mb.soldFrom({ trade: { marketSlug: "aec-nba-bos-det-2026-10-20", realizedPnl: { value: "63.08" }, effectiveRealizedPnl: { value: "-31.94" }, qty: "100", price: { value: "0.975" } } });
+    ok(no && near(no.pl, -31.94) && no.fixed && !mb.soldFrom({ trade: { marketSlug: "nba-y", realizedPnl: { value: "1.25" }, qty: "5", price: { value: "0.6" } } }).fixed, "sold (10/19): a NO-side sale uses effectiveRealizedPnl, not the YES side's realizedPnl"); }
   const s = mb.summarizeLedger({ a: { id: "a", cost: 4, resolved: { win: true, pl: 6, t: "2026-10-20" } }, b: { id: "b", cost: 5, resolved: { win: false, pl: -5, t: "2026-10-21" } }, c: { id: "c", cost: 2, sold: { pl: 0.5, t: "2026-10-22" } }, d: { id: "d", cost: 3 } });
   ok(s.record.w === 1 && s.record.l === 1 && s.record.sold === 1 && near(s.record.pl, 1.5) && s.record.staked === 11 && s.open.length === 1 && s.settled[0].id === "c", "ledger summary", s.record); }
 // 10/17: a Polymarket account combo with NBA legs is an NBA bet; its legs are labeled (spread / moneyline / total) and listed under it
