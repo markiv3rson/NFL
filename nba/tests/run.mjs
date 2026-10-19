@@ -141,6 +141,9 @@ const mk = (away, home, over = {}) => ({ key: `${away} @ ${home}`, away, home, d
     const b3 = pl.buildParlays(G.slice(2), []).find((p) => p.type === "best4");
     ok(b3 && b3.legs.map((l) => l.label).join() === "E +6.5,G +6.5,I +6.5" && Math.abs(b3.prob - 0.61 * 0.57 * 0.562) < 0.002, "the Parlay (10/19): 3 green lines -> a 3-leg Parlay", b3 && b3.legs.map((l) => l.label));
     ok(!pl.buildParlays(G.slice(4), []).some((p) => p.type === "best4"), "the Parlay (10/19): 1 green line -> no Parlay");
+    const Gm = [...G.slice(0, 4), { ...gP("M @ N", 50, 50), card: { ...gP("M @ N", 50, 50).card, spread: { plain: { team: "N", line: 1.5, pick: "N +1.5", hit: 67.9, price: 0.54 }, pts: null } } }];
+    const bm = pl.buildParlays(Gm, []).find((p) => p.type === "best4");
+    ok(bm && bm.legs[0].label === "N +1.5" && !bm.legs[0].bought && bm.legs.length === 4 && !bm.legs.some((l) => l.game === "G @ H"), "the Parlay (10/19 check): the card's green PICK counts too (LINE MOVE N +1.5 67.9% leads; the 4th-best line drops)", bm && bm.legs.map((l) => l.label));
     const tk = slate.parlayTicket([{ type: "fav4", legs: [] }, b4], G);
     ok(tk.map((x) => x.label).join() === b4.legs.map((l) => l.label).join() && tk[0].pct === 61 && tk[0].start === G[2].start && slate.parlayTicket([], G).length === 0, "My bets PARLAY ticket = the same legs as the Parlay tab (10/19)", tk); }
   ok(pl.buildParlays(four.slice(0, 3), []).every((p) => p.type !== "fav4"), "fewer than 4 games: no 4 biggest favorites (the Parlay takes 2-4 legs since 10/19)");
@@ -491,6 +494,8 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(Math.abs(ch.rows.reduce((a, r) => a + r.model, 0) - 100) < 1.5, "futures: title chances add to 100%", ch.rows.reduce((a, r) => a + r.model, 0));
   const ea = f.sections.find((x) => x.id === "east");
   ok(ea.rows.filter((r) => r.market != null).length === 15 && ea.rows.filter((r) => r.market != null).every((r) => ["ATL", "BOS", "BKN", "CHA", "CHI", "CLE", "DET", "IND", "MIA", "MIL", "NYK", "ORL", "PHI", "TOR", "WAS"].includes(r.team)), "futures: the East market matches the 15 East teams", ea.rows.filter((r) => r.market != null).map((r) => r.team));
+  { const EAST = ["ATL", "BOS", "BKN", "CHA", "CHI", "CLE", "DET", "IND", "MIA", "MIL", "NYK", "ORL", "PHI", "TOR", "WAS"], we = f.sections.find((x) => x.id === "west");
+    ok(ea.rows.length === 15 && ea.rows.every((r) => EAST.includes(r.team)) && we.rows.length === 15 && we.rows.every((r) => !EAST.includes(r.team)) && Math.abs(ea.rows.reduce((a, r) => a + r.model, 0) - 100) < 1.5, "futures (10/19 check): East champion lists only the 15 East teams, West only the West, each adding to 100%", { e: ea.rows.length, w: we.rows.length }); }
   const s1 = f.sections.find((x) => x.id === "seed1");
   ok(s1.market && s1.rows.filter((r) => r.market != null).length >= 28, "futures: #1-seed prices come from each team's own conference market", s1.rows.filter((r) => r.market != null).length);
   const w1 = f.wins.find((w) => w.team === "BOS");

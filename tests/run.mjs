@@ -901,6 +901,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     await P.recordPaper(2097, 8, d8); const r8 = await getJSON("paper:2097:8");
     ok(JSON.stringify(r8.parlays.find((p) => p.strategy === "leg4_fav")) === JSON.stringify(lockedOld) && r8.parlays.every((p) => p === r8.parlays[0] || p.legs.every((l) => l.game !== "C @ D")),
       "weekly parlays (10/19): a type with a started leg is never changed; new types never use a started game");
+    const keepOld = { strategy: "leg4_td4", legs: [{ game: "A @ B", kind: "td", team: "A", player: "A.RB", label: "A.RB TD", price: 0.6 }] };
+    await setJSON("paper:2097:9", { t: "2026-10-17T14:00:00Z", season: 2097, week: 9, parlays: [keepOld] });
+    await P.recordPaper(2097, 9, { games: data.games.map((g) => ({ ...g, td: [] })) }); const r9 = await getJSON("paper:2097:9");
+    ok(r9.parlays.some((p) => p.strategy === "leg4_td4" && JSON.stringify(p) === JSON.stringify(keepOld)), "weekly parlays (10/19 check): a build with no parlay of a type (TD data failed to load) keeps the saved copy", r9.parlays.map((p) => p.strategy));
     for (const k of await R.keys("paper:2097:*")) await R.del(k);
     const g = await import("../lib/grade.js"), { SEASON, resetGamesCache } = await import("../lib/games.js"), realFetch = globalThis.fetch, oldUrl = process.env.MODEL_SERVICE_URL;
     process.env.MODEL_SERVICE_URL = "https://svc.test";
