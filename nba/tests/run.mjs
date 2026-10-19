@@ -76,9 +76,13 @@ const mk = (away, home, over = {}) => ({ key: `${away} @ ${home}`, away, home, d
   ok(c && c.spread.plain.id === "modelpick|spread" && c.spread.plain.pick === "OKC +8.5" && c.spread.plain.hit === 49.4 && c.spread.plain.price === 0.49, "no rule: PICK = the model's side at Polymarket's own line, at the model's honest rate (49.4%)", c && c.spread.plain);
   ok(c.spread.rows.map((r) => `${r.pick}·${r.points}`).join("|") === "OKC +8.5·0|ATL -8.5·0|OKC +10.5·2|ATL -6.5·2|ATL -5.5·3|ATL -4.5·4", "list: both teams, the main line and every alternate up to 7 points (owner 10/16)", c.spread.rows.map((r) => r.pick));
   { const deep = mk("OKC", "ATL", { lines: [...LINES("OKC", "ATL"), { market: "spread", team: "ATL", line: -1.5, points: 7, hist: 73.0, n: 6000, price: 0.8, label: "ATL -1.5" }, { market: "spread", team: "ATL", line: -0.5, points: 8, hist: 76.0, n: 6000, price: 0.84, label: "ATL -0.5" }] }), cd = cp.buildCard(deep);
-    ok(cd.spread.rows.some((r) => r.points === 7) && !cd.spread.rows.some((r) => r.points === 8) && cd.spread.pts.pick === "ATL -5.5" && cp.MAX_LIST === 7 && cp.MAX_BUY === 3.5, "a 7-point line is listed, 8 points never; PICK w/ POINTS never goes past 3.5 points (the market prices every point)", cd.spread.pts); }
-  ok(c.spread.pts && c.spread.pts.pick === "ATL -5.5" && c.spread.pts.hit === 60 && c.spread.pts.id === "ptspick|spread", "PICK w/ POINTS: the far line that clearly wins more", c.spread.pts);
-  ok(c.total.plain.pick === "Over 223.5" && c.total.plain.hit === 50.4 && c.total.pts.pick === "Under 225.5" && c.total.pts.hit === 54, "total: model's side at the main total; PICK w/ POINTS = highest win rate within 2 points when none reaches 56%", c.total);
+    ok(cd.spread.rows.some((r) => r.points === 7) && !cd.spread.rows.some((r) => r.points === 8) && cd.spread.pts.pick === "OKC +10.5" && cp.MAX_LIST === 7 && cp.MAX_BUY === 3.5, "a 7-point line is listed, 8 points never; PICK w/ POINTS never goes past 3.5 points (the market prices every point)", cd.spread.pts); }
+  ok(c.spread.pts && c.spread.pts.pick === "OKC +10.5" && c.spread.pts.hit === 57 && c.spread.pts.id === "ptspick|spread", "PICK w/ POINTS (10/19): on the PICK's team (OKC), never the other side", c.spread.pts);
+  { const cf = cp.buildCard(mk("OKC", "ATL", { model: { margin: 12, total: 225 } }));
+    ok(cf.spread.plain.pick === "ATL -8.5" && cf.spread.pts.pick === "ATL -5.5" && cf.spread.pts.hit === 60, "PICK w/ POINTS: the far line that clearly wins more (on the PICK's team)", cf.spread.pts);
+    const cn = cp.buildCard(mk("OKC", "ATL", { model: null }));
+    ok(!cn.spread.plain && cn.spread.pts.pick === "ATL -5.5", "PICK w/ POINTS with no PICK at all: either side", cn.spread.pts); }
+  ok(c.total.plain.pick === "Over 223.5" && c.total.plain.hit === 50.4 && c.total.pts.pick === "Over 221.5" && c.total.pts.hit === 53, "total: model's side at the main total; PICK w/ POINTS = highest win rate within 2 points on the PICK's side (Over) when none reaches 56%", c.total);
   const g2 = mk("OKC", "ATL", { lines: LINES("OKC", "ATL").filter((x) => x.points <= 2) }), c2 = cp.buildCard(g2);
   ok(c2.spread.pts.pick === "OKC +10.5" && c2.spread.pts.hit === 57, "PICK w/ POINTS: the fewest points that reach 56%, either team", c2.spread.pts);
   const g1p = mk("OKC", "ATL", { lines: [...LINES("OKC", "ATL").filter((x) => x.points <= 2), { market: "spread", team: "OKC", line: 9.5, points: 1, hist: 58.0, n: 6000, price: 0.55, label: "OKC +9.5" }] }), c4 = cp.buildCard(g1p);
@@ -128,7 +132,7 @@ const mk = (away, home, over = {}) => ({ key: `${away} @ ${home}`, away, home, d
     fourG[0].card.spread.plain.hit = 62;   // our green spread pick backs A, the underdog
     const f4 = pl.buildParlays(fourG, []).find((p) => p.type === "fav4");
     ok(f4 && !f4.legs.some((l) => l.game === "A @ B") && f4.legs.map((l) => l.team).join() === "D,F,H,J", "4 biggest favorites (10/19): skips a game where our green spread pick backs the underdog", f4 && f4.legs.map((l) => l.label)); }
-  ok(sgp.length === 5 && sgp[0].legs.every((l) => l.bought && l.points > 0) && sgp[0].legs[0].label === "H1 -5.5" && sgp[0].stake === 5, "same game bought lines: both PICK w/ POINTS legs", sgp[0]);
+  ok(sgp.length === 5 && sgp[0].legs.every((l) => l.bought && l.points > 0) && sgp[0].legs[0].label === "A1 +10.5" && sgp[0].stake === 5, "same game bought lines: both PICK w/ POINTS legs", sgp[0]);
   const b4 = pl.buildParlays([...games, ...four], slate.collectPicks([...games, ...four])).find((p) => p.type === "best4"); ok(b4 && b4.legs.length === 4 && new Set(b4.legs.map((l) => l.game)).size === 4 && b4.legs[0].label === "H1 ML" && b4.legs[1].label === "TOR ML", "the Parlay: top 4 green picks, one per game", b4 && b4.legs.map((l) => l.label));
   ok(pl.buildParlays(four.slice(0, 3), []).every((p) => p.type !== "fav4" && p.type !== "best4"), "fewer than 4 games / green picks: no 4-leg parlays");
   // grading a parlay: every leg must win; a push leg drops out
@@ -140,7 +144,7 @@ const mk = (away, home, over = {}) => ({ key: `${away} @ ${home}`, away, home, d
   const s1 = await slate.buildSlate({ now: t0, events, injuries: { teams: {}, t: "2026-10-12T19:00:00Z" }, model });
   ok(s1.ok && s1.games.length >= 2 && s1.modelOk && s1.teams && s1.teams.TOR, "slate builds with teams for the page", s1.games.length);
   const g1 = s1.games.find((g) => g.key === "OKC @ ATL");
-  ok(g1.card && g1.card.spread.plain.pick === "OKC +8.5" && g1.card.spread.pts.pick === "ATL -5.5" && g1.card.total.plain.pick === "Over 223.5" && g1.card.total.pts.pick === "Under 225.5", "the card is built on every game with model numbers", g1.card && g1.card.spread);
+  ok(g1.card && g1.card.spread.plain.pick === "OKC +8.5" && g1.card.spread.pts.pick === "OKC +10.5" && g1.card.total.plain.pick === "Over 223.5" && g1.card.total.pts.pick === "Over 221.5", "the card is built on every game with model numbers", g1.card && g1.card.spread);
   ok(s1.bestBets.length === 1 && s1.bestBets[0].label === "ATL ML" && s1.bestBets[0].price > 0.7, "best bets: the green moneyline PICK, with its price; the model's 50% sides are not in it", s1.bestBets.map((p) => p.label));
   ok(!s1.parlays.some((p) => p.type === "sgp") && s1.parlays.some((p) => p.type === "sgp_pts" && p.game === "OKC @ ATL") && !s1.parlays.some((p) => p.type === "fav4"), "same-game bought parlay built for the game (no 2-leg parlay from the model's 50% sides); no 4-favorites parlay with 3 games", s1.parlays.map((p) => p.type));
   const stored = await rec.loadPicks(); ok(stored.length === 5 && stored.every((p) => p.date === "2026-10-12") && stored.map((p) => p.id).sort().join("|") === "ml|modelpick|spread|modelpick|total|ptspick|spread|ptspick|total" && stored.find((p) => p.id === "ml").price > 0.7, "every card pick is saved before tip-off with its id and price", stored.map((p) => [p.id, p.price]));
@@ -164,7 +168,7 @@ const mk = (away, home, over = {}) => ({ key: `${away} @ ${home}`, away, home, d
   const g = live.games.find((x) => x.key === "OKC @ ATL");
   ok(g && g.inProgress === true && !g.card && g.ml.pick.tier === "none", "game in progress: no card, moneyline pick switched off", g && g.ml);
   ok(!live.bestBets.some((p) => p.game === "OKC @ ATL") && !live.parlays.some((p) => p.game === "OKC @ ATL"), "game in progress: not in best bets or parlays");
-  ok(g.locked && g.locked.spread.plain.label === "OKC +8.5" && g.locked.spread.pts.label === "ATL -5.5" && g.locked.ml.plain.label === "ATL ML" && g.locked.total.pts.label === "Under 225.5", "the picks saved before tip-off are shown locked", g.locked); }
+  ok(g.locked && g.locked.spread.plain.label === "OKC +8.5" && g.locked.spread.pts.label === "OKC +10.5" && g.locked.ml.plain.label === "ATL ML" && g.locked.total.pts.label === "Over 221.5", "the picks saved before tip-off are shown locked", g.locked); }
 
 // ---------- which environment variable holds the Redis address
 ok(redisUrl({}) === null && redisUrl({ NBA_REDIS_URL: "not a url" }) === null, "no NBA Redis address -> in-memory stand-in");
@@ -214,10 +218,10 @@ ok(redisUrl({ UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://a:1", REDIS_URL: "redis
   ok(rec.gradePick({ market: "total", side: "over", line: 213.5 }, "BOS", "NYK", f) === "win" && rec.gradePick({ market: "total", side: "under", line: 213.5 }, "BOS", "NYK", f) === "loss" && rec.gradePick({ market: "total", side: "over", line: 214 }, "BOS", "NYK", f) === "push", "grade total incl. push");
   const g = await rec.gradeAll(async () => ({ "OKC @ ATL": { away: 100, home: 90, final: true }, "BKN @ WAS": { away: 1, home: 2, final: false } }));
   const all = await rec.loadPicks(), done = all.filter((p) => p.result), by = (id) => all.find((p) => p.id === id);
-  ok(g === 5 && done.length === 5 && by("ml").result === "loss" && by("modelpick|spread").result === "win" && by("ptspick|spread").result === "loss" && by("modelpick|total").result === "loss" && by("ptspick|total").result === "win", "gradeAll grades finished games only, every saved id", all.map((p) => [p.id, p.result]));
+  ok(g === 5 && done.length === 5 && by("ml").result === "loss" && by("modelpick|spread").result === "win" && by("ptspick|spread").result === "win" && by("modelpick|total").result === "loss" && by("ptspick|total").result === "loss", "gradeAll grades finished games only, every saved id", all.map((p) => [p.id, p.result]));
   const sm = rec.summarize(all);
-  ok(sm.all.w === 1 && sm.all.l === 2 && sm.ml.l === 1 && sm.spread.w === 1 && sm.total.l === 1 && sm.pts.w === 1 && sm.pts.l === 1 && sm.model.w === 1 && sm["ptspick|total"].w === 1 && !sm.green.w && sm.green.l === 1, "record summary: by id, by market, bought lines apart, green picks (56%+) apart", sm);
-  ok(sm.ml.per100 === -100 && sm.pts.per100 != null && sm["ptspick|total"].per100 === Math.round(100 / 0.55 - 100), "money per $100 at the saved price", [sm.ml.per100, sm["ptspick|total"].per100]);
+  ok(sm.all.w === 1 && sm.all.l === 2 && sm.ml.l === 1 && sm.spread.w === 1 && sm.total.l === 1 && sm.pts.w === 1 && sm.pts.l === 1 && sm.model.w === 1 && sm["ptspick|spread"].w === 1 && sm["ptspick|total"].l === 1 && !sm.green.w && sm.green.l === 1, "record summary: by id, by market, bought lines apart, green picks (56%+) apart", sm);
+  ok(sm.ml.per100 === -100 && sm.pts.per100 != null && sm["ptspick|spread"].per100 === Math.round(100 / 0.62 - 100), "money per $100 at the saved price", [sm.ml.per100, sm["ptspick|spread"].per100]);
   const gp = await pl.gradeParlays(async () => ({ "OKC @ ATL": { away: 100, home: 90, final: true } }));
   const sps = await pl.loadParlays(); ok(gp === 1 && sps.find((p) => p.type === "sgp_pts").result === "L" && sps.every((p) => p.ret === -p.stake), "parlays graded: a lost leg loses the parlay and its stake", sps.map((p) => [p.type, p.result, p.ret]));
   const ps = pl.summarizeParlays(sps); ok(ps.sgp_pts.decided === 1 && ps.sgp_pts.hits === 0 && ps.sgp_pts.money === -5, "parlay scoreboard numbers", ps); }
@@ -561,7 +565,11 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
     let err = null; try { await pn.fetchPinnacle(slow, 200); } catch (e) { err = String(e.message); }
     ok(err && /took longer/.test(err), "a hung Pinnacle feed gives up at the deadline", err);
     const half = async (url) => url.includes("/487/") ? { ok: false, status: 403, json: async () => ({}) } : { ok: true, json: async () => [] };
-    const r9 = await pn.fetchPinnacle(half, 20000); ok(r9._fails === 1 && Object.keys(r9).length === 0, "one league failing while the other answers is reported as a partial failure"); }
+    const r9 = await pn.fetchPinnacle(half, 20000); ok(r9._fails === 1 && Object.keys(r9).length === 0, "one league failing while the other answers is reported as a partial failure");
+    const asked = []; const spy = async (url) => { asked.push(url); return { ok: true, json: async () => [] }; };
+    await pn.pullPinnacle([{ key: "A @ B", preseason: false }], Date.now(), spy); const reg = asked.splice(0);
+    await pn.pullPinnacle([{ key: "A @ B", preseason: true }], Date.now(), spy);
+    ok(reg.length === 2 && reg.every((u) => u.includes("/487/")) && asked.some((u) => u.includes("/5270/")), "Pinnacle (10/19): the preseason league is asked only while the slate has preseason games", reg); }
   const late = Date.parse("2026-10-15T00:30:00Z"), stillAhead = Object.values(o).filter((p) => p.start && Date.parse(p.start) > late).length;
   ok((await pn.savePinnacle(g, late, o)) === stillAhead && !(await globalThis.__TEST_REDIS__.lindex(pn.pinKey("2026-10-14", "CHI @ MIL"), 0).then((x) => JSON.parse(x).t === new Date(late).toISOString())), "nothing saved for a game after its tip-off (only the feed's games still ahead)"); }
 

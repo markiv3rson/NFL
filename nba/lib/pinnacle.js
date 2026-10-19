@@ -29,7 +29,7 @@ export function parsePinnacle(matchups, markets) {
   for (const key of Object.keys(out)) if (out[key].hs == null && out[key].tl == null && out[key].mh == null) delete out[key];
   return out;
 }
-export async function fetchPinnacle(fetcher = fetch, budgetMs = 25000) {
+export async function fetchPinnacle(fetcher = fetch, budgetMs = 25000, leagues = LEAGUES) {
   // One retry (after 3 s) per page, both leagues at once, and an overall deadline: the snapshot has 60 s in total and must still save its page data.
   const get = async (p) => {
     for (let i = 0; i < 2; i++) {
@@ -41,13 +41,13 @@ export async function fetchPinnacle(fetcher = fetch, budgetMs = 25000) {
     }
   };
   const league = async (lg) => { const [m, k] = await Promise.all([get(`${lg}/matchups`), get(`${lg}/markets/straight`)]); return parsePinnacle(m, k); };
-  const work = Promise.allSettled(LEAGUES.map(league));
+  const work = Promise.allSettled(leagues.map(league));
   const timeout = new Promise((ok) => setTimeout(() => ok(null), budgetMs));
   const res = await Promise.race([work, timeout]);
   if (!res) throw new Error("Pinnacle took longer than " + budgetMs / 1000 + " s");
   const out = {}; let fails = 0, last = null;
   for (const x of res) { if (x.status === "fulfilled") Object.assign(out, x.value); else { fails++; last = x.reason; } }
-  if (fails === LEAGUES.length) throw last;
+  if (fails === leagues.length) throw last;
   Object.defineProperty(out, "_fails", { value: fails, enumerable: false });
   return out;
 }
@@ -191,7 +191,8 @@ export async function recordGaps(games, now = Date.now()) {
 
 // fetch + save in one go; returns { n, fails } (fails = leagues that failed while the other answered)
 export async function pullPinnacle(games, now = Date.now(), fetcher = fetch) {
-  const lines = await fetchPinnacle(fetcher);
+  // 10/19: the preseason league (5270) only while the slate has preseason games -- after the preseason it answers 403 and half of every pull failed
+  const lines = await fetchPinnacle(fetcher, 25000, (games || []).some((g) => g.preseason) ? LEAGUES : [487]);
   return { n: await savePinnacle(games, now, lines), fails: lines._fails || 0 };
 }
 

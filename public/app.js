@@ -24,8 +24,8 @@ function headPills(g, id, noWarn = false) {
 }
 const secRow = (title, pills = "") => `<div class="trow"><div class="sh">${title}</div>${pills}</div>`;
 function headDrops(g, id, noWarn = false) {
-  return (!noWarn && g.qb && g.qb.length && !g.final ? `<div class="warn">⚠ ${esc(g.qb.join(" · "))} · ${qbAdjusted(g) ? "model adjusted" : "not in the model yet"}</div>` : "") +
-    (!noWarn && g.dataCheck ? `<div class="warn">⚠ ${esc(g.dataCheck)}</div>` : "") +
+  // 10/19 (owner rule: no warnings on the cards): the "⚠ QB change ... not in the model yet" line is gone; a QB change is an alert (Alerts -> QB change)
+  return (!noWarn && g.dataCheck ? `<div class="warn">⚠ ${esc(g.dataCheck)}</div>` : "") +
     `<div class="drop" id="inj-${id}"><div class="s" style="margin-bottom:4px">Official report${(() => { const w = [...new Set((g.injuries || []).map((x) => x.week))]; return w.length ? ` · Week ${w.join("/")}` + (w.every((x) => Number(x) !== Number(S.week)) ? " (last week's)" : "") : ""; })()} · updated ${S.injuriesUpdated ? hm(S.injuriesUpdated) : "—"}</div>` +
     (g.injuries || []).map((x) => `<div class="drow"><span>${injBadge(x.team)}${esc(x.name)} <span class="dim">${esc(x.pos || "")} · ${x.team}</span></span><span class="${x.shown ? "dim" : /out/i.test(x.status) ? "r" : /doubt/i.test(x.status) ? "r" : "y"}">${esc(x.shown || x.status)}</span></div>`).join("") + `</div>` +
     `<div class="drop" id="his-${id}">${historyRows(g)}</div>`;
@@ -48,7 +48,6 @@ function historyRows(g) {
     rows.slice().reverse().map((r, i) => `<div class="drow"><span>${hm(r.from.t)}${r.from.src === "kickoff" ? " 🔒" : ""}` +
       `${r.last !== r.from ? `<br><span class="dim">last checked ${hm(r.last.t)}</span>` : ""}${i === rows.length - 1 ? '<br><span class="dim">opening line</span>' : ""}</span>${cell(r.from.poly)}</div>`).join("");
 }
-const qbAdjusted = (g) => !!(g.model && g.model.inj && [g.model.inj.home, g.model.inj.away].some((t) => t && (t.players || []).some((q) => q.group === "QB1")));
 // 10/18: first initial + last name ("A.Taylor"), the same as the TD list -- a bare "Taylor out" on TEN @ IND read as IND's J.Taylor
 const lastName = (n) => { const w = String(n || "").replace(/\s+(Jr\.?|Sr\.?|II|III|IV)$/i, "").trim().split(/\s+/); return w.length > 1 ? `${w[0][0]}.${w[w.length - 1]}` : w[0] || ""; };
 // "Injuries: GB -1.6 (J.Reed out, D.Banks out) · ATL 0"  (only when the estimate actually moved something)

@@ -216,7 +216,8 @@ function modelCell(g, kind) {
   if (!m || !k) return wrap(dash);
   const H = g.home, A = g.away;
   const line = kind === "total" ? `Model: <b class="mod">${m.total.toFixed(1)}</b>` : kind === "spread" ? `Model: <b class="mod">${m.margin >= 0 ? H : A} by ${Math.abs(m.margin).toFixed(1)}</b>`
-    : `Model: <b class="mod">${k.side} ${Math.max(k.modelWinPct[H], k.modelWinPct[A])}%</b>`;
+    : (() => { const h = m.modelOnlyWinPct;   // 10/19: the model's OWN win chance (from its margin), so it names the same team as "Model: X by N"; modelWinPct mixes in the market's line
+      return h != null ? `Model: <b class="mod">${h >= 50 ? H : A} ${Math.max(h, 100 - h).toFixed(1)}%</b>` : `Model: <b class="mod">${k.side} ${Math.max(k.modelWinPct[H], k.modelWinPct[A])}%</b>`; })();
   let body = "";
   if (kind === "ml") {
     const pick = k.pick;
