@@ -4,7 +4,8 @@
 //            10/19 (owner: "1 yes 2 yes ... build now"): it was the top 4 green best bets, which on 10/20-21 were all moneylines = the same 4 legs as fav4;
 //            fewer than 4 green lines that day -> a 3- or 2-leg Parlay with the ones there are (owner 10/19: "you decide what's best for me": fewer legs win more
 //            often -- each leg ~60% (said 60.5 / won 59.9 on 22,683 games), so 2 legs ~36%, 3 ~22%, 4 ~13%); 1 or 0 green lines -> none
-//   fav4     the 4 biggest moneyline favorites of the day (market win chance)              $10   (history 2008-26: all 4 won 36.4% of 2,583 days, the market said 35.5%)
+//            10/19 (owner: "I only want three max to show anywhere now. Cut all the four legs"): 3 legs at most (2 or 3)
+//   fav4     the 4 biggest moneyline favorites -- NOT built since 10/19 (owner: three legs max); old ones stay graded history
 //   sgp      same game, 2 legs: the card's spread PICK + total PICK at Polymarket's lines  $20   (spread and total are independent: chance = product);
 //            10/19 (owner: "the same" as the NFL parlay fixes): only when BOTH legs are green (56%+) -- two of the model's 49-50% sides made a 25% coin flip on every game
 //   sgp_pts  same game, 2 legs on bought lines -- NOT built since 10/19 (owner: PICK w/ POINTS only on the card); old ones stay graded history
@@ -21,21 +22,14 @@ const mk = (type, legs, game, start) => {
   return { type, game: game || null, start: start || null, stake: STAKES[type] || 10, legs, prob: r3(legs.reduce((a, l) => a * (l.prob || 0), 1)), pay: pay == null ? null : Math.round(pay * 100) / 100 };
 };
 const leg = (g, x) => ({ game: g.key, market: x.market, team: x.team || null, side: x.side || null, line: x.line ?? null, label: x.label, prob: r3((x.pct || 0) / 100), price: x.price > 0 && x.price < 1 ? x.price : null, ...(x.bought ? { bought: true, points: x.points } : {}) });
-const mktHome = (g) => { const m = g.poly && g.poly.ml; return m && m.midHome > 0 && m.midAway > 0 ? m.midHome / (m.midHome + m.midAway) : null; };
 
 export function buildParlays(games, bestBets) {
   const ahead = games.filter((g) => !g.inProgress && !g.preseason);
   const out = [];
   // 10/19 (owner: "I don't want the pick with points ... train the model to pick the right side"): the card's own green side PICKs only, no bought lines
   const greens = ahead.map((g) => cardLegs(g).filter((x) => x && x.line != null && x.pct >= GREEN).sort((a, b) => b.pct - a.pct).map((x) => ({ g, x }))[0]).filter(Boolean)
-    .sort((a, b) => b.x.pct - a.x.pct).slice(0, 4);
+    .sort((a, b) => b.x.pct - a.x.pct).slice(0, 3);
   if (greens.length >= 2) out.push(mk("best4", greens.map(({ g, x }) => leg(g, x))));
-  const favs = ahead.map((g) => { const ph = mktHome(g); if (ph == null || ph === 0.5) return null; const home = ph > 0.5, team = home ? g.home : g.away;
-    return { g, p: home ? ph : 1 - ph, leg: { game: g.key, market: "ml", team, side: null, line: null, label: `${team} ML`, prob: r3(home ? ph : 1 - ph), price: g.poly.ml[home ? "home" : "away"] > 0 && g.poly.ml[home ? "home" : "away"] < 1 ? g.poly.ml[home ? "home" : "away"] : null } }; })
-    // 10/19 (same as the NFL 4 biggest favorites): skip a game where our own green spread pick backs the underdog
-    .filter((x) => { if (!x) return false; const sp = cardLegs(x.g).find((l) => l.market === "spread"); return !(sp && sp.pct >= GREEN && sp.team && sp.team !== x.leg.team); })
-    .sort((a, b) => b.p - a.p).slice(0, 4);
-  if (favs.length === 4) out.push(mk("fav4", favs.map((x) => x.leg)));
   for (const g of ahead) {
     const L = cardLegs(g), sp = L.find((x) => x.market === "spread"), tt = L.find((x) => x.market === "total");
     if (sp && tt && sp.pct >= GREEN && tt.pct >= GREEN) out.push(mk("sgp", [leg(g, sp), leg(g, tt)], g.key, g.start));
