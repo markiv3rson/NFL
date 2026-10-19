@@ -492,6 +492,20 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
         { strategy: "angles_2", result: "L", legs: [{ game: "X @ Y", kind: "ml", team: "X", label: "X ML", result: "L" }] }] }));
       const before = (sm.legs.ml || { w: 0, l: 0 }), s2 = await paperSummary(2099, 6), ml = s2.legs.ml || { w: 0, l: 0 };
       ok(ml.w - before.w === 1 && ml.l - before.l === 0 && (s2.killers.ml || 0) === (sm.killers.ml || 0), "scoreboard legs review (10/18 fix): a leg in two parlays counts once; a cut parlay type (angles) is left out", { before, ml }); }
+    { await R.set("paper:2099:10", JSON.stringify({ season: 2099, week: 10, parlays: [
+        { strategy: "td_likely_2", result: "W", ret: 2, legs: [{ game: "X @ Y", kind: "td", label: "A TD", result: "W" }] },
+        { strategy: "best_2", result: "L", ret: -1, stake: 10, legs: [{ game: "X @ Y", kind: "spread", label: "Y -2.5", result: "L" }] }] }));
+      const s3 = await paperSummary(2099, 6), tl = s3.board.td_likely_2, b2 = s3.board.best_2;
+      ok(tl && Math.abs(tl.money - 20) < 1e-9 && tl.staked === 10 && b2 && Math.abs(b2.money + 10) < 1e-9, "Best Legs money (10/19 fix): a week saved before the $10 stake still counts $10 (td_likely_2 +$20); a saved stake is used as is", { tl, b2 });
+      await R.set("paper:2099:10:sgp|X @ Y", JSON.stringify({ season: 2099, week: 10, game: "X @ Y", parlays: [] }));
+      const mbh = (await import("../pages/api/modelbets.js")).default; let out = null;
+      const res = { setHeader() {}, status() { return { json: (j) => { out = j; } }; } };
+      const { SEASON: SN } = await import("../lib/games.js");
+      await R.set(`paper:${SN}:77`, JSON.stringify({ season: SN, week: 77, parlays: [{ strategy: "td_likely_3", legs: [{ game: "X @ Y", kind: "td", label: "A TD" }] }] }));
+      await R.set(`paper:${SN}:78:sgp|X @ Y`, JSON.stringify({ season: SN, week: 78, game: "X @ Y", parlays: [{ strategy: "sgp_best", legs: [] }] }));
+      await mbh({ query: {} }, res);
+      ok(out && out.ok && out.saved.includes(77) && !out.saved.includes(78) && out.weeks["77"].best[0].stake === 10, "modelbets (10/19): the week's own copy marks the week saved (a same-game record does not); an old Best Legs record carries the $10 stake", out && { saved: out.saved, best: out.weeks["77"] && out.weeks["77"].best });
+      await R.del(`paper:${SN}:77`); await R.del(`paper:${SN}:78:sgp|X @ Y`); }
     for (const k of await R.keys("paper:2099:*")) await R.del(k); }
   { // 4-leg parlays (10/14 research): 4 biggest favorites skip a game where a green pick backs the dog; green+3 favs; 3 favs + top TD; linked same-game 4
     const { fourLegParlays, sameGameParlays } = await import("../lib/sgp.js");
@@ -516,7 +530,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const { STRATEGIES: STN, legKind } = await import("../lib/paper.js");
     ok(STN.sgp_upset && STN.leg4_td4 && legKind({ kind: "total", side: "under" }) === "under" && legKind({ kind: "total", label: "Over 44.5" }) === "over" && legKind({ kind: "td" }) === "td" && legKind({ kind: "x" }) === null, "new types named; leg kinds for the review");
     const mbj = readFileSync(new URL("../pages/api/modelbets.js", import.meta.url), "utf8"), apx = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
-    ok(/best_2: "best", best_3: "best", td_likely_2: "best", td_likely_3: "best"/.test(mbj) && /\["best", "Best Legs"\]/.test(apx) && /if \(type === "best"\)/.test(apx) && /S\.bestLegs/.test(apx) && /td_likely_3: "3 most likely TD scorers"/.test(apx)
+    ok(/best_2: "best", best_3: "best", td_likely_2: "best", td_likely_3: "best"/.test(mbj) && /\["best", "Best Legs"\]/.test(apx) && /if \(type === "best"\)/.test(apx) && /S\.bestLegs/.test(apx) && /MODELBETS\.saved\.includes\(Number\(week\)\)/.test(apx) && /\(saved \? rec :/.test(apx) && /td_likely_3: "3 most likely TD scorers"/.test(apx)
       && /\.\.\.\(data\.bestLegs \|\| \[\]\)/.test(readFileSync(new URL("../pages/api/slate.js", import.meta.url), "utf8")) && /bestLegs = bestLegParlays\(games\)/.test(readFileSync(new URL("../lib/week.js", import.meta.url), "utf8")),
       "Best Legs tab (10/19): saved best_2 / best_3 / td_likely_2 / td_likely_3 grouped as \"best\", the live slate's bestLegs before the week is saved, real quotes in the background");
     ok(/leg4_td4: "diff", sgp_upset: "upset"/.test(mbj) && /\["upset", "Upset"\]/.test(apx) && /upset: \(g\) => g\.sgp\.upset/.test(apx) && /\["Upset", x\.upset\]/.test(apx) && /sgp_upset: 17\.6, leg4_td4: 17\.7/.test(apx) && /LEGS · THIS SEASON/.test(apx) && /PAPER\.killers/.test(apx), "Model bets: Upset tab + 4 most likely scorers under Different Game Parlays; game page shows Upset; scoreboard has the LEGS review"); }
