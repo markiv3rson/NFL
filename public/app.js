@@ -580,21 +580,6 @@ function renderMineNow() {
 }
 // 10/18 (owner): a Results page under Bets (the RESULT alert lines) was built and deleted the same day -- RESULT lines are saved (lib alerts listResults) but shown nowhere.
 // ---------- Record: Model ----------
-// Past seasons (10/1, regular season, every game graded the same way the live record is): % right per year. [season, spread side, total side, market favorite wins, stats-only winner]
-const PAST = [[2013, 53.0, 56.8, 71.2, 69.4], [2014, 49.1, 59.6, 68.0, 67.4], [2015, 47.6, 56.8, 63.7, 64.9], [2016, 54.7, 52.7, 67.6, 65.9], [2017, 55.0, 48.0, 71.4, 64.8], [2018, 44.9, 49.2, 67.2, 65.6], [2019, 48.9, 52.1, 65.1, 65.1], [2020, 43.3, 50.2, 66.8, 65.9], [2021, 46.8, 47.1, 63.7, 63.7], [2022, 44.7, 52.9, 68.5, 61.7], [2023, 53.1, 50.5, 69.6, 65.6], [2024, 56.1, 48.9, 74.1, 69.6], [2025, 44.4, 53.6, 63.2, 59.2]];
-function pastBox() {
-  const f = (x) => x.toFixed(1) + "%", avg = (i) => PAST.reduce((a, r) => a + r[i], 0) / PAST.length;
-  const col = (v) => (v >= 65 ? "var(--green)" : v >= 62 ? "var(--yellow)" : "var(--red)");
-  const bars = PAST.map((r) => `<div class="pb"><i style="height:${Math.round(((r[3] - 40) / 35) * 52) + 6}px;background:${col(r[3])}"></i></div>`).join("");
-  const yrs = PAST.map((r) => `<span>${String(r[0]).slice(2)}</span>`).join("");
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Past seasons · favorite won</div><div class="pbars">${bars}</div><div class="pyrs">${yrs}</div>` +
-    `<div class="s dim" style="margin-top:6px">Average: favorite won ${f(avg(3))} · model side spreads ${f(avg(1))} · model side totals ${f(avg(2))}.</div>` +
-    `<div class="fold" data-drop="pasttbl"><span>Full table by season</span><span>▾</span></div><div class="drop" id="pasttbl">` +
-    `<div class="row"><span class="dim">Season</span><span class="dim">FAVORITE WON · STATS WINNER · MODEL SIDE SPREAD · MODEL SIDE TOTAL</span></div>` +
-    PAST.slice().reverse().map((r) => `<div class="row"><span>${r[0]}</span><span>${f(r[3])} · ${f(r[4])} · ${f(r[1])} · ${f(r[2])}</span></div>`).join("") +
-    `<div class="row"><b>Average</b><b>${f(avg(3))} · ${f(avg(4))} · ${f(avg(1))} · ${f(avg(2))}</b></div>` +
-    `</div></div></div>`;
-}
 
 // ---------- Models tab: analysis helpers (pure, tested) ----------
 const bar = (pct, color, label) => `<span style="display:inline-block;width:64px;height:7px;border-radius:4px;background:rgba(255,255,255,.1);vertical-align:middle"><i style="display:block;height:7px;border-radius:4px;width:${Math.max(2, Math.min(100, Math.round(pct)))}%;background:${color}"></i></span>${label ? ` <span class="dim">${label}</span>` : ""}`;
@@ -741,9 +726,7 @@ function renderModelNow() {
       (() => { const pl = tdPlayersWithDefense(res); return `<div class="s" style="margin-top:8px"><b>By position</b></div>` + tdByPosition(pl) + `<div class="s" style="margin-top:8px"><b>By opponent defense</b></div>` + tdByDefense(pl); })() +
       `<div class="s" style="margin-top:8px"><b>Vs Polymarket</b></div>` + (vsMkt || '<div class="s">None yet.</div>')) +
     mSec("m-ang", "5 · Tracked angles", pickLabBox()) +
-    mSec("m-past", "6 · Past seasons", pastBox() + `<div class="s" style="margin-top:8px"><b>Miss finder</b></div>` + ((S.missFinder && S.missFinder.misses && S.missFinder.misses.length) ?
-      S.missFinder.misses.map((m) => `<div class="row" style="display:block"><b>${esc(m.pattern)}</b><div class="s">${esc(String(m.note).split(" — ")[0])}</div></div>`).join("") : '<div class="s">None yet.</div>')) +
-    mSec("m-sys", "7 · System", wcRows + stRows, (wc.watch || []).length, !stOk) +
+    mSec("m-sys", "6 · System", wcRows + stRows, (wc.watch || []).length, !stOk) +
     `<div class="center"><button class="btn" id="export-btn">Export data</button></div>`;
   paintBox($("models"));
   $("export-btn").onclick = () => (window.location.href = "/api/results/export");
@@ -772,9 +755,8 @@ function stampUpdated() { const t = new Date().toLocaleTimeString(undefined, { h
 async function loadRecord(sync = false) {
   if (sync) toast("Syncing…", 0);
   try {
-    const [mb, rl, rp, mbt] = await Promise.all([fetch(`/api/mybets${sync ? "?sync=1" : ""}`, { cache: "no-store" }).then((r) => r.json()), fetch("/api/results/list", { cache: "no-store" }).then((r) => r.json()), fetch("/api/replay", { cache: "no-store" }).then((r) => r.json()).catch(() => null), fetch("/api/modelbets", { cache: "no-store" }).then((r) => r.json()).catch(() => null)]);
+    const [mb, rl, mbt] = await Promise.all([fetch(`/api/mybets${sync ? "?sync=1" : ""}`, { cache: "no-store" }).then((r) => r.json()), fetch("/api/results/list", { cache: "no-store" }).then((r) => r.json()), fetch("/api/modelbets", { cache: "no-store" }).then((r) => r.json()).catch(() => null)]);
     if (mbt && mbt.ok) MODELBETS = mbt;
-    if (rp && rp.ok) REPLAY = rp.replay;   // history table; a failed fetch just leaves the card out
     if (!mb.ok) throw new Error(mb.error); stampUpdated(); MB = mb; RES = rl.ok ? rl.results : []; PAPER = rl.ok ? rl.paper : null; TRACKED = rl.ok ? rl.tracked || null : null; COMBOS = rl.ok ? rl.combos || null : null; renderLab();
     renderRecord();
     if (sync && mb.sync) toast(mb.sync.ok ? `Synced ${mb.sync.positions} positions.` : `Sync: ${mb.sync.note}`);
@@ -805,7 +787,7 @@ function trackedRows() {
   const rr = (x) => (x && x.n ? `${x.w}–${x.l}` : "—");
   // 10/14 shadow picks (recorded + graded, not shown): LINE MOVE triggered by Pinnacle; Polymarket order-book tilt 4x+
   const row = (x, name) => (x ? `<div class="arow"><span class="nm">${name} · spread ${rr(x.spread)} · total ${rr(x.total)}</span><span class="dim rc">${x.n ? `${x.w}–${x.l}` : x.recorded ? `${x.recorded} saved` : "none yet"}</span><b class="${x.n ? (x.hit >= 0.56 ? "g" : x.hit >= 0.5 ? "y" : "r") : "dim"}">${x.n ? Math.round(x.hit * 100) + "%" : "—"}</b></div>` : "");
-  return row(T.pinlm, "LINE MOVE using Pinnacle (shadow)") + row(T.tilt, "Polymarket order-book tilt 4x+ (shadow)") + row(T.injearly, "INJURY EARLY (shadow)") || '<div class="s dim">None yet.</div>';
+  return row(T.injearly, "INJURY EARLY (shadow)") || '<div class="s dim">None yet.</div>';
 }
 // Decision model (10/9): straight bets only (no teasers, no alt lines), ONE pick per game per market (spread, total): the one
 // with the best record. Two angles on opposite sides of the same total no longer both show.
@@ -872,7 +854,7 @@ function bestStrip() {
   const rows = ["Morning", "Afternoon", "Primetime"].map((sl) => { const xs = B.filter((x) => x.slot === sl); return xs.length ? `<div class="sh" style="margin:8px 0 4px">${sl.toUpperCase()}</div>${xs.map(row).join("")}` : ""; }).join("");
   return `<div id="bestlist"><div class="card modelglow"><div class="inner">${rows}</div></div></div>`;   // 10/14 owner: model picks glow purple
 }
-let LAB_SB = "", REPLAY = null;
+let LAB_SB = "";
 function renderLab() {
   if (!$("lab")) return;
   if (!PAPER) { renderLabList(); return; }
@@ -880,10 +862,9 @@ function renderLab() {
   // Scoreboard (10/14, owner: "organize it"): the parlays still built, grouped; this season W-L and hit %, then the tested history.
   const GROUPS = [["SAME GAME", [["sgp_best", "2 legs"], ["sgp_best_fill", "2 legs · filled"], ["sgp_3", "3 legs"], ["sgp_upset", "Upset · dog wins + its RB scores"]]],
     ["BEST BETS", [["best_2", "Top 2 picks"], ["best_3", "Top 3 picks"]]],
-    ["FAVORITES", [["home_fav_95_single", "Home fav 9.5+ · single"], ["home_fav_95_2", "Home fav 9.5+ · 2 legs"], ["home_fav_95_3", "Home fav 9.5+ · 3 legs"], ["top3_home_75", "Top 3 home favs (75%+)"]]],
-    ["TOUCHDOWNS", [["td_edge_3", "3 TD value picks"], ["td_likely_2", "2 likeliest scorers"], ["td_likely_3", "3 likeliest scorers"]]]];   // 10/19: 3 legs at most (the 4-leg rows are gone; their saved records stay)
+    ["TOUCHDOWNS", [["td_likely_2", "2 likeliest scorers"], ["td_likely_3", "3 likeliest scorers"]]]];   // 10/19: 3 legs at most (the 4-leg rows are gone; their saved records stay)
   const TESTED = { sgp_best_fill: 49.5, sgp_3: 30.2, sgp_upset: 25.1 };   // research (CLAUDE.md); same-game rates = the 10/19 filters, 2019-25
-  const hist = (k) => { if (TESTED[k] != null) return `${TESTED[k]}%`; const h = REPLAY && REPLAY.parlays && REPLAY.parlays.find((x) => x.id === k); return h && h.n ? `${Math.round(h.hit * 100)}%` : "—"; };
+  const hist = (k) => (TESTED[k] != null ? `${TESTED[k]}%` : "—");
   const now = (k) => { const b = board[k]; if (!b || !b.decided) return '<span class="dim">waiting</span>'; const l = b.decided - b.hits;
     return `${b.hits}–${l} · ${Math.round((b.hits / b.decided) * 100)}%${b.money != null ? ` <span class="${b.money >= 0 ? "g" : "r"}">${b.money >= 0 ? "+" : "−"}$${Math.abs(Math.round(b.money))}</span>` : ""}`; };
   const tag = (k) => { const rv = board[k] && board[k].review; if (!rv || /TOO FEW|WAITING/i.test(rv.verdict)) return ""; const c = { HOLDS: "g", UNDERSTATED: "g", PAYING: "g", OVERSTATED: "r", LOSING: "r" }[rv.verdict] || "dim"; return ` <b class="${c}" style="font-size:10px">${esc(rv.verdict)}</b>`; };

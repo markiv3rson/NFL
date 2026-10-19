@@ -234,13 +234,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   await recordStack(2099, 6, G, [{ id: "keynumber|spread", team: "DEN", line: 2.5, kind: "spread", hit: 58.1 }], "2099-10-16T00:00:00Z");
   const rec = JSON.parse(await getRedis().hget(skey(2099, 6), "SEA @ DEN|keynumber|spread"));
   ok(rec.first && rec.first.line === 3.5 && rec.line === 2.5, "CLV: kickoff record keeps the line first SHOWN during the week (not the kickoff line)", rec); }
-{ const { recordShadow } = await import("../pages/api/pinnaclepull.js"); const { trackedSummary, gradeTrackedWeek } = await import("../lib/tracked.js"); const { getRedis } = await import("../lib/redis.js");
-  const G = { home: "DEN", away: "SEA", key: "SEA @ DEN", week: 7 }, p = { spread: { homeSpread: 2.5, home: 0.5, away: 0.5 }, total: { line: 40.5, over: 0.5, under: 0.5 } };
-  const n = await recordShadow(getRedis(), 2097, G, p, { hs: 3.5, tl: 44 }, { bd: 9000, ad: 1500 }, { bd: 800, ad: 600 }, "t");
-  const n2 = await recordShadow(getRedis(), 2097, G, p, { hs: 3.5, tl: 44 }, { bd: 9000, ad: 1500 }, null, "t2");   // second sighting: no new rows
-  await gradeTrackedWeek(2097, 7, [{ key: "SEA @ DEN", home: "DEN", away: "SEA", homeScore: 20, awayScore: 24 }]); const s = await trackedSummary(2097);
-  ok(n === 3 && n2 === 0 && s.pinlm && s.pinlm.recorded === 2 && s.tilt.recorded === 1,
-    "shadow picks: Pinnacle LINE MOVE (crossed 3 -> SEA side; total 3.5 apart -> Over) + order-book tilt 6x -> DEN; saved once, graded, kept out of other records", { n, n2, pinlm: s.pinlm, tilt: s.tilt });
+{ const { trackedSummary, gradeTrackedWeek } = await import("../lib/tracked.js"); const { getRedis } = await import("../lib/redis.js");
+  ok(!/recordShadow|bookDepth/.test(readFileSync(new URL("../pages/api/pinnaclepull.js", import.meta.url), "utf8")), "review 10/19: the Pinnacle LINE MOVE / order-book tilt shadow picks and their book reads are gone");
   { // INJURY EARLY shadow (10/16): the healthy team at the current line the first time exactly one team has its QB / 2+ DBs / 2+ OL out; once per game; graded
     const { recordInjEarly } = await import("../lib/tracked.js"); const G = { key: "KC @ BUF", home: "BUF", away: "KC", week: 7 };
     const i1 = await recordInjEarly(2097, 7, G, 2.5, { home: { inj: { qb: 1, db: 0, ol: 0 } }, away: { inj: { qb: 0, db: 0, ol: 0 } } }, "2097-10-20T12:00:00Z");
@@ -327,9 +322,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       game("I @ J", -1, 0.5, 50, { td: [{ player: "X.Back", team: "J", price: 0.30, bid: 0.29, fair: 36, market: "X Back 1+" }, { player: "Y.Thin", team: "J", price: 0.30, bid: 0.01, thin: true, fair: 50 }] }),
       game("K @ L", -2, 0.55, 55, { td: [{ player: "Z.Wr", team: "L", price: 0.20, bid: 0.19, fair: 25 }] }), game("M @ N", 1, 0.45, 45, { td: [{ player: "Q.Te", team: "M", price: 0.10, bid: 0.09, fair: 12 }] })] };
   const P = buildPaper(data), by = (k) => P.filter((p) => p.strategy === k);
-  ok(by("home_fav_95_single").length === 2 && by("home_fav_95_2").length === 1 && by("home_fav_95_3").length === 0, "home favorites 9.5+: singles + 2-leg, no 3-leg with only two qualifying", P.map((p) => p.strategy));
-  ok(by("top3_home_75").length === 1 && by("top3_home_75")[0].legs.map((l) => l.team).join() === "D,B,H", "top-3 home favorites 75%+ in order");
-  ok(by("td_edge_3").length === 1 && !by("td_edge_3")[0].legs.some((l) => l.player === "Y.Thin"), "TD edge parlay uses real markets only");
+  ok(!["home_fav_95_single", "home_fav_95_2", "home_fav_95_3", "top3_home_75", "td_edge_3"].some((k) => by(k).length) && P.every((p) => ["best_2", "best_3", "td_likely_2", "td_likely_3"].includes(p.strategy)), "weekly parlays (10/19 review): only the Best Legs types are built -- the old paper types never shown anywhere are gone", P.map((p) => p.strategy));
   { const td = (player, team, fair, extra = {}) => ({ player, team, price: fair / 100 - 0.05, bid: fair / 100 - 0.06, fair, market: player + " 1+", ...extra });
     const d2 = { games: [game("A @ B", -3, 0.6, 60, { td: [td("Top.One", "A", 70), td("Top.Two", "A", 66)] }), game("C @ D", -3, 0.6, 60, { td: [td("Sit.Q", "C", 80, { injury: "Questionable" }), td("Real.Two", "D", 55)] }),
       game("E @ F", -3, 0.6, 60, { td: [td("Thin.X", "E", 90, { thin: true, bid: 0.01 }), td("Real.Three", "F", 40)] }), game("G @ H", -3, 0.6, 60, { td: [td("Late.Four", "G", 30)] })] };
@@ -342,7 +335,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       ok(B.every((p) => p.stake === 10) && Q.filter((p) => BEST_LEGS.includes(p.strategy)).every((p) => p.stake === 10) && Q.filter((p) => !BEST_LEGS.includes(p.strategy)).every((p) => p.stake == null || p.strategy.startsWith("leg4_")), "Best Legs: $10 stake saved on those types only");
       const B2 = bestLegParlays(d2.games.map((g) => (g.key === "E @ F" ? { ...g, started: true } : g)));
       ok(B2.find((p) => p.strategy === "td_likely_2").legs.map((l) => l.player).join() === "Top.One,Real.Two" && !B2.some((p) => p.legs.some((l) => l.game === "E @ F")), "Best Legs: a started game drops out of the live build"); } }
-  ok(Math.abs(by("home_fav_95_2")[0].pay - 0.977 / (0.9 * 0.86)) < 1e-9, "payout = legs multiplied, minus Polymarket's cut");
+  { const { comboPay } = await import("../lib/combo.js"); ok(Math.abs(comboPay([{ game: "C @ D", kind: "ml", team: "D", price: 0.9 }, { game: "A @ B", kind: "ml", team: "B", price: 0.86 }]) - 0.977 / (0.9 * 0.86)) < 1e-9, "payout = legs multiplied, minus Polymarket's cut"); }
   await setJSON("paper:2026:9", { parlays: [{ strategy: "x", legs: [{ game: "A @ B", kind: "ml", team: "B", price: 0.8 }, { game: "C @ D", kind: "ml", team: "D", price: 0.5 }] },
     { strategy: "y", legs: [{ game: "A @ B", kind: "ml", team: "B", price: 0.8 }, { game: "I @ J", kind: "td", team: "J", player: "X.Back", price: 0.3 }] }] });
   await gradePaper(2026, 9, [{ key: "A @ B", homeScore: 24, awayScore: 20 }, { key: "C @ D", homeScore: 17, awayScore: 17 }, { key: "I @ J", homeScore: 10, awayScore: 3 }],
@@ -617,7 +610,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const ms = usMarkets(ev, "nfl"), g = parseGame(ms, "LA", "SEA"), td = ms.filter((m) => m.sportsMarketType === "anytime_touchdowns"), st = statPropsFromMarkets(ms);
     ok(g.ml && g.ml.away === 0.61 && g.ml.home === 0.4 && g.spread.homeSpread === 2.5 && g.spread.away === 0.51 && g.spread.home === 0.5 && g.total.line === 44.5 && g.total.over === 0.5 && g.total.under === 0.51
       && g.alts.some((a) => a.team === "SEA" && a.line === 3.5 && a.price === 0.58) && !g.alts.some((a) => a.price === 0.31) && g.talts.some((a) => a.side === "under" && a.line === 45.5 && a.price === 0.55)
-      && g._mkt.spread.tok.slug === "asc-x--2.5" && g._mkt.spread.tok.flip === true && td.length === 1 && td[0].question === "Puka Nacua 1+ touchdowns" && st[0].line === 59.5 && st[0].stat === "rec_yds",
+      && td.length === 1 && td[0].question === "Puka Nacua 1+ touchdowns" && st[0].line === 59.5 && st[0].stat === "rec_yds",
       "Polymarket US: moneyline / spread / total at the ask (other side = 1 - bid), every alternate, no half markets, TD 1+ only, 60+ yards = Over 59.5", { g, td, st }); }
   { // 10/16 (owner's pass): ESPN "ruled out" news joins the starters-out count before the official report says Out (Hurts: official "DNP" Thursday, ESPN Out)
     const { withEspnOuts } = await import("../lib/paper.js"); const { startersOut } = await import("../lib/snaps.js");
@@ -1267,13 +1260,11 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ctx.T.renderModel(); ok(/Accuracy/.test(box.innerHTML) && !/50\/50 blend|Players checked|Thin markets/.test(box.innerHTML) && /Chances vs results/.test(box.innerHTML) && /Top scorers/.test(box.innerHTML) && /Vs Polymarket/.test(box.innerHTML), "models tab: the touchdown section is three plain lists (chances vs results, top scorers, vs Polymarket); no blend / players checked / thin markets rows");
     ctx.document.getElementById = old; }
   { // snap counts not posted yet (played unset): those players are left out of every accuracy number instead of counting as misses
-    const { buildCalibration } = await import("../lib/calibration.js"); const { findMisses } = await import("../lib/missfinder.js");
+    const { buildCalibration } = await import("../lib/calibration.js");
     const many = (played) => ({ td: Array.from({ length: 60 }, (_, i) => ({ fair: 20, scored: i < 3, ...(played === undefined ? {} : { played }) })) });
     const cu = buildCalibration([many(undefined)]), cp = buildCalibration([many(true)]), cf = buildCalibration([many(false)]);
     const bucket = (c) => c.table.find((x) => x.lo === 15);
     ok(bucket(cu).n === 0 && bucket(cu).mult === 1 && bucket(cf).n === 0 && bucket(cp).n === 60 && bucket(cp).mult < 1, "calibration: only players known to have played count (unset and inactive are left out)");
-    const hi = (played) => ({ td: Array.from({ length: 14 }, () => ({ fair: 60, scored: false, ...(played === undefined ? {} : { played }) })) });
-    ok(!findMisses([hi(undefined)]).some((m) => /High-confidence TD misses/.test(m.pattern)) && findMisses([hi(true)]).some((m) => /High-confidence TD misses/.test(m.pattern)), "miss finder: players with unknown played status are not model misses");
     const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "models" ? box : id === "export-btn" ? { onclick: null } : old(id));
     vm.runInContext(`S = { week: 4, games: [], status: { ok: true, errors: [] }, weekCheck: { games: 16, withLines: 16, modelRun: true, watch: [] }, missFinder: null, winners: null }; MB = { summary: {}, bets: [] }; PAPER = { names: {}, board: {}, week: null }; PICKS = null; EDGES = null; REPLAY = null; RES = [ { game: "A @ B", week: 4, td: [ { team: "A", player: "P1", fair: 40, scored: true, played: true }, { team: "A", player: "P2", fair: 30, scored: false }, { team: "B", player: "P3", fair: 30, scored: false } ] } ]`, ctx);
     ctx.T.renderModel(); ok(/2 waiting for snap counts/.test(box.innerHTML), "models tab: says how many touchdown players are waiting for snap counts");
@@ -1412,12 +1403,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     vm.runInContext(`S = { week: 4, games: [], status: { ok: true, errors: [] }, weekCheck: { games: 16, withLines: 16, modelRun: true, watch: [] }, missFinder: null, winners: { all: { n: 3, w: 2, l: 1, hit: 0.67 } } }; MB = { summary: { wins: 0, losses: 0, pushes: 0, pl: 0 }, bets: [] }; PAPER = { names: {}, board: {}, week: null }; PICKS = null; EDGES = null; REPLAY = null; WINALL = false`, ctx);
     vm.runInContext(`RES = ${JSON.stringify(res)}`, ctx);
     ctx.T.renderModel(); const h = box.innerHTML;
-    const order = ["1 · Card picks", "2 · Winners", "3 · Parlay scoreboard", "4 · Touchdowns", "5 · Tracked angles", "6 · Past seasons", "7 · System"].map((x) => h.indexOf(x));
-    ok(order.every((x, i) => x > 0 && (i === 0 || x > order[i - 1])) && !/Price gaps/.test(h) && !/Trends and analysis|Misses and every game|Scoreboard · Week|old model/.test(h), "models tab (10/19): seven sections in order, card picks first; no old-model rows", order);
-    ok((h.match(/class="fold" data-drop="m-/g) || []).length === 7 && !/class="s dim" style="margin:2px 0 6px"/.test(h) && !/break-even/i.test(h), "models tab: seven sections, no explanation lines, no break-even talk");
-    ok(!/Hit rate by week/.test(h) && /Week 3/.test(h) && /Week 4/.test(h) && /id="gbg"/.test(h) && /Parlay scoreboard/.test(h) && /Week 4 loaded/.test(h.slice(h.indexOf("7 · System"))), "models tab: every-game list under Card picks, the week check under System");
-    { const nb = readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8"), oi = ["1 · Card picks", "2 · Winners", "3 · Parlay scoreboard", "4 · Accuracy", "5 · Tested patterns", "6 · Futures", "7 · System"].map((x) => nb.indexOf(x));
-      ok(oi.every((x, i) => x > 0 && (i === 0 || x > oi[i - 1])), "NBA models tab (10/19, design = both sports): card picks, winners, parlay scoreboard first, same as NFL", oi); }
+    const order = ["1 · Card picks", "2 · Winners", "3 · Parlay scoreboard", "4 · Touchdowns", "5 · Tracked angles", "6 · System"].map((x) => h.indexOf(x));
+    ok(order.every((x, i) => x > 0 && (i === 0 || x > order[i - 1])) && !/Price gaps/.test(h) && !/Trends and analysis|Misses and every game|Scoreboard · Week|old model/.test(h), "models tab (10/19 review): six sections in order, card picks first; no old-model rows, no Past seasons", order);
+    ok((h.match(/class="fold" data-drop="m-/g) || []).length === 6 && !/Past seasons|Miss finder/.test(h) && !/class="s dim" style="margin:2px 0 6px"/.test(h) && !/break-even/i.test(h), "models tab: six sections, no explanation lines, no break-even talk");
+    ok(!/Hit rate by week/.test(h) && /Week 3/.test(h) && /Week 4/.test(h) && /id="gbg"/.test(h) && /Parlay scoreboard/.test(h) && /Week 4 loaded/.test(h.slice(h.indexOf("6 · System"))), "models tab: every-game list under Card picks, the week check under System");
+    { const nb = readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8"), oi = ["1 · Card picks", "2 · Winners", "3 · Parlay scoreboard", "4 · Accuracy", "5 · Futures", "6 · System"].map((x) => nb.indexOf(x));
+      ok(oi.every((x, i) => x > 0 && (i === 0 || x > oi[i - 1])), "NBA models tab (10/19, design = both sports): card picks, winners, parlay scoreboard first, same as NFL; 10/19 review: Tested patterns gone (never picks)", oi); ok(!/Tested patterns/.test(nb), "NBA models tab: no Tested patterns section"); }
     vm.runInContext(`S.winners = { all: { n: 3, w: 2, l: 1, hit: 0.67 }, bands: [{ label: "60-70%", n: 2, w: 1, l: 1, hit: 0.5, said: 0.65 }, { label: "80%+", n: 0 }] }`, ctx);
     const bc = ctx.T.winnersBands();
     ok(/Said 60-70% · 2 picks<\/span><span>1–1 · <b>50%<\/b> <span class="dim">· said 65%/.test(bc) && !/80%\+/.test(bc), "models tab: moneyline by chance = the same favorite record as the MONEYLINE tile");
