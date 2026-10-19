@@ -1167,6 +1167,19 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       ok(/Combo · 4 picks/.test(row2) && /pays \$294\.00 if it wins/.test(row2) && !/Lost/.test(row2), "my bets: open combo shows its picks in a list");
       const sm = ctx.T.betsSummary([{ result: "pending", cost: 10, toWin: 294, expMarket: 1, picks: cp }, { result: "pending", cost: 5, toWin: 50, expMarket: 2, picks: [{ result: "W" }] }, { result: "W", cost: 2, pl: 3 }]);
       ok(sm.losses === 1 && sm.wins === 1 && sm.openCost === 5 && sm.maxPayout === 50 && sm.expMarket === 2 && Math.abs(sm.pl - (3 - 10)) < 1e-9, "my bets summary (10/19): a combo with a lost leg counts as a loss (-stake) and leaves open money / if-everything-hits", sm); }
+    { // 10/19 (owner: "why is my single bets not showing?"): single player bets ("astatc-" traded on their own) are bets; combo legs still are not
+      const { isComboLeg, tradedSingles, propOf, resolvedFrom } = await import("../lib/mybets.js");
+      const sl = "astatc-nfl-was-sf-2026-10-19-firsttd-termcl", meta = { slug: sl, title: "WAS Commanders vs. SF 49ers", outcome: "Yes", eventSlug: "nfl-was-sf-2026-10-19", subject: { name: "Terry McLaurin", image: "https://static.polymarket.us/images/teams/football/nfl/was/jerseys/17.png?v=1" } };
+      const acts = { activities: [{ type: "ACTIVITY_TYPE_TRADE", trade: { marketSlug: sl } }, { type: "ACTIVITY_TYPE_TRADE", trade: { marketSlug: "crossd-abc" } }] }, sing = tradedSingles(acts);
+      ok(sing.has(sl) && sing.size === 1 && !isComboLeg(sl, meta, sing) && isComboLeg("astatc-nfl-was-sf-2026-10-19-td-geokit-gte1", {}, sing) && isComboLeg(sl, { state: "COMBO_LEG_STATE_PENDING" }, sing) && isComboLeg(sl),
+        "my bets: an astatc- market traded on its own is a single bet; other astatc- legs (and anything marked COMBO_LEG) stay combo legs", [...sing]);
+      const pr = propOf(sl, meta), pr2 = propOf("astatc-nfl-nyg-was-2026-10-11-td-camska-gte2", { eventSlug: "nfl-nyg-was-2026-10-11", subject: { name: "Cam Skattebo", image: ".../football/nfl/nyg/jerseys/44.png" } });
+      ok(pr && pr.label === "Terry McLaurin First TD" && pr.team === "WAS" && pr.game === "WAS @ SF" && pr.kind === "td" && pr2.label === "Cam Skattebo 2+ TD" && pr2.team === "NYG", "my bets: single player bet label, team and game", { pr, pr2 });
+      const resA = { positionResolution: { marketSlug: sl, beforePosition: { netPosition: "94", cost: { value: "4.999" }, realized: { value: "0" }, marketMetadata: meta }, afterPosition: { realized: { value: "94" } } } };
+      const rx = resolvedFrom(resA, sing);
+      ok(rx && rx.win && Math.abs(rx.pl - (94 - 4.999)) < 1e-9 && resolvedFrom(resA) === null, "my bets: a single player bet's settlement is read (a combo leg's is not)", rx);
+      const row = ctx.T.betRow({ source: "account", title: "WAS Commanders vs. SF 49ers", outcome: "Yes", week: 6, cost: 5, toWin: 94, price: 0.053, result: "pending", prop: pr });
+      ok(/Terry McLaurin First TD/.test(row) && /tlogo/.test(row) && !/Commanders vs/.test(row) && /pays \$94\.00 if it wins/.test(row), "my bets: a single player bet shows as its player + bet with the team logo"); }
     { // kickoff save: the card picks are recorded at kickoff, then graded
       const { writePrelog } = await import("../pages/api/snapshot.js"), { getRedis: gr, K: KK, setJSON: sj } = await import("../lib/redis.js"), R = gr();
       const G = { key: "A @ B", away: "A", home: "B", week: 5, kickoff: "2026-10-11T17:00:00Z" };
