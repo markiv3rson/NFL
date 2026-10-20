@@ -882,5 +882,12 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   const saved = JSON.parse(await R.get(K_NBAPROPS("2026-12-30", "BOS @ DET")));
   ok(saved.first === "2026-12-30T10:00:00Z" && saved.m["John Collins|ast|2.5"][0] === 0.9 && saved.m["John Collins|ast|2.5"][3] === 0.97 && saved.m["Jayson Tatum|pts|14.5"], "NBA props: the first price stays next to the latest; one key per game and day");
   await R.del(K_NBAPROPS("2026-12-30", "BOS @ DET")); }
+{ // 10/20: System shows the NBA prop recorder's footprint
+  const { getStatus } = await import("../lib/status.js"), R = globalThis.__TEST_REDIS__;
+  await R.set("nbaprops:2026-12-30:BOS @ DET", JSON.stringify({ first: "2026-12-30T10:00:00Z", t: "2026-12-30T11:00:00Z", m: {} }));
+  const st = await getStatus({ fetcher: async () => ({ ok: true, status: 200, json: async () => ({ ok: true }) }) });
+  ok(st.props && st.props.days === 1 && st.props.lastDay === "2026-12-30" && st.props.latest === "2026-12-30T11:00:00Z", "NBA status: prop recorder days + newest write", st.props);
+  ok(/Player prop lines recorded/.test(readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8")), "NBA System row for the prop recorder");
+  await R.del("nbaprops:2026-12-30:BOS @ DET"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`);
 process.exit(bad ? 1 : 0);
