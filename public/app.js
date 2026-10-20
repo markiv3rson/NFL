@@ -863,7 +863,7 @@ function renderLab() {
   const GROUPS = [["SAME GAME", [["sgp_best", "2 legs"], ["sgp_best_fill", "2 legs · filled"], ["sgp_3", "3 legs"], ["sgp_upset", "Upset · dog wins + its RB scores"]]],
     ["BEST BETS", [["best_2", "Top 2 picks"], ["best_3", "Top 3 picks"]]],
     ["TOUCHDOWNS", [["td_likely_2", "2 likeliest scorers"], ["td_likely_3", "3 likeliest scorers"]]]];   // 10/19: 3 legs at most (the 4-leg rows are gone; their saved records stay)
-  const TESTED = { sgp_best_fill: 49.5, sgp_3: 30.2, sgp_upset: 25.1 };   // research (CLAUDE.md); same-game rates = the 10/19 filters, 2019-25
+  const TESTED = { sgp_best_fill: 49.5, sgp_3: 30.2, sgp_upset: 25.1, td_likely_2: 46.7, td_likely_3: 32.2 };   // research (CLAUDE.md); same-game rates = the 10/19 filters, 2019-25; TD pair / triple = walk-forward TD model 2021-25, 90 weeks (10/20)
   const hist = (k) => (TESTED[k] != null ? `${TESTED[k]}%` : "—");
   const now = (k) => { const b = board[k]; if (!b || !b.decided) return '<span class="dim">waiting</span>'; const l = b.decided - b.hits;
     return `${b.hits}–${l} · ${Math.round((b.hits / b.decided) * 100)}%${b.money != null ? ` <span class="${b.money >= 0 ? "g" : "r"}">${b.money >= 0 ? "+" : "−"}$${Math.abs(Math.round(b.money))}</span>` : ""}`; };
