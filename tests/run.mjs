@@ -243,8 +243,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const i3 = await recordInjEarly(2097, 7, { ...G, key: "NE @ NYJ", home: "NYJ", away: "NE" }, -3, { home: { inj: { qb: 1 } }, away: { inj: { db: 2 } } }, "x");
     const saved = JSON.parse(await getRedis().hget("teaser:2097:7", "KC @ BUF|injearly"));
     await gradeTrackedWeek(2097, 7, [{ key: "KC @ BUF", home: "BUF", away: "KC", homeScore: 20, awayScore: 24 }]); const s2 = await trackedSummary(2097);
-    ok(i1 === 1 && i2 === 0 && i3 === 0 && saved.team === "KC" && saved.line === -2.5 && saved.out === "BUF" && s2.injearly.recorded === 1 && s2.injearly.w === 1,
-      "INJURY EARLY shadow: healthy KC at -2.5 saved once (BUF's QB out), both-hurt game skipped, graded a win", { i1, i2, i3, saved, ie: s2.injearly }); } }
+    // 10/20: a CONTINUING injury (the hurt team had the flag in its previous game) is saved with cont: true, and the summary splits new / continuing
+    const i4 = await recordInjEarly(2097, 7, { key: "DAL @ PHI", home: "PHI", away: "DAL", week: 7 }, 4.5, { home: { inj: { qb: 1 }, injPrev: { qb: 1 } }, away: { inj: {}, injPrev: {} } }, "y");
+    const sc = JSON.parse(await getRedis().hget("teaser:2097:7", "DAL @ PHI|injearly")); const s3 = await trackedSummary(2097);
+    ok(i1 === 1 && i2 === 0 && i3 === 0 && saved.team === "KC" && saved.line === -2.5 && saved.out === "BUF" && saved.cont === false && s2.injearly.recorded === 1 && s2.injearly.w === 1
+      && i4 === 1 && sc.cont === true && sc.team === "DAL" && s3.injearly.recorded === 2 && s3.injearly.fresh.w === 1 && s3.injearly.cont.n === 0,
+      "INJURY EARLY shadow: healthy KC at -2.5 saved once (BUF's QB out), both-hurt game skipped, graded a win; a continuing injury is saved with cont: true and split in the summary", { i1, i2, i3, i4, saved, sc, ie: s3.injearly }); } }
 { const { clvOf } = await import("../lib/stack.js");
   ok(clvOf({ kind: "spread", line: 2.5, first: { line: 3.5 } }) === 1 && clvOf({ kind: "spread", line: -4, first: { line: -3 } }) === 1 && clvOf({ kind: "spread", line: 4, first: { line: 3 } }) === -1
     && clvOf({ kind: "total", side: "over", line: 46, first: { line: 44.5 } }) === 1.5 && clvOf({ kind: "total", side: "under", line: 44, first: { line: 45 } }) === 1 && clvOf({ kind: "spread", line: 3 }) === null,
