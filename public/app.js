@@ -301,7 +301,7 @@ const firstTdRow = (r) => `<div class="tdr best"><div class="in">${tlogo(r.team)
 // TD BY WEEK (10/20 night, owner: "click on it and it will show me each week that the last time they made a TD"): one line per player under his row,
 // week by week this season -- ✓ (with the count when 2+), – for a game without one, bye when his team did not play; the running week only once its game is final.
 let TDW = null, TDW_AT = 0, TDW_LOADING = null;
-const tdNameEq = (a, b) => { const n = (x) => String(x || "").toLowerCase().replace(/[^a-z]/g, ""); if (n(a) === n(b)) return true;
+const tdNameEq = (a, b) => { const n = (x) => String(x || "").toLowerCase().replace(/[^a-z0-9]/g, ""); if (n(a) === n(b)) return true;
   const la = String(a || "").split(/[\s.]+/).filter(Boolean), lb = String(b || "").split(/[\s.]+/).filter(Boolean); return la.length > 1 && lb.length > 1 && la[la.length - 1].toLowerCase() === lb[lb.length - 1].toLowerCase() && la[0][0].toLowerCase() === lb[0][0].toLowerCase(); };
 // One entry per PLAYED week: { w, n } (n = his TDs that week), "bye" for a final week his team did not play; a week not played yet is left out
 // (the running week counts a game only once its scorers are posted -- 10/20 night fix: week 7 read "bye" on everyone before it was played).
@@ -323,13 +323,16 @@ function tdWeekLine(data, team, player) {
   if (!parts.length) return '<span class="dim">no games yet</span>';
   return parts.join(' <span class="dim">·</span> ') + (drought >= 2 ? ` <span class="dim">· ${drought} straight without</span>` : "");
 }
-// 10/20 night (owner: "if they didn't score a TD for 3 weeks then cut them so they don't show up, then bring them back if they scored"): a player
-// with TD_DROUGHT+ played games in a row without a TD is OFF the Anytime TD page (Best TD picks and the list), whatever his model %; the week he
-// scores the count resets and he is back. History 2019-25 (list players, walk-forward model): 3+ straight blanks scored 25.4-31.8% vs 25.8-30.1%
-// said -- the model's % already carries the drought, so the cut removes rows, it does not raise the hit rate of the ones left beyond their %.
+// 10/20 night (owner: "only put people's names if they scored a TD the past 3 games. If not cut them"): a player is on the Anytime TD page
+// (Best TD picks and the list) ONLY when one of his last TD_DROUGHT PLAYED games (byes skipped) had a TD, whatever his model %; a player with no
+// TD this season is off; the week he scores he is back. Nothing is drawn until the week feed is in (an uncut list was showing before it landed).
+// History 2019-25 (list players, walk-forward model): 3+ straight blanks scored 25.4-31.8% vs 25.8-30.1% said -- the model's % already carries the
+// drought, so the cut removes rows, it does not raise the hit rate of the ones left beyond their %.
 // Page only: the model lists, parlays and grading are unchanged (every listed player is still graded in the background).
 const TD_DROUGHT = 3, TD_POOL = 5;
-const tdCut = (r, data) => data != null && (tdDrought(data, r.team, r.player) || 0) >= TD_DROUGHT;
+// true when one of his last TD_DROUGHT played games had a TD; null before the feed
+function tdScoredRecent(data, team, player) { const gs = tdWeekGames(data, team, player); if (!gs) return null; return gs.filter((x) => !x.bye).slice(-TD_DROUGHT).some((g) => g.n > 0); }
+const tdCut = (r, data) => data != null && !tdScoredRecent(data, r.team, r.player);
 async function loadTdWeeks() {
   if (TDW && Date.now() - TDW_AT < 600000) return TDW;
   if (!TDW_LOADING) TDW_LOADING = fetch("/api/tdweeks", { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.ok) { TDW = j; TDW_AT = Date.now(); } return TDW; }).catch(() => TDW).finally(() => { TDW_LOADING = null; });
@@ -366,9 +369,11 @@ function tdBody() {
   return bestBox + moveBox + list;
 }
 function renderTd() {
-  if (!TDW) loadTdWeeks().then((d) => { if (d && $("panel-td").classList.contains("on")) renderTd(); });   // the drought cut needs the week feed: redraw once it lands
-  else loadTdWeeks();
   $("td-header").textContent = "";   // 10/17 (owner): no subtitle
+  // the cut needs the week feed: before it lands the page says loading and is redrawn when it arrives (10/20 night: an uncut list was drawn first
+  // and stayed when the page was opened later); a failed load is retried on the next draw
+  if (!TDW) { $("td").innerHTML = '<div class="card" style="margin-top:10px"><div class="s dim">Loading…</div></div>'; loadTdWeeks().then((d) => { if (d) renderTd(); }); return; }
+  loadTdWeeks();
   let html = tdBody();
   $("td").innerHTML = html + '';
 }
@@ -1382,6 +1387,7 @@ function showPanel(name) {
   if (name === "record") applyBetsView();
   if (name === "record") setTimeout(playStamps, 50);
   if (name === "props") { renderProps(); loadProps(); }   // 10/17 (owner): Props is its own page
+  if (name === "td" && S && S.games) renderTd();   // 10/20 night: the Anytime TD page is drawn fresh when opened (the cut and the week feed)
   if (S && S.games) setBg(name === "lines" && DETAIL ? S.games.find((x) => x.key === DETAIL) : null);   // game background only on an open game page
   linesBg();
 }
