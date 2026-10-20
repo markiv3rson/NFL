@@ -2,10 +2,11 @@
 team_side.py -- the TEAM MODEL spread rule (owner 10/19: "go off the win success rate of the entire team", not prices).
 Each team's season so far (record, cover rate, margin, points for / against, offense + defense EPA / success rate / yards per play,
 pass / rush EPA, turnover margin) blended with last season's full average (as 4 games), plus an opponent-adjusted margin (SRS),
-home minus away, and the spread itself -> logistic regression (C 0.05) for "home covers". Trained on seasons 2012 .. last season.
-Tested the same way (tests/team_side/, each season predicted by a model trained only on earlier seasons, 2014-25 vs the closing spread):
-the model 60%+ sure won 60.3% (217; eras 54 / 64 / 62), 58-60% sure 55.7% (203), under 58% a coin flip -- so the site fires the rule
-only at 58%+ and shows those rates. Published in the weekly rebuild's artifact as "teamSide": the fit + every team's numbers before week W.
+home minus away -> logistic regression (C 0.05) for "home covers". Trained on seasons 2012 .. last season.
+10/20 (the label-shuffle check of the walk-forward found it): WITHOUT the spread as an input the same fit does better in every era --
+60%+ sure 62.1% (211; eras 58 / 65 / 62, 11 of 12 seasons up) vs 60.4% with it (54 / 64 / 62), 58-60% sure 55.3% (199) vs 55.7%; the
+spread's coefficient only pulled the picks toward the market. Shuffled training labels drop the 58%+ bucket to 47-54% (a real edge, not a leak).
+Under 58% a coin flip -- so the site fires the rule only at 58%+ and shows those rates (lib/stack.js TEAM_BANDS). Published in the weekly rebuild's artifact as "teamSide": the fit + every team's numbers before week W.
 """
 import numpy as np, pandas as pd
 import extra_factors as xf
@@ -99,7 +100,7 @@ def build(cur):
     from sklearn.linear_model import LogisticRegression
     R, g = team_games(cur)
     D, feats = design(R)
-    X = feats + ["hline"]; tr = D[(D.season < cur) & (D["cov"] != 0.5)]
+    X = feats; tr = D[(D.season < cur) & (D["cov"] != 0.5)]   # 10/20: the spread is NOT an input any more (see the header) -- the fit reads the two teams' numbers only
     mu, sd = tr[X].mean(), tr[X].std() + 1e-9
     m = LogisticRegression(C=C, max_iter=3000).fit((tr[X] - mu) / sd, tr["cov"].astype(int))
     W = coming_week(g, cur)

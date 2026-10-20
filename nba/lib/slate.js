@@ -1,6 +1,7 @@
 // Everything the page shows, computed server-side: Polymarket lines (spread / total / moneyline + alternate lines) -> the model service
 // (fair numbers, win chance, every buyable line) -> the card (PICK / PICK w/ POINTS), best bets, parlays. NBA only. Betting venue = Polymarket.
-import { fetchEvents, polyGames } from "./poly";
+import { fetchEvents, polyGames, eventGame } from "./poly";
+import { nbaPropsFromEvent, recordNbaProps } from "./props";
 import { loadInjuries, injuriesFor } from "./injuries";
 import { modelBase, modelHeaders } from "./model";
 import { getRedis, jparse } from "./redis";
@@ -129,6 +130,9 @@ export async function buildSlate({ now = Date.now(), days = 1, events = null, in
   const dates = [...new Set(games.map((g) => g.date))].slice(0, days + 1);
   games = games.filter((g) => dates.includes(g.date));
   if (record) await recordCloses(games, now).catch((e) => logError("closes", e));   // closing lines first: they need neither the model nor the injuries
+  if (record) for (const e of ev || []) {   // 10/20: NBA player prop lines recorded in the background (nba/lib/props.js), nothing shown
+    const gm = e && e.event ? null : eventGame(e); if (!gm || !(Date.parse(gm.start) > now) || !dates.includes(gm.date)) continue;
+    await recordNbaProps(gm.date, gm.key, nbaPropsFromEvent(e), new Date(now).toISOString()).catch((err) => logError("props", err)); }
   const inj = injuries || (await loadInjuries().catch(() => ({ teams: {}, dates: {}, t: null })));
   const payload = { games: games.filter((g) => g.poly).map((g) => {
     const px = g.poly;

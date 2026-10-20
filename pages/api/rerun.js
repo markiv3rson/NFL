@@ -12,6 +12,7 @@ import { windAtKickoff, venue, isNeutral } from "../../lib/wind";
 import { loadSnaps, qbFirstStart, sameName } from "../../lib/snaps";
 import { loadEspnInjuries, espnOutFor, espnQuestionableFor } from "../../lib/espn";
 import { propLinesFor, K_PROPMODEL } from "../../lib/props";
+import { recordTdJump } from "../../lib/tracked";
 export const config = { maxDuration: 300 };
 
 // Railway answers 502/503 "Application failed to respond" while the service restarts after a deploy (10/7 8:33 PM).
@@ -147,8 +148,10 @@ async function rerunWeek(req, base, season, week, early) {
       const x = byGame(tdIn, r);
       if (!x) return errors.push(`unmatched TD result: ${r.game}`);
       if (r.error) return errors.push(`${x.key} TD: ${r.error}`);
+      const prevTd = store.td[x.key] || null;
       store.td[x.key] = { away: r.away, home: r.home, awayGroups: r.awayGroups || null, homeGroups: r.homeGroups || null, outs: r.excluded, without: r.without || null, linesUsed: { homeSpread: -x.spread, total: x.total }, ...(x.own ? { early: true } : {}), runAt };
       nTd++;
+      if (!early && prevTd) alertJobs.push(recordTdJump(SEASON, week, x, prevTd, store.td[x.key], runAt).catch(() => 0));   // 10/20 TD JUMP shadow (lib/tracked.js)
     });
     if (td && td.error) errors.push(`TD: ${String(td.error).slice(0, 120)}`);
     // Player props (10/17, owner: Props sub tab): the model's chance of every recorded receiving-yards line, with this week's Out list, saved per game.

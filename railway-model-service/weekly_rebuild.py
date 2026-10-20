@@ -32,7 +32,7 @@ FIRST = 2014                       # first season with the game-model replay (ne
 UP_ALPHA = 3000
 # 10/16 (owner: "rebuild it now"): bump this tag whenever the rebuild code changes what it publishes. app.py rebuilds on start when the saved
 # build carries a different tag, so a deploy to Railway rebuilds right away instead of waiting for Tuesday 4 AM PT.
-BUILD_TAG = "2026-10-19 ridge 3000 + team model (team_side.py)"
+BUILD_TAG = "2026-10-20 ridge 3000 + team model without the spread input (team_side.py)"
 COLD = {"GB", "CHI", "BUF", "NE", "CLE", "PIT", "DEN", "KC", "NYJ", "NYG", "PHI", "CIN", "BAL"}
 TZ = {"SEA": -3, "SF": -3, "LA": -3, "LAC": -3, "LV": -3, "OAK": -3, "SD": -3, "STL": -1, "ARI": -2, "DEN": -2, "KC": -1, "DAL": -1, "HOU": -1,
       "MIN": -1, "CHI": -1, "GB": -1, "NO": -1, "TEN": -1}

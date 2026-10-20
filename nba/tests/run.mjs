@@ -872,5 +872,15 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
 { // 10/20 review: sportsbook lines only while current (36 h): opening night showed the 10/14 pull as today's
   const { booksCurrent } = await import("../lib/slate.js"), now = Date.parse("2026-10-20T02:00:00Z");
   ok(!booksCurrent({ t: "2026-10-14T07:58:33Z" }, now) && booksCurrent({ t: "2026-10-19T14:00:00Z" }, now) && !booksCurrent(null, now) && !booksCurrent({}, now), "books: a pull older than 36 h is not shown on the cards (opening night: six days old)"); }
+{ // 10/20: NBA player props (Polymarket US lists them now) are RECORDED in the background, nothing shown
+  const { nbaPropsFromEvent, recordNbaProps, K_NBAPROPS } = await import("../lib/props.js"), R = globalThis.__TEST_REDIS__;
+  const ev = { rawProps: [{ sportsMarketType: "basketball_player_assists", line: 3, title: "John Collins 3+ assists", bestAskQuote: { value: "0.97" }, bestBidQuote: { value: "0.95" } },
+    { sportsMarketType: "basketball_player_points", line: 15, titleShort: "Jayson Tatum 15+ Pts", bestAskQuote: { value: "0.62" } }, { sportsMarketType: "basketball_game_overtime", line: 1, title: "Overtime" }, { sportsMarketType: "basketball_player_rebounds", line: 6, title: "Jalen Duren 6+ rebounds", closed: true }] };
+  const rows = nbaPropsFromEvent(ev);
+  ok(rows.length === 2 && rows[0].name === "John Collins" && rows[0].stat === "ast" && rows[0].line === 2.5 && rows[0].oa === 0.97 && rows[0].ub === undefined && rows[0].ua === 0.05 && rows[1].name === "Jayson Tatum" && rows[1].stat === "pts" && rows[1].line === 14.5 && rows[1].ob === null, "NBA props: 'N+' = Over N-0.5, name from the title, no game markets, no closed ones", rows);
+  await recordNbaProps("2026-12-30", "BOS @ DET", rows, "2026-12-30T10:00:00Z"); await recordNbaProps("2026-12-30", "BOS @ DET", [{ ...rows[0], oa: 0.9 }], "2026-12-30T11:00:00Z");
+  const saved = JSON.parse(await R.get(K_NBAPROPS("2026-12-30", "BOS @ DET")));
+  ok(saved.first === "2026-12-30T10:00:00Z" && saved.m["John Collins|ast|2.5"][0] === 0.9 && saved.m["John Collins|ast|2.5"][3] === 0.97 && saved.m["Jayson Tatum|pts|14.5"], "NBA props: the first price stays next to the latest; one key per game and day");
+  await R.del(K_NBAPROPS("2026-12-30", "BOS @ DET")); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`);
 process.exit(bad ? 1 : 0);
