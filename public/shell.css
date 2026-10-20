@@ -96,3 +96,6 @@ body.menu-open .mscrim { opacity:1; pointer-events:auto; } body.menu-open .mdraw
 
 /* 10/18 (owner: "make the words smaller for the live"): the LIVE · quarter clock on My bets, both sports */
 #record-mine .lvb { font-size:11px; font-weight:700; letter-spacing:.03em; white-space:nowrap; }
+/* 10/20 night (owner: "why is this not showing the full background too?"): on a computer the whole home picture fits the screen at its own proportions */
+@media (min-width:1100px) { html.home-on body { background:transparent; } html.home-on::before { z-index:-2; filter:blur(34px) brightness(.55); transform:scale(1.12); }
+  html.home-on::after { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; background:linear-gradient(180deg,rgba(0,0,0,.30),rgba(0,0,0,.50) 60%,rgba(0,0,0,.70)),url(/home-bg.jpg?v=3) center/contain no-repeat; } }   /* the whole picture at its own proportions, the same picture blurred behind it fills the screen */
