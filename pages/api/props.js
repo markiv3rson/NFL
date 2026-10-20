@@ -2,7 +2,7 @@
 // lib/props.js PROP_PASS) with their Polymarket price, ✓ / ✗ once the game is graded, and the season's W-L. ?week=N picks the week.
 import { getRedis } from "../../lib/redis";
 import { SEASON, displayWeek, loadGames, started } from "../../lib/games";
-import { propsForWeek, propsRecord } from "../../lib/props";
+import { propsForWeek, propsRecord, propSummary } from "../../lib/props";
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   try {
@@ -17,6 +17,8 @@ export default async function handler(req, res) {
       const cg = (await loadGames(season, dw.cur)).filter((g) => dw.carry.includes(g.key)).map((g) => ({ ...g, started: started(g) }));
       list = [...(await propsForWeek(r, season, dw.cur, cg).catch(() => [])).map((x) => ({ ...x, week: dw.cur, carry: true })), ...list]; }
     const record = await propsRecord(r, season, [...weeks]);
-    res.status(200).json({ ok: true, season, week, weeks: [...weeks].filter(Number.isFinite).sort((a, b) => a - b), games: list, record });
+    // 10/20 review: every graded group's live record (shown or only tracked, e.g. receiving-yards OVERS 65%+) for the weekly report -- data, not shown on the page
+    const groups = req.query.groups ? (await propSummary(r, season, [...weeks]).catch(() => null)) : undefined;
+    res.status(200).json({ ok: true, season, week, weeks: [...weeks].filter(Number.isFinite).sort((a, b) => a - b), games: list, record, ...(groups ? { groups } : {}) });
   } catch (e) { res.status(200).json({ ok: false, error: String(e).slice(0, 200) }); }
 }

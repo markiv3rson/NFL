@@ -13,9 +13,9 @@ export default async function handler(req, res) {
     for (const k of pin) { const game = k.split(":").slice(3).join(":"), n = await r.llen(k), last = jp(await r.lindex(k, -1));
       (out[game] = out[game] || {}).pinnacle = { records: n, last }; }
     for (const [f, v] of Object.entries((await r.hgetall(skey(SEASON, week))) || {})) { const p = jp(v); if (!p || p.teaser) continue;
-      (out[p.game] = out[p.game] || {}).picks = [...((out[p.game] || {}).picks || []), { id: p.id, pick: p.pick, hit: p.hit, first: p.first || null, line: p.line, savedAt: p.t, clv: clvOf(p), result: p.result || null }]; }
+      (out[p.game] = out[p.game] || {}).picks = [...((out[p.game] || {}).picks || []), { id: p.id, pick: p.pick, hit: p.hit, first: p.first || null, line: p.line, kind: p.kind || null, team: p.team || null, side: p.side || null, home: p.home || null, savedAt: p.t, clv: clvOf(p), result: p.result || null }]; }
     for (const [f, v] of Object.entries((await r.hgetall(`stackfirst:${SEASON}:${week}`)) || {})) { const [game, ...rest] = f.split("|"); const x = jp(v);
-      ((out[game] = out[game] || {}).firstSeen = (out[game] || {}).firstSeen || []).push({ pick: rest.join("|"), line: x && x.line, t: x && x.t }); }
+      ((out[game] = out[game] || {}).firstSeen = (out[game] || {}).firstSeen || []).push({ pick: rest.join("|"), line: x && x.line, t: x && x.t, ...(x && x.kind ? { label: x.pick || null, id: x.id || null, kind: x.kind, team: x.team || null, side: x.side || null, home: x.home || null, result: x.result || null } : {}) }); }   // 10/20: kind / side / result so `npm run verify` re-grades first-shown picks too
     res.status(200).json({ ok: true, season: SEASON, week, games: out });
   } catch (e) { res.status(200).json({ ok: false, error: String(e).slice(0, 200) }); }
 }

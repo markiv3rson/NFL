@@ -336,11 +336,15 @@ function tdBody() {
   // 55%+ players scored 17 of 21 (said 65%) vs 22% for every listed player -- the model's most confident tier, not a smarter model.
   const best = rows.filter((x) => x.r.fair >= BEST_TD);
   const bestBox = `<div class="card tdl tdbest"><div class="tdh"><span style="flex:1;padding-left:6px">BEST TD PICKS · MODEL ${BEST_TD}%+</span></div>${best.length ? best.map((x) => `<div class="tdr best"><div class="in">${tlogo(x.r.team)}<div class="nmx"><div class="l1"><b>${esc(x.r.player)}</b><span class="pos">${esc(x.r.pos || "")}</span>${injTag(x.r) || practTag(x.r)}</div><div class="g2">${esc(x.g.key)}</div>${mktWarn(x.r)}</div><b class="g bp">${Math.round(x.r.fair)}%</b></div></div>`).join("") : '<div class="s" style="padding:10px 12px">No player at 55%+ right now.</div>'}</div>`;
+  // FIRST TD (10/20, owner: "build all 8"): the player with the highest first-TD chance in each game not started. Walk-forward 2019-25 the top pick scored
+  // first 13.7% of 1,860 games (said 15.4); live 6 of 45 (said 17). Graded per game in the results (ftd / ftdHit); the Models page shows the record.
+  const firsts = S.games.filter((g) => !g.started).map((g) => ({ g, r: firstTdPick(g) })).filter((x) => x.r).sort((a, b) => b.r.first - a.r.first);
+  const firstBox = firsts.length ? `<div class="card tdl tdbest" style="margin-top:10px"><div class="tdh"><span style="flex:1;padding-left:6px">FIRST TD · TOP PICK PER GAME</span></div>${firsts.map((x) => `<div class="tdr best"><div class="in">${tlogo(x.r.team)}<div class="nmx"><div class="l1"><b>${esc(x.r.player)}</b><span class="pos">${esc(x.r.pos || "")}</span>${injTag(x.r) || practTag(x.r)}</div><div class="g2">${esc(x.g.key)}</div></div><b class="bp"><span class="mod">${Math.round(x.r.first)}%</span>${x.r.firstPrice != null ? `<span class="dim" style="font-weight:400;font-size:11px"> · ${Math.round(x.r.firstPrice * 100)}¢</span>` : ""}</b></div></div>`).join("")}</div>` : "";
   // Top 3 per team (10/5): beyond the three likeliest scorers the rest is noise.
   // 10/14 (owner): players already in Best TD picks are left out of this list (no repeats)
   const perTeam = {}, shown = rows.filter((x) => { const k = x.r.team; perTeam[k] = (perTeam[k] || 0) + 1; return perTeam[k] <= 3; }).filter((x) => x.r.fair < BEST_TD);
   if (!rows.length) return `<div class="card" style="margin-top:10px"><div class="s">${S.games.length && S.games.every((g) => g.started) ? "No games left this week." : "No players yet."}</div></div>`;
-  return bestBox + moveBox + `<div class="card tdl"><div class="tdh"><span style="flex:1;padding-left:28px">PLAYER</span><span style="width:74px;text-align:right">MODEL</span><span style="width:60px;text-align:right;white-space:nowrap">${pmLogo()}PRICE</span></div>${shown.map(tdRow).join("")}</div>`;
+  return bestBox + firstBox + moveBox + `<div class="card tdl"><div class="tdh"><span style="flex:1;padding-left:28px">PLAYER</span><span style="width:74px;text-align:right">MODEL</span><span style="width:60px;text-align:right;white-space:nowrap">${pmLogo()}PRICE</span></div>${shown.map(tdRow).join("")}</div>`;
 }
 function renderTd() {
   $("td-header").textContent = "";   // 10/17 (owner): no subtitle
@@ -787,7 +791,8 @@ function trackedRows() {
   const rr = (x) => (x && x.n ? `${x.w}–${x.l}` : "—");
   // 10/14 shadow picks (recorded + graded, not shown): LINE MOVE triggered by Pinnacle; Polymarket order-book tilt 4x+
   const row = (x, name) => (x ? `<div class="arow"><span class="nm">${name} · spread ${rr(x.spread)} · total ${rr(x.total)}</span><span class="dim rc">${x.n ? `${x.w}–${x.l}` : x.recorded ? `${x.recorded} saved` : "none yet"}</span><b class="${x.n ? (x.hit >= 0.56 ? "g" : x.hit >= 0.5 ? "y" : "r") : "dim"}">${x.n ? Math.round(x.hit * 100) + "%" : "—"}</b></div>` : "");
-  return row(T.injearly, "INJURY EARLY (shadow)") || '<div class="s dim">None yet.</div>';
+  const tj = T.tdjump && (T.tdjump.n || T.tdjump.recorded) ? `<div class="row"><span class="dim">TD JUMP (shadow) · chance up 10+ pts</span><span>${T.tdjump.n ? `${T.tdjump.w}–${T.tdjump.l} · ${Math.round(100 * T.tdjump.hit)}%${T.tdjump.said != null ? ` · said ${Math.round(T.tdjump.said)}%` : ""}` : `${T.tdjump.recorded} recorded`}</span></div>` : "";
+  return (row(T.injearly, "INJURY EARLY (shadow)") || "") + tj || '<div class="s dim">None yet.</div>';
 }
 // Decision model (10/9): straight bets only (no teasers, no alt lines), ONE pick per game per market (spread, total): the one
 // with the best record. Two angles on opposite sides of the same total no longer both show.
@@ -860,10 +865,10 @@ function renderLab() {
   if (!PAPER) { renderLabList(); return; }
   const names = PAPER.names || {}, board = PAPER.board || {};
   // Scoreboard (10/14, owner: "organize it"): the parlays still built, grouped; this season W-L and hit %, then the tested history.
-  const GROUPS = [["SAME GAME", [["sgp_best", "2 legs"], ["sgp_best_fill", "2 legs · filled"], ["sgp_3", "3 legs"], ["sgp_upset", "Upset · dog wins + its RB scores"]]],
+  const GROUPS = [["SAME GAME", [["sgp_best", "2 legs"], ["sgp_best_fill", "2 legs · filled"], ["sgp_3", "3 legs"], ["sgp_upset", "Upset · dog wins + its RB scores"], ["sgp_st", "Spread + total"]]],
     ["BEST BETS", [["best_2", "Top 2 picks"], ["best_3", "Top 3 picks"]]],
     ["TOUCHDOWNS", [["td_likely_2", "2 likeliest scorers"], ["td_likely_3", "3 likeliest scorers"]]]];   // 10/19: 3 legs at most (the 4-leg rows are gone; their saved records stay)
-  const TESTED = { sgp_best_fill: 49.5, sgp_3: 30.2, sgp_upset: 25.1 };   // research (CLAUDE.md); same-game rates = the 10/19 filters, 2019-25
+  const TESTED = { sgp_best_fill: 49.5, sgp_3: 30.2, sgp_upset: 25.1, td_likely_2: 46.7, td_likely_3: 32.2 };   // research (CLAUDE.md); same-game rates = the 10/19 filters, 2019-25; TD pair / triple = walk-forward TD model 2021-25, 90 weeks (10/20)
   const hist = (k) => (TESTED[k] != null ? `${TESTED[k]}%` : "—");
   const now = (k) => { const b = board[k]; if (!b || !b.decided) return '<span class="dim">waiting</span>'; const l = b.decided - b.hits;
     return `${b.hits}–${l} · ${Math.round((b.hits / b.decided) * 100)}%${b.money != null ? ` <span class="${b.money >= 0 ? "g" : "r"}">${b.money >= 0 ? "+" : "−"}$${Math.abs(Math.round(b.money))}</span>` : ""}`; };
@@ -1102,14 +1107,14 @@ function pBlock(title, p, showGame) {
 }
 function sgpBox(g) {
   const x = g.sgp; if (!x || g.started || g.final) return "";
-  const blocks = [["2 legs", x.best], ["3 legs", x.three], ["Upset", x.upset]].map(([t, p]) => pBlock(esc(t), p, false)).join("");
+  const blocks = [["2 legs", x.best], ["3 legs", x.three], ["Upset", x.upset], ["Spread + total", x.st]].map(([t, p]) => pBlock(esc(t), p, false)).join("");
   return blocks ? `<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAYS</div><div class="pgrid" style="margin-top:6px">${blocks}</div>` : "";
 }
 // Model bets: the parlay types are menu sub tabs (Over/Under, Best Legs, 3 Leg, 2 Leg, Upset; 10/19: 3 legs at most, the 4-leg tabs are gone), the week a drop-down;
 // each shows only its parlays, one column, in kickoff order. The current week comes from the live slate (results from the saved copies once a game starts); past weeks from /api/modelbets.
 const FOUR_NAMES = { best_2: "2 best green picks", best_3: "3 best green picks", td_likely_2: "2 most likely TD scorers", td_likely_3: "3 most likely TD scorers" };
 // 10/17 (owner): Over/Under first, then the parlays in this order and with these names
-const LAB_TABS = [["ou", "Over/Under"], ["best", "Best Legs"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"]];   // 10/17 parlay lab: Upset; 10/19 (owner: "three max ... cut all the four legs"): 4 Leg, 4 Leg (My Style), Different Game Parlays gone
+const LAB_TABS = [["ou", "Over/Under"], ["best", "Best Legs"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"], ["st", "Spread + Total"]];   // 10/17 parlay lab: Upset; 10/19 (owner: "three max ... cut all the four legs"): 4 Leg, 4 Leg (My Style), Different Game Parlays gone
 let MODELBETS = null, LABTYPE = "ou", LABWEEK = null;
 // 10/15 (owner): ONE Bets tab -- My bets on the left (the list as before), Model bets on the right (the model's parlays). The choice is remembered.
 let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
@@ -1137,7 +1142,7 @@ function renderProps() {
   const slotTimes = {}; for (const g of games) if (g.kickoff) { const sl = labSlot(g.kickoff), tt = tm(g.kickoff); (slotTimes[sl] = slotTimes[sl] || []).includes(tt) || slotTimes[sl].push(tt); }
   let lastSlot = null;
   // 10/18 (owner: "organize this, make it easier to read"): one row per player (lib/props.js onePerPlayer), columns lined up: player | line | win % | price
-  const row = (p) => `<div class="pbl ppr${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${tlogo(p.team || "")}${esc(p.name)}</span><span class="pp2">${p.side === "over" ? "Over" : "Under"} ${p.line}</span><span class="pp3">${Math.round(p.chance * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
+  const row = (p) => `<div class="pbl ppr${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${tlogo(p.team || "")}${esc(p.name)}</span><span class="pp2">${p.stat === "rec" ? "Rec " : p.stat === "pass_yds" ? "Pass Yds " : ""}${p.side === "over" ? "Over" : "Under"} ${p.line}</span><span class="pp3">${Math.round(p.chance * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
   const blocks = games.map((g) => { const sl = g.kickoff ? labSlot(g.kickoff) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
     return h + `<div class="par"><div class="pbh"><span class="pbn">${gameLogos(g.game)}</span></div>${g.picks.map(row).join("")}</div>`; });
   el.innerHTML = wk + stats + (games.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
@@ -1159,7 +1164,7 @@ function labParlays(week, type) {
   if (type === "ou") return S && Number(week) === Number(S.week) ? ((S && S.games) || []).map((g) => ({ p: { legs: ouLegs(g) }, game: g.key, kick: g.kickoff, title: gameLogos(g.key), ou: true })).filter((x) => x.p.legs.length) : [];
   const rec = (MODELBETS && MODELBETS.weeks && MODELBETS.weeks[week] && MODELBETS.weeks[week][type]) || [];
   if (!(S && Number(week) === Number(S.week))) return rec.map((p) => ({ p, game: p.game, kick: p.kickoff, title: p.game ? gameLogos(p.game) : esc(FOUR_NAMES[p.strategy] || p.strategy), across: !p.game }));
-  const pick = { 2: (g) => g.sgp.best, 3: (g) => g.sgp.three, upset: (g) => g.sgp.upset };
+  const pick = { 2: (g) => g.sgp.best, 3: (g) => g.sgp.three, upset: (g) => g.sgp.upset, st: (g) => g.sgp.st };
   if (type === "best") {   // Best Legs (10/19): once the week's copy is saved (Saturday morning) only it shows -- the one graded; the live build before that
     const saved = MODELBETS && Array.isArray(MODELBETS.saved) && MODELBETS.saved.includes(Number(week));
     return (saved ? rec : ((S && S.bestLegs) || []).filter((p) => p && Array.isArray(p.legs))).map((p) => ({ p, game: null, kick: null, title: esc(FOUR_NAMES[p.strategy] || p.strategy), across: true })); }

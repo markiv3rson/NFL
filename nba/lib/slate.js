@@ -1,6 +1,7 @@
 // Everything the page shows, computed server-side: Polymarket lines (spread / total / moneyline + alternate lines) -> the model service
 // (fair numbers, win chance, every buyable line) -> the card (PICK / PICK w/ POINTS), best bets, parlays. NBA only. Betting venue = Polymarket.
-import { fetchEvents, polyGames } from "./poly";
+import { fetchEvents, polyGames, eventGame } from "./poly";
+import { nbaPropsFromEvent, recordNbaProps } from "./props";
 import { loadInjuries, injuriesFor } from "./injuries";
 import { modelBase, modelHeaders } from "./model";
 import { getRedis, jparse } from "./redis";
@@ -119,12 +120,19 @@ export function fatigueOf(ctx, team, otSet) {
   const ot = !!(otSet && otSet.has(team)), far = Number(ctx.trav_km) >= FAR_KM;
   return ot || far ? { ot, far } : null;
 }
+// 10/20 review: sportsbook lines are shown only while current (36 h) -- there is no pull on a day without games, so on opening night the
+// cards showed the 10/14 pull's lines (six days old) as today's
+export const BOOKS_SHOW_MS = 36 * 3600e3;
+export const booksCurrent = (bk, now = Date.now()) => !!(bk && bk.t && now - Date.parse(bk.t) <= BOOKS_SHOW_MS);
 export async function buildSlate({ now = Date.now(), days = 1, events = null, injuries = null, model = null, record = true, pullBooks = false, booksFetch = fetch, forceBooks = false, otSets = null } = {}) {
   const ev = events || (await fetchEvents());
   let games = polyGames(ev).filter((g) => Date.parse(g.start) + GAME_HOURS * 3600e3 > now).sort((a, b) => a.start.localeCompare(b.start));
   const dates = [...new Set(games.map((g) => g.date))].slice(0, days + 1);
   games = games.filter((g) => dates.includes(g.date));
   if (record) await recordCloses(games, now).catch((e) => logError("closes", e));   // closing lines first: they need neither the model nor the injuries
+  if (record) for (const e of ev || []) {   // 10/20: NBA player prop lines recorded in the background (nba/lib/props.js), nothing shown
+    const gm = eventGame(e); if (!gm || !(Date.parse(gm.start) > now) || !dates.includes(gm.date)) continue;
+    await recordNbaProps(gm.date, gm.key, nbaPropsFromEvent(e), new Date(now).toISOString()).catch((err) => logError("props", err)); }
   const inj = injuries || (await loadInjuries().catch(() => ({ teams: {}, dates: {}, t: null })));
   const payload = { games: games.filter((g) => g.poly).map((g) => {
     const px = g.poly;
@@ -155,7 +163,7 @@ export async function buildSlate({ now = Date.now(), days = 1, events = null, in
     const m = byKey[g.key] || {};
     const row = { key: g.key, away: g.away, home: g.home, start: g.start, date: g.date, poly: g.poly,
       model: m.model || null, spread: m.spread || null, total: m.total || null, ml: m.ml || null, context: m.context || null,
-      injuries: m.injuries || { home: [], away: [] }, starOut: m.starOut || null, lines: m.lines || [], preseason: preOf(g), move: moves[g.key] || null, books: (bk && bk.games && bk.games[g.key]) || null };
+      injuries: m.injuries || { home: [], away: [] }, starOut: m.starOut || null, lines: m.lines || [], preseason: preOf(g), move: moves[g.key] || null, books: (bk && bk.games && booksCurrent(bk, now) && bk.games[g.key]) || null };
     // A game already under way: Polymarket's lines are live, but the patterns and win rates were tested on closing lines only,
     // so no PICK / LEAN / teaser is offered on it (picks seen before tip-off were already saved for the record).
     row.inProgress = now >= Date.parse(g.start);

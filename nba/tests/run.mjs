@@ -433,6 +433,10 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   const g = await st.getStatus({ now: T0, fetcher: up });
   ok(g.lastSnapshot && g.lastSnapshot.games === 9 && g.railway.ok, "status: last snapshot and Railway reported", g);
   ok(g.errors.length === 1 && g.errors[0].where === "books", "status: only errors from the last 2 days are shown", g.errors);
+  { const { getRedis: gr } = await import("../lib/redis.js"); await st.logError("pinnacle", "Pinnacle 5270 returned 403", T0 - 7200e3); await gr().set("ok:pinnacle", new Date(T0 - 3600e3).toISOString());
+    const g2 = await st.getStatus({ now: T0, fetcher: up });
+    ok(!g2.errors.some((e) => e.where === "pinnacle") && g2.errors.some((e) => e.where === "books"), "status (10/20): a Pinnacle error from before a later good pull is hidden, others stay", g2.errors);
+    await gr().del("ok:pinnacle"); }
   delete process.env.NBA_MODEL_SERVICE_URL; delete process.env.NBA_MODEL_SERVICE_TOKEN;
   ok(!(await st.railwayHealth(up)).ok, "status: no MODEL_SERVICE_URL -> not answering");
   const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
@@ -721,8 +725,8 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   C.n = 0; await pl.loadParlays(); ok(C.n <= 2, "parlays load in one batch", C.n);
   C.n = 0; await rec.lockedFor("2026-12-22", "BOS @ NYK"); ok(C.n === 1, "after tip-off the card's saved picks come in one Redis command", C.n);
   const base = mk("BOS", "NYK", { key: "BOS @ NYK", date: "2026-12-24", start: "2026-12-25T00:00:00Z" }), g = { ...base, card: cp.buildCard(base) };
-  C.n = 0; const n1 = await rec.recordPicks([g], Date.parse("2026-12-24T14:00:00Z")); ok(n1 >= 3 && C.n === 2 * n1, `a new pick costs 2 commands (save + index): ${n1} picks -> ${C.n}`);
-  C.n = 0; const n2 = await rec.recordPicks([g], Date.parse("2026-12-24T15:00:00Z")); ok(n2 === 0 && C.n === n1, "a repeat snapshot costs one command per pick and saves nothing (first sighting stands)", C.n);
+  C.n = 0; const n1 = await rec.recordPicks([g], Date.parse("2026-12-24T14:00:00Z")); ok(n1 >= 3 && C.n === 2 * n1 + 1, `a new pick costs 2 commands (save + index), plus one one-side check per game: ${n1} picks -> ${C.n}`);
+  C.n = 0; const n2 = await rec.recordPicks([g], Date.parse("2026-12-24T15:00:00Z")); ok(n2 === 0 && C.n === n1 + 1, "a repeat snapshot costs one command per pick (+ one one-side check per game) and saves nothing (first sighting stands)", C.n);
   const { getRedis: gr } = await import("../lib/redis.js"); const { mgetAll } = await import("../lib/redis.js");
   await R.set("mg:a", "1"); await R.set("mg:b", "2"); const vals = await mgetAll(gr(), ["mg:a", "mg:zz", "mg:b"]); ok(vals[0] === "1" && vals[1] === null && vals[2] === "2", "batch read keeps order and gives null for a missing key", vals); }
 
@@ -846,5 +850,37 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
 { const h = readFileSync(new URL("../../public/nba/index.html", import.meta.url), "utf8"), app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
   ok(/\.live:not\(\.tile\) \{ width:7px/.test(h), "the 7px 'live' dot rule never applies to a live game tile");
   ok(/fetch\("\/api\/nba\/live"/.test(app) && /fin \? "FINAL" : "● LIVE · "/.test(app) && /tile\$\{live \? " live" : ""\}/.test(app), "NBA tiles: live score + clock, finished games FINAL with the score, no live glow once final"); }
+{ // 10/20 review: a PICK w/ POINTS saved on the other side of the saved PICK (before the 10/19 one-side rule) is replaced before tip-off; the old row is kept
+  const R = globalThis.__TEST_REDIS__, D = "2026-12-30", G = "BOS @ DET", K = (id) => `pick:${D}:${G}:${id}`;
+  await R.set(K("modelpick|spread"), JSON.stringify({ date: D, game: G, id: "modelpick|spread", market: "spread", team: "DET", line: 1.5, label: "DET +1.5" }));
+  await R.set(K("ptspick|spread"), JSON.stringify({ date: D, game: G, id: "ptspick|spread", market: "spread", team: "BOS", line: 1.5, label: "BOS +1.5" })); await R.sadd("pick:ids", K("ptspick|spread"));
+  const g = { key: G, date: D, start: "2026-12-31T00:00:00Z", card: { spread: { plain: { id: "modelpick|spread", team: "DET", line: 1.5, pick: "DET +1.5", hit: 49.4 }, pts: { id: "ptspick|spread", team: "DET", line: 3.5, pick: "DET +3.5", hit: 53.4, points: 2 } } } };
+  await rec.recordPicks([g], Date.parse("2026-12-30T14:00:00Z"));
+  const now = JSON.parse(await R.get(K("ptspick|spread"))), kept = JSON.parse(await R.get(`removed:${K("ptspick|spread")}`));
+  ok(now.label === "DET +3.5" && kept.label === "BOS +1.5", "record (10/20): a saved PICK w/ POINTS on the other side of the PICK is replaced by the one-side line before tip-off; the old one is kept under removed:", { now, kept });
+  const g2 = { ...g, card: { spread: { plain: g.card.spread.plain } } };
+  await R.set(K("ptspick|spread"), JSON.stringify({ date: D, game: G, id: "ptspick|spread", market: "spread", team: "BOS", line: 1.5, label: "BOS +1.5" }));
+  await rec.recordPicks([g2], Date.parse("2026-12-30T15:00:00Z"));
+  ok(!(await R.get(K("ptspick|spread"))) && !(await R.smembers("pick:ids")).includes(K("ptspick|spread")), "record (10/20): with no one-side line on the card the opposite one leaves the record");
+  // the card's PICK flips to BOS later (the saved PICK DET +1.5 stands): its BOS PICK w/ POINTS is never saved, on any build -- no save / remove churn,
+  // and the removed: copy keeps the FIRST replaced row
+  const g3 = { ...g, card: { spread: { plain: { id: "modelpick|spread", team: "BOS", line: -1.5, pick: "BOS -1.5", hit: 49.4 }, pts: { id: "ptspick|spread", team: "BOS", line: 0.5, pick: "BOS +0.5", hit: 55.1, points: 2 } } } };
+  for (const t of ["2026-12-30T16:00:00Z", "2026-12-30T17:00:00Z"]) await rec.recordPicks([g3], Date.parse(t));
+  ok(!(await R.get(K("ptspick|spread"))) && JSON.parse(await R.get(`removed:${K("ptspick|spread")}`)).label === "BOS +1.5" && JSON.parse(await R.get(K("modelpick|spread"))).label === "DET +1.5",
+    "record (10/20): a PICK w/ POINTS on the other side of the SAVED PICK is never saved (no churn); the removed: copy keeps the first row");
+  for (const k of await R.keys(`*pick:${D}*`)) await R.del(k); }
+{ // 10/20 review: sportsbook lines only while current (36 h): opening night showed the 10/14 pull as today's
+  const { booksCurrent } = await import("../lib/slate.js"), now = Date.parse("2026-10-20T02:00:00Z");
+  ok(!booksCurrent({ t: "2026-10-14T07:58:33Z" }, now) && booksCurrent({ t: "2026-10-19T14:00:00Z" }, now) && !booksCurrent(null, now) && !booksCurrent({}, now), "books: a pull older than 36 h is not shown on the cards (opening night: six days old)"); }
+{ // 10/20: NBA player props (Polymarket US lists them now) are RECORDED in the background, nothing shown
+  const { nbaPropsFromEvent, recordNbaProps, K_NBAPROPS } = await import("../lib/props.js"), R = globalThis.__TEST_REDIS__;
+  const ev = { rawProps: [{ sportsMarketType: "basketball_player_assists", line: 3, title: "John Collins 3+ assists", bestAskQuote: { value: "0.97" }, bestBidQuote: { value: "0.95" } },
+    { sportsMarketType: "basketball_player_points", line: 15, titleShort: "Jayson Tatum 15+ Pts", bestAskQuote: { value: "0.62" } }, { sportsMarketType: "basketball_game_overtime", line: 1, title: "Overtime" }, { sportsMarketType: "basketball_player_rebounds", line: 6, title: "Jalen Duren 6+ rebounds", closed: true }] };
+  const rows = nbaPropsFromEvent(ev);
+  ok(rows.length === 2 && rows[0].name === "John Collins" && rows[0].stat === "ast" && rows[0].line === 2.5 && rows[0].oa === 0.97 && rows[0].ub === undefined && rows[0].ua === 0.05 && rows[1].name === "Jayson Tatum" && rows[1].stat === "pts" && rows[1].line === 14.5 && rows[1].ob === null, "NBA props: 'N+' = Over N-0.5, name from the title, no game markets, no closed ones", rows);
+  await recordNbaProps("2026-12-30", "BOS @ DET", rows, "2026-12-30T10:00:00Z"); await recordNbaProps("2026-12-30", "BOS @ DET", [{ ...rows[0], oa: 0.9 }], "2026-12-30T11:00:00Z");
+  const saved = JSON.parse(await R.get(K_NBAPROPS("2026-12-30", "BOS @ DET")));
+  ok(saved.first === "2026-12-30T10:00:00Z" && saved.m["John Collins|ast|2.5"][0] === 0.9 && saved.m["John Collins|ast|2.5"][3] === 0.97 && saved.m["Jayson Tatum|pts|14.5"], "NBA props: the first price stays next to the latest; one key per game and day");
+  await R.del(K_NBAPROPS("2026-12-30", "BOS @ DET")); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`);
 process.exit(bad ? 1 : 0);

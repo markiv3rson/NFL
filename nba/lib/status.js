@@ -60,6 +60,9 @@ export async function getStatus({ now = Date.now(), fetcher = fetch } = {}) {
   const espn = jparse(await getRedis().get(ESPN_STATUS).catch(() => null));
   const keys = await r.dbsize().catch(() => null);
   const pinOk = await r.get("ok:pinnacle").catch(() => null);
+  // 10/20 review (same rule as the NFL System list): a Pinnacle error from before a later good pull is over -- hidden (on opening night the list
+  // still showed the preseason-league 403s fixed 10/19)
+  const shown = errs.filter((e) => !(e.where === "pinnacle" && pinOk && Date.parse(e.t) < Date.parse(pinOk)));
   const backup = jparse(await r.get("status:backup").catch(() => null)) || null;
-  return { lastSnapshot: snap, errors: errs, railway, keys, pinnacle: pinOk, espn, backup, watch: computeWatch({ snap, railway, pinnacle: pinOk, espn, backup, now }) };
+  return { lastSnapshot: snap, errors: shown, railway, keys, pinnacle: pinOk, espn, backup, watch: computeWatch({ snap, railway, pinnacle: pinOk, espn, backup, now }) };
 }

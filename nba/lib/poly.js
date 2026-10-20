@@ -1,6 +1,6 @@
 // Polymarket NBA game lines — moneyline, spread, total, plus every alternate line. 10/17 (owner: "it needs to match my app", "do it for the nba also"):
 // read from POLYMARKET US (lib/polyus.js), the markets and prices of the owner's app; each US market arrives in the gamma shape parsed below.
-// There are NO player props for NBA on Polymarket, so nothing here asks for them.
+// 10/20: Polymarket US lists NBA player props now (points / rebounds / assists / threes / steals / blocks ladders); they ride along as rawProps for the recorder (nba/lib/props.js).
 // Copied in shape from the NFL app's lib/poly.js, with NBA teams (taken from each event's own team list) and NBA spread sizes.
 import { ninv, isThinMarket } from "./odds";
 import { TEAMS, ABBRS } from "./teams";
@@ -107,7 +107,8 @@ export async function fetchEvents() {
   const days = [...new Set(list.map((e) => (e.slug.match(/(\d{4}-\d\d-\d\d)$/) || [])[1]).filter(Boolean))].sort().slice(0, 3);
   const want = list.filter((e) => days.includes((e.slug.match(/(\d{4}-\d\d-\d\d)$/) || [])[1])), out = [];
   for (let i = 0; i < want.length; i += 8) out.push(...(await Promise.all(want.slice(i, i + 8).map(async (e) => { const ev = await usEvent(e.slug).catch(() => null); if (!ev) return null;
-    return { slug: e.slug, startTime: e.start || ev.startTime, teams: [{ abbreviation: e.away, ordering: "away" }, { abbreviation: e.home, ordering: "home" }], markets: usMarkets(ev, "nba") }; }))));
+    return { slug: e.slug, startTime: e.start || ev.startTime, teams: [{ abbreviation: e.away, ordering: "away" }, { abbreviation: e.home, ordering: "home" }], markets: usMarkets(ev, "nba"),
+      rawProps: (ev.markets || []).filter((m) => /^basketball_player_/.test(String(m.sportsMarketType || ""))) }; }))));   // 10/20: the raw player-prop markets, for nba/lib/props.js
   return out.filter(Boolean);
 }
 
