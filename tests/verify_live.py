@@ -80,7 +80,34 @@ for key, picks in ((L.get("combos") or {}).get("card") or {}).get("byGame", {}).
         if gx is None: continue
         n += 1
         if gx != p["result"]: wrong("card pick", key, p["pick"], p["result"], "->", gx)
-print(f"2. picks: {n} graded picks recomputed from the scores")
+# kickoff records + first-shown copies of every rule (the timing rules are graded at the line first shown) -- from the saved fields, not the label
+def g_saved(x, r):
+    if x.get("line") is None or not x.get("kind"): return None
+    a, h = r["game"].split(" @ "); m = r["homeScore"] - r["awayScore"]; tot = r["homeScore"] + r["awayScore"]
+    if x["kind"] == "total": d = (x["line"] - tot) if x.get("side") == "under" else (tot - x["line"])
+    elif x.get("team"): d = (m if x["team"] == (x.get("home") or h) else -m) + x["line"]
+    else: return None
+    return "W" if d > 0 else "L" if d < 0 else "P"
+nk = nf = 0
+for w in sorted({r["week"] for r in res.values()}):
+    try: RC = get(f"{SITE}/api/recordcheck?week={w}").get("games") or {}
+    except Exception: continue
+    for game, v in RC.items():
+        r = res.get(f"{w}|{game}")
+        if not r: continue
+        for x in v.get("picks") or []:
+            if x.get("result") not in ("W", "L", "P"): continue
+            gx = g_saved(x, r) if x.get("kind") else grade(x.get("pick") or "", r)   # before the 10/20 endpoint fields: from the label
+            if gx is None: continue
+            nk += 1
+            if gx != x["result"]: wrong("kickoff pick", w, game, x.get("id"), x.get("pick"), x["result"], "->", gx)
+        for x in v.get("firstSeen") or []:
+            if x.get("result") not in ("W", "L", "P"): continue
+            gx = g_saved(x, r)
+            if gx is None: continue
+            nf += 1
+            if gx != x["result"]: wrong("first-shown pick", w, game, x.get("pick"), x.get("line"), x["result"], "->", gx)
+print(f"2. picks: {n} graded picks recomputed from the scores, plus {nk} kickoff records and {nf} first-shown copies of every rule")
 
 # 3. parlays
 MB = get(f"{SITE}/api/modelbets"); nl = npar = 0
