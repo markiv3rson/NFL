@@ -1,6 +1,6 @@
 // SLATEZZ shell (10/17, owner): the side menu for NFL + NBA ("Menu A · Neon"), the refresh button (reruns BOTH models), the header's next-game
 // clock and the logo helpers. Loaded by /index.html (NFL + home) and /nba/index.html before each page's app.js.
-// Pages: NFL #home (no hash) #alerts #lines #td #props #mybets #modelbets #models on /index.html; NBA #alerts #lines #props #mybets #modelbets #models on /nba/index.html.
+// Pages: NFL #home (no hash) #alerts #lines #td #props-<tab> #mybets #modelbets #models on /index.html; NBA #alerts #lines #props-<tab> #mybets #modelbets #models on /nba/index.html.
 // (10/17, owner: My bets and Model bets are separate pages, listed under Bets in the menu.)
 (function () {
   const ICON = {
@@ -13,9 +13,12 @@
   };
   const svg = (k, w = 17) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
   const ITEMS = {
-    nfl: [["alerts", "Alerts", "bell"], ["lines", "Game Lines", "grid"], ["td", "Anytime TD", "td"], ["props", "Props", "props"], ["record", "Bets", "bets"]],   // 10/17 (owner): Props is its own page, between Anytime TD and Bets
-    nba: [["alerts", "Alerts", "bell"], ["lines", "Game Lines", "grid"], ["props", "Props", "props"], ["record", "Bets", "bets"]],   // NBA: between Game Lines and Bets
+    nfl: [["alerts", "Alerts", "bell"], ["lines", "Game Lines", "grid"], ["props", "Player props", "props"], ["record", "Bets", "bets"]],   // 10/20 (owner): "Player props" heads its sub tabs; Anytime TD is one of them (NFL)
+    nba: [["alerts", "Alerts", "bell"], ["lines", "Game Lines", "grid"], ["props", "Player props", "props"], ["record", "Bets", "bets"]],
   };
+  // 10/20 (owner: "rename it player props and have the sub tabs ... ANYTIME TD should be a sub tab under props"): the stat tabs, one page each
+  const PROPS = { nfl: [["td", "Anytime TD"], ["props-first", "First TD"], ["props-recyds", "Rec Yds"], ["props-rec", "Receptions"], ["props-passyds", "Pass Yds"]],
+    nba: [["props-pts", "Points"], ["props-reb", "Rebounds"], ["props-ast", "Assists"], ["props-pra", "PRA"], ["props-3pm", "Threes"], ["props-stl", "Steals"], ["props-blk", "Blocks"]] };
   const URL_ = { nfl: "/index.html", nba: "/nba/index.html" };
   const SUB = [["mybets", "My bets"], ["modelbets", "Model bets"]];   // 10/18 (owner): the Results sub tab was built and then deleted the same day ("I don't need it")
   // 10/17 (owner): the Model bets parlay types are sub tabs under Model bets in the menu (both sports)
@@ -29,7 +32,8 @@
   const sub = (sp, id, label) => id === "modelbets" ? `<div class="mi ${sp} msub mtog" data-tog="${sp}-mb" data-msp="${sp}" data-mp="modelbets"><i></i>${label}${car}</div>` + types(sp)
     : `<a class="mi ${sp} msub" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><i></i>${label}</a>`;
   const subs = (sp) => `<div class="mi ${sp} mpar mtog" data-tog="${sp}-bets"><span class="ic">${svg("bets")}</span>Bets${car}</div>` + group(`${sp}-bets`, SUB.map(([id, label]) => sub(sp, id, label)).join(""));
-  const item = (sp, id, label, ic) => id === "record" ? subs(sp) : `<a class="mi ${sp}" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><span class="ic">${svg(ic)}</span>${label}<b class="cnt" id="mcnt-${sp}-${id}"></b></a>`;
+  const propsMenu = (sp) => `<div class="mi ${sp} mpar mtog" data-tog="${sp}-props"><span class="ic">${svg("props")}</span>Player props${car}</div>` + group(`${sp}-props`, PROPS[sp].map(([id, label]) => `<a class="mi ${sp} msub" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><i></i>${label}</a>`).join(""));
+  const item = (sp, id, label, ic) => id === "record" ? subs(sp) : id === "props" ? propsMenu(sp) : `<a class="mi ${sp}" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><span class="ic">${svg(ic)}</span>${label}<b class="cnt" id="mcnt-${sp}-${id}"></b></a>`;
   const NFL_LOGO_FIX = { WSH: "wsh", WAS: "wsh", LA: "lar", LAR: "lar" };
   const Shell = {
     sport: "nfl", panel: "home",
@@ -39,7 +43,7 @@
     // countdown text: "1d 1h 7m", "2h 14m", "26m", "45s"
     setActive(panel) {
       Shell.panel = panel;
-      const par = String(panel).split("-")[0];   // "modelbets-2": the type is on, Model bets above it is marked as its parent
+      const par = panel === "td" ? "props" : String(panel).split("-")[0];   // "modelbets-2": the type is on, Model bets above it is marked as its parent; Anytime TD sits under Player props (10/20)
       document.querySelectorAll(".mi").forEach((a) => { const me = a.dataset.msp === Shell.sport; a.classList.toggle("on", me && a.dataset.mp === panel); a.classList.toggle("pon", me && par !== panel && a.dataset.mp === par); });
       const home = Shell.sport === "nfl" && panel === "home";
       document.body.classList.toggle("home-on", home); document.documentElement.classList.toggle("home-on", home);

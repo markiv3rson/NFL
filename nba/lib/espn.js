@@ -26,3 +26,36 @@ export async function finalsFor(dateYMD, { timeoutMs = 15000 } = {}) {   // "202
 export const otTeams = (finals) => new Set(Object.entries(finals || {}).filter(([, f]) => f && f.final && f.ot).flatMap(([k]) => k.split(" @ ")));
 export async function otTeamsFor(dateYMD) { return otTeams(await finalsFor(dateYMD)); }
 export const allFinal = (finals) => Object.values(finals || {}).every((f) => f && f.final);   // true for a day with no games
+// Box scores for grading player props (10/20): ESPN's scoreboard for the day (event ids) + one summary call per finished game.
+// { "AWAY @ HOME": { final, players: { "<normalized name>": { pts, reb, ast, pra, "3pm", stl, blk, min } } } }
+export function parseBox(summary) {
+  const comp = summary && summary.header && summary.header.competitions && summary.header.competitions[0];
+  const players = {};
+  for (const t of (summary && summary.boxscore && summary.boxscore.players) || []) {
+    const st = (t.statistics || [])[0]; if (!st) continue;
+    const ix = Object.fromEntries((st.names || []).map((n, i) => [n, i]));
+    const num = (arr, k) => { const v = arr[ix[k]]; if (v == null) return 0; const m = String(v).match(/^(-?\d+)/); return m ? Number(m[1]) : 0; };
+    for (const a of st.athletes || []) {
+      const name = a.athlete && a.athlete.displayName; if (!name || a.didNotPlay || !Array.isArray(a.stats) || !a.stats.length) continue;
+      const s = a.stats, pts = num(s, "PTS"), reb = num(s, "REB"), ast = num(s, "AST");
+      players[name.toLowerCase().replace(/-/g, " ").replace(/[^a-z ]/g, "").split(/\s+/).filter((w) => w && !["jr", "sr", "ii", "iii", "iv", "v"].includes(w)).join(" ")] =
+        { pts, reb, ast, pra: pts + reb + ast, "3pm": num(s, "3PT"), stl: num(s, "STL"), blk: num(s, "BLK"), min: num(s, "MIN") };
+    }
+  }
+  const away = comp && comp.competitors.find((x) => x.homeAway === "away"), home = comp && comp.competitors.find((x) => x.homeAway === "home");
+  const a = away && espnAbbr(away.team && away.team.abbreviation), h = home && espnAbbr(home.team && home.team.abbreviation);
+  const final = !!(comp && comp.status && comp.status.type && comp.status.type.completed);
+  return a && h ? { key: `${a} @ ${h}`, final, players } : null;
+}
+export async function boxFor(dateYMD, { timeoutMs = 15000 } = {}) {
+  const d = String(dateYMD).replace(/-/g, ""), base = process.env.ESPN_NBA_BASE || "https://site.api.espn.com/apis/site/v2/sports/basketball/nba";
+  const sb = await fetch(`${base}/scoreboard?dates=${d}`, { headers: { Accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(timeoutMs) });
+  if (!sb.ok) throw new Error(`${sb.status} on scoreboard`);
+  const out = {};
+  for (const ev of ((await sb.json()).events) || []) {
+    const st = ev.status && ev.status.type; if (!st || !st.completed) continue;
+    try { const r = await fetch(`${base}/summary?event=${ev.id}`, { headers: { Accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(timeoutMs) });
+      if (!r.ok) continue; const b = parseBox(await r.json()); if (b) out[b.key] = b; } catch {}
+  }
+  return out;
+}

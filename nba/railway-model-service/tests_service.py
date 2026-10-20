@@ -9,7 +9,7 @@ os.environ.setdefault("PRELOAD_ENGINE", "0")
 os.environ.setdefault("REBUILD_ON_START", "0")
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import nba_data as nd, nba_features as nf, fair_line as fl, combo_study as cs, daily_rebuild as dr, live, scheduler, nba_injuries as ni
+import nba_data as nd, nba_features as nf, fair_line as fl, combo_study as cs, daily_rebuild as dr, live, scheduler, nba_injuries as ni, nba_prop_model as npm_
 
 n = bad = 0
 def ok(c, msg, v=None):
@@ -502,5 +502,35 @@ pd.DataFrame({"a": [1], "b": [2]}).to_parquet(os.path.join(_tmp, "play_by_play_2
 _rd = nd._file("espn_nba_pbp", "play_by_play", 2019, fresh=False, columns=["a", "zz"]); nd.CACHE = _old
 ok(list(_rd.columns) == ["a"], "a big file is read with only the columns asked for (missing ones skipped)", list(_rd.columns))
 
+# ---------- 10/20: the player-prop model (no downloads: a made-up box score table)
+ok(npm_.norm_name("Jaylen Brown Jr.") == "jaylen brown" and npm_.norm_name("De'Aaron Fox") == "deaaron fox" and npm_.fix_abbr("GS") == "GSW" and npm_.fix_abbr("utah") == "UTA" and npm_.fix_abbr("BOS") == "BOS", "prop model: names normalized, ESPN team codes mapped")
+sp = npm_.Spread(np.array([10.0, 20.0, 30.0]), np.array([8.0, 22.0, 33.0]))
+ok(0 <= sp.over([20.0], [21.5])[0] <= 1 and sp.over([20.0], [5.5])[0] == 1.0 and sp.over([20.0], [40.5])[0] == 0.0, "prop model: the chance of a line comes from the scaled neighbours")
+rng = np.random.default_rng(1); rows = []
+for season in (2025, 2026):
+    for gi in range(40):
+        for team, opp, ha in (("BOS", "DET", "home"), ("DET", "BOS", "away")):
+            for pid in range(6):
+                aid = f"{team}{pid}"; mins = 30 - pid * 3
+                pts = max(0, rng.normal(20 - pid * 3, 5)); reb = max(0, rng.normal(6, 2)); ast = max(0, rng.normal(4, 2))
+                rows.append({"game_id": season * 1000 + gi, "season": season, "season_type": 2, "game_date": f"{season - 1}-11-{1 + gi % 28:02d}", "athlete_id": aid, "athlete_display_name": f"Player {aid}",
+                    "athlete_position_abbreviation": "G" if pid % 2 else "F", "minutes": mins, "points": pts, "rebounds": reb, "assists": ast, "three_point_field_goals_made": 1, "steals": 1, "blocks": 0,
+                    "starter": pid < 5, "did_not_play": False, "team_abbreviation": team, "opponent_team_abbreviation": opp, "home_away": ha, "team_score": 110, "opponent_team_score": 105})
+fake = pd.DataFrame(rows)
+_pb = nd.player_box
+nd.player_box = lambda s: fake[fake.season == s] if s in (2025, 2026) else None
+try:
+    B = npm_.load_box([2025, 2026]); T = npm_.table(B); E = npm_.eligible(T)
+    ok(len(B) == len(fake) and "pra" in B and set(B.team.unique()) == {"BOS", "DET"}, "prop model: the box table loads, PRA added, codes fixed")
+    first = T[(T.athlete_id == "BOS0") & (T.season == 2026)].sort_values("date").iloc[0]
+    ok(first.gp == 0 and abs(first.b_pts - fake[(fake.athlete_id == "BOS0") & (fake.season == 2025)].points.mean()) < 1e-9 and np.isnan(first.l5_pts) and np.isnan(first.t_for), "prop model: a season opener row = last season's average, no games yet, no team numbers yet (what the live state mimics)")
+    S, teams, opp_pos = npm_._state(B, 2027)
+    ok(len(S) == 12 and (S.gp == 0).all() and not teams and abs(float(S[S.athlete_id == "BOS0"].b_pts.iloc[0]) - fake[(fake.athlete_id == "BOS0") & (fake.season == 2026)].points.mean()) < 1e-9, "prop model: before the new season's file exists every player is an opener row off last season")
+    S2, teams2, _ = npm_._state(B, 2026)
+    ok(int(S2[S2.athlete_id == "BOS0"].gp.iloc[0]) == 40 and "BOS" in teams2 and abs(teams2["BOS"]["t_for"] - 110) < 1e-9, "prop model: with the season's file the state is this season to date + the team numbers")
+finally:
+    nd.player_box = _pb
+
 print(f"{bad} of {n} checks FAILED" if bad else f"all {n} service checks passed")
 sys.exit(1 if bad else 0)
+

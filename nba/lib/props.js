@@ -1,14 +1,35 @@
-// NBA player props (10/20, owner: "find everything that works"): Polymarket US now lists them (opening night BOS @ DET: 159 markets -- points, rebounds,
-// assists, threes, steals, blocks as "N+" ladders; until 10/20 the notes said there were none). Nothing is SHOWN: this only RECORDS every prop line of a
-// not-started game on each slate build (first price next to the latest), the same background step the NFL props went through before their research on
-// real lines (lib/props.js). Key `nbaprops:<ET date>:<AWAY @ HOME>` = { first, t, m: { "name|stat|line": [overAsk, overBid, underAsk, firstOverAsk, firstTime] } }.
-// "N+" = Over N-0.5. The NBA prop model (nba/railway-model-service/research/props_model.py) is research only; its real-line test can run on these.
-import { getJSON, setJSON } from "./redis";
+// NBA player props (10/20, owner: "find everything that works" -> the recorder; 10/20 night, owner: "Player props" page, both sports, bar 62%+).
+//  - recordNbaProps: every slate build saves each Polymarket US prop line of a not-started game (points, rebounds, assists, PRA, threes, steals,
+//    blocks as "N+" ladders = Over N-0.5), first price next to the latest. Key `nbaprops:<ET date>:<AWAY @ HOME>` = { first, t, m: { "name|stat|line":
+//    [overAsk, overBid, underAsk, firstOverAsk, firstTime] } }.
+//  - scoreNbaProps (the 30-min snapshot): the NBA service's prop model (/prop-probs, nba_prop_model.py) gives both sides of every recorded line, with
+//    the day's Out / Doubtful list; saved as `nbapropmodel:<date>:<game>` -- a started game is never re-scored, so the last copy before tip-off is the
+//    locked one (same rule as the NFL props).
+//  - A ROW on the page = the side the model gives NBA_PROP_BAR (62%) or more; one row per player and stat (the highest %, priced under its % and
+//    under MAX_PRICE = 77c, owner 10/20; no price = kept, last) -- the NFL page's rule. Every scored side at the bar is graded, shown or not.
+//  - gradeNbaProps: once ESPN says the game is final, every pick at the bar is graded from ESPN's box score (nba/lib/espn.js boxFor); a player who did
+//    not play is a push (not counted). Saved in `nbapropres:<date>` (one field per game). The RECORD tile per stat counts the page's rows.
+//  HONEST NUMBERS (10/17 research + 10/20 check on last season's real Polymarket lines, the model's 62%+ sides): rebounds Over 62.9% (132-78),
+//  rebounds Under 59.5%, points Over 58.5%, points Under 55.0%, assists Over 58.0%, assists Under 56.6%; the 62-65 band alone 51-63%. The model's
+//  % runs 7-12 points hot against the NBA market; the live record per stat is the truth. PRA / threes / steals / blocks have no real-line test yet.
+import { getRedis, getJSON, setJSON } from "./redis";
+import { modelBase, modelHeaders } from "./model";
+import { boxFor } from "./espn";
+import { etDate } from "./poly";
+
 const STAT = { basketball_player_points: "pts", basketball_player_rebounds: "reb", basketball_player_assists: "ast", basketball_player_threes: "3pm",
-  basketball_player_steals: "stl", basketball_player_blocks: "blk" };
+  basketball_player_steals: "stl", basketball_player_blocks: "blk", basketball_player_pra: "pra", basketball_player_points_rebounds_assists: "pra",
+  basketball_player_points_assists_rebounds: "pra", basketball_player_pts_reb_ast: "pra" };
+export const NBA_PROP_BAR = 0.62;
+export const MAX_PRICE = 0.77;   // 10/20 (owner: "cut 77+"): a row priced 77c or more is not shown and not counted (both sports)
+export const NBA_STATS = [["pts", "Points"], ["reb", "Rebounds"], ["ast", "Assists"], ["pra", "PRA"], ["3pm", "Threes"], ["stl", "Steals"], ["blk", "Blocks"]];
+export const NBA_STAT_LABEL = Object.fromEntries(NBA_STATS);
 const q = (x) => { const v = Number(x && typeof x === "object" ? x.value : x); return v > 0 && v < 1 ? Math.round(v * 1000) / 1000 : null; };
 export const K_NBAPROPS = (date, key) => `nbaprops:${date}:${key}`;
+export const K_NBAPROPMODEL = (date, key) => `nbapropmodel:${date}:${key}`;
+export const K_NBAPROPRES = (date) => `nbapropres:${date}`;
 export const nbaPropName = (m) => String((m && (m.title || m.titleShort)) || "").replace(/\s+\d+\+\s.*$/, "").trim();
+export const normName = (n) => String(n || "").toLowerCase().replace(/-/g, " ").replace(/[^a-z ]/g, "").split(/\s+/).filter((w) => w && !["jr", "sr", "ii", "iii", "iv", "v"].includes(w)).join(" ");
 export function nbaPropsFromEvent(ev) {
   const out = [];
   for (const m of (ev && (ev.rawProps || ev.markets)) || []) {
@@ -25,4 +46,100 @@ export async function recordNbaProps(date, key, rows, t) {
   for (const r of rows) { const f = `${r.name}|${r.stat}|${r.line}`, o = m[f]; m[f] = [r.oa, r.ob, r.ua, o ? o[3] : r.oa, o ? o[4] : t]; }
   await setJSON(k, { first: old.first || t, t, m });
   return rows.length;
+}
+export function nbaPropRows(saved) {
+  if (!saved || !saved.m) return [];
+  return Object.entries(saved.m).map(([k, v]) => { const [name, stat, line] = k.split("|"); return { name, stat, line: Number(line), oa: v[0], ob: v[1], ua: v[2], oa0: v[3], t0: v[4] }; });
+}
+// The side the model likes more, when it reaches the bar: { name, team, stat, line, side, chance, mu, price, band }
+export const bandOf = (p) => (p >= 0.9 ? "90-100" : p >= 0.8 ? "80-90" : p >= 0.7 ? "70-80" : p >= 0.65 ? "65-70" : p >= NBA_PROP_BAR ? "62-65" : null);
+export function nbaPropPicks(modelRows, saved, bar = NBA_PROP_BAR) {
+  const px = new Map(nbaPropRows(saved).map((r) => [`${r.name}|${r.stat}|${r.line}`, r])), out = [];
+  for (const r of modelRows || []) {
+    const side = r.over >= r.under ? "over" : "under", chance = side === "over" ? r.over : r.under; if (!(chance >= bar)) continue;
+    const p = px.get(`${r.name}|${r.stat}|${r.line}`) || {};
+    out.push({ name: r.name, team: r.team || null, stat: r.stat, line: r.line, side, chance, mu: r.mu, band: bandOf(chance), price: side === "over" ? p.oa ?? null : p.ua ?? null });
+  }
+  return out;
+}
+// One row per player and stat: priced under its win % and under MAX_PRICE (or no price), the highest %; priced rows first (the NFL page's rule)
+export function onePerPlayer(picks) {
+  const priced = (p) => p.price > 0 && p.price < 1, best = new Map();
+  for (const p of picks) {
+    if (priced(p) && (p.price >= p.chance || p.price >= MAX_PRICE)) continue;
+    const k = `${normName(p.name)}|${p.stat}`, o = best.get(k);
+    if (!o || p.chance > o.chance || (p.chance === o.chance && priced(p) && !priced(o))) best.set(k, p);
+  }
+  return [...best.values()].sort((a, b) => priced(b) - priced(a) || b.chance - a.chance);
+}
+const outsOf = (list) => (list || []).filter((x) => /^(out|doubtful)/i.test(String(x && x.status || ""))).map((x) => x.name).filter(Boolean);
+// Ask the NBA service for every recorded line of each not-started game in the record window and save the answer (the snapshot's step).
+export async function scoreNbaProps(games, { now = Date.now(), injuries = null, post = null } = {}) {
+  const base = modelBase(); if (!base) return { scored: 0, error: "NBA_MODEL_SERVICE_URL not set" };
+  const todo = [];
+  for (const g of games || []) {
+    if (!g || !g.key || !g.date || !(Date.parse(g.start) > now)) continue;
+    const lines = nbaPropRows(await getJSON(K_NBAPROPS(g.date, g.key)).catch(() => null)).map((r) => ({ name: r.name, stat: r.stat, line: r.line }));
+    if (!lines.length) continue;
+    const inj = injuries ? [...outsOf(injuries.away || (injuries[g.key] || {}).away), ...outsOf(injuries.home || (injuries[g.key] || {}).home)] : [...outsOf(g.injuries && g.injuries.away), ...outsOf(g.injuries && g.injuries.home)];
+    todo.push({ g, body: { away: g.away, home: g.home, outs: inj, lines } });
+  }
+  if (!todo.length) return { scored: 0 };
+  const send = post || (async (body) => { const r = await fetch(`${base}/prop-probs`, { method: "POST", headers: modelHeaders({ "Content-Type": "application/json" }), body: JSON.stringify(body), cache: "no-store", signal: AbortSignal.timeout(25000) }); return r.json().catch(() => null); });
+  const j = await send({ games: todo.map((t) => t.body) });
+  if (!j || !j.ok) return { scored: 0, building: !!(j && j.building), error: (j && j.error) || "no reply" };
+  const runAt = new Date(now).toISOString(); let n = 0;
+  for (const r of j.results || []) { const t = todo.find((x) => x.g.key === r.game); if (!t || !Array.isArray(r.rows)) continue;
+    await setJSON(K_NBAPROPMODEL(t.g.date, t.g.key), { runAt, start: t.g.start, away: t.g.away, home: t.g.home, rows: r.rows }); n++; }
+  return { scored: n, built: j.built || null };
+}
+async function scanKeys(pattern) {
+  const r = getRedis(), ks = []; let c = "0";
+  do { const [n, kk] = await r.scan(c, "MATCH", pattern, "COUNT", 200); c = n; ks.push(...kk); } while (c !== "0");
+  return ks;
+}
+export async function nbaPropDays() { return [...new Set((await scanKeys("nbapropmodel:*")).map((k) => k.split(":")[1]))].sort(); }
+// Grade the picks of every game ESPN says is final on the given dates (default: the last 3 Eastern days). A DNP is a push.
+export async function gradeNbaProps({ dates = null, now = Date.now(), fetchBox = boxFor } = {}) {
+  const r = getRedis(), today = etDate(new Date(now).toISOString());
+  const days = dates || (await nbaPropDays()).filter((d) => d <= today && Date.parse(today) - Date.parse(d) <= 3 * 86400e3);
+  let n = 0;
+  for (const d of days) {
+    const keys = (await scanKeys(`nbapropmodel:${d}:*`)).map((k) => k.slice(`nbapropmodel:${d}:`.length)), rk = K_NBAPROPRES(d);
+    const done = await r.hgetall(rk).catch(() => ({})) || {}, left = keys.filter((k) => !done[k]); if (!left.length) continue;
+    let box; try { box = await fetchBox(d); } catch { continue; }
+    for (const key of left) {
+      const b = box && box[key]; if (!b || !b.final) continue;
+      const model = await getJSON(K_NBAPROPMODEL(d, key)).catch(() => null); if (!model || !model.rows) continue;
+      const picks = nbaPropPicks(model.rows, await getJSON(K_NBAPROPS(d, key)).catch(() => null)).map((p) => {
+        const s = b.players[normName(p.name)], v = s ? Number(s[p.stat] ?? 0) : null;
+        return { ...p, actual: v, played: !!s, result: v == null ? "P" : (p.side === "over" ? v > p.line : v < p.line) ? "W" : "L" };
+      });
+      await r.hset(rk, key, JSON.stringify({ t: new Date(now).toISOString(), runAt: model.runAt || null, picks })); n++;
+    }
+  }
+  return n;
+}
+// The page: one day's games with their rows (every stat; the page filters by its tab), ✓ / ✗ once graded.
+export async function nbaPropsForDay(date) {
+  const r = getRedis(), res = await r.hgetall(K_NBAPROPRES(date)).catch(() => null) || {}, out = [];
+  for (const k of await scanKeys(`nbapropmodel:${date}:*`)) {
+    const key = k.slice(`nbapropmodel:${date}:`.length), model = await getJSON(k).catch(() => null); if (!model) continue;
+    let picks;
+    if (res[key]) { try { picks = JSON.parse(res[key]).picks || []; } catch { picks = []; } }
+    else picks = nbaPropPicks(model.rows, await getJSON(K_NBAPROPS(date, key)).catch(() => null)).map((p) => ({ ...p, result: null }));
+    picks = onePerPlayer(picks); if (!picks.length) continue;
+    out.push({ game: key, away: model.away, home: model.home, start: model.start || null, final: !!res[key],
+      picks: picks.map((p) => ({ name: p.name, team: p.team || null, stat: p.stat, side: p.side, line: p.line, chance: p.chance, price: p.price ?? null, result: p.result || null, actual: p.actual ?? null })) });
+  }
+  return out.sort((a, b) => String(a.start || "").localeCompare(String(b.start || "")));
+}
+// W-L per stat (and all) of the page's rows over the graded days
+export async function nbaPropsRecord(dates) {
+  const r = getRedis(), rec = { all: { w: 0, l: 0 } }; for (const [s] of NBA_STATS) rec[s] = { w: 0, l: 0 };
+  for (const d of dates) { const h = await r.hgetall(K_NBAPROPRES(d)).catch(() => null); if (!h) continue;
+    for (const v of Object.values(h)) { let x; try { x = JSON.parse(v); } catch { continue; }
+      for (const p of onePerPlayer(x.picks || [])) { if (p.result !== "W" && p.result !== "L") continue; const k = p.result === "W" ? "w" : "l"; rec.all[k]++; if (rec[p.stat]) rec[p.stat][k]++; } } }
+  for (const k of Object.keys(rec)) rec[k].pct = rec[k].w + rec[k].l ? Math.round((rec[k].w / (rec[k].w + rec[k].l)) * 1000) / 10 : null;
+  return rec;
 }
