@@ -64,5 +64,11 @@ export async function getStatus({ now = Date.now(), fetcher = fetch } = {}) {
   // still showed the preseason-league 403s fixed 10/19)
   const shown = errs.filter((e) => !(e.where === "pinnacle" && pinOk && Date.parse(e.t) < Date.parse(pinOk)));
   const backup = jparse(await r.get("status:backup").catch(() => null)) || null;
-  return { lastSnapshot: snap, errors: shown, railway, keys, pinnacle: pinOk, espn, backup, watch: computeWatch({ snap, railway, pinnacle: pinOk, espn, backup, now }) };
+  // 10/20: the NBA player-prop recorder (nba/lib/props.js) -- how many game-days hold recorded lines and the newest write, so the Tuesday check-in can see it running
+  const props = await (async () => { const days = new Set(); let latest = null, c = "0";
+    do { const [n, ks] = await r.scan(c, "MATCH", "nbaprops:*", "COUNT", 200); c = n; for (const k of ks) days.add(k.split(":")[1]); } while (c !== "0");
+    const last = [...days].sort().pop(); if (last) { let c2 = "0"; const ks = []; do { const [n, kk] = await r.scan(c2, "MATCH", `nbaprops:${last}:*`, "COUNT", 200); c2 = n; ks.push(...kk); } while (c2 !== "0");
+      for (const k of ks) { const v = jparse(await r.get(k).catch(() => null)); if (v && v.t && (!latest || v.t > latest)) latest = v.t; } }
+    return { days: days.size, lastDay: last || null, latest }; })().catch(() => null);
+  return { lastSnapshot: snap, errors: shown, railway, keys, pinnacle: pinOk, espn, backup, props, watch: computeWatch({ snap, railway, pinnacle: pinOk, espn, backup, now }) };
 }

@@ -487,6 +487,7 @@ function renderModels() {
     ["Stored items", sy.keys != null ? String(sy.keys) : "—"],
     ["Last backup", sy.backup ? `${when(sy.backup.t)} · ${sy.backup.where === "volume" ? "saved" : sy.backup.where === "failed" ? '<span class="r">failed</span>' : '<span class="y">temporary</span>'}` : '<span class="y">none yet</span>'],
     ["Sportsbook credits left", S && S.books && S.books.remaining != null ? String(S.books.remaining) : "—"],
+    ["Player prop lines recorded", sy.props && sy.props.days ? `${plural(sy.props.days, "game day")} · last ${when(sy.props.latest || sy.props.lastDay)}` : "none yet"],   // 10/20: nba/lib/props.js background recorder (nothing shown yet)
     ["Last rebuild", rb ? `${when(rb.at)} · ${rb.published ? "published" : `<span class="y">held: ${esc((rb.failed_checks || []).join("; "))}</span>`}` : "not yet"],
     ["Errors (last 2 days)", (sy.errors || []).length ? sy.errors.slice(0, 6).map((e) => `<div class="y">${when(e.t)} · ${esc(e.where)}: ${esc(e.msg)}</div>`).join("") : "none"],
   ].map(([a, b]) => `<div class="row"${/<div/.test(String(b)) ? ' style="grid-column:1/-1"' : ""}><span class="dim">${a}</span><span>${b}</span></div>`).join("") : '<div class="s dim">Status unavailable.</div>';
