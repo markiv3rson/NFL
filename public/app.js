@@ -279,10 +279,10 @@ function practTag(r) {
 const tdCell = (v) => `<span class="tc">${v}</span>`;
 function tdRow(x) {
   const r = x.r, snap = r.snap && r.snap.pct != null ? `${Math.round(r.snap.pct)}%` : "—", two = r.two != null ? `${Math.round(r.two)}%` : "—";
-  return `<div class="tdr" data-tdw="${esc(r.team)}|${esc(r.player)}"><div class="in">${tlogo(r.team)}<div class="nmx"><div class="l1"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos || "")}</span>${injTag(r) || practTag(r)}${retPill(r)}</div><div class="g2">${esc(r.game || "")}${r.teamRank ? ` · #${r.teamRank} on team` : ""}</div></div>` +
+  return `<div class="tdr" data-tdw="${esc(r.team)}|${esc(r.player)}"><div class="in"><span class="tlc">${tlogo(r.team)}</span><div class="nmx"><div class="l1"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos || "")}</span>${injTag(r) || practTag(r)}${retPill(r)}</div><div class="g2">${esc(r.game || "")}${r.teamRank ? ` · #${r.teamRank} on team` : ""}</div></div>` +
     tdCell(snap) + tdCell(two) + `<span class="tc mp"><em>${tdPct(r.fair)}%</em></span><span class="tc pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${tdNoGap(r) != null ? ` <span class="y nogap" title="No · ${tdNoGap(r)} under">⚠</span>` : ""}</span></div><div class="tdwk"></div></div>`;
 }
-const tdHead = (title) => `<div class="tdh"><span class="h1">${title}</span><span class="tc">SNAP</span><span class="tc">2+ TD</span><span class="tc">MODEL</span><span class="tc pmh">PM</span></div>`;
+const tdHead = (title) => `<div class="tdh"><span class="h1">${title}</span><span class="tc">SNAP</span><span class="tc">2+ TD</span><span class="tc">MODEL</span><span class="tc pmh">${pmLogo()}POLYMARKET</span></div>`;
 const earlyNote = (g) => (g && g.early ? '<span class="pill p-y" style="padding:0 6px;font-size:10px">Early estimate</span>' : "");
 // One Anytime TD section for the slate in S: price moves, then the top 3 per team, most likely first.
 const BEST_TD = 55;
@@ -328,7 +328,7 @@ function tdWeekLine(data, team, player) {
 // scores the count resets and he is back. History 2019-25 (list players, walk-forward model): 3+ straight blanks scored 25.4-31.8% vs 25.8-30.1%
 // said -- the model's % already carries the drought, so the cut removes rows, it does not raise the hit rate of the ones left beyond their %.
 // Page only: the model lists, parlays and grading are unchanged (every listed player is still graded in the background).
-const TD_DROUGHT = 3;
+const TD_DROUGHT = 3, TD_POOL = 5;
 const tdCut = (r, data) => data != null && (tdDrought(data, r.team, r.player) || 0) >= TD_DROUGHT;
 async function loadTdWeeks() {
   if (TDW && Date.now() - TDW_AT < 600000) return TDW;
@@ -337,6 +337,11 @@ async function loadTdWeeks() {
 }
 function fillTdWeeks(row) { const box = row.querySelector(".tdwk"); if (!box) return; const [team, player] = String(row.dataset.tdw || "").split("|");
   box.innerHTML = tdWeekLine(TDW, team, player); if (!TDW) loadTdWeeks().then(() => { if (row.classList.contains("open")) box.innerHTML = tdWeekLine(TDW, team, player); }); }
+let TD_OPEN = null;
+const tdOpenMap = () => { if (TD_OPEN) return TD_OPEN; try { TD_OPEN = JSON.parse(localStorage.getItem("tdSlots") || "{}") || {}; } catch (e) { TD_OPEN = {}; } return TD_OPEN; };
+const tdSlotOpen = (sl) => { const m = tdOpenMap(); return sl in m ? !!m[sl] : /PRIME TIME/.test(sl); };
+function tdToggleSlot(el) { const sl = el.dataset.slot, m = tdOpenMap(), open = !tdSlotOpen(sl); m[sl] = open; try { localStorage.setItem("tdSlots", JSON.stringify(m)); } catch (e) {}
+  el.classList.toggle("open", open); const card = el.nextElementSibling; if (card) card.classList.toggle("closed", !open); }
 function tdBody() {
   const rows = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).map((r) => ({ r, g })))
     .filter((x) => x.r.fair != null && usable(x.r)).sort((a, b) => b.r.fair - a.r.fair);
@@ -346,14 +351,18 @@ function tdBody() {
   // Best TD picks (10/14, owner: "build now"): only the players the model gives 55%+ (shown chance, after injury discounts). Graded weeks 3-5:
   // 55%+ players scored 17 of 21 (said 65%) vs 22% for every listed player -- the model's most confident tier, not a smarter model.
   const best = rows.filter((x) => x.r.fair >= BEST_TD && !tdCut(x.r, TDW));
-  const bestBox = `<div class="card tdl tdbest">${tdHead(`BEST TD PICKS · MODEL ${BEST_TD}%+`)}${best.length ? best.map(tdRow).join("") : '<div class="s dim" style="padding:8px 12px">None right now.</div>'}</div>`;
-  // Top 3 per team (10/5): beyond the three likeliest scorers the rest is noise. 10/14 (owner): players already in Best TD picks are left out (no repeats).
-  // 10/20 night (owner): the drought cut runs AFTER the top 3 are picked, so a team shows 1-3 rows -- its 4th / 5th scorer never moves up to fill a hole
-  const perTeam = {}, shown = rows.filter((x) => { const k = x.r.team; perTeam[k] = (perTeam[k] || 0) + 1; return perTeam[k] <= 3; }).filter((x) => x.r.fair < BEST_TD && !tdCut(x.r, TDW));
+  // 10/20 night (owner): "the best td picks 55% should be the header of that card" -- the slot-style header above the card, always open (no toggle)
+  const bestBox = `<div class="sh labslot">BEST TD PICKS · MODEL ${BEST_TD}%+</div><div class="card tdl tdbest">${tdHead("PLAYER")}${best.length ? best.map(tdRow).join("") : '<div class="s dim" style="padding:8px 12px">None right now.</div>'}</div>`;
+  // 10/20 night (owner: "the top 5 of each team now but only show names who have scored the past 3 games, after that cut them from the list until they
+  // score again"): the pool is the 5 likeliest per team; the drought cut runs AFTER the pool is picked, so a team shows 0-5 rows and nobody moves up.
+  // Players already in Best TD picks are left out (no repeats, owner 10/14).
+  const perTeam = {}, shown = rows.filter((x) => { const k = x.r.team; perTeam[k] = (perTeam[k] || 0) + 1; return perTeam[k] <= TD_POOL; }).filter((x) => x.r.fair < BEST_TD && !tdCut(x.r, TDW));
   // 10/20 night (owner): the list is split by time slot -- the same slots as Game Lines, kickoff order; inside a slot the rows keep the model order
   const slots = [], by = {};
   for (const g of S.games.filter((g) => !g.started).sort(order)) { const sl = (g.carry ? `WEEK ${g.week} · ` : "") + (g.kickoff ? labSlot(g.kickoff) : "GAMES"); if (!by[sl]) { by[sl] = []; slots.push(sl); } by[sl].push(g.key); }
-  const list = slots.map((sl) => { const xs = shown.filter((x) => by[sl].includes(x.g.key)); return xs.length ? `<div class="sh labslot">${sl}</div><div class="card tdl">${tdHead("PLAYER")}${xs.map(tdRow).join("")}</div>` : ""; }).join("");
+  // 10/20 night (owner): each time-slot list opens and closes on its header; PRIME TIME lists start open, the rest closed; the choice is kept on this phone
+  const list = slots.map((sl) => { const xs = shown.filter((x) => by[sl].includes(x.g.key)); if (!xs.length) return ""; const open = tdSlotOpen(sl);
+    return `<div class="sh labslot tdtog${open ? " open" : ""}" data-slot="${esc(sl)}">${sl}<i class="car">▾</i></div><div class="card tdl${open ? "" : " closed"}">${tdHead("PLAYER")}${xs.map(tdRow).join("")}</div>`; }).join("");
   return bestBox + moveBox + list;
 }
 function renderTd() {
@@ -927,7 +936,7 @@ async function loadLive() {
 }
 function liveLoop() { clearTimeout(liveLoop._h); loadLive().finally(() => { liveLoop._h = setTimeout(liveLoop, 30000); }); }
 let DETAIL = null, LASTY = 0, ALERTS = [], ALPREV = null;
-const pmLogo = () => '<span class="pm"><img src="https://polymarket.com/favicon.ico" alt="" onerror="this.parentNode.textContent=\'P\'"></span>';
+const pmLogo = () => '<span class="pm"><img src="/polymarket.png" alt=""></span>';   // 10/20 night (owner): the real Polymarket logo everywhere
 const injBadge = (team) => `<span class="injb"><img src="${logoUrl(team)}" alt="" onerror="this.style.visibility='hidden'"><u>+</u></span>`;
 const injBadgeFor = (g) => { const inj = g.model && g.model.inj; if (!inj) return ""; const t = inj.home.players.length ? g.home : inj.away.players.length ? g.away : null; return t ? injBadge(t) : ""; };
 const recOf = (g, t) => (g.rec && g.rec[t] ? `<small class="rec">${esc(g.rec[t])}</small>` : "");   // season record under the team code (10/8)
@@ -1067,9 +1076,11 @@ function legLogoLabel(l) { return esc(l.label); }
 function pBlock(title, p, showGame) {
   if (!p || !Array.isArray(p.legs) || !p.legs.length) return "";
   const pr = typeof p.prob === "number" && isFinite(p.prob) ? p.prob : null;
-  const legs = p.legs.map((l) => `<div class="pbl">${legMark(l.result)} ${legTxt(l.result, `${legLogoLabel(l)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · <span class="mod">${legPct(l)}%</span>`)}${showGame && l.game ? ` <span class="dim">${gameLogos(l.game)}</span>` : ""}</div>`).join("");
+  // 10/20 night (owner: "the model should be next to polymarket ... make the cards consistent"): the parlay's Model % sits on the right next to the Polymarket
+  // line, and every leg's % is a right-hand column like the props rows
+  const legs = p.legs.map((l) => `<div class="pbl pleg"><span class="pll">${legMark(l.result)} ${legTxt(l.result, `${legLogoLabel(l)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""}`)}${showGame && l.game ? ` <span class="dim">${gameLogos(l.game)}</span>` : ""}</span><span class="mod plp">${legPct(l)}%</span></div>`).join("");
   const res = p.result === "W" ? '<span class="g">✓ Won</span>' : p.result === "L" ? '<span class="r">✗ Lost</span>' : p.result === "P" ? '<span class="dim">Push</span>' : "";
-  return `<div class="par"><div class="pbh"><span class="pbn">${title}${pr == null ? "" : ` <span class="mod">· Model ${Math.round(pr * 100)}%</span>`}</span><span class="plb"${plTap(p)}>${pmLogo()} ${plShown(p)}</span></div>${legs}<div class="pbr">${res}</div></div>`;
+  return `<div class="par"><div class="pbh"><span class="pbn">${title}</span><span class="pbx">${pr == null ? "" : `<span class="mod">Model ${Math.round(pr * 100)}%</span>`}<span class="plb"${plTap(p)}>${pmLogo()} ${plShown(p)}</span></span></div>${legs}<div class="pbr">${res}</div></div>`;
 }
 function sgpBox(g) {
   const x = g.sgp; if (!x || g.started || g.final) return "";
@@ -1080,8 +1091,8 @@ function sgpBox(g) {
 // each shows only its parlays, one column, in kickoff order. The current week comes from the live slate (results from the saved copies once a game starts); past weeks from /api/modelbets.
 const FOUR_NAMES = { best_2: "2 best green picks", best_3: "3 best green picks", td_likely_2: "2 most likely TD scorers", td_likely_3: "3 most likely TD scorers" };
 // 10/17 (owner): Over/Under first, then the parlays in this order and with these names
-const LAB_TABS = [["ou", "Over/Under"], ["best", "Best Legs"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"], ["st", "Spread + Total"]];   // 10/17 parlay lab: Upset; 10/19 (owner: "three max ... cut all the four legs"): 4 Leg, 4 Leg (My Style), Different Game Parlays gone
-let MODELBETS = null, LABTYPE = "ou", LABWEEK = null;
+const LAB_TABS = [["best", "Best Legs"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"]];   // 10/20 night (owner): Over/Under and Spread + Total tabs removed ("not needed"); the Spread + Total parlays are still saved and graded   // 10/17 parlay lab: Upset; 10/19 (owner: "three max ... cut all the four legs"): 4 Leg, 4 Leg (My Style), Different Game Parlays gone
+let MODELBETS = null, LABTYPE = "best", LABWEEK = null;
 // 10/15 (owner): ONE Bets tab -- My bets on the left (the list as before), Model bets on the right (the model's parlays). The choice is remembered.
 let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
 function applyBetsView() {
@@ -1110,21 +1121,23 @@ const teamSel = (teams) => `<div class="wksel"><select id="props-team" aria-labe
 const propLast = (p, tag) => { const l = p.last; if (!l) return '<span class="pp5 dim">—</span>';
   if (l.line == null) return `<span class="pp5 dim">${l.actual != null ? Math.round(l.actual * 10) / 10 : "—"}</span>`;
   return `<span class="pp5 ${l.result === "W" ? "g" : "r"}">${l.side === "over" ? "O" : "U"} ${l.line} ${l.result === "W" ? "✓" : "✗"}${l.actual != null ? ` <span class="dim">${Math.round(l.actual * 10) / 10}</span>` : ""}</span>`; };
-const propRow = (p) => `<div class="pbl ppr${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${tlogo(p.team || "")}${esc(p.name)}</span><span class="pp2">${p.first ? "First TD" : `${p.stat === "rec" ? "Rec " : p.stat === "pass_yds" ? "Pass Yds " : ""}${p.side === "over" ? "Over" : "Under"} ${p.line}`}</span>${propLast(p)}<span class="pp3 mod">${Math.round(p.chance * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
-const PROP_HEAD = '<div class="pbl ppr pph"><span class="pp1">PLAYER</span><span class="pp2">LINE</span><span class="pp5">LAST WK</span><span class="pp3">MODEL</span><span class="pp4">POLYMARKET</span></div>';
+const propRow = (p) => `<div class="pbl ppr${p.first ? " first" : ""}${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${tlogo(p.team || "")}${esc(p.name)}</span><span class="pp2">${p.first ? "First TD" : `${p.stat === "rec" ? "Rec " : p.stat === "pass_yds" ? "Pass Yds " : ""}${p.side === "over" ? "Over" : "Under"} ${p.line}`}</span>${p.first ? "" : propLast(p)}<span class="pp3 mod">${Math.round(p.chance * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
+// 10/20 night (owner): the POLYMARKET head carries the Polymarket logo on every props page (both sports); the First TD tab has NO LAST WK column (nothing to grade there)
+const propHead = (first) => `<div class="pbl ppr pph${first ? " first" : ""}"><span class="pp1">PLAYER</span><span class="pp2">LINE</span>${first ? "" : '<span class="pp5">LAST WK</span>'}<span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
+const PROP_HEAD = propHead(false);
 // the rows of one game, split by team (away first, then home, then anyone with no team), each team with its small label (owner: "separate them by teams")
 function teamRows(g, row) {
   const teams = [...new Set([g.away, g.home, ...g.picks.map((p) => p.team || "")])].filter((t) => t != null);
   return teams.map((t) => { const rs = g.picks.filter((p) => (p.team || "") === t); return rs.length ? `${t ? `<div class="pbl pteam">${tlogo(t)}${esc(t)}</div>` : ""}${rs.map(row).join("")}` : ""; }).join("");
 }
 // games (with kickoff + picks) -> blocks under the kickoff headers, like Model bets
-function propBlocks(games, row) {
+function propBlocks(games, row, first) {
   const gs = [...games].sort((a, b) => new Date(a.kickoff || 0) - new Date(b.kickoff || 0));
   const slotTimes = {}; for (const g of gs) if (g.kickoff) { const sl = labSlot(g.kickoff), tt = tm(g.kickoff); (slotTimes[sl] = slotTimes[sl] || []).includes(tt) || slotTimes[sl].push(tt); }
   let lastSlot = null;
   return gs.map((g) => { const sl = g.kickoff ? labSlot(g.kickoff) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
     // 10/20 night (owner): a game being played says LIVE on its props block -- its rows are the copy locked at kickoff (the rerun never re-scores a started game), graded at the final
-    return h + `<div class="par"><div class="pbh"><span class="pbn">${gameLogos(g.game)}${g.started && !g.final ? ' <span class="lvb">● LIVE</span>' : ""}</span></div>${g.head || ""}${PROP_HEAD}${teamRows(g, row)}</div>`; }).join("");
+    return h + `<div class="par"><div class="pbh"><span class="pbn">${gameLogos(g.game)}${g.started && !g.final ? ' <span class="lvb">● LIVE</span>' : ""}</span></div>${g.head || ""}${propHead(!!first)}${teamRows(g, row)}</div>`; }).join("");
 }
 function renderProps() {
   const el = $("props"); if (!el) return;
@@ -1151,7 +1164,7 @@ function renderFirstTd(el) {
   const rc = picks.length ? { w: hit, l: picks.length - hit, pct: Math.round((hit / picks.length) * 1000) / 10 } : null;
   const tt = (RES || []).map((r) => r.ftdTeam).filter((t) => t && (t.first === "home" || t.first === "away") && t.home != null), th = tt.filter((t) => (t.home >= t.away ? "home" : "away") === t.first).length;
   const trc = tt.length ? { w: th, l: tt.length - th, pct: Math.round((th / tt.length) * 1000) / 10 } : null;
-  el.innerHTML = `<div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">${teamSel(teams)}</div><div style="display:flex;gap:10px;flex-wrap:wrap">${recTile(trc, "TEAM RECORD")}${recTile(rc, "TOP PICK RECORD")}</div>` + (games.length ? `<div class="pgrid" style="margin-top:6px">${propBlocks(games, propRow)}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
+  el.innerHTML = `<div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">${teamSel(teams)}</div><div style="display:flex;gap:10px;flex-wrap:wrap">${recTile(trc, "TEAM RECORD")}${recTile(rc, "TOP PICK RECORD")}</div>` + (games.length ? `<div class="pgrid" style="margin-top:6px">${propBlocks(games, propRow, true)}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
   const ps = $("props-team"); if (ps && ps.tagName === "SELECT") ps.onchange = () => { PROPTEAM = ps.value; renderProps(); };
   if (!RES && !renderFirstTd.loading) { renderFirstTd.loading = true; loadRecord().catch(() => {}).finally(() => { renderFirstTd.loading = false; if (PROPTAB === "first") renderProps(); }); }
 }
@@ -1390,6 +1403,7 @@ document.addEventListener("click", (e) => {
   const bv = e.target.closest("[data-bv]"); if (bv) { BETSVIEW = bv.dataset.bv === "model" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} applyBetsView(); try { window.scrollTo(0, 0); } catch {} return; }
   const lw = e.target.closest("[data-labw]"); if (lw) { LABWEEK = Number(lw.dataset.labw); renderLabList(); return; }
   const gb = e.target.closest("[data-gbw]"); if (gb) { GBGWEEK = gb.dataset.gbw === "all" ? "all" : Number(gb.dataset.gbw); $("gbg").innerHTML = gbgHtml(); return; }
+  const ts = e.target.closest(".labslot.tdtog"); if (ts) { tdToggleSlot(ts); return; }   // 10/20 night (owner): open / close a time-slot list
   const tw = e.target.closest(".tdr[data-tdw]"); if (tw && !e.target.closest(".nogap")) { tw.classList.toggle("open"); if (tw.classList.contains("open")) fillTdWeeks(tw); return; }   // 10/20 night (owner): TD by week under the row
   const p = e.target.closest(".price-link"); if (p) toast(p.dataset.market ? "Polymarket market: " + p.dataset.market : "No market recorded for this price.", 8000);
 });

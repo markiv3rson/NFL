@@ -95,7 +95,7 @@
   .tiles { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:10px; }
   .tiles.stack { grid-template-columns:1fr !important; margin-top:8px; }   /* 10/17 (owner): Game Lines stacked, one game per row */
   #lines > .labslot:first-of-type { margin-top:10px; }
-  .ppr { display:grid; grid-template-columns:minmax(0,1fr) auto auto 44px 56px; column-gap:10px; align-items:center; white-space:nowrap; } .ppr .pp1 { min-width:0; overflow:hidden; text-overflow:ellipsis; } .ppr .pp3, .ppr .pp4, .ppr .pp5 { text-align:right; font-variant-numeric:tabular-nums; } .ppr .pp5 { font-size:11px; white-space:nowrap; } .ppr.g .pp3, .ppr.r .pp3 { font-weight:700; }   /* 10/18 (owner): Props rows in columns */
+  .ppr { display:grid; grid-template-columns:minmax(0,3fr) minmax(max-content,1fr) minmax(max-content,.8fr) minmax(44px,.7fr) minmax(74px,.8fr); column-gap:8px; align-items:center; white-space:nowrap; } .ppr .pp1 { min-width:0; overflow:hidden; text-overflow:ellipsis; } .ppr .pp3, .ppr .pp4, .ppr .pp5 { text-align:center; font-variant-numeric:tabular-nums; } .ppr .pp5 { font-size:11px; white-space:nowrap; } .ppr.g .pp3, .ppr.r .pp3 { font-weight:700; }   /* 10/18 (owner): Props rows in columns */
   .labslot { grid-column:1 / -1; margin:26px 2px 4px; padding-bottom:7px; font-size:22px; font-weight:900; letter-spacing:.07em; text-shadow:0 1px 2px rgba(0,0,0,.95),0 -1px 1px rgba(0,0,0,.6); color:#fff; }   /* 10/18 night (owner): a dark edge on the letters so they read over the picture */   /* 10/18 (owner): bigger words, no white line */   /* 10/17 (owner): bigger, white; 10/18 (owner): plain white line -- it blended in with the parlays */
   .pgrid > .labslot:first-child { margin-top:8px; } .labslot .lst { font-size:12.5px; color:var(--faint); font-weight:600; letter-spacing:0; text-transform:none; }
   @media (min-width:760px) { .tiles { grid-template-columns:repeat(3,minmax(0,1fr)); } }
@@ -135,13 +135,19 @@
   .pbh { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:4px; } .pbn { font-weight:700; font-size:14.5px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
   .plb { color:var(--blue); font-weight:700; font-size:12.5px; white-space:nowrap; display:flex; align-items:center; gap:4px; } .plb .plw { color:#fff; } .plb .pm { width:16px; height:16px; }
   /* 10/20 (owner): Player props rows carry labeled MODEL / POLYMARKET columns, a team label per group, the model % colored */
-  .ppr.pph { margin-top:7px; } .ppr.pph span { font-size:10px; letter-spacing:.08em; color:var(--faint); font-weight:700; }
+    /* 10/20 night (owner: names were cut to 'A.J. Br…' once LAST WK + logo POLYMARKET took the width): on a phone the LINE sits under the player's name, like the game under a TD name; computers keep 5 columns */
+  @media (max-width:599px) { .ppr { grid-template-columns:minmax(0,1fr) minmax(max-content,auto) 40px minmax(74px,auto); grid-template-areas:"n l m p" "line l m p"; row-gap:0; } .ppr.first { grid-template-columns:minmax(0,1fr) 40px minmax(74px,auto); grid-template-areas:"n m p" "line m p"; }
+    .ppr .pp1 { grid-area:n; } .ppr .pp2 { grid-area:line; font-size:11px; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .ppr .pp5 { grid-area:l; } .ppr .pp3 { grid-area:m; } .ppr .pp4 { grid-area:p; } .ppr.pph .pp2 { display:none; } .ppr.pph .pp1 { grid-row:1 / 3; } }
+.ppr.pph { margin-top:7px; } .ppr.pph span { font-size:8.5px; letter-spacing:.02em; color:var(--faint); font-weight:700; } .ppr.first { grid-template-columns:minmax(0,3fr) minmax(max-content,1fr) minmax(44px,.7fr) minmax(74px,.8fr); }   /* same rule as NFL (a props list without the LAST column) */
   .pbl.pteam { display:flex; align-items:center; gap:5px; margin-top:6px; font-size:11px; font-weight:800; color:var(--dim); } .pbl.pteam .tlogo { width:14px; height:14px; margin:0; }
   .ftdteams { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:4px 12px 2px; font-size:13px; font-weight:700; } .ftdteams .tlogo { width:18px; height:18px; margin:0 4px; vertical-align:middle; } .ftdteams span { display:flex; align-items:center; gap:4px; }
   .ftdg { border-top:1px solid var(--line2); } .ftdg .ftdt { padding:8px 12px 0; font-size:13px; font-weight:800; display:flex; align-items:center; gap:4px; } .ftdg .ftdt .tlogo { width:18px; height:18px; margin:0; }
   .tdr .pxc { width:78px; } .ppr .pp3.mod, .ftdteams b.mod { color:var(--violet); font-weight:800; }
-  .ppr .pp4, .ppr.pph .pp4 { color:var(--green); }   /* 10/20 (owner): Polymarket cents green = money */
+  .ppr .pp4, .ppr.pph .pp4 { color:#2e5cff; }   /* 10/20 night (owner): Polymarket cents + head in Polymarket's blue; columns centered under their heads */
+  .pph .pm { width:12px; height:12px; margin-right:3px; vertical-align:-2px; } .pph .pm img { width:12px; height:12px; }
   .pbl { margin-top:3px; padding-left:12px; overflow-wrap:anywhere; } .pbr { text-align:right; font-weight:800; min-height:4px; }
+  .pbl.pleg { display:flex; justify-content:space-between; align-items:center; gap:10px; } .pbl.pleg .plp { flex:0 0 auto; font-weight:800; } .pbx { display:flex; align-items:center; gap:12px; white-space:nowrap; flex:0 0 auto; } .pbx .mod { font-weight:800; }   /* 10/20 night (owner): Model % next to the Polymarket line, leg % on the right */
+  @media (min-width:600px) { .ppr { column-gap:16px; } }
   @media (max-width:500px) { .par { font-size:12.5px; } .pbn { font-size:13px; } .pbh { gap:6px; } .plb { font-size:12px; } .labslot { font-size:19px; } .labslot .lst { font-size:11px; } }   /* 10/17 (owner): everything fits on the iPhone */
   .wksel { position:relative; display:inline-block; margin-top:12px; padding-right:20px; } .wksel select { -webkit-appearance:none; appearance:none; width:auto; max-width:100%; min-height:36px; padding:0 2px; border:0; border-radius:0; color:#fff; font:inherit; font-size:17px; font-weight:800; cursor:pointer; background:transparent; }
   .wksel::after { content:""; position:absolute; right:2px; top:50%; width:14px; height:14px; margin-top:-7px; pointer-events:none; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23d9c4ff' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat center; }   /* 10/17 (owner): no box; the arrow sits after the text and never covers it */
@@ -150,8 +156,8 @@
   .tile.live { border-color:rgba(255,70,90,.95) !important; box-shadow:0 0 18px rgba(255,60,80,.75), inset 0 0 0 1px rgba(255,90,110,.6); animation:livepulse 1.6s ease-in-out infinite; }
   @keyframes livepulse { 0%,100% { box-shadow:0 0 12px rgba(255,60,80,.55), inset 0 0 0 1px rgba(255,90,110,.5); } 50% { box-shadow:0 0 26px rgba(255,60,80,.95), inset 0 0 0 1px rgba(255,90,110,.8); } }
   .tlogo { width:20px; height:20px; vertical-align:-4px; margin:0 5px 0 0; background:none; }
-  .pm { display:inline-flex; width:14px; height:14px; border-radius:4px; background:#2e5cff; color:#fff; align-items:center; justify-content:center; font-size:10px; font-weight:800; vertical-align:-2px; margin-right:4px; overflow:hidden; }
-  .pm img { width:14px; height:14px; }
+  .pm { display:inline-flex; width:14px; height:14px; border-radius:3px; align-items:center; justify-content:center; vertical-align:-2px; margin-right:4px; overflow:hidden; }   /* 10/20 night (owner): the real Polymarket logo (public/polymarket.png) */
+  .pm img { width:100%; height:100%; display:block; }
   /* alerts */
   .pbn .lvb { color:var(--red); font-size:11px; font-weight:800; letter-spacing:.04em; }
   .al .algame { font-size:11px; font-weight:700; margin-top:6px; color:var(--blue); display:flex; align-items:center; gap:4px; } .al .algame .tlogo { width:16px; height:16px; margin:0; }

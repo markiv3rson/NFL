@@ -22,7 +22,7 @@
   const URL_ = { nfl: "/index.html", nba: "/nba/index.html" };
   const SUB = [["mybets", "My bets"], ["modelbets", "Model bets"]];   // 10/18 (owner): the Results sub tab was built and then deleted the same day ("I don't need it")
   // 10/17 (owner): the Model bets parlay types are sub tabs under Model bets in the menu (both sports)
-  const TYPES = { nfl: [["ou", "Over/Under"], ["best", "Best Legs"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"], ["st", "Spread + Total"]],
+  const TYPES = { nfl: [["best", "Best Legs"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"]],   // 10/20 night (owner): Over/Under and Spread + Total removed from the menu
     nba: [["sgp", "Same game"], ["best4", "Parlay"]] };   // 10/19 (owner): 3 legs at most -- the 4-leg tabs are gone on both sports
   // 10/18 night (owner): Alerts is ONE menu item on both sports -- no kind sub tabs
   // 10/17 (owner): Alerts, Bets and Model bets open and close their lists (closed to start); tapping them only opens / closes
