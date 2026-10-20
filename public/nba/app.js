@@ -321,11 +321,14 @@ function renderProps() {
   const games = all.map((g) => ({ ...g, picks: PROPTEAM === "all" ? g.picks : g.picks.filter((p) => p.team === PROPTEAM) })).filter((g) => g.picks.length);
   const rc = (d.record || {})[PROPTAB] || null;
   const tile = `<div class="stats" style="margin-top:10px"><div class="stat"><div class="k">RECORD</div><div class="v ${rc && rc.pct >= 56 ? "g" : rc && rc.pct >= 53 ? "lg" : !rc || rc.pct == null ? "" : "y"}">${rc ? rc.w || 0 : 0}–${rc ? rc.l || 0 : 0}</div><div class="k2">${!rc || rc.pct == null ? "—" : rc.pct + "% won"}</div></div></div>`;
-  const row = (p) => `<div class="pbl ppr${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${tlogo(p.team || "")}${esc(p.name)}</span><span class="pp2">${PROP_SHORT[p.stat] || ""} ${p.side === "over" ? "Over" : "Under"} ${p.line}</span><span class="pp3">${Math.round(p.chance * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
+  // 10/20 (owner: "label these by Models Chance and Polymarket Prices ... separate them by teams ... color code the model %"; design = both sports)
+  const row = (p) => `<div class="pbl ppr${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${tlogo(p.team || "")}${esc(p.name)}</span><span class="pp2">${PROP_SHORT[p.stat] || ""} ${p.side === "over" ? "Over" : "Under"} ${p.line}</span><span class="pp3 ${clsOf(p.chance * 100)}">${Math.round(p.chance * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
+  const head = '<div class="pbl ppr pph"><span class="pp1">PLAYER</span><span class="pp2">LINE</span><span class="pp3">MODEL</span><span class="pp4">POLYMARKET</span></div>';
+  const teamRows = (g) => [...new Set([g.away, g.home, ...g.picks.map((p) => p.team || "")])].map((t) => { const rs = g.picks.filter((p) => (p.team || "") === t); return rs.length ? `${t ? `<div class="pbl pteam">${tlogo(t)}${esc(t)}</div>` : ""}${rs.map(row).join("")}` : ""; }).join("");
   const slotTimes = {}; for (const g of games) if (g.start) { const sl = nbaSlot(g.start), t = tipTime(g.start); (slotTimes[sl] = slotTimes[sl] || []).includes(t) || slotTimes[sl].push(t); }
   let lastSlot = null;
   const blocks = games.map((g) => { const sl = g.start ? nbaSlot(g.start) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
-    return h + `<div class="par"><div class="pbh"><span class="pbn">${gameLogos(g.game)}</span></div>${g.picks.map(row).join("")}</div>`; });
+    return h + `<div class="par"><div class="pbh"><span class="pbn">${gameLogos(g.game)}</span></div>${head}${teamRows(g)}</div>`; });
   el.innerHTML = `<div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">${dsel}${tsel}</div>` + tile + (games.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
   const pd = $("props-day"); if (pd && pd.tagName === "SELECT") pd.onchange = () => { PROPDAY = pd.value; loadProps(); };
   const ps = $("props-team"); if (ps && ps.tagName === "SELECT") ps.onchange = () => { PROPTEAM = ps.value; renderProps(); };

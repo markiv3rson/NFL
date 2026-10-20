@@ -23,7 +23,6 @@ const STAT = { basketball_player_points: "pts", basketball_player_rebounds: "reb
 export const NBA_PROP_BAR = 0.62;
 export const MAX_PRICE = 0.77;   // 10/20 (owner: "cut 77+"): a row priced 77c or more is not shown and not counted (both sports)
 export const NBA_STATS = [["pts", "Points"], ["reb", "Rebounds"], ["ast", "Assists"], ["pra", "PRA"], ["3pm", "Threes"], ["stl", "Steals"], ["blk", "Blocks"]];
-export const NBA_STAT_LABEL = Object.fromEntries(NBA_STATS);
 const q = (x) => { const v = Number(x && typeof x === "object" ? x.value : x); return v > 0 && v < 1 ? Math.round(v * 1000) / 1000 : null; };
 export const K_NBAPROPS = (date, key) => `nbaprops:${date}:${key}`;
 export const K_NBAPROPMODEL = (date, key) => `nbapropmodel:${date}:${key}`;
