@@ -331,7 +331,8 @@ function renderProps() {
   const slotTimes = {}; for (const g of games) if (g.start) { const sl = nbaSlot(g.start), t = tipTime(g.start); (slotTimes[sl] = slotTimes[sl] || []).includes(t) || slotTimes[sl].push(t); }
   let lastSlot = null;
   const blocks = games.map((g) => { const sl = g.start ? nbaSlot(g.start) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
-    return h + `<div class="par"><div class="pbh"><span class="pbn">${gameLogos(g.game)}</span></div>${head}${teamRows(g)}</div>`; });
+    // 10/20 night (owner): a game being played says LIVE on its props block -- its rows are the copy locked at tip-off (a started game is never re-scored), graded from the box score
+    return h + `<div class="par"><div class="pbh"><span class="pbn">${gameLogos(g.game)}${g.start && !g.final && Date.parse(g.start) <= Date.now() ? ' <span class="lvb">● LIVE</span>' : ""}</span></div>${head}${teamRows(g)}</div>`; });
   el.innerHTML = `<div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">${dsel}${tsel}</div>` + tile + (games.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
   const pd = $("props-day"); if (pd && pd.tagName === "SELECT") pd.onchange = () => { PROPDAY = pd.value; loadProps(); };
   const ps = $("props-team"); if (ps && ps.tagName === "SELECT") ps.onchange = () => { PROPTEAM = ps.value; renderProps(); };

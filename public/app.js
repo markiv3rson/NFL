@@ -1077,7 +1077,8 @@ function propBlocks(games, row) {
   const slotTimes = {}; for (const g of gs) if (g.kickoff) { const sl = labSlot(g.kickoff), tt = tm(g.kickoff); (slotTimes[sl] = slotTimes[sl] || []).includes(tt) || slotTimes[sl].push(tt); }
   let lastSlot = null;
   return gs.map((g) => { const sl = g.kickoff ? labSlot(g.kickoff) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
-    return h + `<div class="par"><div class="pbh"><span class="pbn">${gameLogos(g.game)}</span></div>${g.head || ""}${PROP_HEAD}${teamRows(g, row)}</div>`; }).join("");
+    // 10/20 night (owner): a game being played says LIVE on its props block -- its rows are the copy locked at kickoff (the rerun never re-scores a started game), graded at the final
+    return h + `<div class="par"><div class="pbh"><span class="pbn">${gameLogos(g.game)}${g.started && !g.final ? ' <span class="lvb">● LIVE</span>' : ""}</span></div>${g.head || ""}${PROP_HEAD}${teamRows(g, row)}</div>`; }).join("");
 }
 function renderProps() {
   const el = $("props"); if (!el) return;
