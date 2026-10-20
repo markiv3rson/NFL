@@ -282,7 +282,7 @@ function tdRow(x) {
   return `<div class="tdr" data-tdw="${esc(r.team)}|${esc(r.player)}"><div class="in">${tlogo(r.team)}<div class="nmx"><div class="l1"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos || "")}</span>${injTag(r) || practTag(r)}${retPill(r)}</div><div class="g2">${esc(r.game || "")}${r.teamRank ? ` · #${r.teamRank} on team` : ""}</div></div>` +
     tdCell(snap) + tdCell(two) + `<span class="tc mp"><em>${tdPct(r.fair)}%</em></span><span class="tc pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${tdNoGap(r) != null ? ` <span class="y nogap" title="No · ${tdNoGap(r)} under">⚠</span>` : ""}</span></div><div class="tdwk"></div></div>`;
 }
-const tdHead = (title) => `<div class="tdh"><span class="h1">${title}</span><span class="tc">SNAP</span><span class="tc">2+ TD</span><span class="tc">MODEL</span><span class="tc">PM</span></div>`;
+const tdHead = (title) => `<div class="tdh"><span class="h1">${title}</span><span class="tc">SNAP</span><span class="tc">2+ TD</span><span class="tc">MODEL</span><span class="tc pmh">PM</span></div>`;
 const earlyNote = (g) => (g && g.early ? '<span class="pill p-y" style="padding:0 6px;font-size:10px">Early estimate</span>' : "");
 // One Anytime TD section for the slate in S: price moves, then the top 3 per team, most likely first.
 const BEST_TD = 55;
@@ -303,17 +303,33 @@ const firstTdRow = (r) => `<div class="tdr best"><div class="in">${tlogo(r.team)
 let TDW = null, TDW_AT = 0, TDW_LOADING = null;
 const tdNameEq = (a, b) => { const n = (x) => String(x || "").toLowerCase().replace(/[^a-z]/g, ""); if (n(a) === n(b)) return true;
   const la = String(a || "").split(/[\s.]+/).filter(Boolean), lb = String(b || "").split(/[\s.]+/).filter(Boolean); return la.length > 1 && lb.length > 1 && la[la.length - 1].toLowerCase() === lb[lb.length - 1].toLowerCase() && la[0][0].toLowerCase() === lb[0][0].toLowerCase(); };
-function tdWeekLine(data, team, player) {
-  if (!data || !data.weeks) return '<span class="dim">loading…</span>';
-  const parts = [], ws = Object.keys(data.weeks).map(Number).sort((a, b) => a - b); let drought = 0;
+// One entry per PLAYED week: { w, n } (n = his TDs that week), "bye" for a final week his team did not play; a week not played yet is left out
+// (the running week counts a game only once its scorers are posted -- 10/20 night fix: week 7 read "bye" on everyone before it was played).
+function tdWeekGames(data, team, player) {
+  if (!data || !data.weeks) return null;
+  const out = [], ws = Object.keys(data.weeks).map(Number).sort((a, b) => a - b);
   for (const w of ws) { const d = data.weeks[w], key = (d.games || []).find((k) => k.split(" @ ").includes(team));
-    if (!key) { parts.push(`<span class="dim">W${w} bye</span>`); continue; }
-    if (!d.final && !Object.keys((d.counts || {})[key] || {}).length) { continue; }   // the running week: only a game with its scorers posted counts
+    if (!key) { if (d.final) out.push({ w, bye: true }); continue; }
+    if (!d.final && !Object.keys((d.counts || {})[key] || {}).length) continue;
     const c = (d.counts || {})[key] || {}, n = Object.entries(c).filter(([nm]) => tdNameEq(player, nm)).reduce((a, [, v]) => a + Number(v || 0), 0);
-    if (n > 0) { parts.push(`<b class="g">W${w} ✓${n > 1 ? n : ""}</b>`); drought = 0; } else { parts.push(`<span class="r">W${w} –</span>`); drought++; } }
+    out.push({ w, n }); }
+  return out;
+}
+// Played games in a row without a TD, counted back from his last played game (byes skipped); null before the feed arrives
+function tdDrought(data, team, player) { const gs = tdWeekGames(data, team, player); if (!gs) return null; let k = 0; for (const g of gs.filter((x) => !x.bye)) k = g.n > 0 ? 0 : k + 1; return k; }
+function tdWeekLine(data, team, player) {
+  const gs = tdWeekGames(data, team, player); if (!gs) return '<span class="dim">loading…</span>';
+  const parts = gs.map((g) => g.bye ? `<span class="dim">W${g.w} bye</span>` : g.n > 0 ? `<b class="g">W${g.w} ✓${g.n > 1 ? g.n : ""}</b>` : `<span class="r">W${g.w} –</span>`), drought = tdDrought(data, team, player);
   if (!parts.length) return '<span class="dim">no games yet</span>';
   return parts.join(' <span class="dim">·</span> ') + (drought >= 2 ? ` <span class="dim">· ${drought} straight without</span>` : "");
 }
+// 10/20 night (owner: "if they didn't score a TD for 3 weeks then cut them so they don't show up, then bring them back if they scored"): a player
+// with TD_DROUGHT+ played games in a row without a TD is OFF the Anytime TD page (Best TD picks and the list), whatever his model %; the week he
+// scores the count resets and he is back. History 2019-25 (list players, walk-forward model): 3+ straight blanks scored 25.4-31.8% vs 25.8-30.1%
+// said -- the model's % already carries the drought, so the cut removes rows, it does not raise the hit rate of the ones left beyond their %.
+// Page only: the model lists, parlays and grading are unchanged (every listed player is still graded in the background).
+const TD_DROUGHT = 3;
+const tdCut = (r, data) => data != null && (tdDrought(data, r.team, r.player) || 0) >= TD_DROUGHT;
 async function loadTdWeeks() {
   if (TDW && Date.now() - TDW_AT < 600000) return TDW;
   if (!TDW_LOADING) TDW_LOADING = fetch("/api/tdweeks", { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.ok) { TDW = j; TDW_AT = Date.now(); } return TDW; }).catch(() => TDW).finally(() => { TDW_LOADING = null; });
@@ -329,10 +345,11 @@ function tdBody() {
   const moveBox = moves.length ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Price moves (5¢+, real markets)</div>${moves.map((r) => `<div class="row"><span>${esc(r.player)} <span class="dim">${esc(r.game)}</span></span><span class="${r.move > 0 ? "g" : "r"}">${r.move > 0 ? "▲ +" : "▼ "}${r.move}¢</span></div>`).join("")}</div></div>` : "";
   // Best TD picks (10/14, owner: "build now"): only the players the model gives 55%+ (shown chance, after injury discounts). Graded weeks 3-5:
   // 55%+ players scored 17 of 21 (said 65%) vs 22% for every listed player -- the model's most confident tier, not a smarter model.
-  const best = rows.filter((x) => x.r.fair >= BEST_TD);
+  const best = rows.filter((x) => x.r.fair >= BEST_TD && !tdCut(x.r, TDW));
   const bestBox = `<div class="card tdl tdbest">${tdHead(`BEST TD PICKS · MODEL ${BEST_TD}%+`)}${best.length ? best.map(tdRow).join("") : '<div class="s dim" style="padding:8px 12px">None right now.</div>'}</div>`;
   // Top 3 per team (10/5): beyond the three likeliest scorers the rest is noise. 10/14 (owner): players already in Best TD picks are left out (no repeats).
-  const perTeam = {}, shown = rows.filter((x) => { const k = x.r.team; perTeam[k] = (perTeam[k] || 0) + 1; return perTeam[k] <= 3; }).filter((x) => x.r.fair < BEST_TD);
+  // 10/20 night (owner): the drought cut runs AFTER the top 3 are picked, so a team shows 1-3 rows -- its 4th / 5th scorer never moves up to fill a hole
+  const perTeam = {}, shown = rows.filter((x) => { const k = x.r.team; perTeam[k] = (perTeam[k] || 0) + 1; return perTeam[k] <= 3; }).filter((x) => x.r.fair < BEST_TD && !tdCut(x.r, TDW));
   // 10/20 night (owner): the list is split by time slot -- the same slots as Game Lines, kickoff order; inside a slot the rows keep the model order
   const slots = [], by = {};
   for (const g of S.games.filter((g) => !g.started).sort(order)) { const sl = (g.carry ? `WEEK ${g.week} · ` : "") + (g.kickoff ? labSlot(g.kickoff) : "GAMES"); if (!by[sl]) { by[sl] = []; slots.push(sl); } by[sl].push(g.key); }
@@ -340,7 +357,8 @@ function tdBody() {
   return bestBox + moveBox + list;
 }
 function renderTd() {
-  loadTdWeeks();
+  if (!TDW) loadTdWeeks().then((d) => { if (d && $("panel-td").classList.contains("on")) renderTd(); });   // the drought cut needs the week feed: redraw once it lands
+  else loadTdWeeks();
   $("td-header").textContent = "";   // 10/17 (owner): no subtitle
   let html = tdBody();
   $("td").innerHTML = html + '';
