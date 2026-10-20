@@ -5,3 +5,4 @@ __pycache__/
 next-env.d.ts
 tsconfig.json
 package-lock.json
+tsconfig.tsbuildinfo
