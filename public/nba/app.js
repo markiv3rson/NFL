@@ -28,7 +28,7 @@ const ESPN_NBA = { GSW: "gs", NOP: "no", NYK: "ny", SAS: "sa", UTA: "utah", WAS:
 const logoUrl = (a) => (TEAMS[a] && TEAMS[a].logo ? TEAMS[a].logo : a ? `https://a.espncdn.com/i/teamlogos/nba/500/${ESPN_NBA[a] || String(a).toLowerCase()}.png` : "");
 const tlogo = (a) => (a ? `<img class="tlogo" src="${esc(logoUrl(a))}" alt="" onerror="this.style.display='none'">` : "");
 const teamColor = (a) => (TEAMS[a] && TEAMS[a].bright) || "#444";
-const pmLogo = () => '<span class="pm"><img src="https://polymarket.com/favicon.ico" alt="" onerror="this.parentNode.textContent=\'P\'"></span>';
+const pmLogo = () => '<span class="pm"><img src="/polymarket.png" alt=""></span>';   // 10/20 night (owner): the real Polymarket logo everywhere
 const recOf = (g, t) => { const c = g.context && g.context[t === g.home ? "home" : "away"]; if (!c) return ""; const w = c.gp ? Math.round(c.win_pct * c.gp) : 0; return `<small class="rec">${w}–${(c.gp || 0) - w}</small>`; };
 const mktWin = (g) => { const m = g.poly && g.poly.ml; if (!m) return null; return { away: m.midAway / (m.midAway + m.midHome), home: m.midHome / (m.midAway + m.midHome) }; };
 // colors by win rate (owner 10/15): green 56%+, light green 53-55%, yellow below
@@ -330,7 +330,7 @@ function renderProps() {
   const tile = `<div class="stats" style="margin-top:10px"><div class="stat"><div class="k">RECORD</div><div class="v ${rc && rc.pct >= 56 ? "g" : rc && rc.pct >= 53 ? "lg" : !rc || rc.pct == null ? "" : "y"}">${rc ? rc.w || 0 : 0}–${rc ? rc.l || 0 : 0}</div><div class="k2">${!rc || rc.pct == null ? "—" : rc.pct + "% won"}</div></div></div>`;
   // 10/20 (owner: "label these by Models Chance and Polymarket Prices ... separate them by teams"; the model % stays purple, owner: "keep all model purple"; design = both sports)
   const row = (p) => `<div class="pbl ppr${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${tlogo(p.team || "")}${esc(p.name)}</span><span class="pp2">${PROP_SHORT[p.stat] || ""} ${p.side === "over" ? "Over" : "Under"} ${p.line}</span>${propLast(p)}<span class="pp3 mod">${Math.round(p.chance * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
-  const head = '<div class="pbl ppr pph"><span class="pp1">PLAYER</span><span class="pp2">LINE</span><span class="pp5">LAST</span><span class="pp3">MODEL</span><span class="pp4">POLYMARKET</span></div>';
+  const head = `<div class="pbl ppr pph"><span class="pp1">PLAYER</span><span class="pp2">LINE</span><span class="pp5">LAST</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
   const teamRows = (g) => [...new Set([g.away, g.home, ...g.picks.map((p) => p.team || "")])].map((t) => { const rs = g.picks.filter((p) => (p.team || "") === t); return rs.length ? `${t ? `<div class="pbl pteam">${tlogo(t)}${esc(t)}</div>` : ""}${rs.map(row).join("")}` : ""; }).join("");
   const slotTimes = {}; for (const g of games) if (g.start) { const sl = nbaSlot(g.start), t = tipTime(g.start); (slotTimes[sl] = slotTimes[sl] || []).includes(t) || slotTimes[sl].push(t); }
   let lastSlot = null;
@@ -431,9 +431,10 @@ const gameLogos = (key) => { const m = String(key || "").match(/^([A-Z]{2,4}) @ 
 function pBlock(title, p, showGame) {
   if (!p || !Array.isArray(p.legs) || !p.legs.length) return "";
   const pr = typeof p.prob === "number" && isFinite(p.prob) ? p.prob : null;
-  const legs = p.legs.map((l) => `<div class="pbl">${legMark(l.result)} ${legTxt(l.result, `${tlogo(l.team || "")}${esc(l.label)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · <span class="mod">${Math.round((l.prob || 0) * 100)}%</span>`)}${showGame && l.game ? ` <span class="dim">${gameLogos(l.game)}</span>` : ""}</div>`).join("");
+  // 10/20 night (owner, design = both sports): the parlay's Model % sits on the right next to the Polymarket line; every leg's % is a right-hand column
+  const legs = p.legs.map((l) => `<div class="pbl pleg"><span class="pll">${legMark(l.result)} ${legTxt(l.result, `${tlogo(l.team || "")}${esc(l.label)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""}`)}${showGame && l.game ? ` <span class="dim">${gameLogos(l.game)}</span>` : ""}</span><span class="mod plp">${Math.round((l.prob || 0) * 100)}%</span></div>`).join("");
   const res = p.result === "W" ? '<span class="g">✓ Won</span>' : p.result === "L" ? '<span class="r">✗ Lost</span>' : p.result === "P" ? '<span class="dim">Push</span>' : "";
-  return `<div class="par"><div class="pbh"><span class="pbn">${title}${pr == null ? "" : ` <span class="mod">· Model ${Math.round(pr * 100)}%</span>`}</span><span class="plb"${plTap(p)}>${pmLogo()} ${plShown(p)}</span></div>${legs}<div class="pbr">${res}</div></div>`;
+  return `<div class="par"><div class="pbh"><span class="pbn">${title}</span><span class="pbx">${pr == null ? "" : `<span class="mod">Model ${Math.round(pr * 100)}%</span>`}<span class="plb"${plTap(p)}>${pmLogo()} ${plShown(p)}</span></span></div>${legs}<div class="pbr">${res}</div></div>`;
 }
 function labParlays(day, type) {
   const rec = (MODELBETS && MODELBETS.days && MODELBETS.days[day] && MODELBETS.days[day][type]) || [];
