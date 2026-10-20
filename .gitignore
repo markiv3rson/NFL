@@ -6,3 +6,4 @@ next-env.d.ts
 tsconfig.json
 package-lock.json
 tsconfig.tsbuildinfo
+nba/railway-model-service/data/team_side.json

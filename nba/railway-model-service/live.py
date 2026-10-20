@@ -13,6 +13,7 @@ import math, json, os, re
 import numpy as np, pandas as pd
 
 import nba_data as nd, nba_features as nf, fair_line as fl, combo_study as cs
+import team_side as tsd   # 10/20: the Model (Team) line (data only)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "data")
@@ -102,7 +103,12 @@ class Engine:
                 nd.STALE[f"play_by_play_{cs_}"] = shotq["stale"]
         except Exception as e:
             print(f"[load] shot quality skipped: {e!r}", flush=True); shotq = {}
+        try:                                   # 10/20 Model (Team): the team-numbers fit (saved 2 days) and every team-game row for season-to-date numbers
+            team_side, team_T = tsd.load_or_fit(g), tsd.team_rows(g)
+        except Exception as e:
+            print(f"[load] team side skipped: {e!r}", flush=True); team_side, team_T = None, None
         self.season, self.g, self.tg, self.pbox, self.states, self.sched, self.season_start, self.hist_side, self.hist_tot = cs_, g, tg, pbox, states, sched, season_start, hist_side, hist_tot
+        self.team_side, self.team_T, self._tnums = team_side, team_T, {}
         self.shotq = shotq
         self._ratings = {}
         self.loaded_at = pd.Timestamp.now().isoformat()
@@ -114,6 +120,16 @@ class Engine:
                 self._ratings.clear()
             self._ratings[date] = fl.Ratings(self.tg, date)
         return self._ratings[date]
+
+    def team_numbers(self, date):
+        """Season-to-date team numbers before `date` for the Model (Team) line (cached per date)."""
+        if self.team_T is None:
+            return {}
+        if date not in self._tnums:
+            if len(self._tnums) > 6:
+                self._tnums.clear()
+            self._tnums[date] = tsd.season_numbers(self.team_T, self.season, date)
+        return self._tnums[date]
 
     def is_preseason(self, date):
         if self.season_start is None:                       # no schedule file read yet: before Oct 15 is preseason, never real picks
@@ -258,6 +274,16 @@ class Engine:
                         "injuryShift": round(margin - raw - co["margin"]["coef"][1] * x["b2b_d"], 1),
                         "restShift": round(co["margin"]["coef"][1] * x["b2b_d"], 1),
                         "estimate": bool(has_inj or pre), "injuryBasis": co.get("injury_basis"), "sdMargin": round(co["sd_margin"], 1), "sdTotal": round(co["sd_total"], 1)}
+        # 10/20 Model (Team): the team-numbers side at Polymarket's line, how sure -- DATA on the card (walk-forward 50.7%, never a pick)
+        try:
+            hs_site = gm.get("home_spread")
+            if hs_site is not None and float(hs_site) != 0 and getattr(self, "team_side", None):
+                nums = self.team_numbers(r["date"]); pc = tsd.prob_home_covers(self.team_side, nums.get(r["hn"]), nums.get(r["an"]), r["ctx_h"].get("rest"), r["ctx_a"].get("rest"))
+                if pc is not None:
+                    home_side = pc > 0.5; hs_site = float(hs_site)
+                    res["model"]["teamSide"] = {"team": h if home_side else a, "line": hs_site if home_side else -hs_site, "pct": round(max(pc, 1 - pc) * 100, 1)}
+        except Exception as ex:
+            res["model"]["teamSideError"] = str(ex)[:120]
         res["spread"] = self._spread(gm, r, margin, sr)
         res["total"] = self._total(gm, total, gr, r)
         res["ml"] = self._ml(gm, win, mkt, a, h, sr, r)

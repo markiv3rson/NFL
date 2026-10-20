@@ -889,5 +889,12 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(st.props && st.props.days === 1 && st.props.lastDay === "2026-12-30" && st.props.latest === "2026-12-30T11:00:00Z", "NBA status: prop recorder days + newest write", st.props);
   ok(/Player prop lines recorded/.test(readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8")), "NBA System row for the prop recorder");
   await R.del("nbaprops:2026-12-30:BOS @ DET"); }
+
+{ // 10/20 owner: "Model (Team):" line on the NBA spread card (same as NFL); NBA's team model is data only (walk-forward 50.7%), so no rule reads it
+  const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8"), svc = readFileSync(new URL("../railway-model-service/live.py", import.meta.url), "utf8"), mod = readFileSync(new URL("../railway-model-service/team_side.py", import.meta.url), "utf8");
+  ok(/Model \(Team\): <b class="mod">\$\{esc\(m\.teamSide\.team\)\} \$\{sgn\(m\.teamSide\.line\)\} · \$\{m\.teamSide\.pct\}%/.test(app) && /teamSide/.test(svc) && /def prob_home_covers/.test(mod) && /never a pick/.test(mod)
+    && !/teamSide|teammodel/.test(readFileSync(new URL("../lib/cardpick.js", import.meta.url), "utf8")),
+    "NBA card: Model (Team) line under Model (team, line, sure %), fed by the service's team-numbers fit; data only -- the NBA card picker never reads it");
+}
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`);
 process.exit(bad ? 1 : 0);
