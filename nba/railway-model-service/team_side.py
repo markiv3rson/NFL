@@ -81,7 +81,7 @@ def _design(g, T):
 
 def _logit_fit(X, y, l2=L2, iters=50):
     """Ridge logistic regression by Newton steps on standardized features. Returns b0, coef (standardized), mean, sd."""
-    mu = X.mean(axis=0); sd = X.std(axis=0); sd[sd == 0] = 1
+    mu = X.mean(axis=0); sd = X.std(axis=0); sd[sd < 1e-9] = 1          # a constant feature (no spread in the data) is left unscaled
     Z = (X - mu) / sd; n, k = Z.shape
     A = np.hstack([np.ones((n, 1)), Z]); w = np.zeros(k + 1); R = np.eye(k + 1) * l2; R[0, 0] = 0
     for _ in range(iters):
@@ -100,6 +100,9 @@ def fit(g, through=None):
     if through is None:
         through = int(max(s for s, c in counts.items() if c >= 500))
     tr = X[X.season <= through]
+    base = float(tr.y.mean())
+    if not 0.45 <= base <= 0.55:                                 # a flipped line sign reads as ~60% home covers (the 10/20 first run); refuse to publish that
+        raise ValueError(f"home-cover base rate {base:.3f} is not near 50%: check the home_line sign convention (+ = home favoured)")
     feat = [c for c in X.columns if c.startswith("d_")]
     b0, coef, mu, sd = _logit_fit(tr[feat].values.astype(float), tr.y.values.astype(float))
     return {"feat": feat, "coef": [round(c, 6) for c in coef], "mean": [round(m, 6) for m in mu], "sd": [round(s, 6) for s in sd], "b0": round(b0, 6),
@@ -120,7 +123,7 @@ def prob_home_covers(fitd, nh, na, rest_h, rest_a):
             if a is None or b is None or (isinstance(a, float) and np.isnan(a)) or (isinstance(b, float) and np.isnan(b)):
                 return None
             x = a - b
-        z += fitd["coef"][i] * (x - fitd["mean"][i]) / fitd["sd"][i]
+        z += fitd["coef"][i] * (x - fitd["mean"][i]) / (fitd["sd"][i] or 1)
     return float(1 / (1 + np.exp(-z)))
 
 
