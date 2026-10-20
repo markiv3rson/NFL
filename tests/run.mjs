@@ -282,12 +282,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const fresh = injuryPick(G, -3.5, -3.5, { home: { inj: { qb: 1 }, injPrev: { db: 1 } }, away: { inj: {}, injPrev: {} } });
   const nodata = injuryPick(G, -3.5, -3.5, { home: { inj: { ol: 2 }, injPrev: null }, away: { inj: {} } });
   const other = injuryPick(G, -3.5, -3.5, { home: { inj: { qb: 1 }, injPrev: {} }, away: { inj: {}, injPrev: { qb: 1 } } });   // the HEALTHY team's old flag does not matter
-  ok(!cont && fresh && fresh.pick === "BUF +3.5" && fresh.hit === 58.2 && fresh.n === 146 && nodata && other && other.pick === "BUF +3.5", "INJURY fires only on a new injury (continuing -> none; no previous data -> new)");
+  ok(!cont && fresh && fresh.pick === "BUF +3.5" && fresh.hit === 66.7 && fresh.n === 51 && nodata && nodata.hit === 53.7 && nodata.n === 95 && other && other.pick === "BUF +3.5", "INJURY fires only on a new injury (continuing -> none; no previous data -> new)");
 }
 { const { injuryPick } = await import("../lib/stack.js"); const G = { home: "LA", away: "BUF", key: "BUF @ LA" };
   const inj = (o) => ({ qb: 0, sk: 0, ol: 0, db: 0, f7: 0, ...o }), sit = (h, a) => ({ home: { inj: inj(h) }, away: { inj: inj(a) } });
   const a = injuryPick(G, -3.5, -3.5, sit({ qb: 1 }, {})), b = injuryPick(G, -3.5, -3.5, sit({}, { db: 2 })), c = injuryPick(G, -2.5, -3.5, sit({ ol: 2 }, {}));
-  ok(a && a.pick === "BUF +3.5" && a.hit === 58.2 && b && b.pick === "LA -3.5" && !c && !injuryPick(G, -3.5, -3.5, sit({ qb: 1 }, { qb: 1 })) && !injuryPick(G, -3.5, -3.5, sit({ db: 1 }, {}))
+  ok(a && a.pick === "BUF +3.5" && a.hit === 66.7 && b && b.pick === "LA -3.5" && b.hit === 53.7 && c === null && !c && !injuryPick(G, -3.5, -3.5, sit({ qb: 1 }, { qb: 1 })) && !injuryPick(G, -3.5, -3.5, sit({ db: 1 }, {}))
     && !injuryPick(G, -3.5, null, sit({ qb: 1 }, {})) && injuryPick(G, -4, -3.5, sit({ qb: 1 }, {})) && !injuryPick(G, -4.5, -3.5, sit({}, { qb: 1 })),
     "injury pick: one team has its QB / 2+ DBs / 2+ OL out -> the other team at the current line, only while the line hasn't moved 1+ toward it; both hurt or one DB -> nothing"); }
 { const { parseBooks } = await import("../lib/books.js");
