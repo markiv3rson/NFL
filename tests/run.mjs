@@ -1698,7 +1698,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(near(sh[0], 60 * lam(50) / sumH, 1e-9) && near(sh[1], 60 * lam(30) / sumH, 1e-9) && near(sh[2], 39.4 * lam(40) / (lam(40) + 0.4), 1e-9) && sh[0] + sh[1] < 60 && sh[2] < 39.4 && firstTdShares(pool).length === 3,
       "first TD shares with the team model: a team's listed players never add past the team's chance (0.4 of a TD per team unlisted); without team chances the old whole-game share", sh);
     const gr = readFileSync(new URL("../lib/grade.js", import.meta.url), "utf8"), wk = readFileSync(new URL("../lib/week.js", import.meta.url), "utf8");
-    ok(/firstTdShares\(pool, teamP\)/.test(gr) && /rec\.ftdTeam = \{ away:/.test(gr) && /gradeTdInto\(rec, season, week, g, model, snaps, injuries, hs\)/.test(gr) && /firstTdShares\(pool, teamP\)/.test(wk) && /g\.ftdTeam = \{ away:/.test(wk) && /\.\.\.g,/.test(wk),
+    ok(/firstTdShares\(pool, teamP\)/.test(gr) && /rec\.ftdTeam = \{ away:/.test(gr) && /gradeTdInto\(rec, season, week, g, model, snaps, injuries, hs\)/.test(gr) && /firstTdShares\(pool, teamP\)/.test(wk) && /g\.ftdTeam = \{ away:/.test(wk) && /ftdTeam: g\.ftdTeam \|\| null/.test(wk),
       "first TD: the page and the grader use the same team split (closing spread), the game carries the team chances, the result keeps which team scored first");
     ok(/function firstTdGames\(\)/.test(ap) && !/data-ftd-toggle/.test(ap) && /class="ftdteams"/.test(ap) && /<b class="mod">\$\{Math\.round\(ft\.away\)\}%<\/b>/.test(ap) && /First TD team \(likelier side\)/.test(ap) && /TEAM RECORD/.test(ap),
       "First TD tab: per game the two teams' chances (purple) + each team's three likeliest; no toggle box; Models + the First TD tab show the team record"); }
