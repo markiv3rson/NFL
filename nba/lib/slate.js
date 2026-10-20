@@ -131,7 +131,7 @@ export async function buildSlate({ now = Date.now(), days = 1, events = null, in
   games = games.filter((g) => dates.includes(g.date));
   if (record) await recordCloses(games, now).catch((e) => logError("closes", e));   // closing lines first: they need neither the model nor the injuries
   if (record) for (const e of ev || []) {   // 10/20: NBA player prop lines recorded in the background (nba/lib/props.js), nothing shown
-    const gm = e && e.event ? null : eventGame(e); if (!gm || !(Date.parse(gm.start) > now) || !dates.includes(gm.date)) continue;
+    const gm = eventGame(e); if (!gm || !(Date.parse(gm.start) > now) || !dates.includes(gm.date)) continue;
     await recordNbaProps(gm.date, gm.key, nbaPropsFromEvent(e), new Date(now).toISOString()).catch((err) => logError("props", err)); }
   const inj = injuries || (await loadInjuries().catch(() => ({ teams: {}, dates: {}, t: null })));
   const payload = { games: games.filter((g) => g.poly).map((g) => {
