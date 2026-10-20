@@ -945,6 +945,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     await g.gradeWeek(SEASON, 3); const after = await getJSON(`res:${SEASON}:3:PHI @ CHI`);
     ok(after.tdBackfill && after.td && after.td.length === 2 && after.td.find((p) => p.player === "D.Swift").scored === true && after.td.find((p) => p.player === "S.Barkley").scored === false && JSON.stringify(after.spread) === JSON.stringify(before.spread),
       "grading: a game graded without its TD list gets it once (scored / not scored), nothing else re-graded", after);
+    ok(after.td.find((p) => p.player === "D.Swift").ftdHit === true && after.ftdTeam && after.ftdTeam.first === "home" && after.ftdTeam.hs === null && after.ftdTeam.home === null, "grading 10/20: the result keeps which team scored the first TD (D.Swift, CHI = home); no closing spread on this path = no team chance saved", after.ftdTeam);
     globalThis.fetch = realFetch; resetGamesCache(); if (oldUrl === undefined) delete process.env.MODEL_SERVICE_URL; else process.env.MODEL_SERVICE_URL = oldUrl;
     for (const k of await R.keys(`*${SEASON}:3*`)) await R.del(k); }
   { // Anytime TD tab: the four likeliest scorers per team, everyone one tap away
@@ -1619,7 +1620,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     { name: "A", stat: "rec_yds", side: "over", line: 19.5, chance: 0.82, price: 0.78 }]);
   ok(o2.map((p) => p.name).join() === "B,A,C" && o2[1].line === 40.5 && pr.MAX_PRICE === 0.77, "props rows: priced rows by win % (highest first), unpriced last; a row at 77c or more is not shown (owner 10/20: no 90c rows, then cut 77+: D at 85-88c and A Over 19.5 at 78c are out, so A shows its Under 40.5); one row per player and stat", JSON.stringify(o2.map((p) => p.name)));
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8"), h = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
-  ok(/class="pbl ppr/.test(app) && /pp1[\s\S]*pp2[\s\S]*pp3[\s\S]*pp4/.test(app) && /\.ppr \{ display:grid; grid-template-columns:minmax\(0,1fr\) auto 44px 44px/.test(h) && /onePerPlayer\(picks\)/.test(readFileSync(new URL("../lib/props.js", import.meta.url), "utf8")), "props page rows are columns: player | line | win % | price; the server list and the record use onePerPlayer"); }
+  ok(/class="pbl ppr/.test(app) && /pp1[\s\S]*pp2[\s\S]*pp3[\s\S]*pp4/.test(app) && /\.ppr \{ display:grid; grid-template-columns:minmax\(0,1fr\) auto 50px 76px/.test(h) && /onePerPlayer\(picks\)/.test(readFileSync(new URL("../lib/props.js", import.meta.url), "utf8")), "props page rows are columns: player | line | win % | price; the server list and the record use onePerPlayer"); }
 // ---------- 10/18 (owner): tiles over the page photos and the home boxes carry the same 28% white outline as a game-page card (both sports)
 { for (const f of ["../public/index.html", "../public/nba/index.html"]) { const h = readFileSync(new URL(f, import.meta.url), "utf8");
     ok(/html\.lines-on \.panel \.card, html\.lines-on \.panel \.stat \{ background:rgba\(8,8,12,\.8\); border-color:rgba\(255,255,255,\.28\);/.test(h) && /html\.lines-on \.panel \.tile \{ background:rgba\(8,8,12,\.55\); border-color:rgba\(255,255,255,\.28\);/.test(h), `${f}: cards 80% dark, game tiles 55% dark (owner 10/18 evening, sketch D), both with the 28% white outline`);
@@ -1669,7 +1670,28 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   await tr.gradeTdJumps(2099, 1, { key: "A @ B" }, [{ player: "X.Back", team: "A", scored: true }]);
   const row = JSON.parse(await R.hget(tr.tkey(2099, 1), "A @ B|tdjump|X.Back")); ok(row.result === "W" && row.prevFair === 22 && row.fair === 41, "TD JUMP graded from the game's TD list", row);
   await R.del(tr.tkey(2099, 1));
-  ok(/FIRST TD · TOP PICK PER GAME/.test(ap) && /firstBox/.test(ap) && /TD JUMP \(shadow\)/.test(ap), "Anytime TD page: First TD box; Models: TD JUMP row"); }
+  ok(/FIRST TD · TEAM MODEL/.test(ap) && /firstBox/.test(ap) && /TD JUMP \(shadow\)/.test(ap), "Anytime TD page: First TD box; Models: TD JUMP row");
+  // 10/20 (owner): the FIRST TD TEAM MODEL -- which team scores first from the spread, each player = his team's chance x his share of the team
+  { const { teamFirstChance, firstTdShares, FTD_COEF, FTD_NONE } = await import("../lib/calibration.js");
+    const pk = teamFirstChance(0), fav = teamFirstChance(-7), dog = teamFirstChance(7);
+    ok(pk && near(pk.home + pk.away, 1 - FTD_NONE, 1e-9) && pk.home > pk.away && fav.home > pk.home && near(fav.home, (1 - FTD_NONE) / (1 + Math.exp(-(FTD_COEF.a + FTD_COEF.b * 7))), 1e-9) && dog.away > pk.away && dog.away < fav.home && teamFirstChance(null) === null,
+      "first TD team model: home edge at a pick'em (52.1 / 47.3), a 7-point home favorite 62.7%, a 7-point road favorite less than that (home field), no chance without a spread", { pk, fav, dog });
+    const pool = [{ name: "A", team: "H", fair: 50 }, { name: "B", team: "H", fair: 30 }, { name: "C", team: "V", fair: 40 }], tp = { H: 0.6, V: 0.394 };
+    const sh = firstTdShares(pool, tp), lam = (f) => -Math.log(1 - f / 100), sumH = lam(50) + lam(30) + 0.4;
+    ok(near(sh[0], 60 * lam(50) / sumH, 1e-9) && near(sh[1], 60 * lam(30) / sumH, 1e-9) && near(sh[2], 39.4 * lam(40) / (lam(40) + 0.4), 1e-9) && sh[0] + sh[1] < 60 && sh[2] < 39.4 && firstTdShares(pool).length === 3,
+      "first TD shares with the team model: a team's listed players never add past the team's chance (0.4 of a TD per team unlisted); without team chances the old whole-game share", sh);
+    const gr = readFileSync(new URL("../lib/grade.js", import.meta.url), "utf8"), wk = readFileSync(new URL("../lib/week.js", import.meta.url), "utf8");
+    ok(/firstTdShares\(pool, teamP\)/.test(gr) && /rec\.ftdTeam = \{ away:/.test(gr) && /gradeTdInto\(rec, season, week, g, model, snaps, injuries, hs\)/.test(gr) && /firstTdShares\(pool, teamP\)/.test(wk) && /g\.ftdTeam = \{ away:/.test(wk) && /\.\.\.g,/.test(wk),
+      "first TD: the page and the grader use the same team split (closing spread), the game carries the team chances, the result keeps which team scored first");
+    ok(/function firstTdGames\(\)/.test(ap) && /data-ftd-toggle/.test(ap) && /FTD_OPEN = !FTD_OPEN/.test(ap) && /class="ftdteams"/.test(ap) && /First TD team \(likelier side\)/.test(ap) && /TEAM RECORD/.test(ap),
+      "First TD box: per game the two teams' chances + each team's three likeliest, opens / closes on a tap; Models + the First TD tab show the team record"); }
+  // 10/20 (owner): labeled MODEL / POLYMARKET columns, rows split by team, the model % color coded -- both sports
+  { const nb = readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8");
+    ok(/POLYMARKET<\/span><\/div>`;\s*$/m.test(ap) || /colHead = \(title, pad = 6\)/.test(ap), "Anytime TD: MODEL and POLYMARKET column heads");
+    ok(/<em class="\$\{clsOf\(r\.fair\)\}">\$\{tdPct\(r\.fair\)\}%/.test(ap) && /<em class="\$\{clsOf\(x\.r\.fair\)\}">/.test(ap) && /class="pxc">\$\{x\.r\.price != null/.test(ap) && /white-space:nowrap">POLYMARKET<\/span>/.test(ap) && !/nowrap">\$\{pmLogo\(\)\}POLYMARKET/.test(ap), "Anytime TD: the model % is color coded, Best TD picks show the Polymarket price next to it");
+    for (const [f, a] of [["NFL", ap], ["NBA", nb]]) ok(/<span class="pp1">PLAYER<\/span><span class="pp2">LINE<\/span><span class="pp3">MODEL<\/span><span class="pp4">POLYMARKET<\/span>/.test(a) && /class="pbl pteam">\$\{tlogo\(t\)\}\$\{esc\(t\)\}/.test(a) && /class="pp3 \$\{clsOf\(p\.chance \* 100\)\}"/.test(a), `${f} Player props: PLAYER / LINE / MODEL / POLYMARKET header, rows split by team with a team label, the model % color coded`);
+    for (const f of ["../public/index.html", "../public/nba/index.html"]) { const h = readFileSync(new URL(f, import.meta.url), "utf8"); ok(/\.ppr\.pph span \{ font-size:10px/.test(h) && /\.pbl\.pteam \{ display:flex/.test(h) && /\.ftdbox\.open \.ftdc \{ display:block; \}/.test(h) && /\.tdr \.mp em\.g \{ color:var\(--green\); \}/.test(h), `${f}: column head, team label, First TD toggle and colored model % styles`); }
+    ok(!/PROP_LABEL/.test(readFileSync(new URL("../lib/props.js", import.meta.url), "utf8")) && !/BUY_OPEN/.test(readFileSync(new URL("../lib/stack.js", import.meta.url), "utf8")) && !/pct1/.test(readFileSync(new URL("../nba/lib/odds.js", import.meta.url), "utf8")) && !/NBA_STAT_LABEL/.test(readFileSync(new URL("../nba/lib/props.js", import.meta.url), "utf8")), "cleanup 10/20: unused names removed (PROP_LABEL, BUY_OPEN, pct1, NBA_STAT_LABEL)"); } }
 // ---------- 10/20: first-TD prices from Polymarket US ride in the TD price map and never count as anytime prices
 { const { toGamma } = await import("../lib/polyus.js"), pk = await import("../lib/picks.js");
   const q = (v) => ({ value: String(v) }), side = (d, long) => ({ description: d, long, team: { abbreviation: "chi" } });

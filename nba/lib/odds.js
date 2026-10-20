@@ -26,4 +26,3 @@ export const SD_MARGIN = 12.7, SD_TOTAL = 18.5;
 // A market is "thin" when nobody is really quoting it (wide gap between what you can buy and sell at).
 export const isThinMarket = (ask, bid) => !(ask > 0) || bid == null || !(bid > 0) || ask - bid > Math.min(0.05, 0.4 * ask);
 export const sgn = (n) => (n > 0 ? "+" : "") + n;
-export const pct1 = (x) => Math.round(x * 10) / 10;
