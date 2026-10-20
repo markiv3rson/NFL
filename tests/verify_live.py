@@ -1,0 +1,134 @@
+# LIVE AUDIT (10/19 review, owner: "we still can't prove that everything is correct"): re-grades everything the live site has graded this
+# season from OUTSIDE data and fails on any difference. Run: `npm run verify` (or `python3 tests/verify_live.py [site]`).
+#   1. final scores            -> nflverse games.csv
+#   2. card / rule / model picks (spread, total, moneyline) -> recomputed from those scores
+#   3. model parlays            -> every leg recomputed (TD legs from the graded scorer list), parlay = all legs won
+#   4. touchdown scorers        -> nflverse player stats (rushing + receiving + special-teams TDs)
+#   5. props                    -> nflverse receiving yards, Under / Over vs the line
+# Exit 1 on any difference. Names nflverse spells differently are counted as "not matched", never as right.
+import csv, io, json, re, sys, urllib.request, collections
+
+SITE = (sys.argv[1] if len(sys.argv) > 1 else "https://nfl-nfl9.vercel.app").rstrip("/")
+SEASON = 2026
+FIX = {"LAR": "LA", "WSH": "WAS", "JAC": "JAX"}
+
+def get(url, raw=False):
+    with urllib.request.urlopen(url, timeout=60) as r:
+        b = r.read()
+    return b.decode() if raw else json.loads(b)
+
+def grade(label, g):
+    a, h = g["game"].split(" @ "); A, H = g["awayScore"], g["homeScore"]
+    m = re.match(r"^(Over|Under) ([\d.]+)", label)
+    if m:
+        d = (A + H - float(m.group(2))) * (1 if m.group(1) == "Over" else -1)
+        return "W" if d > 0 else "L" if d < 0 else "P"
+    m = re.match(r"^([A-Z]{2,3}) ML", label)
+    if m:
+        mine, opp = (H, A) if m.group(1) == h else (A, H)
+        return "W" if mine > opp else "L" if mine < opp else "P"
+    m = re.match(r"^([A-Z]{2,3}) ([+-][\d.]+)", label)
+    if m:
+        mine, opp = (H, A) if m.group(1) == h else (A, H)
+        x = mine - opp + float(m.group(2))
+        return "W" if x > 0 else "L" if x < 0 else "P"
+    return None
+
+bad = 0
+def wrong(*a):
+    global bad
+    bad += 1; print("  WRONG", *a)
+
+L = get(f"{SITE}/api/results/list")
+res = {f'{r["week"]}|{r["game"]}': r for r in L["results"] if r.get("awayScore") is not None}
+
+# 1. scores
+games = {}
+for r in csv.DictReader(io.StringIO(get("https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv", True))):
+    if r["season"] == str(SEASON) and r["game_type"] == "REG" and r["away_score"] != "":
+        games[(int(r["week"]), r["away_team"], r["home_team"])] = (int(r["away_score"]), int(r["home_score"]))
+n = miss = 0
+for r in res.values():
+    a, h = r["game"].split(" @ "); s = games.get((r["week"], FIX.get(a, a), FIX.get(h, h)))
+    if not s: miss += 1; continue
+    n += 1
+    if s != (r["awayScore"], r["homeScore"]): wrong("score", r["week"], r["game"], (r["awayScore"], r["homeScore"]), "nflverse", s)
+print(f"1. scores: {n} checked vs nflverse, {miss} not posted there yet")
+
+# 2. picks
+n = 0
+for r in res.values():
+    for k in ("spread", "total", "ml", "blendSpread", "blendTotal"):
+        x = r.get(k)
+        if not x or x.get("result") not in ("W", "L", "P") or not x.get("label"): continue
+        gx = grade(x["label"], r)
+        if gx is None: continue
+        n += 1
+        if gx != x["result"]: wrong("pick", r["week"], r["game"], x["label"], x["result"], "->", gx)
+for key, picks in ((L.get("combos") or {}).get("card") or {}).get("byGame", {}).items():
+    r = res.get(key)
+    if not r: continue
+    for p in picks:
+        if p.get("result") not in ("W", "L", "P"): continue
+        gx = grade(p["pick"], r)
+        if gx is None: continue
+        n += 1
+        if gx != p["result"]: wrong("card pick", key, p["pick"], p["result"], "->", gx)
+print(f"2. picks: {n} graded picks recomputed from the scores")
+
+# 3. parlays
+MB = get(f"{SITE}/api/modelbets"); nl = npar = 0
+for wk, types in (MB.get("weeks") or {}).items():
+    for typ, lst in types.items():
+        for p in lst:
+            rs = []
+            for l in p.get("legs") or []:
+                rs.append(l.get("result")); r = res.get(f'{wk}|{l.get("game")}')
+                if not r or l.get("result") not in ("W", "L", "P"): continue
+                if l.get("kind") == "td" or l.get("label", "").endswith(" TD"):
+                    pl = l.get("player") or l["label"][:-3]; row = [x for x in r.get("td") or [] if x.get("player") == pl]
+                    if not row or row[0].get("scored") is None: continue
+                    gx = "W" if row[0]["scored"] else "L"
+                else:
+                    gx = grade(l["label"], r)
+                    if gx is None: continue
+                nl += 1
+                if gx != l["result"]: wrong("parlay leg", wk, typ, l["label"], l["result"], "->", gx)
+            if p.get("result") in ("W", "L") and rs and all(x in ("W", "L", "P") for x in rs):
+                npar += 1; exp = "L" if "L" in rs else "W"
+                if exp != p["result"]: wrong("parlay", wk, typ, p.get("game"), rs, p["result"])
+print(f"3. parlays: {nl} legs and {npar} decided parlays recomputed")
+
+# 4 + 5. touchdowns and props vs nflverse player stats
+td = collections.defaultdict(int); yd = {}; teams = set()
+for r in csv.DictReader(io.StringIO(get(f"https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_{SEASON}.csv", True))):
+    if r["season_type"] != "REG": continue
+    w, t = int(r["week"]), FIX.get(r["team"], r["team"]); teams.add((w, t))
+    td[(w, t, r["player_name"])] += sum(int(float(r.get(c) or 0)) for c in ("rushing_tds", "receiving_tds", "special_teams_tds"))
+    yd[(w, r["player_display_name"])] = float(r["receiving_yards"] or 0)
+n = um = 0
+for r in res.values():
+    for p in r.get("td") or []:
+        if p.get("scored") is None or p.get("played") is False or (r["week"], p["team"]) not in teams: continue
+        got = td.get((r["week"], p["team"], p["player"]))
+        if got is None: um += 1; continue
+        n += 1
+        if (got > 0) != bool(p["scored"]): wrong("TD", r["week"], r["game"], p["player"], "app", p["scored"], "nflverse", got)
+print(f"4. touchdowns: {n} player rows vs nflverse, {um} names not matched")
+n = nm = um = 0
+for w in sorted({r["week"] for r in res.values()}):
+    try: P = get(f"{SITE}/api/props?week={w}")
+    except Exception: continue
+    for g in P.get("games") or []:
+        for r in g.get("picks") or []:
+            if r.get("result") not in ("W", "L") or r.get("actual") is None: continue
+            n += 1
+            if ("W" if (r["actual"] < r["line"]) == (r["side"] == "under") else "L") != r["result"]: wrong("prop grade", w, r["name"], r)
+            y = yd.get((w, r["name"]))
+            if y is None: um += 1; continue
+            nm += 1
+            if int(y) != int(r["actual"]): wrong("prop yards", w, r["name"], "app", r["actual"], "nflverse", y)
+print(f"5. props: {n} graded, {nm} yard totals vs nflverse, {um} names not matched")
+
+print(f"\nverify: {'ALL RIGHT' if not bad else f'{bad} WRONG'}")
+sys.exit(1 if bad else 0)

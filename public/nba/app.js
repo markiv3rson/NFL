@@ -338,7 +338,7 @@ function renderBets() {
   $("sync-btn").onclick = async () => { toast("Syncing…", 0); try { const d = await (await fetch("/api/nba/mybets?sync=1", { cache: "no-store" })).json(); BETS = d; renderBets(); toast(d.sync && d.sync.ok ? `Synced ${d.sync.positions} positions.` : `Sync: ${(d.sync && d.sync.note) || "done"}`); } catch (e) { toast("Sync failed: " + e.message, 10000); } };
 }
 // Model bets: day drop-down at the top, the types are menu sub tabs, one list in tip-off order (lib/parlays.js)
-const PTYPES = { sgp: "Same game · 2 legs", sgp_pts: "Same game · bought lines", best4: "Parlay · top picks" };   // 10/19: 3 legs at most, the 4 biggest favorites (fav4) is no longer built
+const PTYPES = { sgp: "Same game · 2 legs", best4: "Parlay · top picks" };   // 10/19 review: bought lines (sgp_pts, not built since 10/19) off the scoreboard   // 10/19: 3 legs at most, the 4 biggest favorites (fav4) is no longer built
 const LAB_TABS = [["sgp", "Same game"], ["best4", "Parlay"]];   // 10/19: the Bought tab left (PICK w/ POINTS only on the card)
 let LABTYPE = "sgp", LABDAY = null;
 const plText = (x, st) => `PL: ${x >= 10 ? Math.round(x) : x.toFixed(1)}x<span class="plw"> · $${st} → </span><span class="g">$${Math.round(st * x)}</span>`;
@@ -461,11 +461,11 @@ function futuresRows() {
 let FUTSEC = "champion";
 function renderModels() {
   const j = MODELS; if (!j || !j.ok) { $("models").innerHTML = '<div class="s dim" style="margin-top:12px">Models unavailable right now.</div>'; return; }
-  const r = j.report, p = j.patterns, rb = j.rebuild, rc = j.record || {}, mv = j.moves || {}, pl = j.parlays || {}, sy = j.system || null;
+  const r = j.report, rb = j.rebuild, rc = j.record || {}, mv = j.moves || {}, pl = j.parlays || {}, sy = j.system || null;
   $("upd-models").textContent = `Updated ${new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
   const open = [...document.querySelectorAll("#models .drop.open")].map((e) => e.id);
   // parlay scoreboard (first, closed): this season's W-L, hit %, said %, money; past = tested history
-  const PH = { best4: null, sgp: null, sgp_pts: null };
+  const PH = { best4: null, sgp: null };
   const board = `<div class="s"><b>This season · hit vs said · money · past</b></div>` + Object.entries(PTYPES).map(([k, lab]) => { const b = pl[k];
     return `<div class="row"><span>${esc(lab)}</span><span>${b && b.decided ? `${b.hits}–${b.decided - b.hits} · ${b.pct}% <span class="dim">said ${b.said}%</span> <span class="${b.money >= 0 ? "g" : "r"}">${b.money >= 0 ? "+" : "−"}$${Math.abs(Math.round(b.money))}</span>` : b && b.pending ? `<span class="dim">${plural(b.pending, "open")}</span>` : '<span class="dim">waiting</span>'}${PH[k] ? ` · <span class="dim">${PH[k]}</span>` : ""}</span></div>`; }).join("");
   // card picks: PICK (rule / model side), PICK w/ POINTS, moneyline; shadow trackers below
@@ -477,9 +477,6 @@ function renderModels() {
     (r.spread_side ? `<div class="row"><span class="dim">Model's spread side</span><span>${r.spread_side.overall}% <span class="dim">break-even ${r.spread_side.break_even}%</span></span></div>` : "") + (r.total_side ? `<div class="row"><span class="dim">Model's total side</span><span>${r.total_side.overall}%</span></div>` : "") +
     `<div class="row" style="grid-column:1/-1"><span class="dim">Win chance check</span><span>${r.win_calibration.map((x) => `said ${x.said}: won ${x.home_won}% (${x.games})`).join(" · ")}</span></div>` +
     `<div class="row"><span class="dim">Trained on</span><span>${esc(r.trained_on)}</span></div><div class="row"><span class="dim">Injuries from</span><span>${esc(r.injury_basis || "who actually sat")}</span></div>` : '<div class="s dim">No report yet.</div>';
-  const patRows = p ? Object.entries(p.kinds).map(([k, v]) => `<div class="row"><span class="dim">${k === "moneyline" ? "Moneyline" : k === "spread" ? "Spread" : "Total"}</span><span>${v.tested} tested · ${v.kept} kept</span></div>` +
-    (v.unseen ? `<div class="row"><span class="dim">· on unseen seasons</span><span><b>${v.unseen.win_rate}%</b> of ${v.unseen.games} · ${v.unseen.seasons_above_50}/${v.unseen.seasons} seasons</span></div>` : "") +
-    `<div class="row"><span class="dim">· luck alone passes</span><span>${v.luck_only_mean} (up to ${v.luck_only_max})</span></div>`).join("") : '<div class="s dim">No pattern summary yet.</div>';
   const when = (t) => (t ? hm(t) : "—"), snapAge = sy && sy.lastSnapshot ? Date.now() - new Date(sy.lastSnapshot.t) : null;
   const watch = sy ? sy.watch || [] : [];
   const sysRows = sy ? watch.map((x) => `<div class="s y" style="grid-column:1/-1">⚠ ${esc(x)}</div>`).join("") + [
@@ -499,9 +496,8 @@ function renderModels() {
     mSec("m-win", "2 · Winners · moneyline", winnersBox()) +
     mSec("m-board", "3 · Parlay scoreboard", board) +
     mSec("m-acc", "4 · Accuracy vs the market", accRows) +
-    mSec("m-pat", "5 · Tested patterns", patRows) +
-    mSec("m-fut", `6 · Futures · ${FUT && FUT.ok ? FUT.season : "season simulation"}`, futuresRows()) +
-    mSec("m-sys", "7 · System", sysRows, watch.length, sysBad);
+    mSec("m-fut", `5 · Futures · ${FUT && FUT.ok ? FUT.season : "season simulation"}`, futuresRows()) +
+    mSec("m-sys", "6 · System", sysRows, watch.length, sysBad);
   $("models").innerHTML = paint($("models").innerHTML);
   for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
 }

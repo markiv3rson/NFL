@@ -3,7 +3,7 @@
 // 6/7/8/9/10/12/3 PT, and just before each kickoff with kickoff=<game>) and by the Refresh button.
 import { buildCard, cardPicks } from "../../lib/cardpick";
 import { comboFactors, totalMovePick, recordStack, lineMovePick, lineMoveTotalPick, keyNumberPick, injuryPick, bounceBackPick, floorDogPick, teamModelPick } from "../../lib/stack";
-import { venue, windAtKickoff } from "../../lib/wind";
+import { venue } from "../../lib/wind";
 import { loadComboModel } from "../../lib/combomodel";
 import { SEASON, displayWeek, loadGames, started } from "../../lib/games";
 import { getRedis, jparse, getJSON, setJSON, K, SLATE_CACHE, pushCapped } from "../../lib/redis";
@@ -125,12 +125,8 @@ export default async function handler(req, res) {
       if (prev && poly && !snap.suspect) await alertsFromLines(season, g, prev, poly).catch(() => 0);   // line-move alerts (10/1)
       if (poly || snap.books) { await pushCapped(redis, K.snaps(season, week, g.key), JSON.stringify(snap), 200); lines += poly ? 1 : 0; }
       // Early-week total recording CUT 10/13 (owner): it went 11-18 live and is off on cards. Old saved rows still grade.
-      // Recording for future tests (10/13, not shown): kickoff-hour forecast and Out/Doubtful starter counts, each saved with its time
-      // (forecast every snapshot, injuries only when they change). Later tests can ask "who knew first, the forecast/news or the line?".
-      try { const wf = await windAtKickoff(g); if (wf.outdoor && wf.wind != null) { const fk = `fcst:${season}:${week}:${g.key}`; await pushCapped(redis, fk, JSON.stringify({ t, wind: wf.wind, temp: wf.temp == null ? null : wf.temp }), 120); }
-        const sj = await situationFor(season, week, g).catch(() => null), ik = `inj:${season}:${week}:${g.key}`;
-        if (sj && sj.home && sj.away && sj.home.inj && sj.away.inj) { const cur = JSON.stringify({ h: sj.home && sj.home.inj || null, a: sj.away && sj.away.inj || null }), last = await redis.lindex(ik, -1), lj = last ? jparse(last) : null;
-          if (!lj || JSON.stringify(lj.s) !== cur) { await pushCapped(redis, ik, JSON.stringify({ t, s: JSON.parse(cur) }), 60); } } } catch {}
+      // 10/19 review: the 10/13 recorders for future tests (kickoff-hour forecast `fcst:` and starters-out counts `inj:`) are gone -- nothing ever read them;
+      // INJURY EARLY (lib/tracked.js) records the injury timing live, and the weather alert reads its own forecast.
       const px = await tdProps(events, g.away, g.home).catch(() => null);
       if (px) {
         // TD guard. A feed glitch (e.g. the 2+ market read as anytime) halves prices for BOTH teams at once; real news
