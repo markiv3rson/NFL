@@ -279,8 +279,8 @@ function practTag(r) {
 const tdCell = (v) => `<span class="tc">${v}</span>`;
 function tdRow(x) {
   const r = x.r, snap = r.snap && r.snap.pct != null ? `${Math.round(r.snap.pct)}%` : "—", two = r.two != null ? `${Math.round(r.two)}%` : "—";
-  return `<div class="tdr"><div class="in">${tlogo(r.team)}<div class="nmx"><div class="l1"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos || "")}</span>${injTag(r) || practTag(r)}${retPill(r)}</div><div class="g2">${esc(r.game || "")}${r.teamRank ? ` · #${r.teamRank} on team` : ""}</div></div>` +
-    tdCell(snap) + tdCell(two) + `<span class="tc mp"><em>${tdPct(r.fair)}%</em></span><span class="tc pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${tdNoGap(r) != null ? ` <span class="y nogap" title="No · ${tdNoGap(r)} under">⚠</span>` : ""}</span></div></div>`;
+  return `<div class="tdr" data-tdw="${esc(r.team)}|${esc(r.player)}"><div class="in">${tlogo(r.team)}<div class="nmx"><div class="l1"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos || "")}</span>${injTag(r) || practTag(r)}${retPill(r)}</div><div class="g2">${esc(r.game || "")}${r.teamRank ? ` · #${r.teamRank} on team` : ""}</div></div>` +
+    tdCell(snap) + tdCell(two) + `<span class="tc mp"><em>${tdPct(r.fair)}%</em></span><span class="tc pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${tdNoGap(r) != null ? ` <span class="y nogap" title="No · ${tdNoGap(r)} under">⚠</span>` : ""}</span></div><div class="tdwk"></div></div>`;
 }
 const tdHead = (title) => `<div class="tdh"><span class="h1">${title}</span><span class="tc">SNAP</span><span class="tc">2+ TD</span><span class="tc">MODEL</span><span class="tc">PM</span></div>`;
 const earlyNote = (g) => (g && g.early ? '<span class="pill p-y" style="padding:0 6px;font-size:10px">Early estimate</span>' : "");
@@ -298,6 +298,29 @@ function firstTdGames() {
   }).filter((x) => x.rows.length);
 }
 const firstTdRow = (r) => `<div class="tdr best"><div class="in">${tlogo(r.team)}<div class="nmx"><div class="l1"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos || "")}</span>${injTag(r) || practTag(r)}</div></div><div class="mp"><em>${Math.round(r.first)}%</em></div><div class="pxc">${r.firstPrice != null ? Math.round(r.firstPrice * 100) + "¢" : "—"}</div></div></div>`;
+// TD BY WEEK (10/20 night, owner: "click on it and it will show me each week that the last time they made a TD"): one line per player under his row,
+// week by week this season -- ✓ (with the count when 2+), – for a game without one, bye when his team did not play; the running week only once its game is final.
+let TDW = null, TDW_AT = 0, TDW_LOADING = null;
+const tdNameEq = (a, b) => { const n = (x) => String(x || "").toLowerCase().replace(/[^a-z]/g, ""); if (n(a) === n(b)) return true;
+  const la = String(a || "").split(/[\s.]+/).filter(Boolean), lb = String(b || "").split(/[\s.]+/).filter(Boolean); return la.length > 1 && lb.length > 1 && la[la.length - 1].toLowerCase() === lb[lb.length - 1].toLowerCase() && la[0][0].toLowerCase() === lb[0][0].toLowerCase(); };
+function tdWeekLine(data, team, player) {
+  if (!data || !data.weeks) return '<span class="dim">loading…</span>';
+  const parts = [], ws = Object.keys(data.weeks).map(Number).sort((a, b) => a - b); let drought = 0;
+  for (const w of ws) { const d = data.weeks[w], key = (d.games || []).find((k) => k.split(" @ ").includes(team));
+    if (!key) { parts.push(`<span class="dim">W${w} bye</span>`); continue; }
+    if (!d.final && !Object.keys((d.counts || {})[key] || {}).length) { continue; }   // the running week: only a game with its scorers posted counts
+    const c = (d.counts || {})[key] || {}, n = Object.entries(c).filter(([nm]) => tdNameEq(player, nm)).reduce((a, [, v]) => a + Number(v || 0), 0);
+    if (n > 0) { parts.push(`<b class="g">W${w} ✓${n > 1 ? n : ""}</b>`); drought = 0; } else { parts.push(`<span class="r">W${w} –</span>`); drought++; } }
+  if (!parts.length) return '<span class="dim">no games yet</span>';
+  return parts.join(' <span class="dim">·</span> ') + (drought >= 2 ? ` <span class="dim">· ${drought} straight without</span>` : "");
+}
+async function loadTdWeeks() {
+  if (TDW && Date.now() - TDW_AT < 600000) return TDW;
+  if (!TDW_LOADING) TDW_LOADING = fetch("/api/tdweeks", { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.ok) { TDW = j; TDW_AT = Date.now(); } return TDW; }).catch(() => TDW).finally(() => { TDW_LOADING = null; });
+  return TDW_LOADING;
+}
+function fillTdWeeks(row) { const box = row.querySelector(".tdwk"); if (!box) return; const [team, player] = String(row.dataset.tdw || "").split("|");
+  box.innerHTML = tdWeekLine(TDW, team, player); if (!TDW) loadTdWeeks().then(() => { if (row.classList.contains("open")) box.innerHTML = tdWeekLine(TDW, team, player); }); }
 function tdBody() {
   const rows = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).map((r) => ({ r, g })))
     .filter((x) => x.r.fair != null && usable(x.r)).sort((a, b) => b.r.fair - a.r.fair);
@@ -317,6 +340,7 @@ function tdBody() {
   return bestBox + moveBox + list;
 }
 function renderTd() {
+  loadTdWeeks();
   $("td-header").textContent = "";   // 10/17 (owner): no subtitle
   let html = tdBody();
   $("td").innerHTML = html + '';
@@ -1064,8 +1088,12 @@ async function loadProps() {
 const recTile = (rc, label = "RECORD") => `<div class="stats" style="margin-top:10px"><div class="stat"><div class="k">${label}</div><div class="v ${rc && rc.pct >= 56 ? "g" : rc && rc.pct >= 53 ? "lg" : !rc || rc.pct == null ? "" : "y"}">${rc ? rc.w || 0 : 0}–${rc ? rc.l || 0 : 0}</div><div class="k2">${!rc || rc.pct == null ? "—" : rc.pct + "% won"}</div></div></div>`;
 const teamSel = (teams) => `<div class="wksel"><select id="props-team" aria-label="Team"><option value="all"${PROPTEAM === "all" ? " selected" : ""}>All teams</option>${teams.map((t) => `<option value="${esc(t)}"${PROPTEAM === t ? " selected" : ""}>${esc(t)}</option>`).join("")}</select></div>`;
 // 10/20 (owner: "label these by Models Chance and Polymarket Prices"; later the same night: "keep all model purple"): the MODEL column is the model's number, purple
-const propRow = (p) => `<div class="pbl ppr${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${tlogo(p.team || "")}${esc(p.name)}</span><span class="pp2">${p.first ? "First TD" : `${p.stat === "rec" ? "Rec " : p.stat === "pass_yds" ? "Pass Yds " : ""}${p.side === "over" ? "Over" : "Under"} ${p.line}`}</span><span class="pp3 mod">${Math.round(p.chance * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
-const PROP_HEAD = '<div class="pbl ppr pph"><span class="pp1">PLAYER</span><span class="pp2">LINE</span><span class="pp3">MODEL</span><span class="pp4">POLYMARKET</span></div>';
+// 10/20 night (owner): LAST WK = the player's most recent graded line of the same stat (U 49.5 ✓ 38), or just his number last week when he had no line
+const propLast = (p, tag) => { const l = p.last; if (!l) return '<span class="pp5 dim">—</span>';
+  if (l.line == null) return `<span class="pp5 dim">${l.actual != null ? Math.round(l.actual * 10) / 10 : "—"}</span>`;
+  return `<span class="pp5 ${l.result === "W" ? "g" : "r"}">${l.side === "over" ? "O" : "U"} ${l.line} ${l.result === "W" ? "✓" : "✗"}${l.actual != null ? ` <span class="dim">${Math.round(l.actual * 10) / 10}</span>` : ""}</span>`; };
+const propRow = (p) => `<div class="pbl ppr${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${tlogo(p.team || "")}${esc(p.name)}</span><span class="pp2">${p.first ? "First TD" : `${p.stat === "rec" ? "Rec " : p.stat === "pass_yds" ? "Pass Yds " : ""}${p.side === "over" ? "Over" : "Under"} ${p.line}`}</span>${propLast(p)}<span class="pp3 mod">${Math.round(p.chance * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
+const PROP_HEAD = '<div class="pbl ppr pph"><span class="pp1">PLAYER</span><span class="pp2">LINE</span><span class="pp5">LAST WK</span><span class="pp3">MODEL</span><span class="pp4">POLYMARKET</span></div>';
 // the rows of one game, split by team (away first, then home, then anyone with no team), each team with its small label (owner: "separate them by teams")
 function teamRows(g, row) {
   const teams = [...new Set([g.away, g.home, ...g.picks.map((p) => p.team || "")])].filter((t) => t != null);
@@ -1344,6 +1372,7 @@ document.addEventListener("click", (e) => {
   const bv = e.target.closest("[data-bv]"); if (bv) { BETSVIEW = bv.dataset.bv === "model" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} applyBetsView(); try { window.scrollTo(0, 0); } catch {} return; }
   const lw = e.target.closest("[data-labw]"); if (lw) { LABWEEK = Number(lw.dataset.labw); renderLabList(); return; }
   const gb = e.target.closest("[data-gbw]"); if (gb) { GBGWEEK = gb.dataset.gbw === "all" ? "all" : Number(gb.dataset.gbw); $("gbg").innerHTML = gbgHtml(); return; }
+  const tw = e.target.closest(".tdr[data-tdw]"); if (tw && !e.target.closest(".nogap")) { tw.classList.toggle("open"); if (tw.classList.contains("open")) fillTdWeeks(tw); return; }   // 10/20 night (owner): TD by week under the row
   const p = e.target.closest(".price-link"); if (p) toast(p.dataset.market ? "Polymarket market: " + p.dataset.market : "No market recorded for this price.", 8000);
 });
 // Everything refreshes by itself while the page is open and visible: lines, model, injuries, alerts, and the records.
