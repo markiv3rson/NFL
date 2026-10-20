@@ -132,7 +132,6 @@
   .ticket .tb { font-size:30px; font-weight:900; line-height:1.05; color:#fff; font-variant-numeric:tabular-nums; }
   .ticket .ts { font-size:11px; color:#e9dcc0; }
   .tile .tmid .mvt { font-size:11px; color:#c9ced6; margin-top:2px; line-height:1.3; } .tile .tmid .mvt > span { display:block; white-space:nowrap; }   /* 10/18 night (owner): a game's line move sits inside its tile (the LINE MOVES strip is gone) */
-  .mwarn { margin-top:4px; font-size:11px; font-weight:700; color:var(--yellow); white-space:normal; line-height:1.3; }
   #lab > .drop { margin-top:10px; border-top:0; padding-top:0; }
   .pgrid { display:block; } .par { padding:11px 0; font-size:13.5px; } .pgrid > .par:first-child { padding-top:2px; }   /* 10/16 (owner): no lines between parlays, only the line under each time-slot header */
   .pbh { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:4px; } .pbn { font-weight:700; font-size:14.5px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
@@ -142,7 +141,7 @@
   .pbl.pteam { display:flex; align-items:center; gap:5px; margin-top:6px; font-size:11px; font-weight:800; color:var(--dim); } .pbl.pteam .tlogo { width:14px; height:14px; margin:0; }
   .ftdteams { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:4px 12px 2px; font-size:13px; font-weight:700; } .ftdteams .tlogo { width:18px; height:18px; margin:0 4px; vertical-align:middle; } .ftdteams span { display:flex; align-items:center; gap:4px; }
   .ftdg { border-top:1px solid var(--line2); } .ftdg .ftdt { padding:8px 12px 0; font-size:13px; font-weight:800; display:flex; align-items:center; gap:4px; } .ftdg .ftdt .tlogo { width:18px; height:18px; margin:0; }
-  .tdr .pxc { width:78px; } .ppr .pp3.mod, .ftdteams b.mod { color:var(--violet); font-weight:800; }
+  .ppr .pp3.mod, .ftdteams b.mod { color:var(--violet); font-weight:800; }
   .pbl { margin-top:3px; padding-left:12px; overflow-wrap:anywhere; } .pbr { text-align:right; font-weight:800; min-height:4px; }
   @media (max-width:500px) { .par { font-size:12.5px; } .pbn { font-size:13px; } .pbh { gap:6px; } .plb { font-size:12px; } .labslot { font-size:19px; } .labslot .lst { font-size:11px; } }   /* 10/17 (owner): everything fits on the iPhone */
   /* 10/16 (owner): EVERY docked strip -- Model bets sub-tabs, My bets weeks, Alerts kinds -- is the same flat strip: equal columns, bold text, purple underline, no pills */
@@ -157,26 +156,19 @@
   .sc .p { padding:7px 0; border-top:1px solid var(--line2); }
   .sc .p .a { display:flex; align-items:center; gap:6px; } .sc .p .a b { flex:1; font-size:13px; } .sc .p .a em { font-style:normal; font-size:15px; font-weight:800; }
   .sc .p .b { font-size:10px; color:var(--faint); margin:2px 0 0 53px; }
-  .sc .p:first-child { border-top:0; } .tdfoot { margin-top:8px; border-top:1px solid var(--line2); }
+  .sc .p:first-child { border-top:0; }
   /* TD list */
   .tdl { margin-top:10px; padding:0; }
-  .tdr { position:relative; overflow:hidden; padding:9px 12px; border-top:1px solid var(--line2); cursor:pointer; }
+  .tdr { position:relative; overflow:hidden; padding:9px 12px; border-top:1px solid var(--line2); }
   .tdr:first-child { border-top:none; }
   .tdr .tlogo { width:20px; height:20px; flex:0 0 20px; margin:0; } .tdr .l1 { display:flex; align-items:center; gap:5px; white-space:nowrap; overflow:hidden; } .tdr .l1 .pill { flex:0 0 auto; }   /* 10/17 (owner): one row look for both TD boxes */
-  .tdr.best .bp { font-size:15px; font-weight:800; } .tdr .nogap { font-size:12px; }
-  .tdr .in { position:relative; display:flex; align-items:center; gap:8px; }
-  .tdr .rk { width:20px; font-size:11px; font-weight:700; color:var(--faint); }
+  .tdr .nogap { font-size:12px; }
+  .tdr .in { position:relative; display:flex; align-items:center; gap:6px; }
   .tdr .nmx { flex:1; min-width:0; } .tdr .nmx b { font-size:14px; } .tdr .nmx .g2 { font-size:10px; color:var(--faint); }
-  .tdr .mp { width:74px; text-align:right; } .tdr .mp em { font-style:normal; font-size:15px; font-weight:800; color:var(--violet); }
-  .tdr .mp .bar { height:4px; border-radius:2px; background:rgba(255,255,255,.14); margin-top:2px; } .tdr .mp .bar i { display:block; height:4px; border-radius:2px; background:var(--green); }
-  .tdr .pxc { width:60px; text-align:right; font-size:13px; font-weight:700; color:var(--blue); }
-  .tdr .more .prow { background:linear-gradient(rgba(6,8,10,.86),rgba(6,8,10,.86)), var(--logo) center / contain no-repeat; border:1px solid color-mix(in srgb, var(--tc,#444) 80%, #000); }
-  .tdr.open { background:rgba(0,0,0,.4); }
-  .tdr .more .prow, .tdr .more .prow .s, .tdr .more .prow .dim, .tdr .more .prow .why, .tdr .more .prow .lbl { color:#fff; }
-  .tdr .more .prow { font-size:15px; font-weight:600; padding:11px 12px; }
-  .tdr .more .prow .lbl { font-size:13px; font-weight:600; } .tdr .more .prow .why, .tdr .more .prow .s { font-size:13.5px; }
-  .tdr .more .prow .big { color:#e6d6ff; font-size:26px; font-weight:800; } .tdr .more .prow .px { color:#cfe3ff; font-size:22px; font-weight:800; }
-  .tdr .more { display:none; padding:8px 0 2px 28px; } .tdr.open .more { display:block; }
+  /* 10/20 night (owner): one line per player -- SNAP · 2+ TD · MODEL · PM columns, PM at the far right */
+  .tdr .tc, .tdh .tc { width:44px; flex:0 0 44px; text-align:right; font-size:13px; font-weight:700; font-variant-numeric:tabular-nums; } .tdh .tc { font-size:10px; } .tdh .h1 { flex:1; padding-left:26px; }
+  .tdr .mp em { font-style:normal; font-size:14px; font-weight:800; color:var(--violet); }
+  .tdr .pxc { color:var(--blue); }
   .tdh { display:flex; padding:8px 12px; font-size:10px; font-weight:800; letter-spacing:.08em; color:var(--faint); }
   .prow { display:grid; grid-template-columns:1fr auto auto; gap:2px 14px; align-items:center; padding:8px 9px; border-radius:12px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.3); margin-top:6px; }
   .prow .n { text-align:center; font-variant-numeric:tabular-nums; white-space:nowrap; font-size:14px; max-width:38vw; }
@@ -193,6 +185,7 @@
   .injb img { width:20px; height:20px; object-fit:contain; } .injb u { display:none; }
   .pos { font-size:10px; font-weight:700; padding:0; border:0; color:var(--faint); margin-left:5px; }   /* 10/17 (owner): no pills -- plain text */
   /* alerts */
+  .al .algame { font-size:11px; font-weight:700; margin-top:6px; color:var(--blue); display:flex; align-items:center; gap:4px; } .al .algame .tlogo { width:16px; height:16px; margin:0; }
   .al { display:flex; gap:10px; align-items:flex-start; padding:11px 12px; margin-top:8px; cursor:pointer; }
   .al .dot { width:8px; height:8px; border-radius:50%; margin-top:6px; flex-shrink:0; background:transparent; } .al.un .dot { background:var(--green); }
   .al .kd { display:flex; justify-content:space-between; align-items:center; font-size:10px; font-weight:800; letter-spacing:.08em; }
@@ -214,7 +207,8 @@
   html.lines-on .pagewm { background:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.1)),url(/nfl-bg.jpg?v=3) center/cover no-repeat,#000; }   /* 10/18 evening (owner): only a 10% shade -- "why is it so dark in the app"; it was 68-86% */
   html.lines-on .pagewm::after { display:none; }
   /* 10/20 (owner: "I need to see all the photos ... do the same for the computer"): on a computer the strip is as wide as the page and scrolls with it, every frame top to bottom (cover showed one frame on a wide screen) */
-  @media (min-width:1100px) { html.lines-on .pagewm { background:none; } html.lines-on body { background:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.1)),url(/nfl-bg.jpg?v=3) top center/100% auto repeat-y,#000; } }
+  /* 10/20 night (owner: "why is the photos not stacked in the computer still?"): the WHOLE strip, every frame stacked, fits the screen height (fixed, centered) and repeats sideways to fill a wide screen -- at 100% width one frame alone filled a 1920 px screen */
+  @media (min-width:1100px) { html.lines-on .pagewm { background:none; } html.lines-on body { background:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.1)),url(/nfl-bg.jpg?v=3) center top/auto 100vh repeat-x fixed,#000; } }
   html.lines-on .panel .card, html.lines-on .panel .stat { background:rgba(8,8,12,.8); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 80% dark so the text reads (owner 10/17), no frosted haze */
   html.lines-on .panel .tile { background:rgba(8,8,12,.55); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 10/18 evening (owner, sketch D): game tiles 55% dark, no team colours, no faded logos */
   #detail .card:not(.dtop) { background:rgba(8,8,12,.55); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 10/18 night (owner): game-page cards see-through like the tiles (55% dark); the team-colour header card stays */

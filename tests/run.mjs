@@ -120,15 +120,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ctx.window = ctx; ctx.addEventListener = () => {}; ctx.body = undefined;
   vm.createContext(ctx);
   vm.runInContext(readFileSync(new URL("../public/shell.js", import.meta.url), "utf8"), ctx);   // 10/17: the shared menu / header script loads first, as on the page
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={injLine,mktHome,tdPct,plural,pBlock,plPay,linkedPay,plTap,plShown,plKey,PLC,sgpBox,labParlays,renderLabList,logoLabel,tdTeam,legName,moreBox,slotOf,parlayPicks,parlayStrip,lineCheck,recLine,bestBets,injTag,weakLeg,kickLine,tdNoGap,trackedRows,renderLines,firstTdPick,firstTdLine,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,tdGradeMap,tdMark,tdGameLine,earlyNote,leanCell,prow,betRow,moveBits,winnersBox,winnerOf,tile,tdTop3,tdRow,gameCard,totalCard,detailTop,renderMine,gbgHtml,renderLab,renderModel,renderTd,tdBlend,betsSummary,cardRecBox,legPct,cardBody,betsAnalysis,keepOpenState,winnersBands,mSec,legFlipped,betSlots,openBySlot,straightPicks,sgpBox,glowOf,stampFor,betRow};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={injLine,mktHome,tdPct,plural,pBlock,plPay,linkedPay,plTap,plShown,plKey,PLC,sgpBox,labParlays,renderLabList,logoLabel,tdTeam,legName,moreBox,slotOf,parlayPicks,parlayStrip,lineCheck,recLine,bestBets,injTag,weakLeg,kickLine,tdNoGap,tdHead,trackedRows,renderLines,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,earlyNote,leanCell,betRow,moveBits,winnersBox,winnerOf,tile,tdRow,gameCard,totalCard,detailTop,renderMine,gbgHtml,renderLab,renderModel,renderTd,betsSummary,cardRecBox,legPct,cardBody,betsAnalysis,keepOpenState,winnersBands,mSec,legFlipped,betSlots,openBySlot,straightPicks,sgpBox,glowOf,stampFor,betRow};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   g = { away: "A", home: "H", model: { total: 44.4, fix: { dome: 2.59, pace: 0.1, div: true } }, poly: { total: { line: 45.5 } } };
   g = { away: "A", home: "H", winPct: 61.2, model: { homeMargin: 3, total: 44, fix: {} }, spreadPick: { label: "H -2.5", pct: 51.1 }, poly: {} };
 { const c = T.leanCell(g, "spread"); ok(/Model: <b class="mod">H by 3\.0<\/b>/.test(c) && /No pick/.test(c) && /No tested edge/.test(c) && !/LEAN/.test(c), "model card: no tested pick -> No pick (the model's own side is a coin flip vs the line, not shown as a lean)");
   { const c2 = T.leanCell({ ...g, combos: [{ kind: "spread", pick: "A +2.5", hit: 54.4, why: "road dog" }] }, "spread"); ok(/PICK: A \+2\.5 · 54%/.test(c2) && !/road dog/.test(c2) && !/LEAN/.test(c2), "model card: below 56% the best tested pick shows as a yellow PICK with no notes"); } }
-  const row = T.prow({ player: "O'Neil <b>", pos: "WR", team: "H", game: "A @ H", fair: 20.1, fairIfPlays: 30, injury: "Questionable", price: 0.25, teamRank: 2 }, { started: false }, false);
-  ok(/30% if he plays/.test(row) && /O&#39;Neil &lt;b>/.test(row), "Questionable row + names escaped");
   ok(/Push leg/.test(T.betRow({ source: "preloaded", legs: [{ result: "W", kind: "total", side: "under", line: 43 }, { result: "P", kind: "total", side: "over", line: 44 }], result: "P", pushUnconfirmed: true, cost: 5, toWin: 20, pl: null })), "combo push wording");
   vm.runInContext(`S = { games: [{ key: "DAL @ PHI", away: "DAL", home: "PHI", started: false, poly: { spread: { homeSpread: -4 }, total: { line: 45.5 }, ml: { home: 0.66 } },
     history: [{ t: "2026-10-01T10:00:00Z", poly: { spread: { homeSpread: -3 }, total: { line: 45.5 }, ml: { home: 0.60 } } }] }] }`, ctx);
@@ -481,8 +479,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { const pb = ctx.T.pBlock("ARI @ LA", { prob: 0.67, stake: 20, legs: [{ label: "ARI +3.5", prob: 0.55, price: 0.55 }, { label: "Over 45", prob: 0.5, price: 0.5 }, { label: "K.Williams TD", prob: 0.67, price: 0.5 }] }, false);
     const pn = ctx.T.pBlock("WAS @ SF", { prob: 0.31, legs: [{ label: "SF -7.5", prob: 0.5, price: null }, { label: "C.McCaffrey TD", prob: 0.66 }] }, false);
     ok(ctx.T.tdPct(54.6) === 54 && ctx.T.tdPct(55) === 55 && ctx.T.tdPct(54.4) === 54 && ctx.T.tdPct(61.1) === 61 && ctx.T.plural(1, "pick") === "1 pick" && ctx.T.plural(0, "pick") === "0 picks" && ctx.T.plural(2, "player") === "2 players"
-      && /<span class="pbn">ARI @ LA <span class="g">· 67%<\/span>/.test(pb) && /ARI \+3\.5 · 55%/.test(pb) && /K\.Williams TD · 67%/.test(pb) && /PL: 7\.1x<span class="plw"> · \$20 → <\/span><span class="g">\$142<\/span>/.test(pb) && /PL: —/.test(pn) && !/hits ~|about \d|filled|Polymarket price not posted/.test(pb + pn),
-      "wording + parlay block: game with its HIT %, one line per leg with its %, then PL: payout (PL: — with no price); no notes; 54.6% TD shows 54; \"1 pick\" not \"1 picks\"", { pb, pn }); }
+      && /<span class="pbn">ARI @ LA <span class="mod">· Model 67%<\/span>/.test(pb) && /ARI \+3\.5 · <span class="mod">55%<\/span>/.test(pb) && /K\.Williams TD · <span class="mod">67%<\/span>/.test(pb) && /PL: 7\.1x<span class="plw"> · \$20 → <\/span><span class="g">\$142<\/span>/.test(pb) && /PL: —/.test(pn) && !/hits ~|about \d|filled|Polymarket price not posted/.test(pb + pn),
+      "wording + parlay block: game with its Model % (purple, labeled), one line per leg with its % (purple), then PL: payout (PL: — with no price); no notes; 54.6% TD shows 54; \"1 pick\" not \"1 picks\"", { pb, pn }); }
         }
       const { comboChance } = await import("../lib/combo.js");
       const mid = comboChance([{ game: "S", kind: "spread", team: "DEN", prob: 0.596 }, { game: "S", kind: "ml", team: "SEA", prob: 0.57 }]),
@@ -955,25 +953,11 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ctx.T.renderTd(); const rows = (box.innerHTML.match(/class="tdr"/g) || []).length, ownA = (box.innerHTML.match(/A\.P\d/g) || []);
     ok(rows === 6 && !(hdr.textContent || hdr.innerHTML) && !/Show everyone/.test(box.innerHTML) && !/A\.P3/.test(box.innerHTML) && /A\.P2/.test(box.innerHTML), "touchdown tab: three players per team, no 'Show everyone' button, no subtitle");
     ctx.document.getElementById = old; }
-  { // touchdown row: a "+N vs price" mark only when the blended chance beats the price by 5+; calibration rows show their noise
-    const mk = (fair, price) => ctx.T.tdRow({ r: { player: "X.Y", team: "A", pos: "WR", fair, price, bid: price - 0.02, game: "A @ B", flags: [] }, g: { key: "A @ B", away: "A", home: "B" } }, 0);
-    ok(/\+\d+ vs price/.test(mk(60, 0.40)) && !/vs price/.test(mk(40, 0.40)), "touchdown row: marks a player only when the blend beats the price by 5+");
-    }
   ok(playedLastGame({ missed: false, pct: 88 }) && !playedLastGame({ missed: true, pct: 60 }) && !playedLastGame({ missed: false, pct: 0 }) && !playedLastGame(null), "was-out tag: a player who played his team's last game is never tagged as out");
   { const ge = { key: "A @ B", away: "A", home: "B", early: true, spreadPick: null, totalPick: null, model: { homeMargin: 5.1, total: 44.9, homeWinPct: 66.4 } };
     const sp = ctx.T.leanCell(ge, "spread"), tt = ctx.T.leanCell(ge, "total");
     ok(/B -5\.1/.test(sp) && /B wins 66%/.test(sp) && /Early estimate/.test(sp) && /Total 44\.9/.test(tt) && !/<em>—|class="dim">—/.test(sp), "early games: the Model leans boxes show the model's own spread, win chance and total, labeled");
     ok(!/B -5/.test(ctx.T.leanCell({ ...ge, early: false }, "spread")), "not early: the boxes stay blank without a market line"); }
-  { // finished game: touchdown cards are graded (scored / no TD / inactive / waiting), with a one-line summary
-    const mk = (n, team, fair) => ({ team, player: n, pos: "RB", fair, price: 0.3 });
-    const g = { key: "A @ B", away: "A", home: "B", final: true, td: [mk("P.One", "A", 60), mk("P.Two", "A", 40), mk("P.Three", "A", 30), mk("Q.One", "B", 50), mk("Q.Two", "B", 30), mk("Q.Three", "B", 20)] };
-    vm.runInContext(`S = { week: 4, games: [] }; RES = [{ game: "A @ B", week: 4, td: [{ player: "P.One", team: "A", fair: 60, scored: true, played: true }, { player: "P.Two", team: "A", fair: 40, scored: false, played: true }, { player: "P.Three", team: "A", fair: 30, scored: false, played: false }, { player: "Q.One", team: "B", fair: 50, scored: true, played: true }, { player: "Q.Two", team: "B", fair: 30, scored: false }] }]`, ctx);
-    const h = ctx.T.tdTop3(g);
-    ok(/✓ scored/.test(h) && /✗ no TD/.test(h) && /inactive/.test(h) && /waiting for snaps/.test(h) && /not graded/.test(h), "finished game: each top scorer is marked scored, no TD, inactive, waiting or not graded");
-    ok(/model's top 3 · 2 scored · expected 1\.5/.test(h), "finished game: the summary counts only graded players who played (inactive and waiting left out)");
-    ok(!/✓|✗/.test(ctx.T.tdTop3({ ...g, final: false })), "unfinished game: no grades shown");
-    vm.runInContext(`RES = null; GRADES = null`, ctx); ok(!/✓|✗/.test(ctx.T.tdTop3(g)), "finished game: no marks until the graded results are loaded");
-    vm.runInContext(`RES = null`, ctx); }
   { // touchdown model by position and by opponent defense
     const P = (team, name, pos, fair, scored, played = true) => ({ team, player: name, pos, fair, scored, played });
     const res = [
@@ -998,7 +982,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       vm.runInContext(`S = { week: 4, games: [{ key: "A @ B", away: "A", home: "B", started: false, td: ${JSON.stringify([p2("Star.One", 64, 0.6), p2("Mid.Two", 40, 0.65), p2("Low.Three", 30, 0.3)])} }] }`, ctx); ctx.T.renderTd();
       const list = bx.innerHTML.split('class="card tdl"')[1] || "";
       ok(/Star\.One/.test(bx.innerHTML) && !/Star\.One/.test(list) && /Mid\.Two/.test(list), "touchdown tab: a Best TD pick is not repeated in the list below");
-      ok(/Market disagrees: Polymarket 65¢ vs model 40%/.test(list) && !/class="sh">⚠ Market disagrees/.test(bx.innerHTML), "touchdown tab: market-disagrees warning sits on the player's row, no separate box"); }
+      ok(!/Market disagrees/.test(bx.innerHTML) && !/class="more"/.test(bx.innerHTML), "touchdown tab: one-line rows, no market-disagrees warning and nothing to open (owner 10/20 night)"); }
     vm.runInContext(`S = { week: 4, games: [{ key: "A @ B", started: true, td: [] }] }`, ctx); ctx.T.renderTd();
     ok(/No games left this week/.test(bx.innerHTML), "touchdown tab: when every game has started it says no games are left");
     ctx.document.getElementById = oldG;
@@ -1010,9 +994,6 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { // first TD pick: the highest first-TD chance from either team; graded after the game; season record
     const r = (player, team, first, fair = 40, extra = {}) => ({ player, team, pos: "RB", first, fair, price: 0.4, ...extra });
     const g = { key: "A @ B", away: "A", home: "B", final: false, td: [r("A.one", "A", 14), r("B.one", "B", 22), r("B.out", "B", 30, 50, { injury: "Out" })] };
-    ok(ctx.T.firstTdPick(g).player === "B.one" && /First TD pick:<\/b> B\.one/.test(ctx.T.firstTdLine(g, null)) && /22%/.test(ctx.T.firstTdLine(g, null)), "first TD pick: the highest first-TD chance from either team (an Out player is skipped)");
-    const gr = { found: true, map: new Map([["B|bone", { ftdHit: true }]]) }, grMiss = { found: true, map: new Map([["B|bone", { ftdHit: false }]]) };
-    ok(/✓ scored first/.test(ctx.T.firstTdLine({ ...g, final: true }, gr)) && /✗/.test(ctx.T.firstTdLine({ ...g, final: true }, grMiss)) && !/✓|✗/.test(ctx.T.firstTdLine(g, gr)), "first TD pick: ✓ / ✗ only after the game");
     const res = [{ td: [{ ftd: 20, ftdHit: true, played: true }, { ftd: 10, ftdHit: false, played: true }] }, { td: [{ ftd: 30, ftdHit: false, played: false }, { ftd: 18, ftdHit: false, played: true }] }];
     ok(/1 of 2 · 50% · exp 19%/.test(ctx.T.firstTdRecord(res)) && ctx.T.firstTdRecord([]) === "", "first TD picks: season record uses each game's top pick who played");
     const { buildFtdCalibration, applyFtdCalibration, FTD_MIN_GAMES } = await import("../lib/calibration.js");
@@ -1222,17 +1203,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       ok(!applyComboModel({ table: [] }) && Math.abs(upgraded({ mm: 3, km: 3, mt: 44, kt: 44 }).margin - base.margin) < 0.01, "weekly rebuild: a bad set falls back to the built-in model"); }
   }
   ok(ctx.T.slotOf({ badge: "SNF", kickoff: "2026-10-11T12:00:00" }) === "Primetime" && ctx.T.slotOf({ kickoff: "2026-10-11T10:00:00" }) === "Morning" && ctx.T.slotOf({ kickoff: "2026-10-11T13:25:00" }) === "Afternoon", "best bets: morning / afternoon / primetime");
-  { // without him (10/8): top 3 TD scorers in games a listed-Out regular missed
-    const h = ctx.T.tdTop3({ ...tg, td: [], without: { [tg.away]: [{ out: "A.Kamara", games: 7, top: [{ name: "C.Olave", td: 5 }, { name: "D.Vele", td: 2 }] }], [tg.home]: [{ out: "X.Y", games: 1, top: [] }] } });
-    ok(/Without A\.Kamara<\/b> <span class="dim">\(7 games\)<\/span>: C\.Olave 5 · D\.Vele 2/.test(h) && /\(1 game\)<\/span>: no TDs/.test(h), "without him: scorers listed under the team's top 3"); }
   { // kickoff check line in System: failures and moved games are visible
     ok(/failed: ESPN timed out/.test(ctx.T.kickLine({ t: "2026-10-08T05:00Z", ok: false, error: "ESPN timed out" })) && /moved: CHI @ GB/.test(ctx.T.kickLine({ t: "2026-10-08T05:00Z", ok: true, espnGames: 15, moved: [{ game: "CHI @ GB", was: "2026-10-11T17:00Z", now: "2026-10-11T20:25Z" }] })) && /OK/.test(ctx.T.kickLine({ t: "2026-10-08T05:00Z", ok: true, espnGames: 15, moved: [] })), "kickoff check: shows failures, moved games, or all-match");
     const { overlayEspnKickoffs, resetKickCache } = await import("../lib/espnFinals.js"); const R = globalThis.__TEST_REDIS__;
     resetKickCache(); await overlayEspnKickoffs([{ key: "CHI @ GB", final: false, kickoff: new Date(Date.now() + 86400e3).toISOString() }], Date.now(), async () => { const e = new Error("t"); e.name = "TimeoutError"; throw e; });
     const kc = JSON.parse(await R.get("kickcheck")); ok(kc && kc.ok === false && /timed out/.test(kc.error), "kickoff check: a failure is recorded"); await R.del("kickcheck"); resetKickCache(); }
-  { // blended touchdown chance and "agrees with the market"
-    const b1 = ctx.T.tdBlend({ fair: 40, price: 0.30, bid: 0.28 }), b2 = ctx.T.tdBlend({ fair: 40, price: 0.30, bid: 0.01, thin: true });
-    ok(b1 && Math.abs(b1.mid - 29) < 1e-9 && Math.abs(b1.blend - 34.5) < 1e-9 && b2 === null && ctx.T.tdBlend({ fair: 40, price: 0.3, bid: 0.28, stale: true }) === null && ctx.T.tdBlend({ fair: 40, price: null }) === null, "touchdown blend: half the model, half the market mid, only on a real market");
+  { // model card (the blended touchdown chance was removed with the one-line TD rows, 10/20 night)
     const G = { key: "CHI @ GB", away: "CHI", home: "GB", started: false, model: { homeMargin: -5.6, total: 46.1, fix: {} }, spreadPick: { label: "CHI -1.5", team: "CHI", side: "away", pct: 51 }, totalPick: { label: "Under 46.5", side: "under", pct: 50.5 },
       combos: [{ kind: "spread", pick: "GB +1.5", hit: 62.3, why: "model likes the favorite by 3+ · line moved 1+ toward the dog", model: true }, { kind: "total", pick: "Under 46.5", hit: 57.2, why: "wind 10+ · older teams" }, { kind: "total", pick: "Over 40.5", hit: 75, teaser: true, why: "t" }] };
     G.combos[0].rec = { w: 3, l: 1 }; G.history = [{ poly: { spread: { homeSpread: 2.5 }, total: { line: 45.5 } } }]; G.lineNow = { hs: 1.5, tl: 46.5 };
@@ -1253,7 +1229,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     { const p = { legs: [{ label: "Bi.Robinson TD", prob: 0.62 }, { label: "ATL +3.5", prob: 0.581, rule: "KEY NUMBER" }], prob: 0.43 };
       const h = ctx.T.sgpBox({ key: "CHI @ ATL", sgp: { best: p, three: { ...p, prob: 0.05 } } });
       const h3 = ctx.T.sgpBox({ key: "CHI @ ATL", sgp: { best: p, three: { ...p, prob: 0.2 }, linked: { ...p, prob: 0.08 }, style: { ...p, prob: 0.05 } } });
-      ok(h.includes("SAME-GAME PARLAYS") && /<span class="pbn">2 legs <span class="g">· 43%<\/span>/.test(h) && /<span class="pbn">3 legs <span class="y">· 5%<\/span>/.test(h) && !/KEY NUMBER|hits ~|about \d/.test(h) && /3 legs/.test(h3) && !/4 legs|my style/.test(h3), "same-game box: 2 / 3 legs as compact blocks, each with its hit %, no rule tags or notes; 10/19: never 4 legs / my style");
+      ok(h.includes("SAME-GAME PARLAYS") && /<span class="pbn">2 legs <span class="mod">· Model 43%<\/span>/.test(h) && /<span class="pbn">3 legs <span class="mod">· Model 5%<\/span>/.test(h) && !/KEY NUMBER|hits ~|about \d/.test(h) && /3 legs/.test(h3) && !/4 legs|my style/.test(h3), "same-game box: 2 / 3 legs as compact blocks, each with its hit %, no rule tags or notes; 10/19: never 4 legs / my style");
       ok(ctx.T.sgpBox({ key: "X @ Y", started: true, sgp: { best: p } }) === "", "same-game box: hidden once the game starts"); }
     ok(ctx.T.lineCheck({ key: "SEA @ DEN", away: "SEA", home: "DEN", history: [{ poly: { spread: { homeSpread: 2.5 } } }], lineNow: { hs: 2.5, tl: 40.5 } }, "spread", "DEN +3.5") === "", "line check: an alternate-line pick (KEY NUMBER +3.5 with the main line still +2.5) is not called a line move");
     ok(/Model: <b class="mod">46\.1<\/b>/.test(to) && /PICK: Under 46\.5 · <span class="reelpct" data-v="57%">57%<\/span>/.test(to) && /--gl:0\.45/.test(to) && /wind 10\+ · older teams/.test(to) && !/won 57%/.test(to) && !/40\.5/.test(to), "model card (total): one market-line pick with its reason, no teasers");
@@ -1394,7 +1370,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const card = { plain: { pick: "Over 46.5", hit: 51.7, price: 0.49 }, pts: { pick: "Under 48.5", hit: 57.2, price: 0.61, points: 2 }, rows: [{ pick: "Under 48.5", hit: 57.2, price: 0.61, points: 2 }] };
     vm.runInContext(`S = { week: 6, games: [ { key: "NO @ NYG", away: "NO", home: "NYG", kickoff: "2026-10-18T17:00:00Z", card: { total: ${JSON.stringify(card)} } }, { key: "SEA @ DEN", away: "SEA", home: "DEN", kickoff: "2026-10-16T00:15:00Z", started: true, final: true, lockedPicks: { total: { pick: "Under 40.5", hit: 51.7, result: "W", price: 0.5, pts: { pick: "Under 42.5", hit: 58, result: "W", points: 2, price: 0.6 } } } } ] }; MODELBETS = { ok: true, weeks: {} }; LABTYPE = "ou"; LABWEEK = null`, ctx);
     ctx.T.renderLabList(); const h = box.innerHTML;
-    ok(/Over 46\.5 · 51% · 49¢/.test(h) && !/Under 48\.5/.test(h) && !/Under 42\.5/.test(h) && /✓<\/span> <span class="g">Under 40\.5/.test(h) && h.indexOf("SEA") < h.indexOf("NYG") && /labslot/.test(h) && !/PL:/.test(h) && !/plQuote/.test(h),
+    ok(/Over 46\.5 · <span class="mod">51%<\/span> · 49¢/.test(h) && !/Under 48\.5/.test(h) && !/Under 42\.5/.test(h) && /✓<\/span> <span class="g">Under 40\.5/.test(h) && h.indexOf("SEA") < h.indexOf("NYG") && /labslot/.test(h) && !/PL:/.test(h) && !/plQuote/.test(h),
       "Model bets Over/Under: the total PICK per game (10/19: no PICK w/ POINTS row -- it stays on the card under MORE), kickoff order with slot headers, ✓ / ✗ after the game, price shown, no parlay payout or quote", h.slice(0, 400));
     ok(vm.runInContext("LAB_TABS.map(([k, t]) => t).join('|')", ctx) === "Over/Under|Best Legs|3 Leg|2 Leg|Upset|Spread + Total", "Model bets tabs in the owner's order and names (10/19: three legs max -- the 4 Leg tabs and Different Game Parlays left; 10/20: Spread + Total)");
     ctx.document.getElementById = oldGet; vm.runInContext(`LABTYPE = "2"`, ctx); }
@@ -1445,10 +1421,16 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(/BETS/.test(box.innerHTML) && /RECORD/.test(box.innerHTML) && !/OPEN BETS/.test(box.innerHTML) && !/Expected returns/.test(box.innerHTML) && !/Open bets/.test(box.innerHTML) && !/Live account view/.test(box.innerHTML) && /Results/.test(box.innerHTML), "record tab: an earlier week shows results only");
     vm.runInContext(`MBWEEK = null`, ctx); ctx.T.renderMine(); ok(/OPEN BETS/.test(box.innerHTML) && !/Your record · P\/L/.test(box.innerHTML) && !/Live account view/.test(box.innerHTML), "record tab: this week keeps the open-bets box, no repeated record");
     vm.runInContext(`MBWEEK = null`, ctx); ctx.document.getElementById = old; }
-  { const base = { player: "B.Bowers", pos: "TE", team: "LV", game: "LV @ KC", fair: 34, two: 8, first: 9, teamRank: 1, price: 0.3, flags: [] };
-    const yes = ctx.T.prow({ ...base, returning: "out", returningState: "practicing" }, { started: false }, true), dnp = ctx.T.prow({ ...base, returning: "out", returningState: "not practicing" }, { started: false }, true), no = ctx.T.prow(base, { started: false }, true);
-    ok(/RETURNING/.test(yes) && /was out last week/.test(yes) && /34%/.test(yes) && !/RETURNING/.test(no), "returning label: practicing returner is labelled, plain players are not");
-    ok(/NOT PRACTICING/.test(dnp) && /treated as out/.test(dnp) && !/↩ RETURNING/.test(dnp), "returning label: a returner who is not practicing is flagged, not treated as playing"); }
+  { const base = { player: "B.Bowers", pos: "TE", team: "LV", game: "LV @ KC", fair: 34, two: 8, teamRank: 1, price: 0.3, snap: { pct: 71 }, flags: [] };
+    const yes = ctx.T.tdRow({ r: { ...base, returning: "out", returningState: "practicing" }, g: {} }), dnp = ctx.T.tdRow({ r: { ...base, returning: "out", returningState: "not practicing" }, g: {} }), no = ctx.T.tdRow({ r: base, g: {} });
+    ok(/RETURNING/.test(yes) && /34%/.test(yes) && !/RETURNING/.test(no), "returning label: practicing returner is labelled on the TD row, plain players are not");
+    ok(/NOT PRACTICING/.test(dnp) && !/↩ RETURNING/.test(dnp), "returning label: a returner who is not practicing is flagged on the TD row"); }
+  { // 10/20 night (owner): one line per player -- game · #N on team under the name, SNAP / 2+ TD / MODEL / PM at the far right, nothing to open; the list split by time slot; no game-page ANYTIME TD card
+    const row = ctx.T.tdRow({ r: { player: "D.Swift", team: "CHI", pos: "RB", fair: 54.4, two: 20.2, price: 0.6, bid: 0.58, game: "NE @ CHI", teamRank: 1, snap: { pct: 58 }, flags: [] }, g: { key: "NE @ CHI" } });
+    ok(/NE @ CHI · #1 on team/.test(row) && /class="tc">58%<\/span><span class="tc">20%<\/span><span class="tc mp"><em>54%<\/em><\/span><span class="tc pxc">60¢/.test(row) && !/class="more"/.test(row) && !/vs price/.test(row), "Anytime TD row: game · #1 on team under the name, SNAP / 2+ TD / MODEL / PM in that order, no expandable card", row);
+    ok(/<span class="tc">SNAP<\/span><span class="tc">2\+ TD<\/span><span class="tc">MODEL<\/span><span class="tc">PM<\/span>/.test(ctx.T.tdHead("PLAYER")), "Anytime TD header: SNAP · 2+ TD · MODEL · PM");
+    const apx = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+    ok(/const xs = shown\.filter\(\(x\) => by\[sl\]\.includes\(x\.g\.key\)\)/.test(apx) && /labSlot\(g\.kickoff\)/.test(apx) && !/tdTop3/.test(apx) && !/function prow\(/.test(apx) && !/\.tdr"\); if \(tr/.test(apx), "Anytime TD list split by time slot; the game page has no ANYTIME TD card; no expandable row code"); }
   { const w = (m) => ctx.T.totalCard({ ...tg, poly: { total: { line: 38.5, over: 0.5, under: 0.52 } }, model: { total: 37, ...m } }, "x");
     ok(!/Tested angle/.test(w({ outdoor: true, wind: 14 })) && !/Tested angle/.test(w({ outdoor: true, wind: 20 })), "windy-under note: removed from the card (tested, not added; review fix 10/14)");
     ok(!/★/.test(w({ outdoor: true, wind: 14 })), "total card: no extra angle note next to the PICK"); }
@@ -1463,8 +1445,6 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(/paused/.test(ctx.T.gameCard(lg, "x")) && /Kickoff line \(locked\): CLE \+2\.5/.test(ctx.T.gameCard(lg, "x")), "live view: no open lines -> says paused, not a stale number");
   ok(!/LIVE/.test(ctx.T.gameCard({ ...lg, started: false }, "x")) && !/LIVE/.test(ctx.T.gameCard({ ...lg, final: true }, "x")), "live view: not shown before kickoff or after the game ends");
   vm.runInContext(`LIVE = {}; LIVE_T = null`, ctx);
-  const sc = ctx.T.tdTop3({ away: "PIT", home: "CLE", td: ["A", "B", "C", "D"].map((n, i) => ({ team: "PIT", player: "P." + n, pos: "RB", fair: 40 - i * 5, price: 0.3 })).concat([{ team: "CLE", player: "Q.X", pos: "WR", fair: 22, price: 0.2, two: 5, first: 4 }]) });
-  ok((sc.match(/class="p"/g) || []).length === 4 && /P\.A/.test(sc) && !/P\.D/.test(sc) && /2\+ 5% · 1st 4%/.test(sc), "scorers: top 3 per team side by side, best first", sc);
   vm.runInContext(`S = { games: [{ key: "TEN @ BAL", away: "TEN", home: "BAL", started: false, winPct: 84.4, model: { homeMargin: 12, total: 40 }, poly: { ml: { home: 0.82, away: 0.2 }, spread: { homeSpread: -10.5, home: 0.5, away: 0.51 }, total: { line: 41.5, over: 0.5, under: 0.51 } } },
     { key: "KC @ LV", away: "KC", home: "LV", started: false, winPct: 28, poly: { ml: { home: 0.3, away: 0.72 } } },
     { key: "X @ Y", away: "X", home: "Y", started: true, winPct: 60 }], winners: { all: { n: 10, w: 7, l: 3, hit: 0.7, said: 0.68 }, top4: { n: 4, w: 4, l: 0, hit: 1, said: 0.8 } } }`, ctx);
@@ -1687,8 +1667,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       "First TD tab: per game the two teams' chances (purple) + each team's three likeliest; no toggle box; Models + the First TD tab show the team record"); }
   // 10/20 (owner): labeled MODEL / POLYMARKET columns, rows split by team; the model % stays PURPLE (owner: "keep all model purple") -- both sports
   { const nb = readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8");
-    ok(/POLYMARKET<\/span><\/div>`;\s*$/m.test(ap) || /colHead = \(title, pad = 6\)/.test(ap), "Anytime TD: MODEL and POLYMARKET column heads");
-    ok(/<div class="mp"><em>\$\{tdPct\(r\.fair\)\}%<\/em>/.test(ap) && !/<em class="\$\{clsOf\(r\.fair\)\}">/.test(ap) && !/<em class="\$\{clsOf\(x\.r\.fair\)\}">/.test(ap) && !/clsOf\(r\.first\)/.test(ap) && /class="pxc">\$\{x\.r\.price != null/.test(ap) && /white-space:nowrap">POLYMARKET<\/span>/.test(ap) && !/nowrap">\$\{pmLogo\(\)\}POLYMARKET/.test(ap), "Anytime TD: the model % is plain purple (no win-rate colors), Best TD picks show the Polymarket price next to it");
+    ok(/const tdHead = \(title\)/.test(ap), "Anytime TD: labeled column heads");
+    ok(/<span class="tc mp"><em>\$\{tdPct\(r\.fair\)\}%<\/em>/.test(ap) && !/clsOf\(r\.fair\)/.test(ap) && !/clsOf\(r\.first\)/.test(ap) && /class="tc pxc">\$\{r\.price != null/.test(ap) && /best\.map\(tdRow\)/.test(ap), "Anytime TD: the model % is plain purple (no win-rate colors), Best TD picks use the same one-line row with the Polymarket price at the far right");
     for (const [f, a] of [["NFL", ap], ["NBA", nb]]) ok(/<span class="pp1">PLAYER<\/span><span class="pp2">LINE<\/span><span class="pp3">MODEL<\/span><span class="pp4">POLYMARKET<\/span>/.test(a) && /class="pbl pteam">\$\{tlogo\(t\)\}\$\{esc\(t\)\}/.test(a) && /class="pp3 mod">/.test(a) && !/pp3 \$\{clsOf/.test(a), `${f} Player props: PLAYER / LINE / MODEL / POLYMARKET header, rows split by team with a team label, the model % purple`);
     for (const f of ["../public/index.html", "../public/nba/index.html"]) { const h = readFileSync(new URL(f, import.meta.url), "utf8"); ok(/\.ppr\.pph span \{ font-size:10px/.test(h) && /\.pbl\.pteam \{ display:flex/.test(h) && !/\.ftdbox/.test(h) && !/\.tdr \.mp em\.g/.test(h) && /\.ppr \.pp3\.mod, \.ftdteams b\.mod \{ color:var\(--violet\)/.test(h), `${f}: column head, team label, no First TD box styles, model % purple`); }
     ok(!/PROP_LABEL/.test(readFileSync(new URL("../lib/props.js", import.meta.url), "utf8")) && !/BUY_OPEN/.test(readFileSync(new URL("../lib/stack.js", import.meta.url), "utf8")) && !/pct1/.test(readFileSync(new URL("../nba/lib/odds.js", import.meta.url), "utf8")) && !/NBA_STAT_LABEL/.test(readFileSync(new URL("../nba/lib/props.js", import.meta.url), "utf8")), "cleanup 10/20: unused names removed (PROP_LABEL, BUY_OPEN, pct1, NBA_STAT_LABEL)"); } }
