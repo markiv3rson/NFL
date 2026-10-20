@@ -121,8 +121,16 @@ export async function gradeNbaProps({ dates = null, now = Date.now(), fetchBox =
   return n;
 }
 // The page: one day's games with their rows (every stat; the page filters by its tab), ✓ / ✗ once graded.
+// 10/20 night (owner): a player's most recent graded prop of the same stat before this day (line, side, ✓ / ✗, the real number)
+export async function lastNbaProps(date, days = null) {
+  const r = getRedis(), out = {}, all = (days || await nbaPropDays()).filter((d) => d < date).sort().reverse().slice(0, 10);
+  for (const d of all) { const h = await r.hgetall(K_NBAPROPRES(d)).catch(() => null) || {};
+    for (const v of Object.values(h)) { let rec; try { rec = JSON.parse(v); } catch { continue; }
+      for (const p of rec.picks || []) { const k = `${p.name}|${p.stat}`; if (!out[k] && p.result && p.result !== "P") out[k] = { date: d, line: p.line, side: p.side, result: p.result, actual: p.actual ?? null }; } } }
+  return out;
+}
 export async function nbaPropsForDay(date) {
-  const r = getRedis(), res = await r.hgetall(K_NBAPROPRES(date)).catch(() => null) || {}, out = [];
+  const r = getRedis(), res = await r.hgetall(K_NBAPROPRES(date)).catch(() => null) || {}, out = [], last = await lastNbaProps(date).catch(() => ({}));
   for (const k of await scanKeys(`nbapropmodel:${date}:*`)) {
     const key = k.slice(`nbapropmodel:${date}:`.length), model = await getJSON(k).catch(() => null); if (!model) continue;
     let picks;
@@ -130,7 +138,7 @@ export async function nbaPropsForDay(date) {
     else picks = nbaPropPicks(model.rows, await getJSON(K_NBAPROPS(date, key)).catch(() => null)).map((p) => ({ ...p, result: null }));
     picks = onePerPlayer(picks); if (!picks.length) continue;
     out.push({ game: key, away: model.away, home: model.home, start: model.start || null, final: !!res[key],
-      picks: picks.map((p) => ({ name: p.name, team: p.team || null, stat: p.stat, side: p.side, line: p.line, chance: p.chance, price: p.price ?? null, result: p.result || null, actual: p.actual ?? null })) });
+      picks: picks.map((p) => ({ name: p.name, team: p.team || null, stat: p.stat, side: p.side, line: p.line, chance: p.chance, price: p.price ?? null, result: p.result || null, actual: p.actual ?? null, last: last[`${p.name}|${p.stat}`] || null })) });
   }
   return out.sort((a, b) => String(a.start || "").localeCompare(String(b.start || "")));
 }
