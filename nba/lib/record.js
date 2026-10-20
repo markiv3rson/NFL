@@ -26,21 +26,24 @@ export async function recordPicks(games, now = Date.now()) {
   for (const g of games) {
     if (g.start && now >= Date.parse(g.start)) continue;       // only picks seen before tip-off count
     const rows = pickRows(g);
+    // 10/20 review (one side per game, 10/19): the saved PICK of each market (first sighting stands) decides the side; a PICK w/ POINTS on the
+    // OTHER side is never saved, and one saved before the one-side rule went live (BOS @ DET opening night: PICK DET +1.5, PICK w/ POINTS BOS +1.5,
+    // a sure loser either way) is replaced before tip-off by the card's line on the PICK's side, or leaves the record when the card has none.
+    // Nothing is deleted: the first replaced row is kept under removed:<key> (written once).
+    const ks = ["spread", "total"].flatMap((k) => [`ptspick|${k}`, `cardpick|${k}`, `modelpick|${k}`].map((id) => KEY(g.date, g.key, id)));
+    const v = ((await r.mget(...ks).catch(() => null)) || []).map(jparse);   // one command per game
+    const pickOf = (k) => { const i = k === "spread" ? 0 : 3; return v[i + 1] || v[i + 2] || rows.find((x) => x.market === k && /^(cardpick|modelpick)\|/.test(x.id)) || null; };
     for (const row of rows) {
+      if (/^ptspick\|/.test(row.id)) { const pk = pickOf(row.market); if (pk && sideOf(pk) !== sideOf(row)) continue; }
       const key = KEY(row.date, row.game, row.id);
       if (!(await r.set(key, JSON.stringify(row), "NX"))) continue;   // the first sighting stands (NX: saved only when new, one command)
       await r.sadd(IDS, key); n++;
     }
-    // 10/20 review (one side per game, 10/19): a PICK w/ POINTS saved on the OTHER side of the saved PICK -- saved before the one-side rule went
-    // live (BOS @ DET opening night: PICK DET +1.5, PICK w/ POINTS BOS +1.5, a sure loser either way) -- is replaced before tip-off by the card's
-    // current one-side line, or leaves the record when the card has none. Nothing is deleted: the old row is kept under removed:<key>.
-    const ks = ["spread", "total"].flatMap((k) => [`ptspick|${k}`, `cardpick|${k}`, `modelpick|${k}`].map((id) => KEY(g.date, g.key, id)));
-    const v = ((await r.mget(...ks).catch(() => null)) || []).map(jparse);   // one command per game
     for (const [i, k] of ["spread", "total"].entries()) {
       const pk = ks[i * 3], old = v[i * 3], pick = v[i * 3 + 1] || v[i * 3 + 2];
       if (!old || !pick || sideOf(old) === sideOf(pick)) continue;
       const cur = rows.find((x) => x.id === `ptspick|${k}` && sideOf(x) === sideOf(pick));
-      await r.set(`removed:${pk}`, JSON.stringify({ ...old, removedAt: new Date(now).toISOString(), why: "PICK w/ POINTS on the other side of the PICK" }));
+      await r.set(`removed:${pk}`, JSON.stringify({ ...old, removedAt: new Date(now).toISOString(), why: "PICK w/ POINTS on the other side of the PICK" }), "NX");
       if (cur) await r.set(pk, JSON.stringify(cur)); else { await r.del(pk); await r.srem(IDS, pk); }
       n++;
     }

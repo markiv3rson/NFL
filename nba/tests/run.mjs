@@ -862,6 +862,12 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   await R.set(K("ptspick|spread"), JSON.stringify({ date: D, game: G, id: "ptspick|spread", market: "spread", team: "BOS", line: 1.5, label: "BOS +1.5" }));
   await rec.recordPicks([g2], Date.parse("2026-12-30T15:00:00Z"));
   ok(!(await R.get(K("ptspick|spread"))) && !(await R.smembers("pick:ids")).includes(K("ptspick|spread")), "record (10/20): with no one-side line on the card the opposite one leaves the record");
+  // the card's PICK flips to BOS later (the saved PICK DET +1.5 stands): its BOS PICK w/ POINTS is never saved, on any build -- no save / remove churn,
+  // and the removed: copy keeps the FIRST replaced row
+  const g3 = { ...g, card: { spread: { plain: { id: "modelpick|spread", team: "BOS", line: -1.5, pick: "BOS -1.5", hit: 49.4 }, pts: { id: "ptspick|spread", team: "BOS", line: 0.5, pick: "BOS +0.5", hit: 55.1, points: 2 } } } };
+  for (const t of ["2026-12-30T16:00:00Z", "2026-12-30T17:00:00Z"]) await rec.recordPicks([g3], Date.parse(t));
+  ok(!(await R.get(K("ptspick|spread"))) && JSON.parse(await R.get(`removed:${K("ptspick|spread")}`)).label === "BOS +1.5" && JSON.parse(await R.get(K("modelpick|spread"))).label === "DET +1.5",
+    "record (10/20): a PICK w/ POINTS on the other side of the SAVED PICK is never saved (no churn); the removed: copy keeps the first row");
   for (const k of await R.keys(`*pick:${D}*`)) await R.del(k); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`);
 process.exit(bad ? 1 : 0);
