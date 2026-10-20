@@ -5,6 +5,7 @@ import { buildSlate } from "../../../nba/lib/slate";
 import { getRedis, SLATE_CACHE } from "../../../nba/lib/redis";
 import { markSnapshot, logError } from "../../../nba/lib/status";
 import { recordBookGaps, recordGaps, recordInjuryShadow, recordMoves, pullPinnacle, pinnacleFailed, pinnacleOk } from "../../../nba/lib/pinnacle";
+import { scoreNbaProps } from "../../../nba/lib/props";
 export const config = { maxDuration: 60 };
 export default async function handler(req, res) {
   try {
@@ -13,6 +14,8 @@ export default async function handler(req, res) {
     await markSnapshot({ games: data.games.length, modelOk: data.modelOk, picks: data.bestBets.length, books: data.booksPull || null });
     if (data.modelOk === false) await logError("model", data.modelError || "model service did not answer");   // null = nothing to send (no game had lines)
     if (data.booksPull && data.booksPull.note && !data.booksPull.pulled) await logError("books", data.booksPull.note);
+    // 10/20 (owner: Player props): the NBA prop model scores every recorded line of each game not yet tipped (last copy before tip-off = the locked one)
+    let props = null; try { props = await scoreNbaProps(data.games); if (props.error && !props.building) await logError("props", props.error); } catch (e) { await logError("props", e); }
     // Pinnacle's free feed (opening lines + history for LINE MOVE) comes AFTER the page data is saved, so a slow or blocked feed can never cost the
     // snapshot. A failed pull is only logged on the 2nd in a row; a pull that answered but saved nothing for a day with games counts as a failure.
     let pin = null;
@@ -22,6 +25,6 @@ export default async function handler(req, res) {
       const reg = data.games.filter((g) => !g.preseason);   // the signals were tested on regular-season lines only
       await recordMoves(reg); await recordGaps(reg); await recordBookGaps(reg, data.books && data.books.t); await recordInjuryShadow(reg);
     } catch (e) { await pinnacleFailed(String(e.message || e).slice(0, 120), logError); }
-    res.status(200).json({ ok: true, games: data.games.length, modelOk: data.modelOk, picks: data.bestBets.length, books: data.booksPull, pinnacle: pin, at: data.now });
+    res.status(200).json({ ok: true, games: data.games.length, modelOk: data.modelOk, picks: data.bestBets.length, books: data.booksPull, pinnacle: pin, props, at: data.now });
   } catch (err) { await logError("snapshot", err); await markSnapshot({ games: 0, modelOk: null, failed: String(err && err.message || err).slice(0, 120) }).catch(() => {}); res.status(500).json({ ok: false, error: String(err) }); }
 }

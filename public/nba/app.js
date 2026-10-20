@@ -300,7 +300,36 @@ function applyBetsView() {
   if (m) renderLabList();
 }
 // Props (10/17, owner: its own page in the menu, between Game Lines and Bets, same as NFL's): Polymarket US lists no NBA player props yet, so the list is empty until it does
-function renderProps() { const el = $("props"); if (el) el.innerHTML = '<div class="s dim" style="margin-top:12px">None yet.</div>'; }
+// PLAYER PROPS (10/20, owner: "Player props", same page as NFL's, design = both sports; bar 62%+): one page per stat tab (Points, Rebounds, Assists, PRA,
+// Threes, Steals, Blocks) -- /api/nba/props: the side the NBA prop model gives 62%+ on each recorded Polymarket line, one row per player and stat (its
+// highest %), under the tip-off headers game by game, a day and a team drop-down, RECORD tile = this tab's graded rows, ✓ / ✗ green / red once graded.
+let PROPS = null, PROPDAY = null, PROPTAB = "pts", PROPTEAM = "all";
+const PROP_TABS = [["pts", "Points"], ["reb", "Rebounds"], ["ast", "Assists"], ["pra", "PRA"], ["3pm", "Threes"], ["stl", "Steals"], ["blk", "Blocks"]];
+const PROP_SHORT = { pts: "Pts", reb: "Reb", ast: "Ast", pra: "PRA", "3pm": "3PM", stl: "Stl", blk: "Blk" };
+async function loadProps() {
+  try { const d = await (await fetch(`/api/nba/props${PROPDAY ? `?date=${PROPDAY}` : ""}`, { cache: "no-store" })).json(); if (d && d.ok) { PROPS = d; renderProps(); } } catch {}
+}
+function renderProps() {
+  const el = $("props"); if (!el) return;
+  const tt = $("props-title"); if (tt) tt.textContent = `Player props · ${(PROP_TABS.find(([k]) => k === PROPTAB) || [, "Points"])[1]}`;
+  const d = PROPS; if (!d) { el.innerHTML = '<div class="s dim" style="margin-top:12px">Loading…</div>'; return; }
+  const days = d.days && d.days.length ? d.days : [d.date];
+  const dsel = `<div class="wksel"><select id="props-day" aria-label="Day">${days.map((x) => `<option value="${x}"${x === d.date ? " selected" : ""}>${dayName(x)}</option>`).join("")}</select></div>`;
+  const all = (d.games || []).map((g) => ({ ...g, picks: (g.picks || []).filter((p) => p.stat === PROPTAB) })).filter((g) => g.picks.length);
+  const teams = [...new Set(all.flatMap((g) => g.picks.map((p) => p.team).filter(Boolean)))].sort();
+  const tsel = `<div class="wksel"><select id="props-team" aria-label="Team"><option value="all"${PROPTEAM === "all" ? " selected" : ""}>All teams</option>${teams.map((t) => `<option value="${esc(t)}"${PROPTEAM === t ? " selected" : ""}>${esc(t)}</option>`).join("")}</select></div>`;
+  const games = all.map((g) => ({ ...g, picks: PROPTEAM === "all" ? g.picks : g.picks.filter((p) => p.team === PROPTEAM) })).filter((g) => g.picks.length);
+  const rc = (d.record || {})[PROPTAB] || null;
+  const tile = `<div class="stats" style="margin-top:10px"><div class="stat"><div class="k">RECORD</div><div class="v ${rc && rc.pct >= 56 ? "g" : rc && rc.pct >= 53 ? "lg" : !rc || rc.pct == null ? "" : "y"}">${rc ? rc.w || 0 : 0}–${rc ? rc.l || 0 : 0}</div><div class="k2">${!rc || rc.pct == null ? "—" : rc.pct + "% won"}</div></div></div>`;
+  const row = (p) => `<div class="pbl ppr${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${tlogo(p.team || "")}${esc(p.name)}</span><span class="pp2">${PROP_SHORT[p.stat] || ""} ${p.side === "over" ? "Over" : "Under"} ${p.line}</span><span class="pp3">${Math.round(p.chance * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
+  const slotTimes = {}; for (const g of games) if (g.start) { const sl = nbaSlot(g.start), t = tipTime(g.start); (slotTimes[sl] = slotTimes[sl] || []).includes(t) || slotTimes[sl].push(t); }
+  let lastSlot = null;
+  const blocks = games.map((g) => { const sl = g.start ? nbaSlot(g.start) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
+    return h + `<div class="par"><div class="pbh"><span class="pbn">${gameLogos(g.game)}</span></div>${g.picks.map(row).join("")}</div>`; });
+  el.innerHTML = `<div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">${dsel}${tsel}</div>` + tile + (games.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
+  const pd = $("props-day"); if (pd && pd.tagName === "SELECT") pd.onchange = () => { PROPDAY = pd.value; loadProps(); };
+  const ps = $("props-team"); if (ps && ps.tagName === "SELECT") ps.onchange = () => { PROPTEAM = ps.value; renderProps(); };
+}
 // 10/18 (owner): a Results page under Bets (the RESULT alert lines) was built and deleted the same day -- RESULT lines are saved (lib alerts listResults) but shown nowhere.
 async function loadBets() {
   try { BETS = await (await fetch("/api/nba/mybets", { cache: "no-store" })).json(); } catch { BETS = { ok: false }; }
@@ -538,6 +567,8 @@ function showPanel(name) {
   let sub = null;   // 10/17 (owner): My bets and Model bets are separate pages under Bets in the menu
   if (/^modelbets-/.test(name)) { const k = name.slice(10); if (LAB_TABS.some(([t]) => t === k)) LABTYPE = k; name = "modelbets"; }   // 10/17 (owner): the parlay types are menu sub tabs under Model bets
   if (name === "modelbets") sub = `modelbets-${LABTYPE}`;
+  if (/^props-/.test(name)) { const k = name.slice(6); if (PROP_TABS.some(([t]) => t === k)) PROPTAB = k; name = "props"; }   // 10/20 (owner): the Player props stat tabs are menu sub tabs
+  if (name === "props") sub = `props-${PROPTAB}`;
   if (name === "mybets" || name === "modelbets") { sub = sub || name; BETSVIEW = name === "modelbets" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} name = "record"; }
   if (name === "record" && !sub) sub = BETSVIEW === "model" ? `modelbets-${LABTYPE}` : "mybets";
   if (!$("panel-" + name)) name = "lines";
@@ -549,12 +580,12 @@ function showPanel(name) {
   try { window.scrollTo(0, 0); } catch {}
   if (name === "models") loadModels();
   if (name === "record") { loadBets(); applyBetsView(); }
-  if (name === "props") renderProps();   // 10/17 (owner): Props is its own page
+  if (name === "props") { renderProps(); loadProps(); }   // 10/20 (owner): Player props, one page per stat tab
   if (S) setBg(name === "lines" && DETAIL ? S.games.find((x) => x.key === DETAIL) : null);
   linesBg();
 }
 // 10/17: pages switch by the address' #name (the menu links set it): #alerts, #lines, #record, #models; #game=KEY opens a game (from the home screen)
-const PANELS = ["alerts", "lines", "record", "mybets", "modelbets", "props", ...LAB_TABS.map(([k]) => `modelbets-${k}`), "models"];
+const PANELS = ["alerts", "lines", "record", "mybets", "modelbets", "props", ...LAB_TABS.map(([k]) => `modelbets-${k}`), ...PROP_TABS.map(([k]) => `props-${k}`), "models"];
 let OPEN_GAME = null;
 function routeHash() {
   const h = location.hash || "";

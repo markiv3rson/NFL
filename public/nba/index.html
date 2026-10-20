@@ -166,6 +166,8 @@
   /* 10/17 (owner): every NBA page (not a game page) gets its photo behind it, like NFL; the cards see-through over it */
   html.lines-on .pagewm { background:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.1)),url(/nba/lines-bg.jpg?v=4) center/cover no-repeat,#000; }   /* 10/18 evening (owner): only a 10% shade -- "why is it so dark in the app"; it was 68-86% */
   html.lines-on .pagewm::after { display:none; }
+  /* 10/20 (owner: "I need to see all the photos ... do the same for the computer"): on a computer the strip is as wide as the page and scrolls with it, every frame top to bottom (cover showed one frame on a wide screen) */
+  @media (min-width:1100px) { html.lines-on .pagewm { background:none; } html.lines-on body { background:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.1)),url(/nba/lines-bg.jpg?v=4) top center/100% auto repeat-y,#000; } }
   html.lines-on .panel .card, html.lines-on .panel .stat { background:rgba(8,8,12,.8); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 80% dark so the text reads (owner 10/17), no frosted haze */
   html.lines-on .panel .tile { background:rgba(8,8,12,.55); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 10/18 evening (owner, sketch D): game tiles 55% dark, no team colours, no faded logos */
   #detail .card:not(.dtop) { background:rgba(8,8,12,.55); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 10/18 night (owner): game-page cards see-through like the tiles (55% dark); the team-colour header card stays */
@@ -235,7 +237,7 @@
     <div id="record-mine"></div>
     <div id="lab" style="display:none;padding-bottom:64px"></div>
   </div>
-  <div class="panel" id="panel-props"><div class="phead"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l5-6 4 4 7-9"/><path d="M15 6h5v5"/></svg><div class="pt"><b>Props</b></div></div><div id="props" style="padding-bottom:64px"></div></div>
+  <div class="panel" id="panel-props"><div class="phead"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l5-6 4 4 7-9"/><path d="M15 6h5v5"/></svg><div class="pt"><b id="props-title">Player props</b></div></div><div id="props" style="padding-bottom:64px"></div></div>
   <div class="panel" id="panel-models">
     <div class="phead"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20V11M12 20V5M18 20v-6"/></svg><div class="pt"><b>Models</b><span id="upd-models"></span></div></div>
     <div id="models"></div>

@@ -17,8 +17,9 @@ export default async function handler(req, res) {
       const cg = (await loadGames(season, dw.cur)).filter((g) => dw.carry.includes(g.key)).map((g) => ({ ...g, started: started(g) }));
       list = [...(await propsForWeek(r, season, dw.cur, cg).catch(() => [])).map((x) => ({ ...x, week: dw.cur, carry: true })), ...list]; }
     const record = await propsRecord(r, season, [...weeks]);
+    const records = {}; for (const st of ["rec_yds", "rec", "pass_yds"]) records[st] = await propsRecord(r, season, [...weeks], st);   // 10/20: one RECORD tile per Player props tab
     // 10/20 review: every graded group's live record (shown or only tracked, e.g. receiving-yards OVERS 65%+) for the weekly report -- data, not shown on the page
     const groups = req.query.groups ? (await propSummary(r, season, [...weeks]).catch(() => null)) : undefined;
-    res.status(200).json({ ok: true, season, week, weeks: [...weeks].filter(Number.isFinite).sort((a, b) => a - b), games: list, record, ...(groups ? { groups } : {}) });
+    res.status(200).json({ ok: true, season, week, weeks: [...weeks].filter(Number.isFinite).sort((a, b) => a - b), games: list, record, records, ...(groups ? { groups } : {}) });
   } catch (e) { res.status(200).json({ ok: false, error: String(e).slice(0, 200) }); }
 }

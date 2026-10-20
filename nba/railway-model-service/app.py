@@ -72,6 +72,8 @@ def start_background():
         age = season_sim.live_age_hours()
         if age is None or age > 24:
             threading.Thread(target=lambda: (time.sleep(90), _futures_job()), daemon=True).start()
+    if os.environ.get("PROPS_ON_START", "1") == "1" and nba_prop_model.load_live() is None:   # 10/20: the prop model, built once in the background when missing
+        threading.Thread(target=lambda: (time.sleep(240), _prop_build_bg()), daemon=True).start()
     if daily_rebuild.needs_rebuild(daily_rebuild.status()) and os.environ.get("REBUILD_ON_START", "1") == "1":   # first deploy, or a build from older code
         threading.Thread(target=lambda: (__import__("time").sleep(180), daily_rebuild.run(), _reload()), daemon=True).start()
 
@@ -184,6 +186,42 @@ def futures():
     rep = os.path.join(season_sim.DATA, "futures_report.json")
     rep = json.load(open(rep if os.path.exists(rep) else os.path.join(live.DATA, "futures_report.json")))
     return jsonify({"ok": True, **d, "report": rep, "stale_hours": None if age is None else round(age, 1)})
+
+
+# ---- Player props (10/20, owner: "Player props" page, both sports) ----
+# nba_prop_model.py: built in the background when the saved model is missing (a few minutes), refit daily by the scheduler (4:20 AM PT).
+import nba_prop_model
+_PROP_BUILD = {"running": False}
+
+
+def _prop_build_bg():
+    if _PROP_BUILD["running"]:
+        return
+    _PROP_BUILD["running"] = True
+    def go():
+        try: nba_prop_model.build_live(log=lambda m: print(m, flush=True))
+        except Exception as e: print(f"[nba props] build failed: {e}", flush=True)
+        finally: _PROP_BUILD["running"] = False
+    threading.Thread(target=go, daemon=True).start()
+
+
+@app.route("/prop-probs", methods=["POST"])
+def prop_probs():
+    """body: {"games": [{"away","home","outs":[names],"lines":[{"name","stat","line"}]}]} -> {"ok","built","results":[{"game","rows":[{name,team,stat,line,mu,over,under}]}]}.
+    503 with "building" while the model is still being built."""
+    try:
+        if nba_prop_model.load_live() is None:
+            _prop_build_bg(); return jsonify({"ok": False, "error": "prop model not built yet", "building": True}), 503
+        body = request.get_json(force=True, silent=True) or {}
+        res = nba_prop_model.chances_many(body.get("games") or [])
+        return jsonify({"ok": True, "built": nba_prop_model._LIVE.get("built"), "results": res})
+    except Exception as ex:
+        return jsonify({"ok": False, "error": str(ex)}), 500
+
+
+@app.route("/build-props", methods=["POST"])
+def build_props():
+    _prop_build_bg(); return jsonify({"ok": True, "note": "started" if _PROP_BUILD["running"] else "already running"})
 
 
 @app.route("/rebuild", methods=["POST"])

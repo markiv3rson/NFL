@@ -896,5 +896,39 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
     && !/teamSide|teammodel/.test(readFileSync(new URL("../lib/cardpick.js", import.meta.url), "utf8")),
     "NBA card: Model (Team) line under Model (team, line, sure %), fed by the service's team-numbers fit; data only -- the NBA card picker never reads it");
 }
+{ // 10/20 (owner: "Player props", bar 62%): NBA prop picks, one row per player and stat, scoring saved per game, grading from ESPN's box score
+  const pr = await import("../lib/props.js"), { parseBox } = await import("../lib/espn.js"), R = globalThis.__TEST_REDIS__;
+  const rows = [{ name: "Jaylen Brown", team: "BOS", stat: "pts", line: 19.5, mu: 24.9, over: 0.73, under: 0.27 }, { name: "Jaylen Brown", team: "BOS", stat: "pts", line: 24.5, mu: 24.9, over: 0.5, under: 0.5 },
+    { name: "Cade Cunningham", team: "DET", stat: "pra", line: 39.5, mu: 34, over: 0.28, under: 0.72 }, { name: "Jalen Duren", team: "DET", stat: "reb", line: 9.5, mu: 9.2, over: 0.45, under: 0.55 }, { name: "Derrick White", team: "BOS", stat: "3pm", line: 2.5, mu: 2.3, over: 0.39, under: 0.61 }];
+  const saved = { m: { "Jaylen Brown|pts|19.5": [0.7, 0.68, 0.32, 0.7, "t"], "Cade Cunningham|pra|39.5": [0.4, 0.38, 0.62, 0.4, "t"] } };
+  const picks = pr.nbaPropPicks(rows, saved);
+  ok(pr.NBA_PROP_BAR === 0.62 && pr.MAX_PRICE === 0.77 && picks.length === 2 && picks[0].side === "over" && picks[0].price === 0.7 && picks[0].band === "70-80" && picks[1].side === "under" && picks[1].price === 0.62 && picks[1].band === "70-80" && !picks.some((p) => p.stat === "3pm"), "NBA props: the side the model likes more, only at 62%+ (a 61% Under and a 55% Under are not picks), with that side's price", picks);
+  const one = pr.onePerPlayer([{ name: "A", stat: "pts", chance: 0.8, price: 0.9 }, { name: "A", stat: "pts", chance: 0.7, price: 0.6 }, { name: "A", stat: "pts", chance: 0.8, price: 0.77 }, { name: "A", stat: "reb", chance: 0.65, price: null }, { name: "B", stat: "pts", chance: 0.66, price: 0.66 }]);
+  ok(one.length === 2 && one[0].name === "A" && one[0].chance === 0.7 && one[1].stat === "reb", "NBA props: one row per player and stat = the highest % priced under its % and under 77c (80% at 90c and 80% at 77c are out, owner 10/20); no price last; a line priced at its % is dropped", one);
+  // scoring: a not-started game with recorded lines is sent to the service, the answer saved per game; a started game is not
+  await R.set(pr.K_NBAPROPS("2026-12-30", "BOS @ DET"), JSON.stringify(saved));
+  let sent = null; const post = async (b) => { sent = b; return { ok: true, built: "x", results: [{ game: "BOS @ DET", rows }] }; };
+  const now = Date.parse("2026-12-30T20:00:00Z"), games = [{ key: "BOS @ DET", away: "BOS", home: "DET", date: "2026-12-30", start: "2026-12-31T00:00:00Z", injuries: { away: [{ name: "Jayson Tatum", status: "Out" }, { name: "Al Horford", status: "Questionable" }], home: [] } },
+    { key: "LAL @ GSW", away: "LAL", home: "GSW", date: "2026-12-30", start: "2026-12-30T19:00:00Z" }];
+  process.env.NBA_MODEL_SERVICE_URL = process.env.NBA_MODEL_SERVICE_URL || "http://test"; const sc = await pr.scoreNbaProps(games, { now, post });
+  ok(sc.scored === 1 && sent.games.length === 1 && sent.games[0].outs.join() === "Jayson Tatum" && sent.games[0].lines.length === 2 && JSON.parse(await R.get(pr.K_NBAPROPMODEL("2026-12-30", "BOS @ DET"))).rows.length === 5, "NBA props: the snapshot scores the not-started game's recorded lines with the Out list; the started game is skipped; saved per game", sc);
+  // the page's day: two rows (Brown Over 19.5, Cunningham Under 39.5)
+  const day = await pr.nbaPropsForDay("2026-12-30");
+  ok(day.length === 1 && day[0].game === "BOS @ DET" && day[0].picks.length === 2 && day[0].picks[0].name === "Jaylen Brown" && day[0].picks[0].result === null, "NBA props page: the day's games with their rows, ungraded", day);
+  // grading from a box score: Brown 27 pts (Over 19.5 wins), Cunningham 44 pra (Under 39.5 loses)
+  const box = { "BOS @ DET": { final: true, players: { "jaylen brown": { pts: 27, reb: 5, ast: 4, pra: 36, "3pm": 2, stl: 1, blk: 0 }, "cade cunningham": { pts: 30, reb: 6, ast: 8, pra: 44, "3pm": 3, stl: 1, blk: 1 } } } };
+  const g = await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2026-12-31T08:00:00Z"), fetchBox: async () => box });
+  const rec = await pr.nbaPropsRecord(["2026-12-30"]), day2 = await pr.nbaPropsForDay("2026-12-30");
+  ok(g === 1 && rec.all.w === 1 && rec.all.l === 1 && rec.pts.w === 1 && rec.pra.l === 1 && rec.reb.w === 0 && day2[0].final && day2[0].picks.find((p) => p.name === "Jaylen Brown").result === "W" && day2[0].picks.find((p) => p.name === "Cade Cunningham").result === "L", "NBA props grading: W / L from the box score, RECORD per stat, the page shows ✓ / ✗", { g, rec });
+  ok((await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2026-12-31T08:00:00Z"), fetchBox: async () => { throw new Error("no"); } })) === 0, "NBA props grading: a graded game is never graded twice");
+  // ESPN box parse (the real summary shape): 3PT "1-3" = 1 made, a DNP is left out, the key from the header
+  const b = parseBox({ header: { competitions: [{ status: { type: { completed: true } }, competitors: [{ homeAway: "away", team: { abbreviation: "MIA" } }, { homeAway: "home", team: { abbreviation: "ORL" } }] }] },
+    boxscore: { players: [{ team: { abbreviation: "MIA" }, statistics: [{ names: ["MIN", "PTS", "FG", "3PT", "FT", "REB", "AST", "TO", "STL", "BLK", "OREB", "DREB", "PF", "+/-"], athletes: [{ athlete: { displayName: "Andrew Wiggins Jr." }, stats: ["15", "13", "4-7", "1-3", "4-5", "2", "1", "0", "2", "0", "0", "2", "2", "-1"] }, { athlete: { displayName: "Nobody Played" }, didNotPlay: true, stats: [] }] }] }] } });
+  ok(b && b.key === "MIA @ ORL" && b.final && Object.keys(b.players).length === 1 && b.players["andrew wiggins"].pts === 13 && b.players["andrew wiggins"]["3pm"] === 1 && b.players["andrew wiggins"].pra === 16 && b.players["andrew wiggins"].stl === 2, "ESPN box: player stats by normalized name (Jr. dropped), threes from '1-3', a DNP left out", b);
+  for (const k of await R.keys("nbaprop*2026-12-30*")) await R.del(k);
+  const api = readFileSync(new URL("../../pages/api/nba/props.js", import.meta.url), "utf8"), snap = readFileSync(new URL("../../pages/api/nba/snapshot.js", import.meta.url), "utf8"), gr = readFileSync(new URL("../../pages/api/nba/results/grade.js", import.meta.url), "utf8");
+  ok(/nbaPropsForDay\(date\)/.test(api) && /scoreNbaProps\(data\.games\)/.test(snap) && /gradeNbaProps\(\)/.test(gr), "NBA props: /api/nba/props serves the day; the snapshot scores; the grade run grades");
+  const ap = readFileSync(new URL("../../nba/railway-model-service/app.py", import.meta.url), "utf8"), sch = readFileSync(new URL("../../nba/railway-model-service/scheduler.py", import.meta.url), "utf8");
+  ok(/@app\.route\("\/prop-probs", methods=\["POST"\]\)/.test(ap) && /nba_prop_model\.chances_many/.test(ap) && /PROPS_ON_START/.test(ap) && /jobs\.append\(\("props", _props\)\)/.test(sch), "NBA service: /prop-probs route, background build when missing, daily 4:20 AM refit"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`);
 process.exit(bad ? 1 : 0);

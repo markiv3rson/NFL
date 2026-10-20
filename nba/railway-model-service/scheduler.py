@@ -107,6 +107,15 @@ def _backup():
         _call("/api/backup?mark=failed&files=0", tries=1)
 
 
+def _props():
+    """10/20: refit the player-prop model (nba_prop_model.py) with yesterday's box scores."""
+    try:
+        import nba_prop_model
+        nba_prop_model.build_live(log=lambda m: print(m, flush=True))
+    except Exception as e:
+        print("[scheduler] prop model build failed:", str(e)[:200], flush=True)
+
+
 def _futures():
     try:
         import app
@@ -124,6 +133,8 @@ def due(now, last, tips=None):
         jobs.append(("rebuild", _rebuild))
     if h == 4 and m == 40:
         jobs.append(("futures", _futures))
+    if h == 4 and m == 20:
+        jobs.append(("props", _props))
     if 7 <= h <= 21 and m in (0, 30):
         jobs.append(("snapshot", lambda: _call("/api/snapshot?src=cron")))
     for tip in tips or []:                      # the real closing line: one snapshot 3 minutes before each distinct tip-off
