@@ -207,9 +207,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const t45 = keyNumberPick(day, sp(-4.5), bk(-4.5), [{ team: "LA", line: -2.5, price: 0.66 }]), t55 = keyNumberPick(day, sp(-5.5), bk(-5.5), [{ team: "BUF", line: 7.5, price: 0.64 }]), t135 = keyNumberPick(day, sp(-13.5), bk(-13.5), [{ team: "BUF", line: 14.5, price: 0.6 }]);
   const gone = [[-6, "BUF", 7.5], [-6.5, "BUF", 8.5], [-8, "LA", -5.5], [-6.5, "LA", -2.5], [-9, "LA", -6.5], [-7, "LA", -5.5], [-7.5, "LA", -5.5], [-6, "LA", -3.5], [-2, "LA", -0.5]].map(([b, team, line]) => keyNumberPick(day, sp(b), bk(b), [{ team, line, price: 0.6 }]));
   ok(!t45 && t55 && t55.pick === "BUF +7.5" && t55.hit === 56.1 && /BEAT THE 7/.test(t55.why)
-    && t135 && t135.pick === "BUF +14.5" && t135.hit === 63.9 && /BEAT THE 14/.test(t135.why) && gone.every((x) => !x)
-    && Object.keys(BUY_TIERS).length === 6 && Object.values(BUY_TIERS).every((T) => T.side === "dog") && Object.entries(BUY_TIERS).every(([A, T]) => Math.abs(T.line) - +A <= 3.5),
-    "BEAT THE (10/19): 6 underdog tiers -- books 1, 1.5, 2.5, 3.5, 5.5, 13.5; every favorite tier and books 3 cut; never more than 3.5 points", { t45, t55 });
+    && !t135 && gone.every((x) => !x)
+    && Object.keys(BUY_TIERS).length === 5 && Object.values(BUY_TIERS).every((T) => T.side === "dog") && Object.entries(BUY_TIERS).every(([A, T]) => Math.abs(T.line) - +A <= 3.5),
+    "BEAT THE (10/19): 5 underdog tiers -- books 1, 1.5, 2.5, 3.5, 5.5; every favorite tier, books 3 and (10/20, failed a second line source) books 13.5 cut; never more than 3.5 points", { t45, t55 });
   { const { ruleRecords } = await import("../lib/stack.js"), kick = [{ id: "modelpick|total", kind: "total", hit: 51.7, week: 6, game: "A @ B", result: "W", t: "2" }, { id: "keynum|spread", hit: 58, week: 6, game: "A @ B", result: "L", t: "2" }],
       first = [{ id: "modelpick|total", kind: "total", hit: 51.7, week: 6, game: "A @ B", result: "L", t: "1" }, { id: "keynum|spread", hit: 58, week: 6, game: "A @ B", result: "W", t: "1" }], rr = ruleRecords(kick, first);
     ok(rr["MODEL SIDE · total"].w === 1 && rr["MODEL SIDE · total"].l === 0 && rr["BEAT THE"].w === 1 && rr["BEAT THE"].l === 0, "rule records (10/18 fix): card picks count as locked at kickoff (= Card picks rows); timing rules keep the first-shown pick", rr); }
