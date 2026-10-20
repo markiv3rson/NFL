@@ -258,43 +258,9 @@ const logoUrl = (team) => (team ? LOGO_OVERRIDES[team] || `https://a.espncdn.com
 // Team logo next to team names on every card (game header + TD team headers). Same logo source as the TD rows.
 function tlogo(team) { return team ? `<img class="tlogo" src="${logoUrl(team)}" alt="" onerror="this.style.display='none'">` : ""; }
 const retPill = (r) => (r.returning ? (r.returningState === "practicing" ? ' <span class="pill p-g" style="padding:0 6px;font-size:10px">↩ RETURNING</span>' : ' <span class="pill p-y" style="padding:0 6px;font-size:10px">↩ WAS OUT · NOT PRACTICING</span>') : "");
-// Blended touchdown chance (10/5): half the model's number, half the market's mid price, only on a real market (a bidder within 5c of the ask).
-// On 123 real-market players (Weeks 3-4) the 50/50 mix scored slightly better than either alone (0.2154 vs model 0.2158, market 0.2174):
-// a small sample, so the weight is fixed at 50/50 until about 500 graded players.
-const TD_BLEND_W = 0.5;
-// "No" mark (10/6): on a real market, the model is 5+ points under what a Yes sells for (the bid), so buying No looks cheap.
-// Same rule as the Models row "No · model 5+ under".
 function tdNoGap(r) {
   if (!r || r.fair == null || !(r.bid > 0) || !(r.price > 0) || r.stale || r.thin || r.price - r.bid > Math.min(0.05, 0.4 * r.price)) return null;
   const gap = r.bid * 100 - r.fair; return gap >= 5 ? Math.round(gap) : null;
-}
-function tdBlend(r) {
-  if (!r || r.fair == null || r.price == null || r.stale || r.thin || !(r.bid > 0)) return null;
-  const mid = (r.price + r.bid) / 2 * 100;
-  return { blend: TD_BLEND_W * r.fair + (1 - TD_BLEND_W) * mid, mid, model: r.fair };
-}
-function prow(r, g, showGame) {
-  const inj = (r.injury && GAME_STATUS.test(r.injury) ? ` <span class="pill ${/out|doubt/i.test(r.injury) ? "p-r" : "p-y"}" style="padding:0 6px;font-size:10px">${esc(r.injury)}</span>` : "") + retPill(r);
-  // Model's chance (big, left) and Polymarket's price (right), each with its plain label directly underneath. No verdict, no edge, no stake.
-  const chance = r.fair != null ? `${tdPct(r.fair)}%` : dash;
-  const cents = r.price != null ? `<span class="price-link" data-market="${esc(r.market || (r.stale ? "Old price" : ""))}">${Math.round(r.price * 100)}¢</span>` : dash;
-  const snap = r.snap ? ` · ${r.snap.pct}% snaps${r.snap.missed ? ` <span class="warn-t">⚠ missed last game${r.lastWeekOut ? ` · ${esc(r.lastWeekOut)}` : ""}</span>` : r.snap.early ? ` <span class="warn-t">⚠ left early last game</span>` : r.snap.trend === "up" ? ' <span class="g">↑</span>' : r.snap.trend === "down" ? ' <span class="r">↓ role shrinking</span>' : ""}` : "";
-  // team code dropped from the subtitle when the logo is shown (showGame) — the logo already carries it
-  const sub = `${showGame ? `${esc(r.game)} · ` : ""}#${r.teamRank} on team${snap}`;
-  const more = r.fair != null && (r.two != null || r.first != null) ? `2+ TDs ${r.two != null ? Math.round(r.two) + "%" : "—"} · first TD of the game ${r.first != null ? Math.round(r.first) + "%" : "—"}` : "";
-  const flags = (r.flags || []).map((f) => `<div class="y" style="font-size:11.5px">⚠ ${esc(f)}</div>`).join("") +
-    // Game-day inactives come out ~90 min before kickoff and are NOT in the injury feed; an inactive player's TD market
-    // settles No. Reminder on every Questionable player until kickoff.
-    (r.returning ? (r.returningState === "practicing" ? `<div class="g" style="font-size:11.5px">↩ Returning · was ${esc(r.returning)} last week</div>` : `<div class="y" style="font-size:11.5px">↩ Was ${esc(r.returning)} last week · not practicing · treated as out</div>`) : "") +
-    (r.espn ? `<div style="font-size:11.5px" class="dim">ESPN: ${esc(r.espn)}</div>` : "") +
-    (/^questionable$/i.test(r.injury || "") && !g.started ? `<div class="y" style="font-size:11.5px">⚠ Questionable${r.fairIfPlays != null ? ` · ${Math.round(r.fairIfPlays)}% if he plays` : ""}</div>` : "") +
-    (r.depthNote ? `<div style="font-size:11.5px" class="${/up|new/.test(r.depthNote) ? "g" : "r"}">${/up|new/.test(r.depthNote) ? "▲" : "▼"} ${esc(r.depthNote)}</div>` : "") +
-    (r.move ? `<div style="font-size:11.5px" class="${r.move > 0 ? "g" : "r"}">Price ${r.move > 0 ? "▲ +" : "▼ "}${r.move}¢ ${r.moveSince || "in the last day"}</div>` : "");
-  const logo = r.team ? `<img class="logo" src="${logoUrl(r.team)}" alt="${r.team}">` : "";
-  return `<div class="prow"><div>${logo}<b style="font-weight:600">${esc(r.player)}</b><span class="pos">${esc(r.pos)}</span>${inj}<div class="s">${sub}</div></div>` +
-    `<div class="n"><span class="big">${chance}</span><span class="lbl">model's<br>chance</span></div>` +
-    `<div class="n"><span class="px">${cents}</span><span class="lbl">Polymarket<br>price${r.stale ? " (old)" : ""}${r.open != null && r.price != null && Math.round(r.open * 100) !== Math.round(r.price * 100) ? `<br><span class="dim">opened ${Math.round(r.open * 100)}¢</span>` : ""}</span></div>` +
-    `<div class="why">${(() => { const b = tdBlend(r); return b ? `<div style="font-size:11.5px">Blended chance <b>${Math.round(b.blend)}%</b> <span class="dim">(half model ${Math.round(b.model)}% · half market ${Math.round(b.mid)}%)</span></div>` : ""; })()}${more}${flags}</div></div>`;
 }
 const usable = (r) => !(r.odds != null && r.odds <= -600 && !r.thin);   // a real -600 price is broken data; never hide a player over a thin placeholder
 // Injury tag next to the name (10/9): official report first, ESPN's status before Friday. Q yellow, D orange, OUT red.
@@ -309,58 +275,46 @@ function practTag(r) {
   const t = String(r.injury || ""), k = /did not|dnp|not participate/i.test(t) ? "DNP" : /limited/i.test(t) ? "LP" : /full/i.test(t) ? "FP" : "";
   return k ? ` <span class="pill" style="padding:0 6px;font-size:10px;font-weight:800;color:var(--faint);border:1px solid var(--line2)">${k}</span>` : "";
 }
-// 10/14 (owner): "Market disagrees" is a warning on the player's own row (Polymarket 20+ points from the model -- check the news)
-function mktWarn(r) {
-  if (!r || r.fair == null || r.price == null || Math.abs(r.price * 100 - r.fair) < 20) return "";
-  const thin = r.bid != null && r.price - r.bid >= 0.15;
-  return `<div class="mwarn">⚠ Market disagrees: Polymarket ${Math.round(r.price * 100)}¢ vs model ${Math.round(r.fair)}% · ${thin ? `price unreliable (best bid ${Math.round(r.bid * 100)}¢)` : "check the news"}</div>`;
+// 10/20 night (owner's sketch): ONE line per player, nothing to open -- [logo] name pos / game · #N on team | SNAP | 2+ TD | MODEL (purple) | PM (far right)
+const tdCell = (v) => `<span class="tc">${v}</span>`;
+function tdRow(x) {
+  const r = x.r, snap = r.snap && r.snap.pct != null ? `${Math.round(r.snap.pct)}%` : "—", two = r.two != null ? `${Math.round(r.two)}%` : "—";
+  return `<div class="tdr"><div class="in">${tlogo(r.team)}<div class="nmx"><div class="l1"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos || "")}</span>${injTag(r) || practTag(r)}${retPill(r)}</div><div class="g2">${esc(r.game || "")}${r.teamRank ? ` · #${r.teamRank} on team` : ""}</div></div>` +
+    tdCell(snap) + tdCell(two) + `<span class="tc mp"><em>${tdPct(r.fair)}%</em></span><span class="tc pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${tdNoGap(r) != null ? ` <span class="y nogap" title="No · ${tdNoGap(r)} under">⚠</span>` : ""}</span></div></div>`;
 }
-function tdRow(x, i) {
-  const r = x.r, g = x.g;
-  return `<div class="tdr"><div class="in"><span class="rk">${i + 1}</span>${tlogo(r.team)}` +
-    `<div class="nmx"><div class="l1"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos)}</span>${injTag(r)}${retPill(r)}</div><div class="g2">${esc(r.game)}</div>${mktWarn(r)}</div>` +
-    `<div class="mp"><em class="${clsOf(r.fair)}">${tdPct(r.fair)}%</em><div class="bar"><i style="width:${Math.min(100, r.fair)}%"></i></div></div><div class="pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${(() => { const b = tdBlend(r); if (b && b.blend - r.price * 100 >= 5) return `<div class="g" style="font-size:10px">+${Math.round(b.blend - r.price * 100)} vs price</div>`;
-      return ""; })()}${tdNoGap(r) != null ? ` <span class="y nogap" title="No · ${tdNoGap(r)} under">⚠</span>` : ""}</div></div>` +
-    `<div class="more" style="--tc:${TEAM_COLOR[r.team] || "#444"};--logo:url(${logoUrl(r.team)})">${prow(r, g, true)}</div></div>`;
-}
+const tdHead = (title) => `<div class="tdh"><span class="h1">${title}</span><span class="tc">SNAP</span><span class="tc">2+ TD</span><span class="tc">MODEL</span><span class="tc">PM</span></div>`;
 const earlyNote = (g) => (g && g.early ? '<span class="pill p-y" style="padding:0 6px;font-size:10px">Early estimate</span>' : "");
 // One Anytime TD section for the slate in S: price moves, then the top 3 per team, most likely first.
 const BEST_TD = 55;
 // 10/14 audit: a player at 54.6% is NOT a "55%+" Best TD pick, so he must not be shown as 55% either (below the line the % rounds down, like the card picks)
 const tdPct = (v) => (v < BEST_TD && Math.round(v) >= BEST_TD ? BEST_TD - 1 : Math.round(v));
-let FTD_OPEN = false;
 // every game not started: the team split (away % / home %) and each team's three likeliest first scorers (the model's first-TD chance, Polymarket's price)
 function firstTdGames() {
   return (S && S.games ? S.games : []).filter((g) => !g.started).map((g) => {
     const rows = (g.td || []).filter((r) => r.first != null && usable(r) && !/^(out|doubtful)$/i.test(r.injury || "")).sort((a, b) => b.first - a.first);
     const picks = [g.away, g.home].flatMap((t) => rows.filter((r) => r.team === t).slice(0, 3));
-    const ft = g.ftdTeam, head = ft ? `<div class="ftdteams"><span>${tlogo(g.away)}${esc(g.away)} <b class="${clsOf(ft.away)}">${Math.round(ft.away)}%</b></span><span class="dim">first TD</span><span><b class="${clsOf(ft.home)}">${Math.round(ft.home)}%</b> ${esc(g.home)}${tlogo(g.home)}</span></div>` : "";
+    const ft = g.ftdTeam, head = ft ? `<div class="ftdteams"><span>${tlogo(g.away)}${esc(g.away)} <b class="mod">${Math.round(ft.away)}%</b></span><span class="dim">first TD</span><span><b class="mod">${Math.round(ft.home)}%</b> ${esc(g.home)}${tlogo(g.home)}</span></div>` : "";
     return { game: g.key, kickoff: g.kickoff, away: g.away, home: g.home, head, rows: picks, picks: picks.map((r) => ({ name: r.player, team: r.team, pos: r.pos, chance: r.first / 100, price: r.firstPrice ?? null, first: true })) };
   }).filter((x) => x.rows.length);
 }
-const firstTdRow = (r) => `<div class="tdr best"><div class="in">${tlogo(r.team)}<div class="nmx"><div class="l1"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos || "")}</span>${injTag(r) || practTag(r)}</div></div><div class="mp"><em class="${clsOf(r.first)}">${Math.round(r.first)}%</em></div><div class="pxc">${r.firstPrice != null ? Math.round(r.firstPrice * 100) + "¢" : "—"}</div></div></div>`;
+const firstTdRow = (r) => `<div class="tdr best"><div class="in">${tlogo(r.team)}<div class="nmx"><div class="l1"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos || "")}</span>${injTag(r) || practTag(r)}</div></div><div class="mp"><em>${Math.round(r.first)}%</em></div><div class="pxc">${r.firstPrice != null ? Math.round(r.firstPrice * 100) + "¢" : "—"}</div></div></div>`;
 function tdBody() {
   const rows = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).map((r) => ({ r, g })))
     .filter((x) => x.r.fair != null && usable(x.r)).sort((a, b) => b.r.fair - a.r.fair);
+  if (!rows.length) return `<div class="card" style="margin-top:10px"><div class="s">${S.games.length && S.games.every((g) => g.started) ? "No games left this week." : "No players yet."}</div></div>`;
   const moves = S.games.filter((g) => !g.started).flatMap((g) => (g.td || []).filter((r) => r.move).map((r) => r)).sort((a, b) => Math.abs(b.move) - Math.abs(a.move)).slice(0, 10);
   const moveBox = moves.length ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Price moves (5¢+, real markets)</div>${moves.map((r) => `<div class="row"><span>${esc(r.player)} <span class="dim">${esc(r.game)}</span></span><span class="${r.move > 0 ? "g" : "r"}">${r.move > 0 ? "▲ +" : "▼ "}${r.move}¢</span></div>`).join("")}</div></div>` : "";
   // Best TD picks (10/14, owner: "build now"): only the players the model gives 55%+ (shown chance, after injury discounts). Graded weeks 3-5:
   // 55%+ players scored 17 of 21 (said 65%) vs 22% for every listed player -- the model's most confident tier, not a smarter model.
   const best = rows.filter((x) => x.r.fair >= BEST_TD);
-  // 10/20 (owner: "separate the model % and the polymarket $ ... color code the model %"): MODEL and POLYMARKET columns, labeled, the % colored
-  const colHead = (title, pad = 6) => `<div class="tdh"><span style="flex:1;padding-left:${pad}px">${title}</span><span style="width:74px;text-align:right">MODEL</span><span style="width:78px;text-align:right;white-space:nowrap">POLYMARKET</span></div>`;
-  const bestBox = `<div class="card tdl tdbest">${colHead(`BEST TD PICKS · MODEL ${BEST_TD}%+`)}${best.length ? best.map((x) => `<div class="tdr best"><div class="in">${tlogo(x.r.team)}<div class="nmx"><div class="l1"><b>${esc(x.r.player)}</b><span class="pos">${esc(x.r.pos || "")}</span>${injTag(x.r) || practTag(x.r)}</div><div class="g2">${esc(x.g.key)}</div>${mktWarn(x.r)}</div><div class="mp"><em class="${clsOf(x.r.fair)}">${Math.round(x.r.fair)}%</em></div><div class="pxc">${x.r.price != null ? Math.round(x.r.price * 100) + "¢" : "—"}</div></div></div>`).join("") : '<div class="s" style="padding:10px 12px">No player at 55%+ right now.</div>'}</div>`;
-  // FIRST TD (10/20, owner: "make a model where you choose the first td ... see what team who will most likely to score"): the FIRST TD TEAM MODEL
-  // (lib/calibration.js teamFirstChance: which team scores the game's first TD, from the spread; walk-forward 2017-25 the likelier team 59.9%,
-  // said 58.5) splits the game, then each team's players carry their share (top pick per game hit 14.9% vs 13.6% under the old whole-game share).
-  // One block per game: the two teams' chances, then each team's three likeliest first scorers with the model % and Polymarket's first-TD price.
-  // Opens / closes on a tap (owner). Graded per game in the results (ftd / ftdHit, ftdTeam); the Models page shows both records.
-  const firstBox = `<div class="card tdl tdbest ftdbox${FTD_OPEN ? " open" : ""}" style="margin-top:10px" id="ftd-box"><div class="tdh ftdh" data-ftd-toggle><span style="flex:1;padding-left:6px">FIRST TD · TEAM MODEL</span><i class="car">▾</i></div><div class="ftdc">${firstTdGames().map((x) => `<div class="ftdg"><div class="ftdt">${gameLogos(x.game)}</div>${x.head}${colHead("PLAYER", 28)}${x.rows.map(firstTdRow).join("")}</div>`).join("") || '<div class="s" style="padding:10px 12px">No games left this week.</div>'}</div></div>`;
-  // Top 3 per team (10/5): beyond the three likeliest scorers the rest is noise.
-  // 10/14 (owner): players already in Best TD picks are left out of this list (no repeats)
+  const bestBox = `<div class="card tdl tdbest">${tdHead(`BEST TD PICKS · MODEL ${BEST_TD}%+`)}${best.length ? best.map(tdRow).join("") : '<div class="s dim" style="padding:8px 12px">None right now.</div>'}</div>`;
+  // Top 3 per team (10/5): beyond the three likeliest scorers the rest is noise. 10/14 (owner): players already in Best TD picks are left out (no repeats).
   const perTeam = {}, shown = rows.filter((x) => { const k = x.r.team; perTeam[k] = (perTeam[k] || 0) + 1; return perTeam[k] <= 3; }).filter((x) => x.r.fair < BEST_TD);
-  if (!rows.length) return `<div class="card" style="margin-top:10px"><div class="s">${S.games.length && S.games.every((g) => g.started) ? "No games left this week." : "No players yet."}</div></div>`;
-  return bestBox + firstBox + moveBox + `<div class="card tdl"><div class="tdh"><span style="flex:1;padding-left:28px">PLAYER</span><span style="width:74px;text-align:right">MODEL</span><span style="width:78px;text-align:right;white-space:nowrap">POLYMARKET</span></div>${shown.map(tdRow).join("")}</div>`;
+  // 10/20 night (owner): the list is split by time slot -- the same slots as Game Lines, kickoff order; inside a slot the rows keep the model order
+  const slots = [], by = {};
+  for (const g of S.games.filter((g) => !g.started).sort(order)) { const sl = (g.carry ? `WEEK ${g.week} · ` : "") + (g.kickoff ? labSlot(g.kickoff) : "GAMES"); if (!by[sl]) { by[sl] = []; slots.push(sl); } by[sl].push(g.key); }
+  const list = slots.map((sl) => { const xs = shown.filter((x) => by[sl].includes(x.g.key)); return xs.length ? `<div class="sh labslot">${sl}</div><div class="card tdl">${tdHead("PLAYER")}${xs.map(tdRow).join("")}</div>` : ""; }).join("");
+  return bestBox + moveBox + list;
 }
 function renderTd() {
   $("td-header").textContent = "";   // 10/17 (owner): no subtitle
@@ -958,37 +912,6 @@ async function ensureGrades() {
   if (RES || (GRADES && Date.now() - GRADES_AT < 120000)) return;
   try { const rl = await (await fetch("/api/results/list", { cache: "no-store" })).json(); if (rl && rl.ok) { GRADES = rl.results || []; GRADES_AT = Date.now(); if (DETAIL) { const g = S && S.games.find((x) => x.key === DETAIL); if (g && g.final) renderDetail(g); } } } catch {}
 }
-const tdKey = (team, name) => `${team}|${String(name || "").toLowerCase().replace(/[^a-z]/g, "")}`;
-// { map: Map(team|name -> {scored, played}), found } for this finished game, or null when its record isn't loaded.
-function tdGradeMap(g) {
-  const list = RES || GRADES; if (!list) return null;
-  const rec = list.find((r) => r.game === g.key && (r.week == null || S.week == null || Number(r.week) === Number(S.week)));
-  if (!rec || !rec.td) return { map: new Map(), found: false };
-  return { map: new Map(rec.td.map((p) => [tdKey(p.team, p.player), p])), found: true };
-}
-// One mark per player: scored / didn't / sat out / waiting for the snap counts.
-function tdMark(gr, r) {
-  if (!gr || !gr.found) return "";
-  const p = gr.map.get(tdKey(r.team, r.player));
-  if (!p) return '<span class="dim">not graded</span>';
-  if (p.scored) return '<b class="g">✓ scored</b>';
-  if (p.played === false) return '<span class="dim">inactive</span>';
-  if (p.played === undefined) return '<span class="y">waiting for snaps</span>';
-  return '<b class="r">✗ no TD</b>';
-}
-// "Model's top 6: 3 scored · expected 2.9" from the players shown, graded ones only (inactive and waiting are left out, as on the Models tab).
-function tdGameLine(gr, rows) {
-  if (!gr || !gr.found) return "";
-  const gp = rows.map((r) => ({ r, p: gr.map.get(tdKey(r.team, r.player)) })).filter((x) => x.p && (x.p.scored || x.p.played === true));
-  const waiting = rows.filter((r) => { const p = gr.map.get(tdKey(r.team, r.player)); return p && !p.scored && p.played === undefined; }).length;
-  if (!gp.length) return waiting ? `<div class="s y" style="margin:8px 0 0">Waiting for snap counts.</div>` : "";
-  const hit = gp.filter((x) => x.p.scored).length, exp = gp.reduce((a, x) => a + x.r.fair, 0) / 100;
-  return `<div class="s" style="margin:8px 0 0"><b>Touchdowns:</b> model's top ${gp.length} · ${hit} scored · expected ${exp.toFixed(1)}${waiting ? ` · <span class="y">${waiting} waiting for snap counts</span>` : ""}</div>`;
-}
-// First TD pick (10/6): the player from either team with the highest first-touchdown chance; after the game, ✓ if he scored first.
-function firstTdPick(g) {
-  return (g.td || []).filter((r) => r.first != null && r.fair != null && usable(r) && !/^(out|doubtful)$/i.test(r.injury || "")).sort((a, b) => b.first - a.first)[0] || null;
-}
 // Season record of the first-TD pick: in each graded game, the listed player (who played) with the highest first-TD chance.
 function firstTdRecord(res) {
   const picks = (res || []).map((r) => (r.td || []).filter((p) => p.ftd != null && p.played !== false).sort((a, b) => b.ftd - a.ftd)[0]).filter(Boolean);
@@ -997,24 +920,6 @@ function firstTdRecord(res) {
   const tt = (res || []).map((r) => r.ftdTeam).filter((t) => t && (t.first === "home" || t.first === "away") && t.home != null), th = tt.filter((t) => (t.home >= t.away ? "home" : "away") === t.first).length;
   const teamRow = tt.length ? `<div class="row"><span class="dim">First TD team (likelier side)</span><span>${th} of ${tt.length} · ${Math.round(th / tt.length * 100)}% · exp ${Math.round(tt.reduce((a, t) => a + Math.max(t.home, t.away), 0) / tt.length)}%</span></div>` : "";
   return `<div class="row"><span class="dim">First TD picks</span><span>${hit} of ${picks.length} · ${Math.round(hit / picks.length * 100)}% · exp ${Math.round(said)}%</span></div>${teamRow}`;
-}
-function firstTdLine(g, gr) {
-  const p = firstTdPick(g); if (!p) return "";
-  const rec = gr && gr.found ? gr.map.get(tdKey(p.team, p.player)) : null;
-  const mark = !g.final || !rec || rec.ftdHit === undefined ? "" : rec.ftdHit ? ' · <b class="g">✓ scored first</b>' : ' · <b class="r">✗</b>';
-  return `<div class="s" style="margin:8px 0 0"><b>First TD pick:</b> ${esc(p.player)} <span class="dim">${esc(p.team)}</span> <b class="mod">${Math.round(p.first)}%</b>${mark}</div>`;
-}
-// 10/16 (owner): ONE "ANYTIME TD" card -- the top 3 of each team in one list, best to worst, team logo next to the name, no team titles;
-// the First TD pick (and the finished game's touchdown line) sit at the bottom of that card.
-function tdTop3(g) {
-  const gr = g.final ? tdGradeMap(g) : null;
-  const top = (team) => (g.td || []).filter((r) => r.team === team && r.fair != null && usable(r)).sort((a, b) => b.fair - a.fair).slice(0, 3);
-  const rows = top(g.away).concat(top(g.home)).sort((a, b) => b.fair - a.fair);
-  const wo = [g.away, g.home].map((team) => ((g.without || {})[team] || []).map((w) => `<div class="s" style="margin-top:8px">${tlogo(team)}<b>Without ${esc(w.out)}</b> <span class="dim">(${w.games} game${w.games === 1 ? "" : "s"})</span>: ${w.top.length ? w.top.map((x) => `${esc(x.name)} ${x.td}`).join(" · ") : "no TDs"}</div>`).join("")).join("");
-  const list = rows.map((r, i) => `<div class="p"><div class="a"><span class="dim" style="font-size:11px;width:16px">#${i + 1}</span>${tlogo(r.team)}<b>${esc(r.player)}<span class="pos">${esc(r.pos)}</span></b><em class="mod">${tdPct(r.fair)}%</em></div>` +
-    `<div class="b">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${r.two != null ? ` · 2+ ${Math.round(r.two)}%` : ""}${r.first != null ? ` · 1st ${Math.round(r.first)}%` : ""}${gr && gr.found ? ` · ${tdMark(gr, r)}` : ""}</div></div>`).join("") || '<div class="s">No players yet.</div>';
-  const foot = firstTdLine(g, gr) + (g.final ? tdGameLine(gr, rows) : "");
-  return secRow("ANYTIME TD") + `<div class="sc card mcard" style="margin-top:10px"><div class="in">${list}${wo}${foot ? `<div class="tdfoot">${foot}</div>` : ""}</div></div>`;
 }
 function startsIn(g) {
   const ms = new Date(g.kickoff) - Date.now(); if (!(ms > 0)) return "";
@@ -1120,9 +1025,9 @@ function legLogoLabel(l) { return esc(l.label); }
 function pBlock(title, p, showGame) {
   if (!p || !Array.isArray(p.legs) || !p.legs.length) return "";
   const pr = typeof p.prob === "number" && isFinite(p.prob) ? p.prob : null;
-  const legs = p.legs.map((l) => `<div class="pbl">${legMark(l.result)} ${legTxt(l.result, `${legLogoLabel(l)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · ${legPct(l)}%`)}${showGame && l.game ? ` <span class="dim">${gameLogos(l.game)}</span>` : ""}</div>`).join("");
+  const legs = p.legs.map((l) => `<div class="pbl">${legMark(l.result)} ${legTxt(l.result, `${legLogoLabel(l)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · <span class="mod">${legPct(l)}%</span>`)}${showGame && l.game ? ` <span class="dim">${gameLogos(l.game)}</span>` : ""}</div>`).join("");
   const res = p.result === "W" ? '<span class="g">✓ Won</span>' : p.result === "L" ? '<span class="r">✗ Lost</span>' : p.result === "P" ? '<span class="dim">Push</span>' : "";
-  return `<div class="par"><div class="pbh"><span class="pbn">${title}${pr == null ? "" : ` <span class="${pr >= 0.3 ? "g" : pr >= 0.15 ? "lg" : "y"}">· ${Math.round(pr * 100)}%</span>`}</span><span class="plb"${plTap(p)}>${pmLogo()} ${plShown(p)}</span></div>${legs}<div class="pbr">${res}</div></div>`;
+  return `<div class="par"><div class="pbh"><span class="pbn">${title}${pr == null ? "" : ` <span class="mod">· Model ${Math.round(pr * 100)}%</span>`}</span><span class="plb"${plTap(p)}>${pmLogo()} ${plShown(p)}</span></div>${legs}<div class="pbr">${res}</div></div>`;
 }
 function sgpBox(g) {
   const x = g.sgp; if (!x || g.started || g.final) return "";
@@ -1158,8 +1063,8 @@ async function loadProps() {
 }
 const recTile = (rc, label = "RECORD") => `<div class="stats" style="margin-top:10px"><div class="stat"><div class="k">${label}</div><div class="v ${rc && rc.pct >= 56 ? "g" : rc && rc.pct >= 53 ? "lg" : !rc || rc.pct == null ? "" : "y"}">${rc ? rc.w || 0 : 0}–${rc ? rc.l || 0 : 0}</div><div class="k2">${!rc || rc.pct == null ? "—" : rc.pct + "% won"}</div></div></div>`;
 const teamSel = (teams) => `<div class="wksel"><select id="props-team" aria-label="Team"><option value="all"${PROPTEAM === "all" ? " selected" : ""}>All teams</option>${teams.map((t) => `<option value="${esc(t)}"${PROPTEAM === t ? " selected" : ""}>${esc(t)}</option>`).join("")}</select></div>`;
-// 10/20 (owner: "label these by Models Chance and Polymarket Prices ... color code the model %"): the MODEL column is colored by the chance (56%+ green, 53-55 light green, under yellow)
-const propRow = (p) => `<div class="pbl ppr${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${tlogo(p.team || "")}${esc(p.name)}</span><span class="pp2">${p.first ? "First TD" : `${p.stat === "rec" ? "Rec " : p.stat === "pass_yds" ? "Pass Yds " : ""}${p.side === "over" ? "Over" : "Under"} ${p.line}`}</span><span class="pp3 ${clsOf(p.chance * 100)}">${Math.round(p.chance * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
+// 10/20 (owner: "label these by Models Chance and Polymarket Prices"; later the same night: "keep all model purple"): the MODEL column is the model's number, purple
+const propRow = (p) => `<div class="pbl ppr${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${tlogo(p.team || "")}${esc(p.name)}</span><span class="pp2">${p.first ? "First TD" : `${p.stat === "rec" ? "Rec " : p.stat === "pass_yds" ? "Pass Yds " : ""}${p.side === "over" ? "Over" : "Under"} ${p.line}`}</span><span class="pp3 mod">${Math.round(p.chance * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
 const PROP_HEAD = '<div class="pbl ppr pph"><span class="pp1">PLAYER</span><span class="pp2">LINE</span><span class="pp3">MODEL</span><span class="pp4">POLYMARKET</span></div>';
 // the rows of one game, split by team (away first, then home, then anyone with no team), each team with its small label (owner: "separate them by teams")
 function teamRows(g, row) {
@@ -1212,7 +1117,7 @@ function ouLegs(g) {
   return C.plain ? [{ label: C.plain.pick, prob: C.plain.hit / 100, price: C.plain.price }] : [];   // 10/19 (owner): PICK w/ POINTS only on the card, under MORE
 }
 function ouBlock(title, legs) {   // same block look as a parlay; every line is its own bet: line · win % · Polymarket price, ✓ / ✗ once graded
-  const line = (l) => `<div class="pbl">${legMark(l.result)} ${legTxt(l.result, `${esc(l.label)}${l.bought && l.points ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · ${legPct({ kind: "total", ...l })}%${l.price > 0 && l.price < 1 ? ` · ${Math.round(l.price * 100)}¢` : ""}`)}</div>`;
+  const line = (l) => `<div class="pbl">${legMark(l.result)} ${legTxt(l.result, `${esc(l.label)}${l.bought && l.points ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · <span class="mod">${legPct({ kind: "total", ...l })}%</span>${l.price > 0 && l.price < 1 ? ` · ${Math.round(l.price * 100)}¢` : ""}`)}</div>`;
   return `<div class="par"><div class="pbh"><span class="pbn">${title}</span></div>${legs.map(line).join("")}</div>`;
 }
 function labParlays(week, type) {
@@ -1252,7 +1157,7 @@ function linesBg() { const on = (id) => { const p = $(id); return !!(p && p.clas
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = ""; linesBg();
   document.body.classList.add("game-on");   // 10/18 (owner): on a game page the game card IS the header -- the NEXT GAME strip is hidden, ← Games sits under the card
-  $("detail").innerHTML = `${detailTop(g)}<button class="back" id="back-btn">← Games</button>${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : ""}${gameCard(g, "x")}${totalCard(g, "x")}${tdTop3(g)}${sgpBox(g)}`;
+  $("detail").innerHTML = `${detailTop(g)}<button class="back" id="back-btn">← Games</button>${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : ""}${gameCard(g, "x")}${totalCard(g, "x")}${sgpBox(g)}`;
   $("back-btn").onclick = closeGame;
   if (g.final) ensureGrades();
   setBg($("panel-lines").classList.contains("on") ? g : null);   // 10/14 fix: the background redraw ran while another tab was showing (SEA/DEN logos on Models)
@@ -1368,6 +1273,8 @@ const alSeen = () => { try { return localStorage.getItem("alSeen") || ""; } catc
 async function loadAlerts() {
   try { const d = await (await fetch("/api/alerts", { cache: "no-store" })).json(); if (d.ok) { ALERTS = d.alerts || []; renderAlerts(); } } catch {}
 }
+// 10/20 night (owner: "add the logos here too ... make the app consistent"): the alert's game line carries both team logos, like the parlay headers
+const alGameLogos = (game) => { const m = /^(\S+) @ (\S+)$/.exec(String(game || "")); return m ? `${tlogo(m[1])}${esc(m[1])} @ ${tlogo(m[2])}${esc(m[2])}` : esc(game); };
 function renderAlerts() {
   const dots = ALPREV != null ? ALPREV : alSeen(), unread = ALERTS.filter((a) => a.t > alSeen()).length;
   Shell.setCount("nfl", "alerts", unread);
@@ -1375,7 +1282,7 @@ function renderAlerts() {
   $("alerts").innerHTML = list.map((a) => { const [lab, col] = ALK[a.kind] || [a.kind, "var(--dim)"];
     const ic = a.kind === "INJURY" && a.team ? injBadge(a.team) : a.kind === "LINE MOVE" ? pmLogo() : "";
     return `<div class="card al${a.t > dots ? " un" : ""}" data-algame="${esc(a.game || "")}"><span class="dot"></span><div style="flex:1"><div class="kd" style="color:${col}"><span>${ic}${lab.toUpperCase()}</span><span class="dim" style="font-weight:600;letter-spacing:0">${hm(a.t)}</span></div>` +
-      `<div class="ti">${esc(a.title)}</div>${a.sub ? `<div class="su">${esc(a.sub)}</div>` : ""}${a.game ? `<div style="font-size:11px;font-weight:700;margin-top:6px;color:var(--blue)">${esc(a.game)} ›</div>` : ""}</div></div>`; }).join("") ||
+      `<div class="ti">${esc(a.title)}</div>${a.sub ? `<div class="su">${esc(a.sub)}</div>` : ""}${a.game ? `<div class="algame">${alGameLogos(a.game)} ›</div>` : ""}</div></div>`; }).join("") ||
     '<div class="card" style="margin-top:10px"><div class="s">No alerts.</div></div>';
 }
 function renderAll() { if ($("panel-home").classList.contains("on")) renderHome(); renderLines(); renderTd(); if (PAPER) renderLab(); else renderLabList(); if (MB) renderRecord(); applyBetsView(); tickCd(); renderAlerts(); }
@@ -1391,9 +1298,7 @@ async function loadSlate() {
   if (!loadSlate._rolled) { loadSlate._rolled = true; setTimeout(() => slotMoney($("panel-lines")), 120); }
   if (anyLive() && !liveLoop._on) { liveLoop._on = true; liveLoop(); }   // scores + live lines every 30 s while a game is on
   const open = [...document.querySelectorAll(".drop.open")].map((e) => e.id).filter(Boolean);   // keep your open dropdowns
-  const openTd = [...document.querySelectorAll(".tdr")].map((e, i) => (e.classList.contains("open") ? i : -1)).filter((i) => i >= 0);   // and open player rows
   renderAll(); for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
-  if (openTd.length) { const rows = document.querySelectorAll(".tdr"); for (const i of openTd) if (rows[i]) rows[i].classList.add("open"); }
   try { localStorage.setItem("lastSeen", new Date().toISOString()); } catch {} }   // next visit's "What changed" starts from now
 function showPanel(name) {
   setTimeout(() => slotMoney($("panel-" + String(name).split("-")[0])), 80);   // dollar amounts roll in when a page opens (owner 10/18 night)
@@ -1432,14 +1337,12 @@ $("al-read").onclick = () => { ALPREV = ALERTS.length ? ALERTS[0].t : ""; render
 document.addEventListener("click", (e) => {
   const d = e.target.closest("[data-drop]"); if (d) { const el = $(d.dataset.drop); if (el) { el.classList.toggle("open"); if (d.dataset.drop === "bestlist") { BEST_OPEN = el.classList.contains("open"); try { localStorage.setItem("bestOpen", BEST_OPEN ? "1" : "0"); } catch {} }
       if (d.dataset.drop === "gamebest") { GAMEBEST_OPEN = el.classList.contains("open"); try { localStorage.setItem("gameBestOpen", GAMEBEST_OPEN ? "1" : "0"); } catch {} } } return; }
-  const ft = e.target.closest("[data-ftd-toggle]"); if (ft) { FTD_OPEN = !FTD_OPEN; const b = $("ftd-box"); if (b) b.classList.toggle("open", FTD_OPEN); return; }   // 10/20 (owner): the First TD box opens / closes on a tap
   const gt = e.target.closest("[data-game]"); if (gt) { if (!$("panel-lines").classList.contains("on")) { history.replaceState(null, "", "#lines"); showPanel("lines"); } openGame(gt.dataset.game); return; }
   const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k) { history.replaceState(null, "", "#lines"); showPanel("lines"); openGame(k); } return; }
   const nb = e.target.closest("[data-nbagame]"); if (nb) { location.replace("/nba/index.html#game=" + encodeURIComponent(nb.dataset.nbagame)); return; }   // 10/18 night: no history entry, so a swipe cannot "go back"
   const bv = e.target.closest("[data-bv]"); if (bv) { BETSVIEW = bv.dataset.bv === "model" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} applyBetsView(); try { window.scrollTo(0, 0); } catch {} return; }
   const lw = e.target.closest("[data-labw]"); if (lw) { LABWEEK = Number(lw.dataset.labw); renderLabList(); return; }
   const gb = e.target.closest("[data-gbw]"); if (gb) { GBGWEEK = gb.dataset.gbw === "all" ? "all" : Number(gb.dataset.gbw); $("gbg").innerHTML = gbgHtml(); return; }
-  const tr = e.target.closest(".tdr"); if (tr && !e.target.closest(".price-link") && !e.target.closest(".more")) { tr.classList.toggle("open"); return; }
   const p = e.target.closest(".price-link"); if (p) toast(p.dataset.market ? "Polymarket market: " + p.dataset.market : "No market recorded for this price.", 8000);
 });
 // Everything refreshes by itself while the page is open and visible: lines, model, injuries, alerts, and the records.

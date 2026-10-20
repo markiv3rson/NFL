@@ -56,8 +56,9 @@ export function nbaPropPicks(modelRows, saved, bar = NBA_PROP_BAR) {
   const px = new Map(nbaPropRows(saved).map((r) => [`${r.name}|${r.stat}|${r.line}`, r])), out = [];
   for (const r of modelRows || []) {
     const side = r.over >= r.under ? "over" : "under", chance = side === "over" ? r.over : r.under; if (!(chance >= bar)) continue;
+    if (!r.team) continue;   // 10/20 night (owner screenshot): Polymarket listed other games' players (Paul George under BOS @ DET); the model answers team null for a player not on either team -> not a row
     const p = px.get(`${r.name}|${r.stat}|${r.line}`) || {};
-    out.push({ name: r.name, team: r.team || null, stat: r.stat, line: r.line, side, chance, mu: r.mu, band: bandOf(chance), price: side === "over" ? p.oa ?? null : p.ua ?? null });
+    out.push({ name: r.name, team: r.team, stat: r.stat, line: r.line, side, chance, mu: r.mu, band: bandOf(chance), price: side === "over" ? p.oa ?? null : p.ua ?? null });
   }
   return out;
 }

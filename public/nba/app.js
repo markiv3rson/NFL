@@ -22,7 +22,10 @@ const DESK_Q = "(min-width: 760px) and (pointer: fine)";
 function markDesktop() { try { const on = matchMedia(DESK_Q).matches; document.documentElement.classList.toggle("desktop", on); return on; } catch { return false; } }
 markDesktop(); try { matchMedia(DESK_Q).addEventListener("change", markDesktop); } catch {}
 const started = (g) => Date.now() >= Date.parse(g.start);
-const logoUrl = (a) => (TEAMS[a] ? TEAMS[a].logo : "");
+// 10/20 night (owner: "where is the logos?"): the Player props and Alerts pages can draw before the slate (which carries TEAMS) has loaded,
+// so a team without a slate entry falls back to ESPN's NBA logo (its codes differ for a few teams).
+const ESPN_NBA = { GSW: "gs", NOP: "no", NYK: "ny", SAS: "sa", UTA: "utah", WAS: "wsh", PHX: "phx" };
+const logoUrl = (a) => (TEAMS[a] && TEAMS[a].logo ? TEAMS[a].logo : a ? `https://a.espncdn.com/i/teamlogos/nba/500/${ESPN_NBA[a] || String(a).toLowerCase()}.png` : "");
 const tlogo = (a) => (a ? `<img class="tlogo" src="${esc(logoUrl(a))}" alt="" onerror="this.style.display='none'">` : "");
 const teamColor = (a) => (TEAMS[a] && TEAMS[a].bright) || "#444";
 const pmLogo = () => '<span class="pm"><img src="https://polymarket.com/favicon.ico" alt="" onerror="this.parentNode.textContent=\'P\'"></span>';
@@ -321,8 +324,8 @@ function renderProps() {
   const games = all.map((g) => ({ ...g, picks: PROPTEAM === "all" ? g.picks : g.picks.filter((p) => p.team === PROPTEAM) })).filter((g) => g.picks.length);
   const rc = (d.record || {})[PROPTAB] || null;
   const tile = `<div class="stats" style="margin-top:10px"><div class="stat"><div class="k">RECORD</div><div class="v ${rc && rc.pct >= 56 ? "g" : rc && rc.pct >= 53 ? "lg" : !rc || rc.pct == null ? "" : "y"}">${rc ? rc.w || 0 : 0}–${rc ? rc.l || 0 : 0}</div><div class="k2">${!rc || rc.pct == null ? "—" : rc.pct + "% won"}</div></div></div>`;
-  // 10/20 (owner: "label these by Models Chance and Polymarket Prices ... separate them by teams ... color code the model %"; design = both sports)
-  const row = (p) => `<div class="pbl ppr${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${tlogo(p.team || "")}${esc(p.name)}</span><span class="pp2">${PROP_SHORT[p.stat] || ""} ${p.side === "over" ? "Over" : "Under"} ${p.line}</span><span class="pp3 ${clsOf(p.chance * 100)}">${Math.round(p.chance * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
+  // 10/20 (owner: "label these by Models Chance and Polymarket Prices ... separate them by teams"; the model % stays purple, owner: "keep all model purple"; design = both sports)
+  const row = (p) => `<div class="pbl ppr${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${tlogo(p.team || "")}${esc(p.name)}</span><span class="pp2">${PROP_SHORT[p.stat] || ""} ${p.side === "over" ? "Over" : "Under"} ${p.line}</span><span class="pp3 mod">${Math.round(p.chance * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
   const head = '<div class="pbl ppr pph"><span class="pp1">PLAYER</span><span class="pp2">LINE</span><span class="pp3">MODEL</span><span class="pp4">POLYMARKET</span></div>';
   const teamRows = (g) => [...new Set([g.away, g.home, ...g.picks.map((p) => p.team || "")])].map((t) => { const rs = g.picks.filter((p) => (p.team || "") === t); return rs.length ? `${t ? `<div class="pbl pteam">${tlogo(t)}${esc(t)}</div>` : ""}${rs.map(row).join("")}` : ""; }).join("");
   const slotTimes = {}; for (const g of games) if (g.start) { const sl = nbaSlot(g.start), t = tipTime(g.start); (slotTimes[sl] = slotTimes[sl] || []).includes(t) || slotTimes[sl].push(t); }
@@ -423,9 +426,9 @@ const gameLogos = (key) => { const m = String(key || "").match(/^([A-Z]{2,4}) @ 
 function pBlock(title, p, showGame) {
   if (!p || !Array.isArray(p.legs) || !p.legs.length) return "";
   const pr = typeof p.prob === "number" && isFinite(p.prob) ? p.prob : null;
-  const legs = p.legs.map((l) => `<div class="pbl">${legMark(l.result)} ${legTxt(l.result, `${tlogo(l.team || "")}${esc(l.label)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · ${Math.round((l.prob || 0) * 100)}%`)}${showGame && l.game ? ` <span class="dim">${gameLogos(l.game)}</span>` : ""}</div>`).join("");
+  const legs = p.legs.map((l) => `<div class="pbl">${legMark(l.result)} ${legTxt(l.result, `${tlogo(l.team || "")}${esc(l.label)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · <span class="mod">${Math.round((l.prob || 0) * 100)}%</span>`)}${showGame && l.game ? ` <span class="dim">${gameLogos(l.game)}</span>` : ""}</div>`).join("");
   const res = p.result === "W" ? '<span class="g">✓ Won</span>' : p.result === "L" ? '<span class="r">✗ Lost</span>' : p.result === "P" ? '<span class="dim">Push</span>' : "";
-  return `<div class="par"><div class="pbh"><span class="pbn">${title}${pr == null ? "" : ` <span class="${pr >= 0.3 ? "g" : pr >= 0.15 ? "lg" : "y"}">· ${Math.round(pr * 100)}%</span>`}</span><span class="plb"${plTap(p)}>${pmLogo()} ${plShown(p)}</span></div>${legs}<div class="pbr">${res}</div></div>`;
+  return `<div class="par"><div class="pbh"><span class="pbn">${title}${pr == null ? "" : ` <span class="mod">· Model ${Math.round(pr * 100)}%</span>`}</span><span class="plb"${plTap(p)}>${pmLogo()} ${plShown(p)}</span></div>${legs}<div class="pbr">${res}</div></div>`;
 }
 function labParlays(day, type) {
   const rec = (MODELBETS && MODELBETS.days && MODELBETS.days[day] && MODELBETS.days[day][type]) || [];
@@ -543,6 +546,8 @@ const alSeen = () => { try { return localStorage.getItem("alSeen") || ""; } catc
 async function loadAlerts() {
   try { const d = await (await fetch("/api/nba/alerts", { cache: "no-store" })).json(); if (d.ok) { ALERTS = d.alerts || []; renderAlerts(); } } catch {}
 }
+// 10/20 night (owner: "add the logos here too ... make the app consistent"): the alert's game line carries both team logos, like the parlay headers
+const alGameLogos = (game) => { const m = /^(\S+) @ (\S+)$/.exec(String(game || "")); return m ? `${tlogo(m[1])}${esc(m[1])} @ ${tlogo(m[2])}${esc(m[2])}` : esc(game); };
 function renderAlerts() {
   const dots = ALPREV != null ? ALPREV : alSeen(), unread = ALERTS.filter((a) => a.t > alSeen()).length;
   Shell.setCount("nba", "alerts", unread);
@@ -550,7 +555,7 @@ function renderAlerts() {
   $("alerts").innerHTML = list.length ? list.map((a) => { const [lab, col] = ALK[a.kind] || [a.kind, "var(--dim)"];
     const ic = a.kind === "INJURY" && a.team ? tlogo(a.team) : a.kind === "LINE MOVE" ? pmLogo() : "";
     return `<div class="card al${a.t > dots ? " un" : ""}" data-algame="${esc(a.game || "")}"><span class="dot"></span><div style="flex:1"><div class="kd" style="color:${col}"><span>${ic}${lab.toUpperCase()}</span><span class="dim" style="font-weight:600;letter-spacing:0">${hm(a.t)}</span></div>` +
-      `<div class="ti">${esc(a.title)}</div>${a.sub ? `<div class="su">${esc(a.sub)}</div>` : ""}${a.game ? `<div style="font-size:11px;font-weight:700;margin-top:6px;color:var(--blue)">${esc(a.game)} ›</div>` : ""}</div></div>`; }).join("") :
+      `<div class="ti">${esc(a.title)}</div>${a.sub ? `<div class="su">${esc(a.sub)}</div>` : ""}${a.game ? `<div class="algame">${alGameLogos(a.game)} ›</div>` : ""}</div></div>`; }).join("") :
     '<div class="card" style="margin-top:10px"><div class="inner"><div class="s dim">No alerts.</div></div></div>';
 }
 
@@ -562,6 +567,7 @@ async function loadSlate() {
   S = j; TEAMS = j.teams || TEAMS;
   const open = [...document.querySelectorAll(".drop.open")].map((e) => e.id).filter(Boolean);
   tickCd(); renderLines(); loadLiveScores(); if ($("panel-record").classList.contains("on")) { renderBets(); renderLabList(); }
+  if ($("panel-props") && $("panel-props").classList.contains("on") && typeof renderProps === "function") renderProps();   // 10/20 night: logos come with the slate's team list
   for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
   try { localStorage.setItem("lastSeen", new Date().toISOString()); } catch {}
 }

@@ -138,9 +138,8 @@
   .ppr.pph { margin-top:7px; } .ppr.pph span { font-size:10px; letter-spacing:.08em; color:var(--faint); font-weight:700; }
   .pbl.pteam { display:flex; align-items:center; gap:5px; margin-top:6px; font-size:11px; font-weight:800; color:var(--dim); } .pbl.pteam .tlogo { width:14px; height:14px; margin:0; }
   .ftdteams { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:4px 12px 2px; font-size:13px; font-weight:700; } .ftdteams .tlogo { width:18px; height:18px; margin:0 4px; vertical-align:middle; } .ftdteams span { display:flex; align-items:center; gap:4px; }
-  .ftdbox .ftdc { display:none; } .ftdbox.open .ftdc { display:block; } .ftdh { cursor:pointer; user-select:none; } .ftdh .car { font-style:normal; color:var(--faint); transition:transform .15s ease; } .ftdbox.open .ftdh .car { transform:rotate(180deg); }
   .ftdg { border-top:1px solid var(--line2); } .ftdg .ftdt { padding:8px 12px 0; font-size:13px; font-weight:800; display:flex; align-items:center; gap:4px; } .ftdg .ftdt .tlogo { width:18px; height:18px; margin:0; }
-  .tdr .mp em.g { color:var(--green); } .tdr .mp em.lg { color:#a6efc4; } .tdr .mp em.y { color:var(--yellow); } .tdr .pxc { width:78px; }
+  .tdr .pxc { width:78px; } .ppr .pp3.mod, .ftdteams b.mod { color:var(--violet); font-weight:800; }
   .pbl { margin-top:3px; padding-left:12px; overflow-wrap:anywhere; } .pbr { text-align:right; font-weight:800; min-height:4px; }
   @media (max-width:500px) { .par { font-size:12.5px; } .pbn { font-size:13px; } .pbh { gap:6px; } .plb { font-size:12px; } .labslot { font-size:19px; } .labslot .lst { font-size:11px; } }   /* 10/17 (owner): everything fits on the iPhone */
   .wksel { position:relative; display:inline-block; margin-top:12px; padding-right:20px; } .wksel select { -webkit-appearance:none; appearance:none; width:auto; max-width:100%; min-height:36px; padding:0 2px; border:0; border-radius:0; color:#fff; font:inherit; font-size:17px; font-weight:800; cursor:pointer; background:transparent; }
@@ -153,6 +152,7 @@
   .pm { display:inline-flex; width:14px; height:14px; border-radius:4px; background:#2e5cff; color:#fff; align-items:center; justify-content:center; font-size:10px; font-weight:800; vertical-align:-2px; margin-right:4px; overflow:hidden; }
   .pm img { width:14px; height:14px; }
   /* alerts */
+  .al .algame { font-size:11px; font-weight:700; margin-top:6px; color:var(--blue); display:flex; align-items:center; gap:4px; } .al .algame .tlogo { width:16px; height:16px; margin:0; }
   .al { display:flex; gap:10px; align-items:flex-start; padding:11px 12px; margin-top:8px; cursor:pointer; }
   .al .dot { width:8px; height:8px; border-radius:50%; margin-top:6px; flex-shrink:0; background:transparent; } .al.un .dot { background:var(--green); }
   .al .kd { display:flex; justify-content:space-between; align-items:center; font-size:10px; font-weight:800; letter-spacing:.08em; }
@@ -174,7 +174,8 @@
   html.lines-on .pagewm { background:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.1)),url(/nba/lines-bg.jpg?v=4) center/cover no-repeat,#000; }   /* 10/18 evening (owner): only a 10% shade -- "why is it so dark in the app"; it was 68-86% */
   html.lines-on .pagewm::after { display:none; }
   /* 10/20 (owner: "I need to see all the photos ... do the same for the computer"): on a computer the strip is as wide as the page and scrolls with it, every frame top to bottom (cover showed one frame on a wide screen) */
-  @media (min-width:1100px) { html.lines-on .pagewm { background:none; } html.lines-on body { background:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.1)),url(/nba/lines-bg.jpg?v=4) top center/100% auto repeat-y,#000; } }
+  /* 10/20 night (owner: "why is the photos not stacked in the computer still?"): the WHOLE strip, every frame stacked, fits the screen height (fixed, centered) and repeats sideways to fill a wide screen -- at 100% width one frame alone filled a 1920 px screen */
+  @media (min-width:1100px) { html.lines-on .pagewm { background:none; } html.lines-on body { background:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.1)),url(/nba/lines-bg.jpg?v=4) center top/auto 100vh repeat-x fixed,#000; } }
   html.lines-on .panel .card, html.lines-on .panel .stat { background:rgba(8,8,12,.8); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 80% dark so the text reads (owner 10/17), no frosted haze */
   html.lines-on .panel .tile { background:rgba(8,8,12,.55); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 10/18 evening (owner, sketch D): game tiles 55% dark, no team colours, no faded logos */
   #detail .card:not(.dtop) { background:rgba(8,8,12,.55); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 10/18 night (owner): game-page cards see-through like the tiles (55% dark); the team-colour header card stays */
