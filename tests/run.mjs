@@ -207,9 +207,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const t45 = keyNumberPick(day, sp(-4.5), bk(-4.5), [{ team: "LA", line: -2.5, price: 0.66 }]), t55 = keyNumberPick(day, sp(-5.5), bk(-5.5), [{ team: "BUF", line: 7.5, price: 0.64 }]), t135 = keyNumberPick(day, sp(-13.5), bk(-13.5), [{ team: "BUF", line: 14.5, price: 0.6 }]);
   const gone = [[-6, "BUF", 7.5], [-6.5, "BUF", 8.5], [-8, "LA", -5.5], [-6.5, "LA", -2.5], [-9, "LA", -6.5], [-7, "LA", -5.5], [-7.5, "LA", -5.5], [-6, "LA", -3.5], [-2, "LA", -0.5]].map(([b, team, line]) => keyNumberPick(day, sp(b), bk(b), [{ team, line, price: 0.6 }]));
   ok(!t45 && t55 && t55.pick === "BUF +7.5" && t55.hit === 56.1 && /BEAT THE 7/.test(t55.why)
-    && t135 && t135.pick === "BUF +14.5" && t135.hit === 63.9 && /BEAT THE 14/.test(t135.why) && gone.every((x) => !x)
-    && Object.keys(BUY_TIERS).length === 6 && Object.values(BUY_TIERS).every((T) => T.side === "dog") && Object.entries(BUY_TIERS).every(([A, T]) => Math.abs(T.line) - +A <= 3.5),
-    "BEAT THE (10/19): 6 underdog tiers -- books 1, 1.5, 2.5, 3.5, 5.5, 13.5; every favorite tier and books 3 cut; never more than 3.5 points", { t45, t55 });
+    && !t135 && gone.every((x) => !x)
+    && Object.keys(BUY_TIERS).length === 5 && Object.values(BUY_TIERS).every((T) => T.side === "dog") && Object.entries(BUY_TIERS).every(([A, T]) => Math.abs(T.line) - +A <= 3.5),
+    "BEAT THE (10/19): 5 underdog tiers -- books 1, 1.5, 2.5, 3.5, 5.5; every favorite tier, books 3 and (10/20, failed a second line source) books 13.5 cut; never more than 3.5 points", { t45, t55 });
   { const { ruleRecords } = await import("../lib/stack.js"), kick = [{ id: "modelpick|total", kind: "total", hit: 51.7, week: 6, game: "A @ B", result: "W", t: "2" }, { id: "keynum|spread", hit: 58, week: 6, game: "A @ B", result: "L", t: "2" }],
       first = [{ id: "modelpick|total", kind: "total", hit: 51.7, week: 6, game: "A @ B", result: "L", t: "1" }, { id: "keynum|spread", hit: 58, week: 6, game: "A @ B", result: "W", t: "1" }], rr = ruleRecords(kick, first);
     ok(rr["MODEL SIDE · total"].w === 1 && rr["MODEL SIDE · total"].l === 0 && rr["BEAT THE"].w === 1 && rr["BEAT THE"].l === 0, "rule records (10/18 fix): card picks count as locked at kickoff (= Card picks rows); timing rules keep the first-shown pick", rr); }
@@ -243,8 +243,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const i3 = await recordInjEarly(2097, 7, { ...G, key: "NE @ NYJ", home: "NYJ", away: "NE" }, -3, { home: { inj: { qb: 1 } }, away: { inj: { db: 2 } } }, "x");
     const saved = JSON.parse(await getRedis().hget("teaser:2097:7", "KC @ BUF|injearly"));
     await gradeTrackedWeek(2097, 7, [{ key: "KC @ BUF", home: "BUF", away: "KC", homeScore: 20, awayScore: 24 }]); const s2 = await trackedSummary(2097);
-    ok(i1 === 1 && i2 === 0 && i3 === 0 && saved.team === "KC" && saved.line === -2.5 && saved.out === "BUF" && s2.injearly.recorded === 1 && s2.injearly.w === 1,
-      "INJURY EARLY shadow: healthy KC at -2.5 saved once (BUF's QB out), both-hurt game skipped, graded a win", { i1, i2, i3, saved, ie: s2.injearly }); } }
+    // 10/20: a CONTINUING injury (the hurt team had the flag in its previous game) is saved with cont: true, and the summary splits new / continuing
+    const i4 = await recordInjEarly(2097, 7, { key: "DAL @ PHI", home: "PHI", away: "DAL", week: 7 }, 4.5, { home: { inj: { qb: 1 }, injPrev: { qb: 1 } }, away: { inj: {}, injPrev: {} } }, "y");
+    const sc = JSON.parse(await getRedis().hget("teaser:2097:7", "DAL @ PHI|injearly")); const s3 = await trackedSummary(2097);
+    ok(i1 === 1 && i2 === 0 && i3 === 0 && saved.team === "KC" && saved.line === -2.5 && saved.out === "BUF" && saved.cont === false && s2.injearly.recorded === 1 && s2.injearly.w === 1
+      && i4 === 1 && sc.cont === true && sc.team === "DAL" && s3.injearly.recorded === 2 && s3.injearly.fresh.w === 1 && s3.injearly.cont.n === 0,
+      "INJURY EARLY shadow: healthy KC at -2.5 saved once (BUF's QB out), both-hurt game skipped, graded a win; a continuing injury is saved with cont: true and split in the summary", { i1, i2, i3, i4, saved, sc, ie: s3.injearly }); } }
 { const { clvOf } = await import("../lib/stack.js");
   ok(clvOf({ kind: "spread", line: 2.5, first: { line: 3.5 } }) === 1 && clvOf({ kind: "spread", line: -4, first: { line: -3 } }) === 1 && clvOf({ kind: "spread", line: 4, first: { line: 3 } }) === -1
     && clvOf({ kind: "total", side: "over", line: 46, first: { line: 44.5 } }) === 1.5 && clvOf({ kind: "total", side: "under", line: 44, first: { line: 45 } }) === 1 && clvOf({ kind: "spread", line: 3 }) === null,
@@ -272,10 +276,18 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     && !totalMovePick(G, null, 47.5, 47.5).length && !totalMovePick(G, mv(1.2), 47.5, null).length, "total move pick: strong/weak/moved/none", [a, b, c, d]);
   const p = predictTotalMove(Object.fromEntries(UP_MOVE.feat.map((f, i) => [f, UP_MOVE.mean[i]])));
   ok(Math.abs(p.move - UP_MOVE.b0) < 0.01 && p.thr20 === UP_MOVE.thr20, "total move model: average game predicts the intercept", p); }
+{ // 10/20 INJURY first-week rule: a hurt team that already had the flag in its previous game is a CONTINUING injury -> no pick; no previous data -> treated as new
+  const { injuryPick } = await import("../lib/stack.js"); const G = { home: "LA", away: "BUF", key: "BUF @ LA" };
+  const cont = injuryPick(G, -3.5, -3.5, { home: { inj: { qb: 1 }, injPrev: { qb: 1 } }, away: { inj: {}, injPrev: {} } });
+  const fresh = injuryPick(G, -3.5, -3.5, { home: { inj: { qb: 1 }, injPrev: { db: 1 } }, away: { inj: {}, injPrev: {} } });
+  const nodata = injuryPick(G, -3.5, -3.5, { home: { inj: { ol: 2 }, injPrev: null }, away: { inj: {} } });
+  const other = injuryPick(G, -3.5, -3.5, { home: { inj: { qb: 1 }, injPrev: {} }, away: { inj: {}, injPrev: { qb: 1 } } });   // the HEALTHY team's old flag does not matter
+  ok(!cont && fresh && fresh.pick === "BUF +3.5" && fresh.hit === 66.7 && fresh.n === 51 && nodata && nodata.hit === 53.7 && nodata.n === 95 && other && other.pick === "BUF +3.5", "INJURY fires only on a new injury (continuing -> none; no previous data -> new)");
+}
 { const { injuryPick } = await import("../lib/stack.js"); const G = { home: "LA", away: "BUF", key: "BUF @ LA" };
   const inj = (o) => ({ qb: 0, sk: 0, ol: 0, db: 0, f7: 0, ...o }), sit = (h, a) => ({ home: { inj: inj(h) }, away: { inj: inj(a) } });
   const a = injuryPick(G, -3.5, -3.5, sit({ qb: 1 }, {})), b = injuryPick(G, -3.5, -3.5, sit({}, { db: 2 })), c = injuryPick(G, -2.5, -3.5, sit({ ol: 2 }, {}));
-  ok(a && a.pick === "BUF +3.5" && a.hit === 56.5 && b && b.pick === "LA -3.5" && !c && !injuryPick(G, -3.5, -3.5, sit({ qb: 1 }, { qb: 1 })) && !injuryPick(G, -3.5, -3.5, sit({ db: 1 }, {}))
+  ok(a && a.pick === "BUF +3.5" && a.hit === 66.7 && b && b.pick === "LA -3.5" && b.hit === 53.7 && c === null && !c && !injuryPick(G, -3.5, -3.5, sit({ qb: 1 }, { qb: 1 })) && !injuryPick(G, -3.5, -3.5, sit({ db: 1 }, {}))
     && !injuryPick(G, -3.5, null, sit({ qb: 1 }, {})) && injuryPick(G, -4, -3.5, sit({ qb: 1 }, {})) && !injuryPick(G, -4.5, -3.5, sit({}, { qb: 1 })),
     "injury pick: one team has its QB / 2+ DBs / 2+ OL out -> the other team at the current line, only while the line hasn't moved 1+ toward it; both hurt or one DB -> nothing"); }
 { const { parseBooks } = await import("../lib/books.js");
@@ -878,6 +890,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     useTeamSide(ts);
     const p = teamSideProb("AAA", "BBB", -3); ok(Math.abs(p - 1 / (1 + Math.exp(-0.5))) < 1e-9, "team model: logistic on home-minus-away numbers (standardized), as published by the rebuild", p);
     const g = { key: "BBB @ AAA", away: "BBB", home: "AAA" }, pk = teamModelPick(g, -3, 7);
+    { // 10/20 owner: "Model (Team):" line on every spread card -- the side and how sure, on every game, even under 58%; recorded as teamside|spread
+      const { teamSideLine, ruleLabel } = await import("../lib/stack.js");
+      const a = teamSideLine(g, -3, 7), b = teamSideLine({ key: "DDD @ CCC", away: "DDD", home: "CCC" }, 2.5, 7), c = teamSideLine(g, -3, 6), d = teamSideLine(g, 0, 7);
+      ok(a && a.id === "teamside|spread" && a.pick === "AAA -3" && a.pct === 62.2 && a.model === true && b && b.pick === "CCC +2.5" && b.pct === 52.5 && !teamModelPick({ key: "DDD @ CCC", away: "DDD", home: "CCC" }, 2.5, 7) && c === null && d === null
+        && ruleLabel({ id: "teamside|spread" }) === "MODEL (TEAM) · spread" && /teamside/.test(readFileSync(new URL("../public/app.js", import.meta.url), "utf8").match(/Model \(Team\)/) ? "teamside" : ""),
+        "Model (Team) line: side + sure % on every game (52.5% shown while no TEAM MODEL pick), only this week's numbers, never on a pick'em; own record label", { a, b, c, d });
+    }
     ok(pk && pk.id === "teammodel|spread" && pk.pick === "AAA -3" && pk.hit === 62.1 && pk.team === "AAA" && pk.line === -3, "team model 62% sure -> TEAM MODEL pick on that team at the line, shown at the tested 60%+ band rate (60.3%)", pk);
     const away = teamModelPick({ key: "AAA @ BBB", away: "AAA", home: "BBB" }, 3, 7);
     ok(away && away.pick === "AAA -3" && away.team === "AAA" && away.line === -3, "team model: the away side when it is the sure one (line from the away team's view)", away);

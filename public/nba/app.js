@@ -231,7 +231,8 @@ function modelCell(g, kind) {
     const C = g.inProgress ? null : cardOf(g, kind);
     body = g.inProgress ? lockedBody(g, kind) : C ? cardBody(g, kind, C) : `<div style="margin-top:6px"><b class="dim" style="font-size:13px">No pick</b></div>`;
   }
-  return wrap(`<div class="s">${line}</div>${body}`);
+  const ts = kind === "spread" && m.teamSide && !g.inProgress ? `<div class="s">Model (Team): <b class="mod">${esc(m.teamSide.team)} ${sgn(m.teamSide.line)} · ${m.teamSide.pct}%</b></div>` : "";   // 10/20 owner: the team model's side on every spread card, both sports (NBA: data only)
+  return wrap(`<div class="s">${line}</div>${ts}${body}`);
 }
 const injList = (g) => { const j = g.injuries || {}; return [...(j.away || []).map((p) => ({ t: g.away, ...p })), ...(j.home || []).map((p) => ({ t: g.home, ...p }))]; };
 function injPill(g, id) { const n = injList(g).length; return n ? `<div class="btns"><button class="tag" data-drop="${id}">Injuries ${n} ▾</button></div>` : ""; }

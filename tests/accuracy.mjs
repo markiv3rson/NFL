@@ -96,7 +96,7 @@ if (games) {
     console.log(`${same ? "ok  " : "FAIL"} ${"LINE TABLE".padEnd(20)} ${same ? `every count matches the nflverse file (${fresh.games} games, ${Object.keys(fresh.s).length} spread numbers, ${Object.keys(fresh.t).length} total buckets)` : "stored table differs from the nflverse file: re-run tests/linetable_build.mjs"}`); }
   // INJURY (10/14): starters out rebuilt per team-week from nflverse's injury reports + snap counts with the app's own startersOut(), then
   // the app's own injuryPick(): line not yet moved 1+ toward the healthy team between the opening line and the close, graded at the close.
-  { let w = 0, l = 0, p = 0, seasons = 0;
+  { let w = 0, l = 0, p = 0, seasons = 0; const byType = { qb: { w: 0, l: 0 }, other: { w: 0, l: 0 } };
     for (let y = 2014; y <= 2025; y++) {
       let injRows, snapRows;
       try { injRows = parseCSV(getText(`https://github.com/nflverse/nflverse-data/releases/download/injuries/injuries_${y}.csv`));
@@ -110,13 +110,23 @@ if (games) {
       const inj = {};
       for (const r of injRows.slice(1)) { if (r[I("game_type")] !== "REG" || !r[I("team")]) continue; const t = AL[r[I("team")]] || r[I("team")];
         (inj[t] = inj[t] || []).push({ name: r[I("full_name")], status: r[I("report_status")] || "", week: +r[I("week")] }); }
+      // 10/20: each team's previous GAME week this season (bye-aware) -> the flag on that week's report = a continuing injury (no pick)
+      const prevWeek = {}, byTeam = {};
+      for (const G of games.filter((x) => x.season === y)) for (const t of [G.home, G.away]) (byTeam[t] = byTeam[t] || []).push(G.week);
+      for (const t in byTeam) { const ws = [...new Set(byTeam[t])].sort((a, b) => a - b); ws.forEach((wk, i) => (prevWeek[`${t}|${wk}`] = i ? ws[i - 1] : null)); }
+      const so = (t, wk) => startersOut(snaps[t], (inj[t] || []).filter((x) => x.week === wk), wk);
       for (const G of games.filter((x) => x.season === y)) { const o = opens[G.id]; if (!o || !isFinite(o.so)) continue;
-        const sit = { home: { inj: startersOut(snaps[G.home], (inj[G.home] || []).filter((x) => x.week === G.week), G.week) },
-                      away: { inj: startersOut(snaps[G.away], (inj[G.away] || []).filter((x) => x.week === G.week), G.week) } };
+        const pw = (t) => prevWeek[`${t}|${G.week}`];
+        const sit = { home: { inj: so(G.home, G.week), injPrev: pw(G.home) ? so(G.home, pw(G.home)) : null },
+                      away: { inj: so(G.away, G.week), injPrev: pw(G.away) ? so(G.away, pw(G.away)) : null } };
         const g = { key: `${G.away} @ ${G.home}`, away: G.away, home: G.home }, x = injuryPick(g, -G.sp, -o.so, sit, G.week); if (!x) continue;
-        const res = gradeStackPick({ ...x, home: G.home }, G.hs, G.as); if (res === "W") w++; else if (res === "L") l++; else p++; } }
-    const hit = pct(w, l), fail = !seasons || hit == null || hit < 56 || hit < 56.5 - 0.05; if (fail) bad++;
-    console.log(`${fail ? "FAIL" : "ok  "} ${"INJURY".padEnd(20)} ${w}-${l}${p ? ` (${p} push)` : ""} = ${hit == null ? "—" : hit.toFixed(1) + "%"} 2014-25 (${seasons} seasons of reports) · card says 56.5%`); }
+        const res = gradeStackPick({ ...x, home: G.home }, G.hs, G.as); if (res === "W") w++; else if (res === "L") l++; else p++;
+        if (res === "W" || res === "L") byType[x.injType || "other"][res === "W" ? "w" : "l"]++; } }
+    // 10/20: the card shows the type's own rate (lib/stack.js INJURY_RATES): QB newly out must stay 56%+ and match its number; OL / DB must match its number
+    const { INJURY_RATES } = await import("../lib/stack.js");
+    const hit = pct(w, l), hq = pct(byType.qb.w, byType.qb.l), ho = pct(byType.other.w, byType.other.l);
+    const fail = !seasons || hit == null || hq == null || hq < 56 || Math.abs(hq - INJURY_RATES.qb.hit) > 1.5 || ho == null || Math.abs(ho - INJURY_RATES.other.hit) > 1.5; if (fail) bad++;
+    console.log(`${fail ? "FAIL" : "ok  "} ${"INJURY".padEnd(20)} ${w}-${l}${p ? ` (${p} push)` : ""} = ${hit == null ? "—" : hit.toFixed(1) + "%"} 2014-25 (${seasons} seasons of reports; new injuries only) · QB out ${byType.qb.w}-${byType.qb.l} = ${hq == null ? "—" : hq.toFixed(1) + "%"} (card ${INJURY_RATES.qb.hit}) · 2+ OL / DB ${byType.other.w}-${byType.other.l} = ${ho == null ? "—" : ho.toFixed(1) + "%"} (card ${INJURY_RATES.other.hit})`); }
 }
 // TOTAL MOVE: its inputs are the model's early features, so it is checked by the weekly rebuild's own honest test (every season predicted by a
 // model that never saw it, bet at the opening total), read from the site. The card shows these same numbers.
