@@ -890,6 +890,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     useTeamSide(ts);
     const p = teamSideProb("AAA", "BBB", -3); ok(Math.abs(p - 1 / (1 + Math.exp(-0.5))) < 1e-9, "team model: logistic on home-minus-away numbers (standardized), as published by the rebuild", p);
     const g = { key: "BBB @ AAA", away: "BBB", home: "AAA" }, pk = teamModelPick(g, -3, 7);
+    { // 10/20 owner: "Model (Team):" line on every spread card -- the side and how sure, on every game, even under 58%; recorded as teamside|spread
+      const { teamSideLine, ruleLabel } = await import("../lib/stack.js");
+      const a = teamSideLine(g, -3, 7), b = teamSideLine({ key: "DDD @ CCC", away: "DDD", home: "CCC" }, 2.5, 7), c = teamSideLine(g, -3, 6), d = teamSideLine(g, 0, 7);
+      ok(a && a.id === "teamside|spread" && a.pick === "AAA -3" && a.pct === 62.2 && a.model === true && b && b.pick === "CCC +2.5" && b.pct === 52.5 && !teamModelPick({ key: "DDD @ CCC", away: "DDD", home: "CCC" }, 2.5, 7) && c === null && d === null
+        && ruleLabel({ id: "teamside|spread" }) === "MODEL (TEAM) · spread" && /teamside/.test(readFileSync(new URL("../public/app.js", import.meta.url), "utf8").match(/Model \(Team\)/) ? "teamside" : ""),
+        "Model (Team) line: side + sure % on every game (52.5% shown while no TEAM MODEL pick), only this week's numbers, never on a pick'em; own record label", { a, b, c, d });
+    }
     ok(pk && pk.id === "teammodel|spread" && pk.pick === "AAA -3" && pk.hit === 62.1 && pk.team === "AAA" && pk.line === -3, "team model 62% sure -> TEAM MODEL pick on that team at the line, shown at the tested 60%+ band rate (60.3%)", pk);
     const away = teamModelPick({ key: "AAA @ BBB", away: "AAA", home: "BBB" }, 3, 7);
     ok(away && away.pick === "AAA -3" && away.team === "AAA" && away.line === -3, "team model: the away side when it is the sure one (line from the away team's view)", away);

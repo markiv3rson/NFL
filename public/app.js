@@ -132,6 +132,7 @@ function leanCell(g, kind) {
   // Upgraded model (10/9) when the slate has it: the game model corrected with everything else known before kickoff.
   const U = g.modelUp, LN = g.lineNow || {}, mm = U ? U.margin : m.homeMargin, mt = U ? U.total : m.total;
   const mline = kind === "total" ? `Model: <b class="mod">${mt.toFixed(1)}</b>` : `Model: <b class="mod">${mm >= 0 ? g.home : g.away} by ${Math.abs(mm).toFixed(1)}</b>`;
+  const tline = kind === "spread" && g.teamSide && !g.started && !g.final ? `<div class="s">Model (Team): <b class="mod">${esc(g.teamSide.pick)} · ${g.teamSide.pct}%</b></div>` : "";   // 10/20 owner: the team model's side on every spread card
   if (U && LN.hs != null && LN.tl != null) {   // the model's side vs the current line, from the upgraded numbers
     const homeSide = mm + LN.hs > 0, t = homeSide ? g.home : g.away, ln = homeSide ? LN.hs : -LN.hs;
     p = kind === "total" ? { side: mt > LN.tl ? "over" : "under", label: `${mt > LN.tl ? "Over" : "Under"} ${LN.tl}`, warn: p && p.warn } : { team: t, label: `${t} ${sgn(ln)}`, warn: p && p.warn };
@@ -169,7 +170,7 @@ function leanCell(g, kind) {
   // 10/12 (owner: the number must be honest). Tested on 2,578 games 2014-26, each season predicted without it: margin off by 9.99
   // points vs the line's 9.89, total 10.52 vs 10.47; the model beat the line in only 3 of 13 seasons on each. So it is shown as an
   // opinion, never as a pick.
-  return wrap(`<div class="s">${mline}</div>` + body + 
+  return wrap(`<div class="s">${mline}</div>${tline}` + body + 
     (adj ? `<div class="s r" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">${injBadgeFor(g)}${esc(adj)}</div>` : "") +
     (p && p.warn && !g.final ? `<div class="s y">${esc(p.warn)}</div>` : ""));   // e.g. QB change the model can't see
 }
