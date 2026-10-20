@@ -21,7 +21,7 @@ export async function mergeTdPrices(redis, season, g, px, t) {
   // 10/17: a player Polymarket no longer lists (or the old source's wording) is dropped, as the snapshot does
   const real = (v) => v && !isThinMarket(v.ask, v.bid ?? null), out = {}; let changed = Object.keys(old || {}).filter((q) => !(q in px)).length;
   for (const [q, v] of Object.entries(px)) { const n = rec(v), o = old ? rec(old[q]) : null; if (!n || !(n.ask > 0)) { if (o) out[q] = old[q]; continue; }
-    if (o && real(o) && real(n) && n.ask < o.ask * 0.5) { out[q] = old[q]; continue; }   // a halving waits for the snapshot guard
+    if (!n.first && o && real(o) && real(n) && n.ask < o.ask * 0.5) { out[q] = old[q]; continue; }   // a halving waits for the snapshot guard (10/20: not a first-TD price -- those move by half all week)
     out[q] = v; if (!o || o.ask !== n.ask || (o.bid ?? null) !== (n.bid ?? null)) changed++; }
   if (!changed) return 0;
   await setJSON(key, out);

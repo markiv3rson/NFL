@@ -139,7 +139,7 @@ export default async function handler(req, res) {
         const old = await getJSON(K.tdpx(season, week, g.key));
         const rec = (v) => (v == null ? null : typeof v === "number" ? { ask: v } : v);
         const real = (v) => v && !isThinMarket(v.ask, v.bid ?? null);
-        const drops = old ? Object.keys(px).filter((q) => { const o = rec(old[q]), n = rec(px[q]); return real(o) && real(n) && n.ask < o.ask * 0.5; }) : [];
+        const drops = old ? Object.keys(px).filter((q) => { const o = rec(old[q]), n = rec(px[q]); return !(n && n.first) && real(o) && real(n) && n.ask < o.ask * 0.5; }) : [];   // 10/20: first-TD prices (3-20c, move by half all week) never count as a glitch
         let accept = true, msg = null;
         if (drops.length >= 3) {
           const tdModel = (model && model.td && model.td[g.key]) || {};

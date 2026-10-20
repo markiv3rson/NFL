@@ -1634,5 +1634,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const row = JSON.parse(await R.hget(tr.tkey(2099, 1), "A @ B|tdjump|X.Back")); ok(row.result === "W" && row.prevFair === 22 && row.fair === 41, "TD JUMP graded from the game's TD list", row);
   await R.del(tr.tkey(2099, 1));
   ok(/FIRST TD · TOP PICK PER GAME/.test(ap) && /firstBox/.test(ap) && /TD JUMP \(shadow\)/.test(ap), "Anytime TD page: First TD box; Models: TD JUMP row"); }
+// ---------- 10/20: first-TD prices from Polymarket US ride in the TD price map and never count as anytime prices
+{ const { toGamma } = await import("../lib/polyus.js"), pk = await import("../lib/picks.js");
+  const q = (v) => ({ value: String(v) }), side = (d, long) => ({ description: d, long, team: { abbreviation: "chi" } });
+  const m = toGamma({ slug: "astatc-nfl-ne-chi-2026-10-22-firsttd-abro", sportsMarketType: "football_player_first_touchdown", title: "A.J. Brown scores the first touchdown", titleShort: "A.J. Brown", bestAskQuote: q(0.09), bestBidQuote: q(0.05), marketSides: [side("Yes", true), side("No", false)] });
+  ok(m && m.sportsMarketType === "first_touchdown" && m.question === "A.J. Brown first touchdown" && Math.abs(m.bestAsk - 0.09) < 1e-9, "polyus: a first-TD market becomes '<name> first touchdown'", m);
+  const rows = pk.tdRows("NE @ CHI", "NE", "CHI", { away: [], home: [{ name: "A.J. Brown", pos: "WR", fair: 30, first: 9 }] }, { "A.J. Brown 1+ touchdowns": { ask: 0.33, bid: 0.3 }, "A.J. Brown first touchdown": { ask: 0.09, bid: 0.05, first: true } }, { home: [], away: [] });
+  ok(rows.length === 1 && Math.abs(rows[0].price - 0.33) < 1e-9, "the anytime price matcher ignores the first-TD entry (A.J. Brown 33c, not 9c)", rows[0] && rows[0].price);
+  ok(/first touchdown\$\/i\.test\(q\)/.test(readFileSync(new URL("../lib/week.js", import.meta.url), "utf8")) && /firstPrice/.test(readFileSync(new URL("../public/app.js", import.meta.url), "utf8")), "the slate attaches firstPrice; the First TD box shows it"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);
