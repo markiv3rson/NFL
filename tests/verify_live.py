@@ -6,15 +6,21 @@
 #   4. touchdown scorers        -> nflverse player stats (rushing + receiving + special-teams TDs)
 #   5. props                    -> nflverse receiving yards, Under / Over vs the line
 # Exit 1 on any difference. Names nflverse spells differently are counted as "not matched", never as right.
-import csv, io, json, re, sys, urllib.request, collections
+import csv, io, json, re, sys, time, urllib.request, collections
 
 SITE = (sys.argv[1] if len(sys.argv) > 1 else "https://nfl-nfl9.vercel.app").rstrip("/")
 SEASON = 2026
 FIX = {"LAR": "LA", "WSH": "WAS", "JAC": "JAX"}
 
 def get(url, raw=False):
-    with urllib.request.urlopen(url, timeout=60) as r:
-        b = r.read()
+    for i in range(3):   # one dropped connection (ESPN / GitHub) is retried, never read as a difference
+        try:
+            with urllib.request.urlopen(url, timeout=60) as r:
+                b = r.read()
+            break
+        except Exception:
+            if i == 2: raise
+            time.sleep(2 * (i + 1))
     return b.decode() if raw else json.loads(b)
 
 def grade(label, g):
@@ -101,20 +107,24 @@ print(f"3. parlays: {nl} legs and {npar} decided parlays recomputed")
 
 # 4 + 5. touchdowns and props vs nflverse player stats
 td = collections.defaultdict(int); yd = {}; teams = set()
+nn = lambda x: re.sub(r"\s+(jr|sr|ii|iii|iv|v)\.?$", "", str(x or "").strip().lower())   # "Kenneth Walker III" = "Kenneth Walker", "KC Concepcion Jr." = "KC Concepcion"
 for r in csv.DictReader(io.StringIO(get(f"https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_{SEASON}.csv", True))):
     if r["season_type"] != "REG": continue
     w, t = int(r["week"]), FIX.get(r["team"], r["team"]); teams.add((w, t))
     td[(w, t, r["player_name"])] += sum(int(float(r.get(c) or 0)) for c in ("rushing_tds", "receiving_tds", "special_teams_tds"))
-    yd[(w, r["player_display_name"])] = float(r["receiving_yards"] or 0)
+    yd[(w, nn(r["player_display_name"]))] = float(r["receiving_yards"] or 0)
 n = um = 0
 for r in res.values():
     for p in r.get("td") or []:
         if p.get("scored") is None or p.get("played") is False or (r["week"], p["team"]) not in teams: continue
         got = td.get((r["week"], p["team"], p["player"]))
-        if got is None: um += 1; continue
+        if got is None:   # no row in nflverse's player stats = no carry / catch / return that week (they list every player who touched the ball) -> 0 TDs
+            um += 1
+            if p["scored"]: wrong("TD", r["week"], r["game"], p["player"], "app says scored, nflverse has no touch for him (name spelled differently?)")
+            continue
         n += 1
         if (got > 0) != bool(p["scored"]): wrong("TD", r["week"], r["game"], p["player"], "app", p["scored"], "nflverse", got)
-print(f"4. touchdowns: {n} player rows vs nflverse, {um} names not matched")
+print(f"4. touchdowns: {n} player rows vs nflverse, {um} more with no touch in nflverse (all graded 'no TD')")
 n = nm = um = 0
 for w in sorted({r["week"] for r in res.values()}):
     try: P = get(f"{SITE}/api/props?week={w}")
@@ -124,11 +134,14 @@ for w in sorted({r["week"] for r in res.values()}):
             if r.get("result") not in ("W", "L") or r.get("actual") is None: continue
             n += 1
             if ("W" if (r["actual"] < r["line"]) == (r["side"] == "under") else "L") != r["result"]: wrong("prop grade", w, r["name"], r)
-            y = yd.get((w, r["name"]))
-            if y is None: um += 1; continue
+            y = yd.get((w, nn(r["name"])))
+            if y is None:   # no row = no catch that week -> 0 yards
+                um += 1
+                if int(r["actual"]) != 0: wrong("prop yards", w, r["name"], "app", r["actual"], "nflverse has no catch for him (name spelled differently?)")
+                continue
             nm += 1
             if int(y) != int(r["actual"]): wrong("prop yards", w, r["name"], "app", r["actual"], "nflverse", y)
-print(f"5. props: {n} graded, {nm} yard totals vs nflverse, {um} names not matched")
+print(f"5. props: {n} graded, {nm} yard totals vs nflverse, {um} more with no catch in nflverse (all 0 yards in the app)")
 
 # 6. NBA picks (10/20 review) -> ESPN's final scores for each game day (an outside source; the app grades from the same feed, so this checks the math)
 ESPN_FIX = {"GS": "GSW", "NO": "NOP", "SA": "SAS", "NY": "NYK", "UTAH": "UTA", "WSH": "WAS"}
