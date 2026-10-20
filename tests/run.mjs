@@ -1609,5 +1609,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
 { for (const f of ["../public/app.js", "../public/nba/app.js"]) { const a = readFileSync(new URL(f, import.meta.url), "utf8");
     ok(/document\.body\.classList\.add\("game-on"\)/.test(a) && /`\$\{detailTop\(g\)\}<button class="back" id="back-btn">← Games<\/button>/.test(a) && /classList\.toggle\("game-on", name === "lines" && !!DETAIL\)/.test(a) && /classList\.remove\("game-on"\)/.test(a) && !/class="lst">· \$\{times/.test(a),
       `${f}: game card first, ← Games under it, header hidden only on a game page; slot headers without the times list`); } }
+// ---------- 10/20 review: a bet's week = the week of its games (a combo on Thursday's NE @ CHI placed during Monday night's week-6 game was filed under week 6)
+{ const { gameWeekOf } = await import("../lib/placed.js");
+  const rows = [{ key: "WAS @ SF", week: 6 }, { key: "NE @ CHI", week: 7 }, { key: "DAL @ PHI", week: 7 }, { key: "PHI @ DAL", week: 15 }, { key: "KC @ DEN", week: 2 }, { key: "KC @ DEN", week: 12 }];
+  ok(gameWeekOf(["NE @ CHI"], rows, 6) === 7 && gameWeekOf(["WAS @ SF"], rows, 6) === 6 && gameWeekOf(["WAS @ SF", "NE @ CHI"], rows, 6) === 7 && gameWeekOf(["KC @ DEN"], rows, 10) === 12 && gameWeekOf(["KC @ DEN"], rows, 1) === 2
+    && gameWeekOf(["XXX @ YYY"], rows, 6) === null && gameWeekOf([], rows, 6) === null && gameWeekOf([null, "NE @ CHI"], rows, 6) === 7,
+    "bets (10/20): a bet's week = the week of its games (earliest scheduled on or after placement, latest across legs); unknown game -> placement week stays");
+  ok(/const gw = gameWeekOf\(/.test(readFileSync(new URL("../lib/mybets.js", import.meta.url), "utf8")), "account bets use the game week"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);
