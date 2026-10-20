@@ -139,7 +139,7 @@ for r in csv.DictReader(io.StringIO(get(f"https://github.com/nflverse/nflverse-d
     if r["season_type"] != "REG": continue
     w, t = int(r["week"]), FIX.get(r["team"], r["team"]); teams.add((w, t))
     td[(w, t, r["player_name"])] += sum(int(float(r.get(c) or 0)) for c in ("rushing_tds", "receiving_tds", "special_teams_tds"))
-    yd[(w, nn(r["player_display_name"]))] = float(r["receiving_yards"] or 0)
+    yd[(w, nn(r["player_display_name"]))] = {"rec_yds": float(r["receiving_yards"] or 0), "rec": float(r["receptions"] or 0), "pass_yds": float(r["passing_yards"] or 0)}   # 10/20: receptions / passing props too
 n = um = 0
 for r in res.values():
     for p in r.get("td") or []:
@@ -161,7 +161,7 @@ for w in sorted({r["week"] for r in res.values()}):
             if r.get("result") not in ("W", "L") or r.get("actual") is None: continue
             n += 1
             if ("W" if (r["actual"] < r["line"]) == (r["side"] == "under") else "L") != r["result"]: wrong("prop grade", w, r["name"], r)
-            y = yd.get((w, nn(r["name"])))
+            y = yd.get((w, nn(r["name"]))); y = None if y is None else y.get(r.get("stat") or "rec_yds")
             if y is None:   # no row = no catch that week -> 0 yards
                 um += 1
                 if int(r["actual"]) != 0: wrong("prop yards", w, r["name"], "app", r["actual"], "nflverse has no catch for him (name spelled differently?)")
