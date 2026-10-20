@@ -869,5 +869,8 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(!(await R.get(K("ptspick|spread"))) && JSON.parse(await R.get(`removed:${K("ptspick|spread")}`)).label === "BOS +1.5" && JSON.parse(await R.get(K("modelpick|spread"))).label === "DET +1.5",
     "record (10/20): a PICK w/ POINTS on the other side of the SAVED PICK is never saved (no churn); the removed: copy keeps the first row");
   for (const k of await R.keys(`*pick:${D}*`)) await R.del(k); }
+{ // 10/20 review: sportsbook lines only while current (36 h): opening night showed the 10/14 pull as today's
+  const { booksCurrent } = await import("../lib/slate.js"), now = Date.parse("2026-10-20T02:00:00Z");
+  ok(!booksCurrent({ t: "2026-10-14T07:58:33Z" }, now) && booksCurrent({ t: "2026-10-19T14:00:00Z" }, now) && !booksCurrent(null, now) && !booksCurrent({}, now), "books: a pull older than 36 h is not shown on the cards (opening night: six days old)"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`);
 process.exit(bad ? 1 : 0);

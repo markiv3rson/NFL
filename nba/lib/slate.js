@@ -119,6 +119,10 @@ export function fatigueOf(ctx, team, otSet) {
   const ot = !!(otSet && otSet.has(team)), far = Number(ctx.trav_km) >= FAR_KM;
   return ot || far ? { ot, far } : null;
 }
+// 10/20 review: sportsbook lines are shown only while current (36 h) -- there is no pull on a day without games, so on opening night the
+// cards showed the 10/14 pull's lines (six days old) as today's
+export const BOOKS_SHOW_MS = 36 * 3600e3;
+export const booksCurrent = (bk, now = Date.now()) => !!(bk && bk.t && now - Date.parse(bk.t) <= BOOKS_SHOW_MS);
 export async function buildSlate({ now = Date.now(), days = 1, events = null, injuries = null, model = null, record = true, pullBooks = false, booksFetch = fetch, forceBooks = false, otSets = null } = {}) {
   const ev = events || (await fetchEvents());
   let games = polyGames(ev).filter((g) => Date.parse(g.start) + GAME_HOURS * 3600e3 > now).sort((a, b) => a.start.localeCompare(b.start));
@@ -155,7 +159,7 @@ export async function buildSlate({ now = Date.now(), days = 1, events = null, in
     const m = byKey[g.key] || {};
     const row = { key: g.key, away: g.away, home: g.home, start: g.start, date: g.date, poly: g.poly,
       model: m.model || null, spread: m.spread || null, total: m.total || null, ml: m.ml || null, context: m.context || null,
-      injuries: m.injuries || { home: [], away: [] }, starOut: m.starOut || null, lines: m.lines || [], preseason: preOf(g), move: moves[g.key] || null, books: (bk && bk.games && bk.games[g.key]) || null };
+      injuries: m.injuries || { home: [], away: [] }, starOut: m.starOut || null, lines: m.lines || [], preseason: preOf(g), move: moves[g.key] || null, books: (bk && bk.games && booksCurrent(bk, now) && bk.games[g.key]) || null };
     // A game already under way: Polymarket's lines are live, but the patterns and win rates were tested on closing lines only,
     // so no PICK / LEAN / teaser is offered on it (picks seen before tip-off were already saved for the record).
     row.inProgress = now >= Date.parse(g.start);
