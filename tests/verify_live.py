@@ -134,7 +134,8 @@ print(f"5. props: {n} graded, {nm} yard totals vs nflverse, {um} names not match
 ESPN_FIX = {"GS": "GSW", "NO": "NOP", "SA": "SAS", "NY": "NYK", "UTAH": "UTA", "WSH": "WAS"}
 try:
     NP = get(f"{SITE}/api/nba/results/list").get("picks") or []
-    graded = [p for p in NP if p.get("result") in ("W", "L", "P") and p.get("label")]
+    RES = {"win": "W", "loss": "L", "push": "P", "W": "W", "L": "L", "P": "P"}     # NBA saves win / loss / push (void = postponed, never graded)
+    graded = [p for p in NP if p.get("result") in RES and p.get("label")]
     finals = {}
     for day in sorted({p["date"] for p in graded}):
         sb = get(f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates={day.replace('-', '')}")
@@ -149,8 +150,35 @@ try:
         gx = grade(p["label"], g) if g else None
         if gx is None: um += 1; continue
         n += 1
-        if gx != p["result"]: wrong("NBA pick", p["date"], p["game"], p["label"], p["result"], "->", gx)
-    print(f"6. NBA picks: {n} graded picks recomputed from ESPN finals, {um} not matched ({len(NP) - len(graded)} not graded yet)")
+        if gx != RES[p["result"]]: wrong("NBA pick", p["date"], p["game"], p["label"], p["result"], "->", gx)
+    print(f"6. NBA picks: {n} graded picks recomputed from ESPN finals, {um} not matched ({len(NP) - len(graded)} not graded yet or void)")
+    # NBA model parlays: every graded leg from the same ESPN finals, parlay = all legs won (a pushed leg drops out)
+    days = get(f"{SITE}/api/nba/modelbets").get("days") or {}
+    nl = npar = 0
+    for day, types in days.items():
+        sb = None
+        for typ, lst in types.items():
+            for p in lst:
+                for l in p.get("legs") or []:
+                    if l.get("result") not in ("W", "L") or not l.get("label"): continue
+                    key = (day, l.get("game"))
+                    if key not in finals:
+                        if sb is None:
+                            sb = get(f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates={day.replace('-', '')}")
+                            for e in sb.get("events") or []:
+                                c = e["competitions"][0]
+                                if not c["status"]["type"].get("completed"): continue
+                                t = {x["homeAway"]: (ESPN_FIX.get(x["team"]["abbreviation"], x["team"]["abbreviation"]), int(x["score"])) for x in c["competitors"]}
+                                finals[(day, f'{t["away"][0]} @ {t["home"][0]}')] = {"game": f'{t["away"][0]} @ {t["home"][0]}', "awayScore": t["away"][1], "homeScore": t["home"][1]}
+                    g = finals.get(key); gx = grade(l["label"], g) if g else None
+                    if gx is None: continue
+                    nl += 1
+                    if gx != l["result"]: wrong("NBA parlay leg", day, typ, l["label"], l["result"], "->", gx)
+                rs = [l.get("result") for l in p.get("legs") or []]
+                if p.get("result") in ("W", "L") and rs and all(x in ("W", "L", "P") for x in rs):
+                    npar += 1
+                    if ("L" if "L" in rs else "W") != p["result"]: wrong("NBA parlay", day, typ, rs, p["result"])
+    print(f"   NBA parlays: {nl} legs and {npar} decided parlays recomputed")
 except Exception as e:
     print(f"6. NBA picks: could not check ({str(e)[:80]})")
 
