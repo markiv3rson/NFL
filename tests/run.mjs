@@ -1557,6 +1557,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(/innerHTML = linesBySlot\(\)/.test(a) && /class="sh labslot">\$\{sl\}/.test(a) && /class="tiles stack"/.test(a) && /\.tiles\.stack \{ grid-template-columns:1fr !important/.test(readFileSync(new URL("../public/index.html", import.meta.url), "utf8")), "NFL Game Lines: games stacked one per row under the time-slot headers");
     ok(/\^modelbets-/.test(a) && /LAB_TABS\.map\(\(\[k\]\) => `modelbets-\$\{k\}`\)/.test(a) && !/id="lab-sub"/.test(readFileSync(new URL("../public/index.html", import.meta.url), "utf8")), "NFL: #modelbets-<type> opens Model bets on that type; the docked type strip is gone"); }
   for (const f of ["../public/index.html", "../public/nba/index.html"]) ok(/id="bets-sw" style="display:none"/.test(readFileSync(new URL(f, import.meta.url), "utf8")), `${f}: the old My bets | Model bets switch is hidden (the menu picks)`); }
+{ // 10/20 review: the "no sportsbook odds yet this week" warning waits until the week's first kickoff is under 3.3 days away (the Sunday-night switch to next week has no books until Monday 7 AM PT)
+  const { computeWatch } = await import("../lib/watchdog.js"), day = 86400e3, mk = (d) => ({ season: 2099, week: 7, games: [{ key: "A @ B", kickoff: new Date(Date.now() + d * day).toISOString(), started: false, model: {}, poly: {}, td: [{ price: 0.5 }] }], booksAt: null });
+  const far = await computeWatch(mk(4), null, null), near = await computeWatch(mk(2), null, null), stale = await computeWatch({ ...mk(4), booksAt: new Date(Date.now() - 31 * 3600e3).toISOString() }, null, null);
+  const low = await computeWatch({ ...mk(4), booksAt: new Date().toISOString() }, { credits: "41" }, null), plenty = await computeWatch({ ...mk(4), booksAt: new Date().toISOString() }, { credits: "300" }, null);
+  ok(low.some((x) => /credits low: 41/.test(x)) && !plenty.some((x) => /credits low/.test(x)), "watchdog (10/20): Odds API credits under 60 are flagged", low);
+  ok(!far.some((x) => /sportsbook odds/.test(x)) && near.some((x) => /sportsbook odds yet this week/.test(x)) && stale.some((x) => /sportsbook odds in 30\+ h/.test(x)), "watchdog (10/20): no-books-yet warning only once the first kickoff is under 3.3 days away; 30 h old books still warn", { far, near }); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);
 

@@ -19,14 +19,30 @@ export const pickRows = (g) => {
     if (c.pts && c.pts.line != null) rows.push(base(c.pts.id, k, c.pts)); }
   return rows;
 };
+// the side of a pick: the team on a spread, Over / Under on a total
+const sideOf = (x) => (x ? (x.market === "total" ? x.side : x.team) : null);
 export async function recordPicks(games, now = Date.now()) {
   const r = getRedis(); let n = 0;
   for (const g of games) {
     if (g.start && now >= Date.parse(g.start)) continue;       // only picks seen before tip-off count
-    for (const row of pickRows(g)) {
+    const rows = pickRows(g);
+    for (const row of rows) {
       const key = KEY(row.date, row.game, row.id);
       if (!(await r.set(key, JSON.stringify(row), "NX"))) continue;   // the first sighting stands (NX: saved only when new, one command)
       await r.sadd(IDS, key); n++;
+    }
+    // 10/20 review (one side per game, 10/19): a PICK w/ POINTS saved on the OTHER side of the saved PICK -- saved before the one-side rule went
+    // live (BOS @ DET opening night: PICK DET +1.5, PICK w/ POINTS BOS +1.5, a sure loser either way) -- is replaced before tip-off by the card's
+    // current one-side line, or leaves the record when the card has none. Nothing is deleted: the old row is kept under removed:<key>.
+    const ks = ["spread", "total"].flatMap((k) => [`ptspick|${k}`, `cardpick|${k}`, `modelpick|${k}`].map((id) => KEY(g.date, g.key, id)));
+    const v = ((await r.mget(...ks).catch(() => null)) || []).map(jparse);   // one command per game
+    for (const [i, k] of ["spread", "total"].entries()) {
+      const pk = ks[i * 3], old = v[i * 3], pick = v[i * 3 + 1] || v[i * 3 + 2];
+      if (!old || !pick || sideOf(old) === sideOf(pick)) continue;
+      const cur = rows.find((x) => x.id === `ptspick|${k}` && sideOf(x) === sideOf(pick));
+      await r.set(`removed:${pk}`, JSON.stringify({ ...old, removedAt: new Date(now).toISOString(), why: "PICK w/ POINTS on the other side of the PICK" }));
+      if (cur) await r.set(pk, JSON.stringify(cur)); else { await r.del(pk); await r.srem(IDS, pk); }
+      n++;
     }
   }
   return n;

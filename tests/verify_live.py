@@ -130,5 +130,29 @@ for w in sorted({r["week"] for r in res.values()}):
             if int(y) != int(r["actual"]): wrong("prop yards", w, r["name"], "app", r["actual"], "nflverse", y)
 print(f"5. props: {n} graded, {nm} yard totals vs nflverse, {um} names not matched")
 
+# 6. NBA picks (10/20 review) -> ESPN's final scores for each game day (an outside source; the app grades from the same feed, so this checks the math)
+ESPN_FIX = {"GS": "GSW", "NO": "NOP", "SA": "SAS", "NY": "NYK", "UTAH": "UTA", "WSH": "WAS"}
+try:
+    NP = get(f"{SITE}/api/nba/results/list").get("picks") or []
+    graded = [p for p in NP if p.get("result") in ("W", "L", "P") and p.get("label")]
+    finals = {}
+    for day in sorted({p["date"] for p in graded}):
+        sb = get(f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates={day.replace('-', '')}")
+        for e in sb.get("events") or []:
+            c = e["competitions"][0]
+            if not c["status"]["type"].get("completed"): continue
+            t = {x["homeAway"]: (ESPN_FIX.get(x["team"]["abbreviation"], x["team"]["abbreviation"]), int(x["score"])) for x in c["competitors"]}
+            finals[(day, f'{t["away"][0]} @ {t["home"][0]}')] = {"game": f'{t["away"][0]} @ {t["home"][0]}', "awayScore": t["away"][1], "homeScore": t["home"][1]}
+    n = um = 0
+    for p in graded:
+        g = finals.get((p["date"], p["game"]))
+        gx = grade(p["label"], g) if g else None
+        if gx is None: um += 1; continue
+        n += 1
+        if gx != p["result"]: wrong("NBA pick", p["date"], p["game"], p["label"], p["result"], "->", gx)
+    print(f"6. NBA picks: {n} graded picks recomputed from ESPN finals, {um} not matched ({len(NP) - len(graded)} not graded yet)")
+except Exception as e:
+    print(f"6. NBA picks: could not check ({str(e)[:80]})")
+
 print(f"\nverify: {'ALL RIGHT' if not bad else f'{bad} WRONG'}")
 sys.exit(1 if bad else 0)
