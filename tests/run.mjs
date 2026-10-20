@@ -272,10 +272,18 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     && !totalMovePick(G, null, 47.5, 47.5).length && !totalMovePick(G, mv(1.2), 47.5, null).length, "total move pick: strong/weak/moved/none", [a, b, c, d]);
   const p = predictTotalMove(Object.fromEntries(UP_MOVE.feat.map((f, i) => [f, UP_MOVE.mean[i]])));
   ok(Math.abs(p.move - UP_MOVE.b0) < 0.01 && p.thr20 === UP_MOVE.thr20, "total move model: average game predicts the intercept", p); }
+{ // 10/20 INJURY first-week rule: a hurt team that already had the flag in its previous game is a CONTINUING injury -> no pick; no previous data -> treated as new
+  const { injuryPick } = await import("../lib/stack.js"); const G = { home: "LA", away: "BUF", key: "BUF @ LA" };
+  const cont = injuryPick(G, -3.5, -3.5, { home: { inj: { qb: 1 }, injPrev: { qb: 1 } }, away: { inj: {}, injPrev: {} } });
+  const fresh = injuryPick(G, -3.5, -3.5, { home: { inj: { qb: 1 }, injPrev: { db: 1 } }, away: { inj: {}, injPrev: {} } });
+  const nodata = injuryPick(G, -3.5, -3.5, { home: { inj: { ol: 2 }, injPrev: null }, away: { inj: {} } });
+  const other = injuryPick(G, -3.5, -3.5, { home: { inj: { qb: 1 }, injPrev: {} }, away: { inj: {}, injPrev: { qb: 1 } } });   // the HEALTHY team's old flag does not matter
+  ok(!cont && fresh && fresh.pick === "BUF +3.5" && fresh.hit === 58.2 && fresh.n === 146 && nodata && other && other.pick === "BUF +3.5", "INJURY fires only on a new injury (continuing -> none; no previous data -> new)");
+}
 { const { injuryPick } = await import("../lib/stack.js"); const G = { home: "LA", away: "BUF", key: "BUF @ LA" };
   const inj = (o) => ({ qb: 0, sk: 0, ol: 0, db: 0, f7: 0, ...o }), sit = (h, a) => ({ home: { inj: inj(h) }, away: { inj: inj(a) } });
   const a = injuryPick(G, -3.5, -3.5, sit({ qb: 1 }, {})), b = injuryPick(G, -3.5, -3.5, sit({}, { db: 2 })), c = injuryPick(G, -2.5, -3.5, sit({ ol: 2 }, {}));
-  ok(a && a.pick === "BUF +3.5" && a.hit === 56.5 && b && b.pick === "LA -3.5" && !c && !injuryPick(G, -3.5, -3.5, sit({ qb: 1 }, { qb: 1 })) && !injuryPick(G, -3.5, -3.5, sit({ db: 1 }, {}))
+  ok(a && a.pick === "BUF +3.5" && a.hit === 58.2 && b && b.pick === "LA -3.5" && !c && !injuryPick(G, -3.5, -3.5, sit({ qb: 1 }, { qb: 1 })) && !injuryPick(G, -3.5, -3.5, sit({ db: 1 }, {}))
     && !injuryPick(G, -3.5, null, sit({ qb: 1 }, {})) && injuryPick(G, -4, -3.5, sit({ qb: 1 }, {})) && !injuryPick(G, -4.5, -3.5, sit({}, { qb: 1 })),
     "injury pick: one team has its QB / 2+ DBs / 2+ OL out -> the other team at the current line, only while the line hasn't moved 1+ toward it; both hurt or one DB -> nothing"); }
 { const { parseBooks } = await import("../lib/books.js");

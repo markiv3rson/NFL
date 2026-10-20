@@ -110,13 +110,19 @@ if (games) {
       const inj = {};
       for (const r of injRows.slice(1)) { if (r[I("game_type")] !== "REG" || !r[I("team")]) continue; const t = AL[r[I("team")]] || r[I("team")];
         (inj[t] = inj[t] || []).push({ name: r[I("full_name")], status: r[I("report_status")] || "", week: +r[I("week")] }); }
+      // 10/20: each team's previous GAME week this season (bye-aware) -> the flag on that week's report = a continuing injury (no pick)
+      const prevWeek = {}, byTeam = {};
+      for (const G of games.filter((x) => x.season === y)) for (const t of [G.home, G.away]) (byTeam[t] = byTeam[t] || []).push(G.week);
+      for (const t in byTeam) { const ws = [...new Set(byTeam[t])].sort((a, b) => a - b); ws.forEach((wk, i) => (prevWeek[`${t}|${wk}`] = i ? ws[i - 1] : null)); }
+      const so = (t, wk) => startersOut(snaps[t], (inj[t] || []).filter((x) => x.week === wk), wk);
       for (const G of games.filter((x) => x.season === y)) { const o = opens[G.id]; if (!o || !isFinite(o.so)) continue;
-        const sit = { home: { inj: startersOut(snaps[G.home], (inj[G.home] || []).filter((x) => x.week === G.week), G.week) },
-                      away: { inj: startersOut(snaps[G.away], (inj[G.away] || []).filter((x) => x.week === G.week), G.week) } };
+        const pw = (t) => prevWeek[`${t}|${G.week}`];
+        const sit = { home: { inj: so(G.home, G.week), injPrev: pw(G.home) ? so(G.home, pw(G.home)) : null },
+                      away: { inj: so(G.away, G.week), injPrev: pw(G.away) ? so(G.away, pw(G.away)) : null } };
         const g = { key: `${G.away} @ ${G.home}`, away: G.away, home: G.home }, x = injuryPick(g, -G.sp, -o.so, sit, G.week); if (!x) continue;
         const res = gradeStackPick({ ...x, home: G.home }, G.hs, G.as); if (res === "W") w++; else if (res === "L") l++; else p++; } }
-    const hit = pct(w, l), fail = !seasons || hit == null || hit < 56 || hit < 56.5 - 0.05; if (fail) bad++;
-    console.log(`${fail ? "FAIL" : "ok  "} ${"INJURY".padEnd(20)} ${w}-${l}${p ? ` (${p} push)` : ""} = ${hit == null ? "—" : hit.toFixed(1) + "%"} 2014-25 (${seasons} seasons of reports) · card says 56.5%`); }
+    const hit = pct(w, l), fail = !seasons || hit == null || hit < 56 || hit < 58.2 - 0.05; if (fail) bad++;
+    console.log(`${fail ? "FAIL" : "ok  "} ${"INJURY".padEnd(20)} ${w}-${l}${p ? ` (${p} push)` : ""} = ${hit == null ? "—" : hit.toFixed(1) + "%"} 2014-25 (${seasons} seasons of reports; new injuries only) · card says 58.2%`); }
 }
 // TOTAL MOVE: its inputs are the model's early features, so it is checked by the weekly rebuild's own honest test (every season predicted by a
 // model that never saw it, bet at the opening total), read from the site. The card shows these same numbers.
