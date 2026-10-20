@@ -113,4 +113,10 @@ ok(_c == {"a": None, "b": 1.5, "c": {"d": None, "e": True}} and "NaN" not in _js
 _wr = importlib.import_module("weekly_rebuild")
 _good = {"checks": {"games": 2500, "marginErr": 10.0, "oldMarginErr": 10.25, "totalErr": 10.5, "oldTotalErr": 10.8}}
 ok(_wr.passes(_good) and not _wr.passes({"checks": {**_good["checks"], "games": 500}}) and not _wr.passes({"checks": {**_good["checks"], "marginErr": 10.6}}) and not hasattr(_wr, "scan") and not hasattr(_wr, "train_chooser"), "weekly rebuild: only a sound build is published; the combo scan and the chooser are gone (10/16)")
+# TEAM MODEL week (10/20): a game already played but not yet scored by nflverse (Monday night at the Tuesday 4 AM rebuild) does not hold the week back
+_ts = importlib.import_module("team_side")
+_g = pd.DataFrame([dict(season=2026, week=6, gameday="2026-10-18", home_score=20.0), dict(season=2026, week=6, gameday="2026-10-19", home_score=np.nan),
+                   dict(season=2026, week=7, gameday="2026-10-22", home_score=np.nan), dict(season=2026, week=7, gameday="2026-10-25", home_score=np.nan)])
+ok(_ts.coming_week(_g, 2026, "2026-10-20") == 7 and _ts.coming_week(_g, 2026, "2026-10-19") == 6 and _ts.coming_week(_g.drop(columns="gameday"), 2026) == 6,
+   "team model: the coming week skips a played-but-unscored game (Tuesday 4 AM -> week 7), keeps it on its own day, no dates -> old rule")
 print(f"service checks: {'FAILED ' + str(bad) if bad else 'all passed'}"); sys.exit(1 if bad else 0)

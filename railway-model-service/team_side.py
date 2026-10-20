@@ -85,6 +85,16 @@ def week_numbers(R, cur, W):
         out[t] = {**{f"s_{k}": (None if pd.isna(avg[k]) else round(float(avg[k]), 6)) for k in STATS}, "srs": None if t not in srs else round(float(srs[t]), 6)}
     return out
 
+def coming_week(g, cur, today=None):
+    """The week the numbers are for: the earliest week with a game still to play. 10/20: a game already PLAYED whose score nflverse has not
+    posted yet (Monday night's game at the Tuesday 4 AM rebuild) no longer holds the week back -- it made the fit "week 6" again, and the site
+    uses these numbers only for the matching week, so week 7 would have had no TEAM MODEL pick all week."""
+    left = g[(g.season == cur) & g.home_score.isna()]
+    if "gameday" in g.columns:
+        today = today or pd.Timestamp.now(tz="America/New_York").strftime("%Y-%m-%d")
+        left = left[left.gameday.astype(str) >= today]
+    return int(left.week.min()) if len(left) else int(g[g.season == cur].week.max()) + 1
+
 def build(cur):
     from sklearn.linear_model import LogisticRegression
     R, g = team_games(cur)
@@ -92,8 +102,7 @@ def build(cur):
     X = feats + ["hline"]; tr = D[(D.season < cur) & (D["cov"] != 0.5)]
     mu, sd = tr[X].mean(), tr[X].std() + 1e-9
     m = LogisticRegression(C=C, max_iter=3000).fit((tr[X] - mu) / sd, tr["cov"].astype(int))
-    left = g[(g.season == cur) & g.home_score.isna()]
-    W = int(left.week.min()) if len(left) else int(g[g.season == cur].week.max()) + 1
+    W = coming_week(g, cur)
     return {"season": int(cur), "week": W, "feat": X, "mean": [round(float(v), 6) for v in mu], "sd": [round(float(v), 6) for v in sd],
             "coef": [round(float(v), 6) for v in m.coef_[0]], "b0": round(float(m.intercept_[0]), 6), "n": int(len(tr)),
             "teams": week_numbers(R, cur, W)}
