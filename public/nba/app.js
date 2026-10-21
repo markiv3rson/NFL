@@ -195,7 +195,7 @@ function cardBody(g, kind, C) {
   let l1;
   if (x) { const c1 = clsOf(x.hit), tx = hitTxt(x.hit, c1), lab = TEST ? "TEST" : "PICK";
     l1 = TEST ? `<b style="font-size:13px;color:#b9a8ff">${lab}: ${esc(x.pick)} · ${tx}</b>`
-      : c1 === "g" ? `<b class="g pulse" style="--gl:${glowOf(x.hit / 100)};font-size:13px">PICK: ${esc(x.pick)} · <span class="reelpct" data-v="${tx}">${tx}</span></b>` : `<b class="${c1}" style="font-size:13px">PICK: ${esc(x.pick)} · ${tx}</b>`; }
+      : c1 === "g" ? `<b class="g pulse" style="--gl:${glowOf(x.hit / 100)};font-size:13px"><span class="lbw">PICK:</span> ${esc(x.pick)} · <span class="reelpct" data-v="${tx}">${tx}</span></b>` : `<b class="${c1}" style="font-size:13px"><span class="lbw">PICK:</span> ${esc(x.pick)} · ${tx}</b>`; }
   else l1 = `<b class="dim" style="font-size:13px">No pick</b>`;
   const why = x && x.why ? `<div class="s" style="margin-top:2px">${esc(x.why)}</div>` : "";
   let l2;
@@ -210,23 +210,23 @@ function cardBody(g, kind, C) {
 function lockedBody(g, kind) {   // after tip-off: the picks saved before it, with W / L once graded
   const L = g.locked && g.locked[kind]; if (!L) return `<div style="margin-top:6px"><b class="dim" style="font-size:13px">Game in progress</b></div>`;
   const rs = (x) => (x.result === "win" ? ' · <span class="g">W</span>' : x.result === "loss" ? ' · <span class="r">L</span>' : x.result === "push" ? " · push" : x.result === "void" ? ' · <span class="dim">void</span>' : ' · <span class="dim">live</span>');
-  return (L.plain ? `<div style="margin-top:6px"><b class="${clsOf(L.plain.pct)}" style="font-size:13px">PICK: ${esc(L.plain.label)} · ${hitTxt(L.plain.pct, clsOf(L.plain.pct))}</b>${rs(L.plain)}</div>` : "") +
-    (L.pts ? `<div style="margin-top:4px"><b style="font-size:13px">PICK w/ POINTS: ${esc(L.pts.label)} · ${hitTxt(L.pts.pct, clsOf(L.pts.pct))}</b>${rs(L.pts)}</div>` : "");
+  return (L.plain ? `<div style="margin-top:6px"><b class="${clsOf(L.plain.pct)}" style="font-size:13px"><span class="lbw">PICK:</span> ${esc(L.plain.label)} · ${hitTxt(L.plain.pct, clsOf(L.plain.pct))}</b>${rs(L.plain)}</div>` : "") +
+    (L.pts ? `<div style="margin-top:4px"><b style="font-size:13px"><span class="lbw">PICK w/ POINTS:</span> ${esc(L.pts.label)} · ${hitTxt(L.pts.pct, clsOf(L.pts.pct))}</b>${rs(L.pts)}</div>` : "");
 }
 function modelCell(g, kind) {
   const m = g.model, k = g[kind];
   const wrap = (inner) => `<div class="modelcell">${inner}</div>`;
   if (!m || !k) return wrap(dash);
   const H = g.home, A = g.away;
-  const line = kind === "total" ? `Model: <b class="mod">${m.total.toFixed(1)}</b>` : kind === "spread" ? `Model: <b class="mod">${m.margin >= 0 ? H : A} by ${Math.abs(m.margin).toFixed(1)}</b>`
+  const line = kind === "total" ? `<span class="lbw">Model:</span> <b class="mod">${m.total.toFixed(1)}</b>` : kind === "spread" ? `<span class="lbw">Model:</span> <b class="mod">${m.margin >= 0 ? H : A} by ${Math.abs(m.margin).toFixed(1)}</b>`
     : (() => { const h = m.modelOnlyWinPct;   // 10/19: the model's OWN win chance (from its margin), so it names the same team as "Model: X by N"; modelWinPct mixes in the market's line
-      return h != null ? `Model: <b class="mod">${h >= 50 ? H : A} ${Math.max(h, 100 - h).toFixed(1)}%</b>` : `Model: <b class="mod">${k.side} ${Math.max(k.modelWinPct[H], k.modelWinPct[A])}%</b>`; })();
+      return h != null ? `<span class="lbw">Model:</span> <b class="mod">${h >= 50 ? H : A} ${Math.max(h, 100 - h).toFixed(1)}%</b>` : `<span class="lbw">Model:</span> <b class="mod">${k.side} ${Math.max(k.modelWinPct[H], k.modelWinPct[A])}%</b>`; })();
   let body = "";
   if (kind === "ml") {
     const pick = k.pick;
     if (g.inProgress) body = lockedBody(g, "ml");
     else if (pick && (pick.tier === "pick" || pick.tier === "lean")) { const c = clsOf(pick.pct), tx = hitTxt(pick.pct, c);
-      body = c === "g" ? `<div style="margin-top:6px"><b class="g pulse" style="--gl:${glowOf(pick.pct / 100)};font-size:13px">PICK: ${esc(pick.label)} · <span class="reelpct" data-v="${tx}">${tx}</span></b></div>` : `<div style="margin-top:6px"><b class="${c}" style="font-size:13px">PICK: ${esc(pick.label)} · ${tx}</b></div>`; }
+      body = c === "g" ? `<div style="margin-top:6px"><b class="g pulse" style="--gl:${glowOf(pick.pct / 100)};font-size:13px"><span class="lbw">PICK:</span> ${esc(pick.label)} · <span class="reelpct" data-v="${tx}">${tx}</span></b></div>` : `<div style="margin-top:6px"><b class="${c}" style="font-size:13px"><span class="lbw">PICK:</span> ${esc(pick.label)} · ${tx}</b></div>`; }
     else if (pick && pick.tier === "test") body = `<div style="margin-top:6px"><b style="font-size:13px;color:#b9a8ff">TEST: ${esc(pick.label)} · ${pick.pct}%</b></div>`;
     else body = `<div style="margin-top:6px"><b class="dim" style="font-size:13px">No pick</b></div>`;
     if (k.marketWinPct) body += moreBox(`<div class="s" style="font-size:11px">${H} ${k.marketWinPct[H]}% · ${A} ${k.marketWinPct[A]}%</div>`);
@@ -234,7 +234,7 @@ function modelCell(g, kind) {
     const C = g.inProgress ? null : cardOf(g, kind);
     body = g.inProgress ? lockedBody(g, kind) : C ? cardBody(g, kind, C) : `<div style="margin-top:6px"><b class="dim" style="font-size:13px">No pick</b></div>`;
   }
-  const ts = kind === "spread" && m.teamSide && !g.inProgress ? `<div class="s">Model (Team): <b class="mod">${esc(m.teamSide.team)} ${sgn(m.teamSide.line)} · ${m.teamSide.pct}%</b></div>` : "";   // 10/20 owner: the team model's side on every spread card, both sports (NBA: data only)
+  const ts = kind === "spread" && m.teamSide && !g.inProgress ? `<div class="s"><span class="lbw">Model (Team):</span> <b class="mod">${esc(m.teamSide.team)} ${sgn(m.teamSide.line)} · ${m.teamSide.pct}%</b></div>` : "";   // 10/20 owner: the team model's side on every spread card, both sports (NBA: data only)
   return wrap(`<div class="s">${line}</div>${ts}${body}`);
 }
 const injList = (g) => { const j = g.injuries || {}; return [...(j.away || []).map((p) => ({ t: g.away, ...p })), ...(j.home || []).map((p) => ({ t: g.home, ...p }))]; };
@@ -250,12 +250,30 @@ const booksBlock = (g, kind) => {
     : row(`Over ${b.line}`, odds(b.over), "mkt") + row(`Under ${b.line}`, odds(b.under), "mkt");
   return `<div><div class="k">SPORTSBOOKS</div>${rows}</div>`;
 };
+// 10/22 (owner: "only 1 information button next to the model header and it will explain everything in it"): one ⓘ per model section,
+// a tap opens a short box right under the header (the tap is handled in public/shell.js). Model lines read white labels + colored numbers.
+const IBTN = `<button class="ibtn" type="button" aria-label="What is this?"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6.6"/><line x1="8" y1="7.2" x2="8" y2="11.4"/><circle cx="8" cy="4.8" r=".6" fill="currentColor"/></svg></button>`;
+const ibox = (lines, st) => `<div class="ibox" hidden${st ? ` style="${st}"` : ""}>${lines.map(([k, t]) => `<div><b>${k}</b> ${t}</div>`).join("")}</div>`;
+const MODEL_INFO = {
+  spread: [["Model:", "the game model’s score guess. Data only."], ["Model (Team):", "team-stats model at Polymarket’s line. Data only on NBA, never the pick."],
+    ["PICK:", "the bet at Polymarket’s main line, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
+    ["PICK w/ POINTS:", "same side with bought points that won 56%+."], ["MORE list:", "every line, both teams: points bought · history win % · Polymarket price."]],
+  total: [["Model:", "the game model’s total points guess. Data only."], ["PICK:", "Over or Under at Polymarket’s main total, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
+    ["PICK w/ POINTS:", "same side with bought points that won 56%+."], ["MORE list:", "every line, Over and Under: points bought · history win % · Polymarket price."]],
+  ml: [["Model:", "the model’s own chance each team wins."], ["PICK:", "the market’s favorite and its chance with Polymarket’s fee taken out."]],
+};
+const CARD_INFO = [["PICK:", "the card’s bet at Polymarket’s main line, locked at tip-off."], ["LINE MOVE / FATIGUE / ATS REGRESSION:", "the tested rules that named a PICK."],
+  ["PICK w/ POINTS:", "the same side with bought points that won 56%+."], ["MODEL SIDE:", "no rule fired; the model’s side (about 50%)."],
+  ["MONEYLINE:", "the market’s favorite to win."], ["GREEN 56%+:", "every pick shown green; “said” = the average % shown."], ["PRESEASON TEST:", "preseason games, not in the season record."]];
+const SHADOW_INFO = [["Test picks,", "never shown on a card: recorded and graded live. One becomes a pick only after it holds 56%+ over about 100 games."],
+  ["LINE MOVE:", "Pinnacle moved 3+ points; that side at the first number / at the number when seen."], ["INJURY:", "a star newly out; the healthy side at the open / when seen."],
+  ["Gaps:", "Pinnacle or the sportsbooks 1+ point off Polymarket; their side at Polymarket’s number."], ["Closing-line value:", "points gained vs the line at tip-off."]];
 function marketCard(g, kind, id) {
   const p = g.poly || {}, live = !g.inProgress ? '<span class="live"></span>' : "";
   const poly = kind === "ml" ? (p.ml ? live + row("Moneyline", `${g.away} ${odds(toAm(p.ml.away))}`, "mlc") + row("", `${g.home} ${odds(toAm(p.ml.home))}`, "mlc") : dash)
     : kind === "spread" ? (p.spread ? live + row("Spread", `${g.home} ${sgn(p.spread.homeSpread)} ${odds(toAm(p.spread.home))}`, "mkt") + row("", `${g.away} ${sgn(-p.spread.homeSpread)} ${odds(toAm(p.spread.away))}`, "mkt") : dash)
     : (p.total ? live + row(`Over ${p.total.line}`, odds(toAm(p.total.over)), "mkt") + row(`Under ${p.total.line}`, odds(toAm(p.total.under)), "mkt") : dash);
-  return `<div class="card"><div class="inner">${id ? injDrop(g, id) : ""}<div class="hd">MARKET</div><div class="mk">${booksBlock(g, kind)}<div><div class="k">${pmLogo()}POLYMARKET</div>${poly}</div></div><div class="hd hm">MODEL</div>${modelCell(g, kind)}</div></div>`;
+  return `<div class="card"><div class="inner">${id ? injDrop(g, id) : ""}<div class="hd">MARKET</div><div class="mk">${booksBlock(g, kind)}<div><div class="k">${pmLogo()}POLYMARKET</div>${poly}</div></div><div class="hd hm ihd">MODEL${IBTN}</div>${ibox(MODEL_INFO[kind] || MODEL_INFO.spread)}${modelCell(g, kind)}</div></div>`;
 }
 // same-game parlays of this game (lib/parlays.js): 2 legs on Polymarket's lines, 2 legs on bought lines
 function sgpBox(g) {
@@ -513,9 +531,9 @@ function renderModels() {
   const board = `<div class="s"><b>This season · hit vs said · money · past</b></div>` + Object.entries(PTYPES).map(([k, lab]) => { const b = pl[k];
     return `<div class="row"><span>${esc(lab)}</span><span>${b && b.decided ? `${b.hits}–${b.decided - b.hits} · ${b.pct}% <span class="dim">said ${b.said}%</span> <span class="${b.money >= 0 ? "g" : "r"}">${b.money >= 0 ? "+" : "−"}$${Math.abs(Math.round(b.money))}</span>` : b && b.pending ? `<span class="dim">${plural(b.pending, "open")}</span>` : '<span class="dim">waiting</span>'}${PH[k] ? ` · <span class="dim">${PH[k]}</span>` : ""}</span></div>`; }).join("");
   // card picks: PICK (rule / model side), PICK w/ POINTS, moneyline; shadow trackers below
-  const cardRows = `<div class="s"><b>Card picks</b></div>` + recRow("PICK · spread", rc["cardpick|spread"]) + recRow("LINE MOVE · spread", rc["rule:linemove|spread"]) + recRow("FATIGUE · spread", rc["rule:fatigue|spread"]) + recRow("ATS REGRESSION · spread", rc["rule:atsreg|spread"]) + recRow("PICK w/ POINTS · spread", rc["ptspick|spread"]) + recRow("PICK · total", rc["cardpick|total"]) + recRow("TOTAL MOVE · total", rc["rule:linemove|total"]) + recRow("SHOT QUALITY · total", rc["rule:shotq|total"]) + recRow("PICK w/ POINTS · total", rc["ptspick|total"]) +
+  const cardRows = `<div class="s ihd"><b>Card picks</b>${IBTN}</div>` + ibox(CARD_INFO) + recRow("PICK · spread", rc["cardpick|spread"]) + recRow("LINE MOVE · spread", rc["rule:linemove|spread"]) + recRow("FATIGUE · spread", rc["rule:fatigue|spread"]) + recRow("ATS REGRESSION · spread", rc["rule:atsreg|spread"]) + recRow("PICK w/ POINTS · spread", rc["ptspick|spread"]) + recRow("PICK · total", rc["cardpick|total"]) + recRow("TOTAL MOVE · total", rc["rule:linemove|total"]) + recRow("SHOT QUALITY · total", rc["rule:shotq|total"]) + recRow("PICK w/ POINTS · total", rc["ptspick|total"]) +
     recRow("MODEL SIDE · spread", rc["modelpick|spread"]) + recRow("MODEL SIDE · total", rc["modelpick|total"]) + recRow("MONEYLINE", rc.ml) + recRow("GREEN · 56%+", rc.green, true) + recRow("PRESEASON TEST", rc.test, true) +
-    `<div class="s"><b>Shadow trackers</b></div>` + recRow("LINE MOVE · at the open", mv.all) + recRow("LINE MOVE · at the number seen", mv["now:all"]) + recRow("INJURY · at the open", mv.inj) + recRow("INJURY · at the number seen", mv["now:inj"]) + recRow("Pinnacle vs Polymarket gap", mv.gap) + recRow("Books vs Polymarket gap", mv.bgap) +
+    `<div class="s ihd"><b>Shadow trackers</b>${IBTN}</div>` + ibox(SHADOW_INFO) + recRow("LINE MOVE · at the open", mv.all) + recRow("LINE MOVE · at the number seen", mv["now:all"]) + recRow("INJURY · at the open", mv.inj) + recRow("INJURY · at the number seen", mv["now:inj"]) + recRow("Pinnacle vs Polymarket gap", mv.gap) + recRow("Books vs Polymarket gap", mv.bgap) +
     (j.clv && j.clv.n ? `<div class="row"><span class="dim">Closing-line value</span><span>${j.clv.avg > 0 ? "+" : ""}${j.clv.avg} pts · beat the close ${j.clv.beatPct}% of ${j.clv.n}</span></div>` : "");
   const accRows = r ? r.rows.map((x) => `<div class="row"><span class="dim">${esc(x.model)}</span><span>ours <b>${x.ours_same_games}</b> · market <b class="mkt">${x.market}</b> <span class="${x.ours_same_games <= x.market ? "g" : "r"}">${x.ours_same_games <= x.market ? "better" : "worse"}</span></span></div>`).join("") +
     (r.spread_side ? `<div class="row"><span class="dim">Model's spread side</span><span>${r.spread_side.overall}% <span class="dim">break-even ${r.spread_side.break_even}%</span></span></div>` : "") + (r.total_side ? `<div class="row"><span class="dim">Model's total side</span><span>${r.total_side.overall}%</span></div>` : "") +

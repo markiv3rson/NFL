@@ -337,7 +337,7 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(!/LEAN/.test(app) && !/TEASER/.test(app) && !/Anytime TD|anytime-td/i.test(app), "page: no LEAN, no teasers, no TD");
   ok(!/has not beaten the market|Watching only|not a pick\b|Tested on 2024-26 only|Saved and graded to|what the model counted|can't see/i.test(app), "page: no explanatory notes (owner 10/15: show data only)");
   ok(/secRow\("MONEYLINE", injPill\(g, "inj"\)\)/.test(app) && /secRow\("SPREAD"\)/.test(app) && /secRow\("TOTALS"\)/.test(app) && /class="trow"><div class="sh">\$\{title\}<\/div>\$\{pills\}/.test(app), "game page: Moneyline, Spread, Totals section title rows, the Injuries pill on the moneyline row (NFL game page v3, ported 10/16)");
-  ok(/<div class="hd">MARKET<\/div><div class="mk">\$\{booksBlock\(g, kind\)\}<div><div class="k">\$\{pmLogo\(\)\}POLYMARKET<\/div>\$\{poly\}<\/div><\/div><div class="hd hm">MODEL<\/div>\$\{modelCell\(g, kind\)\}/.test(app) && !/class="f"/.test(app) && !/grid-row:span 2/.test(app), "game page card: MARKET = SPORTSBOOKS | POLYMARKET side by side, MODEL below it full width; the injuries drop-down opens at the top of the card"); }
+  ok(/<div class="hd">MARKET<\/div><div class="mk">\$\{booksBlock\(g, kind\)\}<div><div class="k">\$\{pmLogo\(\)\}POLYMARKET<\/div>\$\{poly\}<\/div><\/div><div class="hd hm ihd">MODEL\$\{IBTN\}<\/div>\$\{ibox\(MODEL_INFO\[kind\] \|\| MODEL_INFO\.spread\)\}\$\{modelCell\(g, kind\)\}/.test(app) && !/class="f"/.test(app) && !/grid-row:span 2/.test(app), "game page card: MARKET = SPORTSBOOKS | POLYMARKET side by side, MODEL below it full width; the injuries drop-down opens at the top of the card"); }
 { // NBA information only: no NFL words anywhere in the shipped code
   const files = []; const walk = (d) => { for (const f of readdirSync(d)) { const p = `${d}/${f}`; if (["node_modules", ".next", ".git", "fixtures", "data", "__pycache__"].includes(f)) continue; if (statSync(p).isDirectory()) walk(p); else if (/\.(js|mjs|ts|tsx|py|html|json)$/.test(f) && f !== "package-lock.json" && f !== "run.mjs" && f !== "tests_service.py") files.push(p); } };
   walk(new URL("..", import.meta.url).pathname);
@@ -893,7 +893,7 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
 
 { // 10/20 owner: "Model (Team):" line on the NBA spread card (same as NFL); NBA's team model is data only (walk-forward 50.7%), so no rule reads it
   const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8"), svc = readFileSync(new URL("../railway-model-service/live.py", import.meta.url), "utf8"), mod = readFileSync(new URL("../railway-model-service/team_side.py", import.meta.url), "utf8");
-  ok(/Model \(Team\): <b class="mod">\$\{esc\(m\.teamSide\.team\)\} \$\{sgn\(m\.teamSide\.line\)\} · \$\{m\.teamSide\.pct\}%/.test(app) && /teamSide/.test(svc) && /def prob_home_covers/.test(mod) && /never a pick/.test(mod)
+  ok(/Model \(Team\):<\/span> <b class="mod">\$\{esc\(m\.teamSide\.team\)\} \$\{sgn\(m\.teamSide\.line\)\} · \$\{m\.teamSide\.pct\}%/.test(app) && /teamSide/.test(svc) && /def prob_home_covers/.test(mod) && /never a pick/.test(mod)
     && !/teamSide|teammodel/.test(readFileSync(new URL("../lib/cardpick.js", import.meta.url), "utf8")),
     "NBA card: Model (Team) line under Model (team, line, sure %), fed by the service's team-numbers fit; data only -- the NBA card picker never reads it");
 }

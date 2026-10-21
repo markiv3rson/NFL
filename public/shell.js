@@ -137,5 +137,12 @@
       document.addEventListener("visibilitychange", () => { if (!document.hidden) { if (Shell.stale) location.reload(); else Shell.buildCheck("visible"); } });
     },
   };
+  // 10/22 (owner): the one ⓘ next to a model header opens / closes the short box right under that header (both sports)
+  if (typeof document !== "undefined" && document.addEventListener) document.addEventListener("click", (e) => {
+    const b = e.target && e.target.closest && e.target.closest(".ibtn"); if (!b) return;
+    e.preventDefault(); e.stopPropagation();
+    const h = b.closest(".ihd"), x = h && h.nextElementSibling; if (!x || !x.classList.contains("ibox")) return;
+    x.hidden = !x.hidden; b.classList.toggle("on", !x.hidden);
+  }, true);
   window.Shell = Shell;
 })();
