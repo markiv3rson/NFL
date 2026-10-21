@@ -277,13 +277,14 @@ function practTag(r) {
   return k ? ` <span class="pill" style="padding:0 6px;font-size:10px;font-weight:800;color:var(--faint);border:1px solid var(--line2)">${k}</span>` : "";
 }
 // 10/20 night (owner's sketch): ONE line per player, nothing to open -- [logo] name pos / game · #N on team | SNAP | 2+ TD | MODEL (purple) | PM (far right)
-const tdCell = (v) => `<span class="tc">${v}</span>`;
 function tdRow(x) {
-  const r = x.r, snap = r.snap && r.snap.pct != null ? `${Math.round(r.snap.pct)}%` : "—", two = r.two != null ? `${Math.round(r.two)}%` : "—";
-  return `<div class="tdr" data-tdw="${esc(r.team)}|${esc(r.player)}"><div class="in"><span class="tlc">${tlogo(r.team)}</span><div class="nmx"><div class="l1"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos || "")}</span>${injTag(r) || practTag(r)}${retPill(r)}</div><div class="g2">${esc(r.game || "")}${r.teamRank ? ` · #${r.teamRank} on team` : ""}</div>${tdWarn(r, TDW) ? `<div class="g3 r">${tdWarn(r, TDW)}</div>` : ""}</div>` +
-    tdCell(snap) + tdCell(two) + `<span class="tc mp"><em>${tdPct(r.fair)}%</em></span><span class="tc pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${tdNoGap(r) != null ? ` <span class="y nogap" title="No · ${tdNoGap(r)} under">⚠</span>` : ""}</span></div><div class="tdwk"></div></div>`;
+  const r = x.r, snap = r.snap && r.snap.pct != null ? `${Math.round(r.snap.pct)}%` : "—", two = r.two != null ? `${Math.round(r.two)}%` : "—", warn = tdWarn(r, TDW);
+  // 10/21 night (owner: "Put the 2+ TD and snap percentage behind the card now ... Only behind the tap. And put the warning there in the middle instead"):
+  // visible = logo, name + game, the red caution in the MIDDLE column (empty when he scored last game), MODEL, POLYMARKET; SNAP and 2+ TD open under the row on a tap, next to the week marks.
+  return `<div class="tdr" data-tdw="${esc(r.team)}|${esc(r.player)}"><div class="in"><span class="tlc">${tlogo(r.team)}</span><div class="nmx"><div class="l1"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos || "")}</span>${injTag(r) || practTag(r)}${retPill(r)}</div><div class="g2">${esc(r.game || "")}${r.teamRank ? ` · #${r.teamRank} on team` : ""}</div></div>` +
+    `<span class="tc wc r">${warn || ""}</span><span class="tc mp"><em>${tdPct(r.fair)}%</em></span><span class="tc pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${tdNoGap(r) != null ? ` <span class="y nogap" title="No · ${tdNoGap(r)} under">⚠</span>` : ""}</span></div><div class="tdwk"><span class="st"><b>SNAP</b> ${snap} <span class="dim">·</span> <b>2+ TD</b> ${two} <span class="dim">·</span> </span><span class="wk"></span></div></div>`;
 }
-const tdHead = (title) => `<div class="tdh"><span class="h1">${title}</span><span class="tc">SNAP</span><span class="tc">2+ TD</span><span class="tc">MODEL</span><span class="tc pmh">${pmLogo()}POLYMARKET</span></div>`;
+const tdHead = (title) => `<div class="tdh"><span class="h1">${title}</span><span class="tc"></span><span class="tc">MODEL</span><span class="tc pmh">${pmLogo()}POLYMARKET</span></div>`;
 const earlyNote = (g) => (g && g.early ? '<span class="pill p-y" style="padding:0 6px;font-size:10px">Early estimate</span>' : "");
 // One Anytime TD section for the slate in S: price moves, then the top 3 per team, most likely first.
 const BEST_TD = 55;
@@ -341,7 +342,7 @@ async function loadTdWeeks() {
   if (!TDW_LOADING) TDW_LOADING = fetch("/api/tdweeks", { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.ok) { TDW = j; TDW_AT = Date.now(); } return TDW; }).catch(() => TDW).finally(() => { TDW_LOADING = null; });
   return TDW_LOADING;
 }
-function fillTdWeeks(row) { const box = row.querySelector(".tdwk"); if (!box) return; const [team, player] = String(row.dataset.tdw || "").split("|");
+function fillTdWeeks(row) { const box = row.querySelector(".tdwk .wk"); if (!box) return; const [team, player] = String(row.dataset.tdw || "").split("|");
   box.innerHTML = tdWeekLine(TDW, team, player); if (!TDW) loadTdWeeks().then(() => { if (row.classList.contains("open")) box.innerHTML = tdWeekLine(TDW, team, player); }); }
 let TD_OPEN = null;
 const tdOpenMap = () => { if (TD_OPEN) return TD_OPEN; try { TD_OPEN = JSON.parse(localStorage.getItem("tdSlots") || "{}") || {}; } catch (e) { TD_OPEN = {}; } return TD_OPEN; };
