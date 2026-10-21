@@ -277,13 +277,14 @@ function practTag(r) {
   return k ? ` <span class="pill" style="padding:0 6px;font-size:10px;font-weight:800;color:var(--faint);border:1px solid var(--line2)">${k}</span>` : "";
 }
 // 10/20 night (owner's sketch): ONE line per player, nothing to open -- [logo] name pos / game · #N on team | SNAP | 2+ TD | MODEL (purple) | PM (far right)
-const tdCell = (v) => `<span class="tc">${v}</span>`;
 function tdRow(x) {
-  const r = x.r, snap = r.snap && r.snap.pct != null ? `${Math.round(r.snap.pct)}%` : "—", two = r.two != null ? `${Math.round(r.two)}%` : "—";
-  return `<div class="tdr" data-tdw="${esc(r.team)}|${esc(r.player)}"><div class="in"><span class="tlc">${tlogo(r.team)}</span><div class="nmx"><div class="l1"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos || "")}</span>${injTag(r) || practTag(r)}${retPill(r)}</div><div class="g2">${esc(r.game || "")}${r.teamRank ? ` · #${r.teamRank} on team` : ""}</div>${tdWarn(r, TDW) ? `<div class="g3 y">${tdWarn(r, TDW)}</div>` : ""}</div>` +
-    tdCell(snap) + tdCell(two) + `<span class="tc mp"><em>${tdPct(r.fair)}%</em></span><span class="tc pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${tdNoGap(r) != null ? ` <span class="y nogap" title="No · ${tdNoGap(r)} under">⚠</span>` : ""}</span></div><div class="tdwk"></div></div>`;
+  const r = x.r, snap = r.snap && r.snap.pct != null ? `${Math.round(r.snap.pct)}%` : "—", two = r.two != null ? `${Math.round(r.two)}%` : "—", warn = tdWarn(r, TDW);
+  // 10/21 night (owner: "Put the 2+ TD and snap percentage behind the card now ... Only behind the tap. And put the warning there in the middle instead"):
+  // visible = logo, name + game, the red caution in the MIDDLE column (empty when he scored last game), MODEL, POLYMARKET; SNAP and 2+ TD open under the row on a tap, next to the week marks.
+  return `<div class="tdr" data-tdw="${esc(r.team)}|${esc(r.player)}"><div class="in"><span class="tlc">${tlogo(r.team)}</span><div class="nmx"><div class="l1"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos || "")}</span>${injTag(r) || practTag(r)}${retPill(r)}</div><div class="g2">${esc(r.game || "")}${r.teamRank ? ` · #${r.teamRank} on team` : ""}</div></div>` +
+    `<span class="tc wc r">${warn || ""}</span><span class="tc mp"><em>${tdPct(r.fair)}%</em></span><span class="tc pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${tdNoGap(r) != null ? ` <span class="y nogap" title="No · ${tdNoGap(r)} under">⚠</span>` : ""}</span></div><div class="tdwk"><span class="st"><b>SNAP</b> ${snap} <span class="dim">·</span> <b>2+ TD</b> ${two} <span class="dim">·</span> </span><span class="wk"></span></div></div>`;
 }
-const tdHead = (title) => `<div class="tdh"><span class="h1">${title}</span><span class="tc">SNAP</span><span class="tc">2+ TD</span><span class="tc">MODEL</span><span class="tc pmh">${pmLogo()}POLYMARKET</span></div>`;
+const tdHead = (title) => `<div class="tdh"><span class="h1">${title}</span><span class="tc"></span><span class="tc">MODEL</span><span class="tc pmh">${pmLogo()}POLYMARKET</span></div>`;
 const earlyNote = (g) => (g && g.early ? '<span class="pill p-y" style="padding:0 6px;font-size:10px">Early estimate</span>' : "");
 // One Anytime TD section for the slate in S: price moves, then the top 3 per team, most likely first.
 const BEST_TD = 55;
@@ -324,19 +325,24 @@ function tdWeekLine(data, team, player) {
   if (!parts.length) return '<span class="dim">no games yet</span>';
   return parts.join(' <span class="dim">·</span> ') + (drought >= 2 ? ` <span class="dim">· ${drought} straight without</span>` : "");
 }
-// 10/21 (owner: "I want them to still be on the list, but just give a warning sign and only give me four from each team ... if they didn't score in the
-// past 2+ games, show the warning"; SUPERSEDES the 10/20 cut): the pool is the TD_POOL likeliest per team; nobody is removed for a drought; a player whose
-// last TD_WARN+ PLAYED games (byes skipped) had no TD carries a caution line on his row ("⚠ 3 straight without a TD"), always visible, no tap. The page is
-// still drawn only once the week feed is in (the warning needs it). The model lists, parlays and grading are unchanged (every listed player is graded).
-const TD_WARN = 2, TD_POOL = 4;
-// the caution text for a row, or null (scored in one of his last TD_WARN-1 games, no feed yet, or no played games)
-function tdWarn(r, data) { if (data == null || !r) return null; const d = tdDrought(data, r.team, r.player); return d != null && d >= TD_WARN ? `⚠ ${d} straight without a TD` : null; }
+// 10/21 night (owner: "If they haven't scored a td in 3 weeks remove them from the list. This is final. But make sure you rotate players in their team by
+// who's getting the actual tds ... Cut it to 3 per team. We are taking out the noise"; SUPERSEDES the pool-of-4 / no-cut rule of the same day): a player is on
+// the page ONLY when one of his last TD_DROUGHT PLAYED games (byes skipped) had a TD -- no TD this season = off too; the cut runs BEFORE the pool, so a cut
+// player's slot goes to the team's next likeliest scorer (rotation); the pool is TD_POOL per team (Best TD picks count toward it; the 4th slot only for a player who scored LAST game); a team
+// with fewer scorers shows fewer. A listed player who missed last game's TD keeps the red caution ("✗ no TD last game", "✗ 2 straight no TD"). The page is
+// still drawn only once the week feed is in. The model lists, parlays and grading are unchanged (every listed player is graded).
+const TD_WARN = 1, TD_POOL = 4, TD_DROUGHT = 3;
+// true when one of his last TD_DROUGHT played games had a TD (a player with no played game or no TD this season: false); null before the feed
+function tdScoredRecent(data, team, player) { const gs = tdWeekGames(data, team, player); if (!gs) return null; return gs.filter((x) => !x.bye).slice(-TD_DROUGHT).some((g) => g.n > 0); }
+const tdCut = (r, data) => data != null && !tdScoredRecent(data, r.team, r.player);
+// the caution text for a row, or null (scored last game, no feed yet, or no played games)
+function tdWarn(r, data) { if (data == null || !r) return null; const d = tdDrought(data, r.team, r.player); return d == null || d < TD_WARN ? null : d === 1 ? "✗ no TD last game" : `✗ ${d} straight no TD`; }
 async function loadTdWeeks() {
   if (TDW && Date.now() - TDW_AT < 600000) return TDW;
   if (!TDW_LOADING) TDW_LOADING = fetch("/api/tdweeks", { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.ok) { TDW = j; TDW_AT = Date.now(); } return TDW; }).catch(() => TDW).finally(() => { TDW_LOADING = null; });
   return TDW_LOADING;
 }
-function fillTdWeeks(row) { const box = row.querySelector(".tdwk"); if (!box) return; const [team, player] = String(row.dataset.tdw || "").split("|");
+function fillTdWeeks(row) { const box = row.querySelector(".tdwk .wk"); if (!box) return; const [team, player] = String(row.dataset.tdw || "").split("|");
   box.innerHTML = tdWeekLine(TDW, team, player); if (!TDW) loadTdWeeks().then(() => { if (row.classList.contains("open")) box.innerHTML = tdWeekLine(TDW, team, player); }); }
 let TD_OPEN = null;
 const tdOpenMap = () => { if (TD_OPEN) return TD_OPEN; try { TD_OPEN = JSON.parse(localStorage.getItem("tdSlots") || "{}") || {}; } catch (e) { TD_OPEN = {}; } return TD_OPEN; };
@@ -351,12 +357,16 @@ function tdBody() {
   const moveBox = moves.length ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Price moves (5¢+, real markets)</div>${moves.map((r) => `<div class="row"><span>${esc(r.player)} <span class="dim">${esc(r.game)}</span></span><span class="${r.move > 0 ? "g" : "r"}">${r.move > 0 ? "▲ +" : "▼ "}${r.move}¢</span></div>`).join("")}</div></div>` : "";
   // Best TD picks (10/14, owner: "build now"): only the players the model gives 55%+ (shown chance, after injury discounts). Graded weeks 3-5:
   // 55%+ players scored 17 of 21 (said 65%) vs 22% for every listed player -- the model's most confident tier, not a smarter model.
-  const best = rows.filter((x) => x.r.fair >= BEST_TD);
+  // 10/21 night (owner): the cut runs first -- only players who scored in their last 3 played games -- then the 3 likeliest scorers per team (rotation)
+  // 10/21 night (owner: "SHOW 4 PLAYERS IF THEY QUALIFY ... but only if the 4th player scored a td last game"): slots 1-3 = the likeliest scorers in their last 3;
+  // the 4th slot = the next likeliest player on the team who scored LAST game (drought 0); nobody who did not score last game takes the 4th slot
+  const perTeam = {}, pool = rows.filter((x) => !tdCut(x.r, TDW)).filter((x) => { const k = x.r.team, n = perTeam[k] || 0;
+    if (n >= TD_POOL) return false; if (n >= TD_POOL - 1 && tdDrought(TDW, x.r.team, x.r.player) !== 0) return false; perTeam[k] = n + 1; return true; });
+  const best = pool.filter((x) => x.r.fair >= BEST_TD);
   // 10/20 night (owner): "the best td picks 55% should be the header of that card" -- the slot-style header above the card, always open (no toggle)
   const bestBox = `<div class="sh labslot">BEST TD PICKS · MODEL ${BEST_TD}%+</div><div class="card tdl tdbest">${tdHead("PLAYER")}${best.length ? best.map(tdRow).join("") : '<div class="s dim" style="padding:8px 12px">None right now.</div>'}</div>`;
-  // 10/21 (owner): the pool is the 4 likeliest per team (Best TD picks count toward the 4); nobody is cut for a drought (the row carries a caution instead).
   // Players already in Best TD picks are left out of the list below (no repeats, owner 10/14).
-  const perTeam = {}, shown = rows.filter((x) => { const k = x.r.team; perTeam[k] = (perTeam[k] || 0) + 1; return perTeam[k] <= TD_POOL; }).filter((x) => x.r.fair < BEST_TD);
+  const shown = pool.filter((x) => x.r.fair < BEST_TD);
   // 10/20 night (owner): the list is split by time slot -- the same slots as Game Lines, kickoff order; inside a slot the rows keep the model order
   const slots = [], by = {};
   for (const g of S.games.filter((g) => !g.started).sort(order)) { const sl = (g.carry ? `WEEK ${g.week} · ` : "") + (g.kickoff ? labSlot(g.kickoff) : "GAMES"); if (!by[sl]) { by[sl] = []; slots.push(sl); } by[sl].push(g.key); }
