@@ -280,7 +280,7 @@ function practTag(r) {
 const tdCell = (v) => `<span class="tc">${v}</span>`;
 function tdRow(x) {
   const r = x.r, snap = r.snap && r.snap.pct != null ? `${Math.round(r.snap.pct)}%` : "—", two = r.two != null ? `${Math.round(r.two)}%` : "—";
-  return `<div class="tdr" data-tdw="${esc(r.team)}|${esc(r.player)}"><div class="in"><span class="tlc">${tlogo(r.team)}</span><div class="nmx"><div class="l1"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos || "")}</span>${injTag(r) || practTag(r)}${retPill(r)}</div><div class="g2">${esc(r.game || "")}${r.teamRank ? ` · #${r.teamRank} on team` : ""}</div>${tdWarn(r, TDW) ? `<div class="g3 y">${tdWarn(r, TDW)}</div>` : ""}</div>` +
+  return `<div class="tdr" data-tdw="${esc(r.team)}|${esc(r.player)}"><div class="in"><span class="tlc">${tlogo(r.team)}</span><div class="nmx"><div class="l1"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos || "")}</span>${injTag(r) || practTag(r)}${retPill(r)}</div><div class="g2">${esc(r.game || "")}${r.teamRank ? ` · #${r.teamRank} on team` : ""}</div>${tdWarn(r, TDW) ? `<div class="g3 r">${tdWarn(r, TDW)}</div>` : ""}</div>` +
     tdCell(snap) + tdCell(two) + `<span class="tc mp"><em>${tdPct(r.fair)}%</em></span><span class="tc pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${tdNoGap(r) != null ? ` <span class="y nogap" title="No · ${tdNoGap(r)} under">⚠</span>` : ""}</span></div><div class="tdwk"></div></div>`;
 }
 const tdHead = (title) => `<div class="tdh"><span class="h1">${title}</span><span class="tc">SNAP</span><span class="tc">2+ TD</span><span class="tc">MODEL</span><span class="tc pmh">${pmLogo()}POLYMARKET</span></div>`;
@@ -328,9 +328,10 @@ function tdWeekLine(data, team, player) {
 // past 2+ games, show the warning"; SUPERSEDES the 10/20 cut): the pool is the TD_POOL likeliest per team; nobody is removed for a drought; a player whose
 // last TD_WARN+ PLAYED games (byes skipped) had no TD carries a caution line on his row ("⚠ 3 straight without a TD"), always visible, no tap. The page is
 // still drawn only once the week feed is in (the warning needs it). The model lists, parlays and grading are unchanged (every listed player is graded).
-const TD_WARN = 2, TD_POOL = 4;
-// the caution text for a row, or null (scored in one of his last TD_WARN-1 games, no feed yet, or no played games)
-function tdWarn(r, data) { if (data == null || !r) return null; const d = tdDrought(data, r.team, r.player); return d != null && d >= TD_WARN ? `⚠ ${d} straight without a TD` : null; }
+// 10/21 later (owner: "make that warning sign red ... a warning sign for missing last game's TD"): from ONE blank game: "⚠ no TD last game", then "⚠ N straight without a TD"; red.
+const TD_WARN = 1, TD_POOL = 4;
+// the caution text for a row, or null (scored last game, no feed yet, or no played games)
+function tdWarn(r, data) { if (data == null || !r) return null; const d = tdDrought(data, r.team, r.player); return d == null || d < TD_WARN ? null : d === 1 ? "✗ no TD last game" : `✗ ${d} straight without a TD`; }
 async function loadTdWeeks() {
   if (TDW && Date.now() - TDW_AT < 600000) return TDW;
   if (!TDW_LOADING) TDW_LOADING = fetch("/api/tdweeks", { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.ok) { TDW = j; TDW_AT = Date.now(); } return TDW; }).catch(() => TDW).finally(() => { TDW_LOADING = null; });
