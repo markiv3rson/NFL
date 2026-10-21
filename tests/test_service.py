@@ -119,4 +119,13 @@ _g = pd.DataFrame([dict(season=2026, week=6, gameday="2026-10-18", home_score=20
                    dict(season=2026, week=7, gameday="2026-10-22", home_score=np.nan), dict(season=2026, week=7, gameday="2026-10-25", home_score=np.nan)])
 ok(_ts.coming_week(_g, 2026, "2026-10-20") == 7 and _ts.coming_week(_g, 2026, "2026-10-19") == 6 and _ts.coming_week(_g.drop(columns="gameday"), 2026) == 6,
    "team model: the coming week skips a played-but-unscored game (Tuesday 4 AM -> week 7), keeps it on its own day, no dates -> old rule")
+# STACK team yards (10/21 review): only players who played the team's most recent game are summed (injured-reserve / benched players and backup
+# quarterbacks were summed before, 1.54 passers a team live vs 1.03 in the research). prop_model is loaded as source (importing it pulls td_prob).
+_psrc = open(os.path.join(os.path.dirname(__file__), "..", "railway-model-service", "prop_model.py")).read()
+_ns5 = {"pd": pd, "td_prob": type("T", (), {"CUR": 2026})}
+exec(_psrc[_psrc.index("def _active_pids"):_psrc.index("def team_yards")], _ns5)
+_ns5["_stat_games_cached"] = lambda season: pd.DataFrame([dict(team="ATL", week=w, pid=p) for w, p in [(1, "qb1"), (1, "rb1"), (5, "qb2"), (6, "qb2"), (6, "wr1"), (4, "rb1")]] + [dict(team="SF", week=6, pid="x")])
+_a = _ns5["_active_pids"]({"ATL", "SF", "NYG"})
+ok(_a == {"ATL": {"qb2", "wr1"}, "SF": {"x"}} and "if len(r) and t in act: r = r[r.pid.isin(act[t])]" in _psrc,
+   "STACK team yards: only players who played the team's last game count (the hurt starter qb1 and rb1, last seen weeks 1 / 4, are out)")
 print(f"service checks: {'FAILED ' + str(bad) if bad else 'all passed'}"); sys.exit(1 if bad else 0)

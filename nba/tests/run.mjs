@@ -923,6 +923,13 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   const rec = await pr.nbaPropsRecord(["2026-12-30"]), day2 = await pr.nbaPropsForDay("2026-12-30");
   ok(g === 1 && rec.all.w === 1 && rec.all.l === 1 && rec.pts.w === 1 && rec.pra.l === 1 && rec.reb.w === 0 && day2[0].final && day2[0].picks.find((p) => p.name === "Jaylen Brown").result === "W" && day2[0].picks.find((p) => p.name === "Cade Cunningham").result === "L", "NBA props grading: W / L from the box score, RECORD per stat, the page shows ✓ / ✗", { g, rec });
   ok((await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2026-12-31T08:00:00Z"), fetchBox: async () => { throw new Error("no"); } })) === 0, "NBA props grading: a graded game is never graded twice");
+  { // 10/21 review: ESPN corrects box scores after the final -> one more look 6+ hours later re-grades the saved rows (Cunningham's PRA 44 -> 38 flips Under 39.5 to a win), then never again
+    const fixedBox = { "BOS @ DET": { final: true, players: { ...box["BOS @ DET"].players, "cade cunningham": { pts: 26, reb: 5, ast: 7, pra: 38, "3pm": 3, stl: 1, blk: 1 } } } };
+    const early = await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2026-12-31T10:00:00Z"), fetchBox: async () => fixedBox });
+    const g2 = await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2026-12-31T15:00:00Z"), fetchBox: async () => fixedBox });
+    const d3 = await pr.nbaPropsForDay("2026-12-30"), cc = d3[0].picks.find((p) => p.name === "Cade Cunningham");
+    const g3 = await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2026-12-31T23:00:00Z"), fetchBox: async () => { throw new Error("no second look"); } });
+    ok(early === 0 && g2 === 1 && cc.result === "W" && cc.actual === 38 && g3 === 0 && pr.RECHECK_H === 6, "NBA props grading: a graded game is looked at once more 6+ hours later and a corrected box score re-grades its rows; never a third time", { early, g2, cc, g3 }); }
   // ESPN box parse (the real summary shape): 3PT "1-3" = 1 made, a DNP is left out, the key from the header
   const b = parseBox({ header: { competitions: [{ status: { type: { completed: true } }, competitors: [{ homeAway: "away", team: { abbreviation: "MIA" } }, { homeAway: "home", team: { abbreviation: "ORL" } }] }] },
     boxscore: { players: [{ team: { abbreviation: "MIA" }, statistics: [{ names: ["MIN", "PTS", "FG", "3PT", "FT", "REB", "AST", "TO", "STL", "BLK", "OREB", "DREB", "PF", "+/-"], athletes: [{ athlete: { displayName: "Andrew Wiggins Jr." }, stats: ["15", "13", "4-7", "1-3", "4-5", "2", "1", "0", "2", "0", "0", "2", "2", "-1"] }, { athlete: { displayName: "Nobody Played" }, didNotPlay: true, stats: [] }] }] }] } });

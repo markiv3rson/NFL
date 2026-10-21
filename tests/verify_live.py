@@ -222,5 +222,74 @@ try:
 except Exception as e:
     print(f"6. NBA picks: could not check ({str(e)[:80]})")
 
+# 7. NBA player props (10/21 review) -> ESPN box scores (a second parser, written here from ESPN's own labels; the app's parser is nba/lib/espn.js parseBox)
+try:
+    nn2 = lambda x: re.sub(r"[^a-z]", "", re.sub(r"\s+(jr|sr|ii|iii|iv|v)\.?$", "", str(x or "").strip().lower()))
+    days = sorted({p["date"] for p in NP} | set((get(f"{SITE}/api/nba/props").get("days") or [])))
+    n = um = push = 0
+    for day in days:
+        P = get(f"{SITE}/api/nba/props?date={day}")
+        rows = [(g, r) for g in P.get("games") or [] for r in g.get("picks") or [] if r.get("result") in ("W", "L", "P")]
+        if not rows: continue
+        box = {}
+        sb = get(f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates={day.replace('-', '')}")
+        for e in sb.get("events") or []:
+            if not e["status"]["type"].get("completed"): continue
+            sm = get(f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event={e['id']}")
+            for tm in (sm.get("boxscore") or {}).get("players") or []:
+                st = tm["statistics"][0]; lab = st.get("labels") or []
+                for a in st.get("athletes") or []:
+                    v = a.get("stats") or []
+                    nm = nn2(a["athlete"]["displayName"])
+                    if not v or a.get("didNotPlay"): box[nm] = None; continue
+                    d = dict(zip(lab, v)); num = lambda k: float(str(d.get(k, "0")).split("-")[0] or 0)
+                    pts, reb, ast = num("PTS"), num("REB"), num("AST")
+                    box[nm] = {"pts": pts, "reb": reb, "ast": ast, "pra": pts + reb + ast, "3pm": num("3PT"), "stl": num("STL"), "blk": num("BLK")}
+        for g, r in rows:
+            k = nn2(r["name"])
+            if k not in box: um += 1; continue
+            b = box[k]
+            if b is None:
+                push += 1
+                if r["result"] != "P": wrong("NBA prop", day, r["name"], r["stat"], "did not play but graded", r["result"])
+                continue
+            y = b.get(r["stat"])
+            if y is None: um += 1; continue
+            n += 1
+            gx = "P" if y == r["line"] else ("W" if (y < r["line"]) == (r["side"] == "under") else "L")
+            if gx != r["result"] or (r.get("actual") is not None and float(r["actual"]) != y): wrong("NBA prop", day, g["game"], r["name"], r["stat"], r["side"], r["line"], "app", r["result"], r.get("actual"), "ESPN", y, gx)
+    print(f"7. NBA props: {n} graded rows recomputed from ESPN box scores, {push} did-not-play pushes, {um} not matched")
+except Exception as e:
+    print(f"7. NBA props: could not check ({str(e)[:80]})")
+
+# 8. first-TD scorer and first-TD team (10/21 review) -> nflverse play-by-play (the first touchdown play of each game)
+try:
+    import gzip
+    raw = urllib.request.urlopen(urllib.request.Request(f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz", headers={"User-Agent": "verify"}), timeout=120).read()
+    first = {}
+    for r in csv.DictReader(io.StringIO(gzip.decompress(raw).decode())):
+        if r.get("season_type") != "REG" or r.get("touchdown") != "1" or not r.get("td_team"): continue
+        k = (int(r["week"]), FIX.get(r["away_team"], r["away_team"]), FIX.get(r["home_team"], r["home_team"]))
+        if k in first: continue
+        first[k] = (r.get("td_player_name") or "", FIX.get(r["td_team"], r["td_team"]))
+    ng = nt = 0
+    for r in res.values():
+        a, h = r["game"].split(" @ ")
+        f = first.get((r["week"], a, h))
+        if not f: continue
+        rows = [p for p in r.get("td") or [] if p.get("ftdHit") is not None]
+        if rows:
+            ng += 1
+            hit = [p["player"] for p in rows if p["ftdHit"]]
+            if len(hit) > 1 or (hit and hit[0] != f[0]): wrong("first TD", r["week"], r["game"], "app", hit, "nflverse", f[0])
+            if not hit and any(p["player"] == f[0] and p.get("team") == f[1] for p in rows): wrong("first TD", r["week"], r["game"], "app none, nflverse", f[0])
+        ft = r.get("ftdTeam") or {}
+        if ft.get("first") in ("home", "away"):
+            nt += 1
+            if (h if ft["first"] == "home" else a) != f[1]: wrong("first TD team", r["week"], r["game"], "app", ft["first"], "nflverse", f[1])
+    print(f"8. first TD: {ng} games' first-TD scorer and {nt} first-TD team results vs nflverse play-by-play")
+except Exception as e:
+    print(f"8. first TD: could not check ({str(e)[:80]})")
+
 print(f"\nverify: {'ALL RIGHT' if not bad else f'{bad} WRONG'}")
 sys.exit(1 if bad else 0)

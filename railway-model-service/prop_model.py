@@ -350,6 +350,20 @@ def chances_many(games):
     return out
 
 
+def _active_pids(teams):
+    """10/21 review: the research's team sums (scratchpad stack/build.py) add up the players who actually PLAYED each game; live_rows_many keeps a
+    row for every player who appeared for the team this season, so injured-reserve / benched / cut players and backup quarterbacks were summed
+    too (week 7: 1.54 passers and 8.25 receivers a team live vs 1.03 and 6.87 in the research; Barkley, B.Hall, Achane, Rice ... last played weeks
+    ago). The live universe is now the players who played the team's most recent game (minus this week's Out list), the closest pre-game match."""
+    allp = _stat_games_cached(td_prob.CUR)
+    if not len(allp): return {}
+    out = {}
+    for t in teams:
+        cur = allp[allp.team == t]
+        if len(cur): out[t] = set(cur[cur.week == cur.week.max()].pid)
+    return out
+
+
 def team_yards(games):
     """STACK shadow inputs (10/21): each team's expected yards this week from the prop model -- the same player universe as the research's
     walk-forward sums (eligible() per stat): py = passing + rushing yards of the team's modeled players, rec = receiving yards.
@@ -362,11 +376,13 @@ def team_yards(games):
         teams[a] = (h, tot / 2 - sp / 2, -sp, tot, 0); teams[h] = (a, tot / 2 + sp / 2, sp, tot, 1)
         outs_by[a] = outs_by[h] = list(g.get("outs") or [])
     rows = live_rows_many(teams, outs_by)
+    act = _active_pids(set(teams))
     out = []
     for g in games:
         res = {"game": f"{g['away']} @ {g['home']}"}
         for side in ("away", "home"):
             t = g[side]; r = rows[rows.team == t] if len(rows) else rows; py = 0.0; rec = 0.0; n = 0
+            if len(r) and t in act: r = r[r.pid.isin(act[t])]   # 10/21 review: only players who played the team's last game (see _active_pids)
             for stat in ("pass_yds", "rush_yds", "rec_yds"):
                 if stat not in L["models"] or not len(r): continue
                 e = eligible(r, stat)
