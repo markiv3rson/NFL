@@ -105,10 +105,10 @@ function cardBody(g, kind, C) {
   const x = C.plain, p = C.pts;
   let l1;
   if (x) { const c1 = clsOf(x.hit), tx = hitTxt(x.hit, c1);
-    l1 = c1 === "g" ? `<b class="g pulse" style="--gl:${glowOf(x.hit / 100)};font-size:13px;white-space:nowrap">PICK: ${esc(x.pick)} · <span class="reelpct" data-v="${tx}">${tx}</span></b>` : `<b class="${c1}" style="font-size:13px;white-space:nowrap">PICK: ${esc(x.pick)} · ${tx}</b>`; }
+    l1 = c1 === "g" ? `<b class="g pulse" style="--gl:${glowOf(x.hit / 100)};font-size:13px;white-space:nowrap"><span class="lbw">PICK:</span> ${esc(x.pick)} · <span class="reelpct" data-v="${tx}">${tx}</span></b>` : `<b class="${c1}" style="font-size:13px;white-space:nowrap"><span class="lbw">PICK:</span> ${esc(x.pick)} · ${tx}</b>`; }
   else l1 = `<b class="dim" style="font-size:13px">No pick</b>`;
   let l2;
-  if (p) { const c2 = clsOf(p.hit); l2 = `<b class="${c2}" style="font-size:13px;white-space:nowrap">PICK w/ POINTS: ${esc(p.pick)} · ${hitTxt(p.hit, c2)}</b>`; }
+  if (p) { const c2 = clsOf(p.hit); l2 = `<b class="${c2}" style="font-size:13px;white-space:nowrap"><span class="lbw">PICK w/ POINTS:</span> ${esc(p.pick)} · ${hitTxt(p.hit, c2)}</b>`; }
   else l2 = `<span class="dim" style="font-size:13px;white-space:nowrap">PICK w/ POINTS: none</span>`;
   const grp = (r) => r.team || (r.side === "over" ? "Over" : "Under"), first = x ? x.team || (x.side === "over" ? "Over" : "Under") : null;
   const names = [...new Set(C.rows.map(grp))].sort((a, b) => (a === first ? -1 : 0) - (b === first ? -1 : 0));
@@ -131,9 +131,9 @@ function leanCell(g, kind) {
   const adj = injLine(g, kind), isTot = (x) => /^(Over|Under)\b/.test(x);
   // Upgraded model (10/9) when the slate has it: the game model corrected with everything else known before kickoff.
   const U = g.modelUp, LN = g.lineNow || {}, mm = U ? U.margin : m.homeMargin, mt = U ? U.total : m.total;
-  const mline = kind === "total" ? `Model: <b class="mod">${mt.toFixed(1)}</b>` : `Model: <b class="mod">${mm >= 0 ? g.home : g.away} by ${Math.abs(mm).toFixed(1)}</b>`;
-  const tline = kind === "spread" && g.teamSide && !g.started && !g.final ? `<div class="s">Model (Team): <b class="mod">${esc(g.teamSide.pick)} · ${g.teamSide.pct}%</b></div>` : "";   // 10/20 owner: the team model's side on every spread card
-  const sline = kind === "spread" && g.stackSide && !g.started && !g.final ? `<div class="s">Model (Stack): <b class="mod">${esc(g.stackSide.pick)} · ${g.stackSide.pct}%</b></div>` : "";   // 10/21 owner (option A): the STACK shadow's side on every spread card, data only
+  const mline = kind === "total" ? `<span class="lbw">Model:</span> <b class="mod">${mt.toFixed(1)}</b>` : `<span class="lbw">Model:</span> <b class="mod">${mm >= 0 ? g.home : g.away} by ${Math.abs(mm).toFixed(1)}</b>`;
+  const tline = kind === "spread" && g.teamSide && !g.started && !g.final ? `<div class="s"><span class="lbw">Model (Team):</span> <b class="mod">${esc(g.teamSide.pick)} · ${g.teamSide.pct}%</b></div>` : "";   // 10/20 owner: the team model's side on every spread card
+  const sline = kind === "spread" && g.stackSide && !g.started && !g.final ? `<div class="s"><span class="lbw">Model (Stack):</span> <b class="mod">${esc(g.stackSide.pick)} · ${g.stackSide.pct}%</b></div>` : "";   // 10/21 owner (option A): the STACK shadow's side on every spread card, data only
   if (U && LN.hs != null && LN.tl != null) {   // the model's side vs the current line, from the upgraded numbers
     const homeSide = mm + LN.hs > 0, t = homeSide ? g.home : g.away, ln = homeSide ? LN.hs : -LN.hs;
     p = kind === "total" ? { side: mt > LN.tl ? "over" : "under", label: `${mt > LN.tl ? "Over" : "Under"} ${LN.tl}`, warn: p && p.warn } : { team: t, label: `${t} ${sgn(ln)}`, warn: p && p.warn };
@@ -145,7 +145,7 @@ function leanCell(g, kind) {
   if (LP) {   // 10/13: after kickoff, the pick that was locked in at kickoff and how it did
     const cls = LP.hit >= 56 ? "g" : LP.hit >= 53 ? "lg" : "y", pc = cls === "g" ? Math.round(LP.hit) : Math.floor(LP.hit), rs = LP.result === "W" ? ' · <span class="g">W</span>' : LP.result === "L" ? ' · <span class="r">L</span>' : LP.result === "P" ? " · push" : g.final ? "" : ' · <span class="dim">live</span>';
     const lp = LP.pts, lrs = lp ? (lp.result === "W" ? ' · <span class="g">W</span>' : lp.result === "L" ? ' · <span class="r">L</span>' : lp.result === "P" ? " · push" : g.final ? "" : ' · <span class="dim">live</span>') : "";
-    body = `<div style="margin-top:6px"><b class="${cls}" style="font-size:16px">PICK: ${esc(LP.pick)} · ${pc}%</b>${rs}</div>` + (lp ? `<div style="margin-top:4px"><b>PICK w/ POINTS: ${esc(lp.pick)} · ${lp.hit >= 56 ? Math.round(lp.hit) : Math.floor(lp.hit)}%</b>${lrs}</div>` : "") + `<div class="s dim" style="margin-top:4px">locked at kickoff</div>`;
+    body = `<div style="margin-top:6px"><b class="${cls}" style="font-size:16px"><span class="lbw">PICK:</span> ${esc(LP.pick)} · ${pc}%</b>${rs}</div>` + (lp ? `<div style="margin-top:4px"><b><span class="lbw">PICK w/ POINTS:</span> ${esc(lp.pick)} · ${lp.hit >= 56 ? Math.round(lp.hit) : Math.floor(lp.hit)}%</b>${lrs}</div>` : "") + `<div class="s dim" style="margin-top:4px">locked at kickoff</div>`;
   }
   else if (!g.final && CC) body = cardBody(g, kind, CC);
   else if (!g.final) {
@@ -156,13 +156,13 @@ function leanCell(g, kind) {
       // 10/12 (owner: "I want a pick, not a lean"): every game gets a PICK. Below 56% it stays yellow and says its real tested rate.
       // 10/13 (owner): 53-55% shows light green, below 53% yellow; no notes under either
       // 10/14: color from the real rate and the % rounded DOWN below green (55.6% used to read "56%" in light green)
-      body = lp ? `<div style="margin-top:6px"><b class="${lp.p >= 0.53 ? "lg" : "y"}" style="font-size:16px">PICK: ${esc(lp.pick)} · ${Math.floor(lp.p * 100)}%</b></div>`
+      body = lp ? `<div style="margin-top:6px"><b class="${lp.p >= 0.53 ? "lg" : "y"}" style="font-size:16px"><span class="lbw">PICK:</span> ${esc(lp.pick)} · ${Math.floor(lp.p * 100)}%</b></div>`
         : `<div style="margin-top:6px"><b class="dim">No pick</b></div><div class="s" style="margin-top:4px">No tested edge on this one.</div>`;
     }
     else {
       const pc = Math.round(P.p * 100);
       // 10/14 casino look (owner): the green pick is the same size as the card's other text and only GLOWS (no growing), glows brighter the stronger it is, and its % rolls in like a slot reel
-      body = `<div style="margin-top:6px"><b class="g pulse" style="--gl:${glowOf(P.p)}">PICK: ${esc(P.pick)} · <span class="reelpct" data-v="${pc}%">${pc}%</span></b></div>` +
+      body = `<div style="margin-top:6px"><b class="g pulse" style="--gl:${glowOf(P.p)}"><span class="lbw">PICK:</span> ${esc(P.pick)} · <span class="reelpct" data-v="${pc}%">${pc}%</span></b></div>` +
         // 10/13 (owner: fewer notes): just the green pick's own reason (e.g. the LINE MOVE numbers)
         `<div class="s" style="margin-top:4px">${esc(P.why)}</div>` +
         moreBox(recLine(P.rec) + lineCheck(g, kind, P.pick));
@@ -188,16 +188,17 @@ const order = (a, b) => (a.final - b.final) || (a.started - b.started) || (new D
 // "Most likely winners" (9/30): the favorite in every upcoming game, ranked by chance to WIN the game (straight up, not the spread).
 // Chance = the app's market-based win chance (g.winPct = home chance); moneyline prices are the fallback. The server records
 // each game's favorite at kickoff and grades it, so the record below is real, not a backtest.
+// 10/21: the SAME win chance as the game's tile (mktHome: Polymarket's moneyline with the fee taken out, else the spread's) -- the list read the spread's
+// chance while the tile read the moneyline, so one game showed two numbers (MIA @ NYJ 64% here, 68% on the tile)
 function winnerOf(g) {
-  let ph = g.winPct != null ? g.winPct / 100 : null;
-  if (ph == null && g.poly && g.poly.ml && g.poly.ml.home > 0 && g.poly.ml.away > 0) ph = g.poly.ml.home / (g.poly.ml.home + g.poly.ml.away);
+  const hm = mktHome(g); let ph = hm != null ? hm / 100 : null;
   if (ph == null || ph === 0.5) return null;
   const home = ph > 0.5, price = g.poly && g.poly.ml ? (home ? g.poly.ml.home : g.poly.ml.away) : null;
   return { game: g.key, team: home ? g.home : g.away, opp: home ? g.away : g.home, where: home ? "home" : "away", p: home ? ph : 1 - ph, price };
 }
 function winnersBox() {
   const list = S.games.filter((g) => !g.started).map(winnerOf).filter(Boolean).sort((a, b) => b.p - a.p);
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Model's pick on every game</div>` +
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Favorite in every game</div>` +
     (list.slice(0, WINALL ? 99 : 8).map((x, i) => { const g = S.games.find((y) => y.key === x.game), cp = g && !g.started ? straightPicks(g, 0) : [], sp0 = cp.find((c) => !/^(Over|Under)\b/.test(c.pick) && !/\bML\b/.test(c.pick)), tt0 = cp.find((c) => /^(Over|Under)\b/.test(c.pick)),
         sp = sp0 ? { label: sp0.pick, gap: 99 } : null, tt = tt0 ? { label: tt0.pick, gap: 99 } : null;   // review fix 10/14: the CARD's pick (CLAUDE.md: never show the game model's own side as a pick)
       const tdp = g ? (g.td || []).filter((r) => r.fair != null && !/^(out|doubtful)$/i.test(r.injury || "")).sort((a, b) => b.fair - a.fair)[0] : null;   // the game's most likely scorer
@@ -230,7 +231,7 @@ function gameCard(g, i) {
     return secRow("SPREAD &amp; ML", headPills(g, "l" + i)) + `<div class="card${g.final ? " fin " + finClass(g, "spread") : ""}" style="margin-top:10px"><div class="inner">${headDrops(g, "l" + i)}<div class="hd">MARKET</div><div class="mk">` +
       `<div><div class="k">SPORTSBOOK</div>${b.spread ? `${g.home} ${sgn(b.spread.homeSpread)} ${odds(b.spread.home.odds)}<div class="s">fair ${g.home} ${odds(toAmerican(b.spread.home.fair))} / ${g.away} ${odds(toAmerican(b.spread.away.fair))}</div>` : dash}</div>` +
       `<div><div class="k">${pmLogo()}POLYMARKET</div>${poly}</div>` +
-      `</div><div class="hd hm">MODEL</div>` + leanCell(g, "spread") +
+      `</div><div class="hd hm ihd">MODEL${IBTN}</div>${ibox(MODEL_INFO.spread)}` + leanCell(g, "spread") +
       `</div>${cover(g, g.spreadPick, "spread")}</div>`;
   }
 }
@@ -246,7 +247,7 @@ function totalCard(g, i) {
     return secRow("TOTALS", headPills(g, "t" + i, true)) + `<div class="card${g.final ? " fin " + finClass(g, "total") : ""}" style="margin-top:10px"><div class="inner">${headDrops(g, "t" + i, true)}<div class="hd">MARKET</div><div class="mk">` +
       `<div><div class="k">SPORTSBOOK</div>${b.total ? `${b.total.line}<div class="s">O ${odds(b.total.over.odds)} · U ${odds(b.total.under.odds)}</div>` : dash}</div>` +
       `<div><div class="k">${pmLogo()}POLYMARKET</div>${poly}</div>` +
-      `</div><div class="hd hm">MODEL</div>` + leanCell(g, "total") +
+      `</div><div class="hd hm ihd">MODEL${IBTN}</div>${ibox(MODEL_INFO.total)}` + leanCell(g, "total") +
       `</div>${cover(g, g.totalPick, "total")}</div>`;
   }
 }
@@ -279,13 +280,14 @@ function practTag(r) {
 // 10/20 night (owner's sketch): ONE line per player, nothing to open -- [logo] name pos / game · #N on team | SNAP | 2+ TD | MODEL (purple) | PM (far right)
 function tdRow(x, withGame) {
   const r = x.r, snap = r.snap && r.snap.pct != null ? `${Math.round(r.snap.pct)}%` : "—", two = r.two != null ? `${Math.round(r.two)}%` : "—", warn = tdWarn(r, TDW);
-  // 10/21 night (owner: "Make it like the first td layout. With anytime td labels"): the First TD page's row -- bullet, small logo, name (+ position / injury tags), "Anytime TD" under the
-  // name (Best TD picks add the game), the red caution on that line, MODEL % (purple) and the Polymarket cents on the right; a tap opens SNAP · 2+ TD, then the week marks on their own line.
+  // 10/21 night (owner: "Make it like the first td layout"): the First TD page's row -- bullet, small logo, name (+ position / injury tags), MODEL % (purple) and the Polymarket cents
+  // on the right; a tap opens SNAP · 2+ TD, then the week marks on their own line. 10/22 (owner: "remove the word Anytime TD ... replace it with the no touchdown"): the middle holds only
+  // the red caution (Best TD picks add their game before it) -- centered in its own column on a computer, under the name on a phone.
   return `<div class="pbl ppr first tdr" data-tdw="${esc(r.team)}|${esc(r.player)}"><span class="pp1">• ${tlogo(r.team)}${esc(r.player)}<span class="pos">${esc(r.pos || "")}</span>${injTag(r) || practTag(r)}${retPill(r)}</span>` +
-    `<span class="pp2">Anytime TD${withGame && r.game ? ` · ${esc(r.game)}` : ""}${warn ? ` <span class="wc r">${warn}</span>` : ""}</span><span class="pp3 mod">${tdPct(r.fair)}%</span><span class="pp4">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${tdNoGap(r) != null ? ` <span class="y nogap" title="No · ${tdNoGap(r)} under">⚠</span>` : ""}</span>` +
+    `<span class="pp2">${withGame && r.game ? `<span class="pp2t">${esc(r.game)}</span>` : ""}${warn ? `<span class="wc r">${warn}</span>` : ""}</span><span class="pp3 mod">${tdPct(r.fair)}%</span><span class="pp4">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${tdNoGap(r) != null ? ` <span class="y nogap" title="No · ${tdNoGap(r)} under">⚠</span>` : ""}</span>` +
     `<div class="tdwk"><div class="st"><b>SNAP</b> ${snap} <span class="dim">·</span> <b>2+ TD</b> ${two}</div><div class="wk"></div></div></div>`;
 }
-const tdHead = () => `<div class="pbl ppr pph first"><span class="pp1">PLAYER</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
+const tdHead = () => `<div class="pbl ppr pph first tdh"><span class="pp1">PLAYER</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
 const earlyNote = (g) => (g && g.early ? '<span class="pill p-y" style="padding:0 6px;font-size:10px">Early estimate</span>' : "");
 // One Anytime TD section for the slate in S: price moves, then the top 3 per team, most likely first.
 const BEST_TD = 55;
@@ -304,25 +306,35 @@ function firstTdGames() {
 // TD BY WEEK (10/20 night, owner: "click on it and it will show me each week that the last time they made a TD"): one line per player under his row,
 // week by week this season -- ✓ (with the count when 2+), – for a game without one, bye when his team did not play; the running week only once its game is final.
 let TDW = null, TDW_AT = 0, TDW_LOADING = null;
+// 10/21: the first-name parts must start alike ("Bi" / "Bijan", "J" / "Jahmyr"), not just share a letter -- "Bi.Robinson" matched "Br.Robinson" (both ATL)
+// and took his touchdowns; suffixes (Jr., III) are dropped from the last name
 const tdNameEq = (a, b) => { const n = (x) => String(x || "").toLowerCase().replace(/[^a-z0-9]/g, ""); if (n(a) === n(b)) return true;
-  const la = String(a || "").split(/[\s.]+/).filter(Boolean), lb = String(b || "").split(/[\s.]+/).filter(Boolean); return la.length > 1 && lb.length > 1 && la[la.length - 1].toLowerCase() === lb[lb.length - 1].toLowerCase() && la[0][0].toLowerCase() === lb[0][0].toLowerCase(); };
+  const sp = (x) => String(x || "").replace(/\b(Jr|Sr|II|III|IV|V)\b\.?/g, "").split(/[\s.]+/).filter(Boolean), la = sp(a), lb = sp(b);
+  if (la.length < 2 || lb.length < 2 || la[la.length - 1].toLowerCase().replace(/[^a-z0-9]/g, "") !== lb[lb.length - 1].toLowerCase().replace(/[^a-z0-9]/g, "")) return false;
+  const fa = la[0].toLowerCase().replace(/[^a-z]/g, ""), fb = lb[0].toLowerCase().replace(/[^a-z]/g, ""); return !!fa && !!fb && (fa.startsWith(fb) || fb.startsWith(fa)); };
+// the weeks he was on the field (the feed's snap counts), or null when the feed has no row for him (then the team's games count)
+function tdPlayedWeeks(data, team, player) { const t = data && data.played && data.played[team]; if (!t) return null;
+  const hits = Object.keys(t).filter((nm) => tdNameEq(player, nm)); return hits.length === 1 ? new Set(t[hits[0]]) : null; }
 // One entry per PLAYED week: { w, n } (n = his TDs that week), "bye" for a final week his team did not play; a week not played yet is left out
 // (the running week counts a game only once its scorers are posted -- 10/20 night fix: week 7 read "bye" on everyone before it was played).
 function tdWeekGames(data, team, player) {
   if (!data || !data.weeks) return null;
+  const pw = tdPlayedWeeks(data, team, player), teamSnapWks = new Set(Object.values((data.played || {})[team] || {}).flat());
   const out = [], ws = Object.keys(data.weeks).map(Number).sort((a, b) => a - b);
   for (const w of ws) { const d = data.weeks[w], key = (d.games || []).find((k) => k.split(" @ ").includes(team));
     if (!key) { if (d.final) out.push({ w, bye: true }); continue; }
     if (!d.final && !Object.keys((d.counts || {})[key] || {}).length) continue;
     const c = (d.counts || {})[key] || {}, n = Object.entries(c).filter(([nm]) => tdNameEq(player, nm)).reduce((a, [, v]) => a + Number(v || 0), 0);
+    // a week his team played with snap counts posted but no snaps for him = he sat out ("out"): skipped like a bye (a TD that week still counts)
+    if (!n && pw && teamSnapWks.has(w) && !pw.has(w)) { out.push({ w, out: true }); continue; }
     out.push({ w, n }); }
   return out;
 }
 // Played games in a row without a TD, counted back from his last played game (byes skipped); null before the feed arrives
-function tdDrought(data, team, player) { const gs = tdWeekGames(data, team, player); if (!gs) return null; let k = 0; for (const g of gs.filter((x) => !x.bye)) k = g.n > 0 ? 0 : k + 1; return k; }
+function tdDrought(data, team, player) { const gs = tdWeekGames(data, team, player); if (!gs) return null; let k = 0; for (const g of gs.filter((x) => !x.bye && !x.out)) k = g.n > 0 ? 0 : k + 1; return k; }
 function tdWeekLine(data, team, player) {
   const gs = tdWeekGames(data, team, player); if (!gs) return '<span class="dim">loading…</span>';
-  const parts = gs.map((g) => g.bye ? `<span class="dim">W${g.w} bye</span>` : g.n > 0 ? `<b class="g">W${g.w} ✓${g.n > 1 ? g.n : ""}</b>` : `<span class="r">W${g.w} –</span>`), drought = tdDrought(data, team, player);
+  const parts = gs.map((g) => g.bye ? `<span class="dim">W${g.w} bye</span>` : g.out ? `<span class="dim">W${g.w} out</span>` : g.n > 0 ? `<b class="g">W${g.w} ✓${g.n > 1 ? g.n : ""}</b>` : `<span class="r">W${g.w} –</span>`), drought = tdDrought(data, team, player);
   if (!parts.length) return '<span class="dim">no games yet</span>';
   return parts.join(' <span class="dim">·</span> ') + (drought >= 2 ? ` <span class="dim">· ${drought} straight without</span>` : "");
 }
@@ -334,7 +346,7 @@ function tdWeekLine(data, team, player) {
 // caution ("✗ no TD last game"; 2+ blanks are never listed). The page is still drawn only once the week feed is in. Model lists, parlays and grading unchanged.
 const TD_WARN = 1, TD_POOL = 4, TD_DROUGHT = 2;
 // true when one of his last TD_DROUGHT played games had a TD (a player with no played game or no TD this season: false); null before the feed
-function tdScoredRecent(data, team, player) { const gs = tdWeekGames(data, team, player); if (!gs) return null; return gs.filter((x) => !x.bye).slice(-TD_DROUGHT).some((g) => g.n > 0); }
+function tdScoredRecent(data, team, player) { const gs = tdWeekGames(data, team, player); if (!gs) return null; return gs.filter((x) => !x.bye && !x.out).slice(-TD_DROUGHT).some((g) => g.n > 0); }
 const tdCut = (r, data) => data != null && !tdScoredRecent(data, r.team, r.player);
 // the caution text for a row, or null (scored last game, no feed yet, or no played games)
 function tdWarn(r, data) { if (data == null || !r) return null; const d = tdDrought(data, r.team, r.player); return d == null || d < TD_WARN ? null : d === 1 ? "✗ no TD last game" : `✗ ${d} straight no TD`; }
@@ -388,7 +400,7 @@ function renderTd() {
   loadTdWeeks();
   // 10/21 night (owner's sketch): a record tile on top like the First TD page -- the Best TD picks (55%+ at kickoff) graded this season
   const picks = (RES || []).flatMap((r) => (r.td || []).filter((p) => p.fair >= BEST_TD && p.played !== false && typeof p.scored === "boolean")), hit = picks.filter((p) => p.scored).length;
-  const rc = picks.length ? { w: hit, l: picks.length - hit, pct: Math.round((hit / picks.length) * 1000) / 10 } : null;
+  const rc = !RES && !renderTd.tried ? undefined : picks.length ? { w: hit, l: picks.length - hit, pct: Math.round((hit / picks.length) * 1000) / 10 } : null;
   $("td").innerHTML = recTile(rc, "BEST TD PICKS RECORD") + tdBody();
   if (!RES && !renderTd.tried) { renderTd.tried = true; loadRecord().catch(() => {}).finally(() => { if (RES && S && S.games) renderTd(); }); }   // one load for the tile; a failed load leaves 0–0
 }
@@ -674,6 +686,22 @@ function mSec(id, title, body, warn = 0, open = false) {
     `<div class="drop${open ? " open" : ""}" id="${id}">${body}</div>`;
 }
 // 10/15: how the card's PICK and PICK w/ POINTS are doing (saved at kickoff, graded when the game ends), with money per $100 at the price saved with each pick
+// 10/22 (owner: "only 1 information button next to the model header and it will explain everything in it"): one ⓘ per model section,
+// a tap opens a short box right under the header (the tap is handled in public/shell.js). Model lines read white labels + colored numbers.
+const IBTN = `<button class="ibtn" type="button" aria-label="What is this?"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6.6"/><line x1="8" y1="7.2" x2="8" y2="11.4"/><circle cx="8" cy="4.8" r=".6" fill="currentColor"/></svg></button>`;
+const ibox = (lines, st) => `<div class="ibox" hidden${st ? ` style="${st}"` : ""}>${lines.map(([k, t]) => `<div><b>${k}</b> ${t}</div>`).join("")}</div>`;
+const MODEL_INFO = {
+  spread: [["Model:", "the game model’s score guess. Data only."], ["Model (Team):", "team-stats model at Polymarket’s line; it becomes the PICK at 58%+ sure."],
+    ["Model (Stack):", "everything the app knows in one model. Test only, never the pick."], ["PICK:", "the bet at Polymarket’s main line, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
+    ["PICK w/ POINTS:", "same side, the fewest bought points (1–2) that won 56%+."], ["MORE list:", "every line within 2 points: points bought · history win % · Polymarket price."]],
+  total: [["Model:", "the game model’s total points guess. Data only."], ["PICK:", "Over or Under at Polymarket’s main total, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
+    ["PICK w/ POINTS:", "same side, the fewest bought points (1–2) that won 56%+."], ["MORE list:", "every line within 2 points: points bought · history win % · Polymarket price."]],
+};
+const CARD_INFO = [["PICK:", "the card’s bet at Polymarket’s main line (a tested rule, else the model’s side), locked at kickoff."],
+  ["PICK w/ POINTS:", "the same side with the fewest bought points (1–2) that won 56%+."], ["Line value:", "points better (+) or worse than the line at kickoff."]];
+const TRACK_INFO = [["Test picks,", "never shown on a card: recorded and graded live. One becomes a pick only after it holds 56%+ over about 100 games."],
+  ["INJURY EARLY:", "a starter newly out; the healthy team at the line of that moment."], ["TD JUMP:", "a player’s TD chance up 10+ points between reruns; did he score?"],
+  ["STACK:", "everything the app knows in one model; confident = its top fifth."]];
 function cardRecBox() {
   const R = (COMBOS && COMBOS.cardRec) || {};
   const row = (lab, k) => { const b = R[k]; if (!b || !(b.w + b.l)) return `<div class="row" style="grid-column:1/-1"><span class="dim">${lab}</span><span class="dim">—</span></div>`;
@@ -681,7 +709,8 @@ function cardRecBox() {
   const V = (COMBOS && COMBOS.card && COMBOS.card.clv) || {};
   const lv = (lab, x) => { if (!x || !x.n) return ""; const av = x.sum / x.n;
     return `<div class="row" style="grid-column:1/-1"><span class="dim">${lab}</span><span><b class="${av > 0.05 ? "g" : av < -0.05 ? "r" : "dim"}">${av > 0 ? "+" : av < 0 ? "−" : ""}${Math.abs(av).toFixed(2)} pts</b> · ${x.beat} better, ${x.n - x.beat - x.same} worse, ${x.same} same</span></div>`; };
-  return row("PICK · spread", "pick|spread") + row("PICK · total", "pick|total") + row("PICK w/ POINTS · spread", "ptspick|spread") + row("PICK w/ POINTS · total", "ptspick|total") +
+  return `<div class="s ihd" style="grid-column:1/-1"><b>Card picks</b>${IBTN}</div>` + ibox(CARD_INFO, "grid-column:1/-1") +
+    row("PICK · spread", "pick|spread") + row("PICK · total", "pick|total") + row("PICK w/ POINTS · spread", "ptspick|spread") + row("PICK w/ POINTS · total", "ptspick|total") +
     (V.n ? `<div class="s" style="margin-top:8px;grid-column:1/-1"><b>Line value · PICK vs the closing line</b></div>` + lv("Spread", V.spread) + lv("Total", V.total) : "");
 }
 function renderModelNow() {
@@ -825,7 +854,7 @@ function labStats() {
 }
 function pickLabBox() {
   // paper tests recorded and graded live, not picks: INJURY EARLY, TD JUMP, STACK (the Pinnacle LINE MOVE / order-book tilt shadows were cut 10/19)
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Tracked angles</div>${trackedRows()}</div></div>`;
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh ihd">Tracked angles${IBTN}</div>${ibox(TRACK_INFO)}${trackedRows()}</div></div>`;
 }
 function trackedRows() {
   const T = TRACKED; if (!T) return "";
@@ -1133,7 +1162,8 @@ const propTabLabel = (k) => (PROP_TABS.find(([t]) => t === k) || [, "Rec Yds"])[
 async function loadProps() {
   try { const d = await (await fetch(`/api/props${PROPWEEK ? `?week=${PROPWEEK}` : ""}`, { cache: "no-store" })).json(); if (d && d.ok) { PROPS = d; renderProps(); } } catch {}
 }
-const recTile = (rc, label = "RECORD") => `<div class="stats" style="margin-top:10px"><div class="stat"><div class="k">${label}</div><div class="v ${rc && rc.pct >= 56 ? "g" : rc && rc.pct >= 53 ? "lg" : !rc || rc.pct == null ? "" : "y"}">${rc ? rc.w || 0 : 0}–${rc ? rc.l || 0 : 0}</div><div class="k2">${!rc || rc.pct == null ? "—" : rc.pct + "% won"}</div></div></div>`;
+// 10/21: rc === undefined = still loading -> "…" (the Best TD tile read 0–0 for ~7 s before the graded results arrived); null = nothing graded = 0–0
+const recTile = (rc, label = "RECORD") => `<div class="stats" style="margin-top:10px"><div class="stat"><div class="k">${label}</div><div class="v ${rc && rc.pct >= 56 ? "g" : rc && rc.pct >= 53 ? "lg" : !rc || rc.pct == null ? "" : "y"}">${rc === undefined ? "…" : `${rc ? rc.w || 0 : 0}–${rc ? rc.l || 0 : 0}`}</div><div class="k2">${!rc || rc.pct == null ? "—" : rc.pct + "% won"}</div></div></div>`;
 const teamSel = (teams) => `<div class="wksel"><select id="props-team" aria-label="Team"><option value="all"${PROPTEAM === "all" ? " selected" : ""}>All teams</option>${teams.map((t) => `<option value="${esc(t)}"${PROPTEAM === t ? " selected" : ""}>${esc(t)}</option>`).join("")}</select></div>`;
 // 10/20 (owner: "label these by Models Chance and Polymarket Prices"; later the same night: "keep all model purple"): the MODEL column is the model's number, purple
 // 10/20 night (owner): LAST WK = the player's most recent graded line of the same stat (U 49.5 ✓ 38), or just his number last week when he had no line

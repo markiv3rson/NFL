@@ -127,7 +127,17 @@ const mk = (away, home, over = {}) => ({ key: `${away} @ ${home}`, away, home, d
   ok(sg.length === 0, "same game 2 legs (10/19): none when the legs are the model's 49-50% sides", sg.length);
   { const gG = (k, sp, tt) => ({ key: k, away: k.split(" @ ")[0], home: k.split(" @ ")[1], start: "2026-11-01T23:00:00Z", poly: { ml: { away: 0.4, home: 0.62, midAway: 0.39, midHome: 0.61 } }, card: { spread: { plain: { team: k.split(" @ ")[0], line: 4.5, pick: `${k.split(" @ ")[0]} +4.5`, hit: sp, price: 0.5 } }, total: { plain: { side: "over", line: 220.5, pick: "Over 220.5", hit: tt, price: 0.5 } } } });
     const G2 = pl.buildParlays([gG("X1 @ Y1", 61, 58), gG("X2 @ Y2", 61, 50.4)], []).filter((p) => p.type === "sgp");
-    ok(G2.length === 1 && G2[0].game === "X1 @ Y1" && G2[0].legs.map((l) => l.label).join() === "X1 +4.5,Over 220.5" && Math.abs(G2[0].prob - 0.61 * 0.58) < 0.002 && G2[0].stake === 20, "same game 2 legs (10/19): built only when both legs are green (56%+); chance = product (independent)", G2);
+    ok(G2.length === 0, "same game 2 legs: no longer built (10/21: replaced by the 4-leg Same Game, buildSameGame4)", G2);
+    { // 10/21 (owner): 4-leg Same Game per game, $5: the game's 4 strongest legs among the green card PICKs and its prop rows; fewer than 4 -> none
+      const pr = await import("../lib/props.js"), R = globalThis.__TEST_REDIS__, D = "2027-01-07", st = "2027-01-08T00:00:00Z", now = Date.parse("2027-01-07T20:00:00Z");
+      const A = { ...gG("X1 @ Y1", 61, 58), date: D, start: st }, B = { ...gG("X2 @ Y2", 61, 50.4), date: D, start: st };
+      const put = async (k, ps) => { const rows = [], m = {}; for (const [n, tm, c] of ps) { rows.push({ name: n, team: tm, stat: "pts", line: 12.5, mu: 15, over: c, under: 1 - c }); m[`${n}|pts|12.5`] = [0.6, 0.58, 0.42, 0.6, "t"]; }
+        await R.set(pr.K_NBAPROPMODEL(D, k), JSON.stringify({ rows })); await R.set(pr.K_NBAPROPS(D, k), JSON.stringify({ m })); };
+      await put("X1 @ Y1", [["Amos", "X1", 0.7], ["Boyd", "Y1", 0.68], ["Cruz", "Y1", 0.66]]); await put("X2 @ Y2", [["Dunn", "X2", 0.7], ["Earl", "Y2", 0.69]]);
+      const S4 = await pl.buildSameGame4(D, [A, B], now);
+      for (const k of ["X1 @ Y1", "X2 @ Y2"]) { await R.del(pr.K_NBAPROPMODEL(D, k)); await R.del(pr.K_NBAPROPS(D, k)); }
+      ok(S4.length === 1 && S4[0].type === "sgp4" && S4[0].game === "X1 @ Y1" && S4[0].stake === 5 && S4[0].legs.map((l) => l.label).join() === "Amos Pts Over 12.5,Boyd Pts Over 12.5,Cruz Pts Over 12.5,X1 +4.5"
+        && Math.abs(S4[0].prob - 0.7 * 0.68 * 0.66 * 0.61) < 0.002, "Same Game 4 legs (10/21): the 4 strongest (3 props 66-70% + the 61% spread; the 58% total left out), $5; a game with only 3 good legs gets none", S4); }
     const fourG = ["A @ B", "C @ D", "E @ F", "G @ H", "I @ J"].map((k, i) => ({ ...gG(k, 50, 50), poly: { ml: { away: 0.2 + i * 0.02, home: 0.82 - i * 0.02, midAway: 0.2 + i * 0.02, midHome: 0.8 - i * 0.02 } } }));
     fourG[0].card.spread.plain.hit = 62;   // our green spread pick backs A, the underdog
     ok(!pl.buildParlays(fourG, []).some((p) => p.type === "fav4"), "4 biggest favorites (10/19): no longer built (three legs max)"); }
@@ -337,7 +347,7 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(!/LEAN/.test(app) && !/TEASER/.test(app) && !/Anytime TD|anytime-td/i.test(app), "page: no LEAN, no teasers, no TD");
   ok(!/has not beaten the market|Watching only|not a pick\b|Tested on 2024-26 only|Saved and graded to|what the model counted|can't see/i.test(app), "page: no explanatory notes (owner 10/15: show data only)");
   ok(/secRow\("MONEYLINE", injPill\(g, "inj"\)\)/.test(app) && /secRow\("SPREAD"\)/.test(app) && /secRow\("TOTALS"\)/.test(app) && /class="trow"><div class="sh">\$\{title\}<\/div>\$\{pills\}/.test(app), "game page: Moneyline, Spread, Totals section title rows, the Injuries pill on the moneyline row (NFL game page v3, ported 10/16)");
-  ok(/<div class="hd">MARKET<\/div><div class="mk">\$\{booksBlock\(g, kind\)\}<div><div class="k">\$\{pmLogo\(\)\}POLYMARKET<\/div>\$\{poly\}<\/div><\/div><div class="hd hm">MODEL<\/div>\$\{modelCell\(g, kind\)\}/.test(app) && !/class="f"/.test(app) && !/grid-row:span 2/.test(app), "game page card: MARKET = SPORTSBOOKS | POLYMARKET side by side, MODEL below it full width; the injuries drop-down opens at the top of the card"); }
+  ok(/<div class="hd">MARKET<\/div><div class="mk">\$\{booksBlock\(g, kind\)\}<div><div class="k">\$\{pmLogo\(\)\}POLYMARKET<\/div>\$\{poly\}<\/div><\/div><div class="hd hm ihd">MODEL\$\{IBTN\}<\/div>\$\{ibox\(MODEL_INFO\[kind\] \|\| MODEL_INFO\.spread\)\}\$\{modelCell\(g, kind\)\}/.test(app) && !/class="f"/.test(app) && !/grid-row:span 2/.test(app), "game page card: MARKET = SPORTSBOOKS | POLYMARKET side by side, MODEL below it full width; the injuries drop-down opens at the top of the card"); }
 { // NBA information only: no NFL words anywhere in the shipped code
   const files = []; const walk = (d) => { for (const f of readdirSync(d)) { const p = `${d}/${f}`; if (["node_modules", ".next", ".git", "fixtures", "data", "__pycache__"].includes(f)) continue; if (statSync(p).isDirectory()) walk(p); else if (/\.(js|mjs|ts|tsx|py|html|json)$/.test(f) && f !== "package-lock.json" && f !== "run.mjs" && f !== "tests_service.py") files.push(p); } };
   walk(new URL("..", import.meta.url).pathname);
@@ -893,7 +903,7 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
 
 { // 10/20 owner: "Model (Team):" line on the NBA spread card (same as NFL); NBA's team model is data only (walk-forward 50.7%), so no rule reads it
   const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8"), svc = readFileSync(new URL("../railway-model-service/live.py", import.meta.url), "utf8"), mod = readFileSync(new URL("../railway-model-service/team_side.py", import.meta.url), "utf8");
-  ok(/Model \(Team\): <b class="mod">\$\{esc\(m\.teamSide\.team\)\} \$\{sgn\(m\.teamSide\.line\)\} · \$\{m\.teamSide\.pct\}%/.test(app) && /teamSide/.test(svc) && /def prob_home_covers/.test(mod) && /never a pick/.test(mod)
+  ok(/Model \(Team\):<\/span> <b class="mod">\$\{esc\(m\.teamSide\.team\)\} \$\{sgn\(m\.teamSide\.line\)\} · \$\{m\.teamSide\.pct\}%/.test(app) && /teamSide/.test(svc) && /def prob_home_covers/.test(mod) && /never a pick/.test(mod)
     && !/teamSide|teammodel/.test(readFileSync(new URL("../lib/cardpick.js", import.meta.url), "utf8")),
     "NBA card: Model (Team) line under Model (team, line, sure %), fed by the service's team-numbers fit; data only -- the NBA card picker never reads it");
 }
@@ -904,7 +914,7 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   const saved = { m: { "Jaylen Brown|pts|19.5": [0.7, 0.68, 0.32, 0.7, "t"], "Cade Cunningham|pra|39.5": [0.4, 0.38, 0.62, 0.4, "t"] } };
   const picks = pr.nbaPropPicks(rows, saved);
   ok(pr.nbaPropPicks([{ name: "Paul George", team: null, stat: "pts", line: 14.5, mu: 9, over: 0.2, under: 0.8 }], saved).length === 0, "NBA props: a player the model puts on neither team (Polymarket listed him under the wrong game) is not a row");
-  ok(pr.NBA_PROP_BAR === 0.62 && pr.MAX_PRICE === 0.77 && picks.length === 2 && picks[0].side === "over" && picks[0].price === 0.7 && picks[0].band === "70-80" && picks[1].side === "under" && picks[1].price === 0.62 && picks[1].band === "70-80" && !picks.some((p) => p.stat === "3pm"), "NBA props: the side the model likes more, only at 62%+ (a 61% Under and a 55% Under are not picks), with that side's price", picks);
+  ok(pr.NBA_PROP_BAR === 0.65 && pr.MAX_PRICE === 0.77 && picks.length === 2 && picks[0].side === "over" && picks[0].price === 0.7 && picks[0].band === "70-80" && picks[1].side === "under" && picks[1].price === 0.62 && picks[1].band === "70-80" && !picks.some((p) => p.stat === "3pm"), "NBA props: the side the model likes more, only at 65%+ (10/21; a 61% Under and a 55% Under are not picks), with that side's price", picks);
   const one = pr.onePerPlayer([{ name: "A", stat: "pts", chance: 0.8, price: 0.9 }, { name: "A", stat: "pts", chance: 0.7, price: 0.6 }, { name: "A", stat: "pts", chance: 0.8, price: 0.77 }, { name: "A", stat: "reb", chance: 0.65, price: null }, { name: "B", stat: "pts", chance: 0.66, price: 0.66 }]);
   ok(one.length === 2 && one[0].name === "A" && one[0].chance === 0.7 && one[1].stat === "reb", "NBA props: one row per player and stat = the highest % priced under its % and under 77c (80% at 90c and 80% at 77c are out, owner 10/20); no price last; a line priced at its % is dropped", one);
   // scoring: a not-started game with recorded lines is sent to the service, the answer saved per game; a started game is not
@@ -914,6 +924,10 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
     { key: "LAL @ GSW", away: "LAL", home: "GSW", date: "2026-12-30", start: "2026-12-30T19:00:00Z" }];
   process.env.NBA_MODEL_SERVICE_URL = process.env.NBA_MODEL_SERVICE_URL || "http://test"; const sc = await pr.scoreNbaProps(games, { now, post });
   ok(sc.scored === 1 && sent.games.length === 1 && sent.games[0].outs.join() === "Jayson Tatum" && sent.games[0].lines.length === 2 && JSON.parse(await R.get(pr.K_NBAPROPMODEL("2026-12-30", "BOS @ DET"))).rows.length === 5, "NBA props: the snapshot scores the not-started game's recorded lines with the Out list; the started game is skipped; saved per game", sc);
+  { // 10/21: LAST = the row the page SHOWED that day (onePerPlayer), not the first graded line of the ladder
+    await R.hset(pr.K_NBAPROPRES("2026-12-29"), "BOS @ NYK", JSON.stringify({ picks: [{ name: "Jaylen Brown", stat: "pts", side: "over", line: 14.5, chance: 0.9, price: 0.92, result: "W", actual: 27 }, { name: "Jaylen Brown", stat: "pts", side: "over", line: 22.5, chance: 0.7, price: 0.6, result: "W", actual: 27 }] }));
+    const lw = await pr.lastNbaProps("2026-12-30", ["2026-12-29"]); await R.del(pr.K_NBAPROPRES("2026-12-29"));
+    ok(lw["Jaylen Brown|pts"] && lw["Jaylen Brown|pts"].line === 22.5, "NBA props LAST (10/21): the line the page showed that day (the 92c line was never shown)", lw); }
   // the page's day: two rows (Brown Over 19.5, Cunningham Under 39.5)
   const day = await pr.nbaPropsForDay("2026-12-30");
   ok(day.length === 1 && day[0].game === "BOS @ DET" && day[0].picks.length === 2 && day[0].picks[0].name === "Jaylen Brown" && day[0].picks[0].result === null, "NBA props page: the day's games with their rows, ungraded", day);
@@ -939,5 +953,41 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(/nbaPropsForDay\(date\)/.test(api) && /scoreNbaProps\(data\.games\)/.test(snap) && /gradeNbaProps\(\)/.test(gr), "NBA props: /api/nba/props serves the day; the snapshot scores; the grade run grades");
   const ap = readFileSync(new URL("../../nba/railway-model-service/app.py", import.meta.url), "utf8"), sch = readFileSync(new URL("../../nba/railway-model-service/scheduler.py", import.meta.url), "utf8");
   ok(/@app\.route\("\/prop-probs", methods=\["POST"\]\)/.test(ap) && /nba_prop_model\.chances_many/.test(ap) && /PROPS_ON_START/.test(ap) && /jobs\.append\(\("props", _props\)\)/.test(sch), "NBA service: /prop-probs route, background build when missing, daily 4:20 AM refit"); }
+{ // 10/21 (owner): Props Parlays 6 / 8 / 10 legs ($5), the 65% bar, the 77c+ and star-out shadow trackers
+  const pr = await import("../lib/props.js"), pl = await import("../lib/parlays.js"), R = globalThis.__TEST_REDIS__, D = "2027-01-05";
+  ok(pr.onePerPlayer([{ name: "A", stat: "pts", chance: 0.64, price: 0.5 }, { name: "B", stat: "pts", chance: 0.66, price: 0.5 }]).map((p) => p.name).join() === "B", "NBA props (10/21): a row under 65% (saved under the old 62% bar) is not shown or counted");
+  // 3 games, 9 players with priced 65%+ rows (one player has two stats: only his best leg)
+  const mkG = (k, start) => ({ key: k, away: k.split(" @ ")[0], home: k.split(" @ ")[1], date: D, start });
+  const G = [mkG("BOS @ NYK", "2027-01-06T00:00:00Z"), mkG("LAL @ GSW", "2027-01-06T03:00:00Z"), mkG("MIA @ ORL", "2027-01-06T00:30:00Z")];
+  const players = { "BOS @ NYK": [["Alpha", "BOS", 0.9], ["Bravo", "BOS", 0.85], ["Charlie", "NYK", 0.8]], "LAL @ GSW": [["Delta", "LAL", 0.79], ["Echo", "GSW", 0.75], ["Foxtrot", "GSW", 0.72]], "MIA @ ORL": [["Golf", "MIA", 0.7], ["Hotel", "ORL", 0.68], ["India", "ORL", 0.66]] };
+  for (const g of G) { const rows = [], m = {};
+    for (const [n, tm, c] of players[g.key]) { rows.push({ name: n, team: tm, stat: "pts", line: 10.5, mu: 14, over: c, under: 1 - c }); m[`${n}|pts|10.5`] = [0.6, 0.58, 0.42, 0.6, "t"]; }
+    if (g.key === "BOS @ NYK") { rows.push({ name: "Alpha", team: "BOS", stat: "reb", line: 4.5, mu: 7, over: 0.95, under: 0.05 }); m["Alpha|reb|4.5"] = [0.72, 0.7, 0.3, 0.72, "t"]; }
+    await R.set(pr.K_NBAPROPMODEL(D, g.key), JSON.stringify({ rows, start: g.start, away: g.away, home: g.home })); await R.set(pr.K_NBAPROPS(D, g.key), JSON.stringify({ m })); }
+  const now = Date.parse("2027-01-05T20:00:00Z"), pp = await pl.buildPropParlays(D, G, now);
+  const p6 = pp.find((p) => p.type === "pp6"), p8 = pp.find((p) => p.type === "pp8");
+  ok(pp.length === 2 && p6 && p8 && !pp.some((p) => p.type === "pp10") && p6.stake === 5 && p6.legs.length === 6 && p8.legs.length === 8 && p6.legs[0].label === "Alpha Reb Over 4.5" && new Set(p8.legs.map((l) => l.name)).size === 8
+    && p6.start === "2027-01-06T00:00:00Z" && p6.legs.every((l) => l.market === "prop" && l.price > 0) && Math.abs(p6.prob - [0.95, 0.85, 0.8, 0.79, 0.75, 0.72].reduce((a, x) => a * x, 1)) < 0.002,
+    "Props Parlays (10/21): 6 and 8 legs from 9 players (no 10 with fewer than 10), one leg per player (Alpha's 95% rebounds, not his points), strongest first, $5, start = the first tip", pp);
+  // grading: a prop leg from ESPN's box score; a lost leg loses the parlay
+  const k = "parlay:" + D + ":pp6"; await R.set(k, JSON.stringify({ ...p6, date: D })); await R.sadd("parlay:ids", k);
+  const players2 = {}; for (const [n, v] of [["alpha", { reb: 9 }], ["bravo", { pts: 20 }], ["charlie", { pts: 12 }], ["delta", { pts: 15 }], ["echo", { pts: 11 }], ["foxtrot", { pts: 4 }]]) players2[n] = v;
+  const box = { "BOS @ NYK": { final: true, players: players2 }, "LAL @ GSW": { final: true, players: players2 } };
+  await pl.gradeParlays(async () => ({}), async () => box);
+  const gp = JSON.parse(await R.get(k)); await R.del(k); await R.srem("parlay:ids", k);
+  ok(gp.result === "L" && gp.ret === -5 && gp.legs.find((l) => l.name === "Foxtrot").result === "L" && gp.legs.find((l) => l.name === "Foxtrot").actual === 4 && gp.legs.find((l) => l.name === "Alpha").result === "W", "Props Parlays grading: each leg from the box score (Foxtrot 4 pts < 10.5 loses), the parlay lost $5", gp);
+  // shadow trackers: a 77c+ row at 65%+ (hidden on the page) and a star-out teammate's points Over at the ~50c line
+  const st = pr.starsOut({ key: "BOS @ NYK", away: "BOS", home: "NYK", injuries: { away: [{ name: "Jayson Tatum", status: "Out", ppg: 27 }, { name: "X", status: "Out", ppg: 8 }], home: [{ name: "Y", status: "Questionable", ppg: 24 }] } });
+  ok(st.length === 1 && st[0].team === "BOS" && st[0].name === "Jayson Tatum", "star-out shadow: only a 20+ ppg player listed Out / Doubtful counts", st);
+  const sr = pr.starRows({ star: st, rows: [{ name: "Jaylen Brown", team: "BOS", stat: "pts", line: 22.5, over: 0.55 }, { name: "Jaylen Brown", team: "BOS", stat: "pts", line: 25.5, over: 0.4 }, { name: "Jalen Brunson", team: "NYK", stat: "pts", line: 25.5, over: 0.5 }] },
+    { m: { "Jaylen Brown|pts|22.5": [0.62, 0.6, 0.4, 0.62, "t"], "Jaylen Brown|pts|25.5": [0.49, 0.47, 0.53, 0.49, "t"], "Jalen Brunson|pts|25.5": [0.5, 0.48, 0.52, 0.5, "t"] } });
+  ok(sr.length === 1 && sr[0].name === "Jaylen Brown" && sr[0].line === 25.5 && sr[0].side === "over" && sr[0].star === "Jayson Tatum", "star-out shadow: each teammate's points Over at the line priced nearest 50c, the other team's players left out", sr);
+  await R.hset(pr.K_NBAPROPRES(D), "BOS @ NYK", JSON.stringify({ picks: [{ name: "Q", stat: "pts", side: "under", line: 30.5, chance: 0.9, price: 0.85, result: "W" }, { name: "Q", stat: "pts", side: "under", line: 28.5, chance: 0.8, price: 0.8, result: "L" }, { name: "Z", stat: "reb", side: "over", line: 2.5, chance: 0.9, price: 0.6, result: "L" }], star: [{ name: "Jaylen Brown", result: "W" }, { name: "Derrick White", result: "L" }] }));
+  const sh = await pr.propShadows([D]); await R.del(pr.K_NBAPROPRES(D));
+  ok(sh.dear.w === 1 && sh.dear.l === 0 && sh.star.w === 1 && sh.star.l === 1 && sh.star.pct === 50, "shadow trackers: 77c+ hidden rows one per player + stat (Q's 90% 85c row; Z's 60c row is a page row, not counted); star-out 1-1", sh);
+  for (const g of G) { await R.del(pr.K_NBAPROPMODEL(D, g.key)); await R.del(pr.K_NBAPROPS(D, g.key)); }
+  const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8"), sl = readFileSync(new URL("../lib/slate.js", import.meta.url), "utf8");
+  ok(/\["pp10", "Prop Parlays · 10 Leg"\]/.test(app) && /pp10: "Prop Parlays · 10 legs"/.test(app) && !/\["best4", "Parlay"\]/.test(app) && /Props · 77¢\+ hidden rows/.test(app) && /Props · star out → teammates Over/.test(app) && /buildPropParlays\(d, out, now, legs\)/.test(sl) && /buildSameGame4\(d, out, now, legs\)/.test(sl) && /l\.market !== "prop"/.test(sl),
+    "Prop Parlays: Model bets tabs 6 / 8 / 10 Leg (no Parlay tab), scoreboard rows per size, the two shadow rows on Models; built on the slate; never sent for a Polymarket combo quote"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`);
 process.exit(bad ? 1 : 0);

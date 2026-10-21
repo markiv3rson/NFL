@@ -9,11 +9,17 @@
 //   sgp      same game, 2 legs: the card's spread PICK + total PICK at Polymarket's lines  $20   (spread and total are independent: chance = product);
 //            10/19 (owner: "the same" as the NFL parlay fixes): only when BOTH legs are green (56%+) -- two of the model's 49-50% sides made a 25% coin flip on every game
 //   sgp_pts  same game, 2 legs on bought lines -- NOT built since 10/19 (owner: PICK w/ POINTS only on the card); old ones stay graded history
+//   pp6 / pp8 / pp10  PROPS PARLAYS (10/21, owner: "I want to see 6 legs 8 legs and 10 legs under models bets ... name it Props Parlays", "$5 per parlay
+//            for all 3 since its long shots"; the one exception to the 3-legs-max rule): the day's prop rows (65%+, priced under 77c), one leg per player,
+//            the strongest first, across games; none when the day has fewer rows than legs. Chance = product (no link measured), payout = the legs' prices.
 import { getRedis, jparse, mgetAll } from "./redis";
 import { cardLegs } from "./cardpick";
 import { staleDate } from "./pinnacle";
+import { propLegsForDay, gradeProp } from "./props";
+import { boxFor } from "./espn";
 const GREEN = 56;   // the card's green bar (lib/cardpick.js)
-export const STAKES = { best4: 10, fav4: 10, sgp: 20, sgp_pts: 5 };
+export const STAKES = { best4: 10, fav4: 10, sgp: 20, sgp_pts: 5, pp6: 5, pp8: 5, pp10: 5, sgp4: 5 };
+export const PROP_LEGS = [6, 8, 10];
 const IDS = "parlay:ids", KEY = (date, type, game) => `parlay:${date}:${type}${game ? ":" + game : ""}`;
 const r3 = (x) => Math.round(x * 1000) / 1000;
 const mk = (type, legs, game, start) => {
@@ -30,11 +36,34 @@ export function buildParlays(games, bestBets) {
   const greens = ahead.map((g) => cardLegs(g).filter((x) => x && x.line != null && x.pct >= GREEN).sort((a, b) => b.pct - a.pct).map((x) => ({ g, x }))[0]).filter(Boolean)
     .sort((a, b) => b.x.pct - a.x.pct).slice(0, 3);
   if (greens.length >= 2) out.push(mk("best4", greens.map(({ g, x }) => leg(g, x))));
-  for (const g of ahead) {
-    const L = cardLegs(g), sp = L.find((x) => x.market === "spread"), tt = L.find((x) => x.market === "total");
-    if (sp && tt && sp.pct >= GREEN && tt.pct >= GREEN) out.push(mk("sgp", [leg(g, sp), leg(g, tt)], g.key, g.start));
-  }
+  // 10/21: the 2-leg same game (sgp) is replaced by the 4-leg Same Game (sgp4, buildSameGame4); old sgp rows stay graded history
   return out.filter(Boolean);
+}
+const PSTAT = { pts: "Pts", reb: "Reb", ast: "Ast", pra: "PRA", "3pm": "3PM", stl: "Stl", blk: "Blk" };
+export async function buildPropParlays(date, games, now = Date.now(), dayLegs = null) {
+  const legs = dayLegs || await propLegsForDay(date, games, now), out = [];
+  for (const n of PROP_LEGS) { if (legs.length < n) break;
+    const top = legs.slice(0, n), start = top.map((l) => l.start).sort()[0];
+    const p = mk(`pp${n}`, top.map((l) => ({ game: l.game, market: "prop", team: l.team || null, name: l.name, stat: l.stat, side: l.side, line: l.line,
+      label: `${l.name} ${PSTAT[l.stat] || l.stat} ${l.side === "over" ? "Over" : "Under"} ${l.line}`, prob: r3(l.chance), price: l.price })), null, start);
+    if (p) out.push({ ...p, date }); }
+  return out;
+}
+// 10/21 (owner: "For the same game make it 4 leg parlays for each game. Your best choices go in here and make the stake $5"): per game, the 4 strongest
+// legs by win %: the card's spread / total PICK when green (56%+) and the game's prop rows (65%+, priced under 77c and under the %, one per player);
+// fewer than 4 -> no Same Game parlay for that game. Chance = product (legs in one game move together: the live record is the judge).
+export async function buildSameGame4(date, games, now = Date.now(), dayLegs = null) {
+  const all = dayLegs || await propLegsForDay(date, games, now);   // one read of the day's prop rows serves both builders (one leg per player = per game too)
+  const out = [];
+  for (const g of games || []) {
+    if (g.date !== date || g.inProgress || g.preseason || !(Date.parse(g.start) > now)) continue;
+    const card = cardLegs(g).filter((x) => x && x.line != null && x.pct >= GREEN && (x.market === "spread" || x.market === "total")).map((x) => ({ ...leg(g, x), p: x.pct / 100 }));
+    const props = all.filter((l) => l.game === g.key).map((l) => ({ game: g.key, market: "prop", team: l.team || null, name: l.name, stat: l.stat, side: l.side, line: l.line,
+      label: `${l.name} ${PSTAT[l.stat] || l.stat} ${l.side === "over" ? "Over" : "Under"} ${l.line}`, prob: r3(l.chance), price: l.price, p: l.chance }));
+    const legs = [...card, ...props].sort((a, b) => b.p - a.p).slice(0, 4).map(({ p, ...l }) => l);
+    if (legs.length === 4) { const pr = mk("sgp4", legs, g.key, g.start); if (pr) out.push({ ...pr, date }); }
+  }
+  return out;
 }
 // 10/19 (owner: "the same" as the NFL fix): a parlay is saved AND REBUILT on every slate build until its first leg tips off -- it was the first
 // sighting (the day before), which could not see the day's injury news and rest decisions. A saved parlay that today's build no longer makes,
@@ -74,14 +103,17 @@ export function gradeLeg(l, away, home, f) {
   if (l.market === "total") { const t = f.away + f.home; if (t === l.line) return "P"; return (t > l.line) === (l.side === "over") ? "W" : "L"; }
   return null;
 }
-export async function gradeParlays(fetchFinals) {
+export async function gradeParlays(fetchFinals, fetchBox = boxFor) {
   const r = getRedis(), byDate = {}; let n = 0;
-  for (const p of await loadParlays()) if (!p.result) (byDate[p.date] = byDate[p.date] || []).push(p);
+  for (const p of await loadParlays()) if (!p.result && Array.isArray(p.legs)) (byDate[p.date] = byDate[p.date] || []).push(p);
   for (const [date, list] of Object.entries(byDate)) {
     let finals; try { finals = await fetchFinals(date); } catch { continue; }
+    let box = null; if (list.some((p) => p.legs.some((l) => l.market === "prop" && !l.result))) { try { box = await fetchBox(date); } catch { box = null; } }   // prop legs: ESPN's box score
     for (const p of list) {
       let changed = false;
-      for (const l of p.legs) { if (l.result) continue; const f = finals[l.game]; if (!f || !f.final) { if (staleDate(date)) { l.result = "P"; changed = true; } continue; } const [away, home] = l.game.split(" @ "); l.result = gradeLeg(l, away, home, f); changed = true; }   // a leg whose game never happened is a push
+      for (const l of p.legs) { if (l.result) continue;
+        if (l.market === "prop") { const b = box && box[l.game]; if (!b || !b.final) { if (staleDate(date)) { l.result = "P"; changed = true; } continue; } const gp = gradeProp(l, b); l.result = gp.result; l.actual = gp.actual; changed = true; continue; }   // a DNP is a push
+        const f = finals[l.game]; if (!f || !f.final) { if (staleDate(date)) { l.result = "P"; changed = true; } continue; } const [away, home] = l.game.split(" @ "); l.result = gradeLeg(l, away, home, f); changed = true; }   // a leg whose game never happened is a push
       const res = p.legs.map((l) => l.result);
       if (res.some((x) => x === "L")) p.result = "L"; else if (res.every((x) => x === "W" || x === "P")) p.result = res.every((x) => x === "P") ? "P" : "W";
       if (p.result) { const won = p.legs.filter((l) => l.result === "W"), pay = won.length && won.every((l) => l.price > 0 && l.price < 1) ? won.reduce((a, l) => a / l.price, 1) : null;   // a pushed leg drops out of the payout
