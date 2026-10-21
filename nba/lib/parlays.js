@@ -77,7 +77,9 @@ export async function recordParlays(date, parlays, games, now = Date.now()) {
     if (!(now < startOf(p))) continue;                               // only before the first leg tips off
     const k = KEY(date, p.type, p.game); built.add(k);
     const old = jparse(await r.get(k).catch(() => null));
-    if (old && (old.result || legsOf(old) === legsOf(p))) continue;   // graded, or nothing changed
+    // 10/21 recheck: a SAVED parlay is locked once ITS first leg tips -- the new build leaves started games out, so its own start is later and
+    // the 6 / 8 / 10-leg prop parlays were replaced at 4:05 and 4:29 PM PT after the 4:00 PM tips
+    if (old && (old.result || !(now < startOf(old)) || legsOf(old) === legsOf(p))) continue;   // graded, locked, or nothing changed
     await r.set(k, JSON.stringify({ ...p, date, t: new Date(now).toISOString(), ...(old ? { first: old.first || old.t } : {}) })).catch(() => null);
     await r.sadd(IDS, k).catch(() => {}); n++;
   }
