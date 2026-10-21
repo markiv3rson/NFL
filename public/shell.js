@@ -85,7 +85,7 @@
       d.innerHTML = `<div class="mscrim" id="mscrim"></div><nav class="mdraw" id="mdraw" aria-label="Main menu">` +
         `<div class="mtop"><a class="mlogo sgrad" href="/index.html#home">SLATEZZ</a><div class="mbts">` +
         `<button class="mref" id="mref" aria-label="Rerun both models"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>` +
-        `</div></div>` +   // 10/17 (owner): no X button -- the menu closes with a swipe to the left, a tap outside it, or Escape; it opens with a swipe from the left edge
+        `</div></div>` +   // 10/17 (owner): no X button -- the menu closes with a swipe, a tap outside it, or Escape. 10/21: it sits on the RIGHT, opens with a swipe in from the right edge, closes with a swipe right
         `<div class="mrun" id="mrun">Model Refresh: —</div>` +
         `<div class="msec nfl"><span>NFL</span><span class="ml"></span></div>${ITEMS.nfl.map((x) => item("nfl", ...x)).join("")}` +
         `<div class="msec nba gap"><span>NBA</span><span class="ml"></span></div>${ITEMS.nba.map((x) => item("nba", ...x)).join("")}` +
@@ -96,13 +96,13 @@
       const mb = document.getElementById("menu-btn"); if (mb) mb.onclick = Shell.open;
       document.getElementById("menu-grip").onclick = () => { Shell.open(); Shell.loadRun(); };
       document.getElementById("mscrim").onclick = Shell.close;
-      // 10/17 (owner: "I should just be able to slide it"): a swipe in from the grip's edge (the right edge since 10/21) opens the menu, a swipe to the left on it closes it
+      // 10/17 (owner: "I should just be able to slide it"): a swipe in from the grip's edge (the right edge since 10/21) opens the menu, a swipe back toward that edge (to the right since 10/21) closes it
       let sx = null, sy = null, edge = false;
       document.addEventListener("touchstart", (e) => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; edge = sx >= window.innerWidth - 44 && !document.body.classList.contains("menu-open"); }, { passive: true });   // the right edge = the grip's strip (10/21)
       document.addEventListener("touchend", (e) => { if (sx == null) return; const t = e.changedTouches[0], dx = t.clientX - sx, dy = Math.abs(t.clientY - sy); sx = null;
         if (dy > Math.abs(dx)) return;
         if (edge && dx < -40) { Shell.open(); Shell.loadRun(); }
-        else if (document.body.classList.contains("menu-open") && dx < -40) Shell.close(); }, { passive: true });
+        else if (document.body.classList.contains("menu-open") && dx > 40) Shell.close(); }, { passive: true });
       document.getElementById("mref").onclick = Shell.refresh;
       Shell.loadRun(); document.getElementById("menu-btn") && document.getElementById("menu-btn").addEventListener("click", Shell.loadRun);   // fresh each time the menu opens
       document.getElementById("mdraw").addEventListener("click", (e) => {
