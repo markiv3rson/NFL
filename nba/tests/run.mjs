@@ -987,7 +987,7 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(sh.dear.w === 1 && sh.dear.l === 0 && sh.star.w === 1 && sh.star.l === 1 && sh.star.pct === 50, "shadow trackers: 77c+ hidden rows one per player + stat (Q's 90% 85c row; Z's 60c row is a page row, not counted); star-out 1-1", sh);
   for (const g of G) { await R.del(pr.K_NBAPROPMODEL(D, g.key)); await R.del(pr.K_NBAPROPS(D, g.key)); }
   const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8"), sl = readFileSync(new URL("../lib/slate.js", import.meta.url), "utf8");
-  ok(/\["pp10", "Prop Parlays · 10 Leg"\]/.test(app) && /pp10: "Prop Parlays · 10 legs"/.test(app) && !/\["best4", "Parlay"\]/.test(app) && /Props · 77¢\+ hidden rows/.test(app) && /Props · star out → teammates Over/.test(app) && /buildPropParlays\(d, out, now\)/.test(sl) && /l\.market !== "prop"/.test(sl),
+  ok(/\["pp10", "Prop Parlays · 10 Leg"\]/.test(app) && /pp10: "Prop Parlays · 10 legs"/.test(app) && !/\["best4", "Parlay"\]/.test(app) && /Props · 77¢\+ hidden rows/.test(app) && /Props · star out → teammates Over/.test(app) && /buildPropParlays\(d, out, now, legs\)/.test(sl) && /buildSameGame4\(d, out, now, legs\)/.test(sl) && /l\.market !== "prop"/.test(sl),
     "Prop Parlays: Model bets tabs 6 / 8 / 10 Leg (no Parlay tab), scoreboard rows per size, the two shadow rows on Models; built on the slate; never sent for a Polymarket combo quote"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`);
 process.exit(bad ? 1 : 0);

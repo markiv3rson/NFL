@@ -109,3 +109,5 @@ body.menu-open .mscrim { opacity:1; pointer-events:auto; } body.menu-open .mdraw
 .ibox[hidden] { display:none; }
 .ibox b { color:#fff; font-weight:800; }
 .lbw { color:#fff; }
+#models .drop.open > .ibox { grid-column:1/-1; }   /* the box spans both columns on a computer */
+#models .drop.open > .s.ihd { border-bottom:1px solid var(--line2); padding-bottom:3px; } #models .drop.open > .s.ihd > b { border-bottom:0; padding-bottom:0; }   /* the heading's line runs under the ⓘ too */
