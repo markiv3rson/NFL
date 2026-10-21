@@ -1,7 +1,7 @@
 // SLATEZZ shell (10/17, owner): the side menu for NFL + NBA ("Menu A · Neon"), the refresh button (reruns BOTH models), the header's next-game
 // clock and the logo helpers. Loaded by /index.html (NFL + home) and /nba/index.html before each page's app.js.
 // Pages: NFL #home (no hash) #alerts #lines #td #props-<tab> #mybets #modelbets #models on /index.html; NBA #alerts #lines #props-<tab> #mybets #modelbets #models on /nba/index.html.
-// (10/17, owner: My bets and Model bets are separate pages, listed under Bets in the menu.)
+// (10/17, owner: My bets and Model bets are separate pages; 10/21: Bets = My bets, Model bets its own menu item with its types under it.)
 (function () {
   const ICON = {
     bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
@@ -10,35 +10,35 @@
     bets: '<path d="M4 7a1.5 1.5 0 0 1 1.5-1.5h13A1.5 1.5 0 0 1 20 7v2.5a2.5 2.5 0 0 0 0 5V17a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17v-2.5a2.5 2.5 0 0 0 0-5z"/>',
     bars: '<path d="M6 20V11M12 20V5M18 20v-6"/>',
     props: '<path d="M4 17l5-6 4 4 7-9"/><path d="M15 6h5v5"/>',
+    model: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/>',
   };
   const svg = (k, w = 17) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
   const ITEMS = {
-    nfl: [["alerts", "Alerts", "bell"], ["lines", "Game Lines", "grid"], ["props", "Player props", "props"], ["record", "Bets", "bets"]],   // 10/20 (owner): "Player props" heads its sub tabs; Anytime TD is one of them (NFL)
-    nba: [["alerts", "Alerts", "bell"], ["lines", "Game Lines", "grid"], ["props", "Player props", "props"], ["record", "Bets", "bets"]],
+    // 10/21 (owner: "The Bets tab will only be my bets but with no sub tab. Models Bets will have its own tab now with all of those sub tabs in it"; both sports)
+    nfl: [["alerts", "Alerts", "bell"], ["lines", "Game Lines", "grid"], ["props", "Player props", "props"], ["mybets", "Bets", "bets"], ["modelbets", "Model bets", "model"]],   // 10/20 (owner): "Player props" heads its sub tabs; Anytime TD is one of them (NFL)
+    nba: [["alerts", "Alerts", "bell"], ["lines", "Game Lines", "grid"], ["props", "Player props", "props"], ["mybets", "Bets", "bets"], ["modelbets", "Model bets", "model"]],
   };
   // 10/20 (owner: "rename it player props and have the sub tabs ... ANYTIME TD should be a sub tab under props"): the stat tabs, one page each
   const PROPS = { nfl: [["td", "Anytime TD"], ["props-first", "First TD"], ["props-recyds", "Rec Yds"], ["props-rec", "Receptions"], ["props-passyds", "Pass Yds"]],
     nba: [["props-pts", "Points"], ["props-reb", "Rebounds"], ["props-ast", "Assists"], ["props-pra", "PRA"], ["props-3pm", "Threes"], ["props-stl", "Steals"], ["props-blk", "Blocks"]] };
   const URL_ = { nfl: "/index.html", nba: "/nba/index.html" };
-  const SUB = [["mybets", "My bets"], ["modelbets", "Model bets"]];   // 10/18 (owner): the Results sub tab was built and then deleted the same day ("I don't need it")
   // 10/17 (owner): the Model bets parlay types are sub tabs under Model bets in the menu (both sports)
   const TYPES = { nfl: [["best", "Best Legs"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"]],   // 10/20 night (owner): Over/Under and Spread + Total removed from the menu
     // 10/21 (owner: "Models Bets / Prop Parlays (Subtab) / 6 Leg 8 Leg 10 Leg subtab / Same Game (Subtab) / Remove parlays"): Prop Parlays opens and
     // closes its own list of three sizes; the Parlay tab is gone (its parlays are still saved and graded in the background)
-    nba: [["pp", "Prop Parlays", [["pp6", "6 Leg"], ["pp8", "8 Leg"], ["pp10", "10 Leg"]]], ["sgp", "Same Game"]] };   // 10/19 (owner): 3 legs at most elsewhere
+    nba: [["pp", "Prop Parlays", [["pp6", "6 Leg"], ["pp8", "8 Leg"], ["pp10", "10 Leg"]]], ["sgp4", "Same Game"]] };   // 10/19 (owner): 3 legs at most elsewhere
   // 10/18 night (owner): Alerts is ONE menu item on both sports -- no kind sub tabs
   // 10/17 (owner): Alerts, Bets and Model bets open and close their lists (closed to start); tapping them only opens / closes
   const car = '<i class="car">▾</i>';
   const group = (key, inner) => `<div class="msubs" data-grp="${key}">${inner}</div>`;
-  const tlink = (sp, k, label, cls) => `<a class="mi ${sp} ${cls}" data-msp="${sp}" data-mp="modelbets-${k}" href="${URL_[sp]}#modelbets-${k}">${label}</a>`;
+  // 10/21: Model bets is its own menu item -- its types sit one level under it like the Player props tabs; Prop Parlays (NBA) opens its sizes one level deeper
+  const tlink = (sp, k, label, cls, dot) => `<a class="mi ${sp} ${cls}" data-msp="${sp}" data-mp="modelbets-${k}" href="${URL_[sp]}#modelbets-${k}">${dot ? "<i></i>" : ""}${label}</a>`;
   const types = (sp) => group(`${sp}-mb`, (TYPES[sp] || []).map(([k, label, kids]) => kids
-    ? `<div class="mi ${sp} msub2 mtog" data-tog="${sp}-mb-${k}">${label}${car}</div>` + group(`${sp}-mb-${k}`, kids.map(([ck, cl]) => tlink(sp, ck, cl, "msub3")).join(""))
-    : tlink(sp, k, label, "msub2")).join(""));
-  const sub = (sp, id, label) => id === "modelbets" ? `<div class="mi ${sp} msub mtog" data-tog="${sp}-mb" data-msp="${sp}" data-mp="modelbets"><i></i>${label}${car}</div>` + types(sp)
-    : `<a class="mi ${sp} msub" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><i></i>${label}</a>`;
-  const subs = (sp) => `<div class="mi ${sp} mpar mtog" data-tog="${sp}-bets"><span class="ic">${svg("bets")}</span>Bets${car}</div>` + group(`${sp}-bets`, SUB.map(([id, label]) => sub(sp, id, label)).join(""));
+    ? `<div class="mi ${sp} msub mtog" data-tog="${sp}-mb-${k}"><i></i>${label}${car}</div>` + group(`${sp}-mb-${k}`, kids.map(([ck, cl]) => tlink(sp, ck, cl, "msub2")).join(""))
+    : tlink(sp, k, label, "msub", true)).join(""));
   const propsMenu = (sp) => `<div class="mi ${sp} mpar mtog" data-tog="${sp}-props"><span class="ic">${svg("props")}</span>Player props${car}</div>` + group(`${sp}-props`, PROPS[sp].map(([id, label]) => `<a class="mi ${sp} msub" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><i></i>${label}</a>`).join(""));
-  const item = (sp, id, label, ic) => id === "record" ? subs(sp) : id === "props" ? propsMenu(sp) : `<a class="mi ${sp}" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><span class="ic">${svg(ic)}</span>${label}<b class="cnt" id="mcnt-${sp}-${id}"></b></a>`;
+  const modelMenu = (sp) => `<div class="mi ${sp} mpar mtog" data-tog="${sp}-mb" data-msp="${sp}" data-mp="modelbets"><span class="ic">${svg("model")}</span>Model bets${car}</div>` + types(sp);
+  const item = (sp, id, label, ic) => id === "props" ? propsMenu(sp) : id === "modelbets" ? modelMenu(sp) : `<a class="mi ${sp}" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><span class="ic">${svg(ic)}</span>${label}<b class="cnt" id="mcnt-${sp}-${id}"></b></a>`;
   const NFL_LOGO_FIX = { WSH: "wsh", WAS: "wsh", LA: "lar", LAR: "lar" };
   const Shell = {
     sport: "nfl", panel: "home",

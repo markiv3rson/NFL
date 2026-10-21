@@ -127,7 +127,17 @@ const mk = (away, home, over = {}) => ({ key: `${away} @ ${home}`, away, home, d
   ok(sg.length === 0, "same game 2 legs (10/19): none when the legs are the model's 49-50% sides", sg.length);
   { const gG = (k, sp, tt) => ({ key: k, away: k.split(" @ ")[0], home: k.split(" @ ")[1], start: "2026-11-01T23:00:00Z", poly: { ml: { away: 0.4, home: 0.62, midAway: 0.39, midHome: 0.61 } }, card: { spread: { plain: { team: k.split(" @ ")[0], line: 4.5, pick: `${k.split(" @ ")[0]} +4.5`, hit: sp, price: 0.5 } }, total: { plain: { side: "over", line: 220.5, pick: "Over 220.5", hit: tt, price: 0.5 } } } });
     const G2 = pl.buildParlays([gG("X1 @ Y1", 61, 58), gG("X2 @ Y2", 61, 50.4)], []).filter((p) => p.type === "sgp");
-    ok(G2.length === 1 && G2[0].game === "X1 @ Y1" && G2[0].legs.map((l) => l.label).join() === "X1 +4.5,Over 220.5" && Math.abs(G2[0].prob - 0.61 * 0.58) < 0.002 && G2[0].stake === 20, "same game 2 legs (10/19): built only when both legs are green (56%+); chance = product (independent)", G2);
+    ok(G2.length === 0, "same game 2 legs: no longer built (10/21: replaced by the 4-leg Same Game, buildSameGame4)", G2);
+    { // 10/21 (owner): 4-leg Same Game per game, $5: the game's 4 strongest legs among the green card PICKs and its prop rows; fewer than 4 -> none
+      const pr = await import("../lib/props.js"), R = globalThis.__TEST_REDIS__, D = "2027-01-07", st = "2027-01-08T00:00:00Z", now = Date.parse("2027-01-07T20:00:00Z");
+      const A = { ...gG("X1 @ Y1", 61, 58), date: D, start: st }, B = { ...gG("X2 @ Y2", 61, 50.4), date: D, start: st };
+      const put = async (k, ps) => { const rows = [], m = {}; for (const [n, tm, c] of ps) { rows.push({ name: n, team: tm, stat: "pts", line: 12.5, mu: 15, over: c, under: 1 - c }); m[`${n}|pts|12.5`] = [0.6, 0.58, 0.42, 0.6, "t"]; }
+        await R.set(pr.K_NBAPROPMODEL(D, k), JSON.stringify({ rows })); await R.set(pr.K_NBAPROPS(D, k), JSON.stringify({ m })); };
+      await put("X1 @ Y1", [["Amos", "X1", 0.7], ["Boyd", "Y1", 0.68], ["Cruz", "Y1", 0.66]]); await put("X2 @ Y2", [["Dunn", "X2", 0.7], ["Earl", "Y2", 0.69]]);
+      const S4 = await pl.buildSameGame4(D, [A, B], now);
+      for (const k of ["X1 @ Y1", "X2 @ Y2"]) { await R.del(pr.K_NBAPROPMODEL(D, k)); await R.del(pr.K_NBAPROPS(D, k)); }
+      ok(S4.length === 1 && S4[0].type === "sgp4" && S4[0].game === "X1 @ Y1" && S4[0].stake === 5 && S4[0].legs.map((l) => l.label).join() === "Amos Pts Over 12.5,Boyd Pts Over 12.5,Cruz Pts Over 12.5,X1 +4.5"
+        && Math.abs(S4[0].prob - 0.7 * 0.68 * 0.66 * 0.61) < 0.002, "Same Game 4 legs (10/21): the 4 strongest (3 props 66-70% + the 61% spread; the 58% total left out), $5; a game with only 3 good legs gets none", S4); }
     const fourG = ["A @ B", "C @ D", "E @ F", "G @ H", "I @ J"].map((k, i) => ({ ...gG(k, 50, 50), poly: { ml: { away: 0.2 + i * 0.02, home: 0.82 - i * 0.02, midAway: 0.2 + i * 0.02, midHome: 0.8 - i * 0.02 } } }));
     fourG[0].card.spread.plain.hit = 62;   // our green spread pick backs A, the underdog
     ok(!pl.buildParlays(fourG, []).some((p) => p.type === "fav4"), "4 biggest favorites (10/19): no longer built (three legs max)"); }

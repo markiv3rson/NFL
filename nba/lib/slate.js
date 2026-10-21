@@ -7,7 +7,7 @@ import { modelBase, modelHeaders } from "./model";
 import { getRedis, jparse } from "./redis";
 import { recordPicks, lockedFor } from "./record";
 import { buildCard, cardLegs, isGreen } from "./cardpick";
-import { buildParlays, buildPropParlays, recordParlays } from "./parlays";
+import { buildParlays, buildPropParlays, buildSameGame4, recordParlays } from "./parlays";
 import { saveParlayList } from "../../lib/comboquote";   // 10/17: real Polymarket parlay prices (shared with NFL: one Polymarket account, one request a second)
 import { recordCloses } from "./closes";
 import { moveSignal } from "./pinnacle";
@@ -177,7 +177,8 @@ export async function buildSlate({ now = Date.now(), days = 1, events = null, in
   // parlays are built per day (the slate carries today and the next day with games): the 4 favorites and the Parlay of a day use that day's games only
   const parlays = dates.flatMap((d) => buildParlays(out.filter((g) => g.date === d), best.filter((p) => out.some((g) => g.key === p.game && g.date === d))).map((p) => ({ ...p, date: d })));
   // 10/21 (owner): Props Parlays (6 / 8 / 10 legs, $5) from each day's prop rows, saved and rebuilt like the others until the first leg tips off
-  for (const d of dates) parlays.push(...(await buildPropParlays(d, out, now).catch((e) => { logError("parlays", e); return []; })));
+  for (const d of dates) parlays.push(...(await buildPropParlays(d, out, now).catch((e) => { logError("parlays", e); return []; })),
+    ...(await buildSameGame4(d, out, now).catch((e) => { logError("parlays", e); return []; })));   // 10/21: 4-leg Same Game per game, $5
   const win = recordWindow(now), soon = out.filter((g) => win.has(g.date));          // today's and tomorrow's games only
   if (record && svc) await alertsFromSlate(soon, now).catch((e) => logError("alerts", e));
   if (record && svc) await recordPicks(soon.filter((g) => !g.inProgress).map((g) => ({ ...g, priceFor: (mk, p) => polyPrice(g, mk, p) })), now).catch((e) => logError("record", e));

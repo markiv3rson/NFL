@@ -398,9 +398,9 @@ function renderBets() {
   $("sync-btn").onclick = async () => { toast("Syncing…", 0); try { const d = await (await fetch("/api/nba/mybets?sync=1", { cache: "no-store" })).json(); BETS = d; renderBets(); toast(d.sync && d.sync.ok ? `Synced ${d.sync.positions} positions.` : `Sync: ${(d.sync && d.sync.note) || "done"}`); } catch (e) { toast("Sync failed: " + e.message, 10000); } };
 }
 // Model bets: day drop-down at the top, the types are menu sub tabs, one list in tip-off order (lib/parlays.js)
-const PTYPES = { sgp: "Same game · 2 legs", best4: "Parlay · top picks", pp6: "Prop Parlays · 6 legs", pp8: "Prop Parlays · 8 legs", pp10: "Prop Parlays · 10 legs" };   // 10/21 (owner): Prop Parlays, $5 each   // 10/19 review: bought lines (sgp_pts, not built since 10/19) off the scoreboard   // 10/19: 3 legs at most, the 4 biggest favorites (fav4) is no longer built
+const PTYPES = { sgp: "Same game · 2 legs", best4: "Parlay · top picks", pp6: "Prop Parlays · 6 legs", pp8: "Prop Parlays · 8 legs", pp10: "Prop Parlays · 10 legs", sgp4: "Same Game · 4 legs" };   // 10/21 (owner): Prop Parlays, $5 each   // 10/19 review: bought lines (sgp_pts, not built since 10/19) off the scoreboard   // 10/19: 3 legs at most, the 4 biggest favorites (fav4) is no longer built
 // 10/21 (owner): Model bets = Prop Parlays (6 Leg / 8 Leg / 10 Leg) then Same Game; the Parlay tab is gone (still saved and graded, on the scoreboard)
-const LAB_TABS = [["pp6", "Prop Parlays · 6 Leg"], ["pp8", "Prop Parlays · 8 Leg"], ["pp10", "Prop Parlays · 10 Leg"], ["sgp", "Same Game"]];
+const LAB_TABS = [["pp6", "Prop Parlays · 6 Leg"], ["pp8", "Prop Parlays · 8 Leg"], ["pp10", "Prop Parlays · 10 Leg"], ["sgp4", "Same Game"]];   // 10/21: Same Game = the 4-leg same-game parlays (sgp4)
 const isLabType = (tab, t) => t === tab;   // 10/19: the Bought tab left (PICK w/ POINTS only on the card)
 let LABTYPE = "pp6", LABDAY = null;
 const plText = (x, st) => `PL: ${x >= 10 ? Math.round(x) : x.toFixed(1)}x<span class="plw"> · $${st} → </span><span class="g">$${Math.round(st * x)}</span>`;

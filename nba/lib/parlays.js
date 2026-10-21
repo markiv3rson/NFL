@@ -18,7 +18,7 @@ import { staleDate } from "./pinnacle";
 import { propLegsForDay, gradeProp } from "./props";
 import { boxFor } from "./espn";
 const GREEN = 56;   // the card's green bar (lib/cardpick.js)
-export const STAKES = { best4: 10, fav4: 10, sgp: 20, sgp_pts: 5, pp6: 5, pp8: 5, pp10: 5 };
+export const STAKES = { best4: 10, fav4: 10, sgp: 20, sgp_pts: 5, pp6: 5, pp8: 5, pp10: 5, sgp4: 5 };
 export const PROP_LEGS = [6, 8, 10];
 const IDS = "parlay:ids", KEY = (date, type, game) => `parlay:${date}:${type}${game ? ":" + game : ""}`;
 const r3 = (x) => Math.round(x * 1000) / 1000;
@@ -36,10 +36,7 @@ export function buildParlays(games, bestBets) {
   const greens = ahead.map((g) => cardLegs(g).filter((x) => x && x.line != null && x.pct >= GREEN).sort((a, b) => b.pct - a.pct).map((x) => ({ g, x }))[0]).filter(Boolean)
     .sort((a, b) => b.x.pct - a.x.pct).slice(0, 3);
   if (greens.length >= 2) out.push(mk("best4", greens.map(({ g, x }) => leg(g, x))));
-  for (const g of ahead) {
-    const L = cardLegs(g), sp = L.find((x) => x.market === "spread"), tt = L.find((x) => x.market === "total");
-    if (sp && tt && sp.pct >= GREEN && tt.pct >= GREEN) out.push(mk("sgp", [leg(g, sp), leg(g, tt)], g.key, g.start));
-  }
+  // 10/21: the 2-leg same game (sgp) is replaced by the 4-leg Same Game (sgp4, buildSameGame4); old sgp rows stay graded history
   return out.filter(Boolean);
 }
 const PSTAT = { pts: "Pts", reb: "Reb", ast: "Ast", pra: "PRA", "3pm": "3PM", stl: "Stl", blk: "Blk" };
@@ -50,6 +47,21 @@ export async function buildPropParlays(date, games, now = Date.now()) {
     const p = mk(`pp${n}`, top.map((l) => ({ game: l.game, market: "prop", team: l.team || null, name: l.name, stat: l.stat, side: l.side, line: l.line,
       label: `${l.name} ${PSTAT[l.stat] || l.stat} ${l.side === "over" ? "Over" : "Under"} ${l.line}`, prob: r3(l.chance), price: l.price })), null, start);
     if (p) out.push({ ...p, date }); }
+  return out;
+}
+// 10/21 (owner: "For the same game make it 4 leg parlays for each game. Your best choices go in here and make the stake $5"): per game, the 4 strongest
+// legs by win %: the card's spread / total PICK when green (56%+) and the game's prop rows (65%+, priced under 77c and under the %, one per player);
+// fewer than 4 -> no Same Game parlay for that game. Chance = product (legs in one game move together: the live record is the judge).
+export async function buildSameGame4(date, games, now = Date.now()) {
+  const out = [];
+  for (const g of games || []) {
+    if (g.date !== date || g.inProgress || g.preseason || !(Date.parse(g.start) > now)) continue;
+    const card = cardLegs(g).filter((x) => x && x.line != null && x.pct >= GREEN && (x.market === "spread" || x.market === "total")).map((x) => ({ ...leg(g, x), p: x.pct / 100 }));
+    const props = (await propLegsForDay(date, [g], now)).map((l) => ({ game: g.key, market: "prop", team: l.team || null, name: l.name, stat: l.stat, side: l.side, line: l.line,
+      label: `${l.name} ${PSTAT[l.stat] || l.stat} ${l.side === "over" ? "Over" : "Under"} ${l.line}`, prob: r3(l.chance), price: l.price, p: l.chance }));
+    const legs = [...card, ...props].sort((a, b) => b.p - a.p).slice(0, 4).map(({ p, ...l }) => l);
+    if (legs.length === 4) { const pr = mk("sgp4", legs, g.key, g.start); if (pr) out.push({ ...pr, date }); }
+  }
   return out;
 }
 // 10/19 (owner: "the same" as the NFL fix): a parlay is saved AND REBUILT on every slate build until its first leg tips off -- it was the first
