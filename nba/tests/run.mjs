@@ -260,6 +260,11 @@ ok(redisUrl({ UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://a:1", REDIS_URL: "redis
   ok(a.legs[0].label === "W1 -1.5" && a.first && !gone && kept && kept.legs[0].label === "Q2 +1.5" && !(await R.smembers("parlay:ids")).includes(`parlay:${D}:sgp_pts:Q2 @ W2`), "parlays (10/19): rebuilt before tip-off; a parlay the build no longer makes leaves the record (kept under removed:*)", { a: a.legs[0].label, gone });
   await pl.recordParlays(D, [P("Q1 +9.5", "Q1 @ W1")], G, Date.parse("2026-11-03T23:30:00Z"));
   ok(JSON.parse(await R.get(`parlay:${D}:sgp_pts:Q1 @ W1`)).legs[0].label === "W1 -1.5", "parlays (10/19): never changed once the first leg has tipped off");
+  const PP = (labs) => ({ type: "pp6", game: null, start: labs.some((l) => l[1] === "Q1 @ W1") ? G[0].start : G[1].start, stake: 5, legs: labs.map(([lab, game]) => ({ game, label: lab, market: "prop", line: 4.5 })), prob: 0.4 });
+  await pl.recordParlays(D, [PP([["A Pts Under 4.5", "Q1 @ W1"], ["B Pts Under 4.5", "Q2 @ W2"]])], G, t0);
+  await pl.recordParlays(D, [PP([["B Pts Under 4.5", "Q2 @ W2"], ["C Pts Under 4.5", "Q2 @ W2"]])], G, Date.parse("2026-11-03T23:30:00Z"));   // built after Q1 tipped: Q1's legs are left out
+  ok(JSON.parse(await R.get(`parlay:${D}:pp6`)).legs[0].label === "A Pts Under 4.5", "parlays (10/21): an across-game parlay stays locked once its first leg tipped, even when the new build starts later");
+  await R.del(`parlay:${D}:pp6`); await R.srem("parlay:ids", `parlay:${D}:pp6`);
   for (const k of await R.keys(`*parlay:${D}*`)) await R.del(k); await R.srem("parlay:ids", `parlay:${D}:sgp_pts:Q1 @ W1`); }
 
 // ---------- my bets
