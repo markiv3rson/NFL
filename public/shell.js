@@ -23,12 +23,17 @@
   const SUB = [["mybets", "My bets"], ["modelbets", "Model bets"]];   // 10/18 (owner): the Results sub tab was built and then deleted the same day ("I don't need it")
   // 10/17 (owner): the Model bets parlay types are sub tabs under Model bets in the menu (both sports)
   const TYPES = { nfl: [["best", "Best Legs"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"]],   // 10/20 night (owner): Over/Under and Spread + Total removed from the menu
-    nba: [["sgp", "Same game"], ["best4", "Parlay"]] };   // 10/19 (owner): 3 legs at most -- the 4-leg tabs are gone on both sports
+    // 10/21 (owner: "Models Bets / Prop Parlays (Subtab) / 6 Leg 8 Leg 10 Leg subtab / Same Game (Subtab) / Remove parlays"): Prop Parlays opens and
+    // closes its own list of three sizes; the Parlay tab is gone (its parlays are still saved and graded in the background)
+    nba: [["pp", "Prop Parlays", [["pp6", "6 Leg"], ["pp8", "8 Leg"], ["pp10", "10 Leg"]]], ["sgp", "Same Game"]] };   // 10/19 (owner): 3 legs at most elsewhere
   // 10/18 night (owner): Alerts is ONE menu item on both sports -- no kind sub tabs
   // 10/17 (owner): Alerts, Bets and Model bets open and close their lists (closed to start); tapping them only opens / closes
   const car = '<i class="car">▾</i>';
   const group = (key, inner) => `<div class="msubs" data-grp="${key}">${inner}</div>`;
-  const types = (sp) => group(`${sp}-mb`, (TYPES[sp] || []).map(([k, label]) => `<a class="mi ${sp} msub2" data-msp="${sp}" data-mp="modelbets-${k}" href="${URL_[sp]}#modelbets-${k}">${label}</a>`).join(""));
+  const tlink = (sp, k, label, cls) => `<a class="mi ${sp} ${cls}" data-msp="${sp}" data-mp="modelbets-${k}" href="${URL_[sp]}#modelbets-${k}">${label}</a>`;
+  const types = (sp) => group(`${sp}-mb`, (TYPES[sp] || []).map(([k, label, kids]) => kids
+    ? `<div class="mi ${sp} msub2 mtog" data-tog="${sp}-mb-${k}">${label}${car}</div>` + group(`${sp}-mb-${k}`, kids.map(([ck, cl]) => tlink(sp, ck, cl, "msub3")).join(""))
+    : tlink(sp, k, label, "msub2")).join(""));
   const sub = (sp, id, label) => id === "modelbets" ? `<div class="mi ${sp} msub mtog" data-tog="${sp}-mb" data-msp="${sp}" data-mp="modelbets"><i></i>${label}${car}</div>` + types(sp)
     : `<a class="mi ${sp} msub" data-msp="${sp}" data-mp="${id}" href="${URL_[sp]}#${id}"><i></i>${label}</a>`;
   const subs = (sp) => `<div class="mi ${sp} mpar mtog" data-tog="${sp}-bets"><span class="ic">${svg("bets")}</span>Bets${car}</div>` + group(`${sp}-bets`, SUB.map(([id, label]) => sub(sp, id, label)).join(""));

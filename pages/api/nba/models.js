@@ -4,6 +4,7 @@ import { loadMoves, summarizeMoves } from "../../../nba/lib/pinnacle";
 import { loadCloses } from "../../../nba/lib/closes";
 import { loadParlays, summarizeParlays } from "../../../nba/lib/parlays";
 import { getStatus } from "../../../nba/lib/status";
+import { nbaPropDays, propShadows } from "../../../nba/lib/props";
 export const config = { maxDuration: 30 };
 export default async function handler(req, res) {
   try {
@@ -15,6 +16,7 @@ export default async function handler(req, res) {
     const moves = summarizeMoves(await loadMoves().catch(() => []));
     const parlays = summarizeParlays(await loadParlays().catch(() => []));
     const clv = clvSummary(picks, await loadCloses().catch(() => []));
-    res.status(200).json({ ok: true, error, report: svc && svc.report, patterns: svc && svc.patterns, rebuild: svc && svc.status, record: summarize(picks), recent: picks.slice(0, 40), system, clv, moves, parlays });
+    const props = await propShadows(await nbaPropDays().catch(() => [])).catch(() => null);   // 10/21 prop shadow trackers
+    res.status(200).json({ ok: true, error, report: svc && svc.report, patterns: svc && svc.patterns, rebuild: svc && svc.status, record: summarize(picks), recent: picks.slice(0, 40), system, clv, moves, parlays, props });
   } catch (err) { res.status(500).json({ ok: false, error: String(err) }); }
 }

@@ -267,7 +267,8 @@ const CARD_INFO = [["PICK:", "the card’s bet at Polymarket’s main line, lock
   ["MONEYLINE:", "the market’s favorite to win."], ["GREEN 56%+:", "every pick shown green; “said” = the average % shown."], ["PRESEASON TEST:", "preseason games, not in the season record."]];
 const SHADOW_INFO = [["Test picks,", "never shown on a card: recorded and graded live. One becomes a pick only after it holds 56%+ over about 100 games."],
   ["LINE MOVE:", "Pinnacle moved 3+ points; that side at the first number / at the number when seen."], ["INJURY:", "a star newly out; the healthy side at the open / when seen."],
-  ["Gaps:", "Pinnacle or the sportsbooks 1+ point off Polymarket; their side at Polymarket’s number."], ["Closing-line value:", "points gained vs the line at tip-off."]];
+  ["Gaps:", "Pinnacle or the sportsbooks 1+ point off Polymarket; their side at Polymarket’s number."],
+  ["Props · 77¢+:", "prop rows at 65%+ the page hides because they cost 77¢ or more."], ["Props · star out:", "a 20+ ppg player out; his teammates’ points Over at the ~50¢ line."], ["Closing-line value:", "points gained vs the line at tip-off."]];
 function marketCard(g, kind, id) {
   const p = g.poly || {}, live = !g.inProgress ? '<span class="live"></span>' : "";
   const poly = kind === "ml" ? (p.ml ? live + row("Moneyline", `${g.away} ${odds(toAm(p.ml.away))}`, "mlc") + row("", `${g.home} ${odds(toAm(p.ml.home))}`, "mlc") : dash)
@@ -321,8 +322,8 @@ function applyBetsView() {
   if (m) renderLabList();
 }
 // Props (10/17, owner: its own page in the menu, between Game Lines and Bets, same as NFL's): Polymarket US lists no NBA player props yet, so the list is empty until it does
-// PLAYER PROPS (10/20, owner: "Player props", same page as NFL's, design = both sports; bar 62%+): one page per stat tab (Points, Rebounds, Assists, PRA,
-// Threes, Steals, Blocks) -- /api/nba/props: the side the NBA prop model gives 62%+ on each recorded Polymarket line, one row per player and stat (its
+// PLAYER PROPS (10/20, owner: "Player props", same page as NFL's, design = both sports; bar 65%+ since 10/21, was 62%): one page per stat tab (Points, Rebounds, Assists, PRA,
+// Threes, Steals, Blocks) -- /api/nba/props: the side the NBA prop model gives 65%+ on each recorded Polymarket line, one row per player and stat (its
 // highest %), under the tip-off headers game by game, a day and a team drop-down, RECORD tile = this tab's graded rows, ✓ / ✗ green / red once graded.
 let PROPS = null, PROPDAY = null, PROPTAB = "pts", PROPTEAM = "all";
 const PROP_TABS = [["pts", "Points"], ["reb", "Rebounds"], ["ast", "Assists"], ["pra", "PRA"], ["3pm", "Threes"], ["stl", "Steals"], ["blk", "Blocks"]];
@@ -397,9 +398,11 @@ function renderBets() {
   $("sync-btn").onclick = async () => { toast("Syncing…", 0); try { const d = await (await fetch("/api/nba/mybets?sync=1", { cache: "no-store" })).json(); BETS = d; renderBets(); toast(d.sync && d.sync.ok ? `Synced ${d.sync.positions} positions.` : `Sync: ${(d.sync && d.sync.note) || "done"}`); } catch (e) { toast("Sync failed: " + e.message, 10000); } };
 }
 // Model bets: day drop-down at the top, the types are menu sub tabs, one list in tip-off order (lib/parlays.js)
-const PTYPES = { sgp: "Same game · 2 legs", best4: "Parlay · top picks" };   // 10/19 review: bought lines (sgp_pts, not built since 10/19) off the scoreboard   // 10/19: 3 legs at most, the 4 biggest favorites (fav4) is no longer built
-const LAB_TABS = [["sgp", "Same game"], ["best4", "Parlay"]];   // 10/19: the Bought tab left (PICK w/ POINTS only on the card)
-let LABTYPE = "sgp", LABDAY = null;
+const PTYPES = { sgp: "Same game · 2 legs", best4: "Parlay · top picks", pp6: "Prop Parlays · 6 legs", pp8: "Prop Parlays · 8 legs", pp10: "Prop Parlays · 10 legs" };   // 10/21 (owner): Prop Parlays, $5 each   // 10/19 review: bought lines (sgp_pts, not built since 10/19) off the scoreboard   // 10/19: 3 legs at most, the 4 biggest favorites (fav4) is no longer built
+// 10/21 (owner): Model bets = Prop Parlays (6 Leg / 8 Leg / 10 Leg) then Same Game; the Parlay tab is gone (still saved and graded, on the scoreboard)
+const LAB_TABS = [["pp6", "Prop Parlays · 6 Leg"], ["pp8", "Prop Parlays · 8 Leg"], ["pp10", "Prop Parlays · 10 Leg"], ["sgp", "Same Game"]];
+const isLabType = (tab, t) => t === tab;   // 10/19: the Bought tab left (PICK w/ POINTS only on the card)
+let LABTYPE = "pp6", LABDAY = null;
 const plText = (x, st) => `PL: ${x >= 10 ? Math.round(x) : x.toFixed(1)}x<span class="plw"> · $${st} → </span><span class="g">$${Math.round(st * x)}</span>`;
 const plPay = (p) => {
   if (!p || !p.legs || !p.legs.length || !p.legs.every((l) => l.price > 0 && l.price < 1)) return "PL: —";
@@ -411,7 +414,7 @@ const plPay = (p) => {
 const PLQ = {}, PLC = {}, PL_FRESH = 180e3;
 const plKey = (p) => p.legs.map((l) => [l.game, l.market || l.kind || "", l.team || "", l.side || "", l.line ?? "", l.label].join("|")).sort().join("~") + "|" + (p.stake || 10);
 function plQuotable(p) {
-  if (!p || p.result || !Array.isArray(p.legs) || p.legs.length < 2) return false;
+  if (!p || p.result || !Array.isArray(p.legs) || p.legs.length < 2 || p.legs.some((l) => l.market === "prop")) return false;   // prop legs: no Polymarket combo quote, the PL line is the legs' prices
   const games = (S && S.games) || [], gs = p.legs.map((l) => games.find((g) => g.key === l.game));
   return !gs.some((g) => !g || !g.start || g.inProgress || Date.now() >= new Date(g.start).getTime());
 }
@@ -457,12 +460,12 @@ function pBlock(title, p, showGame) {
   return `<div class="par"><div class="pbh"><span class="pbn">${title}</span><span class="pbx">${pr == null ? "" : `<span class="mod">Model ${Math.round(pr * 100)}%</span>`}<span class="plb"${plTap(p)}>${pmLogo()} ${plShown(p)}</span></span></div>${legs}<div class="pbr">${res}</div></div>`;
 }
 function labParlays(day, type) {
-  const rec = (MODELBETS && MODELBETS.days && MODELBETS.days[day] && MODELBETS.days[day][type]) || [];
+  const D = (MODELBETS && MODELBETS.days && MODELBETS.days[day]) || {}, rec = Object.keys(D).filter((t) => isLabType(type, t)).flatMap((t) => D[t]);
   const today = S && S.dates && S.dates.includes(day);
-  const live = today ? (S.parlays || []).filter((p) => p.type === type && (p.game ? S.games.some((g) => g.key === p.game && g.date === day && !g.inProgress) : day === S.dates[0])) : [];
-  const out = live.map((p) => ({ p, start: p.start || (p.legs[0] && (S.games.find((g) => g.key === p.legs[0].game) || {}).start) || null, title: p.game ? gameLogos(p.game) : esc(PTYPES[type] || type), across: !p.game }));
-  for (const r of rec) if (!out.some((x) => x.p.game === r.game && (r.game || x.p.type === r.type))) out.push({ p: r, start: r.start || null, title: r.game ? gameLogos(r.game) : esc(PTYPES[type] || type), across: !r.game });
-  return out.sort((a, b) => (Date.parse(a.start || 0) || 0) - (Date.parse(b.start || 0) || 0));
+  const live = today ? (S.parlays || []).filter((p) => isLabType(type, p.type) && (p.game ? S.games.some((g) => g.key === p.game && g.date === day && !g.inProgress) : p.date ? p.date === day : day === S.dates[0])) : [];
+  const out = live.map((p) => ({ p, start: p.start || (p.legs[0] && (S.games.find((g) => g.key === p.legs[0].game) || {}).start) || null, title: p.game ? gameLogos(p.game) : esc(PTYPES[p.type] || p.type), across: !p.game }));
+  for (const r of rec) if (!out.some((x) => x.p.game === r.game && (r.game || x.p.type === r.type))) out.push({ p: r, start: r.start || null, title: r.game ? gameLogos(r.game) : esc(PTYPES[r.type] || r.type), across: !r.game });
+  return out.sort((a, b) => (Date.parse(a.start || 0) || 0) - (Date.parse(b.start || 0) || 0) || a.p.legs.length - b.p.legs.length);
 }
 function renderLabList() {
   if (!$("lab")) return;
@@ -534,6 +537,7 @@ function renderModels() {
   const cardRows = `<div class="s ihd"><b>Card picks</b>${IBTN}</div>` + ibox(CARD_INFO) + recRow("PICK · spread", rc["cardpick|spread"]) + recRow("LINE MOVE · spread", rc["rule:linemove|spread"]) + recRow("FATIGUE · spread", rc["rule:fatigue|spread"]) + recRow("ATS REGRESSION · spread", rc["rule:atsreg|spread"]) + recRow("PICK w/ POINTS · spread", rc["ptspick|spread"]) + recRow("PICK · total", rc["cardpick|total"]) + recRow("TOTAL MOVE · total", rc["rule:linemove|total"]) + recRow("SHOT QUALITY · total", rc["rule:shotq|total"]) + recRow("PICK w/ POINTS · total", rc["ptspick|total"]) +
     recRow("MODEL SIDE · spread", rc["modelpick|spread"]) + recRow("MODEL SIDE · total", rc["modelpick|total"]) + recRow("MONEYLINE", rc.ml) + recRow("GREEN · 56%+", rc.green, true) + recRow("PRESEASON TEST", rc.test, true) +
     `<div class="s ihd"><b>Shadow trackers</b>${IBTN}</div>` + ibox(SHADOW_INFO) + recRow("LINE MOVE · at the open", mv.all) + recRow("LINE MOVE · at the number seen", mv["now:all"]) + recRow("INJURY · at the open", mv.inj) + recRow("INJURY · at the number seen", mv["now:inj"]) + recRow("Pinnacle vs Polymarket gap", mv.gap) + recRow("Books vs Polymarket gap", mv.bgap) +
+    recRow("Props · 77¢+ hidden rows", (j.props || {}).dear || { w: 0, l: 0 }) + recRow("Props · star out → teammates Over", (j.props || {}).star || { w: 0, l: 0 }) +
     (j.clv && j.clv.n ? `<div class="row"><span class="dim">Closing-line value</span><span>${j.clv.avg > 0 ? "+" : ""}${j.clv.avg} pts · beat the close ${j.clv.beatPct}% of ${j.clv.n}</span></div>` : "");
   const accRows = r ? r.rows.map((x) => `<div class="row"><span class="dim">${esc(x.model)}</span><span>ours <b>${x.ours_same_games}</b> · market <b class="mkt">${x.market}</b> <span class="${x.ours_same_games <= x.market ? "g" : "r"}">${x.ours_same_games <= x.market ? "better" : "worse"}</span></span></div>`).join("") +
     (r.spread_side ? `<div class="row"><span class="dim">Model's spread side</span><span>${r.spread_side.overall}% <span class="dim">break-even ${r.spread_side.break_even}%</span></span></div>` : "") + (r.total_side ? `<div class="row"><span class="dim">Model's total side</span><span>${r.total_side.overall}%</span></div>` : "") +

@@ -1,4 +1,4 @@
-// NBA Player props page (10/20, owner: "Player props", bar 62%+): one day's rows per game (every stat; the page shows its tab's stat), the days
+// NBA Player props page (10/20, owner: "Player props"; bar 65%+ since 10/21): one day's rows per game (every stat; the page shows its tab's stat), the days
 // that have rows, and the season's W-L per stat. ?date=YYYY-MM-DD picks the day (default: today, else the newest day with rows).
 import { nbaPropDays, nbaPropsForDay, nbaPropsRecord, NBA_PROP_BAR, NBA_STATS } from "../../../nba/lib/props";
 import { etDate } from "../../../nba/lib/poly";

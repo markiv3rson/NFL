@@ -53,6 +53,7 @@ body.menu-open .mscrim { opacity:1; pointer-events:auto; } body.menu-open .mdraw
 .mi.msub.pon { color:#fff; font-weight:800; } .mi.msub.pon i { opacity:1; background:#fff; }   /* Model bets while one of its types is open */
 .mi.msub2 { height:36px; padding-left:76px; font-size:14px; color:#aab0bd; }   /* the parlay types under Model bets (10/17) */
 .mi.msub2.on { padding-left:76px; }
+.mi.msub3, .mi.msub3.on { height:34px; padding-left:96px; font-size:13.5px; color:#aab0bd; }   /* 10/21: the sizes under Prop Parlays (NBA) */
 .msubs { display:none; } .msubs.open { display:block; }   /* 10/17 (owner): Alerts / Bets / Model bets open and close their lists */
 .mtog { user-select:none; -webkit-user-select:none; }
 .mi .car { font-style:normal; margin-left:6px; font-size:12px; color:#8d95a3; transition:transform .15s ease; } .mtog.open > .car { transform:rotate(180deg); }   /* the arrow sits right after the name (owner 10/17) */
@@ -89,7 +90,7 @@ body.menu-open .mscrim { opacity:1; pointer-events:auto; } body.menu-open .mdraw
   .mi .ic { width:26px; height:26px; flex:0 0 26px; }
   .mi .cnt { min-width:19px; height:19px; font-size:11px; }
   .mi.msub, .mi.msub.on { height:34px; padding-left:30px; font-size:15px; }
-  .mi.msub2, .mi.msub2.on { height:30px; padding-left:44px; font-size:14px; }
+  .mi.msub2, .mi.msub2.on { height:30px; padding-left:44px; font-size:14px; } .mi.msub3, .mi.msub3.on { height:30px; padding-left:60px; font-size:13.5px; }
   .mi .car { margin-left:4px; font-size:11px; }
   .mspace { flex:0 0 auto; min-height:14px; }   /* no empty gap: Model Analysis follows the NBA list instead of sitting at the bottom of the screen */
 }
