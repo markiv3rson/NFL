@@ -263,6 +263,19 @@ def prop_probs():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
+@app.route("/team-yards", methods=["POST"])
+def team_yards():
+    """STACK shadow inputs (10/21): body {"games": [{"away","home","spread","total","outs"}]} -> each team's expected passing + rushing yards (py)
+    and receiving yards (rec) from the prop model. 503 while the prop model is still being built."""
+    try:
+        if prop_model.load_live() is None:
+            _prop_build_bg(); return jsonify({"ok": False, "error": "prop model not built yet", "building": True}), 503
+        body = request.get_json(force=True) or {}
+        games = [{**g, "away": nv(g["away"]), "home": nv(g["home"])} for g in body.get("games", []) if g.get("spread") is not None and g.get("total") is not None]
+        return jsonify({"ok": True, "built": prop_model._LIVE.get("built"), "results": prop_model.team_yards(games)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 @app.route("/player-stats", methods=["GET"])
 def player_stats():
     """Official passing / rushing / receiving stats of one week (nflverse play-by-play + snap counts), to grade prop picks (lib/props.js)."""

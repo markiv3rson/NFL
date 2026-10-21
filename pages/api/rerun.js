@@ -166,6 +166,14 @@ async function rerunWeek(req, base, season, week, early) {
         else if (pr && !pr.building) errors.push(`props: ${String(pr.error || "no reply").slice(0, 120)}`);
       }
     } catch (e) { errors.push(`props: ${String(e.message || e).slice(0, 120)}`); }
+    // STACK shadow inputs (10/21): each team's expected yards from the prop model, saved per game (stackin:) for lib/week.js; a 503 (model building) is not an error
+    let nYards = 0;
+    if (!early && tdIn.length) try {
+      const ty = await post(base, "/team-yards", { games: tdIn.map((x) => ({ away: x.away, home: x.home, spread: x.spread, total: x.total, outs: x.outs })) }, []);
+      if (ty && ty.ok) for (const r of ty.results || []) { const q = tdIn.find((z) => z.key === r.game); if (!q || !r.home || !r.away) continue;
+        await setJSON(`stackin:${season}:${week}:${q.key}`, { runAt, home: r.home, away: r.away }); nYards++; }
+      else if (ty && !ty.building) errors.push(`team yards: ${String(ty.error || "no reply").slice(0, 120)}`);
+    } catch (e) { errors.push(`team yards: ${String(e.message || e).slice(0, 120)}`); }
     if (!nLines && !errors.length) errors.push(`model service returned 0 results for ${payload.length} game(s)`);
     store.runAt = runAt;
     await Promise.all(alertJobs);
@@ -177,6 +185,6 @@ async function rerunWeek(req, base, season, week, early) {
         model: store.games[x.key] || null, td: (store.td[x.key] ? [...store.td[x.key].away, ...store.td[x.key].home].map((p) => [p.name, p.fair]) : null) })) }));
     await getRedis().ltrim(`rerunlog:${season}:${week}`, 0, 60);
     await getRedis().del(SLATE_CACHE).catch(() => {}); await getRedis().del(`${SLATE_CACHE}:w${week}`).catch(() => {});   // new model numbers show immediately (also the per-week copy the Next week view reads)
-    return { ok: true, week, rerun: nLines, td: nTd, props: nProps, early, skippedTd: payload.length - tdIn.length, locked: all.length - games.length, errors };
+    return { ok: true, week, rerun: nLines, td: nTd, props: nProps, yards: nYards, early, skippedTd: payload.length - tdIn.length, locked: all.length - games.length, errors };
   }
 }
