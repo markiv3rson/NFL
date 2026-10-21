@@ -325,13 +325,13 @@ function tdWeekLine(data, team, player) {
   if (!parts.length) return '<span class="dim">no games yet</span>';
   return parts.join(' <span class="dim">·</span> ') + (drought >= 2 ? ` <span class="dim">· ${drought} straight without</span>` : "");
 }
-// 10/21 night (owner: "If they haven't scored a td in 3 weeks remove them from the list. This is final. But make sure you rotate players in their team by
-// who's getting the actual tds ... Cut it to 3 per team. We are taking out the noise"; SUPERSEDES the pool-of-4 / no-cut rule of the same day): a player is on
-// the page ONLY when one of his last TD_DROUGHT PLAYED games (byes skipped) had a TD -- no TD this season = off too; the cut runs BEFORE the pool, so a cut
-// player's slot goes to the team's next likeliest scorer (rotation); the pool is TD_POOL per team (Best TD picks count toward it; the 4th slot only for a player who scored LAST game); a team
-// with fewer scorers shows fewer. A listed player who missed last game's TD keeps the red caution ("✗ no TD last game", "✗ 2 straight no TD"). The page is
-// still drawn only once the week feed is in. The model lists, parlays and grading are unchanged (every listed player is graded).
-const TD_WARN = 1, TD_POOL = 4, TD_DROUGHT = 3;
+// 10/21 night (owner: "If they haven't scored a td in 3 weeks remove them from the list ... rotate players in their team by who's getting the actual tds";
+// then, on seeing K.Gainwell -- 11%, 7th on his team, 2 straight blanks -- "What did I fucken tell you?" -> option A: LAST 2 GAMES; "only list 4 a team"):
+// a player is on the page ONLY when one of his last TD_DROUGHT (2) PLAYED games (byes skipped) had a TD -- no TD this season = off too; the cut runs
+// BEFORE the pool, so a cut player's slot goes to the team's next likeliest scorer (rotation); the pool is TD_POOL (4) per team (Best TD picks count toward
+// it; the 4th slot only for a player who scored LAST game); a team with fewer scorers shows fewer. A listed player who missed last game's TD keeps the red
+// caution ("✗ no TD last game"; 2+ blanks are never listed). The page is still drawn only once the week feed is in. Model lists, parlays and grading unchanged.
+const TD_WARN = 1, TD_POOL = 4, TD_DROUGHT = 2;
 // true when one of his last TD_DROUGHT played games had a TD (a player with no played game or no TD this season: false); null before the feed
 function tdScoredRecent(data, team, player) { const gs = tdWeekGames(data, team, player); if (!gs) return null; return gs.filter((x) => !x.bye).slice(-TD_DROUGHT).some((g) => g.n > 0); }
 const tdCut = (r, data) => data != null && !tdScoredRecent(data, r.team, r.player);
@@ -357,7 +357,7 @@ function tdBody() {
   const moveBox = moves.length ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Price moves (5¢+, real markets)</div>${moves.map((r) => `<div class="row"><span>${esc(r.player)} <span class="dim">${esc(r.game)}</span></span><span class="${r.move > 0 ? "g" : "r"}">${r.move > 0 ? "▲ +" : "▼ "}${r.move}¢</span></div>`).join("")}</div></div>` : "";
   // Best TD picks (10/14, owner: "build now"): only the players the model gives 55%+ (shown chance, after injury discounts). Graded weeks 3-5:
   // 55%+ players scored 17 of 21 (said 65%) vs 22% for every listed player -- the model's most confident tier, not a smarter model.
-  // 10/21 night (owner): the cut runs first -- only players who scored in their last 3 played games -- then the 3 likeliest scorers per team (rotation)
+  // 10/21 night (owner): the cut runs first -- only players who scored in their last 2 played games -- then the likeliest scorers per team (rotation)
   // 10/21 night (owner: "SHOW 4 PLAYERS IF THEY QUALIFY ... but only if the 4th player scored a td last game"): slots 1-3 = the likeliest scorers in their last 3;
   // the 4th slot = the next likeliest player on the team who scored LAST game (drought 0); nobody who did not score last game takes the 4th slot
   const perTeam = {}, pool = rows.filter((x) => !tdCut(x.r, TDW)).filter((x) => { const k = x.r.team, n = perTeam[k] || 0;
