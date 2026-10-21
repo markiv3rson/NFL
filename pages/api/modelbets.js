@@ -1,5 +1,6 @@
 // Model Picks (10/15): every parlay the app saved this season, grouped by week and by type, with its results.
-// types: "2" 2 legs, "3" 3 legs, "4" 4 legs, "style" my style, "pts" my style with bought lines, "diff" 4 legs across games, "best" Best Legs (green picks / most likely TD scorers, 2-3 legs across games).
+// types: "2" 2 legs, "3" 3 legs, "upset" Upset, "st" Spread + Total, "best" Best Legs (green picks / most likely TD scorers, 2-3 legs across games);
+// "4", "style", "pts", "diff" = types no longer built (10/19), kept so their old saved weeks still group.
 import { getRedis, getJSON } from "../../lib/redis";
 import { SEASON } from "../../lib/games";
 import { BEST_STAKE } from "../../lib/paper";

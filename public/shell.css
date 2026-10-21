@@ -4,8 +4,8 @@
 :root { --ggrad:linear-gradient(90deg,#ff3b4a,#3ddc97); }   /* 10/18 night (owner): plain red -> green like the bull / bear picture (owner: "just red and green", no white), no glow, no filled circles; purple only on MODEL ANALYSIS */
 .shead::after { content:""; position:absolute; left:0; right:0; bottom:0; height:1px; background:var(--ggrad); opacity:.75; }
 /* 10/18 (owner): the ☰ is gone -- a thin grip on the left edge, centered top to bottom, opens the menu (tap, or slide it right) */
-.mgrip { position:fixed; left:0; top:50%; transform:translateY(-50%); z-index:150; width:22px; height:92px; border:0; padding:0; margin:0; background:none; cursor:pointer; display:flex; align-items:center; justify-content:flex-start; }
-.mgrip i { display:block; width:5px; height:64px; border-radius:0 4px 4px 0; background:linear-gradient(180deg,#ff3b4a,#3ddc97); }
+.mgrip { position:fixed; right:0; top:50%; transform:translateY(-50%); z-index:150; width:30px; height:124px; border:0; padding:0; margin:0; background:none; cursor:pointer; display:flex; align-items:center; justify-content:flex-end; }   /* 10/21 (owner): on the RIGHT edge, a little bigger, see-through */
+.mgrip i { display:block; width:8px; height:92px; border-radius:5px 0 0 5px; background:linear-gradient(180deg,#ff3b4a,#3ddc97); opacity:.45; }
 body.menu-open .mgrip { display:none; }
 .sgrad { background:var(--ggrad); -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent; }
 .shome { flex:1 1 auto; min-width:0; text-align:center; font-size:clamp(40px,15vw,60px); font-weight:900; font-style:italic; letter-spacing:.01em; line-height:1; white-space:nowrap; -webkit-text-stroke:.8px rgba(255,255,255,.55); }

@@ -5,7 +5,6 @@
 import { getRedis, jparse, mgetAll } from "./redis";
 import { staleDate } from "./pinnacle";
 import { finalsFor } from "./espn";
-import { cardLegs, ptsLeg } from "./cardpick";
 const KEY = (date, game, id) => `pick:${date}:${game}:${id}`;
 const IDS = "pick:ids";
 export const pickRows = (g) => {

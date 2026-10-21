@@ -90,18 +90,18 @@
         `<div class="msec nfl"><span>NFL</span><span class="ml"></span></div>${ITEMS.nfl.map((x) => item("nfl", ...x)).join("")}` +
         `<div class="msec nba gap"><span>NBA</span><span class="ml"></span></div>${ITEMS.nba.map((x) => item("nba", ...x)).join("")}` +
         `<div class="mspace"></div><div class="msec mod"><span>MODEL ANALYSIS</span><span class="ml"></span></div>${item("nfl", "models", "NFL", "bars")}${item("nba", "models", "NBA", "bars")}</nav>`;
-      // 10/18 (owner): no ☰ in the header -- a thin grip on the left edge opens the menu (tap or slide it right); SLATEZZ sits centered
+      // 10/18 (owner): no ☰ in the header -- a grip opens the menu (tap or slide it); SLATEZZ sits centered. 10/21 (owner): the grip is on the RIGHT edge, bigger, see-through
       d.innerHTML += `<button class="mgrip" id="menu-grip" aria-label="Menu"><i></i></button>`;
       while (d.firstChild) document.body.appendChild(d.firstChild);
       const mb = document.getElementById("menu-btn"); if (mb) mb.onclick = Shell.open;
       document.getElementById("menu-grip").onclick = () => { Shell.open(); Shell.loadRun(); };
       document.getElementById("mscrim").onclick = Shell.close;
-      // 10/17 (owner: "I should just be able to slide it"): swipe from the left edge opens the menu, a swipe to the left on it closes it
+      // 10/17 (owner: "I should just be able to slide it"): a swipe in from the grip's edge (the right edge since 10/21) opens the menu, a swipe to the left on it closes it
       let sx = null, sy = null, edge = false;
-      document.addEventListener("touchstart", (e) => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; edge = sx <= 44 && !document.body.classList.contains("menu-open"); }, { passive: true });   // the left edge = the grip's strip
+      document.addEventListener("touchstart", (e) => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; edge = sx >= window.innerWidth - 44 && !document.body.classList.contains("menu-open"); }, { passive: true });   // the right edge = the grip's strip (10/21)
       document.addEventListener("touchend", (e) => { if (sx == null) return; const t = e.changedTouches[0], dx = t.clientX - sx, dy = Math.abs(t.clientY - sy); sx = null;
         if (dy > Math.abs(dx)) return;
-        if (edge && dx > 40) { Shell.open(); Shell.loadRun(); }
+        if (edge && dx < -40) { Shell.open(); Shell.loadRun(); }
         else if (document.body.classList.contains("menu-open") && dx < -40) Shell.close(); }, { passive: true });
       document.getElementById("mref").onclick = Shell.refresh;
       Shell.loadRun(); document.getElementById("menu-btn") && document.getElementById("menu-btn").addEventListener("click", Shell.loadRun);   // fresh each time the menu opens
@@ -111,7 +111,7 @@
         const a = e.target.closest("a"); if (!a) return;
         // 10/18 night (owner: a swipe "changes pages ... brings me back to a different page"): that was the phone's back / forward gesture walking
         // through history. Pages now switch WITHOUT adding history (replaceState on this page, location.replace to the other sport's page), so a
-        // swipe has nothing to go back to; only the left grip moves.
+        // swipe has nothing to go back to; only the grip (right edge since 10/21) moves.
         const href = a.getAttribute("href") || ""; if (!href || /^https?:/.test(href)) { Shell.close(); return; }
         e.preventDefault(); Shell.close();
         const u = new URL(href, location.href), norm = (p) => p.replace(/\/index\.html$/, "/");

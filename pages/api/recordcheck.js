@@ -1,5 +1,5 @@
 // Read-only check (10/14, owner: "do your checks"): what the recorders actually saved, so they can be audited without database
-// access. ?week=N (default: current week). Returns, per game: the latest 30-minute Pinnacle/Polymarket record (with the order book)
+// access. ?week=N (default: current week). Returns, per game: the latest 30-minute Pinnacle/Polymarket record
 // and the saved card picks with their first line, latest/kickoff line, line value (CLV) and result. Saves nothing, changes nothing.
 import { getRedis } from "../../lib/redis";
 import { SEASON, currentWeek } from "../../lib/games";

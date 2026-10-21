@@ -58,9 +58,7 @@
   .pill { display:inline-block; font-size:11.5px; font-weight:700; padding:0 2px; border:0; border-radius:0; background:none; }   /* 10/17 (owner): no pills anywhere -- plain coloured text */
   .p-g { color:var(--green); }
   .p-y { color:var(--yellow); }
-  .p-r { color:var(--red); }
   .warn { font-size:12px; color:var(--yellow); margin-top:6px; }
-  .warn-t { color:var(--yellow); }
   .live:not(.tile) { width:7px; height:7px; border-radius:50%; background:var(--green); display:inline-block; margin-right:4px; vertical-align:1px; }   /* 10/17: the dot rule no longer crushes a live game tile into a 7px circle */
   .cover { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; text-align:center; background:rgba(255,107,107,.1); padding:10px; }
   .cover b { color:var(--red); font-size:15px; letter-spacing:.08em; }
@@ -90,7 +88,6 @@
   .phead .pt { display:grid; gap:2px; min-width:0; flex:1; } .phead .pt b { font-size:36px; font-weight:800; color:#fff; line-height:1.05; letter-spacing:-.01em; }
   .phead .pt span { font-size:12.5px; color:var(--faint); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .phbtn { flex:0 0 auto; font:inherit; font-size:12px; font-weight:700; color:#fff; background:none; border:0; border-radius:999px; padding:6px 0; cursor:pointer; }
-  .mcard { border-color:rgba(255,255,255,.28); }
   /* tiles */
   .tiles { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:10px; }
   .tiles.stack { grid-template-columns:1fr !important; margin-top:4px; }   /* 10/17 (owner): Game Lines stacked, one game per row */
@@ -102,7 +99,6 @@
   .tile { position:relative; overflow:hidden; background:var(--card); border:1px solid rgba(255,255,255,.28); border-radius:16px; padding:12px; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.3); text-align:left; font:inherit; color:inherit; }
   .tile .mid.lvmid { display:inline-flex; flex-direction:column; align-items:center; line-height:1.15; } .tile .sr { white-space:nowrap; } .tile .lv { font-size:10.5px; font-weight:800; letter-spacing:.04em; margin-top:2px; } .tile .lv.r { color:var(--red); }
   .dtop .s3.r { color:var(--red); }
-  .rp { display:grid; grid-template-columns:1.5fr .9fr .8fr .8fr; gap:4px 6px; align-items:center; padding:7px 0; border-top:1px solid rgba(255,255,255,.1); font-size:12.5px; font-variant-numeric:tabular-nums; } .rp > span:not(:first-child) { text-align:right; }
   .tile .t .tlogo { width:26px; height:26px; vertical-align:-5px; margin:0 7px 0 0; } .tile .t.hm .tlogo { margin:0 0 0 7px; }
   .tile .tmid { text-align:center; line-height:1.3; min-width:0; } .tile .tmid .s2 { font-size:12px; margin-top:3px; white-space:nowrap; } .tile .tmid .tmt { color:#c9ced6; font-weight:600; }   /* 10/18: the kickoff / tip time on the tile */
   #detail .back { margin-top:4px; margin-bottom:0; }   /* 10/21 night (owner): ← Games sits close to the first section */
@@ -129,7 +125,6 @@
   .ticket .tb { font-size:30px; font-weight:900; line-height:1.05; color:#fff; font-variant-numeric:tabular-nums; }
   .ticket .ts { font-size:11px; color:#e9dcc0; }
   .tile .tmid .mvt { font-size:11px; color:#c9ced6; margin-top:2px; line-height:1.3; } .tile .tmid .mvt > span { display:block; white-space:nowrap; }   /* 10/18 night (owner): a game's line move sits inside its tile (the LINE MOVES strip is gone) */
-  .mwarn { margin-top:4px; font-size:11px; font-weight:700; color:var(--yellow); white-space:normal; line-height:1.3; }
   #lab > .drop { margin-top:10px; border-top:0; padding-top:0; }
   .pgrid { display:block; } .par { padding:11px 0; font-size:13.5px; } .pgrid > .par:first-child { padding-top:2px; }   /* 10/16 (owner): no lines between parlays, only the line under each time-slot header */
   .pbh { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:4px; } .pbh.c { justify-content:center; }   /* 10/21 night (owner): the game name centered on the props cards */ .pbn { font-weight:700; font-size:14.5px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
@@ -140,9 +135,7 @@
     .ppr .pp1 { grid-area:n; } .ppr .pp2 { grid-area:line; font-size:11px; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .ppr .pp5 { grid-area:l; } .ppr .pp3 { grid-area:m; } .ppr .pp4 { grid-area:p; } .ppr.pph .pp2 { display:none; } .ppr.pph .pp1 { grid-row:1 / 3; } }
 .ppr.pph { margin-top:7px; } .ppr.pph span { font-size:8.5px; letter-spacing:.02em; color:var(--faint); font-weight:700; } .ppr.first { grid-template-columns:minmax(0,3fr) minmax(max-content,1fr) minmax(44px,.7fr) minmax(74px,.8fr); }   /* same rule as NFL (a props list without the LAST column) */
   .pbl.pteam { display:flex; align-items:center; gap:5px; margin-top:6px; font-size:11px; font-weight:800; color:var(--dim); } .pbl.pteam .tlogo { width:14px; height:14px; margin:0; }
-  .ftdteams { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:4px 12px 2px; font-size:13px; font-weight:700; } .ftdteams .tlogo { width:18px; height:18px; margin:0 4px; vertical-align:middle; } .ftdteams span { display:flex; align-items:center; gap:4px; }
-  .ftdg { border-top:1px solid var(--line2); } .ftdg .ftdt { padding:8px 12px 0; font-size:13px; font-weight:800; display:flex; align-items:center; gap:4px; } .ftdg .ftdt .tlogo { width:18px; height:18px; margin:0; }
-  .tdr .pxc { width:78px; } .ppr .pp3.mod, .ftdteams b.mod { color:var(--violet); font-weight:800; }
+  .ppr .pp3.mod { color:var(--violet); font-weight:800; }
   .ppr .pp4, .ppr.pph .pp4 { color:#2e5cff; }   /* 10/20 night (owner): Polymarket cents + head in Polymarket's blue; columns centered under their heads */
   .pph .pm { width:12px; height:12px; margin-right:3px; vertical-align:-2px; } .pph .pm img { width:12px; height:12px; }
   .pbl { margin-top:3px; padding-left:12px; overflow-wrap:anywhere; } .pbr { text-align:right; font-weight:800; min-height:4px; }
@@ -199,7 +192,6 @@
   .prl > .s { text-transform:uppercase; letter-spacing:.04em; font-size:13px; font-weight:700; color:#eef0f4; }
   /* game page: the two team logos split the whole page in half behind the cards (away left, home right) */
   .sc { border:1px solid rgba(255,255,255,.28); }
-  .mcard { border-color:rgba(255,255,255,.28); }   /* 10/14 owner: Model Picks cards plain (no purple) */
   #detail .sub { display:none; }
   .dtop .dwm { position:absolute; top:50%; width:46%; height:150px; margin-top:-75px; object-fit:contain; opacity:.2; pointer-events:none; } .dtop .dwm.l { left:-10px; } .dtop .dwm.r { right:-10px; }
   .dtop .nm { display:flex; align-items:center; justify-content:space-between; }
@@ -210,7 +202,6 @@
   .stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:10px; }
   .stat { background:var(--card); border:1px solid rgba(255,255,255,.28); border-radius:16px; padding:10px 8px; text-align:center; }
   .stat .k { font-size:10px; font-weight:800; letter-spacing:.06em; color:var(--faint); text-transform:none; } .stat .v { font-size:19px; font-weight:800; margin-top:2px; } .stat .k2 { font-size:10px; color:var(--faint); }
-  .arow { display:flex; align-items:center; gap:8px; padding:9px 0; border-top:1px solid var(--line2); font-size:13px; } .arow .nm { flex:1; font-weight:600; } .arow .rc { font-size:11px; } .arow b { width:40px; text-align:right; }
   .price-link { cursor:pointer; border-bottom:1px dotted var(--faint); }
   /* 10/14 casino look, trimmed 10/18: HIT/MISS stamps on Bets, dollar amounts roll in */
   .pulse { --gl:.6; }   /* 10/18 (owner): no glow -- the green PICK no longer pulses */

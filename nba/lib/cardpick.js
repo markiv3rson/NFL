@@ -142,4 +142,3 @@ export function cardLegs(g) {
   for (const k of ["spread", "total"]) { const x = g.card[k] && g.card[k].plain; if (x && x.line != null) out.push({ ...x, market: k, label: x.pick, pct: x.hit }); }
   return out;
 }
-export const ptsLeg = (g, k) => (g && g.card && !g.card.test && g.card[k] && g.card[k].pts ? { ...g.card[k].pts, market: k, label: g.card[k].pts.pick, pct: g.card[k].pts.hit, bought: true } : null);

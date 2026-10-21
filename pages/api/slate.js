@@ -3,7 +3,7 @@ import { displayWeek } from "../../lib/games";
 import { loadInjuriesMeta } from "../../lib/injuries";
 import { getStatus } from "../../lib/status";
 import { recordSgp } from "../../lib/sgp";
-import { getJSON, setJSON, getRedis, SLATE_CACHE, BUILD, K } from "../../lib/redis";
+import { setJSON, getRedis, SLATE_CACHE, BUILD, K } from "../../lib/redis";
 import { computeWatch } from "../../lib/watchdog";
 import { winnersSummary, recordedFor } from "../../lib/paper";
 import { saveParlayList } from "../../lib/comboquote";
