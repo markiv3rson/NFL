@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-daily_rebuild.py — NBA only. The automatic rebuild (scheduler: every day 4 AM PT).
+daily_rebuild.py — NBA only. The automatic rebuild (scheduler: every day 5:15 AM PT since 10/21, after ESPN's ~4:30 AM files).
 
   1. Re-download the current season's box scores / schedule and the closing-line file.
   2. Walk-forward ratings for every season (past seasons cached, the current one redone).
@@ -23,7 +23,7 @@ OPTIONAL = ["injury_weights.json"]          # published when there is enough inj
 _LOCK = threading.Lock()
 STATE = {"running": False}
 # Rebuild on deploy (the NFL app's idea, 10/16): the published build carries this tag; when the service starts with a build made by older
-# rebuild code (a different tag) it rebuilds right away instead of waiting for 4 AM, so a merge that changes the model is live the same hour.
+# rebuild code (a different tag) it rebuilds right away instead of waiting for the morning build, so a merge that changes the model is live the same hour.
 BUILD_TAG = "2026-10-16 early-season rotation blend, scan to the current season, schedule rest"
 
 

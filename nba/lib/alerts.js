@@ -37,7 +37,8 @@ export async function alertsFromSlate(games, now = Date.now()) {
     if (!g.preseason) {                                                  // new green picks: the card's PICK (56%+) and the moneyline PICK
       const legs = []; const ml = g.ml && g.ml.pick; if (ml && (ml.tier === "pick" || ml.tier === "lean") && ml.pct >= 56) legs.push({ market: "ml", label: ml.label, pct: ml.pct, who: ml.team });
       for (const k of ["spread", "total"]) { const c = g.card && g.card[k] && g.card[k].plain; if (c && c.hit >= 56) legs.push({ market: k, label: c.pick, pct: c.hit, who: c.team || c.side }); }
-      for (const p of legs) n += await addAlert({ kind: "PICK", game: g.key, id: `pick|${g.date}|${g.key}|${p.market}|${p.who || p.label}`, ttlH: 36, title: `${g.key}: ${p.label} · ${Math.round(p.pct)}%`, sub: "" }, now);
+      // 10/21 recheck: remembered 4 days like the line / injury baselines (36 h re-alerted the same pick on game day: UTA @ MEM MEM -1.5, PHI @ NYK NYK ML)
+      for (const p of legs) n += await addAlert({ kind: "PICK", game: g.key, id: `pick|${g.date}|${g.key}|${p.market}|${p.who || p.label}`, ttlH: 96, title: `${g.key}: ${p.label} · ${Math.round(p.pct)}%`, sub: "" }, now);
     }
     // line moves, measured against the last line we told you about (slow drifts add up instead of hiding under the limit)
     const bkey = `alertbase:${g.date}:${g.key}`, cur = lineNow(g), base = jparse(await r.get(bkey).catch(() => null));

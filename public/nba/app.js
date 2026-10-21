@@ -549,7 +549,7 @@ function renderModels() {
     ["Last snapshot", sy.lastSnapshot ? `${when(sy.lastSnapshot.t)} · ${plural(sy.lastSnapshot.games, "game")}${snapAge > 10 * 3600e3 ? ' <span class="y">(stale)</span>' : ""}` : '<span class="y">none yet</span>'],
     ["Model service (Railway)", sy.railway && sy.railway.ok ? `answering · ${sy.railway.ms} ms` : `<span class="r">NOT answering${sy.railway && sy.railway.code ? " (HTTP " + sy.railway.code + ")" : ""}</span>`],
     ["Pinnacle lines", sy.pinnacle ? when(sy.pinnacle) : '<span class="y">no good pull yet</span>'],
-    ["Lined games this season", sy.railway && sy.railway.lines ? `${sy.railway.lines.lined} of ${sy.railway.lines.games} · ${sy.railway.lines.polymarket} from Polymarket` : "—"],
+    ["Lined games this season", sy.railway && sy.railway.lines ? `${sy.railway.lines.lined} of ${sy.railway.lines.games} · ${sy.railway.lines.polymarket} from Polymarket${sy.railway.lines.last ? " · newest " + sy.railway.lines.last : ""}` : "—"],
     ["Stored items", sy.keys != null ? String(sy.keys) : "—"],
     ["Last backup", sy.backup ? `${when(sy.backup.t)} · ${sy.backup.where === "volume" ? "saved" : sy.backup.where === "failed" ? '<span class="r">failed</span>' : '<span class="y">temporary</span>'}` : '<span class="y">none yet</span>'],
     ["Sportsbook credits left", S && S.books && S.books.remaining != null ? String(S.books.remaining) : "—"],

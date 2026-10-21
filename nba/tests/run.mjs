@@ -484,6 +484,8 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   const L = (await al.listAlerts()).filter((a) => a.kind === "LINE MOVE");
   ok(n1 === 3 && L.length === 3 && L.some((a) => /spread: NYK -3.5 → -5/.test(a.title)) && L.some((a) => /total: 220.5 → 223/.test(a.title)) && L.some((a) => /moneyline 62¢ → 70¢/.test(a.title)), "alerts: spread 1+, total 2+ and moneyline 5¢+ moves each alert, measured against the first line", L.map((a) => a.title));
   ok(await al.alertsFromSlate([game({ poly: { spread: { homeSpread: -5 }, total: { line: 223 }, ml: { midHome: 0.7, midAway: 0.3 } } })], T0 + 180e3) === 0, "alerts: the same move never alerts twice");
+  { const src = (await import("fs")).readFileSync(new URL("../lib/alerts.js", import.meta.url), "utf8"); const h = Number((src.match(/kind: "PICK"[^\n]*ttlH: (\d+)/) || [])[1]);
+    ok(h >= 72, "alerts: a PICK is remembered past the 2-day record window (36 h re-alerted the same pick on game day, 10/21)", h); }
   const withInj = (list) => game({ poly: { spread: { homeSpread: -5 }, total: { line: 223 }, ml: { midHome: 0.7, midAway: 0.3 } }, injuries: { home: list, away: [] } });
   ok(await al.alertsFromSlate([withInj([{ name: "Star Guy", status: "Out", ppg: 24 }])], T0 + 240e3) === 1, "alerts: a rotation player newly listed Out alerts");
   ok(await al.alertsFromSlate([withInj([{ name: "Star Guy", status: "Out", ppg: 24 }, { name: "Bench Guy", status: "Out", ppg: 4 }])], T0 + 300e3) === 0, "alerts: bench players (under 10 ppg) and repeats stay quiet");
@@ -916,7 +918,9 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(pr.nbaPropPicks([{ name: "Paul George", team: null, stat: "pts", line: 14.5, mu: 9, over: 0.2, under: 0.8 }], saved).length === 0, "NBA props: a player the model puts on neither team (Polymarket listed him under the wrong game) is not a row");
   ok(pr.NBA_PROP_BAR === 0.65 && pr.MAX_PRICE === 0.77 && picks.length === 2 && picks[0].side === "over" && picks[0].price === 0.7 && picks[0].band === "70-80" && picks[1].side === "under" && picks[1].price === 0.62 && picks[1].band === "70-80" && !picks.some((p) => p.stat === "3pm"), "NBA props: the side the model likes more, only at 65%+ (10/21; a 61% Under and a 55% Under are not picks), with that side's price", picks);
   const one = pr.onePerPlayer([{ name: "A", stat: "pts", chance: 0.8, price: 0.9 }, { name: "A", stat: "pts", chance: 0.7, price: 0.6 }, { name: "A", stat: "pts", chance: 0.8, price: 0.77 }, { name: "A", stat: "reb", chance: 0.65, price: null }, { name: "B", stat: "pts", chance: 0.66, price: 0.66 }]);
-  ok(one.length === 2 && one[0].name === "A" && one[0].chance === 0.7 && one[1].stat === "reb", "NBA props: one row per player and stat = the highest % priced under its % and under 77c (80% at 90c and 80% at 77c are out, owner 10/20); no price last; a line priced at its % is dropped", one);
+  ok(one.length === 1 && one[0].name === "A" && one[0].chance === 0.7, "NBA props: one row per player and stat = the highest % priced under its % and under 77c (80% at 90c and 80% at 77c are out, owner 10/20); no price = not a row (10/21); a line priced at its % is dropped", one);
+  const two = pr.onePerPlayer([{ name: "Jayson Tatum", stat: "pra", chance: 0.985, price: null }, { name: "Jayson Tatum", stat: "pra", chance: 0.74, price: 0.6 }]);
+  ok(two.length === 1 && two[0].chance === 0.74, "NBA props: an unpriced 98.5% rung never pushes the player's priced line off the page (10/21 recheck)", two);
   // scoring: a not-started game with recorded lines is sent to the service, the answer saved per game; a started game is not
   await R.set(pr.K_NBAPROPS("2026-12-30", "BOS @ DET"), JSON.stringify(saved));
   let sent = null; const post = async (b) => { sent = b; return { ok: true, built: "x", results: [{ game: "BOS @ DET", rows }] }; };

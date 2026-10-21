@@ -6,7 +6,7 @@
 //    the day's Out / Doubtful list; saved as `nbapropmodel:<date>:<game>` -- a started game is never re-scored, so the last copy before tip-off is the
 //    locked one (same rule as the NFL props).
 //  - A ROW on the page = the side the model gives NBA_PROP_BAR (65% since 10/21; was 62%) or more; one row per player and stat (the highest %, priced under its % and
-//    under MAX_PRICE = 77c, owner 10/20; no price = kept, last) -- the NFL page's rule. Every scored side at the bar is graded, shown or not.
+//    under MAX_PRICE = 77c, owner 10/20; since 10/21 a row needs a price). Every scored side at the bar is graded, shown or not.
 //  - gradeNbaProps: once ESPN says the game is final, every pick at the bar is graded from ESPN's box score (nba/lib/espn.js boxFor); a player who did
 //    not play is a push (not counted). Saved in `nbapropres:<date>` (one field per game). The RECORD tile per stat counts the page's rows.
 //  HONEST NUMBERS (10/17 research + 10/20 check on last season's real Polymarket lines, the model's 62%+ sides): rebounds Over 62.9% (132-78),
@@ -30,7 +30,8 @@ export const K_NBAPROPS = (date, key) => `nbaprops:${date}:${key}`;
 export const K_NBAPROPMODEL = (date, key) => `nbapropmodel:${date}:${key}`;
 export const K_NBAPROPRES = (date) => `nbapropres:${date}`;
 export const nbaPropName = (m) => String((m && (m.title || m.titleShort)) || "").replace(/\s+\d+\+\s.*$/, "").trim();
-export const normName = (n) => String(n || "").toLowerCase().replace(/-/g, " ").replace(/[^a-z ]/g, "").split(/\s+/).filter((w) => w && !["jr", "sr", "ii", "iii", "iv", "v"].includes(w)).join(" ");
+export const normName = (n) => String(n || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()   // 10/21: accents folded (Jokić = Jokic), not dropped
+  .replace(/-/g, " ").replace(/[^a-z ]/g, "").split(/\s+/).filter((w) => w && !["jr", "sr", "ii", "iii", "iv", "v"].includes(w)).join(" ");
 export function nbaPropsFromEvent(ev) {
   const out = [];
   for (const m of (ev && (ev.rawProps || ev.markets)) || []) {
@@ -64,16 +65,18 @@ export function nbaPropPicks(modelRows, saved, bar = NBA_PROP_BAR) {
   }
   return out;
 }
-// One row per player and stat: priced under its win % and under MAX_PRICE (or no price), the highest %; priced rows first (the NFL page's rule)
+// One row per player and stat: priced under its win % and under MAX_PRICE, the highest %.
+// 10/21 recheck: a row needs a real Polymarket price (nobody selling = not a bet). Unpriced deep rungs of the "N+" ladders (Tatum PRA Under 54.5 98.5%)
+// pushed the player's priced line off the page and padded the record: opening night 114-30 = 79.2%, of which unpriced 43-4 and priced 71-26 (73.2%).
 export function onePerPlayer(picks) {
   const priced = (p) => p.price > 0 && p.price < 1, best = new Map();
   for (const p of picks) {
     if (!(p.chance >= NBA_PROP_BAR)) continue;   // a row saved under an older, lower bar
-    if (priced(p) && (p.price >= p.chance || p.price >= MAX_PRICE)) continue;
+    if (!priced(p) || p.price >= p.chance || p.price >= MAX_PRICE) continue;
     const k = `${normName(p.name)}|${p.stat}`, o = best.get(k);
-    if (!o || p.chance > o.chance || (p.chance === o.chance && priced(p) && !priced(o))) best.set(k, p);
+    if (!o || p.chance > o.chance) best.set(k, p);
   }
-  return [...best.values()].sort((a, b) => priced(b) - priced(a) || b.chance - a.chance);
+  return [...best.values()].sort((a, b) => b.chance - a.chance);
 }
 // 10/21 shadow (owner): a 20+ points-a-game player listed Out / Doubtful -> his team's other players' points Overs are tracked (the 10/17 research blind
 // spot: teammates beat the model's points every season 2023-26). Saved with the locked model copy, graded with the game, never a row or a pick.

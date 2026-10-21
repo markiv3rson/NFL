@@ -37,7 +37,7 @@ export function parseBox(summary) {
     for (const a of st.athletes || []) {
       const name = a.athlete && a.athlete.displayName; if (!name || a.didNotPlay || !Array.isArray(a.stats) || !a.stats.length) continue;
       const s = a.stats, pts = num(s, "PTS"), reb = num(s, "REB"), ast = num(s, "AST");
-      players[name.toLowerCase().replace(/-/g, " ").replace(/[^a-z ]/g, "").split(/\s+/).filter((w) => w && !["jr", "sr", "ii", "iii", "iv", "v"].includes(w)).join(" ")] =
+      players[name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/-/g, " ").replace(/[^a-z ]/g, "").split(/\s+/).filter((w) => w && !["jr", "sr", "ii", "iii", "iv", "v"].includes(w)).join(" ")] =
         { pts, reb, ast, pra: pts + reb + ast, "3pm": num(s, "3PT"), stl: num(s, "STL"), blk: num(s, "BLK"), min: num(s, "MIN") };
     }
   }
