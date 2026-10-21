@@ -280,13 +280,14 @@ function practTag(r) {
 // 10/20 night (owner's sketch): ONE line per player, nothing to open -- [logo] name pos / game · #N on team | SNAP | 2+ TD | MODEL (purple) | PM (far right)
 function tdRow(x, withGame) {
   const r = x.r, snap = r.snap && r.snap.pct != null ? `${Math.round(r.snap.pct)}%` : "—", two = r.two != null ? `${Math.round(r.two)}%` : "—", warn = tdWarn(r, TDW);
-  // 10/21 night (owner: "Make it like the first td layout. With anytime td labels"): the First TD page's row -- bullet, small logo, name (+ position / injury tags), "Anytime TD" under the
-  // name (Best TD picks add the game), the red caution on that line, MODEL % (purple) and the Polymarket cents on the right; a tap opens SNAP · 2+ TD, then the week marks on their own line.
+  // 10/21 night (owner: "Make it like the first td layout"): the First TD page's row -- bullet, small logo, name (+ position / injury tags), MODEL % (purple) and the Polymarket cents
+  // on the right; a tap opens SNAP · 2+ TD, then the week marks on their own line. 10/22 (owner: "remove the word Anytime TD ... replace it with the no touchdown"): the middle holds only
+  // the red caution (Best TD picks add their game before it) -- centered in its own column on a computer, under the name on a phone.
   return `<div class="pbl ppr first tdr" data-tdw="${esc(r.team)}|${esc(r.player)}"><span class="pp1">• ${tlogo(r.team)}${esc(r.player)}<span class="pos">${esc(r.pos || "")}</span>${injTag(r) || practTag(r)}${retPill(r)}</span>` +
-    `<span class="pp2">Anytime TD${withGame && r.game ? ` · ${esc(r.game)}` : ""}${warn ? ` <span class="wc r">${warn}</span>` : ""}</span><span class="pp3 mod">${tdPct(r.fair)}%</span><span class="pp4">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${tdNoGap(r) != null ? ` <span class="y nogap" title="No · ${tdNoGap(r)} under">⚠</span>` : ""}</span>` +
+    `<span class="pp2">${withGame && r.game ? `<span class="pp2t">${esc(r.game)}</span>` : ""}${warn ? `<span class="wc r">${warn}</span>` : ""}</span><span class="pp3 mod">${tdPct(r.fair)}%</span><span class="pp4">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${tdNoGap(r) != null ? ` <span class="y nogap" title="No · ${tdNoGap(r)} under">⚠</span>` : ""}</span>` +
     `<div class="tdwk"><div class="st"><b>SNAP</b> ${snap} <span class="dim">·</span> <b>2+ TD</b> ${two}</div><div class="wk"></div></div></div>`;
 }
-const tdHead = () => `<div class="pbl ppr pph first"><span class="pp1">PLAYER</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
+const tdHead = () => `<div class="pbl ppr pph first tdh"><span class="pp1">PLAYER</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
 const earlyNote = (g) => (g && g.early ? '<span class="pill p-y" style="padding:0 6px;font-size:10px">Early estimate</span>' : "");
 // One Anytime TD section for the slate in S: price moves, then the top 3 per team, most likely first.
 const BEST_TD = 55;
