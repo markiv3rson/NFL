@@ -188,16 +188,17 @@ const order = (a, b) => (a.final - b.final) || (a.started - b.started) || (new D
 // "Most likely winners" (9/30): the favorite in every upcoming game, ranked by chance to WIN the game (straight up, not the spread).
 // Chance = the app's market-based win chance (g.winPct = home chance); moneyline prices are the fallback. The server records
 // each game's favorite at kickoff and grades it, so the record below is real, not a backtest.
+// 10/21: the SAME win chance as the game's tile (mktHome: Polymarket's moneyline with the fee taken out, else the spread's) -- the list read the spread's
+// chance while the tile read the moneyline, so one game showed two numbers (MIA @ NYJ 64% here, 68% on the tile)
 function winnerOf(g) {
-  let ph = g.winPct != null ? g.winPct / 100 : null;
-  if (ph == null && g.poly && g.poly.ml && g.poly.ml.home > 0 && g.poly.ml.away > 0) ph = g.poly.ml.home / (g.poly.ml.home + g.poly.ml.away);
+  const hm = mktHome(g); let ph = hm != null ? hm / 100 : null;
   if (ph == null || ph === 0.5) return null;
   const home = ph > 0.5, price = g.poly && g.poly.ml ? (home ? g.poly.ml.home : g.poly.ml.away) : null;
   return { game: g.key, team: home ? g.home : g.away, opp: home ? g.away : g.home, where: home ? "home" : "away", p: home ? ph : 1 - ph, price };
 }
 function winnersBox() {
   const list = S.games.filter((g) => !g.started).map(winnerOf).filter(Boolean).sort((a, b) => b.p - a.p);
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Model's pick on every game</div>` +
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Favorite in every game</div>` +
     (list.slice(0, WINALL ? 99 : 8).map((x, i) => { const g = S.games.find((y) => y.key === x.game), cp = g && !g.started ? straightPicks(g, 0) : [], sp0 = cp.find((c) => !/^(Over|Under)\b/.test(c.pick) && !/\bML\b/.test(c.pick)), tt0 = cp.find((c) => /^(Over|Under)\b/.test(c.pick)),
         sp = sp0 ? { label: sp0.pick, gap: 99 } : null, tt = tt0 ? { label: tt0.pick, gap: 99 } : null;   // review fix 10/14: the CARD's pick (CLAUDE.md: never show the game model's own side as a pick)
       const tdp = g ? (g.td || []).filter((r) => r.fair != null && !/^(out|doubtful)$/i.test(r.injury || "")).sort((a, b) => b.fair - a.fair)[0] : null;   // the game's most likely scorer
@@ -304,25 +305,35 @@ function firstTdGames() {
 // TD BY WEEK (10/20 night, owner: "click on it and it will show me each week that the last time they made a TD"): one line per player under his row,
 // week by week this season -- ✓ (with the count when 2+), – for a game without one, bye when his team did not play; the running week only once its game is final.
 let TDW = null, TDW_AT = 0, TDW_LOADING = null;
+// 10/21: the first-name parts must start alike ("Bi" / "Bijan", "J" / "Jahmyr"), not just share a letter -- "Bi.Robinson" matched "Br.Robinson" (both ATL)
+// and took his touchdowns; suffixes (Jr., III) are dropped from the last name
 const tdNameEq = (a, b) => { const n = (x) => String(x || "").toLowerCase().replace(/[^a-z0-9]/g, ""); if (n(a) === n(b)) return true;
-  const la = String(a || "").split(/[\s.]+/).filter(Boolean), lb = String(b || "").split(/[\s.]+/).filter(Boolean); return la.length > 1 && lb.length > 1 && la[la.length - 1].toLowerCase() === lb[lb.length - 1].toLowerCase() && la[0][0].toLowerCase() === lb[0][0].toLowerCase(); };
+  const sp = (x) => String(x || "").replace(/\b(Jr|Sr|II|III|IV|V)\b\.?/g, "").split(/[\s.]+/).filter(Boolean), la = sp(a), lb = sp(b);
+  if (la.length < 2 || lb.length < 2 || la[la.length - 1].toLowerCase().replace(/[^a-z0-9]/g, "") !== lb[lb.length - 1].toLowerCase().replace(/[^a-z0-9]/g, "")) return false;
+  const fa = la[0].toLowerCase().replace(/[^a-z]/g, ""), fb = lb[0].toLowerCase().replace(/[^a-z]/g, ""); return !!fa && !!fb && (fa.startsWith(fb) || fb.startsWith(fa)); };
+// the weeks he was on the field (the feed's snap counts), or null when the feed has no row for him (then the team's games count)
+function tdPlayedWeeks(data, team, player) { const t = data && data.played && data.played[team]; if (!t) return null;
+  const hits = Object.keys(t).filter((nm) => tdNameEq(player, nm)); return hits.length === 1 ? new Set(t[hits[0]]) : null; }
 // One entry per PLAYED week: { w, n } (n = his TDs that week), "bye" for a final week his team did not play; a week not played yet is left out
 // (the running week counts a game only once its scorers are posted -- 10/20 night fix: week 7 read "bye" on everyone before it was played).
 function tdWeekGames(data, team, player) {
   if (!data || !data.weeks) return null;
+  const pw = tdPlayedWeeks(data, team, player), teamSnapWks = new Set(Object.values((data.played || {})[team] || {}).flat());
   const out = [], ws = Object.keys(data.weeks).map(Number).sort((a, b) => a - b);
   for (const w of ws) { const d = data.weeks[w], key = (d.games || []).find((k) => k.split(" @ ").includes(team));
     if (!key) { if (d.final) out.push({ w, bye: true }); continue; }
     if (!d.final && !Object.keys((d.counts || {})[key] || {}).length) continue;
     const c = (d.counts || {})[key] || {}, n = Object.entries(c).filter(([nm]) => tdNameEq(player, nm)).reduce((a, [, v]) => a + Number(v || 0), 0);
+    // a week his team played with snap counts posted but no snaps for him = he sat out ("out"): skipped like a bye (a TD that week still counts)
+    if (!n && pw && teamSnapWks.has(w) && !pw.has(w)) { out.push({ w, out: true }); continue; }
     out.push({ w, n }); }
   return out;
 }
 // Played games in a row without a TD, counted back from his last played game (byes skipped); null before the feed arrives
-function tdDrought(data, team, player) { const gs = tdWeekGames(data, team, player); if (!gs) return null; let k = 0; for (const g of gs.filter((x) => !x.bye)) k = g.n > 0 ? 0 : k + 1; return k; }
+function tdDrought(data, team, player) { const gs = tdWeekGames(data, team, player); if (!gs) return null; let k = 0; for (const g of gs.filter((x) => !x.bye && !x.out)) k = g.n > 0 ? 0 : k + 1; return k; }
 function tdWeekLine(data, team, player) {
   const gs = tdWeekGames(data, team, player); if (!gs) return '<span class="dim">loading…</span>';
-  const parts = gs.map((g) => g.bye ? `<span class="dim">W${g.w} bye</span>` : g.n > 0 ? `<b class="g">W${g.w} ✓${g.n > 1 ? g.n : ""}</b>` : `<span class="r">W${g.w} –</span>`), drought = tdDrought(data, team, player);
+  const parts = gs.map((g) => g.bye ? `<span class="dim">W${g.w} bye</span>` : g.out ? `<span class="dim">W${g.w} out</span>` : g.n > 0 ? `<b class="g">W${g.w} ✓${g.n > 1 ? g.n : ""}</b>` : `<span class="r">W${g.w} –</span>`), drought = tdDrought(data, team, player);
   if (!parts.length) return '<span class="dim">no games yet</span>';
   return parts.join(' <span class="dim">·</span> ') + (drought >= 2 ? ` <span class="dim">· ${drought} straight without</span>` : "");
 }
@@ -334,7 +345,7 @@ function tdWeekLine(data, team, player) {
 // caution ("✗ no TD last game"; 2+ blanks are never listed). The page is still drawn only once the week feed is in. Model lists, parlays and grading unchanged.
 const TD_WARN = 1, TD_POOL = 4, TD_DROUGHT = 2;
 // true when one of his last TD_DROUGHT played games had a TD (a player with no played game or no TD this season: false); null before the feed
-function tdScoredRecent(data, team, player) { const gs = tdWeekGames(data, team, player); if (!gs) return null; return gs.filter((x) => !x.bye).slice(-TD_DROUGHT).some((g) => g.n > 0); }
+function tdScoredRecent(data, team, player) { const gs = tdWeekGames(data, team, player); if (!gs) return null; return gs.filter((x) => !x.bye && !x.out).slice(-TD_DROUGHT).some((g) => g.n > 0); }
 const tdCut = (r, data) => data != null && !tdScoredRecent(data, r.team, r.player);
 // the caution text for a row, or null (scored last game, no feed yet, or no played games)
 function tdWarn(r, data) { if (data == null || !r) return null; const d = tdDrought(data, r.team, r.player); return d == null || d < TD_WARN ? null : d === 1 ? "✗ no TD last game" : `✗ ${d} straight no TD`; }
@@ -388,7 +399,7 @@ function renderTd() {
   loadTdWeeks();
   // 10/21 night (owner's sketch): a record tile on top like the First TD page -- the Best TD picks (55%+ at kickoff) graded this season
   const picks = (RES || []).flatMap((r) => (r.td || []).filter((p) => p.fair >= BEST_TD && p.played !== false && typeof p.scored === "boolean")), hit = picks.filter((p) => p.scored).length;
-  const rc = picks.length ? { w: hit, l: picks.length - hit, pct: Math.round((hit / picks.length) * 1000) / 10 } : null;
+  const rc = !RES && !renderTd.tried ? undefined : picks.length ? { w: hit, l: picks.length - hit, pct: Math.round((hit / picks.length) * 1000) / 10 } : null;
   $("td").innerHTML = recTile(rc, "BEST TD PICKS RECORD") + tdBody();
   if (!RES && !renderTd.tried) { renderTd.tried = true; loadRecord().catch(() => {}).finally(() => { if (RES && S && S.games) renderTd(); }); }   // one load for the tile; a failed load leaves 0–0
 }
@@ -1133,7 +1144,8 @@ const propTabLabel = (k) => (PROP_TABS.find(([t]) => t === k) || [, "Rec Yds"])[
 async function loadProps() {
   try { const d = await (await fetch(`/api/props${PROPWEEK ? `?week=${PROPWEEK}` : ""}`, { cache: "no-store" })).json(); if (d && d.ok) { PROPS = d; renderProps(); } } catch {}
 }
-const recTile = (rc, label = "RECORD") => `<div class="stats" style="margin-top:10px"><div class="stat"><div class="k">${label}</div><div class="v ${rc && rc.pct >= 56 ? "g" : rc && rc.pct >= 53 ? "lg" : !rc || rc.pct == null ? "" : "y"}">${rc ? rc.w || 0 : 0}–${rc ? rc.l || 0 : 0}</div><div class="k2">${!rc || rc.pct == null ? "—" : rc.pct + "% won"}</div></div></div>`;
+// 10/21: rc === undefined = still loading -> "…" (the Best TD tile read 0–0 for ~7 s before the graded results arrived); null = nothing graded = 0–0
+const recTile = (rc, label = "RECORD") => `<div class="stats" style="margin-top:10px"><div class="stat"><div class="k">${label}</div><div class="v ${rc && rc.pct >= 56 ? "g" : rc && rc.pct >= 53 ? "lg" : !rc || rc.pct == null ? "" : "y"}">${rc === undefined ? "…" : `${rc ? rc.w || 0 : 0}–${rc ? rc.l || 0 : 0}`}</div><div class="k2">${!rc || rc.pct == null ? "—" : rc.pct + "% won"}</div></div></div>`;
 const teamSel = (teams) => `<div class="wksel"><select id="props-team" aria-label="Team"><option value="all"${PROPTEAM === "all" ? " selected" : ""}>All teams</option>${teams.map((t) => `<option value="${esc(t)}"${PROPTEAM === t ? " selected" : ""}>${esc(t)}</option>`).join("")}</select></div>`;
 // 10/20 (owner: "label these by Models Chance and Polymarket Prices"; later the same night: "keep all model purple"): the MODEL column is the model's number, purple
 // 10/20 night (owner): LAST WK = the player's most recent graded line of the same stat (U 49.5 ✓ 38), or just his number last week when he had no line

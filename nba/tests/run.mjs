@@ -914,6 +914,10 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
     { key: "LAL @ GSW", away: "LAL", home: "GSW", date: "2026-12-30", start: "2026-12-30T19:00:00Z" }];
   process.env.NBA_MODEL_SERVICE_URL = process.env.NBA_MODEL_SERVICE_URL || "http://test"; const sc = await pr.scoreNbaProps(games, { now, post });
   ok(sc.scored === 1 && sent.games.length === 1 && sent.games[0].outs.join() === "Jayson Tatum" && sent.games[0].lines.length === 2 && JSON.parse(await R.get(pr.K_NBAPROPMODEL("2026-12-30", "BOS @ DET"))).rows.length === 5, "NBA props: the snapshot scores the not-started game's recorded lines with the Out list; the started game is skipped; saved per game", sc);
+  { // 10/21: LAST = the row the page SHOWED that day (onePerPlayer), not the first graded line of the ladder
+    await R.hset(pr.K_NBAPROPRES("2026-12-29"), "BOS @ NYK", JSON.stringify({ picks: [{ name: "Jaylen Brown", stat: "pts", side: "over", line: 14.5, chance: 0.9, price: 0.92, result: "W", actual: 27 }, { name: "Jaylen Brown", stat: "pts", side: "over", line: 22.5, chance: 0.7, price: 0.6, result: "W", actual: 27 }] }));
+    const lw = await pr.lastNbaProps("2026-12-30", ["2026-12-29"]); await R.del(pr.K_NBAPROPRES("2026-12-29"));
+    ok(lw["Jaylen Brown|pts"] && lw["Jaylen Brown|pts"].line === 22.5, "NBA props LAST (10/21): the line the page showed that day (the 92c line was never shown)", lw); }
   // the page's day: two rows (Brown Over 19.5, Cunningham Under 39.5)
   const day = await pr.nbaPropsForDay("2026-12-30");
   ok(day.length === 1 && day[0].game === "BOS @ DET" && day[0].picks.length === 2 && day[0].picks[0].name === "Jaylen Brown" && day[0].picks[0].result === null, "NBA props page: the day's games with their rows, ungraded", day);

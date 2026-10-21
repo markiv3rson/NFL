@@ -137,7 +137,8 @@ export async function lastNbaProps(date, days = null) {
   const r = getRedis(), out = {}, all = (days || await nbaPropDays()).filter((d) => d < date).sort().reverse().slice(0, 10);
   for (const d of all) { const h = await r.hgetall(K_NBAPROPRES(d)).catch(() => null) || {};
     for (const v of Object.values(h)) { let rec; try { rec = JSON.parse(v); } catch { continue; }
-      for (const p of rec.picks || []) { const k = `${p.name}|${p.stat}`; if (!out[k] && p.result && p.result !== "P") out[k] = { date: d, line: p.line, side: p.side, result: p.result, actual: p.actual ?? null }; } } }
+      // 10/21: the row the page SHOWED that day (onePerPlayer, as nbaPropsForDay / nbaPropsRecord), not the first graded line of the ladder
+      for (const p of onePerPlayer(rec.picks || [])) { const k = `${p.name}|${p.stat}`; if (!out[k] && p.result && p.result !== "P") out[k] = { date: d, line: p.line, side: p.side, result: p.result, actual: p.actual ?? null }; } } }
   return out;
 }
 export async function nbaPropsForDay(date) {
