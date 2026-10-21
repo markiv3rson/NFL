@@ -350,6 +350,35 @@ def chances_many(games):
     return out
 
 
+def team_yards(games):
+    """STACK shadow inputs (10/21): each team's expected yards this week from the prop model -- the same player universe as the research's
+    walk-forward sums (eligible() per stat): py = passing + rushing yards of the team's modeled players, rec = receiving yards.
+    games: [{"away", "home", "spread" (away spread: home favored = positive), "total", "outs": [names]}] -> [{"game", "home": {"py", "rec", "n"}, "away": {...}}]."""
+    L = load_live()
+    if not L or not L.get("models"): return []
+    teams, outs_by = {}, {}
+    for g in games:
+        a, h, sp, tot = g["away"], g["home"], float(g["spread"]), float(g["total"])
+        teams[a] = (h, tot / 2 - sp / 2, -sp, tot, 0); teams[h] = (a, tot / 2 + sp / 2, sp, tot, 1)
+        outs_by[a] = outs_by[h] = list(g.get("outs") or [])
+    rows = live_rows_many(teams, outs_by)
+    out = []
+    for g in games:
+        res = {"game": f"{g['away']} @ {g['home']}"}
+        for side in ("away", "home"):
+            t = g[side]; r = rows[rows.team == t] if len(rows) else rows; py = 0.0; rec = 0.0; n = 0
+            for stat in ("pass_yds", "rush_yds", "rec_yds"):
+                if stat not in L["models"] or not len(r): continue
+                e = eligible(r, stat)
+                if not len(e): continue
+                mu = float(np.sum(predict_mu(L["models"][stat], e, stat))); n += int(len(e))
+                if stat == "rec_yds": rec += mu
+                else: py += mu
+            res[side] = {"py": round(py, 1), "rec": round(rec, 1), "n": n}
+        out.append(res)
+    return out
+
+
 def chances(team, opp, imp, tm_margin, total, home, lines, outs=()):
     """One team (kept for the research scripts): lines [{"name", "stat", "line"}] -> each with "over" / "under" chance (0-1) and "mu"."""
     L = load_live()
