@@ -425,6 +425,8 @@ async function plAuto() {
   }
 }
 const legMark = (r) => (r === "W" ? '<span class="g">✓</span>' : r === "L" ? '<span class="r">✗</span>' : r === "P" ? '<span class="dim">–</span>' : "•");
+// 10/21 (the NFL page's one rounding rule, 10/19): a spread / total leg at 56%+ rounds, below 56 it rounds DOWN (a 55.6% leg never reads "56%"); a moneyline leg rounds
+const legPct = (l) => { const v = (l.prob || 0) * 100, k = l.market || l.kind; return k === "spread" || k === "total" ? (v >= 56 ? Math.round(v) : Math.floor(v)) : Math.round(v); };
 // 10/17 (owner): a won leg's text is green and a lost leg's red, like its ✓ / ✗ (logos keep their colors)
 const legTxt = (r, html) => (r === "W" ? `<span class="g">${html}</span>` : r === "L" ? `<span class="r">${html}</span>` : html);
 const gameLogos = (key) => { const m = String(key || "").match(/^([A-Z]{2,4}) @ ([A-Z]{2,4})$/); return m ? `${tlogo(m[1])}${esc(m[1])} @ ${tlogo(m[2])}${esc(m[2])}` : esc(key); };
@@ -432,7 +434,7 @@ function pBlock(title, p, showGame) {
   if (!p || !Array.isArray(p.legs) || !p.legs.length) return "";
   const pr = typeof p.prob === "number" && isFinite(p.prob) ? p.prob : null;
   // 10/20 night (owner, design = both sports): the parlay's Model % sits on the right next to the Polymarket line; every leg's % is a right-hand column
-  const legs = p.legs.map((l) => `<div class="pbl pleg"><span class="pll">${legMark(l.result)} ${legTxt(l.result, `${tlogo(l.team || "")}${esc(l.label)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""}`)}${showGame && l.game ? ` <span class="dim">${gameLogos(l.game)}</span>` : ""}</span><span class="mod plp">${Math.round((l.prob || 0) * 100)}%</span></div>`).join("");
+  const legs = p.legs.map((l) => `<div class="pbl pleg"><span class="pll">${legMark(l.result)} ${legTxt(l.result, `${tlogo(l.team || "")}${esc(l.label)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""}`)}${showGame && l.game ? ` <span class="dim">${gameLogos(l.game)}</span>` : ""}</span><span class="mod plp">${legPct(l)}%</span></div>`).join("");
   const res = p.result === "W" ? '<span class="g">✓ Won</span>' : p.result === "L" ? '<span class="r">✗ Lost</span>' : p.result === "P" ? '<span class="dim">Push</span>' : "";
   return `<div class="par"><div class="pbh"><span class="pbn">${title}</span><span class="pbx">${pr == null ? "" : `<span class="mod">Model ${Math.round(pr * 100)}%</span>`}<span class="plb"${plTap(p)}>${pmLogo()} ${plShown(p)}</span></span></div>${legs}<div class="pbr">${res}</div></div>`;
 }
