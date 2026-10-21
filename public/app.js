@@ -277,14 +277,15 @@ function practTag(r) {
   return k ? ` <span class="pill" style="padding:0 6px;font-size:10px;font-weight:800;color:var(--faint);border:1px solid var(--line2)">${k}</span>` : "";
 }
 // 10/20 night (owner's sketch): ONE line per player, nothing to open -- [logo] name pos / game · #N on team | SNAP | 2+ TD | MODEL (purple) | PM (far right)
-function tdRow(x) {
+function tdRow(x, withGame) {
   const r = x.r, snap = r.snap && r.snap.pct != null ? `${Math.round(r.snap.pct)}%` : "—", two = r.two != null ? `${Math.round(r.two)}%` : "—", warn = tdWarn(r, TDW);
-  // 10/21 night (owner: "Put the 2+ TD and snap percentage behind the card now ... Only behind the tap. And put the warning there in the middle instead"):
-  // visible = logo, name + game, the red caution in the MIDDLE column (empty when he scored last game), MODEL, POLYMARKET; SNAP and 2+ TD open under the row on a tap, next to the week marks.
-  return `<div class="tdr" data-tdw="${esc(r.team)}|${esc(r.player)}"><div class="in"><span class="tlc">${tlogo(r.team)}</span><div class="nmx"><div class="l1"><b>${esc(r.player)}</b><span class="pos">${esc(r.pos || "")}</span>${injTag(r) || practTag(r)}${retPill(r)}</div><div class="g2">${esc(r.game || "")}${r.teamRank ? ` · #${r.teamRank} on team` : ""}</div></div>` +
-    `<span class="tc wc r">${warn || ""}</span><span class="tc mp"><em>${tdPct(r.fair)}%</em></span><span class="tc pxc">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${tdNoGap(r) != null ? ` <span class="y nogap" title="No · ${tdNoGap(r)} under">⚠</span>` : ""}</span></div><div class="tdwk"><div class="st"><b>SNAP</b> ${snap} <span class="dim">·</span> <b>2+ TD</b> ${two}</div><div class="wk"></div></div></div>`;
+  // 10/21 night (owner: "Make it like the first td layout. With anytime td labels"): the First TD page's row -- bullet, small logo, name (+ position / injury tags), "Anytime TD" under the
+  // name (Best TD picks add the game), the red caution on that line, MODEL % (purple) and the Polymarket cents on the right; a tap opens SNAP · 2+ TD, then the week marks on their own line.
+  return `<div class="pbl ppr first tdr" data-tdw="${esc(r.team)}|${esc(r.player)}"><span class="pp1">• ${tlogo(r.team)}${esc(r.player)}<span class="pos">${esc(r.pos || "")}</span>${injTag(r) || practTag(r)}${retPill(r)}</span>` +
+    `<span class="pp2">Anytime TD${withGame && r.game ? ` · ${esc(r.game)}` : ""}${warn ? ` <span class="wc r">${warn}</span>` : ""}</span><span class="pp3 mod">${tdPct(r.fair)}%</span><span class="pp4">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${tdNoGap(r) != null ? ` <span class="y nogap" title="No · ${tdNoGap(r)} under">⚠</span>` : ""}</span>` +
+    `<div class="tdwk"><div class="st"><b>SNAP</b> ${snap} <span class="dim">·</span> <b>2+ TD</b> ${two}</div><div class="wk"></div></div></div>`;
 }
-const tdHead = (title) => `<div class="tdh"><span class="h1">${title}</span><span class="tc"></span><span class="tc">MODEL</span><span class="tc pmh">${pmLogo()}POLYMARKET</span></div>`;
+const tdHead = () => `<div class="pbl ppr pph first"><span class="pp1">PLAYER</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
 const earlyNote = (g) => (g && g.early ? '<span class="pill p-y" style="padding:0 6px;font-size:10px">Early estimate</span>' : "");
 // One Anytime TD section for the slate in S: price moves, then the top 3 per team, most likely first.
 const BEST_TD = 55;
@@ -295,7 +296,8 @@ function firstTdGames() {
   return (S && S.games ? S.games : []).filter((g) => !g.started).map((g) => {
     const rows = (g.td || []).filter((r) => r.first != null && usable(r) && !/^(out|doubtful)$/i.test(r.injury || "")).sort((a, b) => b.first - a.first);
     const picks = [g.away, g.home].flatMap((t) => rows.filter((r) => r.team === t).slice(0, 3));
-    const ft = g.ftdTeam, head = ft ? `<div class="ftdteams"><span>${tlogo(g.away)}${esc(g.away)} <b class="mod">${Math.round(ft.away)}%</b></span><span class="dim">first TD</span><span><b class="mod">${Math.round(ft.home)}%</b> ${esc(g.home)}${tlogo(g.home)}</span></div>` : "";
+    // 10/21 night (owner: "take out the second row names and %. Like what is even that percentage for?"): no team-split row on the First TD blocks; the team chances stay recorded and graded (Models -> Touchdowns)
+    const head = "";
     return { game: g.key, kickoff: g.kickoff, away: g.away, home: g.home, head, rows: picks, picks: picks.map((r) => ({ name: r.player, team: r.team, pos: r.pos, chance: r.first / 100, price: r.firstPrice ?? null, first: true })) };
   }).filter((x) => x.rows.length);
 }
@@ -363,16 +365,20 @@ function tdBody() {
   const perTeam = {}, pool = rows.filter((x) => !tdCut(x.r, TDW)).filter((x) => { const k = x.r.team, n = perTeam[k] || 0;
     if (n >= TD_POOL) return false; if (n >= TD_POOL - 1 && tdDrought(TDW, x.r.team, x.r.player) !== 0) return false; perTeam[k] = n + 1; return true; });
   const best = pool.filter((x) => x.r.fair >= BEST_TD);
-  // 10/20 night (owner): "the best td picks 55% should be the header of that card" -- the slot-style header above the card, always open (no toggle)
-  const bestBox = `<div class="sh labslot">BEST TD PICKS · MODEL ${BEST_TD}%+</div><div class="card tdl tdbest">${tdHead("PLAYER")}${best.length ? best.map(tdRow).join("") : '<div class="s dim" style="padding:8px 12px">None right now.</div>'}</div>`;
+  // 10/21 night (owner: sketch claude.ai/artifact/DHrUxtRDfn7qY2PnxGgXge, "Make it like the first td layout. With anytime td labels"): Best TD picks = one block in the props-page row
+  // look (the game on each row's sub-line); then, under each time-slot header (with its kickoff times), ONE card per game -- [logo] NE @ [logo] CHI, the PLAYER · MODEL · POLYMARKET heads,
+  // the away team's rows under its label, then the home team's; rows inside a team in model order, games in kickoff order. Slot lists still open / close on their header.
+  const bestBox = `<div class="sh labslot">BEST TD PICKS · MODEL ${BEST_TD}%+</div><div class="pgrid tdl"><div class="par">${tdHead()}${best.length ? best.map((x) => tdRow(x, true)).join("") : '<div class="s dim">None right now.</div>'}</div></div>`;
   // Players already in Best TD picks are left out of the list below (no repeats, owner 10/14).
   const shown = pool.filter((x) => x.r.fair < BEST_TD);
-  // 10/20 night (owner): the list is split by time slot -- the same slots as Game Lines, kickoff order; inside a slot the rows keep the model order
-  const slots = [], by = {};
-  for (const g of S.games.filter((g) => !g.started).sort(order)) { const sl = (g.carry ? `WEEK ${g.week} · ` : "") + (g.kickoff ? labSlot(g.kickoff) : "GAMES"); if (!by[sl]) { by[sl] = []; slots.push(sl); } by[sl].push(g.key); }
-  // 10/20 night (owner): each time-slot list opens and closes on its header; PRIME TIME lists start open, the rest closed; the choice is kept on this phone
-  const list = slots.map((sl) => { const xs = shown.filter((x) => by[sl].includes(x.g.key)); if (!xs.length) return ""; const open = tdSlotOpen(sl);
-    return `<div class="sh labslot tdtog${open ? " open" : ""}" data-slot="${esc(sl)}">${sl}<i class="car">▾</i></div><div class="card tdl${open ? "" : " closed"}">${tdHead("PLAYER")}${xs.map(tdRow).join("")}</div>`; }).join("");
+  const gs = S.games.filter((g) => !g.started).sort(order), slots = [], by = {}, times = {};
+  for (const g of gs) { const sl = (g.carry ? `WEEK ${g.week} · ` : "") + (g.kickoff ? labSlot(g.kickoff) : "GAMES"); if (!by[sl]) { by[sl] = []; slots.push(sl); times[sl] = []; } by[sl].push(g);
+    if (g.kickoff) { const tt = tm(g.kickoff); times[sl].includes(tt) || times[sl].push(tt); } }
+  const gameCard = (g) => { const xs = shown.filter((x) => x.g.key === g.key); if (!xs.length) return "";
+    const teamPart = (t) => { const rs = xs.filter((x) => x.r.team === t); return rs.length ? `<div class="pbl pteam">${tlogo(t)}${esc(t)}</div>${rs.map((x) => tdRow(x)).join("")}` : ""; };
+    return `<div class="par"><div class="pbh c"><span class="pbn">${gameLogos(g.key)}</span></div>${tdHead()}${teamPart(g.away)}${teamPart(g.home)}</div>`; };
+  const list = slots.map((sl) => { const cards = by[sl].map(gameCard).join(""); if (!cards) return ""; const open = tdSlotOpen(sl);
+    return `<div class="sh labslot tdtog${open ? " open" : ""}" data-slot="${esc(sl)}">${sl}${times[sl].length ? ` <span class="lst">· ${times[sl].map(esc).join(" · ")}</span>` : ""}<i class="car">▾</i></div><div class="pgrid tdl${open ? "" : " closed"}">${cards}</div>`; }).join("");
   return bestBox + moveBox + list;
 }
 function renderTd() {
@@ -381,8 +387,11 @@ function renderTd() {
   // and stayed when the page was opened later); a failed load is retried on the next draw
   if (!TDW) { $("td").innerHTML = '<div class="card" style="margin-top:10px"><div class="s dim">Loading…</div></div>'; loadTdWeeks().then((d) => { if (d) renderTd(); }); return; }
   loadTdWeeks();
-  let html = tdBody();
-  $("td").innerHTML = html + '';
+  // 10/21 night (owner's sketch): a record tile on top like the First TD page -- the Best TD picks (55%+ at kickoff) graded this season
+  const picks = (RES || []).flatMap((r) => (r.td || []).filter((p) => p.fair >= BEST_TD && p.played !== false && typeof p.scored === "boolean")), hit = picks.filter((p) => p.scored).length;
+  const rc = picks.length ? { w: hit, l: picks.length - hit, pct: Math.round((hit / picks.length) * 1000) / 10 } : null;
+  $("td").innerHTML = recTile(rc, "BEST TD PICKS RECORD") + tdBody();
+  if (!RES && !renderTd.tried) { renderTd.tried = true; loadRecord().catch(() => {}).finally(() => { if (RES && S && S.games) renderTd(); }); }   // one load for the tile; a failed load leaves 0–0
 }
 // ---------- Record: Mine ----------
 const RESMARK = { W: '<span class="g">✓</span>', L: '<span class="r">✗</span>', P: '<span class="dim">=</span>', pending: '<span class="dim">•</span>' };
@@ -1150,7 +1159,7 @@ function propBlocks(games, row, first) {
   let lastSlot = null;
   return gs.map((g) => { const sl = g.kickoff ? labSlot(g.kickoff) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
     // 10/20 night (owner): a game being played says LIVE on its props block -- its rows are the copy locked at kickoff (the rerun never re-scores a started game), graded at the final
-    return h + `<div class="par"><div class="pbh"><span class="pbn">${gameLogos(g.game)}${g.started && !g.final ? ' <span class="lvb">● LIVE</span>' : ""}</span></div>${g.head || ""}${propHead(!!first)}${teamRows(g, row)}</div>`; }).join("");
+    return h + `<div class="par"><div class="pbh c"><span class="pbn">${gameLogos(g.game)}${g.started && !g.final ? ' <span class="lvb">● LIVE</span>' : ""}</span></div>${g.head || ""}${propHead(!!first)}${teamRows(g, row)}</div>`; }).join("");
 }
 function renderProps() {
   const el = $("props"); if (!el) return;

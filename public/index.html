@@ -37,7 +37,7 @@
   .badge { font-size:10.5px; font-weight:700; padding:1px 8px; border-radius:999px; background:rgba(242,207,102,.14); color:var(--gold); }
   .sub { font-size:12px; color:var(--faint); margin-top:2px; }
   .k { font-size:13px; font-weight:700; color:#eef0f4; text-transform:uppercase; letter-spacing:.04em; }
-  .trow { display:flex; justify-content:space-between; align-items:center; gap:8px; margin:16px 2px 0; } .trow .sh { margin:0; } .trow .btns { margin-top:0; flex-shrink:0; }
+  .trow { display:flex; justify-content:space-between; align-items:center; gap:8px; margin:8px 2px 0; }   /* 10/21 night (owner): less space over the section titles */ .trow .sh { margin:0; } .trow .btns { margin-top:0; flex-shrink:0; }
   .mk { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 14px; margin-top:10px; font-size:14px; }
   #detail .card .inner > .drop.open { margin:0 0 10px; border-top:0; padding-top:0; border-bottom:1px solid var(--line2); padding-bottom:8px; }
   .hd { font-size:13px; font-weight:800; letter-spacing:.07em; color:#fff; border-bottom:1px solid rgba(255,255,255,.35); padding-bottom:3px; }   /* 10/18 (owner): numbers and headers are regular white -- no gradient text; the gradient lives only on SLATEZZ, the clock, the header line, the grip and the menu titles */
@@ -97,10 +97,10 @@
   /* 10/16 (owner): on a computer the page uses the whole screen; the phone layout (under 1100px) is unchanged */
   @media (min-width:1100px) { .wrap { max-width:none; padding-left:28px; padding-right:28px; } .tiles { grid-template-columns:repeat(4,minmax(0,1fr)); }  }
   @media (min-width:1600px) { .tiles { grid-template-columns:repeat(5,minmax(0,1fr)); } }
-  .tiles.stack { grid-template-columns:1fr !important; margin-top:8px; }   /* 10/17 (owner): Game Lines stacked, one game per row */
+  .tiles.stack { grid-template-columns:1fr !important; margin-top:4px; }   /* 10/17 (owner): Game Lines stacked, one game per row */
   #lines > .labslot:first-of-type { margin-top:10px; }
   .ppr { display:grid; grid-template-columns:minmax(0,3fr) minmax(max-content,1fr) minmax(max-content,.8fr) minmax(44px,.7fr) minmax(74px,.8fr); column-gap:8px; align-items:center; white-space:nowrap; } .ppr .pp1 { min-width:0; overflow:hidden; text-overflow:ellipsis; } .ppr .pp3, .ppr .pp4, .ppr .pp5 { text-align:center; font-variant-numeric:tabular-nums; } .ppr .pp5 { font-size:11px; white-space:nowrap; } .ppr.g .pp3, .ppr.r .pp3 { font-weight:700; }   /* 10/18 (owner): Props rows in columns */
-  .labslot { grid-column:1 / -1; margin:26px 2px 4px; padding-bottom:7px; font-size:22px; font-weight:900; letter-spacing:.07em; text-shadow:0 1px 2px rgba(0,0,0,.95),0 -1px 1px rgba(0,0,0,.6); color:#fff; }   /* 10/18 night (owner): a dark edge on the letters so they read over the picture */   /* 10/18 (owner): bigger words, no white line */   /* 10/17 (owner): bigger, white; 10/18 (owner): plain white line -- it blended in with the parlays */
+  .labslot { grid-column:1 / -1; margin:14px 2px 0; padding-bottom:4px; font-size:22px; font-weight:900; letter-spacing:.07em; text-shadow:0 1px 2px rgba(0,0,0,.95),0 -1px 1px rgba(0,0,0,.6); color:#fff; }   /* 10/18 night (owner): a dark edge on the letters so they read over the picture */   /* 10/18 (owner): bigger words, no white line */   /* 10/17 (owner): bigger, white; 10/18 (owner): plain white line -- it blended in with the parlays */
   .pgrid > .labslot:first-child { margin-top:8px; } .labslot .lst { font-size:12.5px; color:var(--faint); font-weight:600; letter-spacing:0; text-transform:none; }
   .tile { position:relative; overflow:hidden; background:var(--card); border:1px solid rgba(255,255,255,.28); border-radius:16px; padding:12px; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.3); text-align:left; font:inherit; color:inherit; }
   .tile .mid.lvmid { display:inline-flex; flex-direction:column; align-items:center; line-height:1.15; } .tile .sr { white-space:nowrap; } .tile .lv { font-size:10.5px; font-weight:800; letter-spacing:.04em; margin-top:2px; } .tile .lv.r { color:var(--red); }
@@ -108,7 +108,7 @@
   .rp { display:grid; grid-template-columns:1.5fr .9fr .8fr .8fr; gap:4px 6px; align-items:center; padding:7px 0; border-top:1px solid rgba(255,255,255,.1); font-size:12.5px; font-variant-numeric:tabular-nums; } .rp > span:not(:first-child) { text-align:right; }
   .tile .t .tlogo { width:26px; height:26px; vertical-align:-5px; margin:0 7px 0 0; } .tile .t.hm .tlogo { margin:0 0 0 7px; }
   .tile .tmid { text-align:center; line-height:1.3; min-width:0; } .tile .tmid .s2 { font-size:12px; margin-top:3px; white-space:nowrap; } .tile .tmid .tmt { color:#c9ced6; font-weight:600; }   /* 10/18: the kickoff / tip time on the tile */
-  #detail .back { margin-top:10px; margin-bottom:4px; }
+  #detail .back { margin-top:4px; margin-bottom:0; }   /* 10/21 night (owner): ← Games sits close to the first section */
   .tile .nm { min-height:50px; }
   .tile { display:flex; flex-direction:column; justify-content:flex-start; align-items:stretch; }
   .tile .in { position:relative; display:flex; flex-direction:column; gap:9px; width:100%; }
@@ -134,7 +134,7 @@
   .tile .tmid .mvt { font-size:11px; color:#c9ced6; margin-top:2px; line-height:1.3; } .tile .tmid .mvt > span { display:block; white-space:nowrap; }   /* 10/18 night (owner): a game's line move sits inside its tile (the LINE MOVES strip is gone) */
   #lab > .drop { margin-top:10px; border-top:0; padding-top:0; }
   .pgrid { display:block; } .par { padding:11px 0; font-size:13.5px; } .pgrid > .par:first-child { padding-top:2px; }   /* 10/16 (owner): no lines between parlays, only the line under each time-slot header */
-  .pbh { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:4px; } .pbn { font-weight:700; font-size:14.5px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+  .pbh { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:4px; } .pbh.c { justify-content:center; }   /* 10/21 night (owner): the game name centered on the props / Anytime TD cards */ .pbn { font-weight:700; font-size:14.5px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
   .plb { color:var(--blue); font-weight:700; font-size:12.5px; white-space:nowrap; display:flex; align-items:center; gap:4px; } .plb .plw { color:#fff; } .plb .pm { width:16px; height:16px; }
   /* 10/20 (owner): Player props rows carry labeled MODEL / POLYMARKET columns, a team label per group, the model % colored */
     /* 10/20 night (owner: names were cut to 'A.J. Br…' once LAST WK + logo POLYMARKET took the width): on a phone the LINE sits under the player's name, like the game under a TD name; computers keep 5 columns */
@@ -162,23 +162,15 @@
   .sc .p .b { font-size:10px; color:var(--faint); margin:2px 0 0 53px; }
   .sc .p:first-child { border-top:0; }
   /* TD list */
-  .tdl { margin-top:10px; padding:0; }
-  .tdr { position:relative; overflow:hidden; padding:9px 12px; border-top:1px solid var(--line2); cursor:pointer; }
-  .tdr .tdwk { display:none; padding:5px 0 0 26px; font-size:11.5px; line-height:1.5; } .tdr.open .tdwk { display:block; } .tdr .tdwk b { font-weight:800; }
-  .tdr:first-child { border-top:none; }
-  .tdr .tlc { width:20px; height:20px; display:flex; align-items:center; justify-content:center; } .tdr .tlogo { width:20px; height:20px; flex:0 0 20px; margin:0; } .tdr .l1 { display:flex; align-items:center; gap:5px; white-space:nowrap; overflow:hidden; } .tdr .l1 .pill { flex:0 0 auto; }   /* 10/17 (owner): one row look for both TD boxes */
-  .tdr .nogap { font-size:12px; }
-  /* 10/20 night (owner: "move it more to the middle where there's so much room ... split them accordingly"): the row is a grid -- logo | name | SNAP | 2+ TD | MODEL | POLYMARKET -- the stat columns share the width after the name, so on a wide screen they spread across the row and every head sits centered over its values; on a phone the minimums keep it fitting */
-  .tdr .in, .tdh { position:relative; display:grid; grid-template-columns:20px minmax(0,2.6fr) minmax(0,1.6fr) minmax(42px,.9fr) minmax(74px,1.1fr); column-gap:4px; align-items:center; }
-  @media (min-width:600px) { .tdr .in, .tdh { grid-template-columns:20px minmax(0,2fr) minmax(0,1.4fr) minmax(64px,1fr) minmax(96px,1.2fr); column-gap:14px; } .ppr { column-gap:16px; } }   /* 10/20 night (owner: "separate them so it's easier to read") */
+  .tdl { margin-top:4px; padding:0; }
+  .tdr { cursor:pointer; }   /* 10/21 night (owner): the Anytime TD rows are the First TD page's rows (.ppr.first); a tap opens the SNAP / 2+ TD line and the week marks under the row */
+  .tdr .tdwk { display:none; grid-column:1 / -1; padding:3px 0 2px 22px; font-size:11.5px; line-height:1.5; } .tdr.open .tdwk { display:block; } .tdr .tdwk b { font-weight:800; }
+  .tdr .pp2 { white-space:normal; overflow:visible; line-height:1.25; } .tdr .pp2 .wc { font-weight:800; margin-left:6px; white-space:nowrap; } .tdr .pos { font-size:10.5px; color:#ccc; font-weight:700; margin-left:5px; } .tdr .nogap { font-size:12px; }
+  .tdr .pp1 .tlogo { width:18px; height:18px; margin:0 4px 0 2px; vertical-align:-4px; }
   .tdl.closed { display:none; } .labslot.tdtog { cursor:pointer; user-select:none; } .labslot .car { font-style:normal; margin-left:8px; font-size:14px; color:#8d95a3; display:inline-block; transition:transform .15s ease; } .labslot.tdtog.open .car { transform:rotate(180deg); }
-  .tdr .nmx { flex:1; min-width:0; } .tdr .nmx b { font-size:14px; } .tdr .nmx .g2 { font-size:10px; color:var(--faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .tdr .tc.wc { font-size:10.5px; font-weight:800; white-space:normal; line-height:1.15; }   /* 10/21 night: the drought caution sits in the middle column (SNAP / 2+ TD moved behind the tap) */
-  /* 10/20 night (owner): one line per player -- SNAP · 2+ TD · MODEL · PM columns, PM at the far right */
-  .tdr .tc, .tdh .tc { text-align:center; font-size:13px; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; } .tdh .tc { font-size:9.5px; letter-spacing:.04em; } .tdh .h1 { grid-column:1 / 3; padding-left:26px; }
-  .tdr .mp em { font-style:normal; font-size:14px; font-weight:800; color:var(--violet); }
-  .tdr .pxc, .tdh .tc.pmh, .ppr .pp4, .ppr.pph .pp4 { color:#2e5cff; }   /* 10/20 night (owner): Polymarket cents + head in Polymarket's blue (was green for an hour) */
-  .tdh .tc.pmh { font-size:8.5px; letter-spacing:0; } .pph .pm, .tdh .pm { width:12px; height:12px; margin-right:3px; vertical-align:-2px; } .pph .pm img, .tdh .pm img { width:12px; height:12px; }   /* logo + POLYMARKET on the heads; every column centered under its head (owner) */
-  .tdh { padding:8px 12px; font-size:10px; font-weight:800; letter-spacing:.08em; color:var(--faint); }
+  @media (min-width:600px) { .ppr { column-gap:16px; } }   /* 10/20 night (owner: "separate them so it's easier to read") */
+  .ppr .pp4, .ppr.pph .pp4 { color:#2e5cff; }   /* 10/20 night (owner): Polymarket cents + head in Polymarket's blue (was green for an hour) */
+  .pph .pm { width:12px; height:12px; margin-right:3px; vertical-align:-2px; } .pph .pm img { width:12px; height:12px; }   /* logo + POLYMARKET on the heads; every column centered under its head (owner) */
   .prow { display:grid; grid-template-columns:1fr auto auto; gap:2px 14px; align-items:center; padding:8px 9px; border-radius:12px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.3); margin-top:6px; }
   .prow .n { text-align:center; font-variant-numeric:tabular-nums; white-space:nowrap; font-size:14px; max-width:38vw; }
   .prow .n .s { white-space:normal; text-align:right; }
@@ -223,6 +215,7 @@
     html.lines-on body::after { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; background:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.1)),url(/nfl-bg.jpg?v=3) center/contain no-repeat; } }   /* the sharp strip at its own proportions, every frame stacked */
   html.lines-on .panel .card, html.lines-on .panel .stat { background:rgba(8,8,12,.8); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 80% dark so the text reads (owner 10/17), no frosted haze */
   html.lines-on .panel .tile { background:rgba(8,8,12,.55); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 10/18 evening (owner, sketch D): game tiles 55% dark, no team colours, no faded logos */
+  html.lines-on #panel-record .card, html.lines-on #panel-record .stat { background:rgba(8,8,12,.55); }   /* 10/21 night (owner): My bets as see-through as the Game Lines tiles */
   #detail .card:not(.dtop) { background:rgba(8,8,12,.55); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 10/18 night (owner): game-page cards see-through like the tiles (55% dark); the team-colour header card stays */
   /* 10/18 night (owner: "opacity don't look consistent"): on the photo pages every Models section sits on the same 80% dark card as the stat tiles -- the header row and its open list are one box */
   html.lines-on #models .fold { background:rgba(8,8,12,.8); border:1px solid rgba(255,255,255,.28); border-radius:16px; padding:12px 12px 10px; margin-top:10px; }
