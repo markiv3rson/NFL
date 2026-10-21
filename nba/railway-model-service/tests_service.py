@@ -349,7 +349,8 @@ ok(all(r[0] in ("spread", "total", "moneyline") for r in table["table"]) and all
 from zoneinfo import ZoneInfo
 PT = ZoneInfo("America/Los_Angeles"); last = {}
 at = lambda s: [x for x, _ in scheduler.due(dt.datetime.strptime(s, "%Y-%m-%d %H:%M").replace(tzinfo=PT), last)]
-ok(at("2026-10-22 04:00") == ["rebuild"] and at("2026-10-22 04:00") == [], "rebuild at 4 AM PT, once")
+ok(at("2026-10-22 05:15") == ["rebuild"] and at("2026-10-22 05:15") == [] and at("2026-10-22 04:00") == [], "rebuild at 5:15 AM PT (after ESPN's 4:30 AM files), once")
+ok(at("2026-10-22 05:35") == ["props"] and at("2026-10-22 05:55") == ["futures"] and at("2026-10-22 08:15") == ["catchup"], "prop refit 5:35, futures 5:55, catch-up reload 8:15 AM PT")
 ok(at("2026-10-22 07:00") == ["snapshot"] and at("2026-10-22 10:30") == ["snapshot"] and at("2026-10-22 21:30") == ["snapshot"] and at("2026-10-22 22:00") == [] and at("2026-10-22 06:30") == [], "snapshots (closing lines) every 30 min, 7 AM - 9:30 PM")
 ok(at("2026-10-22 08:20") == ["sync"] and at("2026-10-22 23:45") == ["grade"], "bet sync hourly at :20, grading nightly")
 
@@ -423,7 +424,8 @@ ok(nf.schedule_rest(_ix, "Los Angeles Lakers", "2026-11-01", "Denver Nuggets") i
 _e2 = live.Engine(coefs=_co, table={"table": []}); _e2.sched = _ix; _e2.states = {}; _e2.season = 2027
 _c2 = _e2._ctx("Denver Nuggets", "2026-11-02", "Utah Jazz")
 ok(_c2["rest"] == 1 and _c2["trav_km"] == _du and _e2._ctx("Miami Heat", "2026-11-05", "Denver Nuggets")["rest"] == 7, "engine context: rest and travel from the schedule; a first game keeps rest 7")
-ok(live.season_lines(pd.DataFrame({"season": [2027, 2027, 2027, 2026], "season_type": [2, 2, 2, 2], "home_line": [3.0, np.nan, -2.0, 1.0], "line_src": ["polymarket", "", "sbr", "sbr"]}), 2027) == {"season": 2027, "games": 3, "lined": 2, "polymarket": 1}, "lined games this season, and how many came from the site's Polymarket closes")
+ok(live.season_lines(pd.DataFrame({"season": [2027, 2027, 2027, 2026], "season_type": [2, 2, 2, 2], "home_line": [3.0, np.nan, -2.0, 1.0], "line_src": ["polymarket", "", "sbr", "sbr"]}), 2027) == {"season": 2027, "games": 3, "lined": 2, "polymarket": 1, "last": None}, "lined games this season, and how many came from the site's Polymarket closes")
+ok(live.season_lines(pd.DataFrame({"season": [2027, 2027, 2026], "season_type": [2, 2, 2], "home_line": [3.0, 1.0, 1.0], "date": [dt.date(2026, 10, 20), dt.date(2026, 10, 21), dt.date(2026, 4, 12)]}), 2027)["last"] == "2026-10-21", "health names the newest box score of this season (10/21: the 4 AM build ran before ESPN's files)")
 ok("lines" in c.get("/health").json and "stale" in c.get("/health").json, "health carries the lined-games count and the stale-file list")
 # ---------- audit fixes 10/16
 ok(cs.PERIODS[-1][1] == nd.current_season() and 2027 in range(2010, nd.current_season() + 1), "the pattern scan's last period and the honest test reach the running season")

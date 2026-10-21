@@ -189,7 +189,7 @@ def futures():
 
 
 # ---- Player props (10/20, owner: "Player props" page, both sports) ----
-# nba_prop_model.py: built in the background when the saved model is missing (a few minutes), refit daily by the scheduler (4:20 AM PT).
+# nba_prop_model.py: built in the background when the saved model is missing (a few minutes), refit daily by the scheduler (5:35 AM PT since 10/21).
 import nba_prop_model
 _PROP_BUILD = {"running": False}
 

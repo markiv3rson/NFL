@@ -504,11 +504,12 @@ def _failed_game(gm, ex):
 def season_lines(g, season):
     """This season's regular-season games with a closing line, and how many of those lines are the site's own Polymarket closes."""
     if g is None or not len(g):
-        return {"season": int(season), "games": 0, "lined": 0, "polymarket": 0}
+        return {"season": int(season), "games": 0, "lined": 0, "polymarket": 0, "last": None}
     s = g[(g.season == season) & (g.season_type == 2)]
     lined = s.home_line.notna()
     pm = (s["line_src"] == "polymarket") if "line_src" in s else pd.Series(False, index=s.index)
-    return {"season": int(season), "games": int(len(s)), "lined": int(lined.sum()), "polymarket": int((lined & pm).sum())}
+    last = str(max(s["date"])) if len(s) and "date" in s else None          # 10/21: the newest box score the engine holds (the files land ~4:30 AM PT)
+    return {"season": int(season), "games": int(len(s)), "lined": int(lined.sum()), "polymarket": int((lined & pm).sum()), "last": last}
 
 
 def _pub(c):

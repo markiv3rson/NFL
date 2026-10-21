@@ -1,7 +1,10 @@
 """
 Scheduler (runs inside the Railway service, 24/7). Pacific time.
-  Every day 4:00 AM:   automatic rebuild (daily_rebuild.run — publishes only if its checks pass), then the model reloads
-  Every day 4:40 AM:   season simulation for the futures (Sundays also replay past seasons to re-fit and re-check it)
+  Every day 5:15 AM:   automatic rebuild (daily_rebuild.run — publishes only if its checks pass), then the model reloads
+                       (10/21: was 4 AM, but ESPN's box-score / play-by-play files for last night land ~11:30 UTC = 4:30 AM PDT,
+                       so every 4 AM build ran without last night's games)
+  Every day 5:35 AM:   refit the player-prop model; 5:55 AM: season simulation for the futures (Sundays also replay past seasons)
+  Every day 8:15 AM:   catch-up: in season, if the engine still has no box score from yesterday, reload the files once more
   Every 30 min, 7 AM - 9:30 PM:  the site's /api/snapshot (Polymarket lines + model; saves each game's last pre-tip line = its closing line)
   3 minutes before every tip-off:  one more /api/snapshot, so each game's saved closing line is the real last line, not up to 30 minutes old
   Hourly at :20, 6 AM - 11 PM:  sync the Polymarket account (my bets)
@@ -116,6 +119,25 @@ def _props():
         print("[scheduler] prop model build failed:", str(e)[:200], flush=True)
 
 
+def _catchup():
+    """10/21: the box-score files can land late; in season, reload once more when the engine's newest game is older than yesterday."""
+    try:
+        import app
+        e = app._engine["e"]
+        if e is None or not getattr(e, "season_start", None):
+            return
+        today = datetime.now(PT).date()
+        if str(today) <= e.season_start:
+            return
+        last = (e.lines_this_season() or {}).get("last")
+        yday = str(today.fromordinal(today.toordinal() - 1))
+        if last is None or last < yday:
+            print(f"[scheduler] catch-up reload: newest box score {last}, yesterday {yday}", flush=True)
+            app._reload()
+    except Exception as ex:
+        print("[scheduler] catch-up failed:", ex, flush=True)
+
+
 def _futures():
     try:
         import app
@@ -129,12 +151,14 @@ def due(now, last, tips=None):
     jobs = []
     key = now.strftime("%Y-%m-%d %H:%M")
     h, m = now.hour, now.minute
-    if h == 4 and m == 0:
+    if h == 5 and m == 15:
         jobs.append(("rebuild", _rebuild))
-    if h == 4 and m == 40:
+    if h == 5 and m == 55:
         jobs.append(("futures", _futures))
-    if h == 4 and m == 20:
+    if h == 5 and m == 35:
         jobs.append(("props", _props))
+    if h == 8 and m == 15:
+        jobs.append(("catchup", _catchup))
     if 7 <= h <= 21 and m in (0, 30):
         jobs.append(("snapshot", lambda: _call("/api/snapshot?src=cron")))
     for tip in tips or []:                      # the real closing line: one snapshot 3 minutes before each distinct tip-off
