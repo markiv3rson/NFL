@@ -328,10 +328,10 @@ function tdWeekLine(data, team, player) {
 // past 2+ games, show the warning"; SUPERSEDES the 10/20 cut): the pool is the TD_POOL likeliest per team; nobody is removed for a drought; a player whose
 // last TD_WARN+ PLAYED games (byes skipped) had no TD carries a caution line on his row ("⚠ 3 straight without a TD"), always visible, no tap. The page is
 // still drawn only once the week feed is in (the warning needs it). The model lists, parlays and grading are unchanged (every listed player is graded).
-// 10/21 later (owner: "make that warning sign red ... a warning sign for missing last game's TD"): from ONE blank game: "✗ no TD last game", then "✗ N straight without a TD"; red ✗ (owner picked it over ⚠).
+// 10/21 later (owner: "make that warning sign red ... a warning sign for missing last game's TD"): from ONE blank game: "✗ no TD last game", then "✗ N straight no TD"; red ✗ (owner picked it over ⚠).
 const TD_WARN = 1, TD_POOL = 4;
 // the caution text for a row, or null (scored last game, no feed yet, or no played games)
-function tdWarn(r, data) { if (data == null || !r) return null; const d = tdDrought(data, r.team, r.player); return d == null || d < TD_WARN ? null : d === 1 ? "✗ no TD last game" : `✗ ${d} straight without a TD`; }
+function tdWarn(r, data) { if (data == null || !r) return null; const d = tdDrought(data, r.team, r.player); return d == null || d < TD_WARN ? null : d === 1 ? "✗ no TD last game" : `✗ ${d} straight no TD`; }
 async function loadTdWeeks() {
   if (TDW && Date.now() - TDW_AT < 600000) return TDW;
   if (!TDW_LOADING) TDW_LOADING = fetch("/api/tdweeks", { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.ok) { TDW = j; TDW_AT = Date.now(); } return TDW; }).catch(() => TDW).finally(() => { TDW_LOADING = null; });
