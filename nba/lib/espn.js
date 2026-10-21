@@ -24,7 +24,6 @@ export async function finalsFor(dateYMD, { timeoutMs = 15000 } = {}) {   // "202
 }
 // Teams whose game on that day went to overtime (period 5+), finished games only. Used for the card's FATIGUE rule (a back-to-back after overtime).
 export const otTeams = (finals) => new Set(Object.entries(finals || {}).filter(([, f]) => f && f.final && f.ot).flatMap(([k]) => k.split(" @ ")));
-export async function otTeamsFor(dateYMD) { return otTeams(await finalsFor(dateYMD)); }
 export const allFinal = (finals) => Object.values(finals || {}).every((f) => f && f.final);   // true for a day with no games
 // Box scores for grading player props (10/20): ESPN's scoreboard for the day (event ids) + one summary call per finished game.
 // { "AWAY @ HOME": { final, players: { "<normalized name>": { pts, reb, ast, pra, "3pm", stl, blk, min } } } }
