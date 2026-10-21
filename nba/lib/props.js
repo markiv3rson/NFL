@@ -100,21 +100,32 @@ async function scanKeys(pattern) {
 }
 export async function nbaPropDays() { return [...new Set((await scanKeys("nbapropmodel:*")).map((k) => k.split(":")[1]))].sort(); }
 // Grade the picks of every game ESPN says is final on the given dates (default: the last 3 Eastern days). A DNP is a push.
+export const RECHECK_H = 6;
+const gradeProp = (p, b) => { const s = b.players[normName(p.name)], v = s ? Number(s[p.stat] ?? 0) : null;
+  return { actual: v, played: !!s, result: v == null ? "P" : (p.side === "over" ? v > p.line : v < p.line) ? "W" : "L" }; };
 export async function gradeNbaProps({ dates = null, now = Date.now(), fetchBox = boxFor } = {}) {
   const r = getRedis(), today = etDate(new Date(now).toISOString());
   const days = dates || (await nbaPropDays()).filter((d) => d <= today && Date.parse(today) - Date.parse(d) <= 3 * 86400e3);
   let n = 0;
   for (const d of days) {
     const keys = (await scanKeys(`nbapropmodel:${d}:*`)).map((k) => k.slice(`nbapropmodel:${d}:`.length)), rk = K_NBAPROPRES(d);
-    const done = await r.hgetall(rk).catch(() => ({})) || {}, left = keys.filter((k) => !done[k]); if (!left.length) continue;
+    const done = await r.hgetall(rk).catch(() => ({})) || {}, left = keys.filter((k) => !done[k]);
+    // 10/21 review: ESPN corrects box scores after the final (OKC @ SAS 10/20: J.McCain 3 -> 2 rebounds, A.Caruso 7 -> 6 rebounds / 2 -> 1 steals,
+    // which flipped a graded Under 2.5 from L to W) -- a graded game is looked at ONCE more, 6+ hours after its grade, and its saved rows re-graded.
+    const again = keys.filter((k) => { if (!done[k]) return false; let x; try { x = JSON.parse(done[k]); } catch { return false; } return !x.rechecked && now - Date.parse(x.t || 0) >= RECHECK_H * 3600e3; });
+    if (!left.length && !again.length) continue;
     let box; try { box = await fetchBox(d); } catch { continue; }
+    for (const key of again) {
+      const b = box && box[key]; if (!b || !b.final) continue;
+      let rec; try { rec = JSON.parse(done[key]); } catch { continue; }
+      let changed = 0;
+      const picks = (rec.picks || []).map((p) => { const g = gradeProp(p, b); if (g.actual !== p.actual || g.result !== p.result) changed++; return { ...p, ...g }; });
+      await r.hset(rk, key, JSON.stringify({ ...rec, picks, rechecked: new Date(now).toISOString(), ...(changed ? { fixed: changed } : {}) })); if (changed) n++;
+    }
     for (const key of left) {
       const b = box && box[key]; if (!b || !b.final) continue;
       const model = await getJSON(K_NBAPROPMODEL(d, key)).catch(() => null); if (!model || !model.rows) continue;
-      const picks = nbaPropPicks(model.rows, await getJSON(K_NBAPROPS(d, key)).catch(() => null)).map((p) => {
-        const s = b.players[normName(p.name)], v = s ? Number(s[p.stat] ?? 0) : null;
-        return { ...p, actual: v, played: !!s, result: v == null ? "P" : (p.side === "over" ? v > p.line : v < p.line) ? "W" : "L" };
-      });
+      const picks = nbaPropPicks(model.rows, await getJSON(K_NBAPROPS(d, key)).catch(() => null)).map((p) => ({ ...p, ...gradeProp(p, b) }));
       await r.hset(rk, key, JSON.stringify({ t: new Date(now).toISOString(), runAt: model.runAt || null, picks })); n++;
     }
   }
