@@ -80,7 +80,7 @@ body.bnav-on .phead .pdd .wksel { padding-right:16px; } body.bnav-on .phead .pdd
 body.bnav-on .phead .pt { display:flex; flex-wrap:nowrap; align-items:center; justify-content:center; text-align:center; column-gap:10px; flex:1 0 100%; margin-bottom:4px; }   /* 10/21 night (owner): the title centered */
 body.bnav-on .phead .pt span:not(.ptab) { flex-basis:100%; }
 /* 10/21 night (owner: "make the header of the tab all capitalized. BOLD AND BIG"; "why is the updated time there? Remove it") */
-body.bnav-on .phead .pt b { font-family:"Archivo Black","Arial Black",Impact,sans-serif; text-transform:uppercase; font-weight:400; font-size:clamp(30px,9.6vw,54px); letter-spacing:.01em; line-height:1.02; color:#e4e4e8; -webkit-text-stroke:.6px #e4e4e8; }
+body.bnav-on .phead .pt b { font-family:"Archivo Black","Arial Black",Impact,sans-serif; text-transform:uppercase; font-weight:400; font-size:clamp(28px,8.4vw,54px); letter-spacing:.01em; line-height:1.02; color:#e4e4e8; -webkit-text-stroke:.6px #e4e4e8; }
 #upd-record, #upd-models { display:none !important; }
 @media (max-width:599px) { body.bnav-on .phead .ptab { display:none; } body.bnav-on .phead .pt b { white-space:nowrap; } }   /* a phone: the open tab is named in the sub-tab bar, the title keeps the section's name on one line and never shrinks under its drop-downs: they wrap to a row of their own, still on the right */
 /* a game page: the team card is the pinned header */
