@@ -87,7 +87,8 @@ export function starsOut(g, injuries = null) {
     for (const x of list || []) if ((Number(x && x.ppg) || 0) >= STAR_PPG && /^(out|doubtful)/i.test(String(x.status || ""))) out.push({ team: g[side], name: x.name, ppg: Number(x.ppg) }); }
   return out;
 }
-const outsOf = (list) => (list || []).filter((x) => /^(out|doubtful)/i.test(String(x && x.status || ""))).map((x) => x.name).filter(Boolean);
+const outsOf = (list, re = /^(out|doubtful)/i) => (list || []).filter((x) => re.test(String(x && x.status || ""))).map((x) => x.name).filter(Boolean);
+const QUEST = /^questionable/i;   // 10/21: sent too -- 45.5% of Questionable players sit (official reports 2021-26), the service counts them that much as teammates out
 // Ask the NBA service for every recorded line of each not-started game in the record window and save the answer (the snapshot's step).
 export async function scoreNbaProps(games, { now = Date.now(), injuries = null, post = null } = {}) {
   const base = modelBase(); if (!base) return { scored: 0, error: "NBA_MODEL_SERVICE_URL not set" };
@@ -96,8 +97,9 @@ export async function scoreNbaProps(games, { now = Date.now(), injuries = null, 
     if (!g || !g.key || !g.date || !(Date.parse(g.start) > now)) continue;
     const lines = nbaPropRows(await getJSON(K_NBAPROPS(g.date, g.key)).catch(() => null)).map((r) => ({ name: r.name, stat: r.stat, line: r.line }));
     if (!lines.length) continue;
-    const inj = injuries ? [...outsOf(injuries.away || (injuries[g.key] || {}).away), ...outsOf(injuries.home || (injuries[g.key] || {}).home)] : [...outsOf(g.injuries && g.injuries.away), ...outsOf(g.injuries && g.injuries.home)];
-    todo.push({ g, body: { away: g.away, home: g.home, outs: inj, lines }, star: starsOut(g, injuries) });
+    const lists = injuries ? [injuries.away || (injuries[g.key] || {}).away, injuries.home || (injuries[g.key] || {}).home] : [g.injuries && g.injuries.away, g.injuries && g.injuries.home];
+    const inj = lists.flatMap((l) => outsOf(l)), quest = lists.flatMap((l) => outsOf(l, QUEST));
+    todo.push({ g, body: { away: g.away, home: g.home, outs: inj, quest, lines }, star: starsOut(g, injuries) });
   }
   if (!todo.length) return { scored: 0 };
   const send = post || (async (body) => { const r = await fetch(`${base}/prop-probs`, { method: "POST", headers: modelHeaders({ "Content-Type": "application/json" }), body: JSON.stringify(body), cache: "no-store", signal: AbortSignal.timeout(25000) }); return r.json().catch(() => null); });
