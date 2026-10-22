@@ -56,6 +56,12 @@ body.bnav-on.home-on .wrap { padding-bottom:calc(env(safe-area-inset-bottom,0px)
 .bi.on { color:#fff; } .bi.on svg { color:#ff5fa2; }
 .bsport { flex:0 0 auto; width:64px; height:64px; margin:0 4px 2px; padding:0; border:0; border-radius:50%; background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; }   /* 10/21 night (owner): just the ball, no ring, no words */
 .bsport img { display:block; width:100%; height:100%; object-fit:contain; pointer-events:none; }
+.bsport { position:relative; margin:0 18px 2px; overflow:visible; }
+.barr { position:absolute; top:50%; width:13px; height:22px; color:#fff; pointer-events:none; }
+.barr svg { display:block; width:100%; height:100%; }
+.barr.up { left:-15px; transform:translateY(-50%); }
+.barr.dn { right:-15px; transform:translateY(-50%) rotate(180deg); }
+.bsport.nfl .barr.up { left:-21px; } .bsport.nfl .barr.dn { right:-21px; }   /* the football is wider than its button */
 .bsport.nfl img { width:76px; max-width:none; height:76px; }   /* the football is wide and flat: drawn larger so it reads the same size as the basketball */
 .bsport:active img { transform:scale(.92); }
 .sbar { position:fixed; left:0; right:0; bottom:calc(env(safe-area-inset-bottom,0px) + var(--bnh)); z-index:119; display:none; justify-content:space-between; gap:14px; overflow-x:auto; scrollbar-width:none; box-sizing:border-box;
