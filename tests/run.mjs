@@ -1800,5 +1800,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const okApp = (f) => { const a = readFileSync(new URL(f, import.meta.url), "utf8"); return /function ddSlot\(el, html\)/.test(a) && (a.match(/ddSlot\(/g) || []).length >= 4 && /set\("dd-record-mine", !m\); set\("dd-lab", m\);/.test(a); };
   ok(/dd\(el, html\) \{/.test(sh) && /slot\.className = "pdd"; slot\.id = "dd-" \+ el\.id; head\.appendChild\(slot\)/.test(sh) && okApp("../public/app.js") && okApp("../public/nba/app.js"),
     "headers (10/21 night): the week / day / team drop-downs sit on the right of the page title, one slot per block, hidden with its block; both sports"); }
+{ // 10/21 night (owner): no pulsing red on live tiles (only the ● LIVE · quarter line is red); the break between quarters reads "End Q1"
+  for (const f of ["../public/index.html", "../public/nba/index.html"]) { const h = readFileSync(new URL(f, import.meta.url), "utf8"); ok(!/livepulse|\.tile\.live \{/.test(h), `${f}: live tiles have no pulsing red outline / glow`); }
+  const nl = readFileSync(new URL("../pages/api/nba/live.js", import.meta.url), "utf8"), fl = readFileSync(new URL("../lib/live.js", import.meta.url), "utf8");
+  ok(/`End \$\{q\}`/.test(nl) && /\/end of\/i\.test\(det\) && per \? `End \$\{per > 4 \? "OT" : "Q" \+ per\}`/.test(fl), "live labels: 'End Q1' between quarters (NBA clock 0.0 / ESPN 'End of 1st Quarter'), both sports"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);
