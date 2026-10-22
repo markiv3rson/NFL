@@ -358,7 +358,7 @@ function renderProps() {
   const blocks = games.map((g) => { const sl = g.start ? nbaSlot(g.start) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
     // 10/20 night (owner): a game being played says LIVE on its props block -- its rows are the copy locked at tip-off (a started game is never re-scored), graded from the box score
     return h + `<div class="par"><div class="pbh c"><span class="pbn">${gameLogos(g.game)}${g.start && !g.final && Date.parse(g.start) <= Date.now() ? ' <span class="lvb">● LIVE</span>' : ""}</span></div>${head}${teamRows(g)}</div>`; });
-  el.innerHTML = ddSlot(el, dsel + tsel) + tile + (games.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
+  el.innerHTML = ddSlot(el, dsel + tsel) + tile + (games.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim empty" style="margin-top:12px">None yet.</div>');
   const pd = $("props-day"); if (pd && pd.tagName === "SELECT") pd.onchange = () => { PROPDAY = pd.value; loadProps(); };
   const ps = $("props-team"); if (ps && ps.tagName === "SELECT") ps.onchange = () => { PROPTEAM = ps.value; renderProps(); };
 }
@@ -393,7 +393,7 @@ function renderBets() {
     `<div class="stat"><div class="k">PROFIT</div><div class="v ${(rc.pl || 0) >= 0 ? "g" : "r"}">${(rc.pl || 0) >= 0 ? "+" : "−"}$${Math.abs(rc.pl || 0).toFixed(2)}</div><div class="k2">settled</div></div>` +
     `<div class="stat"><div class="k">STAKED</div><div class="v">$${(rc.staked || 0).toFixed(2)}</div><div class="k2">settled</div></div></div>` +
     `<div class="card" style="margin-top:10px"><div class="sec"><div class="sh">Open</div>${(j.open || []).length ? rowsOf(j.open, false) : '<div class="s dim">None.</div>'}</div>` +
-    `<div class="fold" data-drop="settled"><span>Settled bets</span><span>▾</span></div><div class="drop" id="settled">${settled.length ? rowsOf(settled, true) : '<div class="s dim">None yet.</div>'}</div></div>` +
+    `<div class="fold" data-drop="settled"><span>Settled bets</span><span>▾</span></div><div class="drop" id="settled">${settled.length ? rowsOf(settled, true) : '<div class="s dim empty">None yet.</div>'}</div></div>` +
     `<div class="center"><button class="btn" id="sync-btn">↻ Sync account</button></div>`;
   for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
   const md = $("mb-day"); if (md && md.tagName === "SELECT") md.onchange = () => { MBDAY = md.value; renderBets(); };
@@ -479,7 +479,7 @@ function renderLabList() {
   const xs = sel ? labParlays(sel, LABTYPE) : [];
   const slotTimes = {}; for (const x of xs) if (x.start && !x.across) { const sl = nbaSlot(x.start), tt = tipTime(x.start); (slotTimes[sl] = slotTimes[sl] || []).includes(tt) || slotTimes[sl].push(tt); }
   let lastSlot = null; const blocks = xs.map((x) => { const sl = x.start && !x.across ? nbaSlot(x.start) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl; return h + pBlock(x.title, x.p, x.across); });
-  $("lab").innerHTML = ddSlot($("lab"), chips) + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
+  $("lab").innerHTML = ddSlot($("lab"), chips) + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim empty" style="margin-top:12px">None yet.</div>');
   const lw = $("lab-wk"); if (lw && lw.tagName === "SELECT") lw.onchange = () => { LABDAY = lw.value; renderLabList(); };
 }
 
