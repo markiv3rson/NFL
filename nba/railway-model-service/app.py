@@ -237,4 +237,4 @@ def rebuild():
 if __name__ == "__main__":
     start_background()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-# redeploy trigger 10/22 6:27 AM PT (owner 10/21 night: retry every hour while Railway builds are paused) -- picks up every fix merged during the pause
+# redeploy trigger 10/22 6:48 AM PT (owner 10/21 night: retry every hour while Railway builds are paused) -- picks up every fix merged during the pause
