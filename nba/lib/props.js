@@ -68,11 +68,16 @@ export function nbaPropPicks(modelRows, saved, bar = NBA_PROP_BAR) {
 // One row per player and stat: priced under its win % and under MAX_PRICE, the highest %.
 // 10/21 recheck: a row needs a real Polymarket price (nobody selling = not a bet). Unpriced deep rungs of the "N+" ladders (Tatum PRA Under 54.5 98.5%)
 // pushed the player's priced line off the page and padded the record: opening night 114-30 = 79.2%, of which unpriced 43-4 and priced 71-26 (73.2%).
+// 10/22 night (owner: "cut the two"): no row priced under MIN_PRICE (60c: the market disagrees -- live 50-60c said 72.8 won 64.8%, last season's real lines ~54%)
+// and no rebounds Under (live 28-18 = 60.9%, real lines 59.0%; still 24-15 at 60c+). Both stay saved and graded in the background.
+export const MIN_PRICE = 0.60;
+export const CUT_SIDES = new Set(["reb|under"]);
 export function onePerPlayer(picks) {
   const priced = (p) => p.price > 0 && p.price < 1, best = new Map();
   for (const p of picks) {
     if (!(p.chance >= NBA_PROP_BAR)) continue;   // a row saved under an older, lower bar
-    if (!priced(p) || p.price >= p.chance || p.price >= MAX_PRICE) continue;
+    if (!priced(p) || p.price >= p.chance || p.price >= MAX_PRICE || p.price < MIN_PRICE) continue;
+    if (CUT_SIDES.has(`${p.stat}|${p.side}`)) continue;
     const k = `${normName(p.name)}|${p.stat}`, o = best.get(k);
     if (!o || p.chance > o.chance) best.set(k, p);
   }
