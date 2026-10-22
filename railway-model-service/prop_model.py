@@ -364,6 +364,10 @@ def _active_pids(teams):
     return out
 
 
+# 10/22: version of the team-yards sums -- 2 = only players who played the team's last game (the 10/21 fix). The site lets STACK name a
+# PICK only from v2 yards (lib/cardpick.js), so the old sums (inactive players and backup QBs counted) never make a pick.
+TEAM_YARDS_V = 2
+
 def team_yards(games):
     """STACK shadow inputs (10/21): each team's expected yards this week from the prop model -- the same player universe as the research's
     walk-forward sums (eligible() per stat): py = passing + rushing yards of the team's modeled players, rec = receiving yards.
