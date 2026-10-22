@@ -1146,7 +1146,7 @@ let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model
 // 10/21 night (owner): a page's drop-downs go to the right of its title (Shell.dd); without the shell (tests) they stay on top of the block
 function ddSlot(el, html) { if (typeof Shell !== "undefined" && Shell.dd && el && el.closest) { Shell.dd(el, html); return ""; } return html; }
 function applyBetsView() {
-  const bt = $("bets-title"); if (bt) bt.textContent = BETSVIEW === "model" ? `Model bets · ${(LAB_TABS.find(([k]) => k === LABTYPE) || [, ""])[1]}` : "My bets";
+  const bt = $("bets-title"); if (bt) bt.innerHTML = BETSVIEW === "model" ? `Model bets<span class="ptab"> · ${esc((LAB_TABS.find(([k]) => k === LABTYPE) || [, ""])[1])}</span>` : "My bets";
   const m = BETSVIEW === "model", set = (id, on) => { const e = $(id); if (e) e.style.display = on ? "" : "none"; };
   set("record-mine", !m); set("lab", m); set("dd-record-mine", !m); set("dd-lab", m);
 
@@ -1191,7 +1191,7 @@ function propBlocks(games, row, first) {
 }
 function renderProps() {
   const el = $("props"); if (!el) return;
-  const tt = $("props-title"); if (tt) tt.textContent = `Player props · ${propTabLabel(PROPTAB)}`;
+  const tt = $("props-title"); if (tt) tt.innerHTML = `Player props<span class="ptab"> · ${esc(propTabLabel(PROPTAB))}</span>`;
   if (PROPTAB === "first") return renderFirstTd(el);
   const d = PROPS; if (!d) { el.innerHTML = '<div class="s dim" style="margin-top:12px">Loading…</div>'; return; }
   const stat = PROP_STAT[PROPTAB] || "rec_yds", weeks = d.weeks && d.weeks.length ? d.weeks : [d.week], sel = Number(d.week);
@@ -1451,7 +1451,7 @@ document.addEventListener("click", (e) => {
   const gt = e.target.closest("[data-game]"); if (gt) { if (!$("panel-lines").classList.contains("on")) { history.replaceState(null, "", "#lines"); showPanel("lines"); } openGame(gt.dataset.game); return; }
   const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k) { history.replaceState(null, "", "#lines"); showPanel("lines"); openGame(k); } return; }
   const nb = e.target.closest("[data-nbagame]"); if (nb) { location.replace("/nba/index.html#game=" + encodeURIComponent(nb.dataset.nbagame)); return; }   // 10/18 night: no history entry, so a swipe cannot "go back"
-  const bv = e.target.closest("[data-bv]"); if (bv) { BETSVIEW = bv.dataset.bv === "model" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} applyBetsView(); try { window.scrollTo(0, 0); } catch {} return; }
+  const bv = e.target.closest("[data-bv]"); if (bv) { history.replaceState(null, "", bv.dataset.bv === "model" ? "#modelbets" : "#mybets"); routeHash(); return; }   // 10/22: My bets | Model bets inside Bets -- the page key follows, so the sub-tab bar does too
   const lw = e.target.closest("[data-labw]"); if (lw) { LABWEEK = Number(lw.dataset.labw); renderLabList(); return; }
   const gb = e.target.closest("[data-gbw]"); if (gb) { GBGWEEK = gb.dataset.gbw === "all" ? "all" : Number(gb.dataset.gbw); $("gbg").innerHTML = gbgHtml(); return; }
   const ts = e.target.closest(".labslot.tdtog"); if (ts) { tdToggleSlot(ts); return; }   // 10/20 night (owner): open / close a time-slot list

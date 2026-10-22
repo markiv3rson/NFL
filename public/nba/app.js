@@ -316,7 +316,7 @@ let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model
 // 10/21 night (owner): a page's drop-downs go to the right of its title (Shell.dd); without the shell (tests) they stay on top of the block
 function ddSlot(el, html) { if (typeof Shell !== "undefined" && Shell.dd && el && el.closest) { Shell.dd(el, html); return ""; } return html; }
 function applyBetsView() {
-  const bt = $("bets-title"); if (bt) bt.textContent = BETSVIEW === "model" ? `Model bets · ${(LAB_TABS.find(([k]) => k === LABTYPE) || [, ""])[1]}` : "My bets";
+  const bt = $("bets-title"); if (bt) bt.innerHTML = BETSVIEW === "model" ? `Model bets<span class="ptab"> · ${esc((LAB_TABS.find(([k]) => k === LABTYPE) || [, ""])[1])}</span>` : "My bets";
   const m = BETSVIEW === "model", set = (id, on) => { const e = $(id); if (e) e.style.display = on ? "" : "none"; };
   set("record-mine", !m); set("lab", m); set("dd-record-mine", !m); set("dd-lab", m);   // 10/17 (owner): the parlay types are menu sub tabs under Model bets
 
@@ -339,7 +339,7 @@ const propLast = (p) => { const l = p.last; if (!l) return '<span class="pp5 dim
   return `<span class="pp5 ${l.result === "W" ? "g" : "r"}">${l.side === "over" ? "O" : "U"} ${l.line} ${l.result === "W" ? "✓" : "✗"}${l.actual != null ? ` <span class="dim">${Math.round(l.actual * 10) / 10}</span>` : ""}</span>`; };
 function renderProps() {
   const el = $("props"); if (!el) return;
-  const tt = $("props-title"); if (tt) tt.textContent = `Player props · ${(PROP_TABS.find(([k]) => k === PROPTAB) || [, "Points"])[1]}`;
+  const tt = $("props-title"); if (tt) tt.innerHTML = `Player props<span class="ptab"> · ${esc((PROP_TABS.find(([k]) => k === PROPTAB) || [, "Points"])[1])}</span>`;
   const d = PROPS; if (!d) { el.innerHTML = '<div class="s dim" style="margin-top:12px">Loading…</div>'; return; }
   const days = d.days && d.days.length ? d.days : [d.date];
   const dsel = `<div class="wksel"><select id="props-day" aria-label="Day">${days.map((x) => `<option value="${x}"${x === d.date ? " selected" : ""}>${dayName(x)}</option>`).join("")}</select></div>`;
@@ -642,7 +642,7 @@ document.addEventListener("click", (e) => {
   const d = e.target.closest("[data-drop]"); if (d) { const el = $(d.dataset.drop); if (el) el.classList.toggle("open"); return; }
   const gt = e.target.closest("[data-game]"); if (gt) { if (!$("panel-lines").classList.contains("on")) showPanel("lines"); openGame(gt.dataset.game); return; }
   const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k && S && S.games.some((x) => x.key === k)) { showPanel("lines"); openGame(k); } return; }
-  const bv = e.target.closest("[data-bv]"); if (bv) { BETSVIEW = bv.dataset.bv === "model" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} applyBetsView(); try { window.scrollTo(0, 0); } catch {} return; }
+  const bv = e.target.closest("[data-bv]"); if (bv) { history.replaceState(null, "", bv.dataset.bv === "model" ? "#modelbets" : "#mybets"); routeHash(); return; }   // 10/22: My bets | Model bets inside Bets -- the page key follows, so the sub-tab bar does too
   const fu = e.target.closest("[data-fut]"); if (fu) { FUTSEC = fu.dataset.fut; renderModels(); const el = $("m-fut"); if (el) el.classList.add("open"); }
 });
 function catchUp() { fetch("/api/nba/results/grade", { cache: "no-store" }).then((r) => r.json()).then((d) => { if (d && (d.graded || d.parlays) && ($("panel-record").classList.contains("on") || $("panel-models").classList.contains("on"))) { loadBets(); loadModels(); } }).catch(() => {}); }
