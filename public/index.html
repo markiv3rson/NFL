@@ -15,9 +15,9 @@
 <link rel="icon" type="image/png" href="/icon-192.png?v=3">
 <title>NFL SLATEZZZ</title>
 <style>
-  :root { --bg:#08090b; --card:rgba(3,8,7,.68); --card2:rgba(255,255,255,.04); --line:rgba(255,255,255,.1); --line2:rgba(255,255,255,.07);
+  :root { --bg:#0f0a1a; --card:rgba(22,13,36,.68); --card2:rgba(255,255,255,.04); --line:rgba(255,255,255,.1); --line2:rgba(255,255,255,.07);
     --text:#ececef; --dim:#aab0bd; --faint:#8d95a3; --red:#ff6b6b; --green:#3ddc97; --yellow:#f2cf66; --blue:#ffffff; --gold:#f2cf66; --cyan:#4fe3d0;
-    --violet:#b794ff; --rose:#ffffff; --ggrad:linear-gradient(90deg,#ff3b4a,#7a0a12);   /* 10/18 (owner): Vegas gold -- --blue and --rose hold the gold / pale gold now (every former blue or purple-blue is gold); purple (--violet) stays on the model's own numbers, the Models page and MODEL ANALYSIS; no glow anywhere */ }
+    --violet:#b794ff; --rose:#ffffff; --ggrad:linear-gradient(90deg,#ffb27d,#ff5fa2 55%,#a67cff);   /* 10/18 (owner): Vegas gold -- --blue and --rose hold the gold / pale gold now (every former blue or purple-blue is gold); purple (--violet) stays on the model's own numbers, the Models page and MODEL ANALYSIS; no glow anywhere */ }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html { -webkit-text-size-adjust:100%; text-size-adjust:100%; overscroll-behavior:none; }   /* 10/18 night: no sideways overscroll / back gesture either */
   button, .tile, .tdr, .al { touch-action:manipulation; -webkit-touch-callout:none; }
@@ -204,15 +204,15 @@
   @media (min-width:1100px) { html.lines-on body { background:transparent; }   /* a body background would paint OVER the fixed layers below (negative z-index) */
     html.lines-on .pagewm { z-index:-2; background:url(/nfl-bg.jpg?v=3) center/cover no-repeat #000; filter:blur(34px) brightness(.55); transform:scale(1.12); }   /* the same picture, blurred, fills the whole screen */
     html.lines-on body::after { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; background:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.1)),url(/nfl-bg.jpg?v=3) center/contain no-repeat; } }   /* the sharp strip at its own proportions, every frame stacked */
-  html.lines-on .panel .card, html.lines-on .panel .stat { background:rgba(8,8,12,.8); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 80% dark so the text reads (owner 10/17), no frosted haze */
-  html.lines-on .panel .tile { background:rgba(8,8,12,.55); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 10/18 evening (owner, sketch D): game tiles 55% dark, no team colours, no faded logos */
-  html.lines-on #panel-record .card, html.lines-on #panel-record .stat { background:rgba(8,8,12,.55); }   /* 10/21 night (owner): My bets as see-through as the Game Lines tiles */
-  #detail .card:not(.dtop) { background:rgba(8,8,12,.55); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 10/18 night (owner): game-page cards see-through like the tiles (55% dark); the team-colour header card stays */
+  html.lines-on .panel .card, html.lines-on .panel .stat { background:rgba(24,15,40,.8); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 80% dark so the text reads (owner 10/17), no frosted haze */
+  html.lines-on .panel .tile { background:rgba(24,15,40,.55); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 10/18 evening (owner, sketch D): game tiles 55% dark, no team colours, no faded logos */
+  html.lines-on #panel-record .card, html.lines-on #panel-record .stat { background:rgba(24,15,40,.55); }   /* 10/21 night (owner): My bets as see-through as the Game Lines tiles */
+  #detail .card:not(.dtop) { background:rgba(24,15,40,.55); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 10/18 night (owner): game-page cards see-through like the tiles (55% dark); the team-colour header card stays */
   /* 10/18 night (owner: "opacity don't look consistent"): on the photo pages every Models section sits on the same 80% dark card as the stat tiles -- the header row and its open list are one box */
-  html.lines-on #models .fold { background:rgba(8,8,12,.8); border:1px solid rgba(255,255,255,.28); border-radius:16px; padding:12px 12px 10px; margin-top:10px; }
+  html.lines-on #models .fold { background:rgba(24,15,40,.8); border:1px solid rgba(255,255,255,.28); border-radius:16px; padding:12px 12px 10px; margin-top:10px; }
   html.lines-on #models .fold:has(+ .drop.open) { border-radius:16px 16px 0 0; border-bottom:1px solid var(--line); }
-  html.lines-on #models .drop.open { background:rgba(8,8,12,.8); border:1px solid rgba(255,255,255,.28); border-top:0; border-radius:0 0 16px 16px; margin-top:0; padding:6px 12px 12px; }
-  html.lines-on .panel .pgrid > .par { background:rgba(8,8,12,.8); border-radius:14px; padding:11px 12px; margin-bottom:8px; }   /* 10/17 (owner): Model bets parlays get the same dark backing as the cards */
+  html.lines-on #models .drop.open { background:rgba(24,15,40,.8); border:1px solid rgba(255,255,255,.28); border-top:0; border-radius:0 0 16px 16px; margin-top:0; padding:6px 12px 12px; }
+  html.lines-on .panel .pgrid > .par { background:rgba(24,15,40,.8); border-radius:14px; padding:11px 12px; margin-bottom:8px; }   /* 10/17 (owner): Model bets parlays get the same dark backing as the cards */
   .dtop .t .tlogo { width:30px; height:30px; vertical-align:-6px; margin:0 8px 0 0; } .dtop .t:last-child .tlogo { margin:0 0 0 8px; }
   .prl > .s { text-transform:uppercase; letter-spacing:.04em; font-size:13px; font-weight:700; color:#eef0f4; }
   /* game page: the two team logos split the whole page in half behind the cards (away left, home right) */
@@ -245,7 +245,7 @@
   .card.modelglow { border-color:rgba(255,255,255,.28); }   /* 10/18 (owner): no glow -- a model parlay card looks like any other card */
   @media (prefers-reduced-motion: reduce) { .card.modelglow, .stamp.go { animation:none; } }
 </style>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Share+Tech+Mono&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Share+Tech+Mono&display=swap">
 <link rel="stylesheet" href="/shell.css">
 </head>
 <body>

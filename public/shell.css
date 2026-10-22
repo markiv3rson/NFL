@@ -1,7 +1,7 @@
 /* SLATEZZ shell (10/17, owner; 10/22: pinned top bar + bottom bar, the side menu is gone), the home screen lists. Used by /index.html (NFL + home)
    and /nba/index.html. */
 .shead { position:relative; display:flex; align-items:center; gap:12px; padding:4px 4px 14px; margin-bottom:6px; }
-:root { --ggrad:linear-gradient(90deg,#ff3b4a,#7a0a12); }   /* 10/21 (owner: "the slatezz should just be gradient red to dark red ... and everywhere else in the app that has red to green"): red -> dark red */
+:root { --ggrad:linear-gradient(90deg,#ffb27d,#ff5fa2 55%,#a67cff); --accent:#ff5fa2; }   /* 10/21 night (owner: the GTA VI sunset art = the app's colors): peach -> pink -> violet; accent pink */   /* 10/21 (owner: "the slatezz should just be gradient red to dark red ... and everywhere else in the app that has red to green"): red -> dark red */
    /* 10/18 night (owner): plain red -> green like the bull / bear picture (owner: "just red and green", no white), no glow, no filled circles; purple only on MODEL ANALYSIS */
 .shead::after { content:""; position:absolute; left:0; right:0; bottom:0; height:1px; background:var(--ggrad); opacity:.75; }
 .sgrad { background:var(--ggrad); -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent; }
@@ -11,18 +11,21 @@ body.home-on { background:transparent !important; } html.home-on { background:#0
 /* 10/17 (owner): the Raiders photo behind the home screen; the NFL / NBA lists are see-through so it shows under them */
 html.home-on::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
   background:linear-gradient(180deg,rgba(0,0,0,.30),rgba(0,0,0,.50) 60%,rgba(0,0,0,.70)),url(/home-bg.jpg?v=3) center/cover no-repeat,#000; }
-html.home-on .tile { background:rgba(8,8,12,.55); border-color:rgba(255,255,255,.28); box-shadow:none; }   /* 10/18 night (owner): the home tiles look like the Game Lines tiles */
+html.home-on .tile { background:rgba(24,15,40,.55); border-color:rgba(255,255,255,.28); box-shadow:none; }   /* 10/18 night (owner): the home tiles look like the Game Lines tiles */
 
 /* 10/22 (owner, option K + Home): the side menu is gone -- a pinned top bar, a bottom bar and (on Player props / Model bets) a sub-tab bar above it. Both sports. */
 :root { --tbh:74px; --bnh:64px; --sbh:46px; --hmh:58px; }
 .tbar { position:fixed; left:0; right:0; top:0; z-index:120; display:flex; align-items:center; justify-content:space-between; gap:8px; box-sizing:border-box;
   height:calc(env(safe-area-inset-top,0px) + var(--tbh)); padding:calc(env(safe-area-inset-top,0px) + 2px) max(10px,env(safe-area-inset-right,0px)) 0 max(14px,env(safe-area-inset-left,0px));
-  background:rgba(8,8,12,.78); -webkit-backdrop-filter:blur(18px) saturate(1.3); backdrop-filter:blur(18px) saturate(1.3); border-bottom:1px solid rgba(255,255,255,.12); }
+  background:rgba(24,15,40,.78); -webkit-backdrop-filter:blur(18px) saturate(1.3); backdrop-filter:blur(18px) saturate(1.3); border-bottom:1px solid rgba(255,255,255,.12); }
+/* 10/21 night (owner): the GTA VI photo strip behind the top bar, see-through like the team logos on the game tiles */
+.tbar { isolation:isolate; overflow:hidden; }
+.tbar::before { content:""; position:absolute; inset:0; z-index:-1; background:url(/hdr-bg.jpg?v=1) center 32%/cover no-repeat; opacity:.42; pointer-events:none; }
 /* 10/21 night (owner: "make the SLATEZZ BIGGER I SAID. Make it fit" / "Make both headers fatter letters"): Archivo Black, as wide as the bar allows next to the bell */
-.slatelogo { flex:none; font-family:"Archivo Black","Arial Black",Impact,sans-serif; font-size:clamp(36px,calc((100vw - 84px) / 5.25),80px); font-weight:400; font-style:italic; letter-spacing:.02em; line-height:1; white-space:nowrap; padding-right:.08em; text-decoration:none; -webkit-text-stroke:1px #e4e4e8; }
+.slatelogo { flex:none; font-family:"Bowlby One","Arial Black",Impact,sans-serif; font-size:clamp(36px,calc((100vw - 84px) / 4.95),84px); font-weight:400; font-style:normal; letter-spacing:.02em; line-height:1; white-space:nowrap; padding-right:.08em; text-decoration:none; -webkit-text-stroke:1px #e4e4e8; }
 .slatelogo.sgrad { background:none; color:#e4e4e8; -webkit-text-fill-color:#e4e4e8; }   /* 10/21 night (owner): grayish white, not the gradient */
 .tib { position:relative; flex:none; width:46px; height:46px; display:flex; align-items:center; justify-content:center; color:#fff; text-decoration:none; }
-.tib.on { color:#ff3b4a; }
+.tib.on { color:#ff5fa2; }
 .tcnt { position:absolute; top:4px; right:2px; font-size:12px; font-weight:800; color:#fff; display:none; }   /* the unread number, plain text (10/18: no filled circles) */
 /* the refresh: just the red outline of the icon, no circle (owner 10/21 night), centered over "Model Refresh: <time>" at the right of the page header;
    only on Lines, Player props and Model bets (body.ref-on) */
@@ -30,12 +33,12 @@ html.home-on .tile { background:rgba(8,8,12,.55); border-color:rgba(255,255,255,
 body.ref-on .phead .prefbox { display:flex; }
 /* 10/21 night (owner: "make everything 1 row except for the header"): under the title ONE row -- My bets | Model bets, the drop-downs, the refresh at the right */
 body.bnav-on .phead { align-items:center; justify-content:center; }   /* the row under the title is centered too (owner 10/21 night: "center the sub tabs") */
-.mref { width:40px; height:34px; display:flex; align-items:center; justify-content:center; padding:0; border:0; background:none; color:#ff3b4a; cursor:pointer; }
+.mref { width:40px; height:34px; display:flex; align-items:center; justify-content:center; padding:0; border:0; background:none; color:#ff5fa2; cursor:pointer; }
 .phead .mref svg { display:block; }   /* (both index.html hide header icons: .phead svg) */
 .phead .prun { font-size:9.5px; font-weight:700; color:#aab0bd; white-space:nowrap; line-height:1.1; letter-spacing:0; text-transform:none; }
 /* Home only (owner 10/21 night): Model analysis as one long see-through bar above the bottom bar, split NFL | NBA */
 .hmod { position:fixed; left:max(12px,env(safe-area-inset-left,0px)); right:max(12px,env(safe-area-inset-right,0px)); bottom:calc(env(safe-area-inset-bottom,0px) + var(--bnh) + 10px); z-index:119; height:var(--hmh); display:none;
-  border:1px solid rgba(255,255,255,.28); border-radius:16px; overflow:hidden; background:rgba(8,8,12,.55); -webkit-backdrop-filter:blur(18px) saturate(1.3); backdrop-filter:blur(18px) saturate(1.3); }
+  border:1px solid rgba(255,255,255,.28); border-radius:16px; overflow:hidden; background:rgba(24,15,40,.55); -webkit-backdrop-filter:blur(18px) saturate(1.3); backdrop-filter:blur(18px) saturate(1.3); }
 body.home-on .hmod { display:flex; }
 .hmod a { flex:1 1 0; display:flex; align-items:center; justify-content:center; gap:10px; color:#fff; text-decoration:none; font-size:18px; font-weight:900; letter-spacing:.06em; }
 .hmod a + a { border-left:1px solid rgba(255,255,255,.2); }
@@ -46,20 +49,20 @@ body.bnav-on.home-on .wrap { padding-bottom:calc(env(safe-area-inset-bottom,0px)
 .mref:disabled { opacity:.75; }
 .bnav { position:fixed; left:0; right:0; bottom:0; z-index:120; display:flex; align-items:flex-end; justify-content:space-around; box-sizing:border-box;
   height:calc(env(safe-area-inset-bottom,0px) + var(--bnh)); padding:0 max(6px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(6px,env(safe-area-inset-left,0px));
-  background:rgba(8,8,12,.8); -webkit-backdrop-filter:blur(18px) saturate(1.3); backdrop-filter:blur(18px) saturate(1.3); border-top:1px solid rgba(255,255,255,.14); }
+  background:rgba(24,15,40,.8); -webkit-backdrop-filter:blur(18px) saturate(1.3); backdrop-filter:blur(18px) saturate(1.3); border-top:1px solid rgba(255,255,255,.14); }
 .bi { flex:1 1 0; min-width:0; height:var(--bnh); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; color:#8d95a3; text-decoration:none; font-size:11px; font-weight:700; }
-.bi.on { color:#fff; } .bi.on svg { color:#ff3b4a; }
+.bi.on { color:#fff; } .bi.on svg { color:#ff5fa2; }
 .bsport { flex:0 0 auto; width:64px; height:64px; margin:0 4px 2px; padding:0; border:0; border-radius:50%; background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; }   /* 10/21 night (owner): just the ball, no ring, no words */
 .bsport img { display:block; width:100%; height:100%; object-fit:contain; pointer-events:none; }
 .bsport.nfl img { width:76px; max-width:none; height:76px; }   /* the football is wide and flat: drawn larger so it reads the same size as the basketball */
 .bsport:active img { transform:scale(.92); }
 .sbar { position:fixed; left:0; right:0; bottom:calc(env(safe-area-inset-bottom,0px) + var(--bnh)); z-index:119; display:none; justify-content:space-between; gap:14px; overflow-x:auto; scrollbar-width:none; box-sizing:border-box;
   height:var(--sbh); padding:0 max(12px,env(safe-area-inset-right,0px)) 0 max(12px,env(safe-area-inset-left,0px));
-  background:rgba(8,8,12,.72); -webkit-backdrop-filter:blur(18px) saturate(1.3); backdrop-filter:blur(18px) saturate(1.3); border-top:1px solid rgba(255,255,255,.1); }
+  background:rgba(24,15,40,.72); -webkit-backdrop-filter:blur(18px) saturate(1.3); backdrop-filter:blur(18px) saturate(1.3); border-top:1px solid rgba(255,255,255,.1); }
 .sbar::-webkit-scrollbar { display:none; }
 body.sbar-on .sbar { display:flex; }
 .si { flex:none; display:flex; align-items:center; height:100%; padding:0 2px; box-sizing:border-box; border-top:3px solid transparent; color:#8d95a3; text-decoration:none; font-size:13px; font-weight:800; white-space:nowrap; }
-.si.on { color:#fff; border-top-color:#ff3b4a; }
+.si.on { color:#fff; border-top-color:#ff5fa2; }
 @media (min-width:600px) { .sbar { justify-content:center; gap:26px; } .si { font-size:14px; } .bnav { justify-content:center; gap:28px; } .bi { flex:0 0 84px; } }
 /* room for the bars: the page starts under the top bar and ends above the bottom bar(s) */
 body.bnav-on .wrap { padding-top:calc(var(--tbh) + 8px); padding-bottom:calc(env(safe-area-inset-bottom,0px) + var(--bnh) + 28px); }
@@ -68,23 +71,23 @@ body.bnav-on .toast { bottom:calc(env(safe-area-inset-bottom,0px) + var(--bnh) +
 /* 10/22 (owner: "it stays at the top and I can just scroll up and down ... the blurriness in the back"): every page title is pinned under the top
    bar on a see-through blurred band; its drop-downs sit on the right (Shell.dd) and Bets carries My bets | Model bets under it */
 body.bnav-on .phead { position:sticky; top:calc(env(safe-area-inset-top,0px) + var(--tbh)); z-index:60; margin:6px -12px 10px; padding:8px 14px 8px;
-  background:#0b0b10; border-bottom:1px solid rgba(255,255,255,.12); }   /* 10/21 night (owner picked sketch A, solid): nothing shows through the title, so a card scrolled under it never looks like one box with it */
+  background:#170f28; border-bottom:1px solid rgba(255,255,255,.12); }   /* 10/21 night (owner picked sketch A, solid): nothing shows through the title, so a card scrolled under it never looks like one box with it */
 @media (min-width:1100px) { body.bnav-on .phead { margin-left:-28px; margin-right:-28px; padding-left:30px; padding-right:30px; } }
 html.desktop body.bnav-on .phead { margin-left:-24px; margin-right:-24px; padding-left:26px; padding-right:26px; }   /* the NBA page's computer gutter is 24 px */
 body.bnav-on .phead .sw { order:2; flex:none; display:flex; gap:16px; margin:0 8px; background:none; border:0; border-radius:0; padding:0; }
 body.bnav-on .phead .sw button { flex:none; min-height:30px; padding:0 0 2px; border-radius:0; background:none; border-bottom:3px solid transparent; color:#8d95a3; font-size:14px; font-weight:800; }
-body.bnav-on .phead .sw button.on { color:#fff; background:none; border-bottom-color:#ff3b4a; }
+body.bnav-on .phead .sw button.on { color:#fff; background:none; border-bottom-color:#ff5fa2; }
 body.bnav-on .phead .pdd { order:3; margin:0 8px; gap:16px; }   /* 10/21 night (owner): the drop-downs on the LEFT, smaller */
 body.bnav-on .phead .pdd .wksel select { font-size:12.5px !important; min-height:28px; }
 body.bnav-on .phead .pdd .wksel { padding-right:16px; } body.bnav-on .phead .pdd .wksel::after { width:10px; height:10px; margin-top:-5px; }
 body.bnav-on .phead .pt { display:flex; flex-wrap:nowrap; align-items:center; justify-content:center; text-align:center; column-gap:10px; flex:1 0 100%; margin-bottom:4px; }   /* 10/21 night (owner): the title centered */
 body.bnav-on .phead .pt span:not(.ptab) { flex-basis:100%; }
 /* 10/21 night (owner: "make the header of the tab all capitalized. BOLD AND BIG"; "why is the updated time there? Remove it") */
-body.bnav-on .phead .pt b { font-family:"Archivo Black","Arial Black",Impact,sans-serif; text-transform:uppercase; font-weight:400; font-size:clamp(28px,8.4vw,54px); letter-spacing:.01em; line-height:1.02; color:#e4e4e8; -webkit-text-stroke:.6px #e4e4e8; }
+body.bnav-on .phead .pt b { font-family:"Bowlby One","Arial Black",Impact,sans-serif; text-transform:uppercase; font-weight:400; font-size:clamp(28px,8.6vw,56px); letter-spacing:.01em; line-height:1.02; color:#e4e4e8; -webkit-text-stroke:.6px #e4e4e8; }
 #upd-record, #upd-models { display:none !important; }
 @media (max-width:599px) { body.bnav-on .phead .ptab { display:none; } body.bnav-on .phead .pt b { white-space:nowrap; } }   /* a phone: the open tab is named in the sub-tab bar, the title keeps the section's name on one line and never shrinks under its drop-downs: they wrap to a row of their own, still on the right */
 /* a game page: the team card is the pinned header */
-body.bnav-on.game-on #detail .dtop { position:sticky; top:calc(env(safe-area-inset-top,0px) + var(--tbh) + 4px); z-index:60; background-color:#0b0b10 !important; }   /* solid under the team colours (same rule as the titles) */
+body.bnav-on.game-on #detail .dtop { position:sticky; top:calc(env(safe-area-inset-top,0px) + var(--tbh) + 4px); z-index:60; background-color:#170f28 !important; }   /* solid under the team colours (same rule as the titles) */
 
 @media (min-width:1100px) { #home { max-width:760px; margin:0 auto; } }   /* a computer: the lists stay readable instead of spanning the whole screen */
 /* home: NFL / NBA live lists (sketch "Home, games live") */
