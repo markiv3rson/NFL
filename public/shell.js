@@ -14,8 +14,8 @@
     model: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/>',
   };
   const svg = (k, w = 17) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
-  // 10/21 night (owner: "Bold the title across the top and remove the buttons"): the top bar is SLATEZZ alone; the refresh ring moved next to the page titles,
-  // Models moved to a two-half NFL | NBA bar on Home only; the bell is gone.
+  // 10/21 night (owner: "Bold the title across the top and remove the buttons"): the top bar is SLATEZZ (as big as fits) + the bell at the right; the refresh
+  // icon moved to the right of the page headers over its time, Models to a two-half NFL | NBA bar on Home only.
   // 10/22 (owner: "make it like a real app" -> option K + Home, sketches claude.ai/artifact/2BKAuErJmQaTMpCR8JrmJj): the side menu is gone. A pinned bar
   // on top (SLATEZZ, the bell, Models, the refresh ring) and a bar at the bottom: Home · Lines · [NFL / NBA] · Props · Bets; the round button in the
   // middle switches the sport. Pages with sub tabs (Player props, Model bets) get their tabs in a bar right above it. Both sports.
@@ -27,7 +27,7 @@
   const TYPES = { nfl: [["best", "Best Legs"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"]],
     nba: [["pp6", "6 Leg"], ["pp8", "8 Leg"], ["pp10", "10 Leg"], ["sgp4", "Same Game"]] };
   const OTHER = { nfl: "nba", nba: "nfl" };
-  const REF_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>';
+  const REF_SVG = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>';
   const REFRESH_ON = (p) => p === "lines" || p === "td" || /^props/.test(p) || /^modelbets/.test(p);   // the pages the refresh button matters on
   // which bottom tab a page belongs to; the sub tabs a page shows
   const tabOf = (p) => p === "home" ? "home" : p === "lines" ? "lines" : p === "td" || /^props/.test(p) ? "props" : p === "mybets" || /^modelbets/.test(p) || p === "record" ? "bets" : "";
@@ -54,6 +54,7 @@
       Shell.panel = panel; const sp = Shell.sport, t = tabOf(panel);
       if (!document.querySelectorAll) return;
       document.querySelectorAll("#bnav [data-b]").forEach((a) => a.classList.toggle("on", a.dataset.b === t));
+      document.querySelectorAll("#tbar [data-pg]").forEach((a) => a.classList.toggle("on", a.dataset.pg === panel));
       const subs = subsOf(sp, panel), sb = document.getElementById("sbar");
       if (sb) { sb.innerHTML = subs ? subs.map(([id, l]) => `<a class="si${id === panel ? " on" : ""}" data-nav href="${URL_[sp]}#${id}">${l}</a>`).join("") : "";
         const on = sb.querySelector && sb.querySelector(".si.on"); if (on && on.scrollIntoView && sb.scrollWidth > sb.clientWidth) { try { on.scrollIntoView({ block: "nearest", inline: "center" }); } catch {} } }
@@ -89,9 +90,10 @@
       const d = iso ? new Date(iso) : null; if (!d || isNaN(d)) return "—";
       return `${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).replace(/\s?([AP]M)$/, (m, x) => x.toLowerCase())} ${d.getMonth() + 1}/${d.getDate()}`;
     },
+    // just the time under the refresh icon: the one row under the title has no room for words (owner 10/21 night)
     async loadRun() {
       const es = document.querySelectorAll ? document.querySelectorAll(".prun") : []; if (!es.length) return;
-      try { const d = await (await fetch("/api/lastrun", { cache: "no-store" })).json(); const t = "Model Refresh: " + Shell.runTxt(d && d.newest); es.forEach((e) => { e.textContent = t; }); } catch {}
+      try { const d = await (await fetch("/api/lastrun", { cache: "no-store" })).json(); const t = Shell.runTxt(d && d.newest); es.forEach((e) => { e.textContent = t; }); } catch {}
     },
     // a link of the top / bottom / sub-tab bars: switch pages WITHOUT adding history (10/18 night: a back swipe must have nothing to walk through)
     go(href) {
@@ -103,7 +105,8 @@
     init(sport) {
       Shell.sport = sport; const sp = sport, o = OTHER[sp];
       const d = document.createElement("div");
-      d.innerHTML = `<header class="tbar" id="tbar"><a class="slatelogo sgrad" data-nav href="/index.html#home">SLATEZZ</a></header>` +
+      d.innerHTML = `<header class="tbar" id="tbar"><a class="slatelogo sgrad" data-nav href="/index.html#home">SLATEZZ</a>` +
+        `<a class="tib" data-nav data-pg="alerts" href="${URL_[sp]}#alerts" aria-label="Alerts">${svg("bell", 28)}<b class="tcnt" id="mcnt-${sp}-alerts"></b></a></header>` +   // 10/21 night (owner): the bell at the top right
         `<nav class="hmod" id="hmod" aria-label="Model analysis"><a data-nav href="/index.html#models">${svg("bars", 22)}<span>NFL</span></a><a data-nav href="/nba/index.html#models">${svg("bars", 22)}<span>NBA</span></a></nav>` +
         `<nav class="sbar" id="sbar" aria-label="Tabs"></nav>` +
         `<nav class="bnav" id="bnav" aria-label="Main menu">` +
@@ -120,10 +123,12 @@
       // 10/21 night (owner): the refresh ring sits next to the page title on the pages it matters for (Lines, Player props, Model bets), and
       // "Model Refresh: <time>" at the bottom right of that header
       if (document.querySelectorAll) document.querySelectorAll(".panel .phead").forEach((h) => {
-        const pt = h.querySelector(".pt"); if (!pt || h.querySelector(".mref")) return;
+        if (!h.querySelector(".pt") || h.querySelector(".mref")) return;
+        // on the right of the header: the red refresh icon centered over "Model Refresh: <time>" (owner 10/21 night)
+        const box = document.createElement("div"); box.className = "prefbox";
         const b = document.createElement("button"); b.className = "mref"; b.setAttribute("aria-label", "Rerun both models"); b.innerHTML = REF_SVG; b.onclick = Shell.refresh;
-        const tb = pt.querySelector("b"); if (tb && tb.after) tb.after(b); else pt.appendChild(b);
-        const r = document.createElement("span"); r.className = "prun"; r.textContent = "Model Refresh: —"; h.appendChild(r);
+        const r = document.createElement("span"); r.className = "prun"; r.textContent = "—";
+        box.appendChild(b); box.appendChild(r); h.appendChild(box);
       });
       const bs = document.getElementById("bsport");
       if (bs) bs.onclick = (e) => Shell.go(e.currentTarget.dataset.href || `${URL_[o]}#lines`);
