@@ -36,7 +36,17 @@ NEIGH = 2000
 MODEL_DIR = os.environ.get("MODEL_DIR", "/data")
 MODEL_FILE = os.path.join(MODEL_DIR if os.path.isdir(MODEL_DIR) else nd.CACHE, "nba_prop_model_v1.pkl")
 BASE = ["b_min", "l5_min", "gp", "start1", "t_for", "o_against", "home"] + [f"b_{s}" for s in STATS] + [f"l5_{s}" for s in STATS]
-feats_for = lambda stat: BASE + [f"o_{stat}"]
+# 10/21: teammates out. A REGULAR (20+ minutes a game) who played one of the team's last 3 games and sits this one (live: the
+# official Out / Doubtful list) -- his minutes / points / assists / rebounds a game, summed per team, and how many. Walk-forward
+# 2023-26: points miss 4.875 -> 4.815 (better every season), PRA 6.331 -> 6.226, rebounds / assists a little; in games with 40+
+# minutes out the old model was 1.3 points (PRA 2.0) low. Real Polymarket lines 2025-26: Brier better for points / rebounds /
+# assists, points rows 65%+ won 57.4 -> 61.5%. Threes / steals / blocks gain nothing -> left without it.
+VAC = ["vac_min", "vac_pts", "vac_ast", "vac_reb", "vac_n"]
+VAC_STATS = ("pts", "reb", "ast", "pra")
+VAC_MIN = 20
+PROP_V = 2                  # model version: a saved model of another version keeps serving and is rebuilt in the background
+feats_for = lambda stat: BASE + [f"o_{stat}"] + (VAC if stat in VAC_STATS else [])
+OLD_FEATS = lambda stat: BASE + [f"o_{stat}"]   # a version-1 model file (no "feats" saved)
 
 
 def norm_name(n):
@@ -104,7 +114,30 @@ def table(B):
     B = B.merge(T[["game_id", "team", "t_for"]], on=["game_id", "team"], how="left")
     B = B.merge(T[["game_id", "team", "t_against"]].rename(columns={"team": "opp", "t_against": "o_against"}), on=["game_id", "opp"], how="left")
     B = B.merge(A[["opp", "game_id", "pos"] + ["o_" + c for c in STATS]], on=["opp", "game_id", "pos"], how="left")
-    return B
+    return _vacated(B)
+
+
+def _vacated(B):
+    """vac_* per team-game: regulars (b_min 20+) who played one of the team's last 3 games, are not in this one and were not traded
+    (their next game, any team, is for this team again, or they play no more this season). Values = their pre-game averages at the
+    last game they played."""
+    G = B.drop_duplicates(["game_id", "team"])[["game_id", "team", "season", "date"]].sort_values("date")
+    G["gi"] = G.groupby(["team", "season"]).cumcount()
+    B = B.merge(G[["game_id", "team", "gi"]], on=["game_id", "team"], how="left")
+    o = B.sort_values(["athlete_id", "date"])
+    B.loc[o.index, "next_team"] = o.groupby("athlete_id")["team"].shift(-1).values
+    cols = ["b_min", "b_pts", "b_ast", "b_reb", "next_team"]
+    parts = [B[["athlete_id", "team", "season"] + cols].assign(gi=B["gi"] + k, k=k) for k in (1, 2, 3)]
+    C = pd.concat(parts, ignore_index=True).sort_values("k").drop_duplicates(["athlete_id", "team", "season", "gi"])   # his latest game for the team
+    C = C[(C["b_min"].fillna(0) >= VAC_MIN) & (C["next_team"].isna() | (C["next_team"] == C["team"]))]
+    here = B[["athlete_id", "team", "season", "gi"]].assign(here=1)
+    C = C.merge(here, on=["athlete_id", "team", "season", "gi"], how="left")
+    C = C[C["here"].isna()]
+    V = C.groupby(["team", "season", "gi"]).agg(vac_min=("b_min", "sum"), vac_pts=("b_pts", "sum"), vac_ast=("b_ast", "sum"),
+                                                vac_reb=("b_reb", "sum"), vac_n=("athlete_id", "size")).reset_index()
+    B = B.merge(V, on=["team", "season", "gi"], how="left")
+    for c in VAC: B[c] = B[c].fillna(0.0)
+    return B.drop(columns=["next_team"])
 
 
 eligible = lambda df: df[df["b_min"].fillna(0) >= MIN_B_MIN]
@@ -116,8 +149,8 @@ def _fit(train, stat):
     return HistGradientBoostingRegressor(max_iter=300, learning_rate=0.05, max_depth=4, min_samples_leaf=80, l2_regularization=1.0, random_state=0).fit(train[f].astype(float).values, train[stat].values)
 
 
-def predict_mu(model, df, stat):
-    return np.maximum(model.predict(df[feats_for(stat)].astype(float).values), 0.05)
+def predict_mu(model, df, stat, feats=None):
+    return np.maximum(model.predict(df[feats or feats_for(stat)].astype(float).values), 0.05)
 
 
 class Spread:
@@ -155,6 +188,10 @@ def _state(B, cur):
     """One 'next game' feature row per player: this season to date (if the season's file is out) else last season as the prior with
     gp 0 -- exactly the shape of a season-opener row in training. Plus the live team tables."""
     have_cur = cur in set(B["season"].unique())
+    last3 = {}
+    if have_cur:
+        T3 = B[B["season"] == cur].drop_duplicates(["game_id", "team"]).sort_values("date")
+        last3 = {t: set(d["game_id"].tail(3)) for t, d in T3.groupby("team")}
     rows = []
     last = B.groupby("athlete_id").tail(1)
     for aid, r in last.set_index("athlete_id").iterrows():
@@ -174,6 +211,7 @@ def _state(B, cur):
             x["b_" + c] = np.nan if den == 0 else ((0 if gp == 0 else sm * gp) + PRIOR_G * (0 if np.isnan(pm_) else pm_)) / den
             x["l5_" + c] = this[c].tail(5).mean() if gp else np.nan
         x["start1"] = float(this["starter"].iloc[-1]) if gp else np.nan
+        x["last3"] = bool(gp) and r["game_id"] in last3.get(r["team"], ())   # played one of his team's last 3 games (teammates-out input)
         rows.append(x)
     S = pd.DataFrame(rows)
     teams, opp_pos = {}, {}
@@ -197,7 +235,8 @@ def build_live(log=print):
     spread = {stat: (oof[stat]["mu"].values, oof[stat]["y"].values) for stat in STATS}
     S, teams, opp_pos = _state(B, cur)
     out = {"built": dt.datetime.utcnow().isoformat(timespec="seconds") + "Z", "cur": cur, "seasons": sorted(int(s) for s in E["season"].unique()),
-           "models": models, "spread": spread, "state": S, "teams": teams, "opp_pos": opp_pos, "n": int(len(E))}
+           "models": models, "spread": spread, "state": S, "teams": teams, "opp_pos": opp_pos, "n": int(len(E)),
+           "v": PROP_V, "feats": {stat: feats_for(stat) for stat in STATS}}
     os.makedirs(os.path.dirname(MODEL_FILE), exist_ok=True)
     with open(MODEL_FILE + ".part", "wb") as f: pickle.dump(out, f)
     os.replace(MODEL_FILE + ".part", MODEL_FILE)
@@ -232,6 +271,29 @@ def _player_rows(L, away, home):
     return by, anyone
 
 
+Q_SITS = 0.455             # share of Questionable rotation players who sit (official reports 2021-26, nba_injuries weights)
+
+
+def _vac_live(L, teams, outs, quest=()):
+    """Teammates out tonight, the training's shape: regulars (20+ minutes a game) on the team who played one of its last 3 games and
+    are on the official Out / Doubtful list (each counted whole) or Questionable (counted Q_SITS of the way: the expected minutes out).
+    {team: {vac_min, vac_pts, vac_ast, vac_reb, vac_n}}"""
+    S = L["state"]; out = {}; quest = set(quest) - set(outs)
+    for t in teams:
+        d = S[(S["team"] == t) & (S["nname"].isin(outs) | S["nname"].isin(quest))]
+        if "last3" in d: d = d[d["last3"].fillna(False).astype(bool)]
+        d = d[d["b_min"].fillna(0) >= VAC_MIN]
+        w = np.where(d["nname"].isin(outs), 1.0, Q_SITS)
+        out[t] = {"vac_min": float((d["b_min"] * w).sum()), "vac_pts": float((d["b_pts"] * w).sum()), "vac_ast": float((d["b_ast"] * w).sum()),
+                  "vac_reb": float((d["b_reb"] * w).sum()), "vac_n": float(w.sum())}
+    return out
+
+
+def needs_rebuild():
+    """A saved model of an older version (no teammates-out input) keeps serving until the background rebuild replaces it."""
+    L = load_live(); return L is not None and L.get("v") != PROP_V
+
+
 def chances_many(games):
     """games: [{away, home, outs: [names], lines: [{name, stat, line}]}] -> [{game, rows: [{name, team, stat, line, mu, over, under}]}]"""
     L = load_live()
@@ -242,6 +304,7 @@ def chances_many(games):
         away, home = fix_abbr(g.get("away")), fix_abbr(g.get("home"))
         outs = {norm_name(n) for n in (g.get("outs") or [])}
         by, anyone = _player_rows(L, away, home)
+        vac = _vac_live(L, (away, home), outs, {norm_name(n) for n in (g.get("quest") or [])})
         rows = []
         for ln in g.get("lines") or []:
             stat = str(ln.get("stat") or ""); nn = norm_name(ln.get("name"))
@@ -258,11 +321,13 @@ def chances_many(games):
             x["o_against"] = (L["teams"].get(opp) or {}).get("t_against", np.nan) if opp else np.nan
             op = L["opp_pos"].get((opp, r["pos"])) if opp else None
             x["o_" + stat] = (op or {}).get("o_" + stat, np.nan)
+            x.update(vac.get(team) or {c: 0.0 for c in VAC})
             if not (float(x.get("b_min") or 0) >= MIN_B_MIN): continue
             X = pd.DataFrame([x])
-            for c in feats_for(stat):
+            fs = (L.get("feats") or {}).get(stat) or OLD_FEATS(stat)
+            for c in fs:
                 if c not in X: X[c] = np.nan
-            mu = float(predict_mu(L["models"][stat], X, stat)[0])
+            mu = float(predict_mu(L["models"][stat], X, stat, fs)[0])
             line = float(ln.get("line"))
             over = float(sp[stat].over([mu], [line])[0])
             rows.append({"name": ln.get("name"), "team": team, "stat": stat, "line": line, "mu": round(mu, 2), "over": round(over, 4), "under": round(1 - over, 4)})

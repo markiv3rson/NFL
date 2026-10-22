@@ -72,7 +72,7 @@ def start_background():
         age = season_sim.live_age_hours()
         if age is None or age > 24:
             threading.Thread(target=lambda: (time.sleep(90), _futures_job()), daemon=True).start()
-    if os.environ.get("PROPS_ON_START", "1") == "1" and nba_prop_model.load_live() is None:   # 10/20: the prop model, built once in the background when missing
+    if os.environ.get("PROPS_ON_START", "1") == "1" and (nba_prop_model.load_live() is None or nba_prop_model.needs_rebuild()):   # 10/20: built in the background when missing; 10/21: or saved by older code (the old one keeps serving)
         threading.Thread(target=lambda: (time.sleep(240), _prop_build_bg()), daemon=True).start()
     if daily_rebuild.needs_rebuild(daily_rebuild.status()) and os.environ.get("REBUILD_ON_START", "1") == "1":   # first deploy, or a build from older code
         threading.Thread(target=lambda: (__import__("time").sleep(180), daily_rebuild.run(), _reload()), daemon=True).start()

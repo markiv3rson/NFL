@@ -615,7 +615,7 @@ function renderMineNow() {
   const tiles = `<div class="stats" style="margin-top:10px">` + (past ? `<div class="stat"><div class="k">BETS</div><div class="v mkt">${shown.length}</div><div class="k2">Week ${sel}</div></div>` : `<div class="stat"><div class="k">OPEN BETS</div><div class="v mkt">${nOpen}</div><div class="k2">${money(s.openCost)} staked</div></div>`) +
     `<div class="stat"><div class="k">RECORD</div><div class="v ${tot ? (s.wins / tot >= 0.5 ? "g" : "r") : "dim"}">${tot ? `${s.wins}–${s.losses}` : "—"}</div><div class="k2">settled</div></div>` +
     `<div class="stat"><div class="k">PROFIT</div><div class="v">${cMoney(s.pl)}</div><div class="k2">${sel === "all" ? "this season" : "Week " + sel}</div></div></div>`;
-  $("record-mine").innerHTML = wkChips + ticketRow() + tiles + `<div class="card" style="margin-top:10px">` +
+  $("record-mine").innerHTML = ddSlot($("record-mine"), wkChips) + ticketRow() + tiles + `<div class="card" style="margin-top:10px">` +
     `<div class="sec"><div class="sh">Summary</div>` +
     `<div class="row"><span class="dim">Return · CLV</span><span>${cPct(s.roi)} · ${cPct(s.avgClv)}</span></div>` +
     (() => { const sc = MB.summary && MB.summary.settleCheck; if (!sc || !(sc.agree + sc.disagree)) return "";
@@ -1143,10 +1143,12 @@ const LAB_TABS = [["best", "Best Legs"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset
 let MODELBETS = null, LABTYPE = "best", LABWEEK = null;
 // 10/15 (owner): ONE Bets tab -- My bets on the left (the list as before), Model bets on the right (the model's parlays). The choice is remembered.
 let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
+// 10/21 night (owner): a page's drop-downs go to the right of its title (Shell.dd); without the shell (tests) they stay on top of the block
+function ddSlot(el, html) { if (typeof Shell !== "undefined" && Shell.dd && el && el.closest) { Shell.dd(el, html); return ""; } return html; }
 function applyBetsView() {
-  const bt = $("bets-title"); if (bt) bt.textContent = BETSVIEW === "model" ? `Model bets · ${(LAB_TABS.find(([k]) => k === LABTYPE) || [, ""])[1]}` : "My bets";
+  const bt = $("bets-title"); if (bt) bt.innerHTML = BETSVIEW === "model" ? `Model bets<span class="ptab"> · ${esc((LAB_TABS.find(([k]) => k === LABTYPE) || [, ""])[1])}</span>` : "My bets";
   const m = BETSVIEW === "model", set = (id, on) => { const e = $(id); if (e) e.style.display = on ? "" : "none"; };
-  set("record-mine", !m); set("lab", m);
+  set("record-mine", !m); set("lab", m); set("dd-record-mine", !m); set("dd-lab", m);
 
   document.querySelectorAll("#bets-sw [data-bv]").forEach((b) => b.classList.toggle("on", b.dataset.bv === BETSVIEW));
   if (m) renderLabList();
@@ -1189,7 +1191,7 @@ function propBlocks(games, row, first) {
 }
 function renderProps() {
   const el = $("props"); if (!el) return;
-  const tt = $("props-title"); if (tt) tt.textContent = `Player props · ${propTabLabel(PROPTAB)}`;
+  const tt = $("props-title"); if (tt) tt.innerHTML = `Player props<span class="ptab"> · ${esc(propTabLabel(PROPTAB))}</span>`;
   if (PROPTAB === "first") return renderFirstTd(el);
   const d = PROPS; if (!d) { el.innerHTML = '<div class="s dim" style="margin-top:12px">Loading…</div>'; return; }
   const stat = PROP_STAT[PROPTAB] || "rec_yds", weeks = d.weeks && d.weeks.length ? d.weeks : [d.week], sel = Number(d.week);
@@ -1197,7 +1199,7 @@ function renderProps() {
   const all = (d.games || []).map((g) => ({ ...g, picks: (g.picks || []).filter((p) => p.stat === stat) })).filter((g) => g.picks.length);
   const teams = [...new Set(all.flatMap((g) => g.picks.map((p) => p.team).filter(Boolean)))].sort();
   const games = all.map((g) => ({ ...g, picks: PROPTEAM === "all" ? g.picks : g.picks.filter((p) => p.team === PROPTEAM) })).filter((g) => g.picks.length);
-  el.innerHTML = `<div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">${wk}${teamSel(teams)}</div>` + recTile((d.records || {})[stat] || d.record) + (games.length ? `<div class="pgrid" style="margin-top:6px">${propBlocks(games, propRow)}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
+  el.innerHTML = ddSlot(el, wk + teamSel(teams)) + recTile((d.records || {})[stat] || d.record) + (games.length ? `<div class="pgrid" style="margin-top:6px">${propBlocks(games, propRow)}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
   const pw = $("props-wk"); if (pw && pw.tagName === "SELECT") pw.onchange = () => { PROPWEEK = Number(pw.value); loadProps(); };
   const ps = $("props-team"); if (ps && ps.tagName === "SELECT") ps.onchange = () => { PROPTEAM = ps.value; renderProps(); };
 }
@@ -1212,7 +1214,7 @@ function renderFirstTd(el) {
   const rc = picks.length ? { w: hit, l: picks.length - hit, pct: Math.round((hit / picks.length) * 1000) / 10 } : null;
   const tt = (RES || []).map((r) => r.ftdTeam).filter((t) => t && (t.first === "home" || t.first === "away") && t.home != null), th = tt.filter((t) => (t.home >= t.away ? "home" : "away") === t.first).length;
   const trc = tt.length ? { w: th, l: tt.length - th, pct: Math.round((th / tt.length) * 1000) / 10 } : null;
-  el.innerHTML = `<div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">${teamSel(teams)}</div><div style="display:flex;gap:10px;flex-wrap:wrap">${recTile(trc, "TEAM RECORD")}${recTile(rc, "TOP PICK RECORD")}</div>` + (games.length ? `<div class="pgrid" style="margin-top:6px">${propBlocks(games, propRow, true)}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
+  el.innerHTML = ddSlot(el, teamSel(teams)) + `<div style="display:flex;gap:10px;flex-wrap:wrap">${recTile(trc, "TEAM RECORD")}${recTile(rc, "TOP PICK RECORD")}</div>` + (games.length ? `<div class="pgrid" style="margin-top:6px">${propBlocks(games, propRow, true)}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
   const ps = $("props-team"); if (ps && ps.tagName === "SELECT") ps.onchange = () => { PROPTEAM = ps.value; renderProps(); };
   if (!RES && !renderFirstTd.loading) { renderFirstTd.loading = true; loadRecord().catch(() => {}).finally(() => { renderFirstTd.loading = false; if (PROPTAB === "first") renderProps(); }); }
 }
@@ -1256,7 +1258,7 @@ function renderLabList() {
   // header = the slot + the real kickoff times in it (owner 10/16: "put the right time on there"), e.g. "1 PM GAMES · Sun 1:05 PM · Sun 1:25 PM"
   const slotTimes = {}; for (const x of xs) if (x.kick) { const sl = labSlot(x.kick), tt = tm(x.kick); (slotTimes[sl] = slotTimes[sl] || []).includes(tt) || slotTimes[sl].push(tt); }
   let lastSlot = null; const blocks = xs.map((x) => { const sl = x.kick ? labSlot(x.kick) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl; return h + (x.ou ? ouBlock(x.title, x.p.legs) : pBlock(x.title, x.p, x.across)); });
-  $("lab").innerHTML = chips + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
+  $("lab").innerHTML = ddSlot($("lab"), chips) + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
   const lw = $("lab-wk"); if (lw && lw.tagName === "SELECT") lw.onchange = () => { LABWEEK = Number(lw.value); renderLabList(); };
 }
 // 10/17 (owner): the NFL logo photo behind every NFL page but home (home keeps the Raiders photo); a game page keeps its team colours
@@ -1449,7 +1451,7 @@ document.addEventListener("click", (e) => {
   const gt = e.target.closest("[data-game]"); if (gt) { if (!$("panel-lines").classList.contains("on")) { history.replaceState(null, "", "#lines"); showPanel("lines"); } openGame(gt.dataset.game); return; }
   const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k) { history.replaceState(null, "", "#lines"); showPanel("lines"); openGame(k); } return; }
   const nb = e.target.closest("[data-nbagame]"); if (nb) { location.replace("/nba/index.html#game=" + encodeURIComponent(nb.dataset.nbagame)); return; }   // 10/18 night: no history entry, so a swipe cannot "go back"
-  const bv = e.target.closest("[data-bv]"); if (bv) { BETSVIEW = bv.dataset.bv === "model" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} applyBetsView(); try { window.scrollTo(0, 0); } catch {} return; }
+  const bv = e.target.closest("[data-bv]"); if (bv) { history.replaceState(null, "", bv.dataset.bv === "model" ? "#modelbets" : "#mybets"); routeHash(); return; }   // 10/22: My bets | Model bets inside Bets -- the page key follows, so the sub-tab bar does too
   const lw = e.target.closest("[data-labw]"); if (lw) { LABWEEK = Number(lw.dataset.labw); renderLabList(); return; }
   const gb = e.target.closest("[data-gbw]"); if (gb) { GBGWEEK = gb.dataset.gbw === "all" ? "all" : Number(gb.dataset.gbw); $("gbg").innerHTML = gbgHtml(); return; }
   const ts = e.target.closest(".labslot.tdtog"); if (ts) { tdToggleSlot(ts); return; }   // 10/20 night (owner): open / close a time-slot list

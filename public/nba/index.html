@@ -17,7 +17,7 @@
 <style>
   :root { --bg:#08090b; --card:rgba(3,8,7,.68); --card2:rgba(255,255,255,.04); --line:rgba(255,255,255,.1); --line2:rgba(255,255,255,.07);
     --text:#ececef; --dim:#aab0bd; --faint:#8d95a3; --red:#ff6b6b; --green:#3ddc97; --yellow:#f2cf66; --blue:#ffffff; --gold:#f2cf66; --cyan:#4fe3d0;
-    --violet:#b794ff; --rose:#ffffff; --ggrad:linear-gradient(90deg,#ff3b4a,#7a0a12);   /* 10/18 (owner): Vegas gold -- --blue and --rose hold the gold / pale gold now (every former blue or purple-blue is gold); purple (--violet) stays on the model's own numbers, the Models page and MODEL ANALYSIS; no glow anywhere */ }
+    --violet:#b794ff; --rose:#ffffff; --ggrad:linear-gradient(90deg,#ffb27d,#ff5fa2 55%,#a67cff);   /* 10/18 (owner): Vegas gold -- --blue and --rose hold the gold / pale gold now (every former blue or purple-blue is gold); purple (--violet) stays on the model's own numbers, the Models page and MODEL ANALYSIS; no glow anywhere */ }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html { -webkit-text-size-adjust:100%; text-size-adjust:100%; overscroll-behavior:none; }   /* 10/18 night: no sideways overscroll / back gesture either */
   button, .tile, .al { touch-action:manipulation; -webkit-touch-callout:none; }
@@ -81,11 +81,11 @@
   .btn { font:inherit; font-size:14px; font-weight:700; padding:6px 2px; min-height:32px; border:0; border-radius:0; color:#d3d8e0; background:none; cursor:pointer; }   /* plain text button */
   /* 10/14 (owner): page headers styled like the bottom tab bar (rose glass, icon + title) */
   /* 10/14 (owner): page headers are just the words, big and clear, with a line under them */
-  .phead { margin-top:16px; display:flex; align-items:flex-end; gap:12px; padding:0 2px 10px; position:relative; }
-  .phead::after { content:""; position:absolute; left:0; right:0; bottom:0; height:2px; border-radius:2px; background:rgba(255,255,255,.85); }
+  .phead { margin-top:16px; display:flex; flex-wrap:wrap; align-items:flex-end; gap:6px 12px; padding:0 2px 10px; position:relative; }   /* 10/21 night (owner): no white line under the title; the page's drop-downs sit on its right (.pdd) */
+  .phead .pdd { display:flex; align-items:flex-end; gap:16px; margin-left:auto; flex:none; } .phead .pdd:empty { display:none; } .phead .pdd .wksel { margin-top:0; }
   .phead svg { display:none; }
   body.game-on #panel-lines .phead { display:none; }   /* 10/18 night (owner): Game Lines has a title like every page; on a game page the game card is the header */
-  .phead .pt { display:grid; gap:2px; min-width:0; flex:1; } .phead .pt b { font-size:36px; font-weight:800; color:#fff; line-height:1.05; letter-spacing:-.01em; }
+  .phead .pt { display:grid; gap:2px; min-width:0; flex:1; } .phead .pt b { font-size:40px; font-weight:800; color:#fff; line-height:1.05; letter-spacing:-.01em; }
   .phead .pt span { font-size:12.5px; color:var(--faint); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .phbtn { flex:0 0 auto; font:inherit; font-size:12px; font-weight:700; color:#fff; background:none; border:0; border-radius:999px; padding:6px 0; cursor:pointer; }
   /* tiles */
@@ -146,8 +146,7 @@
   .wksel::after { content:""; position:absolute; right:2px; top:50%; width:14px; height:14px; margin-top:-7px; pointer-events:none; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23d9c4ff' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat center; }   /* 10/17 (owner): no box; the arrow sits after the text and never covers it */
   .wksel select option { background:#0d0e12; color:#fff; }
   .pay { color:#ffcf4a; font-weight:700; white-space:nowrap; } .pay.dim { color:var(--faint); font-weight:400; }
-  .tile.live { border-color:rgba(255,70,90,.95) !important; box-shadow:0 0 18px rgba(255,60,80,.75), inset 0 0 0 1px rgba(255,90,110,.6); animation:livepulse 1.6s ease-in-out infinite; }
-  @keyframes livepulse { 0%,100% { box-shadow:0 0 12px rgba(255,60,80,.55), inset 0 0 0 1px rgba(255,90,110,.5); } 50% { box-shadow:0 0 26px rgba(255,60,80,.95), inset 0 0 0 1px rgba(255,90,110,.8); } }
+  /* 10/21 night (owner): no pulsing red on live tiles -- the only red is the ● LIVE · quarter line */
   .tlogo { width:20px; height:20px; vertical-align:-4px; margin:0 5px 0 0; background:none; }
   .pm { display:inline-flex; width:14px; height:14px; border-radius:3px; align-items:center; justify-content:center; vertical-align:-2px; margin-right:4px; overflow:hidden; }   /* 10/20 night (owner): the real Polymarket logo (public/polymarket.png) */
   .pm img { width:100%; height:100%; display:block; }
@@ -218,7 +217,7 @@
    @keyframes cdflip { 0% { transform:rotateX(0); } 50% { transform:rotateX(90deg); } 100% { transform:rotateX(0); } }
   @keyframes mreel { 50% { opacity:.4; } }
   .card.modelglow { border-color:rgba(255,255,255,.28); }   /* 10/18 (owner): no glow -- a model parlay card looks like any other card */
-  @media (prefers-reduced-motion: reduce) { .tile.live, .card.modelglow, .stamp.go { animation:none; } }
+  @media (prefers-reduced-motion: reduce) { .card.modelglow, .stamp.go { animation:none; } }
   /* Computer (wide screen + mouse; app.js sets html.desktop): the app fits the whole screen -- the content spans the window,
      and the market numbers sit next to their labels instead of at the far right. The phone layout is untouched. */
   html.desktop .wrap { max-width:none; padding-left:24px; padding-right:24px; }
@@ -233,7 +232,7 @@
   @media (min-width:1100px) { .wrap { max-width:none; padding-left:28px; padding-right:28px; } .tiles { grid-template-columns:repeat(4,minmax(0,1fr)); }  }
   @media (min-width:1600px) { .tiles { grid-template-columns:repeat(5,minmax(0,1fr)); } }
 </style>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Share+Tech+Mono&display=swap">
 <link rel="stylesheet" href="/shell.css">
 </head>
 <body>

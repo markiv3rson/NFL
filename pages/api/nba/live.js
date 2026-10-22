@@ -13,7 +13,9 @@ export function parseLive(json) {
     if (!a || !h) continue;
     const S = c.status || ev.status || {}, st = (S.type && S.type.state) || "pre";
     const period = Number(S.period) || 0, clock = S.displayClock || "";
-    const lbl = st === "post" ? "FINAL" : st === "in" ? (S.type && /half/i.test(S.type.detail || "") ? "Half" : `${period > 4 ? "OT" : "Q" + period} ${clock}`.trim()) : "";
+    const q = period > 4 ? "OT" : "Q" + period, det = String((S.type && (S.type.detail || S.type.shortDetail)) || "");
+    // 10/21 night (owner screenshot "Q1 0.0"): the break between quarters reads "End Q1" (clock at 0, or ESPN's "End of 1st Quarter")
+    const lbl = st === "post" ? "FINAL" : st === "in" ? (/half/i.test(det) && !/end of/i.test(det) ? "Half" : /end of/i.test(det) || /^0(\.0|:00)?$/.test(String(clock).trim()) ? `End ${q}` : `${q} ${clock}`.trim()) : "";
     out[`${a} @ ${h}`] = { a: Number(away.score) || 0, h: Number(home.score) || 0, st, lbl };
   }
   return out;

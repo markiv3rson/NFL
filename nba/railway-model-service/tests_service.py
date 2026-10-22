@@ -533,6 +533,37 @@ try:
 finally:
     nd.player_box = _pb
 
+# 10/21: teammates out (a regular who played one of the last 3 games and sits this one; a traded player is not "out")
+f2 = fake[fake.season == 2026].copy()
+f2["game_date"] = [str((pd.Timestamp("2025-11-01") + pd.Timedelta(days=int(g) % 1000)).date()) for g in f2.game_id]
+f2 = f2[~((f2.athlete_id == "BOS0") & (f2.game_id == 2026020))]                      # BOS0 (30 min) sits game 20
+f2 = f2[~((f2.athlete_id == "BOS1") & (f2.game_id >= 2026030))]                      # BOS1 leaves BOS after game 29 ...
+mv = fake[(fake.season == 2026) & (fake.athlete_id == "BOS1") & (fake.game_id >= 2026031)].copy()
+mv["team_abbreviation"], mv["opponent_team_abbreviation"], mv["home_away"] = "DET", "BOS", "away"   # ... and plays for DET from game 31
+mv["game_date"] = [str((pd.Timestamp("2025-11-01") + pd.Timedelta(days=int(g) % 1000)).date()) for g in mv.game_id]
+f2 = pd.concat([f2, mv], ignore_index=True)
+nd.player_box = lambda s: f2 if s == 2026 else None
+try:
+    T2 = npm_.table(npm_.load_box([2026]))
+    g20 = T2[(T2.game_id == 2026020) & (T2.team == "BOS")]; g20d = T2[(T2.game_id == 2026020) & (T2.team == "DET")]
+    b0 = T2[(T2.athlete_id == "BOS0") & (T2.game_id == 2026019)].b_min.iloc[0]
+    ok((g20.vac_n == 1).all() and (abs(g20.vac_min - b0) < 1e-9).all() and (g20d.vac_n == 0).all(), "prop model: a regular who sits -> his teammates carry his minutes as vacated, the other team none")
+    ok((T2[(T2.game_id == 2026030) & (T2.team == "BOS")].vac_n == 0).all() and (T2[(T2.game_id == 2026021) & (T2.team == "BOS")].vac_n == 0).all(), "prop model: a traded player is not vacated; back the next game -> nothing vacated")
+    ok(all(c in npm_.feats_for("pts") for c in npm_.VAC) and not any(c in npm_.feats_for("3pm") for c in npm_.VAC), "prop model: teammates-out inputs on points / rebounds / assists / PRA only")
+    S3, _, _ = npm_._state(npm_.load_box([2026]), 2026)
+    S3["nname"] = S3["athlete_id"].str.lower()          # the made-up names differ only by a digit, which norm_name drops
+    L = {"state": S3}
+    v = npm_._vac_live(L, ("BOS", "DET"), {"bos2"})
+    b2 = float(S3[S3.athlete_id == "BOS2"].b_min.iloc[0])
+    ok(abs(v["BOS"]["vac_min"] - b2) < 1e-9 and v["BOS"]["vac_n"] == 1 and v["DET"]["vac_n"] == 0, "prop model: live, an Out regular who played lately = vacated for his team")
+    vq = npm_._vac_live(L, ("BOS",), set(), {"bos2"})
+    ok(abs(vq["BOS"]["vac_min"] - b2 * npm_.Q_SITS) < 1e-9 and abs(vq["BOS"]["vac_n"] - npm_.Q_SITS) < 1e-9, "prop model: live, a Questionable regular counts 45.5% as out (the share that sits)")
+    S3.loc[S3.athlete_id == "BOS2", "last3"] = False
+    ok(npm_._vac_live({"state": S3}, ("BOS",), {"bos2"})["BOS"]["vac_n"] == 0, "prop model: live, a player out for weeks is already out of the averages -> not vacated again")
+    ok(npm_.needs_rebuild.__doc__ and npm_.PROP_V == 2, "prop model: version 2 (an older saved model keeps serving until rebuilt)")
+finally:
+    nd.player_box = _pb
+
 print(f"{bad} of {n} checks FAILED" if bad else f"all {n} service checks passed")
 sys.exit(1 if bad else 0)
 
