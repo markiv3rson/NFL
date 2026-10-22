@@ -35,7 +35,7 @@ function headDrops(g, id, noWarn = false) {
 // or a price moved 3¢+), then the latest -- with a count of how many checks were quiet.
 function historyRows(g) {
   const hs = (g.history || []).filter((h) => h.poly);
-  if (!hs.length) return '<div class="s">None yet.</div>';
+  if (!hs.length) return '<div class="s empty">None yet.</div>';
   // One row per set of numbers: a new row only when the spread/total line changes or a price moves 3¢+. While the
   // numbers stay the same, the row keeps its start time and just updates "last checked".
   const key = (p) => ({ sl: p.spread ? p.spread.homeSpread : null, sp: p.spread ? p.spread.home : null, tl: p.total ? p.total.line : null, tp: p.total ? p.total.over : null, ml: p.ml ? p.ml.home : null });
@@ -196,14 +196,18 @@ function winnerOf(g) {
   const home = ph > 0.5, price = g.poly && g.poly.ml ? (home ? g.poly.ml.home : g.poly.ml.away) : null;
   return { game: g.key, team: home ? g.home : g.away, opp: home ? g.away : g.home, where: home ? "home" : "away", p: home ? ph : 1 - ph, price };
 }
+// 10/22 (owner: "MAKE IT LOOK LIKE A TABLE LIST ... words on one side and numbers on the other ... percentages in a vertical line"): a Models row = the
+// name on the LEFT (+ a small line under it), its numbers in fixed columns on the right under a small header, like the Player props rows. Both sports.
+const tHead = (h, cls = "") => `<div class="row trow th t${h.length} ${cls}"><span></span>${h.map((x) => `<span>${x}</span>`).join("")}</div>`;
+const tRow = (lab, sub, cells, cls = "") => `<div class="row trow t${cells.length} ${cls}"><span>${lab}${sub ? `<i class="tsub">${sub}</i>` : ""}</span>${cells.map((c) => `<span>${c}</span>`).join("")}</div>`;
 function winnersBox() {
   const list = S.games.filter((g) => !g.started).map(winnerOf).filter(Boolean).sort((a, b) => b.p - a.p);
-  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Favorite in every game</div>` +
+  return `<div class="card" style="margin-top:10px"><div class="inner"><div class="sh">Favorite in every game</div>` + (list.length ? tHead(["WIN", "PRICE"]) : "") +
     (list.slice(0, WINALL ? 99 : 8).map((x, i) => { const g = S.games.find((y) => y.key === x.game), cp = g && !g.started ? straightPicks(g, 0) : [], sp0 = cp.find((c) => !/^(Over|Under)\b/.test(c.pick) && !/\bML\b/.test(c.pick)), tt0 = cp.find((c) => /^(Over|Under)\b/.test(c.pick)),
         sp = sp0 ? { label: sp0.pick, gap: 99 } : null, tt = tt0 ? { label: tt0.pick, gap: 99 } : null;   // review fix 10/14: the CARD's pick (CLAUDE.md: never show the game model's own side as a pick)
       const tdp = g ? (g.td || []).filter((r) => r.fair != null && !/^(out|doubtful)$/i.test(r.injury || "")).sort((a, b) => b.fair - a.fair)[0] : null;   // the game's most likely scorer
-      return `<div class="row" style="display:block"><div style="display:flex;justify-content:space-between;gap:8px"><span>${i + 1}. <b>${esc(x.team)}</b> over ${esc(x.opp)}</span><span>${Math.round(x.p * 100)}%${x.price ? ` <span class="dim">· ${Math.round(x.price * 100)}¢</span>` : ""}</span></div>` +
-        `<div class="s">Spread <b>${sp ? esc(sp.label) : "—"}</b>${sp && sp.gap <= 1 ? ' <span class="dim">(agrees)</span>' : ""} · Total <b>${tt ? esc(tt.label) : "—"}</b>${tt && tt.gap <= 1 ? ' <span class="dim">(agrees)</span>' : ""} · TD <b>${tdp ? `${esc(tdp.player)} ${Math.round(tdp.fair)}%` : "—"}</b></div></div>`; }).join("") || '<div class="s">No lines yet.</div>') +
+      return tRow(`${i + 1}. <b>${esc(x.team)}</b> over ${esc(x.opp)}`, `Spread <b>${sp ? esc(sp.label) : "—"}</b> · Total <b>${tt ? esc(tt.label) : "—"}</b> · TD <b>${tdp ? `${esc(tdp.player)} ${Math.round(tdp.fair)}%` : "—"}</b>`,
+        [`${Math.round(x.p * 100)}%`, x.price ? `${Math.round(x.price * 100)}¢` : "—"]); }).join("") || '<div class="s">No lines yet.</div>') +
     (list.length > 8 ? `<div class="center" style="margin-top:6px"><button class="btn" id="win-all">${WINALL ? "Show top 8 only" : `Show all ${list.length} games`}</button></div>` : "") + `</div></div>`;
 }
 // "What changed" (9/30): Polymarket line moves since your last visit on this device.
@@ -533,10 +537,11 @@ function gbgHtml() {
   // picks as the tiles and the Card picks rows; earlier weeks show what their card showed then. The old game model's own side is never shown.
   const res1 = (x) => (x.result === "W" ? '<span class="g">W</span>' : x.result === "L" ? '<span class="r">L</span>' : x.result === "P" ? "P" : '<span class="dim">…</span>');
   const row = (r) => { const cp = ((COMBOS && COMBOS.card && COMBOS.card.byGame) || {})[`${r.week}|${r.game}`];
-    const body = cp && cp.length ? cp.slice().sort((a, b) => (!!a.pts - !!b.pts) || (a.kind === "total") - (b.kind === "total")).map((x) => `${x.pts ? '<span class="dim">w/ pts</span> ' : ""}${esc(x.pick)} ${res1(x)}`).join(" · ")
-      : '<span class="dim">—</span>';
-    return `<div class="row"><span>${esc(r.game)} <span class="dim">wk ${r.week} · ${r.awayScore}–${r.homeScore}</span></span><span>${body}</span></div>`; };
-  return `<div class="chips" id="gbg-chips">${wks.map((w) => `<button data-gbw="${w}" class="${String(sel) === String(w) ? "on" : ""}">Week ${w} (${GBG_RES.filter((r) => r.week === w).length})</button>`).join("")}<button data-gbw="all" class="${sel === "all" ? "on" : ""}">All</button></div>` + list.map(row).join("");
+    // 10/22 (owner: table list): the game + its final score as a small heading, then two rows (PICK, w/ POINTS) in SPREAD | TOTAL columns
+    const cell = (pts, kind) => { const x = (cp || []).find((y) => !!y.pts === pts && (y.kind === "total") === (kind === "total")); return x ? `${esc(x.pick)} ${res1(x)}` : '<span class="dim">—</span>'; };
+    return `<div class="s tgame">${esc(r.game)} <span class="dim">wk ${r.week} · ${r.awayScore}-${r.homeScore}</span></div>` +
+      tRow("PICK", "", [cell(false, "spread"), cell(false, "total")], "tg") + tRow("w/ POINTS", "", [cell(true, "spread"), cell(true, "total")], "tg"); };
+  return `<div class="chips" id="gbg-chips">${wks.map((w) => `<button data-gbw="${w}" class="${String(sel) === String(w) ? "on" : ""}">Week ${w} (${GBG_RES.filter((r) => r.week === w).length})</button>`).join("")}<button data-gbw="all" class="${sel === "all" ? "on" : ""}">All</button></div>` + tHead(["SPREAD", "TOTAL"], "tg") + list.map(row).join("");
 }
 // Bets analysis (10/2): where your money wins and loses, from the legs of your typed-in combos (account bets do not list legs).
 // Per leg type: how often it hit against the price you paid (hit rate minus price, in points); per combo size: record and return.
@@ -551,13 +556,13 @@ function betsAnalysis(bets) {
     for (const l of legs) { if (l.result !== "W" && l.result !== "L") continue; const k = byKind[l.kind] = byKind[l.kind] || { n: 0, w: 0, price: 0, pn: 0 }; k.n++; k.w += l.result === "W" ? 1 : 0; if (Number(l.price) > 0) { k.price += Number(l.price); k.pn++; } nLegs++; }
     if (b.result === "W" || b.result === "L") { const z = bySize[legs.length] = bySize[legs.length] || { n: 0, w: 0, cost: 0, pl: 0 }; z.n++; z.w += b.result === "W" ? 1 : 0; z.cost += b.cost; z.pl += b.pl || 0; }
   }
-  if (!nLegs) return '<div class="s">None yet.</div>';
+  if (!nLegs) return '<div class="s empty">None yet.</div>';
   const small = (n) => (n < 30 ? '' : "");
   const legRows = Object.keys(byKind).sort().map((kk) => { const k = byKind[kk], hit = k.w / k.n * 100, paid = k.pn ? k.price / k.pn * 100 : null, d = paid == null ? null : hit - paid;
     return `<div class="row"><span>${LK[kk] || kk} <span class="dim">· ${k.w}–${k.n - k.w}</span></span><span>hit <b>${Math.round(hit)}%</b>${paid == null ? "" : ` · paid ${Math.round(paid)}¢ · <b class="${d > 3 ? "g" : d < -3 ? "r" : "dim"}">${d > 0 ? "+" : "−"}${Math.abs(d).toFixed(0)} pts</b>`}${small(k.n)}</span></div>`; }).join("");
   const sizeRows = Object.keys(bySize).map(Number).sort((a, b) => a - b).map((z) => { const k = bySize[z];
     return `<div class="row"><span>${z === 1 ? "Singles" : z + "-leg combos"} <span class="dim">· ${k.n}</span></span><span>${k.w} won · ${cMoney(k.pl)}${k.cost ? ` <span class="dim">(${cPct(k.pl / k.cost)})</span>` : ""}${small(k.n)}</span></div>`; }).join("");
-  return `<div class="s"><b>By leg type</b></div>${legRows}<div class="s" style="margin-top:8px"><b>By combo size</b></div>${sizeRows || '<div class="s dim">None yet.</div>'}` +
+  return `<div class="s"><b>By leg type</b></div>${legRows}<div class="s" style="margin-top:8px"><b>By combo size</b></div>${sizeRows || '<div class="s dim empty">None yet.</div>'}` +
     "";
 }
 // The numbers in the Bets tiles and Summary, from the bets being shown. One function so a week's numbers and the season's always add up.
@@ -628,7 +633,7 @@ function renderMineNow() {
     `<div class="row"><span class="dim">Expected · market</span><span>${money(s.expMarket)} (${cMoney(s.expMarket - s.openCost)})</span></div>` +
     `<div class="row"><span class="dim">Expected · your model</span><span>${s.modelCovered ? `${money(s.expModel)} (${cMoney(s.expModel - s.expModelCost)})` : "—"}</span></div></div>`) +
     `<div class="fold" data-drop="settled"><span>${past ? "Results" : "Settled bets"}</span><span>▾</span></div>` +
-    `<div class="drop${past ? " open" : ""}" id="settled">${(past ? shown : done).map(betRow).join("") || '<div class="s">None yet.</div>'}</div>` +
+    `<div class="drop${past ? " open" : ""}" id="settled">${(past ? shown : done).map(betRow).join("") || '<div class="s empty">None yet.</div>'}</div>` +
     `<div class="fold" data-drop="ban"><span>Analysis</span><span>▾</span></div><div class="drop" id="ban">${betsAnalysis(MB.bets)}</div>` +
     `</div>` +
     `<div class="center"><button class="btn" id="sync-btn">↻ Sync account</button></div>`;
@@ -645,8 +650,8 @@ const hitColor = (pct, line) => (pct >= line + 3 ? "var(--green)" : pct >= line 
 function winnersBands() {
   const B = (S && S.winners && S.winners.bands) || [];
   const rows = B.filter((x) => x.n).map((x) => { const hit = x.hit * 100, said = x.said * 100;
-    return `<div class="row"><span class="dim">Said ${esc(x.label)} · ${plural(x.n, "pick")}</span><span>${x.w}–${x.l} · <b>${Math.round(hit)}%</b> <span class="dim">· said ${Math.round(said)}%</span></span></div>`; }).join("");
-  return rows || '<div class="s">None yet.</div>';
+    return tRow(`Said ${esc(x.label)}`, plural(x.n, "pick"), [`${x.w}–${x.l}`, `<b>${Math.round(hit)}%</b>`, `${Math.round(said)}%`]); }).join("");
+  return rows ? tHead(["RECORD", "WON", "SAID"]) + rows : '<div class="s empty">None yet.</div>';
 }
 // Touchdown chances split by position and by opponent defense (10/5). Same rule as the calibration rows: only players who played,
 // "said" vs "scored" with a margin of error, and "too few to trust" under 30. Opponent strength = the opponent's average points allowed in its OTHER
@@ -674,11 +679,11 @@ function tdPlayersWithDefense(res) {
 }
 function tdByPosition(players) {
   const rows = ["RB", "WR", "TE", "QB"].map((pos) => tdGroupRow(pos, players.filter((p) => p.pos === pos))).join("");
-  return rows || '<div class="s">None yet.</div>';
+  return rows || '<div class="s empty">None yet.</div>';
 }
 function tdByDefense(players) {
   const rows = [["weak", "vs weak defenses"], ["middle", "Against average defenses"], ["strong", "vs strong defenses"]].map(([k, lab]) => tdGroupRow(lab, players.filter((p) => p.def === k))).join("");
-  return rows || '<div class="s">None yet.</div>';
+  return rows || '<div class="s empty">None yet.</div>';
 }
 // One collapsible section: a heading, one plain line saying what it means, then the content. warn = a count shown next to the heading.
 function mSec(id, title, body, warn = 0, open = false) {
@@ -704,14 +709,14 @@ const TRACK_INFO = [["Test picks,", "never shown on a card: recorded and graded 
   ["STACK:", "everything the app knows in one model; confident = its top fifth."]];
 function cardRecBox() {
   const R = (COMBOS && COMBOS.cardRec) || {};
-  const row = (lab, k) => { const b = R[k]; if (!b || !(b.w + b.l)) return `<div class="row" style="grid-column:1/-1"><span class="dim">${lab}</span><span class="dim">—</span></div>`;
-    const pc = Math.round((100 * b.w) / (b.w + b.l)); return `<div class="row" style="grid-column:1/-1"><span class="dim">${lab}</span><span>${b.w}–${b.l} · <b class="${pc >= 56 ? "g" : pc >= 50 ? "y" : "r"}">${pc}%</b>${b.stk ? ` · <span class="${b.ret >= 0 ? "g" : "r"}">${b.ret >= 0 ? "+" : "−"}$${Math.abs(Math.round((b.ret / b.stk) * 100))} per $100</span>` : ""}</span></div>`; };
+  const row = (lab, k) => { const b = R[k]; if (!b || !(b.w + b.l)) return tRow(lab, "", ['<span class="dim">—</span>', '<span class="dim">—</span>', '<span class="dim">—</span>']);
+    const pc = Math.round((100 * b.w) / (b.w + b.l)); return tRow(lab, "", [`${b.w}–${b.l}`, `<b class="${pc >= 56 ? "g" : pc >= 50 ? "y" : "r"}">${pc}%</b>`, b.stk ? `<span class="${b.ret >= 0 ? "g" : "r"}">${b.ret >= 0 ? "+" : "−"}$${Math.abs(Math.round((b.ret / b.stk) * 100))}</span>` : '<span class="dim">—</span>']); };
   const V = (COMBOS && COMBOS.card && COMBOS.card.clv) || {};
   const lv = (lab, x) => { if (!x || !x.n) return ""; const av = x.sum / x.n;
-    return `<div class="row" style="grid-column:1/-1"><span class="dim">${lab}</span><span><b class="${av > 0.05 ? "g" : av < -0.05 ? "r" : "dim"}">${av > 0 ? "+" : av < 0 ? "−" : ""}${Math.abs(av).toFixed(2)} pts</b> · ${x.beat} better, ${x.n - x.beat - x.same} worse, ${x.same} same</span></div>`; };
-  return `<div class="s ihd" style="grid-column:1/-1"><b>Card picks</b>${IBTN}</div>` + ibox(CARD_INFO, "grid-column:1/-1") +
+    return tRow(lab, "", [`<b class="${av > 0.05 ? "g" : av < -0.05 ? "r" : "dim"}">${av > 0 ? "+" : av < 0 ? "−" : ""}${Math.abs(av).toFixed(2)}</b>`, x.beat, x.n - x.beat - x.same, x.same]); };
+  return `<div class="s ihd" style="grid-column:1/-1"><b>Card picks</b>${IBTN}</div>` + ibox(CARD_INFO, "grid-column:1/-1") + tHead(["RECORD", "WIN %", "PER $100"]) +
     row("PICK · spread", "pick|spread") + row("PICK · total", "pick|total") + row("PICK w/ POINTS · spread", "ptspick|spread") + row("PICK w/ POINTS · total", "ptspick|total") +
-    (V.n ? `<div class="s" style="margin-top:8px;grid-column:1/-1"><b>Line value · PICK vs the closing line</b></div>` + lv("Spread", V.spread) + lv("Total", V.total) : "");
+    (V.n ? `<div class="s" style="margin-top:8px;grid-column:1/-1"><b>Line value · PICK vs the closing line</b></div>` + tHead(["PTS", "BETTER", "WORSE", "SAME"]) + lv("Spread", V.spread) + lv("Total", V.total) : "");
 }
 function renderModelNow() {
   if (!MB || !RES || !S) { $("models").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }   // no slate yet: renderAll draws it when the slate lands
@@ -730,7 +735,7 @@ function renderModelNow() {
     // 28% of 29 vs a 35% forecast is normal luck (±18 pts), and calling it "too high" was a false signal.
     const gap = rate - mid;   // 10/19: one rule, no luck allowance (owner rule 6) -- within 5 points = on target, else too high / too low
     const verdict = Math.abs(gap) <= 5 ? '<span class="g">on target</span>' : gap < 0 ? '<span class="r">too high</span>' : '<span class="y">too low</span>';
-    return `<div class="row"><span class="dim">Said ${hi > 100 ? lo + "+" : lo + "–" + hi}% · avg ${Math.round(mid)}%</span><span>scored ${rate.toFixed(0)}% of ${xs.length} · ${verdict}</span></div>`;
+    return tRow(`Said ${hi > 100 ? lo + "+" : lo + "–" + hi}%`, plural(xs.length, "player"), [`${Math.round(mid)}%`, `${rate.toFixed(0)}%`, verdict], "tv");
   }).join("");
   // TD model vs Polymarket: same graded players, scored against the closing price. Brier = average squared miss
   // (lower is better). Market chance = middle of bid/ask when there is a bid (the ask alone includes the spread).
@@ -789,16 +794,16 @@ function renderModelNow() {
       const two = all.filter((p) => p.two != null), ftd = all.filter((p) => p.ftd != null);
       const extra = (two.length ? `<div class="row"><span class="dim">2+ TDs</span><span>${two.filter((p) => p.twoHit).length} · exp ${(two.reduce((a, p) => a + p.two, 0) / 100).toFixed(1)}</span></div>` : "") +
         (ftd.length ? `<div class="row"><span class="dim">First TD</span><span>${ftd.filter((p) => p.ftdHit).length} · exp ${(ftd.reduce((a, p) => a + p.ftd, 0) / 100).toFixed(1)}</span></div>` : "") + firstTdRecord(res);
-      return t1.length ? `${line("#1 per team", t1)}${line("Top 2 per team", t2)}${extra}` : '<div class="s">None yet.</div>'; })();
+      return t1.length ? `${line("#1 per team", t1)}${line("Top 2 per team", t2)}${extra}` : '<div class="s empty">None yet.</div>'; })();
   const wcRows = `<div class="row"><span class="dim">Week ${S.week} loaded</span><span>${plural(wc.games, "game")} · lines ${wc.withLines}/${wc.games} · model ${wc.modelRun ? '<span class="g">✓</span>' : '<span class="y">not run yet</span>'}</span></div>` +
     ((wc.watch || []).length ? `<div class="s" style="margin-top:6px"><b class="y">Watchdog</b>${wc.watch.map((w) => `<div class="warn">⚠ ${esc(w)}</div>`).join("")}</div>` : '<div class="s dim" style="margin-top:6px"></div>');
   $("models").innerHTML = labStats() +
-    mSec("m-line", "1 · Card picks", cardRecBox() + `<div class="s" style="margin-top:8px;grid-column:1/-1"><b>Game by game</b></div><div id="gbg" style="grid-column:1/-1">${games || '<div class="s">None yet.</div>'}</div>`) +
+    mSec("m-line", "1 · Card picks", cardRecBox() + `<div class="s" style="margin-top:8px;grid-column:1/-1"><b>Game by game</b></div><div id="gbg" style="grid-column:1/-1">${games || '<div class="s empty">None yet.</div>'}</div>`) +
     mSec("m-win", "2 · Winners · moneyline", `<div class="s"><b>By chance at kickoff</b></div>` + winnersBands() + winnersBox()) +
     mSec("m-board", "3 · Parlay scoreboard", LAB_SB || '<div class="s">Loading…</div>') +
-    mSec("m-td", "4 · Touchdowns", (recapTd ? `<div class="s"><b>Week ${lw ?? S.week}</b></div>` + recapTd : "") + `<div class="s" style="margin-top:8px"><b>Chances vs results</b></div>` + (tdWaiting ? `<div class="s y">${tdWaiting} waiting for snap counts</div>` : "") + (buckets || '<div class="s">None yet.</div>') + `<div class="s" style="margin-top:8px"><b>Top scorers</b></div>` + topTd +
+    mSec("m-td", "4 · Touchdowns", (recapTd ? `<div class="s"><b>Week ${lw ?? S.week}</b></div>` + recapTd : "") + `<div class="s" style="margin-top:8px"><b>Chances vs results</b></div>` + (tdWaiting ? `<div class="s y">${tdWaiting} waiting for snap counts</div>` : "") + (buckets ? tHead(["AVG SAID", "SCORED", "CHECK"], "tv") + buckets : '<div class="s empty">None yet.</div>') + `<div class="s" style="margin-top:8px"><b>Top scorers</b></div>` + topTd +
       (() => { const pl = tdPlayersWithDefense(res); return `<div class="s" style="margin-top:8px"><b>By position</b></div>` + tdByPosition(pl) + `<div class="s" style="margin-top:8px"><b>By opponent defense</b></div>` + tdByDefense(pl); })() +
-      `<div class="s" style="margin-top:8px"><b>Vs Polymarket</b></div>` + (vsMkt || '<div class="s">None yet.</div>')) +
+      `<div class="s" style="margin-top:8px"><b>Vs Polymarket</b></div>` + (vsMkt || '<div class="s empty">None yet.</div>')) +
     mSec("m-ang", "5 · Tracked angles", pickLabBox()) +
     mSec("m-sys", "6 · System", wcRows + stRows, (wc.watch || []).length, !stOk) +
     `<div class="center"><button class="btn" id="export-btn">Export data</button></div>`;
@@ -862,7 +867,7 @@ function trackedRows() {
   const tj = T.tdjump && (T.tdjump.n || T.tdjump.recorded) ? `<div class="row"><span class="dim">TD JUMP (shadow) · chance up 10+ pts</span><span>${T.tdjump.n ? `${T.tdjump.w}–${T.tdjump.l} · ${Math.round(100 * T.tdjump.hit)}%${T.tdjump.said != null ? ` · said ${Math.round(T.tdjump.said)}%` : ""}` : `${T.tdjump.recorded} recorded`}</span></div>` : "";
   const ie = T.injearly && (T.injearly.n || T.injearly.recorded) ? `<div class="row"><span class="dim">INJURY EARLY (shadow)${(T.injearly.fresh && T.injearly.fresh.n) || (T.injearly.cont && T.injearly.cont.n) ? ` · new injury ${rr(T.injearly.fresh)} · continuing ${rr(T.injearly.cont)}` : ""}</span><span>${T.injearly.n ? `${T.injearly.w}–${T.injearly.l} · ${Math.round(100 * T.injearly.hit)}%` : `${T.injearly.recorded} saved`}</span></div>` : "";
   const sk = T.stack && (T.stack.n || T.stack.recorded) ? `<div class="row"><span class="dim">STACK (shadow)${T.stack.confident && T.stack.confident.n ? ` · confident ${rr(T.stack.confident)} · rest ${rr(T.stack.rest)}` : ""}</span><span>${T.stack.n ? `${T.stack.w}–${T.stack.l} · ${Math.round(100 * T.stack.hit)}%` : `${T.stack.recorded} saved`}</span></div>` : "";   // 10/21 STACK shadow
-  return sk + ie + tj || '<div class="s dim">None yet.</div>';
+  return sk + ie + tj || '<div class="s dim empty">None yet.</div>';
 }
 // Decision model (10/9): straight bets only (no teasers, no alt lines), ONE pick per game per market (spread, total): the one
 // with the best record. Two angles on opposite sides of the same total no longer both show.
@@ -937,7 +942,8 @@ function renderLab() {
   // Scoreboard (10/14, owner: "organize it"): the parlays still built, grouped; this season W-L and hit %, then the tested history.
   const GROUPS = [["SAME GAME", [["sgp_best", "2 legs"], ["sgp_best_fill", "2 legs · filled"], ["sgp_3", "3 legs"], ["sgp_upset", "Upset · dog wins + its RB scores"], ["sgp_st", "Spread + total"]]],
     ["BEST BETS", [["best_2", "Top 2 picks"], ["best_3", "Top 3 picks"]]],
-    ["TOUCHDOWNS", [["td_likely_2", "2 likeliest scorers"], ["td_likely_3", "3 likeliest scorers"]]]];   // 10/19: 3 legs at most (the 4-leg rows are gone; their saved records stay)
+    ["TOUCHDOWNS", [["td_likely_2", "2 likeliest scorers"], ["td_likely_3", "3 likeliest scorers"]]],
+    ["PLAYER PROPS", [["pp6", "6 legs"], ["pp8", "8 legs"], ["pp10", "10 legs"]]]];   // 10/19: 3 legs at most (the 4-leg rows are gone; their saved records stay)
   const TESTED = { sgp_best_fill: 49.5, sgp_3: 30.2, sgp_upset: 25.1, td_likely_2: 46.7, td_likely_3: 32.2 };   // research (CLAUDE.md); same-game rates = the 10/19 filters, 2019-25; TD pair / triple = walk-forward TD model 2021-25, 90 weeks (10/20)
   const hist = (k) => (TESTED[k] != null ? `${TESTED[k]}%` : "—");
   const now = (k) => { const b = board[k]; if (!b || !b.decided) return '<span class="dim">waiting</span>'; const l = b.decided - b.hits;
@@ -1137,9 +1143,9 @@ function sgpBox(g) {
 }
 // Model bets: the parlay types are menu sub tabs (Over/Under, Best Legs, 3 Leg, 2 Leg, Upset; 10/19: 3 legs at most, the 4-leg tabs are gone), the week a drop-down;
 // each shows only its parlays, one column, in kickoff order. The current week comes from the live slate (results from the saved copies once a game starts); past weeks from /api/modelbets.
-const FOUR_NAMES = { best_2: "2 best green picks", best_3: "3 best green picks", td_likely_2: "2 most likely TD scorers", td_likely_3: "3 most likely TD scorers" };
+const FOUR_NAMES = { best_2: "2 best green picks", best_3: "3 best green picks", td_likely_2: "2 most likely TD scorers", td_likely_3: "3 most likely TD scorers", pp6: "Player props · 6 legs", pp8: "Player props · 8 legs", pp10: "Player props · 10 legs" };
 // 10/17 (owner): Over/Under first, then the parlays in this order and with these names
-const LAB_TABS = [["best", "Best Legs"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"]];   // 10/20 night (owner): Over/Under and Spread + Total tabs removed ("not needed"); the Spread + Total parlays are still saved and graded   // 10/17 parlay lab: Upset; 10/19 (owner: "three max ... cut all the four legs"): 4 Leg, 4 Leg (My Style), Different Game Parlays gone
+const LAB_TABS = [["best", "Best Legs"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"], ["pp6", "6 Leg"], ["pp8", "8 Leg"], ["pp10", "10 Leg"]];   // 10/21 night: + Player props parlays 6 / 8 / 10 legs   // 10/20 night (owner): Over/Under and Spread + Total tabs removed ("not needed"); the Spread + Total parlays are still saved and graded   // 10/17 parlay lab: Upset; 10/19 (owner: "three max ... cut all the four legs"): 4 Leg, 4 Leg (My Style), Different Game Parlays gone
 let MODELBETS = null, LABTYPE = "best", LABWEEK = null;
 // 10/15 (owner): ONE Bets tab -- My bets on the left (the list as before), Model bets on the right (the model's parlays). The choice is remembered.
 let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
@@ -1165,6 +1171,7 @@ async function loadProps() {
   try { const d = await (await fetch(`/api/props${PROPWEEK ? `?week=${PROPWEEK}` : ""}`, { cache: "no-store" })).json(); if (d && d.ok) { PROPS = d; renderProps(); } } catch {}
 }
 // 10/21: rc === undefined = still loading -> "…" (the Best TD tile read 0–0 for ~7 s before the graded results arrived); null = nothing graded = 0–0
+const tileOnly = (h) => h.replace(/^<div class="stats"[^>]*>/, "").replace(/<\/div>$/, "");   // one tile without its row (10/21 night: two record tiles share ONE centered row)
 const recTile = (rc, label = "RECORD") => `<div class="stats" style="margin-top:10px"><div class="stat"><div class="k">${label}</div><div class="v ${rc && rc.pct >= 56 ? "g" : rc && rc.pct >= 53 ? "lg" : !rc || rc.pct == null ? "" : "y"}">${rc === undefined ? "…" : `${rc ? rc.w || 0 : 0}–${rc ? rc.l || 0 : 0}`}</div><div class="k2">${!rc || rc.pct == null ? "—" : rc.pct + "% won"}</div></div></div>`;
 const teamSel = (teams) => `<div class="wksel"><select id="props-team" aria-label="Team"><option value="all"${PROPTEAM === "all" ? " selected" : ""}>All teams</option>${teams.map((t) => `<option value="${esc(t)}"${PROPTEAM === t ? " selected" : ""}>${esc(t)}</option>`).join("")}</select></div>`;
 // 10/20 (owner: "label these by Models Chance and Polymarket Prices"; later the same night: "keep all model purple"): the MODEL column is the model's number, purple
@@ -1199,7 +1206,7 @@ function renderProps() {
   const all = (d.games || []).map((g) => ({ ...g, picks: (g.picks || []).filter((p) => p.stat === stat) })).filter((g) => g.picks.length);
   const teams = [...new Set(all.flatMap((g) => g.picks.map((p) => p.team).filter(Boolean)))].sort();
   const games = all.map((g) => ({ ...g, picks: PROPTEAM === "all" ? g.picks : g.picks.filter((p) => p.team === PROPTEAM) })).filter((g) => g.picks.length);
-  el.innerHTML = ddSlot(el, wk + teamSel(teams)) + recTile((d.records || {})[stat] || d.record) + (games.length ? `<div class="pgrid" style="margin-top:6px">${propBlocks(games, propRow)}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
+  el.innerHTML = ddSlot(el, wk + teamSel(teams)) + recTile((d.records || {})[stat] || d.record) + (games.length ? `<div class="pgrid" style="margin-top:6px">${propBlocks(games, propRow)}</div>` : '<div class="s dim empty" style="margin-top:12px">None yet.</div>');
   const pw = $("props-wk"); if (pw && pw.tagName === "SELECT") pw.onchange = () => { PROPWEEK = Number(pw.value); loadProps(); };
   const ps = $("props-team"); if (ps && ps.tagName === "SELECT") ps.onchange = () => { PROPTEAM = ps.value; renderProps(); };
 }
@@ -1214,7 +1221,7 @@ function renderFirstTd(el) {
   const rc = picks.length ? { w: hit, l: picks.length - hit, pct: Math.round((hit / picks.length) * 1000) / 10 } : null;
   const tt = (RES || []).map((r) => r.ftdTeam).filter((t) => t && (t.first === "home" || t.first === "away") && t.home != null), th = tt.filter((t) => (t.home >= t.away ? "home" : "away") === t.first).length;
   const trc = tt.length ? { w: th, l: tt.length - th, pct: Math.round((th / tt.length) * 1000) / 10 } : null;
-  el.innerHTML = ddSlot(el, teamSel(teams)) + `<div style="display:flex;gap:10px;flex-wrap:wrap">${recTile(trc, "TEAM RECORD")}${recTile(rc, "TOP PICK RECORD")}</div>` + (games.length ? `<div class="pgrid" style="margin-top:6px">${propBlocks(games, propRow, true)}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
+  el.innerHTML = ddSlot(el, teamSel(teams)) + `<div class="stats" style="margin-top:10px">${tileOnly(recTile(trc, "TEAM RECORD"))}${tileOnly(recTile(rc, "TOP PICK RECORD"))}</div>` + (games.length ? `<div class="pgrid" style="margin-top:6px">${propBlocks(games, propRow, true)}</div>` : '<div class="s dim empty" style="margin-top:12px">None yet.</div>');
   const ps = $("props-team"); if (ps && ps.tagName === "SELECT") ps.onchange = () => { PROPTEAM = ps.value; renderProps(); };
   if (!RES && !renderFirstTd.loading) { renderFirstTd.loading = true; loadRecord().catch(() => {}).finally(() => { renderFirstTd.loading = false; if (PROPTAB === "first") renderProps(); }); }
 }
@@ -1235,6 +1242,9 @@ function labParlays(week, type) {
   const rec = (MODELBETS && MODELBETS.weeks && MODELBETS.weeks[week] && MODELBETS.weeks[week][type]) || [];
   if (!(S && Number(week) === Number(S.week))) return rec.map((p) => ({ p, game: p.game, kick: p.kickoff, title: p.game ? gameLogos(p.game) : esc(FOUR_NAMES[p.strategy] || p.strategy), across: !p.game }));
   const pick = { 2: (g) => g.sgp.best, 3: (g) => g.sgp.three, upset: (g) => g.sgp.upset, st: (g) => g.sgp.st };
+  if (/^pp\d+$/.test(type)) {   // Player props parlays (10/21 night): the week's saved copy once it exists (the one graded), the live build before that
+    const saved = MODELBETS && Array.isArray(MODELBETS.saved) && MODELBETS.saved.includes(Number(week));
+    return (saved ? rec : ((S && S.propParlays) || []).filter((p) => p && p.strategy === type && Array.isArray(p.legs))).map((p) => ({ p, game: null, kick: null, title: esc(FOUR_NAMES[p.strategy] || p.strategy), across: true })); }
   if (type === "best") {   // Best Legs (10/19): once the week's copy is saved (Saturday morning) only it shows -- the one graded; the live build before that
     const saved = MODELBETS && Array.isArray(MODELBETS.saved) && MODELBETS.saved.includes(Number(week));
     return (saved ? rec : ((S && S.bestLegs) || []).filter((p) => p && Array.isArray(p.legs))).map((p) => ({ p, game: null, kick: null, title: esc(FOUR_NAMES[p.strategy] || p.strategy), across: true })); }
@@ -1258,7 +1268,7 @@ function renderLabList() {
   // header = the slot + the real kickoff times in it (owner 10/16: "put the right time on there"), e.g. "1 PM GAMES · Sun 1:05 PM · Sun 1:25 PM"
   const slotTimes = {}; for (const x of xs) if (x.kick) { const sl = labSlot(x.kick), tt = tm(x.kick); (slotTimes[sl] = slotTimes[sl] || []).includes(tt) || slotTimes[sl].push(tt); }
   let lastSlot = null; const blocks = xs.map((x) => { const sl = x.kick ? labSlot(x.kick) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl; return h + (x.ou ? ouBlock(x.title, x.p.legs) : pBlock(x.title, x.p, x.across)); });
-  $("lab").innerHTML = ddSlot($("lab"), chips) + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
+  $("lab").innerHTML = ddSlot($("lab"), chips) + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim empty" style="margin-top:12px">None yet.</div>');
   const lw = $("lab-wk"); if (lw && lw.tagName === "SELECT") lw.onchange = () => { LABWEEK = Number(lw.value); renderLabList(); };
 }
 // 10/17 (owner): the NFL logo photo behind every NFL page but home (home keeps the Raiders photo); a game page keeps its team colours

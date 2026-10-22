@@ -358,7 +358,7 @@ function renderProps() {
   const blocks = games.map((g) => { const sl = g.start ? nbaSlot(g.start) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
     // 10/20 night (owner): a game being played says LIVE on its props block -- its rows are the copy locked at tip-off (a started game is never re-scored), graded from the box score
     return h + `<div class="par"><div class="pbh c"><span class="pbn">${gameLogos(g.game)}${g.start && !g.final && Date.parse(g.start) <= Date.now() ? ' <span class="lvb">● LIVE</span>' : ""}</span></div>${head}${teamRows(g)}</div>`; });
-  el.innerHTML = ddSlot(el, dsel + tsel) + tile + (games.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
+  el.innerHTML = ddSlot(el, dsel + tsel) + tile + (games.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim empty" style="margin-top:12px">None yet.</div>');
   const pd = $("props-day"); if (pd && pd.tagName === "SELECT") pd.onchange = () => { PROPDAY = pd.value; loadProps(); };
   const ps = $("props-team"); if (ps && ps.tagName === "SELECT") ps.onchange = () => { PROPTEAM = ps.value; renderProps(); };
 }
@@ -393,7 +393,7 @@ function renderBets() {
     `<div class="stat"><div class="k">PROFIT</div><div class="v ${(rc.pl || 0) >= 0 ? "g" : "r"}">${(rc.pl || 0) >= 0 ? "+" : "−"}$${Math.abs(rc.pl || 0).toFixed(2)}</div><div class="k2">settled</div></div>` +
     `<div class="stat"><div class="k">STAKED</div><div class="v">$${(rc.staked || 0).toFixed(2)}</div><div class="k2">settled</div></div></div>` +
     `<div class="card" style="margin-top:10px"><div class="sec"><div class="sh">Open</div>${(j.open || []).length ? rowsOf(j.open, false) : '<div class="s dim">None.</div>'}</div>` +
-    `<div class="fold" data-drop="settled"><span>Settled bets</span><span>▾</span></div><div class="drop" id="settled">${settled.length ? rowsOf(settled, true) : '<div class="s dim">None yet.</div>'}</div></div>` +
+    `<div class="fold" data-drop="settled"><span>Settled bets</span><span>▾</span></div><div class="drop" id="settled">${settled.length ? rowsOf(settled, true) : '<div class="s dim empty">None yet.</div>'}</div></div>` +
     `<div class="center"><button class="btn" id="sync-btn">↻ Sync account</button></div>`;
   for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
   const md = $("mb-day"); if (md && md.tagName === "SELECT") md.onchange = () => { MBDAY = md.value; renderBets(); };
@@ -479,7 +479,7 @@ function renderLabList() {
   const xs = sel ? labParlays(sel, LABTYPE) : [];
   const slotTimes = {}; for (const x of xs) if (x.start && !x.across) { const sl = nbaSlot(x.start), tt = tipTime(x.start); (slotTimes[sl] = slotTimes[sl] || []).includes(tt) || slotTimes[sl].push(tt); }
   let lastSlot = null; const blocks = xs.map((x) => { const sl = x.start && !x.across ? nbaSlot(x.start) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl; return h + pBlock(x.title, x.p, x.across); });
-  $("lab").innerHTML = ddSlot($("lab"), chips) + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim" style="margin-top:12px">None yet.</div>');
+  $("lab").innerHTML = ddSlot($("lab"), chips) + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim empty" style="margin-top:12px">None yet.</div>');
   const lw = $("lab-wk"); if (lw && lw.tagName === "SELECT") lw.onchange = () => { LABDAY = lw.value; renderLabList(); };
 }
 
@@ -505,7 +505,13 @@ function labStats(rc, clv) {
   const clvTile = `<div class="stat" style="grid-column:1/-1"><div class="k">LINE VALUE</div><div class="v ${av == null ? "dim" : av > 0 ? "g" : av < 0 ? "r" : "y"}">${av == null ? "—" : `${av > 0 ? "+" : ""}${av.toFixed(2)}`}</div><div class="k2">${av == null ? "—" : `pts vs close · beat it ${V.beatPct}% · ${plural(V.n, "pick")}`}</div></div>`;
   return `<div class="stats">${statTile("MONEYLINE", rc.ml, "right")}${statTile("SPREAD PICKS", rc.spread, "covered")}${statTile("TOTAL PICKS", rc.total, "right")}${clvTile}</div>`;
 }
-const recRow = (lab, e, said = false) => (e ? `<div class="row"><span class="dim">${lab}</span><span>${e.w + e.l ? `${e.w}–${e.l}${e.push ? "–" + e.push : ""} · <b>${e.pct}%</b>` : ""}${said && e.said != null ? ` <span class="dim">said ${e.said}%</span>` : ""}${e.per100 != null ? ` · <span class="${e.per100 >= 0 ? "g" : "r"}">${e.per100 >= 0 ? "+" : "−"}$${Math.abs(e.per100)} per $100</span>` : ""}${e.pending ? ` <span class="dim">(${e.pending} pending)</span>` : ""}${!(e.w + e.l) && !e.pending ? '<span class="dim">waiting</span>' : ""}</span></div>` : "");
+// 10/22 (owner: "MAKE IT LOOK LIKE A TABLE LIST ... words on one side and numbers on the other ... percentages in a vertical line"): a Models row = the
+// name on the LEFT (+ a small line under it), its numbers in fixed columns on the right under a small header, like the Player props rows. Both sports.
+const tHead = (h, cls = "") => `<div class="row trow th t${h.length} ${cls}"><span></span>${h.map((x) => `<span>${x}</span>`).join("")}</div>`;
+const tRow = (lab, sub, cells, cls = "") => `<div class="row trow t${cells.length} ${cls}"><span>${lab}${sub ? `<i class="tsub">${sub}</i>` : ""}</span>${cells.map((c) => `<span>${c}</span>`).join("")}</div>`;
+const recRow = (lab, e, said = false) => (e ? tRow(lab, [said && e.said != null ? `said ${e.said}%` : "", e.pending ? `${e.pending} pending` : "", !(e.w + e.l) && !e.pending ? "waiting" : ""].filter(Boolean).join(" · "),
+  [e.w + e.l ? `${e.w}–${e.l}${e.push ? "–" + e.push : ""}` : '<span class="dim">—</span>', e.w + e.l ? `<b>${e.pct}%</b>` : '<span class="dim">—</span>', e.per100 != null ? `<span class="${e.per100 >= 0 ? "g" : "r"}">${e.per100 >= 0 ? "+" : "−"}$${Math.abs(e.per100)}</span>` : '<span class="dim">—</span>']) : "");
+const REC_HEAD = tHead(["RECORD", "WIN %", "PER $100"]);
 function paint(html) {
   return html.replace(/>([^<>]+)</g, (all, t) => ">" + t
     .replace(/(^|[^\d/.])(\d{1,4})–(\d{1,4})(?![\d/%])/g, (m, pre, w, l) => { const n = +w + +l; if (!n) return m; const r = +w / n; return `${pre}<b class="${r >= 0.55 ? "g" : r >= 0.5 ? "y" : "r"}">${w}–${l}</b>`; })
@@ -513,7 +519,7 @@ function paint(html) {
 }
 function winnersBox() {
   const list = (S ? S.games : []).filter((g) => !g.inProgress).map((g) => { const w = mktWin(g); if (!w || w.home === 0.5) return null; const home = w.home > 0.5; return { team: home ? g.home : g.away, opp: home ? g.away : g.home, p: home ? w.home : w.away, price: g.poly.ml[home ? "home" : "away"] }; }).filter(Boolean).sort((a, b) => b.p - a.p);
-  return list.map((x, i) => `<div class="row"><span>${i + 1}. ${tlogo(x.team)}<b>${esc(x.team)}</b> <span class="dim">over ${esc(x.opp)}</span></span><span>${Math.round(x.p * 100)}%${x.price ? ` <span class="dim">· ${cents(x.price)}</span>` : ""}</span></div>`).join("") || '<div class="s dim">No lines yet.</div>';
+  return list.length ? tHead(["WIN", "PRICE"]) + list.map((x, i) => tRow(`${i + 1}. ${tlogo(x.team)}<b>${esc(x.team)}</b> <span class="dim">over ${esc(x.opp)}</span>`, "", [`${Math.round(x.p * 100)}%`, x.price ? cents(x.price) : "—"])).join("") : '<div class="s dim">No lines yet.</div>';
 }
 function futuresRows() {
   const f = FUT;
@@ -536,9 +542,9 @@ function renderModels() {
   const board = `<div class="s"><b>This season · hit vs said · money · past</b></div>` + Object.entries(PTYPES).map(([k, lab]) => { const b = pl[k];
     return `<div class="row"><span>${esc(lab)}</span><span>${b && b.decided ? `${b.hits}–${b.decided - b.hits} · ${b.pct}% <span class="dim">said ${b.said}%</span> <span class="${b.money >= 0 ? "g" : "r"}">${b.money >= 0 ? "+" : "−"}$${Math.abs(Math.round(b.money))}</span>` : b && b.pending ? `<span class="dim">${plural(b.pending, "open")}</span>` : '<span class="dim">waiting</span>'}${PH[k] ? ` · <span class="dim">${PH[k]}</span>` : ""}</span></div>`; }).join("");
   // card picks: PICK (rule / model side), PICK w/ POINTS, moneyline; shadow trackers below
-  const cardRows = `<div class="s ihd"><b>Card picks</b>${IBTN}</div>` + ibox(CARD_INFO) + recRow("PICK · spread", rc["cardpick|spread"]) + recRow("LINE MOVE · spread", rc["rule:linemove|spread"]) + recRow("FATIGUE · spread", rc["rule:fatigue|spread"]) + recRow("ATS REGRESSION · spread", rc["rule:atsreg|spread"]) + recRow("PICK w/ POINTS · spread", rc["ptspick|spread"]) + recRow("PICK · total", rc["cardpick|total"]) + recRow("TOTAL MOVE · total", rc["rule:linemove|total"]) + recRow("SHOT QUALITY · total", rc["rule:shotq|total"]) + recRow("PICK w/ POINTS · total", rc["ptspick|total"]) +
+  const cardRows = `<div class="s ihd"><b>Card picks</b>${IBTN}</div>` + ibox(CARD_INFO) + REC_HEAD + recRow("PICK · spread", rc["cardpick|spread"]) + recRow("LINE MOVE · spread", rc["rule:linemove|spread"]) + recRow("FATIGUE · spread", rc["rule:fatigue|spread"]) + recRow("ATS REGRESSION · spread", rc["rule:atsreg|spread"]) + recRow("PICK w/ POINTS · spread", rc["ptspick|spread"]) + recRow("PICK · total", rc["cardpick|total"]) + recRow("TOTAL MOVE · total", rc["rule:linemove|total"]) + recRow("SHOT QUALITY · total", rc["rule:shotq|total"]) + recRow("PICK w/ POINTS · total", rc["ptspick|total"]) +
     recRow("MODEL SIDE · spread", rc["modelpick|spread"]) + recRow("MODEL SIDE · total", rc["modelpick|total"]) + recRow("MONEYLINE", rc.ml) + recRow("GREEN · 56%+", rc.green, true) + recRow("PRESEASON TEST", rc.test, true) +
-    `<div class="s ihd"><b>Shadow trackers</b>${IBTN}</div>` + ibox(SHADOW_INFO) + recRow("LINE MOVE · at the open", mv.all) + recRow("LINE MOVE · at the number seen", mv["now:all"]) + recRow("INJURY · at the open", mv.inj) + recRow("INJURY · at the number seen", mv["now:inj"]) + recRow("Pinnacle vs Polymarket gap", mv.gap) + recRow("Books vs Polymarket gap", mv.bgap) +
+    `<div class="s ihd"><b>Shadow trackers</b>${IBTN}</div>` + ibox(SHADOW_INFO) + REC_HEAD + recRow("LINE MOVE · at the open", mv.all) + recRow("LINE MOVE · at the number seen", mv["now:all"]) + recRow("INJURY · at the open", mv.inj) + recRow("INJURY · at the number seen", mv["now:inj"]) + recRow("Pinnacle vs Polymarket gap", mv.gap) + recRow("Books vs Polymarket gap", mv.bgap) +
     recRow("Props · 77¢+ hidden rows", (j.props || {}).dear || { w: 0, l: 0 }) + recRow("Props · star out → teammates Over", (j.props || {}).star || { w: 0, l: 0 }) +
     (j.clv && j.clv.n ? `<div class="row"><span class="dim">Closing-line value</span><span>${j.clv.avg > 0 ? "+" : ""}${j.clv.avg} pts · beat the close ${j.clv.beatPct}% of ${j.clv.n}</span></div>` : "");
   const accRows = r ? r.rows.map((x) => `<div class="row"><span class="dim">${esc(x.model)}</span><span>ours <b>${x.ours_same_games}</b> · market <b class="mkt">${x.market}</b> <span class="${x.ours_same_games <= x.market ? "g" : "r"}">${x.ours_same_games <= x.market ? "better" : "worse"}</span></span></div>`).join("") +
