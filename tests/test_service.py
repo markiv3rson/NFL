@@ -99,6 +99,19 @@ try:
 finally:
     urllib.request.urlopen = _orig; _sch.datetime = _dt
 
+# After-deploy rerun (10/22): a new Railway deploy id -> one /api/rerun?src=deploy, saved so a restart of the same deploy does not rerun again; no id -> nothing
+import tempfile as _tf
+_calls = []; _old_bg = _sch._bg; _sch._bg = lambda kind, fn, *a, **k: (_calls.append((kind, a)), True)[1]
+_sch.DEPLOY_SEEN = os.path.join(_tf.mkdtemp(), "seen.txt")
+try:
+    os.environ.pop("RAILWAY_DEPLOYMENT_ID", None); r0 = _sch._after_deploy(wait=0)
+    os.environ["RAILWAY_DEPLOYMENT_ID"] = "dep-1"; r1 = _sch._after_deploy(wait=0); r2 = _sch._after_deploy(wait=0)
+    os.environ["RAILWAY_DEPLOYMENT_ID"] = "dep-2"; r3 = _sch._after_deploy(wait=0)
+    ok(r0 is False and r1 is True and r2 is False and r3 is True and _calls == [("rerun", ("/api/rerun?src=deploy",)), ("rerun", ("/api/rerun?src=deploy",))],
+       "scheduler: one model rerun per new Railway deploy (none without a deploy id, none again for the same deploy)")
+finally:
+    _sch._bg = _old_bg; os.environ.pop("RAILWAY_DEPLOYMENT_ID", None)
+
 # Opponent per-play defense (10/8): earlier games only (no look-ahead), shrunk toward 0
 ns4 = {"np": np, "pd": pd}; exec(src[src.index("DEF_SHRINK_RUN, DEF_SHRINK_PASS"):src.index("FEATS=[")], ns4)
 _p = pd.DataFrame([dict(defteam="TB", game_id=g, week=w, play_type=k, epa=e) for g, w, k, e in [("g1", 1, "run", 1.0), ("g1", 1, "run", 1.0), ("g1", 1, "pass", -1.0), ("g2", 2, "run", 0.5), ("g2", 2, "pass", 2.0)]])
