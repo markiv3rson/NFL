@@ -107,7 +107,7 @@
         `<nav class="bnav" id="bnav" aria-label="Main menu">` +
         `<a class="bi" data-nav data-b="home" href="/index.html#home">${svg("home", 22)}<span>Home</span></a>` +
         `<a class="bi" data-nav data-b="lines" href="${URL_[sp]}#lines">${svg("grid", 22)}<span>Lines</span></a>` +
-        `<button class="bsport" id="bsport" aria-label="Switch to ${o.toUpperCase()}"><b>${sp.toUpperCase()}</b><small>tap: ${o.toUpperCase()}</small></button>` +
+        `<button class="bsport ${sp}" id="bsport" aria-label="Switch to ${o.toUpperCase()}"><img src="/ball-${sp}.png?v=1" alt="${sp.toUpperCase()}"></button>` +   // 10/21 night (owner): just the ball of the sport you are on (cut out of the owner's photos); a tap switches sport
         `<a class="bi" data-nav data-b="props" href="${URL_[sp]}#${PROPS[sp][0][0]}">${svg("props", 22)}<span>Props</span></a>` +
         `<a class="bi" data-nav data-b="bets" href="${URL_[sp]}#mybets">${svg("bets", 22)}<span>Bets</span></a></nav>`;
       while (d.firstChild) document.body.appendChild(d.firstChild);
