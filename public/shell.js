@@ -14,6 +14,7 @@
     model: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/>',
   };
   const svg = (k, w = 17) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
+  // 10/21 night (owner: "Make the SLATEZZ BIGGER ... next to it add the refresh and then the bell"): SLATEZZ big on the left, the refresh ring right next to it, then the bell; Models stays at the far right.
   // 10/22 (owner: "make it like a real app" -> option K + Home, sketches claude.ai/artifact/2BKAuErJmQaTMpCR8JrmJj): the side menu is gone. A pinned bar
   // on top (SLATEZZ, the bell, Models, the refresh ring) and a bar at the bottom: Home · Lines · [NFL / NBA] · Props · Bets; the round button in the
   // middle switches the sport. Pages with sub tabs (Player props, Model bets) get their tabs in a bar right above it. Both sports.
@@ -99,10 +100,8 @@
     init(sport) {
       Shell.sport = sport; const sp = sport, o = OTHER[sp];
       const d = document.createElement("div");
-      d.innerHTML = `<header class="tbar" id="tbar"><div class="tbrand"><a class="tlogo sgrad" data-nav href="/index.html#home">SLATEZZ</a><span class="trun" id="mrun">Model Refresh: —</span></div>` +
-        `<div class="tico"><a class="tib" data-nav data-pg="alerts" href="${URL_[sp]}#alerts" aria-label="Alerts">${svg("bell", 22)}<b class="tcnt" id="mcnt-${sp}-alerts"></b></a>` +
-        `<a class="tib" data-nav data-pg="models" href="${URL_[sp]}#models" aria-label="Model analysis">${svg("bars", 22)}</a>` +
-        `<button class="mref" id="mref" aria-label="Rerun both models"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button></div></header>` +
+      d.innerHTML = `<header class="tbar" id="tbar"><div class="tbrand"><a class="slatelogo sgrad" data-nav href="/index.html#home">SLATEZZ</a><span class="trun" id="mrun">Model Refresh: —</span></div>` +
+        `<div class="tico"><button class="mref" id="mref" aria-label="Rerun both models"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button><a class="tib" data-nav data-pg="alerts" href="${URL_[sp]}#alerts" aria-label="Alerts">${svg("bell", 26)}<b class="tcnt" id="mcnt-${sp}-alerts"></b></a><a class="tib tmod" data-nav data-pg="models" href="${URL_[sp]}#models" aria-label="Model analysis">${svg("bars", 22)}</a></div></header>` +
         `<nav class="sbar" id="sbar" aria-label="Tabs"></nav>` +
         `<nav class="bnav" id="bnav" aria-label="Main menu">` +
         `<a class="bi" data-nav data-b="home" href="/index.html#home">${svg("home", 22)}<span>Home</span></a>` +
