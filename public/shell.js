@@ -28,7 +28,7 @@
     nba: [["pp6", "6 Leg"], ["pp8", "8 Leg"], ["pp10", "10 Leg"], ["sgp4", "Same Game"]] };
   const OTHER = { nfl: "nba", nba: "nfl" };
   // 10/21 night (owner): a white curved arrow on each side of the ball -- left one up, right one down (the switch)
-  const SWAP_ARROW = '<svg viewBox="0 0 16 26" aria-hidden="true"><path d="M11.5 24C4.5 20.5 3.2 12 6.8 6.4" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M2.6 8.6L7.6 1.4L11 9.6Z" fill="currentColor"/></svg>';
+  const SWAP_ARROW = (id) => `<svg viewBox="0 0 16 26" aria-hidden="true"><defs><linearGradient id="${id}" x1="0" y1="26" x2="0" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ec3f9a"/><stop offset=".52" stop-color="#f0805a"/><stop offset="1" stop-color="#f6c560"/></linearGradient></defs><path d="M11.5 24C4.5 20.5 3.2 12 6.8 6.4" fill="none" stroke="url(#${id})" stroke-width="2.6" stroke-linecap="round"/><path d="M2.6 8.6L7.6 1.4L11 9.6Z" fill="url(#${id})"/></svg>`;   // each arrow fades pink -> orange -> yellow (the SLATEZZ colors), owner 10/21 night
   const REF_SVG = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>';
   const REFRESH_ON = (p) => p === "lines" || p === "td" || /^props/.test(p) || /^modelbets/.test(p);   // the pages the refresh button matters on
   // which bottom tab a page belongs to; the sub tabs a page shows
@@ -114,7 +114,7 @@
         `<nav class="bnav" id="bnav" aria-label="Main menu">` +
         `<a class="bi" data-nav data-b="home" href="/index.html#home">${svg("home", 22)}<span>Home</span></a>` +
         `<a class="bi" data-nav data-b="lines" href="${URL_[sp]}#lines">${svg("grid", 22)}<span>Lines</span></a>` +
-        `<button class="bsport ${sp}" id="bsport" aria-label="Switch to ${o.toUpperCase()}"><i class="barr up">${SWAP_ARROW}</i><img src="/ball-${sp}.png?v=1" alt="${sp.toUpperCase()}"><i class="barr dn">${SWAP_ARROW}</i></button>` +   // 10/21 night (owner): just the ball of the sport you are on (cut out of the owner's photos); a tap switches sport
+        `<button class="bsport ${sp}" id="bsport" aria-label="Switch to ${o.toUpperCase()}"><i class="barr up">${SWAP_ARROW("barrg1")}</i><img src="/ball-${sp}.png?v=1" alt="${sp.toUpperCase()}"><i class="barr dn">${SWAP_ARROW("barrg2")}</i></button>` +   // 10/21 night (owner): just the ball of the sport you are on (cut out of the owner's photos); a tap switches sport
         `<a class="bi" data-nav data-b="props" href="${URL_[sp]}#${PROPS[sp][0][0]}">${svg("props", 22)}<span>Props</span></a>` +
         `<a class="bi" data-nav data-b="bets" href="${URL_[sp]}#mybets">${svg("bets", 22)}<span>Bets</span></a></nav>`;
       while (d.firstChild) document.body.appendChild(d.firstChild);
