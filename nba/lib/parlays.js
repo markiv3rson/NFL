@@ -40,13 +40,36 @@ export function buildParlays(games, bestBets) {
   return out.filter(Boolean);
 }
 const PSTAT = { pts: "Pts", reb: "Reb", ast: "Ast", pra: "PRA", "3pm": "3PM", stl: "Stl", blk: "Blk" };
+// 10/22 (owner: "B and C if there's not enough players. When I mean mix is like spreads totals or ml or player props" / "whatever the model thinks best.
+// Run it through our calibration"): the 6 / 8 / 10-leg parlays are built PER GAME from that game's legs -- the card's spread / total PICK and the
+// moneyline PICK when green (56%+; spread and moneyline never both on one game, they win or lose together: the stronger stays) and the game's
+// prop rows (65%+, priced under 77c and under the %, one per player, chance run through the live prop calibration) -- strongest first.
+// A game with fewer legs than a size gives its legs to ONE mixed parlay of that size across the games that were short (C). Chance = product
+// (NBA legs in one game measured independent: spread vs total link 1.00, prop pairs within 0.1%), payout = the legs' prices.
+const sideLegs = (g) => {
+  const c = cardLegs(g).filter((x) => x && x.line != null && x.pct >= GREEN && (x.market === "spread" || x.market === "total")).map((x) => ({ ...leg(g, x), p: x.pct / 100 }));
+  const m = g.ml && g.ml.pick, px = g.poly && g.poly.ml;
+  if (m && (m.tier === "pick" || m.tier === "lean") && m.team && m.pct >= GREEN) { const pr = px ? px[m.team === g.home ? "home" : "away"] : null;
+    c.push({ game: g.key, market: "ml", team: m.team, side: null, line: null, label: m.label || `${m.team} ML`, prob: r3(m.pct / 100), price: pr > 0 && pr < 1 ? pr : null, p: m.pct / 100 }); }
+  const sp = c.find((x) => x.market === "spread"), ml = c.find((x) => x.market === "ml");
+  return sp && ml ? c.filter((x) => x !== (sp.p >= ml.p ? ml : sp)) : c;
+};
+const propLeg = (l) => ({ game: l.game, market: "prop", team: l.team || null, name: l.name, stat: l.stat, side: l.side, line: l.line,
+  label: `${l.name} ${PSTAT[l.stat] || l.stat} ${l.side === "over" ? "Over" : "Under"} ${l.line}`, prob: r3(l.cal ?? l.chance), price: l.price, p: l.cal ?? l.chance });
 export async function buildPropParlays(date, games, now = Date.now(), dayLegs = null) {
-  const legs = dayLegs || await propLegsForDay(date, games, now), out = [];
-  for (const n of PROP_LEGS) { if (legs.length < n) break;
-    const top = legs.slice(0, n), start = top.map((l) => l.start).sort()[0];
-    const p = mk(`pp${n}`, top.map((l) => ({ game: l.game, market: "prop", team: l.team || null, name: l.name, stat: l.stat, side: l.side, line: l.line,
-      label: `${l.name} ${PSTAT[l.stat] || l.stat} ${l.side === "over" ? "Over" : "Under"} ${l.line}`, prob: r3(l.chance), price: l.price })), null, start);
-    if (p) out.push({ ...p, date }); }
+  const props = dayLegs || await propLegsForDay(date, games, now), out = [], short = {};
+  const ahead = (games || []).filter((g) => g.date === date && !g.inProgress && !g.preseason && Date.parse(g.start) > now).sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+  const strip = (ls) => ls.map(({ p, ...l }) => l);
+  for (const g of ahead) {
+    const legs = [...sideLegs(g), ...props.filter((l) => l.game === g.key).map(propLeg)].sort((a, b) => b.p - a.p);
+    for (const n of PROP_LEGS) {
+      if (legs.length >= n) { const pr = mk(`pp${n}`, strip(legs.slice(0, n)), g.key, g.start); if (pr) out.push({ ...pr, date }); }
+      else (short[n] = short[n] || []).push(...legs.map((l) => ({ ...l, start: g.start })));
+    }
+  }
+  for (const n of PROP_LEGS) { const pool = (short[n] || []).sort((a, b) => b.p - a.p); if (pool.length < n) continue;
+    const top = pool.slice(0, n), start = top.map((l) => l.start).sort()[0];
+    const pr = mk(`pp${n}`, strip(top).map(({ start: _s, ...l }) => l), null, start); if (pr) out.push({ ...pr, date }); }
   return out;
 }
 // 10/21 (owner: "For the same game make it 4 leg parlays for each game. Your best choices go in here and make the stake $5"): per game, the 4 strongest
@@ -59,7 +82,7 @@ export async function buildSameGame4(date, games, now = Date.now(), dayLegs = nu
     if (g.date !== date || g.inProgress || g.preseason || !(Date.parse(g.start) > now)) continue;
     const card = cardLegs(g).filter((x) => x && x.line != null && x.pct >= GREEN && (x.market === "spread" || x.market === "total")).map((x) => ({ ...leg(g, x), p: x.pct / 100 }));
     const props = all.filter((l) => l.game === g.key).map((l) => ({ game: g.key, market: "prop", team: l.team || null, name: l.name, stat: l.stat, side: l.side, line: l.line,
-      label: `${l.name} ${PSTAT[l.stat] || l.stat} ${l.side === "over" ? "Over" : "Under"} ${l.line}`, prob: r3(l.chance), price: l.price, p: l.chance }));
+      label: `${l.name} ${PSTAT[l.stat] || l.stat} ${l.side === "over" ? "Over" : "Under"} ${l.line}`, prob: r3(l.cal ?? l.chance), price: l.price, p: l.cal ?? l.chance }));
     const legs = [...card, ...props].sort((a, b) => b.p - a.p).slice(0, 4).map(({ p, ...l }) => l);
     if (legs.length === 4) { const pr = mk("sgp4", legs, g.key, g.start); if (pr) out.push({ ...pr, date }); }
   }

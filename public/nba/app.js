@@ -301,15 +301,16 @@ function closeGame() { DETAIL = null; renderLines(); window.scrollTo(0, LASTY); 
 function bestBets() { return S ? S.bestBets || [] : []; }
 function parlayPicks() { return S && S.parlay && S.parlay.length >= 2 ? S.parlay : []; }
 const legLabel = (x) => `${tlogo(x.team || "")}${esc(x.label)}`;
-function ticketRow() {
-  const B = bestBets(), P = parlayPicks(); if (!B.length && !P.length) return "";
+function ticketRows() {   // 10/22 (owner: "Make all of this its own card ... No columns one card"): Best bets / Parlay as rows of the My bets top card; a tap opens the list under the card
+  const B = bestBets(), P = parlayPicks(); if (!B.length && !P.length) return { rows: "", drops: "" };
   const ch = P.length ? Math.round(P.reduce((a, x) => a * (x.pct / 100), 1) * 100) : null;
-  const t = (drop, k, big, sub) => `<button class="ticket" data-drop="${drop}"><span class="tk">${k}</span><b class="tb">${big}</b><span class="ts">${sub}</span></button>`;
   const bb = (x) => `<div class="bb"><div class="t1"><b class="g">${legLabel(x)}</b><span style="white-space:nowrap">wins <b class="g">${Math.round(x.pct)}%</b></span></div><div class="t2">${esc(x.game)} · ${tm(x.start)}${x.price ? ` · ${cents(x.price)}` : ""}</div></div>`;
-  return `<div class="jrow">${B.length ? t("bestdrop", "BEST BETS", B.length, `green pick${B.length === 1 ? "" : "s"} · tap to open`) : ""}${P.length ? t("parlaydrop", "PARLAY", `${ch}%`, `chance all ${P.length} hit · tap to open`) : ""}</div>` +
-    (B.length ? `<div class="drop" id="bestdrop"><div class="card modelglow"><div class="inner">${B.map(bb).join("")}</div></div></div>` : "") +
-    (P.length ? `<div class="drop" id="parlaydrop"><div class="card modelglow"><div class="inner">${P.map(bb).join("")}</div></div></div>` : "");
+  return { rows: (B.length ? `<div class="row mbt" data-drop="bestdrop"><span class="dim">Best bets</span><span>${B.length} green pick${B.length === 1 ? "" : "s"} <i class="car">▾</i></span></div>` : "") +
+      (P.length ? `<div class="row mbt" data-drop="parlaydrop"><span class="dim">Parlay</span><span>${ch}% · all ${P.length} hit <i class="car">▾</i></span></div>` : ""),
+    drops: (B.length ? `<div class="drop" id="bestdrop"><div class="card modelglow"><div class="inner">${B.map(bb).join("")}</div></div></div>` : "") +
+      (P.length ? `<div class="drop" id="parlaydrop"><div class="card modelglow"><div class="inner">${P.map(bb).join("")}</div></div></div>` : "") };
 }
+const topCard = (rows) => { const T = ticketRows(); return `<div class="card mbtop" style="margin-top:10px"><div class="sec">${T.rows}${rows}</div></div>${T.drops}`; };
 
 // ---------- Bets: My bets | Model bets
 let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
@@ -370,7 +371,7 @@ async function loadBets() {
 }
 const stampFor = (e) => (e.result === "win" || e.result === "loss" ? `<span class="stamp ${e.result === "win" ? "hit" : "miss"}" data-sid="${esc(String(e.id || ""))}">${e.result === "win" ? "HIT!" : "MISS"}</span>` : "");
 function renderBets() {
-  const j = BETS; if (!j || !j.ok) { $("record-mine").innerHTML = ticketRow() + '<div class="card" style="margin-top:10px"><div class="inner"><div class="s dim">Bets unavailable right now.</div></div></div>'; return; }
+  const j = BETS; if (!j || !j.ok) { $("record-mine").innerHTML = topCard('<div class="s dim">Bets unavailable right now.</div>'); return; }
   $("upd-record").textContent = j.syncedAt ? "Synced " + hm(j.syncedAt) : j.keysSet ? "Not synced yet" : "Polymarket keys not set";
   const rc = j.record || {};
   // 10/17 (owner): a Polymarket combo lists its legs under it like NFL's (✓ / ✗, team logo, won leg green, lost leg red)
@@ -389,9 +390,9 @@ function renderBets() {
   const sel = MBDAY === "all" || days.includes(MBDAY) ? MBDAY : (days[days.length - 1] || "all");
   const settled = (j.settled || []).filter((e) => sel === "all" || dayOf(e) === sel);
   const dayPick = `<div class="wksel"><select id="mb-day" aria-label="Day">${days.map((d) => `<option value="${d}"${sel === d ? " selected" : ""}>${dayName(d)}</option>`).join("")}<option value="all"${sel === "all" ? " selected" : ""}>Season</option></select></div>`;
-  $("record-mine").innerHTML = ddSlot($("record-mine"), dayPick) + ticketRow() + `<div class="stats" style="margin-top:10px"><div class="stat"><div class="k">RECORD</div><div class="v ${rc.pct >= 55 ? "g" : rc.pct >= 50 ? "y" : "r"}">${rc.w || 0}–${rc.l || 0}</div><div class="k2">${rc.pct == null ? "—" : rc.pct + "% won"}</div></div>` +
-    `<div class="stat"><div class="k">PROFIT</div><div class="v ${(rc.pl || 0) >= 0 ? "g" : "r"}">${(rc.pl || 0) >= 0 ? "+" : "−"}$${Math.abs(rc.pl || 0).toFixed(2)}</div><div class="k2">settled</div></div>` +
-    `<div class="stat"><div class="k">STAKED</div><div class="v">$${(rc.staked || 0).toFixed(2)}</div><div class="k2">settled</div></div></div>` +
+  $("record-mine").innerHTML = ddSlot($("record-mine"), dayPick) + topCard(`<div class="row"><span class="dim">Record</span><span class="${rc.pct >= 55 ? "g" : rc.pct >= 50 ? "y" : "r"}">${rc.w || 0}–${rc.l || 0}${rc.pct == null ? "" : ` · ${rc.pct}% won`}</span></div>` +
+    `<div class="row"><span class="dim">Profit</span><span class="${(rc.pl || 0) >= 0 ? "g" : "r"}">${(rc.pl || 0) >= 0 ? "+" : "−"}$${Math.abs(rc.pl || 0).toFixed(2)} · settled</span></div>` +
+    `<div class="row"><span class="dim">Staked</span><span>$${(rc.staked || 0).toFixed(2)} · settled</span></div>`) +
     `<div class="card" style="margin-top:10px"><div class="sec"><div class="sh">Open</div>${(j.open || []).length ? rowsOf(j.open, false) : '<div class="s dim">None.</div>'}</div>` +
     `<div class="fold" data-drop="settled"><span>Settled bets</span><span>▾</span></div><div class="drop" id="settled">${settled.length ? rowsOf(settled, true) : '<div class="s dim empty">None yet.</div>'}</div></div>` +
     `<div class="center"><button class="btn" id="sync-btn">↻ Sync account</button></div>`;

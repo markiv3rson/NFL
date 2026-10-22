@@ -994,6 +994,25 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   await R.hset(pr.K_NBAPROPRES(D), "BOS @ NYK", JSON.stringify({ picks: [{ name: "Q", stat: "pts", side: "under", line: 30.5, chance: 0.9, price: 0.85, result: "W" }, { name: "Q", stat: "pts", side: "under", line: 28.5, chance: 0.8, price: 0.8, result: "L" }, { name: "Z", stat: "reb", side: "over", line: 2.5, chance: 0.9, price: 0.6, result: "L" }], star: [{ name: "Jaylen Brown", result: "W" }, { name: "Derrick White", result: "L" }] }));
   const sh = await pr.propShadows([D]); await R.del(pr.K_NBAPROPRES(D));
   ok(sh.dear.w === 1 && sh.dear.l === 0 && sh.star.w === 1 && sh.star.l === 1 && sh.star.pct === 50, "shadow trackers: 77c+ hidden rows one per player + stat (Q's 90% 85c row; Z's 60c row is a page row, not counted); star-out 1-1", sh);
+  { // 10/22 (owner: "B and C if there's not enough players ... mix is like spreads totals or ml or player props" / "Run it through our calibration")
+    const card = (g, sp, tot, ml) => ({ ...g, card: { spread: sp ? { plain: { pick: `${sp[0]} ${sp[1]}`, team: sp[0], line: sp[1], hit: sp[2], side: null } } : null, total: tot ? { plain: { pick: `Under ${tot[0]}`, side: "under", line: tot[0], hit: tot[1] } } : null },
+      ml: ml ? { pick: { tier: "pick", team: ml[0], label: `${ml[0]} ML`, pct: ml[1] } } : null, poly: { ml: { home: 0.7, away: 0.3 } } });
+    const G2 = [card(G[0], ["BOS", -2.5, 58], [220.5, 57], ["BOS", 70]), card(G[1], ["GSW", -1.5, 60], null, ["GSW", 57]), G[2]];
+    // BOS @ NYK: Alpha, Bravo, Charlie + 4 more players + total 57 + ML 70 (spread 58 dropped: the ML is stronger) = 9 legs -> its own 6 and 8, short of 10
+    const extra = []; for (let i = 0; i < 4; i++) extra.push({ name: `Kilo${i}`, stat: "pts", side: "over", line: 9.5, chance: 0.9 - i * 0.01, cal: 0.9 - i * 0.01, price: 0.6, game: "BOS @ NYK", team: "BOS", start: G[0].start });
+    const base = await pr.propLegsForDay(D, G, now);
+    const pp2 = await pl.buildPropParlays(D, G2, now, [...base, ...extra].sort((a, b) => b.cal - a.cal));
+    const bos = pp2.find((p) => p.type === "pp6" && p.game === "BOS @ NYK"), bos8 = pp2.find((p) => p.type === "pp8" && p.game === "BOS @ NYK"), mixed6 = pp2.find((p) => p.type === "pp6" && !p.game), mixed10 = pp2.find((p) => p.type === "pp10" && !p.game);
+    ok(bos && bos.legs.length === 6 && bos.legs.every((l) => l.game === "BOS @ NYK") && bos.start === G[0].start && bos8 && bos8.legs.length === 8 && bos8.legs.some((l) => l.market === "ml" && l.team === "BOS" && l.price === 0.3) && !bos8.legs.some((l) => l.market === "spread")
+      && mixed6 && mixed6.legs.length === 6 && !mixed6.legs.some((l) => l.game === "BOS @ NYK") && !pp2.some((p) => p.type === "pp8" && !p.game) && mixed10 && mixed10.legs.length === 10 && mixed10.legs.some((l) => l.game === "BOS @ NYK")
+      && !pp2.some((p) => p.legs.some((l) => l.market === "ml" && l.game === "LAL @ GSW")),
+      "Prop Parlays (10/22): per game from that game's spread / total / ML / props (spread and ML never both on one game: the stronger stays); a game short of a size gives its legs to one mixed parlay of that size", pp2.map((p) => [p.type, p.game, p.legs.map((l) => l.label)]));
+    await R.hset(pr.K_NBAPROPRES("2027-01-01"), "X @ Y", JSON.stringify({ picks: Array.from({ length: 50 }, (_, i) => ({ name: `P${String.fromCharCode(97 + (i % 26))}${String.fromCharCode(97 + Math.floor(i / 26))}`, stat: "pts", side: "under", line: 20.5, chance: 0.82, price: 0.6, result: i < 35 ? "W" : "L" })) }));
+    await R.set(pr.K_NBAPROPMODEL("2027-01-01", "X @ Y"), JSON.stringify({ rows: [] }));
+    const bands = await pr.propCalibration(now, true); await R.del(pr.K_NBAPROPRES("2027-01-01")); await R.del(pr.K_NBAPROPMODEL("2027-01-01", "X @ Y")); await R.del("nbapropcal");
+    const c = pr.calibrate(0.82, bands);
+    ok(bands[80] && bands[80].n === 50 && Math.abs(bands[80].won - 0.7) < 1e-9 && Math.abs(c - (0.82 + (0.7 - 0.82) * 50 / 150)) < 1e-9 && pr.calibrate(0.66, bands) === 0.66,
+      "prop calibration (10/22): a leg's chance moves toward what its 5-point band really won, shrunk by 100 graded rows (82% band won 70% of 50 -> 78%); a band with no graded rows keeps the model's %", { bands, c }); }
   for (const g of G) { await R.del(pr.K_NBAPROPMODEL(D, g.key)); await R.del(pr.K_NBAPROPS(D, g.key)); }
   const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8"), sl = readFileSync(new URL("../lib/slate.js", import.meta.url), "utf8");
   ok(/\["pp10", "Prop Parlays · 10 Leg"\]/.test(app) && /pp10: "Prop Parlays · 10 legs"/.test(app) && !/\["best4", "Parlay"\]/.test(app) && /Props · 77¢\+ hidden rows/.test(app) && /Props · star out → teammates Over/.test(app) && /buildPropParlays\(d, out, now, legs\)/.test(sl) && /buildSameGame4\(d, out, now, legs\)/.test(sl) && /l\.market !== "prop"/.test(sl),
