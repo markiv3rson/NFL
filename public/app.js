@@ -617,16 +617,19 @@ function renderMineNow() {
   const wkChips = `<div class="wksel"><select id="mb-wk" aria-label="Week">${wks.map((w) => `<option value="${w}"${String(sel) === String(w) ? " selected" : ""}>Week ${w}</option>`).join("")}<option value="all"${sel === "all" ? " selected" : ""}>Season</option></select></div>`;
   const past = sel !== "all" && SW != null && Number(sel) < Number(SW);   // an earlier week: results only (no open bets / expected returns / live account)
   const nOpen = open.length, tot = s.wins + s.losses;
-  const tiles = `<div class="stats" style="margin-top:10px">` + (past ? `<div class="stat"><div class="k">BETS</div><div class="v mkt">${shown.length}</div><div class="k2">Week ${sel}</div></div>` : `<div class="stat"><div class="k">OPEN BETS</div><div class="v mkt">${nOpen}</div><div class="k2">${money(s.openCost)} staked</div></div>`) +
-    `<div class="stat"><div class="k">RECORD</div><div class="v ${tot ? (s.wins / tot >= 0.5 ? "g" : "r") : "dim"}">${tot ? `${s.wins}–${s.losses}` : "—"}</div><div class="k2">settled</div></div>` +
-    `<div class="stat"><div class="k">PROFIT</div><div class="v">${cMoney(s.pl)}</div><div class="k2">${sel === "all" ? "this season" : "Week " + sel}</div></div></div>`;
-  $("record-mine").innerHTML = ddSlot($("record-mine"), wkChips) + ticketRow() + tiles + `<div class="card" style="margin-top:10px">` +
-    `<div class="sec"><div class="sh">Summary</div>` +
+  // 10/22 (owner: "Make all of this its own card ... No columns one card"; "a little darker"): Best bets, Parlay of the week, the open bets / record / profit
+  // tiles and the summary are ONE card, one row each (name left, number right); a tap on Best bets / Parlay opens its list under the card
+  const T = ticketRows(), recCls = tot ? (s.wins / tot >= 0.5 ? "g" : "r") : "dim";
+  const top = `<div class="card mbtop" style="margin-top:10px"><div class="sec">${T.rows}` +
+    (past ? `<div class="row"><span class="dim">Bets</span><span>${shown.length}</span></div>` : `<div class="row"><span class="dim">Open bets</span><span>${nOpen} · ${money(s.openCost)} staked</span></div>`) +
+    `<div class="row"><span class="dim">Record</span><span class="${recCls}">${tot ? `${s.wins}–${s.losses}` : "—"}</span></div>` +
+    `<div class="row"><span class="dim">Profit</span><span>${cMoney(s.pl)} · ${sel === "all" ? "this season" : "Week " + sel}</span></div>` +
     `<div class="row"><span class="dim">Return · CLV</span><span>${cPct(s.roi)} · ${cPct(s.avgClv)}</span></div>` +
     (() => { const sc = MB.summary && MB.summary.settleCheck; if (!sc || !(sc.agree + sc.disagree)) return "";
       return sc.disagree ? `<div class="s y">⚠ Settlement mismatch on ${sc.disagree} combo${sc.disagree === 1 ? "" : "s"}</div>`
         : ""; })() +
-    (past ? "" : `<div class="row"><span class="dim">Open this week</span><span>${money(s.openCost)}</span></div>`) + `</div>` +
+    (past ? "" : `<div class="row"><span class="dim">Open this week</span><span>${money(s.openCost)}</span></div>`) + `</div></div>` + T.drops;
+  $("record-mine").innerHTML = ddSlot($("record-mine"), wkChips) + top + `<div class="card" style="margin-top:10px">` +
     (past || !open.length ? "" : openBySlot(open) +
     `<div class="sec"><div class="sh">Expected returns</div>` +
     `<div class="row"><span class="dim">If everything hits</span><span>${money(s.maxPayout)} (${cMoney(s.maxPayout - s.openCost)})</span></div>` +
@@ -920,13 +923,12 @@ function slotOf(g) {
 // Remembered open/closed (10/9): the page redraws every few seconds during games, which kept reopening the list.
 let GAMEBEST_OPEN = (() => { try { return localStorage.getItem("gameBestOpen") !== "0"; } catch { return true; } })();
 let BEST_OPEN = (() => { try { return localStorage.getItem("bestOpen") !== "0"; } catch { return true; } })();
-// 10/14 (owner: "come up with a better design"): Best bets and Parlay of the week as two casino tickets side by side; tap one to open its list
-function ticketRow() {   // 10/14 (owner): two tickets side by side at the top of the Bets tab -- tap one to open its list
-  const B = bestBets(), P = parlayPicks(); if (!B.length && !P.length) return "";
+function ticketRows() {   // 10/22 (owner): Best bets / Parlay of the week as rows of the My bets top card; a tap opens the list under the card
+  const B = bestBets(), P = parlayPicks(); if (!B.length && !P.length) return { rows: "", drops: "" };
   const ch = P.length ? Math.round(P.reduce((a, x) => a * x.p, 1) * 100) : null;
-  const t = (drop, k, big, sub) => `<button class="ticket" data-drop="${drop}"><span class="tk">${k}</span><b class="tb">${big}</b><span class="ts">${sub}</span></button>`;
-  return `<div class="jrow">${B.length ? t("bestdrop", "BEST BETS", B.length, `green pick${B.length === 1 ? "" : "s"} · tap to open`) : ""}${P.length ? t("parlaydrop", "PARLAY OF THE WEEK", `${ch}%`, `chance all ${P.length} hit · tap to open`) : ""}</div>` +
-    (B.length ? `<div class="drop" id="bestdrop">${bestStrip()}</div>` : "") + (P.length ? `<div class="drop" id="parlaydrop">${parlayStrip()}</div>` : "");
+  return { rows: (B.length ? `<div class="row mbt" data-drop="bestdrop"><span class="dim">Best bets</span><span>${B.length} green pick${B.length === 1 ? "" : "s"} <i class="car">▾</i></span></div>` : "") +
+      (P.length ? `<div class="row mbt" data-drop="parlaydrop"><span class="dim">Parlay of the week</span><span>${ch}% · all ${P.length} hit <i class="car">▾</i></span></div>` : ""),
+    drops: (B.length ? `<div class="drop" id="bestdrop">${bestStrip()}</div>` : "") + (P.length ? `<div class="drop" id="parlaydrop">${parlayStrip()}</div>` : "") };
 }
 function bestStrip() {
   const B = bestBets(); if (!B.length) return "";

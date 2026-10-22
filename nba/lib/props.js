@@ -210,6 +210,28 @@ export async function propShadows(dates) {
 }
 // 10/21 (owner: "6 legs 8 legs and 10 legs ... name it Props Parlays", $5 each): the day's prop rows (the page's rows at the 65% bar, priced under 77c),
 // one leg per player (his highest %), the strongest first; 6 / 8 / 10 legs when the day has that many. Built in nba/lib/parlays.js.
+// 10/22 (owner: "whatever the model thinks best. Run it through our calibration"): the live record of the page's prop rows (one per player + stat,
+// graded W / L) by the model's % in 5-point bands; a parlay leg's chance moves toward what its band really won, shrunk by CAL_K graded rows
+// (no graded rows in its band -> the model's own %). The card's spread / total % (history tables) and the moneyline % (the market's own chance,
+// calibrated on 22,003 games) are already calibrated, so only prop legs go through this. Cached 3 h.
+export const CAL_K = 100;
+export const calBand = (c) => Math.min(95, Math.floor(c * 20 + 1e-9) * 5);
+export async function propCalibration(now = Date.now(), fresh = false) {
+  const r = getRedis(), old = fresh ? null : await getJSON("nbapropcal").catch(() => null);
+  if (old && old.bands && now - Date.parse(old.t) < 3 * 3600e3) return old.bands;
+  const bands = {};
+  for (const d of await nbaPropDays()) { const h = await r.hgetall(K_NBAPROPRES(d)).catch(() => null); if (!h) continue;
+    for (const v of Object.values(h)) { let x; try { x = JSON.parse(v); } catch { continue; }
+      for (const p of onePerPlayer(x.picks || [])) { if (p.result !== "W" && p.result !== "L") continue; const b = (bands[calBand(p.chance)] = bands[calBand(p.chance)] || { n: 0, said: 0, won: 0 });
+        b.n++; b.said += p.chance; if (p.result === "W") b.won++; } } }
+  for (const b of Object.values(bands)) { b.said = b.said / b.n; b.won = b.won / b.n; }
+  await setJSON("nbapropcal", { t: new Date(now).toISOString(), bands }).catch(() => {});
+  return bands;
+}
+export function calibrate(chance, bands) {
+  const b = bands && bands[calBand(chance)]; if (!b || !b.n) return chance;
+  return Math.min(0.99, Math.max(0.01, chance + (b.won - b.said) * (b.n / (b.n + CAL_K))));
+}
 export async function propLegsForDay(date, games, now = Date.now()) {
   const legs = [];
   for (const g of games || []) {
@@ -218,5 +240,6 @@ export async function propLegsForDay(date, games, now = Date.now()) {
     for (const p of onePerPlayer(nbaPropPicks(model.rows, await getJSON(K_NBAPROPS(date, g.key)).catch(() => null)))) if (p.price > 0 && p.price < 1) legs.push({ ...p, game: g.key, start: g.start });
   }
   const best = new Map(); for (const p of legs) { const k = normName(p.name), o = best.get(k); if (!o || p.chance > o.chance) best.set(k, p); }
-  return [...best.values()].sort((a, b) => b.chance - a.chance);
+  const bands = legs.length ? await propCalibration(now).catch(() => null) : null;
+  return [...best.values()].map((p) => ({ ...p, cal: calibrate(p.chance, bands) })).sort((a, b) => b.cal - a.cal);
 }
