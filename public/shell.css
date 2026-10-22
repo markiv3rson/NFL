@@ -144,3 +144,9 @@ body #models .drop.open > .s > b, body #models .ihd { display:flex; justify-cont
    (Player props tabs, Best TD picks) centered instead of stuck on the left */
 .labslot { text-align:center; justify-content:center; }
 .stats:has(> .stat:only-child) { display:flex; justify-content:center; }
+/* 10/21 night (owner: "Make these font just like the header and title. Bold. And the same font", both sports): every section header -- the time-slot /
+   day headers, Best TD picks, the home "NFL NEXT GAME" / "● NBA · LIVE NOW" lines -- in the page titles' Passion One, bold, a bit bigger (it is narrow);
+   the small kickoff times beside them and the home clock keep their own fonts */
+body .labslot, body .hsh2 > span { font-family:"Passion One","Arial Narrow",Impact,sans-serif !important; font-weight:700 !important; letter-spacing:.04em !important; font-size:27px !important; }
+body .labslot .lst { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif !important; font-size:12.5px !important; font-weight:600 !important; letter-spacing:0 !important; }
+@media (max-width:500px) { body .labslot, body .hsh2 > span { font-size:24px !important; } body .labslot .lst { font-size:11px !important; } }
