@@ -21,7 +21,8 @@ html.home-on .tile { background:rgba(8,8,12,.55); border-color:rgba(255,255,255,
 /* 10/21 night (owner): the GTA VI photo strip behind the top bar, see-through like the team logos on the game tiles */
 .tbar { isolation:isolate; overflow:hidden; }
 .tbar::after { content:""; position:absolute; left:0; right:0; bottom:0; height:2px; background:var(--ggrad); pointer-events:none; }   /* GTA colors as a line, not on the cards */
-.tbar::before { content:""; position:absolute; inset:0; z-index:-1; background:url(/hdr-bg.jpg?v=1) center 32%/cover no-repeat; opacity:.42; pointer-events:none; }
+.tbar::before { content:""; position:absolute; left:0; right:0; bottom:0; top:env(safe-area-inset-top,0px); z-index:-1; background:url(/hdr-bg.jpg?v=1) center 35%/cover no-repeat; opacity:.42; pointer-events:none; }   /* 10/21 night (owner, A): the photo starts BELOW the phone's clock / battery, faces behind SLATEZZ */
+.tbar { background:linear-gradient(to bottom,#0b0b10 0,#0b0b10 env(safe-area-inset-top,0px),rgba(8,8,12,.78) env(safe-area-inset-top,0px)) !important; }   /* solid dark behind the clock / battery */
 /* 10/21 night (owner: "make the SLATEZZ BIGGER I SAID. Make it fit" / "Make both headers fatter letters"): Archivo Black, as wide as the bar allows next to the bell */
 .slatelogo { flex:none; font-family:"Bowlby One","Arial Black",Impact,sans-serif; font-size:clamp(36px,calc((100vw - 84px) / 4.95),84px); font-weight:400; font-style:normal; letter-spacing:.02em; line-height:1; white-space:nowrap; padding-right:.08em; text-decoration:none; -webkit-text-stroke:1px #e4e4e8; }
 .slatelogo.sgrad { background:linear-gradient(90deg,#ec3f9a 0%,#f0805a 52%,#f6c560 100%); -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent; -webkit-text-stroke:0; }   /* 10/21 night (owner: the GTA logo's background colors across SLATEZZ): pink -> orange -> yellow */
