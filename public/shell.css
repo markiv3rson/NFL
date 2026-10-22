@@ -134,16 +134,15 @@ body.bnav-on.game-on #detail .dtop { position:sticky; top:calc(env(safe-area-ins
 #models .drop.open > .s.ihd { border-bottom:1px solid var(--line2); padding-bottom:3px; } #models .drop.open > .s.ihd > b { border-bottom:0; padding-bottom:0; }   /* the heading's line runs under the ⓘ too */
 /* 10/21 night (owner: "MAKE IT LOOK LIKE A TABLE LIST ... words on one side and numbers on the other side and percentages in a vertical line"; both
    sports): every Models row = the name on the LEFT, its numbers on the RIGHT in fixed columns (record | % | the rest: money, said, pending), so the
-   columns line up down the list. Shell.tableRows splits a row's numbers at its " · " into those cells; rows that are not numbers (game by game) stay as text. */
-body #models .row { display:grid; grid-template-columns:minmax(38%,1fr) minmax(0,auto); align-items:baseline; column-gap:10px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,.07); text-align:left; }
-body #models .row > span:first-child { max-width:none; color:#d7d9e0; font-size:12.5px; font-weight:600; }
-body #models .row > span:last-child { text-align:right; font-size:13px; font-weight:700; }
-body #models .row > .tcells { display:grid; grid-template-columns:minmax(52px,auto) minmax(48px,auto) minmax(96px,auto); column-gap:8px; justify-items:end; align-items:baseline; }
-body #models .row > .tcells > span { white-space:normal; text-align:right; min-width:0; }   /* long text cells wrap instead of running over the next one */
-body #models .row > .tcells > .tc1 { grid-column:1; } body #models .row > .tcells > .tc2 { grid-column:2; } body #models .row > .tcells > .tc3 { grid-column:3; white-space:normal; text-align:right; }
-body #models .row > .tcells.one > .tc1 { grid-column:1 / -1; }
+   columns line up down the list (built rows only: tHead / tRow). */
+/* 10/22 (owner: "If it can fit on 1 line then put it in 1 line. Do this for both nfl and nba"): every Models row WITHOUT a header = the name on the
+   left, its numbers on the right on ONE line whenever they fit; only when the row is too long do the number pieces drop to a second line (whole pieces,
+   never letter by letter, never on top of each other). The header tables (tHead / tRow) keep their columns. */
+body #models .row { display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,.07); text-align:left; }
+body #models .row > span:first-child { flex:0 .3 auto; min-width:0; max-width:none; color:#d7d9e0; font-size:12.5px; font-weight:600; }
+body #models .row > span:last-child { flex:0 1 auto; min-width:0; text-align:right; font-size:13px; font-weight:700; }
 body #models .drop.open > .row { font-size:inherit; }
-@media (max-width:420px) { body #models .row > .tcells { grid-template-columns:minmax(44px,auto) minmax(42px,auto) minmax(70px,auto); column-gap:6px; } body #models .row > span:first-child { font-size:12px; } }
+@media (max-width:420px) { body #models .row > span:first-child { font-size:12px; } }
 /* 10/22 (owner: table list, both sports): built table rows (tHead / tRow in both app.js) -- the name on the left, a small gray line under it, fixed
    columns on the right with a small header on top, every number centered under its header so the columns run straight down the section. */
 body #models .row.trow { grid-column:1 / -1; display:grid; grid-template-columns:minmax(0,1fr) repeat(var(--tn),var(--tw)); column-gap:8px; align-items:center; padding:7px 0; }
