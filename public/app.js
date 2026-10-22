@@ -1161,9 +1161,9 @@ function applyBetsView() {
   document.querySelectorAll("#bets-sw [data-bv]").forEach((b) => b.classList.toggle("on", b.dataset.bv === BETSVIEW));
   if (m) renderLabList();
 }
-// PLAYER PROPS (10/20, owner: "rename it player props and have the sub tabs for the best available for all teams grouped up by their games"; bar 62%+):
+// PLAYER PROPS (10/20, owner: "rename it player props and have the sub tabs for the best available for all teams grouped up by their games"; bar 62%+, 65%+ since 10/22):
 // one page per stat tab -- Anytime TD (the #td page), First TD (the model's first-TD share per game, with Polymarket's price), Rec Yds, Receptions,
-// Pass Yds (/api/props: the side the model gives 62%+ in a family that passed the real-line test, one row per player and stat, its highest %).
+// Pass Yds (/api/props: the side the model gives 65%+ in a family that passed the real-line test, one row per player and stat, its highest %).
 // Rows sit under the kickoff headers, game by game; a team drop-down filters them; RECORD tile = this tab's graded rows; ✓ / ✗ green / red once graded.
 let PROPS = null, PROPWEEK = null, PROPTAB = "recyds", PROPTEAM = "all";
 const PROP_TABS = [["td", "Anytime TD"], ["first", "First TD"], ["recyds", "Rec Yds"], ["rec", "Receptions"], ["passyds", "Pass Yds"]];
