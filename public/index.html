@@ -166,6 +166,13 @@
     .ppr.first.tdr, .ppr.tdh { grid-template-columns:minmax(0,2fr) minmax(0,1.6fr) minmax(44px,.6fr) minmax(74px,.7fr); }
     .tdr .pp2 { text-align:center; } .tdr .pp2 .pp2t { color:var(--dim); } .tdr .pp2t + .wc { margin-left:8px; } .tdr .pp2 .wc:first-child { margin-left:0; }
     .ppr.tdh .pp1 { grid-column:1; } .ppr.tdh .pp3 { grid-column:3; } .ppr.tdh .pp4 { grid-column:4; } }
+  /* 10/22 (owner, phone screenshot: "Move poly market more to the right and the model too. And put the x no td last game in the middle"): on a phone the TD rows are
+     name (game under it) | red caution centered in the middle | MODEL | POLYMARKET at the card's right edge (an empty 4th column had left 94 px of space on the right). */
+  @media (max-width:599px) {
+    .ppr.first.tdr, .ppr.tdh { grid-template-columns:minmax(0,1fr) 92px 36px 64px; grid-template-areas:"n w m p" "line w m p"; column-gap:4px; } .ppr.tdh .pp4 { white-space:nowrap; } .ppr.tdh .pp4 .pm { width:13px; height:13px; }
+    .tdr .pp2 { display:contents; } .tdr .pp2 .pp2t { grid-area:line; font-size:11px; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .tdr .pp2 .wc { grid-area:w; align-self:center; justify-self:center; margin:0 !important; font-size:10px; line-height:1.2; white-space:nowrap; text-align:center; }   /* 10/22 (owner: "Make this 1 row"): one line, 92 px middle column */
+    .ppr.first.tdr .pp3, .ppr.tdh .pp3 { grid-area:m; } .ppr.first.tdr .pp4, .ppr.tdh .pp4 { grid-area:p; } .ppr.tdh .pp1 { grid-area:n; grid-row:1 / 3; } }
   .tdl.closed { display:none; } .labslot.tdtog { cursor:pointer; user-select:none; } .labslot .car { font-style:normal; margin-left:8px; font-size:14px; color:#8d95a3; display:inline-block; transition:transform .15s ease; } .labslot.tdtog.open .car { transform:rotate(180deg); }
   @media (min-width:600px) { .ppr { column-gap:16px; } }   /* 10/20 night (owner: "separate them so it's easier to read") */
   .ppr .pp4, .ppr.pph .pp4 { color:#2e5cff; }   /* 10/20 night (owner): Polymarket cents + head in Polymarket's blue (was green for an hour) */
