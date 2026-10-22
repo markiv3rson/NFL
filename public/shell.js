@@ -110,7 +110,7 @@
     tableRows(root) {
       if (!root || !root.querySelectorAll) return;
       root.querySelectorAll(".row").forEach((r) => {
-        if (r.dataset.tbl) return; r.dataset.tbl = "1";
+        if (r.dataset.tbl || r.classList.contains("trow")) return; r.dataset.tbl = "1";   // built table rows (tRow) already have their columns
         const v = r.lastElementChild; if (!v || v === r.firstElementChild) return;
         const txt = v.textContent.trim(); if (!/^([+−-]?\$?\d|—$)/.test(txt) || !/^(\d+[–-]\d+|[+−-]?\$?\d[\d.,]*%?|—)(\s|$|·)/.test(txt)) return;
         const cells = [[]]; for (const n of [...v.childNodes]) {

@@ -705,8 +705,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { // closing-line value: hand-worked, and the grading helper
     vm.runInContext(`COMBOS = { cardRec: { "pick|spread": { w: 3, l: 1, stk: 4, ret: 0.4 }, "ptspick|total": { w: 1, l: 2, stk: 0, ret: 0 } }, card: { clv: { n: 3, sum: -1, beat: 1, same: 1, spread: { n: 2, sum: 0.5, beat: 1, same: 1 }, total: { n: 1, sum: -1.5, beat: 0, same: 0 } } } }`, ctx);
     const h = ctx.T.cardRecBox();
-    ok(/PICK · spread<\/span><span>3–1 · <b class="g">75%<\/b> · <span class="g">\+\$10 per \$100/.test(h) && /PICK · total<\/span><span class="dim">—/.test(h) && /PICK w\/ POINTS · total<\/span><span>1–2/.test(h) && !/MODEL SIDE/.test(h)
-      && /Spread<\/span><span><b class="g">\+0\.25 pts<\/b> · 1 better, 0 worse, 1 same/.test(h) && /Total<\/span><span><b class="r">−1\.50 pts<\/b> · 0 better, 1 worse, 0 same/.test(h), "card picks (10/19): one PICK row per market (rule or model side), PICK w/ POINTS rows, line value split from the same picks; no separate MODEL SIDE rows", h);
+    ok(/PICK · spread<\/span><span>3–1<\/span><span><b class="g">75%<\/b><\/span><span><span class="g">\+\$10<\/span>/.test(h) && /PICK · total<\/span><span><span class="dim">—/.test(h) && /PICK w\/ POINTS · total<\/span><span>1–2/.test(h) && !/MODEL SIDE/.test(h)
+      && /RECORD<\/span><span>WIN %<\/span><span>PER \$100/.test(h) && /PTS<\/span><span>BETTER<\/span><span>WORSE<\/span><span>SAME/.test(h)
+      && /Spread<\/span><span><b class="g">\+0\.25<\/b><\/span><span>1<\/span><span>0<\/span><span>1<\/span>/.test(h) && /Total<\/span><span><b class="r">−1\.50<\/b><\/span><span>0<\/span><span>1<\/span><span>0<\/span>/.test(h), "card picks (10/19): one PICK row per market (rule or model side), PICK w/ POINTS rows, line value split from the same picks; no separate MODEL SIDE rows", h);
     ok(ctx.T.legPct({ kind: "total", prob: 0.517 }) === 51 && ctx.T.legPct({ kind: "spread", prob: 0.597 }) === 60 && ctx.T.legPct({ kind: "spread", prob: 0.559 }) === 55 && ctx.T.legPct({ kind: "td", prob: 0.548 }) === 54 && ctx.T.legPct({ kind: "ml", prob: 0.517 }) === 52,
       "one rounding rule (10/19): spread / total under 56% round down (51.7 -> 51, as on the card), green rounds (59.7 -> 60), TD legs under 55% round down, moneyline as is");
     { const cb = ctx.T.cardBody({ key: "A @ B", away: "A", home: "B" }, "total", { plain: { pick: "Under 52.5", hit: 51.7, side: "under" }, pts: { pick: "Under 53.5", hit: 54.6, side: "under", points: 1 },
@@ -1452,7 +1453,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       ok(oi.every((x, i) => x > 0 && (i === 0 || x > oi[i - 1])), "NBA models tab (10/19, design = both sports): card picks, winners, parlay scoreboard first, same as NFL; 10/19 review: Tested patterns gone (never picks)", oi); ok(!/Tested patterns/.test(nb), "NBA models tab: no Tested patterns section"); }
     vm.runInContext(`S.winners = { all: { n: 3, w: 2, l: 1, hit: 0.67 }, bands: [{ label: "60-70%", n: 2, w: 1, l: 1, hit: 0.5, said: 0.65 }, { label: "80%+", n: 0 }] }`, ctx);
     const bc = ctx.T.winnersBands();
-    ok(/Said 60-70% · 2 picks<\/span><span>1–1 · <b>50%<\/b> <span class="dim">· said 65%/.test(bc) && !/80%\+/.test(bc), "models tab: moneyline by chance = the same favorite record as the MONEYLINE tile");
+    ok(/Said 60-70%<i class="tsub">2 picks<\/i><\/span><span>1–1<\/span><span><b>50%<\/b><\/span><span>65%<\/span>/.test(bc) && /RECORD<\/span><span>WON<\/span><span>SAID/.test(bc) && !/80%\+/.test(bc), "models tab: moneyline by chance = the same favorite record as the MONEYLINE tile");
     vm.runInContext(`S.winners = {}`, ctx); ok(/None yet/.test(ctx.T.winnersBands()), "models tab: empty data says so");
     ctx.document.getElementById = old; }
   { // Record tab week filter: this week by default, Season shows everything, tiles recomputed from the bets shown
