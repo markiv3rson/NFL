@@ -130,11 +130,12 @@
         `<nav class="hmod" id="hmod" aria-label="Model analysis"><a data-nav href="/index.html#models">${svg("bars", 22)}<span>NFL</span></a><a data-nav href="/nba/index.html#models">${svg("bars", 22)}<span>NBA</span></a></nav>` +
         `<nav class="sbar" id="sbar" aria-label="Tabs"></nav>` +
         `<nav class="bnav" id="bnav" aria-label="Main menu">` +
+        // 10/22 (owner): Home · Bets · [ball] · Lines · Props
         `<a class="bi" data-nav data-b="home" href="/index.html#home">${svg("home", 22)}<span>Home</span></a>` +
-        `<a class="bi" data-nav data-b="lines" href="${URL_[sp]}#lines">${svg("grid", 22)}<span>Lines</span></a>` +
+        `<a class="bi" data-nav data-b="bets" href="${URL_[sp]}#mybets">${svg("bets", 22)}<span>Bets</span></a>` +
         `<button class="bsport ${sp}" id="bsport" aria-label="Switch to ${o.toUpperCase()}"><i class="barr up">${SWAP_ARROW("barrg1")}</i><img src="/ball-${sp}.png?v=1" alt="${sp.toUpperCase()}"><i class="barr dn">${SWAP_ARROW("barrg2")}</i></button>` +   // 10/21 night (owner): just the ball of the sport you are on (cut out of the owner's photos); a tap switches sport
-        `<a class="bi" data-nav data-b="props" href="${URL_[sp]}#${PROPS[sp][0][0]}">${svg("props", 22)}<span>Props</span></a>` +
-        `<a class="bi" data-nav data-b="bets" href="${URL_[sp]}#mybets">${svg("bets", 22)}<span>Bets</span></a></nav>`;
+        `<a class="bi" data-nav data-b="lines" href="${URL_[sp]}#lines">${svg("grid", 22)}<span>Lines</span></a>` +
+        `<a class="bi" data-nav data-b="props" href="${URL_[sp]}#${PROPS[sp][0][0]}">${svg("props", 22)}<span>Props</span></a></nav>`;
       while (d.firstChild) document.body.appendChild(d.firstChild);
       if (document.body.classList) document.body.classList.add("bnav-on");
       // My bets | Model bets sit inside Bets, under its title in the pinned header (10/22, sketch L)
