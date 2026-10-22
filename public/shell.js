@@ -124,11 +124,11 @@
       // "Model Refresh: <time>" at the bottom right of that header
       if (document.querySelectorAll) document.querySelectorAll(".panel .phead").forEach((h) => {
         if (!h.querySelector(".pt") || h.querySelector(".mref")) return;
-        // on the right of the header: the red refresh icon centered over "Model Refresh: <time>" (owner 10/21 night)
+        // right next to the title on its line, vertically centered with it: the red refresh icon over its time (owner 10/21 night)
         const box = document.createElement("div"); box.className = "prefbox";
         const b = document.createElement("button"); b.className = "mref"; b.setAttribute("aria-label", "Rerun both models"); b.innerHTML = REF_SVG; b.onclick = Shell.refresh;
         const r = document.createElement("span"); r.className = "prun"; r.textContent = "—";
-        box.appendChild(b); box.appendChild(r); h.appendChild(box);
+        box.appendChild(b); box.appendChild(r); const tb = h.querySelector(".pt b"); if (tb && tb.after) tb.after(box); else h.appendChild(box);   // on the title's line, right after the title (owner 10/21 night)
       });
       const bs = document.getElementById("bsport");
       if (bs) bs.onclick = (e) => Shell.go(e.currentTarget.dataset.href || `${URL_[o]}#lines`);
