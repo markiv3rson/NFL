@@ -14,20 +14,28 @@ html.home-on::before { content:""; position:fixed; inset:0; z-index:-1; pointer-
 html.home-on .tile { background:rgba(8,8,12,.55); border-color:rgba(255,255,255,.28); box-shadow:none; }   /* 10/18 night (owner): the home tiles look like the Game Lines tiles */
 
 /* 10/22 (owner, option K + Home): the side menu is gone -- a pinned top bar, a bottom bar and (on Player props / Model bets) a sub-tab bar above it. Both sports. */
-:root { --tbh:78px; --bnh:64px; --sbh:46px; }
-.tbar { position:fixed; left:0; right:0; top:0; z-index:120; display:flex; align-items:center; justify-content:flex-start; gap:8px; box-sizing:border-box;
-  height:calc(env(safe-area-inset-top,0px) + var(--tbh)); padding:calc(env(safe-area-inset-top,0px) + 4px) max(10px,env(safe-area-inset-right,0px)) 0 max(14px,env(safe-area-inset-left,0px));
+:root { --tbh:74px; --bnh:64px; --sbh:46px; --hmh:58px; }
+.tbar { position:fixed; left:0; right:0; top:0; z-index:120; display:flex; align-items:center; justify-content:center; box-sizing:border-box;
+  height:calc(env(safe-area-inset-top,0px) + var(--tbh)); padding:calc(env(safe-area-inset-top,0px) + 2px) max(12px,env(safe-area-inset-right,0px)) 0 max(12px,env(safe-area-inset-left,0px));
   background:rgba(8,8,12,.78); -webkit-backdrop-filter:blur(18px) saturate(1.3); backdrop-filter:blur(18px) saturate(1.3); border-bottom:1px solid rgba(255,255,255,.12); }
-.tbrand { display:flex; flex-direction:column; flex:none; }   /* never shrinks: the refresh ring sits after the whole word */
-.slatelogo { font-size:clamp(40px,12.6vw,58px); font-weight:900; font-style:italic; letter-spacing:.01em; line-height:1; white-space:nowrap; padding-right:.08em; text-decoration:none; -webkit-text-stroke:.8px rgba(255,255,255,.55); }   /* 10/21 night (owner): SLATEZZ big */
-.trun { font-size:12px; font-weight:600; color:#aab0bd; white-space:nowrap; margin-top:3px; }
-.tico { display:flex; align-items:center; gap:2px; flex:1 1 auto; min-width:0; }   /* refresh, bell right after SLATEZZ; Models at the far right */
-.tico .tmod { margin-left:auto; }
-.tib { position:relative; width:44px; height:44px; display:flex; align-items:center; justify-content:center; color:#fff; text-decoration:none; }
-.tib.on { color:#ff3b4a; }
-.tcnt { position:absolute; top:5px; right:3px; font-size:11px; font-weight:800; color:#fff; display:none; }   /* the unread number, plain text (10/18: no filled circles) */
-.mref { flex:none; width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; padding:0; cursor:pointer; margin:0 2px 0 0; }
-.mref { border:2px solid transparent; background:linear-gradient(#0b0b10,#0b0b10) padding-box,linear-gradient(135deg,#ff3b4a,#7a0a12) border-box; color:#fff; }   /* a ring, not a filled circle (owner 10/18) */
+/* 10/21 night (owner: "Bold the title across the top and remove the buttons"): SLATEZZ alone, centered, as wide as the bar allows */
+.slatelogo { font-size:clamp(46px,15.5vw,66px); font-weight:900; font-style:italic; letter-spacing:.02em; line-height:1; white-space:nowrap; padding-right:.08em; text-decoration:none; -webkit-text-stroke:1px rgba(255,255,255,.6); }
+/* the refresh ring: next to the page title on Lines, Player props and Model bets (body.ref-on); a ring, not a filled circle (owner 10/18) */
+.mref { flex:none; width:36px; height:36px; border-radius:50%; display:none; align-items:center; justify-content:center; padding:0; cursor:pointer; align-self:center; }
+body.ref-on .phead .mref { display:inline-flex; }
+.phead .mref svg { display:block; }   /* (both index.html hide header icons: .phead svg) */
+.mref { border:2px solid transparent; background:linear-gradient(#0b0b10,#0b0b10) padding-box,linear-gradient(135deg,#ff3b4a,#7a0a12) border-box; color:#fff; }
+.phead .prun { display:none; order:4; margin-left:auto; align-self:flex-end; font-size:11.5px; font-weight:600; color:#aab0bd; white-space:nowrap; padding-bottom:4px; }
+body.ref-on .phead .prun { display:block; }
+/* Home only (owner 10/21 night): Model analysis as one long see-through bar above the bottom bar, split NFL | NBA */
+.hmod { position:fixed; left:max(12px,env(safe-area-inset-left,0px)); right:max(12px,env(safe-area-inset-right,0px)); bottom:calc(env(safe-area-inset-bottom,0px) + var(--bnh) + 10px); z-index:119; height:var(--hmh); display:none;
+  border:1px solid rgba(255,255,255,.28); border-radius:16px; overflow:hidden; background:rgba(8,8,12,.55); -webkit-backdrop-filter:blur(18px) saturate(1.3); backdrop-filter:blur(18px) saturate(1.3); }
+body.home-on .hmod { display:flex; }
+.hmod a { flex:1 1 0; display:flex; align-items:center; justify-content:center; gap:10px; color:#fff; text-decoration:none; font-size:18px; font-weight:900; letter-spacing:.06em; }
+.hmod a + a { border-left:1px solid rgba(255,255,255,.2); }
+.hmod svg { color:#b58cff; }   /* purple: the model's things */
+body.bnav-on.home-on .wrap { padding-bottom:calc(env(safe-area-inset-bottom,0px) + var(--bnh) + var(--hmh) + 34px); }
+@media (min-width:600px) { .hmod { left:50%; right:auto; width:560px; transform:translateX(-50%); } }
 .mref.spin svg { animation:mspin .8s linear infinite; } @keyframes mspin { to { transform:rotate(360deg); } }
 .mref:disabled { opacity:.75; }
 .bnav { position:fixed; left:0; right:0; bottom:0; z-index:120; display:flex; align-items:flex-end; justify-content:space-around; box-sizing:border-box;
@@ -57,11 +65,15 @@ body.bnav-on .phead { position:sticky; top:calc(env(safe-area-inset-top,0px) + v
   background:rgba(8,8,12,.72); -webkit-backdrop-filter:blur(18px) saturate(1.3); backdrop-filter:blur(18px) saturate(1.3); }
 @media (min-width:1100px) { body.bnav-on .phead { margin-left:-28px; margin-right:-28px; padding-left:30px; padding-right:30px; } }
 html.desktop body.bnav-on .phead { margin-left:-24px; margin-right:-24px; padding-left:26px; padding-right:26px; }   /* the NBA page's computer gutter is 24 px */
-body.bnav-on .phead .sw { order:3; flex-basis:100%; display:flex; gap:24px; margin:2px 0 0; background:none; border:0; border-radius:0; padding:0; }
+body.bnav-on .phead .sw { order:2; flex-basis:100%; display:flex; gap:24px; margin:2px 0 0; background:none; border:0; border-radius:0; padding:0; }
 body.bnav-on .phead .sw button { flex:none; min-height:34px; padding:0 0 3px; border-radius:0; background:none; border-bottom:3px solid transparent; color:#8d95a3; font-size:15px; font-weight:800; }
 body.bnav-on .phead .sw button.on { color:#fff; background:none; border-bottom-color:#ff3b4a; }
-body.bnav-on .phead .pdd { order:2; }
-@media (max-width:599px) { body.bnav-on .phead .ptab { display:none; } body.bnav-on .phead .pt b { white-space:nowrap; } body.bnav-on .phead .pt { flex:1 0 auto; } }   /* a phone: the open tab is named in the sub-tab bar, the title keeps the section's name on one line and never shrinks under its drop-downs: they wrap to a row of their own, still on the right */
+body.bnav-on .phead .pdd { order:3; margin-left:0; gap:18px; }   /* 10/21 night (owner): the drop-downs on the LEFT, smaller */
+body.bnav-on .phead .pdd .wksel select { font-size:14px !important; min-height:30px; }
+body.bnav-on .phead .pdd .wksel { padding-right:16px; } body.bnav-on .phead .pdd .wksel::after { width:11px; height:11px; margin-top:-5px; }
+body.bnav-on .phead .pt { display:flex; flex-wrap:wrap; align-items:center; column-gap:12px; flex:1 0 100%; }
+body.bnav-on .phead .pt span:not(.ptab) { flex-basis:100%; }
+@media (max-width:599px) { body.bnav-on .phead .ptab { display:none; } body.bnav-on .phead .pt b { white-space:nowrap; } }   /* a phone: the open tab is named in the sub-tab bar, the title keeps the section's name on one line and never shrinks under its drop-downs: they wrap to a row of their own, still on the right */
 /* a game page: the team card is the pinned header */
 body.bnav-on.game-on #detail .dtop { position:sticky; top:calc(env(safe-area-inset-top,0px) + var(--tbh) + 4px); z-index:60; }
 
