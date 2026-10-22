@@ -45,6 +45,14 @@
     nflLogo: (t) => (String(t || "").toUpperCase() === "KC" ? "/kc.png?v=1" : t ? `https://a.espncdn.com/i/teamlogos/nfl/500/${NFL_LOGO_FIX[t] || String(t).toLowerCase()}.png` : ""),
     nbaLogo: (t, teams) => (teams && teams[t] && teams[t].logo) || (t ? `https://a.espncdn.com/i/teamlogos/nba/500/${String(t).toLowerCase()}.png` : ""),
     img: (src) => (src ? `<img src="${src}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '<span class="nl"></span>'),
+    // 10/21 night (owner: "If there's a drop down menu, put it on the right side"): a page's drop-downs (week / day / team) go in a slot on the
+    // right of its title, one slot per content block (My bets and Model bets share a panel), shown only while that block is shown
+    dd(el, html) {
+      if (!el || !el.id) return; const head = el.closest(".panel") && el.closest(".panel").querySelector(".phead"); if (!head) return;
+      let slot = document.getElementById("dd-" + el.id);
+      if (!slot) { slot = document.createElement("div"); slot.className = "pdd"; slot.id = "dd-" + el.id; head.appendChild(slot); }
+      slot.innerHTML = html || ""; slot.style.display = el.style.display === "none" ? "none" : "";
+    },
     // countdown text: "1d 1h 7m", "2h 14m", "26m", "45s"
     setActive(panel) {
       Shell.panel = panel;
