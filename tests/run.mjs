@@ -1793,7 +1793,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
 }
 { // 10/21 (owner): menu see-through like the Game Lines tiles; every red -> green gradient is red -> dark red (SLATEZZ, refresh ring, grip, menu lines, home clock)
   const css = readFileSync(new URL("../public/shell.css", import.meta.url), "utf8");
-  ok(/\.mdraw \{[^}]*background:rgba\(8,8,12,\.8\);/.test(css) && /\.mscrim \{[^}]*background:transparent;/.test(css) && /linear-gradient\(180deg,#ff3b4a,#7a0a12\)/.test(css) && /linear-gradient\(135deg,#ff3b4a,#7a0a12\) border-box/.test(css) && !/#3ddc97/.test(css.replace(/\/\*[\s\S]*?\*\//g, "")),
-    "menu (10/21 night): 80% dark, the page behind it is not dimmed; the gradient is red -> dark red everywhere (no red -> green left)"); }
+  ok(/\.mdraw \{[^}]*background:rgba\(8,8,12,\.92\);/.test(css) && /\.mscrim \{[^}]*background:transparent;/.test(css) && /linear-gradient\(180deg,#ff3b4a,#7a0a12\)/.test(css) && /linear-gradient\(135deg,#ff3b4a,#7a0a12\) border-box/.test(css) && !/#3ddc97/.test(css.replace(/\/\*[\s\S]*?\*\//g, "")),
+    "menu (10/21 night): 92% dark, the page behind it is not dimmed; the gradient is red -> dark red everywhere (no red -> green left)"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);
