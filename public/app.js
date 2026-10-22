@@ -758,10 +758,10 @@ function renderModelNow() {
     const buys = tdPx.filter((p) => mp(p) > p.ask);
     const pl = buys.reduce((a, p) => a + (p.scored ? 1 / p.ask - 1 : -1), 0);
     const hits = buys.filter((p) => p.scored).length;
-    vsMkt = `<div class="row"><span class="dim">Accuracy</span><span>${bM < bP ? '<span class="g">' : '<span class="r">'}Model ${bM.toFixed(3)}</span> · Poly ${bP.toFixed(3)}</span></div>` +
-      `<div class="row"><span class="dim">Yes bets</span><span>${hits} of ${buys.length} scored · ${cMoney(pl)} ${buys.length ? `(${cPct(pl / buys.length)})` : ""}</span></div>` +
+    vsMkt = `<div class="row plain"><span class="dim">Accuracy</span><span>${bM < bP ? '<span class="g">' : '<span class="r">'}Model ${bM.toFixed(3)}</span> · Poly ${bP.toFixed(3)}</span></div>` +
+      `<div class="row plain"><span class="dim">Yes bets</span><span>${hits} of ${buys.length} scored · ${cMoney(pl)} ${buys.length ? `(${cPct(pl / buys.length)})` : ""}</span></div>` +
       (() => { const no = tdPx.filter((p) => 1 - mp(p) > 1 - p.bid), plNo = no.reduce((a, p) => a + (!p.scored ? 1 / (1 - p.bid) - 1 : -1), 0);   // buying No costs 1 - bid
-        return `<div class="row"><span class="dim">No bets</span><span>${no.filter((p) => !p.scored).length} of ${no.length} won · ${cMoney(plNo)} ${no.length ? `(${cPct(plNo / no.length)})` : ""}</span></div>`; })();
+        return `<div class="row plain"><span class="dim">No bets</span><span>${no.filter((p) => !p.scored).length} of ${no.length} won · ${cMoney(plNo)} ${no.length ? `(${cPct(plNo / no.length)})` : ""}</span></div>`; })();
   }
   const st = S.status, wc = S.weekCheck || { games: 0, withLines: 0, modelRun: false, watch: [] };
   const stOk = st && st.ok && !st.creditWarning;
@@ -788,12 +788,12 @@ function renderModelNow() {
       return `<div class="row"><span class="dim">Listed players</span><span>${hit} of ${td.length} scored · model expected ${exp.toFixed(1)}</span></div>`; })();
   const topTd = (() => { const byTeam = {}; for (const r of res) for (const p of (r.td || []).filter((x) => x.played === true)) (byTeam[r.game + "|" + p.team] = byTeam[r.game + "|" + p.team] || []).push(p);
       const top = (n) => Object.values(byTeam).flatMap((ps) => ps.slice().sort((a, b) => b.fair - a.fair).slice(0, n));
-      const line = (lab, L) => L.length ? `<div class="row"><span class="dim">${lab}</span><span>${L.filter((p) => p.scored).length} of ${L.length} scored · exp ${(L.reduce((a, p) => a + p.fair, 0) / 100).toFixed(1)}</span></div>` : "";
+      const line = (lab, L) => L.length ? `<div class="row plain"><span class="dim">${lab}</span><span>${L.filter((p) => p.scored).length} of ${L.length} scored · exp ${(L.reduce((a, p) => a + p.fair, 0) / 100).toFixed(1)}</span></div>` : "";
       const t1 = top(1), t2 = top(2);
       const all = Object.values(byTeam).flat();
       const two = all.filter((p) => p.two != null), ftd = all.filter((p) => p.ftd != null);
-      const extra = (two.length ? `<div class="row"><span class="dim">2+ TDs</span><span>${two.filter((p) => p.twoHit).length} · exp ${(two.reduce((a, p) => a + p.two, 0) / 100).toFixed(1)}</span></div>` : "") +
-        (ftd.length ? `<div class="row"><span class="dim">First TD</span><span>${ftd.filter((p) => p.ftdHit).length} · exp ${(ftd.reduce((a, p) => a + p.ftd, 0) / 100).toFixed(1)}</span></div>` : "") + firstTdRecord(res);
+      const extra = (two.length ? `<div class="row plain"><span class="dim">2+ TDs</span><span>${two.filter((p) => p.twoHit).length} · exp ${(two.reduce((a, p) => a + p.two, 0) / 100).toFixed(1)}</span></div>` : "") +
+        (ftd.length ? `<div class="row plain"><span class="dim">First TD</span><span>${ftd.filter((p) => p.ftdHit).length} · exp ${(ftd.reduce((a, p) => a + p.ftd, 0) / 100).toFixed(1)}</span></div>` : "") + firstTdRecord(res);
       return t1.length ? `${line("#1 per team", t1)}${line("Top 2 per team", t2)}${extra}` : '<div class="s empty">None yet.</div>'; })();
   const wcRows = `<div class="row"><span class="dim">Week ${S.week} loaded</span><span>${plural(wc.games, "game")} · lines ${wc.withLines}/${wc.games} · model ${wc.modelRun ? '<span class="g">✓</span>' : '<span class="y">not run yet</span>'}</span></div>` +
     ((wc.watch || []).length ? `<div class="s" style="margin-top:6px"><b class="y">Watchdog</b>${wc.watch.map((w) => `<div class="warn">⚠ ${esc(w)}</div>`).join("")}</div>` : '<div class="s dim" style="margin-top:6px"></div>');
@@ -1023,8 +1023,8 @@ function firstTdRecord(res) {
   if (!picks.length) return "";
   const hit = picks.filter((p) => p.ftdHit).length, said = picks.reduce((a, p) => a + p.ftd, 0) / picks.length;
   const tt = (res || []).map((r) => r.ftdTeam).filter((t) => t && (t.first === "home" || t.first === "away") && t.home != null), th = tt.filter((t) => (t.home >= t.away ? "home" : "away") === t.first).length;
-  const teamRow = tt.length ? `<div class="row"><span class="dim">First TD team (likelier side)</span><span>${th} of ${tt.length} · ${Math.round(th / tt.length * 100)}% · exp ${Math.round(tt.reduce((a, t) => a + Math.max(t.home, t.away), 0) / tt.length)}%</span></div>` : "";
-  return `<div class="row"><span class="dim">First TD picks</span><span>${hit} of ${picks.length} · ${Math.round(hit / picks.length * 100)}% · exp ${Math.round(said)}%</span></div>${teamRow}`;
+  const teamRow = tt.length ? `<div class="row plain"><span class="dim">First TD team (likelier side)</span><span>${th} of ${tt.length} · ${Math.round(th / tt.length * 100)}% · exp ${Math.round(tt.reduce((a, t) => a + Math.max(t.home, t.away), 0) / tt.length)}%</span></div>` : "";
+  return `<div class="row plain"><span class="dim">First TD picks</span><span>${hit} of ${picks.length} · ${Math.round(hit / picks.length * 100)}% · exp ${Math.round(said)}%</span></div>${teamRow}`;
 }
 function startsIn(g) {
   const ms = new Date(g.kickoff) - Date.now(); if (!(ms > 0)) return "";

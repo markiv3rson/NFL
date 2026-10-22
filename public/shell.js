@@ -104,24 +104,6 @@
       if (norm(u.pathname) === norm(location.pathname)) { history.replaceState(null, "", u.hash || "#"); window.dispatchEvent(new HashChangeEvent("hashchange")); }   // always redraw (Lines on a game page goes back to the games)
       else location.replace(u.href);
     },
-    // 10/21 night (owner: "make it look like a table list ... words on one side, numbers on the other, percentages in a vertical line"): a Models row's
-    // numbers ("8–6 · 57% · +$13 per $100 (5 pending)") are split at their " · " into cells that sit in fixed columns (record | % | the rest).
-    // Only rows whose numbers start with a record, a % or a signed number; text rows (game by game) stay as they are. Both sports.
-    tableRows(root) {
-      if (!root || !root.querySelectorAll) return;
-      root.querySelectorAll(".row").forEach((r) => {
-        if (r.dataset.tbl || r.classList.contains("trow")) return; r.dataset.tbl = "1";   // built table rows (tRow) already have their columns
-        const v = r.lastElementChild; if (!v || v === r.firstElementChild) return;
-        const txt = v.textContent.trim(); if (!/^([+−-]?\$?\d|—$)/.test(txt) || !/^(\d+[–-]\d+|[+−-]?\$?\d[\d.,]*%?|—)(\s|$|·)/.test(txt)) return;
-        const cells = [[]]; for (const n of [...v.childNodes]) {
-          if (n.nodeType === 3 && n.nodeValue.includes(" · ")) { const parts = n.nodeValue.split(" · "); parts.forEach((t, i) => { if (i) cells.push([]); if (t) cells[cells.length - 1].push(document.createTextNode(t)); }); }
-          else cells[cells.length - 1].push(n); }
-        const box = document.createElement("span"); box.className = "tcells" + (cells.length === 1 ? " one" : "");
-        cells.slice(0, 2).concat(cells.length > 2 ? [cells.slice(2).flatMap((c, i) => (i ? [document.createTextNode(" · "), ...c] : c))] : []).forEach((c, i) => {
-          const s = document.createElement("span"); s.className = "tc" + (i + 1); c.forEach((n) => s.appendChild(n)); box.appendChild(s); });
-        if (v.className) box.className += " " + v.className; r.replaceChild(box, v);
-      });
-    },
     init(sport) {
       Shell.sport = sport; const sp = sport, o = OTHER[sp];
       const d = document.createElement("div");
@@ -158,9 +140,6 @@
       });
       Shell.loadRun();
       Shell.buildWatch();
-      // the Models page is redrawn often: every new row is turned into table cells as it appears
-      if (typeof MutationObserver === "function") { let q = 0; const mo = new MutationObserver(() => { if (q) return; q = 1; requestAnimationFrame(() => { q = 0; document.querySelectorAll("#models").forEach((m) => Shell.tableRows(m)); }); });
-        document.querySelectorAll && document.querySelectorAll("#models").forEach((m) => { mo.observe(m, { childList: true, subtree: true }); Shell.tableRows(m); }); }
     },
     // 10/18 night (owner: "I always have to close it then reopen"): the page asks /api/build every minute; when a newer build is live it reloads
     // itself the next time the app comes back to the front or the next page switch -- never in the middle of reading.
