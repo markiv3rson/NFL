@@ -313,6 +313,27 @@ def _loop():
             print(f"[scheduler] loop error: {e}", flush=True)
         time.sleep(30)
 
+# 10/22 (owner: "so once it deploys ... everything automatically"): a NEW Railway deploy runs the model once by itself, a few minutes after
+# the service is up, so every number made by new service code (STACK's team yards, TD / prop chances) is redone without a tap in the app.
+# Once per deploy: Railway gives each deploy its own RAILWAY_DEPLOYMENT_ID; the last one seen is kept on the volume. No id (a local
+# run) -> nothing happens. A rerun already running (a kickoff wave) is waited out, up to ~12 minutes.
+DEPLOY_SEEN = os.path.join(os.environ.get("MODEL_DIR", "/data"), "last_deploy_rerun.txt")
+def _after_deploy(wait=360):
+    dep = os.environ.get("RAILWAY_DEPLOYMENT_ID") or ""
+    if not dep: return False
+    try: old = open(DEPLOY_SEEN).read().strip()
+    except Exception: old = ""
+    if old == dep: return False
+    time.sleep(wait)
+    for _ in range(6):
+        if _bg("rerun", _call, "/api/rerun?src=deploy"):
+            try:
+                with open(DEPLOY_SEEN, "w") as f: f.write(dep)
+            except Exception as e: print(f"[scheduler] deploy rerun: could not save the deploy id: {e}", flush=True)
+            print(f"[scheduler] new deploy {dep[:8]} -> model rerun", flush=True); return True
+        time.sleep(120)
+    return False
+
 def start():
     global _started
     if _started: return
@@ -326,3 +347,4 @@ def start():
         print("[scheduler] startup check: " + ("the site accepted the scheduler (login OK)" if ok else "the site REFUSED the scheduler — see the line above for who"), flush=True)
         if ok: _call("/api/results/grade", tries=1)
     threading.Thread(target=_hello, daemon=True).start()
+    threading.Thread(target=_after_deploy, daemon=True).start()   # 10/22: one model rerun after a new deploy

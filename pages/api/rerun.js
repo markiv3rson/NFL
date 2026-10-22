@@ -171,7 +171,7 @@ async function rerunWeek(req, base, season, week, early) {
     if (!early && tdIn.length) try {
       const ty = await post(base, "/team-yards", { games: tdIn.map((x) => ({ away: x.away, home: x.home, spread: x.spread, total: x.total, outs: x.outs })) }, []);
       if (ty && ty.ok) for (const r of ty.results || []) { const q = tdIn.find((z) => z.key === r.game); if (!q || !r.home || !r.away) continue;
-        await setJSON(`stackin:${season}:${week}:${q.key}`, { runAt, home: r.home, away: r.away }); nYards++; }
+        await setJSON(`stackin:${season}:${week}:${q.key}`, { runAt, v: ty.v ?? null, home: r.home, away: r.away }); nYards++; }   // 10/22: v = the service's team-yards version (2 = active players only)
       else if (ty && !ty.building) errors.push(`team yards: ${String(ty.error || "no reply").slice(0, 120)}`);
     } catch (e) { errors.push(`team yards: ${String(e.message || e).slice(0, 120)}`); }
     if (!nLines && !errors.length) errors.push(`model service returned 0 results for ${payload.length} game(s)`);

@@ -21,6 +21,7 @@ import { recordPaper, recordWinner, situationFor } from "../../lib/paper";
 import { buildWeek } from "../../lib/week";
 import { loadInjuriesMeta } from "../../lib/injuries";
 import { alertsFromLines } from "../../lib/alerts";
+import { stackShadowFor } from "../../lib/tracked";
 export const config = { maxDuration: 300 };   // 10/19: two weeks on Mondays (the Monday game + next week)
 
 // Automatic pre-log (protocol 3.3): model vs Polymarket frozen at kickoff for every game. Used by the kickoff snapshot
@@ -57,7 +58,8 @@ export async function writePrelog(season, week, g, t, poly, bk, model) {
         const tlNow = poly && poly.total && poly.total.line != null ? poly.total.line : now;
         try { const altRec = (await getJSON(`alts:${season}:${week}:${g.key}`).catch(() => null)) || {}; const sitS = await situationFor(season, week, g).catch(() => null); const cf = comboFactors({ ...g, outdoor: !!v.outdoor }, mg, hsNow, tlNow, s0, open, sitS, Number(week)), lst = (cf ? totalMovePick(g, cf.mvT, tlNow, open, Number(week)) || [] : []).concat(injuryPick(g, hsNow, s0, sitS, Number(week)) || [], bounceBackPick(g, hsNow, sitS) || [], floorDogPick(g, hsNow, sitS) || [], teamModelPick(g, hsNow, Number(week)) || [], ...(await timingAtKickoff(season, week, g, t, poly, bk)));
           const tsl = teamSideLine(g, hsNow, Number(week));   // 10/20: the Model (Team) line, saved and graded on every game
-          await recordStack(season, week, g, lst.concat(cardPicks(buildCard({ ...g, started: false, final: false, model: mg, modelUp: cf ? cf.up : null }, lst, poly, bk, altRec)), tsl ? [tsl] : []), t); }
+          const stS = await stackShadowFor(season, week, g.key).catch(() => null);   // 10/22: the STACK side the card showed (no rule -> it names the spread PICK)
+          await recordStack(season, week, g, lst.concat(cardPicks(buildCard({ ...g, started: false, final: false, model: mg, modelUp: cf ? cf.up : null, stackSide: stS }, lst, poly, bk, altRec)), tsl ? [tsl] : []), t); }
         catch (e) { await logError("kickoff", `${g.key}: card picks not saved at kickoff: ${String(e).slice(0, 160)}`).catch(() => {}); } }   // 10/16 audit: was silent   // + the card's PICK and PICK w/ POINTS (10/15); 10/16: the model numbers ride along so a game with no rule records its model-side PICK at kickoff too
   }
 }

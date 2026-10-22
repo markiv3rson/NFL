@@ -700,7 +700,7 @@ const IBTN = `<button class="ibtn" type="button" aria-label="What is this?"><svg
 const ibox = (lines, st) => `<div class="ibox" hidden${st ? ` style="${st}"` : ""}>${lines.map(([k, t]) => `<div><b>${k}</b> ${t}</div>`).join("")}</div>`;
 const MODEL_INFO = {
   spread: [["Model:", "the game model’s score guess. Data only."], ["Model (Team):", "team-stats model at Polymarket’s line; it becomes the PICK at 58%+ sure."],
-    ["Model (Stack):", "everything the app knows in one model. Test only, never the pick."], ["PICK:", "the bet at Polymarket’s main line, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
+    ["Model (Stack):", "everything the app knows in one model. With no tested rule it names the PICK."], ["PICK:", "the bet at Polymarket’s main line, from a tested rule, else the Stack model’s side. Green 56%+, light green 53–55%, yellow below."],
     ["PICK w/ POINTS:", "same side, the fewest bought points (1–2) that won 56%+."], ["MORE list:", "every line within 2 points: points bought · history win % · Polymarket price."]],
   total: [["Model:", "the game model’s total points guess. Data only."], ["PICK:", "Over or Under at Polymarket’s main total, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
     ["PICK w/ POINTS:", "same side, the fewest bought points (1–2) that won 56%+."], ["MORE list:", "every line within 2 points: points bought · history win % · Polymarket price."]],
@@ -1125,18 +1125,24 @@ async function plAuto() {
   }
 }
 const legMark = (r) => (r === "W" ? '<span class="g">✓</span>' : r === "L" ? '<span class="r">✗</span>' : r === "P" ? '<span class="dim">–</span>' : "•");
-const gameLogos = (key) => { const m = String(key || "").match(/^([A-Z]{2,4}) @ ([A-Z]{2,4})$/); return m ? `${tlogo(m[1])}${esc(m[1])} @ ${tlogo(m[2])}${esc(m[2])}` : esc(key); };
+const gameLogos = (key) => { const m = String(key || "").match(/^([A-Z]{2,4}) @ ([A-Z]{2,4})$/); return m ? `<span class="gl">${tlogo(m[1])}${esc(m[1])} @ ${tlogo(m[2])}${esc(m[2])}</span>` : esc(key); };   // 10/22: one unit, never split across lines (NBA "CLE @" / "PHI")
 // 10/16 (owner, final): NO logo on any leg line -- logos sit only on the parlay's header (the game names). Plain text legs.
 function legLogoLabel(l) { return esc(l.label); }
 // title = HTML for the left of the top line; p = the parlay; showGame = show each leg's game (parlays across games)
+// 10/22 (owner: "make this into a table format"): every parlay is a small table -- the game / name on top, then LEG | MODEL | POLYMARKET column heads,
+// one row per leg (its % purple, its price blue), and a last row with the payout (PL), the parlay's Model % and its result, all in the same columns
+// a player prop leg reads like the props rows: the player on top, the bet small under him ("Jaylen Brown" / "PRA Over 19.5")
+const legCell = (l, plain) => { const nm = l.name || l.player, lb = String(l.label || "");
+  return nm && lb.startsWith(nm + " ") && !/ TD$/.test(lb) ? legTxt(l.result, esc(nm)) + `<div class="ptsub">${esc(lb.slice(nm.length + 1))}</div>` : legTxt(l.result, plain); };
+const centsOf = (x) => (x > 0 && x < 1 ? `${Math.round(x * 100)}¢` : "—");
 function pBlock(title, p, showGame) {
   if (!p || !Array.isArray(p.legs) || !p.legs.length) return "";
   const pr = typeof p.prob === "number" && isFinite(p.prob) ? p.prob : null;
-  // 10/20 night (owner: "the model should be next to polymarket ... make the cards consistent"): the parlay's Model % sits on the right next to the Polymarket
-  // line, and every leg's % is a right-hand column like the props rows
-  const legs = p.legs.map((l) => `<div class="pbl pleg"><span class="pll">${legMark(l.result)} ${legTxt(l.result, `${legLogoLabel(l)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""}`)}${showGame && l.game ? ` <span class="dim">${gameLogos(l.game)}</span>` : ""}</span><span class="mod plp">${legPct(l)}%</span></div>`).join("");
+  const head = `<div class="ptb pth"><span class="pt1">LEG</span><span class="pt2">MODEL</span><span class="pt3">${pmLogo()} POLYMARKET</span></div>`;
+  const legs = p.legs.map((l) => `<div class="ptb${l.result === "W" ? " g" : l.result === "L" ? " r" : ""}"><span class="pt1">${legMark(l.result)} ${legCell(l, `${legLogoLabel(l)}${l.bought ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""}`)}${showGame && l.game ? ` <span class="dim">${gameLogos(l.game)}</span>` : ""}</span><span class="pt2 mod">${legPct(l)}%</span><span class="pt3">${centsOf(l.price)}</span></div>`).join("");
   const res = p.result === "W" ? '<span class="g">✓ Won</span>' : p.result === "L" ? '<span class="r">✗ Lost</span>' : p.result === "P" ? '<span class="dim">Push</span>' : "";
-  return `<div class="par"><div class="pbh"><span class="pbn">${title}</span><span class="pbx">${pr == null ? "" : `<span class="mod">Model ${Math.round(pr * 100)}%</span>`}<span class="plb"${plTap(p)}>${pmLogo()} ${plShown(p)}</span></span></div>${legs}<div class="pbr">${res}</div></div>`;
+  const foot = `<div class="ptb ptf"><span class="pt1"><span class="plb"${plTap(p)}>${pmLogo()} ${plShown(p)}</span></span><span class="pt2 mod">${pr == null ? "—" : `${Math.round(pr * 100)}%`}</span><span class="pt3">${res}</span></div>`;
+  return `<div class="par"><div class="pbh"><span class="pbn">${title}</span></div>${head}${legs}${foot}</div>`;
 }
 function sgpBox(g) {
   const x = g.sgp; if (!x || g.started || g.final) return "";
@@ -1161,9 +1167,9 @@ function applyBetsView() {
   document.querySelectorAll("#bets-sw [data-bv]").forEach((b) => b.classList.toggle("on", b.dataset.bv === BETSVIEW));
   if (m) renderLabList();
 }
-// PLAYER PROPS (10/20, owner: "rename it player props and have the sub tabs for the best available for all teams grouped up by their games"; bar 62%+):
+// PLAYER PROPS (10/20, owner: "rename it player props and have the sub tabs for the best available for all teams grouped up by their games"; bar 62%+, 65%+ since 10/22):
 // one page per stat tab -- Anytime TD (the #td page), First TD (the model's first-TD share per game, with Polymarket's price), Rec Yds, Receptions,
-// Pass Yds (/api/props: the side the model gives 62%+ in a family that passed the real-line test, one row per player and stat, its highest %).
+// Pass Yds (/api/props: the side the model gives 65%+ in a family that passed the real-line test, one row per player and stat, its highest %).
 // Rows sit under the kickoff headers, game by game; a team drop-down filters them; RECORD tile = this tab's graded rows; ✓ / ✗ green / red once graded.
 let PROPS = null, PROPWEEK = null, PROPTAB = "recyds", PROPTEAM = "all";
 const PROP_TABS = [["td", "Anytime TD"], ["first", "First TD"], ["recyds", "Rec Yds"], ["rec", "Receptions"], ["passyds", "Pass Yds"]];
@@ -1407,7 +1413,8 @@ function renderAlerts() {
       `<div class="ti">${esc(a.title)}</div>${a.sub ? `<div class="su">${esc(a.sub)}</div>` : ""}${a.game ? `<div class="algame">${alGameLogos(a.game)} ›</div>` : ""}</div></div>`; }).join("") ||
     '<div class="card" style="margin-top:10px"><div class="s">No alerts.</div></div>';
 }
-function renderAll() { if ($("panel-home").classList.contains("on")) renderHome(); renderLines(); renderTd(); if (PAPER) renderLab(); else renderLabList(); if (MB) renderRecord(); applyBetsView(); tickCd(); renderAlerts(); }
+// 10/22: renderAll also redraws the First TD tab (built from the slate -- opened before the slate landed it sat on "Loading…")
+function renderAll() { if ($("panel-home").classList.contains("on")) renderHome(); renderLines(); renderTd(); if (PROPTAB === "first" && $("panel-props") && $("panel-props").classList.contains("on")) renderProps(); if (PAPER) renderLab(); else renderLabList(); if (MB) renderRecord(); applyBetsView(); tickCd(); renderAlerts(); }
 // Newest version all the time (9/30): if a new deploy went live while this page was open (or sat in a phone tab),
 // reload once to pick it up; data refreshes on its own when you come back to the tab after 2+ minutes.
 let BUILD = null, LOADED_AT = 0, LOAD_SEQ = 0;

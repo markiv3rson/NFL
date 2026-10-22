@@ -272,7 +272,7 @@ def team_yards():
             _prop_build_bg(); return jsonify({"ok": False, "error": "prop model not built yet", "building": True}), 503
         body = request.get_json(force=True) or {}
         games = [{**g, "away": nv(g["away"]), "home": nv(g["home"])} for g in body.get("games", []) if g.get("spread") is not None and g.get("total") is not None]
-        return jsonify({"ok": True, "built": prop_model._LIVE.get("built"), "results": prop_model.team_yards(games)})
+        return jsonify({"ok": True, "built": prop_model._LIVE.get("built"), "v": prop_model.TEAM_YARDS_V, "results": prop_model.team_yards(games)})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 

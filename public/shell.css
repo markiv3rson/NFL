@@ -71,6 +71,9 @@ body.bnav-on.home-on .wrap { padding-bottom:calc(env(safe-area-inset-bottom,0px)
 body.sbar-on .sbar { display:flex; }
 .si { flex:none; display:flex; align-items:center; height:100%; padding:0 2px; box-sizing:border-box; border-top:3px solid transparent; color:#8d95a3; text-decoration:none; font-size:13px; font-weight:800; white-space:nowrap; }
 .si.on { color:#fff; border-top-color:#ff5fa2; }
+/* 10/22: a game name in a card head never breaks across lines; the sub-tab row fits a phone (7 tabs: "10 Leg" / "Blocks" were cut at the right edge) */
+.gl { display:inline-flex; align-items:center; gap:4px; white-space:nowrap; }
+@media (max-width:440px) { .sbar { gap:9px; padding:0 8px; } .si { font-size:12px; } }
 @media (min-width:600px) { .sbar { justify-content:center; gap:26px; } .si { font-size:14px; } .bnav { justify-content:center; gap:28px; } .bi { flex:0 0 84px; } }
 /* room for the bars: the page starts under the top bar and ends above the bottom bar(s) */
 body.bnav-on .wrap { padding-top:calc(var(--tbh) + 8px); padding-bottom:calc(env(safe-area-inset-bottom,0px) + var(--bnh) + 28px); }
@@ -172,3 +175,12 @@ body .labslot .lst { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Hel
 .jrow:has(> .ticket:only-child) { display:flex; justify-content:center; }
 .jrow > .ticket:only-child { flex:0 1 calc((100% - 10px) / 2); }
 .s.empty { text-align:center; }
+
+/* 10/22 (owner: "make this into a table format", both sports): parlay blocks are tables -- LEG | MODEL | POLYMARKET, each value centered under its head */
+.ptb { display:grid; grid-template-columns:minmax(0,1fr) 52px 86px; column-gap:8px; align-items:center; padding:3px 0; border-top:1px solid rgba(255,255,255,.06); }
+.ptb .pt1 { min-width:0; line-height:1.3; } .ptb .ptsub { font-size:11px; color:var(--dim,#9aa3b2); padding-left:12px; }   /* the whole leg shows -- it wraps to a 2nd line, never cut with … */
+.ptb .pt2, .ptb .pt3 { text-align:center; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.ptb .pt2.mod { font-weight:800; } .ptb .pt3 { color:#2e5cff; font-weight:700; }
+.ptb.pth { border-top:0; padding:2px 0 1px; } .ptb.pth span { font-size:8.5px; letter-spacing:.02em; color:var(--faint,#7c8494); font-weight:700; } .ptb.pth .pt3 { color:#2e5cff; display:flex; align-items:center; justify-content:center; gap:3px; } .ptb.pth .pm, .ptb.pth img { width:11px; height:11px; }
+.ptb.ptf { border-top:1px solid rgba(255,255,255,.18); margin-top:2px; padding-top:5px; } .ptb.ptf .pt1 { font-weight:700; } .ptb.ptf .pt3 { color:inherit; }
+@media (min-width:600px) { .ptb { grid-template-columns:minmax(0,1fr) 70px 110px; column-gap:16px; } }

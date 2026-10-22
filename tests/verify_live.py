@@ -8,7 +8,11 @@
 # Exit 1 on any difference. Names nflverse spells differently are counted as "not matched", never as right.
 import csv, io, json, re, sys, time, urllib.request, collections
 
-SITE = (sys.argv[1] if len(sys.argv) > 1 else "https://nfl-nfl9.vercel.app").rstrip("/")
+# 10/22 (owner: "re grade ... everything" from the app's Export data file): `--export FILE` re-grades the results saved in that export
+# instead of the live /api/results/list; every other section still reads the live site
+ARGS = [a for a in sys.argv[1:] if not a.startswith("--export")]
+EXPORT = next((a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--export=")), None)
+SITE = (ARGS[0] if ARGS else "https://nfl-nfl9.vercel.app").rstrip("/")
 SEASON = 2026
 FIX = {"LAR": "LA", "WSH": "WAS", "JAC": "JAX"}
 
@@ -45,7 +49,8 @@ def wrong(*a):
     global bad
     bad += 1; print("  WRONG", *a)
 
-L = get(f"{SITE}/api/results/list")
+L = json.load(open(EXPORT)) if EXPORT else get(f"{SITE}/api/results/list")
+if EXPORT: print(f"(results from the export file, exported {L.get('exportedAt')}: {len(L['results'])} graded games)")
 res = {f'{r["week"]}|{r["game"]}': r for r in L["results"] if r.get("awayScore") is not None}
 
 # 1. scores

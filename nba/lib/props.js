@@ -160,8 +160,12 @@ export async function lastNbaProps(date, days = null) {
       for (const p of onePerPlayer(rec.picks || [])) { const k = `${p.name}|${p.stat}`; if (!out[k] && p.result && p.result !== "P") out[k] = { date: d, line: p.line, side: p.side, result: p.result, actual: p.actual ?? null }; } } }
   return out;
 }
-export async function nbaPropsForDay(date) {
+// 10/22 (owner: the NBA props page % = the calibrated chance): each row carries `cal` = its model % moved toward what its 5-point band really won on
+// the graded rows (propCalibration, CAL_K 100) -- the same number the prop parlay legs use. The ROWS are unchanged (chosen on the model's %, the 65% bar).
+// Walk-forward 10/21 rows calibrated from 10/20's: Brier 0.2119 raw -> 0.2112 (the model said 76.5, the rows won 70.1).
+export async function nbaPropsForDay(date, now = Date.now()) {
   const r = getRedis(), res = await r.hgetall(K_NBAPROPRES(date)).catch(() => null) || {}, out = [], last = await lastNbaProps(date).catch(() => ({}));
+  const bands = await propCalibration(now).catch(() => null);
   for (const k of await scanKeys(`nbapropmodel:${date}:*`)) {
     const key = k.slice(`nbapropmodel:${date}:`.length), model = await getJSON(k).catch(() => null); if (!model) continue;
     let picks;
@@ -169,7 +173,7 @@ export async function nbaPropsForDay(date) {
     else picks = nbaPropPicks(model.rows, await getJSON(K_NBAPROPS(date, key)).catch(() => null)).map((p) => ({ ...p, result: null }));
     picks = onePerPlayer(picks); if (!picks.length) continue;
     out.push({ game: key, away: model.away, home: model.home, start: model.start || null, final: !!res[key],
-      picks: picks.map((p) => ({ name: p.name, team: p.team || null, stat: p.stat, side: p.side, line: p.line, chance: p.chance, price: p.price ?? null, result: p.result || null, actual: p.actual ?? null, last: last[`${p.name}|${p.stat}`] || null })) });
+      picks: picks.map((p) => ({ name: p.name, team: p.team || null, stat: p.stat, side: p.side, line: p.line, chance: p.chance, cal: calibrate(p.chance, bands), price: p.price ?? null, result: p.result || null, actual: p.actual ?? null, last: last[`${p.name}|${p.stat}`] || null })) });
   }
   return out.sort((a, b) => String(a.start || "").localeCompare(String(b.start || "")));
 }
