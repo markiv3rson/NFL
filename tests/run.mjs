@@ -1821,5 +1821,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const R = globalThis.__TEST_REDIS__; for (const [k, v] of Object.entries(fake)) await R.set(k, JSON.stringify(v));
   const L = await pr.propLegsForWeek(2099, 1, [{ key: "A @ B", kickoff: new Date(Date.now() + 864e5).toISOString() }, { key: "C @ D", kickoff: new Date(Date.now() - 36e5).toISOString(), started: true }]);
   ok(L.length === 2 && L[0].name === "X One" && L[0].chance === 0.8 && L[0].price === 0.7 && L[0].game === "A @ B", "NFL prop parlay legs = the page's rows (Under 80% at 70c), strongest first, games not started only", L); }
+{ // 10/22 (owner): a fresh start opens on home; 2+ minutes in the background resets to home and reloads; app page switches never reset (same session)
+  const sh = readFileSync(new URL("../public/shell.js", import.meta.url), "utf8");
+  ok(/AWAY_MS: 120e3/.test(sh) && /fresh = !ss\.getItem\("slz-live"\)/.test(sh) && /if \(Shell\.homeReset\(\)\) return;/.test(sh) && /location\.replace\(Shell\.HOME\)/.test(sh) && /!Shell\.resetting/.test(sh), "home reset: fresh start + 2 minutes away land on home, the build reload does not fight it"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);

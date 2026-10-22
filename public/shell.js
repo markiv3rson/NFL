@@ -104,7 +104,25 @@
       if (norm(u.pathname) === norm(location.pathname)) { history.replaceState(null, "", u.hash || "#"); window.dispatchEvent(new HashChangeEvent("hashchange")); }   // always redraw (Lines on a game page goes back to the games)
       else location.replace(u.href);
     },
+    // 10/22 (owner: "Every time I open the app can it land me on the home page" + "background for more than 2 [minutes] reset"; both sports):
+    // a fresh start of the app (a new session: nothing in sessionStorage yet) opens on home; coming back after 2+ minutes in the background
+    // lands on home and reloads everything; back sooner keeps the page. Switches inside the app (NFL <-> NBA) keep the session, so they never reset.
+    HOME: "/index.html", AWAY_MS: 120e3, resetting: false,
+    isHome() { return /^\/(index\.html)?$/.test(location.pathname) && (!location.hash || location.hash === "#" || location.hash === "#home"); },
+    homeReset() {
+      let ss = null; try { ss = window.sessionStorage; } catch {}
+      if (!ss || typeof document === "undefined" || !document.addEventListener) return false;
+      let fresh = false; try { fresh = !ss.getItem("slz-live"); ss.setItem("slz-live", "1"); } catch { return false; }
+      if (fresh && !Shell.isHome()) { Shell.resetting = true; location.replace(Shell.HOME); return true; }
+      document.addEventListener("visibilitychange", () => { try {
+        if (document.hidden) { ss.setItem("slz-away", String(Date.now())); return; }
+        const t = Number(ss.getItem("slz-away") || 0); ss.removeItem("slz-away");
+        if (t && Date.now() - t >= Shell.AWAY_MS) { Shell.resetting = true; location.replace(Shell.HOME); }
+      } catch {} });
+      return false;
+    },
     init(sport) {
+      if (Shell.homeReset()) return;   // a fresh start on another page: home is loading instead
       Shell.sport = sport; const sp = sport, o = OTHER[sp];
       const d = document.createElement("div");
       d.innerHTML = `<header class="tbar" id="tbar"><a class="slatelogo sgrad" data-nav href="/index.html#home">SLATEZZ</a>` +
@@ -147,13 +165,13 @@
     async buildCheck(why) {
       try { const d = await (await fetch("/api/build", { cache: "no-store" })).json(); if (!d || !d.build) return;
         if (!Shell.build) Shell.build = d.build; else if (d.build !== Shell.build) Shell.stale = true;
-        if (Shell.stale && why === "visible") location.reload(); } catch {}
+        if (Shell.stale && why === "visible" && !Shell.resetting) location.reload(); } catch {}
     },
     buildWatch() {
       if (typeof fetch !== "function" || typeof setInterval !== "function") return;   // (the test harness has no timers)
       Shell.buildCheck("init");
       setInterval(() => { if (!document.hidden) Shell.buildCheck("poll"); }, 60e3);
-      document.addEventListener("visibilitychange", () => { if (!document.hidden) { if (Shell.stale) location.reload(); else Shell.buildCheck("visible"); } });
+      document.addEventListener("visibilitychange", () => { if (!document.hidden && !Shell.resetting) { if (Shell.stale) location.reload(); else Shell.buildCheck("visible"); } });
     },
   };
   // 10/22 (owner): the one ⓘ next to a model header opens / closes the short box right under that header (both sports)
