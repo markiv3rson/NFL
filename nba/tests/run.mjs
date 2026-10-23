@@ -939,12 +939,13 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
     ok(lw["Jaylen Brown|pts"] && lw["Jaylen Brown|pts"].line === 22.5, "NBA props LAST (10/21): the line the page showed that day (the 92c line was never shown)", lw); }
   // the page's day: two rows (Brown Over 19.5, Cunningham Under 39.5)
   const day = await pr.nbaPropsForDay("2026-12-30");
-  ok(day.length === 1 && day[0].game === "BOS @ DET" && day[0].picks.length === 2 && day[0].picks[0].name === "Jaylen Brown" && day[0].picks[0].result === null, "NBA props page: the day's games with their rows, ungraded", day);
+  ok(day.length === 1 && day[0].game === "BOS @ DET" && day[0].picks.length === 1 && day[0].picks[0].name === "Jaylen Brown" && day[0].picks[0].result === null, "NBA props page: the day's games with their rows, ungraded; Cunningham's Under is not shown (10/23: NBA Unders cut -- Polymarket sells no Under on NBA props)", day);
   // grading from a box score: Brown 27 pts (Over 19.5 wins), Cunningham 44 pra (Under 39.5 loses)
   const box = { "BOS @ DET": { final: true, players: { "jaylen brown": { pts: 27, reb: 5, ast: 4, pra: 36, "3pm": 2, stl: 1, blk: 0 }, "cade cunningham": { pts: 30, reb: 6, ast: 8, pra: 44, "3pm": 3, stl: 1, blk: 1 } } } };
   const g = await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2026-12-31T08:00:00Z"), fetchBox: async () => box });
   const rec = await pr.nbaPropsRecord(["2026-12-30"]), day2 = await pr.nbaPropsForDay("2026-12-30");
-  ok(g === 1 && rec.all.w === 1 && rec.all.l === 1 && rec.pts.w === 1 && rec.pra.l === 1 && rec.reb.w === 0 && day2[0].final && day2[0].picks.find((p) => p.name === "Jaylen Brown").result === "W" && day2[0].picks.find((p) => p.name === "Cade Cunningham").result === "L", "NBA props grading: W / L from the box score, RECORD per stat, the page shows ✓ / ✗", { g, rec });
+  const graded = JSON.parse(await R.hget(pr.K_NBAPROPRES("2026-12-30"), "BOS @ DET")).picks;
+  ok(g === 1 && rec.all.w === 1 && rec.all.l === 0 && rec.pts.w === 1 && rec.pra.l === 0 && rec.reb.w === 0 && day2[0].final && day2[0].picks.find((p) => p.name === "Jaylen Brown").result === "W" && graded.find((p) => p.name === "Cade Cunningham").result === "L", "NBA props grading: W / L from the box score, RECORD per stat (Overs only since 10/23), the page shows ✓ / ✗; the cut Under is still graded in the background", { g, rec });
   ok((await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2026-12-31T08:00:00Z"), fetchBox: async () => { throw new Error("no"); } })) === 0, "NBA props grading: a graded game is never graded twice");
   { // 10/22 (owner): the page's % is the calibrated chance (`cal`, the same number the prop parlay legs use); the rows stay the model's own
     const bands = await pr.propCalibration(Date.now(), true), d = await pr.nbaPropsForDay("2026-12-30", Date.now() + 1);
@@ -953,7 +954,7 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
     const fixedBox = { "BOS @ DET": { final: true, players: { ...box["BOS @ DET"].players, "cade cunningham": { pts: 26, reb: 5, ast: 7, pra: 38, "3pm": 3, stl: 1, blk: 1 } } } };
     const early = await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2026-12-31T10:00:00Z"), fetchBox: async () => fixedBox });
     const g2 = await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2026-12-31T15:00:00Z"), fetchBox: async () => fixedBox });
-    const d3 = await pr.nbaPropsForDay("2026-12-30"), cc = d3[0].picks.find((p) => p.name === "Cade Cunningham");
+    const cc = JSON.parse(await R.hget(pr.K_NBAPROPRES("2026-12-30"), "BOS @ DET")).picks.find((p) => p.name === "Cade Cunningham");   // 10/23: the Under is graded in the background, not shown
     const g3 = await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2026-12-31T23:00:00Z"), fetchBox: async () => { throw new Error("no second look"); } });
     ok(early === 0 && g2 === 1 && cc.result === "W" && cc.actual === 38 && g3 === 0 && pr.RECHECK_H === 6, "NBA props grading: a graded game is looked at once more 6+ hours later and a corrected box score re-grades its rows; never a third time", { early, g2, cc, g3 }); }
   // ESPN box parse (the real summary shape): 3PT "1-3" = 1 made, a DNP is left out, the key from the header
@@ -969,8 +970,8 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   const pr = await import("../lib/props.js"), pl = await import("../lib/parlays.js"), R = globalThis.__TEST_REDIS__, D = "2027-01-05";
   ok(pr.onePerPlayer([{ name: "A", stat: "pts", chance: 0.64, price: 0.62 }, { name: "B", stat: "pts", chance: 0.66, price: 0.62 }]).map((p) => p.name).join() === "B", "NBA props (10/21): a row under 65% (saved under the old 62% bar) is not shown or counted");
   { const cut = pr.onePerPlayer([{ name: "A", stat: "pts", side: "over", chance: 0.75, price: 0.59 }, { name: "A", stat: "pts", side: "under", chance: 0.7, price: 0.62 }, { name: "B", stat: "reb", side: "under", chance: 0.8, price: 0.7 }, { name: "B", stat: "reb", side: "over", chance: 0.68, price: 0.63 }, { name: "C", stat: "ast", side: "over", chance: 0.72, price: 0.55 }]);
-    ok(pr.MIN_PRICE === 0.6 && pr.CUT_SIDES.has("reb|under") && cut.length === 2 && cut.some((p) => p.name === "A" && p.side === "under") && cut.some((p) => p.name === "B" && p.side === "over") && !cut.some((p) => p.name === "C"),
-      "NBA props (10/22 night, owner: cut the two): a row priced under 60c is not shown (A's 75% Over at 59c gives way to his 70% Under at 62c, C at 55c is off); no rebounds Under (B shows his Over)", cut); }
+    ok(pr.MIN_PRICE === 0.6 && pr.CUT_SIDES.has("reb|under") && pr.CUT_UNDERS && cut.length === 1 && !cut.some((p) => p.side === "under") && cut.some((p) => p.name === "B" && p.side === "over") && !cut.some((p) => p.name === "C"),
+      "NBA props (10/22 night + 10/23): a row priced under 60c is not shown (A's 75% Over at 59c is off, C at 55c is off); no NBA Under at all (A's 70% Under and B's rebounds Under are off; B shows his Over)", cut); }
   // 3 games, 9 players with priced 65%+ rows (one player has two stats: only his best leg)
   const mkG = (k, start) => ({ key: k, away: k.split(" @ ")[0], home: k.split(" @ ")[1], date: D, start });
   const G = [mkG("BOS @ NYK", "2027-01-06T00:00:00Z"), mkG("LAL @ GSW", "2027-01-06T03:00:00Z"), mkG("MIA @ ORL", "2027-01-06T00:30:00Z")];
@@ -1013,7 +1014,7 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
       && mixed6 && mixed6.legs.length === 6 && !mixed6.legs.some((l) => l.game === "BOS @ NYK") && !pp2.some((p) => p.type === "pp8" && !p.game) && mixed10 && mixed10.legs.length === 10 && mixed10.legs.some((l) => l.game === "BOS @ NYK")
       && !pp2.some((p) => p.legs.some((l) => l.market === "ml" && l.game === "LAL @ GSW")),
       "Prop Parlays (10/22): per game from that game's spread / total / ML / props (spread and ML never both on one game: the stronger stays); a game short of a size gives its legs to one mixed parlay of that size", pp2.map((p) => [p.type, p.game, p.legs.map((l) => l.label)]));
-    await R.hset(pr.K_NBAPROPRES("2027-01-01"), "X @ Y", JSON.stringify({ picks: Array.from({ length: 50 }, (_, i) => ({ name: `P${String.fromCharCode(97 + (i % 26))}${String.fromCharCode(97 + Math.floor(i / 26))}`, stat: "pts", side: "under", line: 20.5, chance: 0.82, price: 0.6, result: i < 35 ? "W" : "L" })) }));
+    await R.hset(pr.K_NBAPROPRES("2027-01-01"), "X @ Y", JSON.stringify({ picks: Array.from({ length: 50 }, (_, i) => ({ name: `P${String.fromCharCode(97 + (i % 26))}${String.fromCharCode(97 + Math.floor(i / 26))}`, stat: "pts", side: "over", line: 20.5, chance: 0.82, price: 0.6, result: i < 35 ? "W" : "L" })) }));
     await R.set(pr.K_NBAPROPMODEL("2027-01-01", "X @ Y"), JSON.stringify({ rows: [] }));
     const bands = await pr.propCalibration(now, true); await R.del(pr.K_NBAPROPRES("2027-01-01")); await R.del(pr.K_NBAPROPMODEL("2027-01-01", "X @ Y")); await R.del("nbapropcal");
     const c = pr.calibrate(0.82, bands);

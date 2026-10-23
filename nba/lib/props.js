@@ -71,13 +71,16 @@ export function nbaPropPicks(modelRows, saved, bar = NBA_PROP_BAR) {
 // 10/22 night (owner: "cut the two"): no row priced under MIN_PRICE (60c: the market disagrees -- live 50-60c said 72.8 won 64.8%, last season's real lines ~54%)
 // and no rebounds Under (live 28-18 = 60.9%, real lines 59.0%; still 24-15 at 60c+). Both stay saved and graded in the background.
 export const MIN_PRICE = 0.60;
+// 10/23 (owner: "delete all the nba unders"): Polymarket US marks the No side of every NBA player prop "not tradable" (464 of 464 on 10/23), so an
+// Under cannot be bought -- no NBA Under row is shown, counted or used as a parlay leg; the Unders are still saved and graded in the background
 export const CUT_SIDES = new Set(["reb|under"]);
+export const CUT_UNDERS = true;
 export function onePerPlayer(picks) {
   const priced = (p) => p.price > 0 && p.price < 1, best = new Map();
   for (const p of picks) {
     if (!(p.chance >= NBA_PROP_BAR)) continue;   // a row saved under an older, lower bar
     if (!priced(p) || p.price >= p.chance || p.price >= MAX_PRICE || p.price < MIN_PRICE) continue;
-    if (CUT_SIDES.has(`${p.stat}|${p.side}`)) continue;
+    if (CUT_SIDES.has(`${p.stat}|${p.side}`) || (CUT_UNDERS && p.side === "under")) continue;
     const k = `${normName(p.name)}|${p.stat}`, o = best.get(k);
     if (!o || p.chance > o.chance) best.set(k, p);
   }
