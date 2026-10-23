@@ -178,7 +178,7 @@ function setBg(g) {
 }
 function detailTop(g) {
   const w = mktWin(g), ap = w ? Math.round(w.away * 100) : null, hr = ap == null ? null : 100 - ap;
-  const st = g.inProgress ? '<span class="r">Live · locked</span>' : startsIn(g), dsc = scOf(g);   // 10/23 (owner, = NFL): a game being played shows its score + quarter clock
+  const st = g.inProgress ? '<span class="r">● LIVE</span>' : startsIn(g), dsc = scOf(g);   // 10/23 (owner, = NFL): a game being played shows its score + quarter clock
   const ca = teamColor(g.away), ch = teamColor(g.home), badge = g.preseason && !g.inProgress ? '<span class="chip c-amb">PRESEASON</span>' : "";
   return `<div class="card dtop" style="background:linear-gradient(90deg,${ca}40 0%,${ca}14 50%,${ch}14 50%,${ch}40 100%),var(--card)"><img class="dwm l" src="${esc(logoUrl(g.away))}" alt="" onerror="this.style.display='none'"><img class="dwm r" src="${esc(logoUrl(g.home))}" alt="" onerror="this.style.display='none'"><div class="inner"><div class="nm"><span class="t">${tlogo(g.away)}${g.away}${recOf(g, g.away)}</span>` +
     `<div class="mid">${badge}${dsc && (dsc.st === "in" || dsc.st === "post") ? `<div class="s2"><b>${dsc.a} – ${dsc.h}</b></div><div class="s3 r">${dsc.st === "post" ? "FINAL" : "● LIVE · " + esc(dsc.lbl)}</div>` : `<div class="s2">${tm(g.start)}</div><div class="s3">${st}</div>`}</div><span class="t hm">${g.home}${tlogo(g.home)}${recOf(g, g.home)}</span></div>` +
