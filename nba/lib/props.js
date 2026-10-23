@@ -75,9 +75,18 @@ export const MIN_PRICE = 0.60;
 // Under cannot be bought -- no NBA Under row is shown, counted or used as a parlay leg; the Unders are still saved and graded in the background
 export const CUT_SIDES = new Set(["reb|under"]);
 export const CUT_UNDERS = true;
+// 10/23 (owner: "fix the overs if it runs high ... so we're accurate"): an Over's % = OVER_W x the model + (1 - OVER_W) x Polymarket's price. The model
+// alone ran hot on Overs (live 10/20-21 said 74.7, won 65.8% of 114; last season's real lines said 74.3, won 68.8% of 138). On 8,041 real Polymarket Over
+// lines 2025-26 the blend that predicts best is 0.3-0.4 model (log loss 0.7013 model alone, 0.6904 price alone, 0.6860 at 0.4; best in both halves of the
+// season); the page's rows on the blend said 70.5 and won 71.6% (81). The 65% bar, the "priced under its %" rule, the order, the RECORD tiles, the
+// calibration bands and the parlay legs all use it; the saved pick keeps the model's own % (`model`), so grading is unchanged.
+export const OVER_W = 0.4;
+export const effChance = (p) => (p.side === "over" && p.price > 0 && p.price < 1 ? OVER_W * p.chance + (1 - OVER_W) * p.price : p.chance);
 export function onePerPlayer(picks) {
   const priced = (p) => p.price > 0 && p.price < 1, best = new Map();
-  for (const p of picks) {
+  for (const p0 of picks) {
+    if (!priced(p0)) continue;
+    const p = { ...p0, model: p0.chance, chance: Math.round(effChance(p0) * 10000) / 10000 };
     if (!(p.chance >= NBA_PROP_BAR)) continue;   // a row saved under an older, lower bar
     if (!priced(p) || p.price >= p.chance || p.price >= MAX_PRICE || p.price < MIN_PRICE) continue;
     if (CUT_SIDES.has(`${p.stat}|${p.side}`) || (CUT_UNDERS && p.side === "under")) continue;

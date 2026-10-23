@@ -193,3 +193,7 @@ body .labslot .lst { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Hel
 /* 10/23 (owner: "Capitalize the numbers or words that come with it. OKC BY 8.8"): on the game cards the label before the colon is plain (Pick:), what follows it in capitals */
 .modelcell b { text-transform:uppercase; }
 .modelcell b .lbw, .modelcell .lbw { text-transform:none; }
+/* 10/23 (owner: "Why is pick and model different sizes ... make it consistent", both sports): every labeled line in a game card's MODEL section is one size --
+   Model / Model (Team) / Model (Stack) (were the 11.5px data style) and Pick / Pick w/ points / ML pick (were 13-16px) */
+.modelcell b { font-size:13px !important; }
+.modelcell > .s:has(> .lbw), .modelcell .lbw { font-size:13px; }
