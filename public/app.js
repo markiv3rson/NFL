@@ -1,4 +1,6 @@
 // NFL SLATEZZZ — everything comes from /api/slate (lines, TD, flags) and /api/mybets + /api/results/list (Record).
+// A bet's average price: whole cents from 10c, else one decimal (1.6c, not "2c": $2 at 1.6c pays $125), two under 0.1c.
+const betCents = (p) => { const c = p * 100; return c >= 9.95 ? String(Math.round(c)) : c >= 0.095 ? c.toFixed(1) : c >= 0.005 ? c.toFixed(2) : "<0.01"; };
 let WINALL = false;
 let PAPER = null, TRACKED = null, COMBOS = null;
 let S = null, RES = null, MB = null;
@@ -518,7 +520,7 @@ function betRowInner(b) {
     const name = b.picks && b.picks.length ? `Combo · ${b.picks.length} picks` : b.prop ? `${tlogo(b.prop.team)}${esc(b.prop.label)}` : `${esc(b.title)}${b.outcome ? ` — ${esc(b.outcome)}` : ""}`;   // 10/19: single player bet
     const picks = b.picks && b.picks.length ? b.picks.map((p) => `<div class="s" style="padding:0 0 0 16px">${p.result ? RESMARK[p.result] + " " : "• "}${legTxt(p.result, logoLabel(p.label, p.team))}${liveLegTxt(lk, p, !!p.result)}${!p.result && legFlipped(p.label) ? ' <span class="y">⚠ app now picks the other side</span>' : ""}</div>`).join("") : "";
     return `<div class="row"><span>${name} ${lk.length ? liveHeadTxt(lk) : `<span class="dim">wk ${b.week ?? "?"}</span>`}</span><span>${st}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
-      `<div class="s" style="padding:0 0 ${picks ? 2 : 6}px 8px">${money(b.cost)}${b.price != null ? ` at ${b.price < 0.005 ? "<1" : Math.round(b.price * 100)}¢` : ""} · ${b.sold ? `sold early for ${money(Math.max(0, (b.cost || 0) + (b.pl || 0)))}` : legLost(b) ? `−${money(b.cost)}` : `pays ${money(b.toWin)} if it wins`}</div>` + (picks ? `<div style="padding-bottom:6px">${picks}</div>` : "");
+      `<div class="s" style="padding:0 0 ${picks ? 2 : 6}px 8px">${money(b.cost)}${b.price != null ? ` at ${betCents(b.price)}¢` : ""} · ${b.sold ? `sold early for ${money(Math.max(0, (b.cost || 0) + (b.pl || 0)))}` : legLost(b) ? `−${money(b.cost)}` : `pays ${money(b.toWin)} if it wins`}</div>` + (picks ? `<div style="padding-bottom:6px">${picks}</div>` : "");
   }
   const hit = b.legs.filter((l) => l.result === "W").length, lk = !b.sold && b.result === "pending" ? liveOf(b.legs) : [];
   const state = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? (b.pushUnconfirmed ? '<span class="y">Push leg</span>' : "Push") : (b.waiting ? '<span class="y">waiting for TD results</span>' : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : `<span class="dim">${hit} of ${b.legs.length} hit</span>`);

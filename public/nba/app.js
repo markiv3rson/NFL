@@ -1,5 +1,7 @@
 // NBA Slate — front end. The NFL app's current layout (10/15), NBA data only.
 // Data (merged site: every NBA route lives under /api/nba): /api/slate (Polymarket lines + model + cards + parlays), /api/models, /api/mybets, /api/modelbets, /api/alerts.
+// A bet's average price: whole cents from 10c, else one decimal (1.6c, not "2c": $2 at 1.6c pays $125), two under 0.1c.
+const betCents = (p) => { const c = p * 100; return c >= 9.95 ? String(Math.round(c)) : c >= 0.095 ? c.toFixed(1) : c >= 0.005 ? c.toFixed(2) : "<0.01"; };
 let S = null, TEAMS = {}, DETAIL = null, LASTY = 0, MODELS = null, BETS = null, MODELBETS = null, FUT = null, MBDAY = null;
 const $ = (id) => document.getElementById(id);
 const dash = '<span class="dim">—</span>';
@@ -390,7 +392,7 @@ function renderBets() {
   const betName = (e) => (e.picks && e.picks.length ? `Combo · ${e.picks.length} picks` : `${esc(e.title)}${e.outcome ? ` — ${esc(e.outcome)}` : ""}`);
   const rowsOf = (a, settled) => a.map((e) => { const lk = settled ? [] : liveOf(e), lv = lk.length === 1 ? `<span class="r lvb">● LIVE · ${esc(liveSc(lk[0]).lbl || "")}</span> ` : lk.length ? '<span class="r lvb">● LIVE</span> ' : "";
     return `<div class="betwrap"><div class="row"><span>${betName(e)}${lv ? " " + lv.trim() : ""}</span><span>${settled ? (e.result === "win" ? '<span class="g">Won</span>' : e.result === "loss" ? '<span class="r">Lost</span>' : '<span class="y">Sold</span>') + " " + cMoney(e.pl) : e.value != null ? "$" + e.value.toFixed(2) : ""}</span></div>` +
-    `${(e.picks || []).map((p) => legRow(p, lk)).join("")}<div class="s" style="padding:0 0 6px 8px">${money(e.cost)}${e.price ? ` at ${Math.round(e.price * 100)}¢` : ""}${e.shares ? ` · ${e.shares} shares` : ""}</div>${stampFor(e)}</div>`; }).join("");
+    `${(e.picks || []).map((p) => legRow(p, lk)).join("")}<div class="s" style="padding:0 0 6px 8px">${money(e.cost)}${e.price ? ` at ${betCents(e.price)}¢` : ""}${e.shares ? ` · ${e.shares} shares` : ""}</div>${stampFor(e)}</div>`; }).join("");
   const open = [...document.querySelectorAll("#record-mine .drop.open")].map((e) => e.id);
   // 10/17 (owner: "make everything consistent"): a day drop-down like NFL's week drop-down; it picks which settled bets show (open bets always show)
   const dayOf = (e) => { const t = e.closedAt || (e.resolved && e.resolved.t) || (e.sold && e.sold.t); return t ? new Date(t).toLocaleDateString("en-CA", { timeZone: "America/New_York" }) : null; };
