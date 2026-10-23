@@ -89,6 +89,11 @@ const mk = (away, home, over = {}) => ({ key: `${away} @ ${home}`, away, home, d
   ok(cp.MIN_BUY === 2 && c4.spread.rows.some((r) => r.pick === "OKC +9.5" && r.points === 1 && r.hit === 58) && c4.spread.pts.pick === "OKC +10.5" && c4.spread.pts.points === 2, "PICK w/ POINTS: 2 points is the first buy; a 1-point line is listed, never chosen (owner 10/16)", c4.spread.pts);
   const g3 = mk("OKC", "ATL", { move: { signal: { spread: { team: "OKC", open: 8.5, pts: 3 } } } }), c3 = cp.buildCard(g3);
   ok(c3.spread.plain.id === "cardpick|spread" && c3.spread.plain.ruleId === "linemove|spread" && c3.spread.plain.pick === "OKC +8.5" && c3.spread.plain.hit === 67.9, "LINE MOVE names the side: PICK at Polymarket's line, 67.9% while Polymarket still has the opening number", c3.spread.plain);
+  // 10/24: the bought lines carry the PICK's lift (LINE MOVE 67.9% over a table main line of 49.0 -> +18.9): OKC +10.5 = 57.0 + 18.9 = 75.9, never under
+  // the PICK; the other team's lines move down the same amount, floored at 100 - 67.9; PICK w/ POINTS = the fewest points (2) on OKC
+  { const r = c3.spread.rows, okc2 = r.find((x) => x.pick === "OKC +10.5"), atl2 = r.find((x) => x.pick === "ATL -6.5"), atl0 = r.find((x) => x.pick === "ATL -8.5");
+    ok(okc2 && okc2.hit > 67.9 && Math.abs(okc2.hit - (57 + 67.9 - LINES("OKC", "ATL").find((x) => x.team === "OKC" && x.points === 0).hist)) < 0.11 && atl0.hit === 32.1 && atl2.hit >= 32.1 && atl2.hit < 56.5 && c3.spread.pts.pick === "OKC +10.5" && c3.spread.pts.hit === okc2.hit,
+      "LINE MOVE: lines with more points on the PICK's team carry its lift (never read under the PICK); the other team's move down the same", { r, pts: c3.spread.pts }); }
   const g4 = mk("OKC", "ATL", { move: { signal: { spread: { team: "OKC", open: 5.5, pts: 3 } } } });
   ok(cp.buildCard(g4).spread.plain.hit === 56.3, "LINE MOVE after Polymarket moved too: the closing-number rate (56.3%)");
   const g5 = mk("OKC", "ATL", { move: { signal: { total: { side: "under", open: 223.5, pts: 3 } } } });
