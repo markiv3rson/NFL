@@ -1888,6 +1888,11 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     await stk.gradeStackWeek(2099, 7, [{ key: "KC @ SEA", homeScore: 27, awayScore: 20 }]);
     const saved = JSON.parse(await getRedis().hget("stack:2099:7", "KC @ SEA|stackml|ml") || "null");
     ok(saved && saved.pick === "SEA ML" && saved.kind === "ml" && saved.result === "W" && saved.hit === 67.7, "ML pick end to end (10/23 night): saved at kickoff with the card's picks and graded W from the final score", saved);
+    { const base = { key: "KC @ SEA", away: "KC", home: "SEA", started: false, final: false, combos: [], poly: { spread: { homeSpread: -2.5, home: 0.52, away: 0.49 }, ml: { home: 0.6, away: 0.42 } } };
+      const c1 = cpk.buildCard({ ...base, stackSide: { team: "SEA", confident: false, yv: 2, pct: 52.8, n: 608 } }, [], base.poly, null, {});
+      const c2 = cpk.buildCard({ ...base, poly: { ...base.poly, ml: { home: 0.8, away: 0.22 } }, stackSide: { team: "SEA", confident: false, yv: 2, pct: 52.8, n: 608 } }, [], { ...base.poly, ml: { home: 0.8, away: 0.22 } }, null, {});
+      const c3 = cpk.buildCard({ ...base, stackSide: { team: "KC", confident: false, yv: 2, pct: 52.8, n: 608 } }, [], base.poly, null, {});
+      ok(c1.spread.plain.hit === 57 && c1.spread.plain.n === 249 && c2.spread.plain.hit === 49.6 && c3.spread.plain.hit === 52.8, "STACK spread PICK % (10/23 night): 57.0% when it backs a 50-70% favorite, 49.6% a 70%+ favorite, the old bands on the underdog", [c1.spread.plain, c2.spread.plain, c3.spread.plain]); }
     await getRedis().del("stack:2099:7"); } }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);
