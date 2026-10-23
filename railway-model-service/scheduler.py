@@ -254,7 +254,10 @@ def _loop():
             # Added 9/28: Tue 7:30 (so the TD model retrained at 7:15 is actually used before Sunday; before, the Tuesday
             # numbers came from the OLD model and stayed up all week), Thu 7:05 (Wednesday's first practice report is in
             # the injury feed by then) and Sat 7:05 (Friday's final report). Before, Thu-Sat showed Tuesday's numbers.
+            # 10/23: + Friday 2:05 PM (the final injury report posts ~1 PM PT: Out / Doubtful players leave the TD lists and the prop rows, their
+            # backups move up the same afternoon, not Saturday 7 AM -- a Friday-evening Over on a player ruled Out loses)
             rerun_now = ((now_pt.weekday() in (1, 3, 5) and now_pt.hour == 7 and 5 <= now_pt.minute < 10) or
+                         (now_pt.weekday() == 4 and now_pt.hour == 14 and 5 <= now_pt.minute < 10) or
                          (now_pt.weekday() == 6 and now_pt.hour == 9 and 5 <= now_pt.minute < 10))
             # Tuesday "after the retrain" rerun (9/30): waits until the 7:15 retrain has finished (it runs in its own thread
             # now), any time 7:30-8:29, so the new model is actually used.

@@ -142,7 +142,14 @@ const mk = (away, home, over = {}) => ({ key: `${away} @ ${home}`, away, home, d
       const S4 = await pl.buildSameGame4(D, [A, B], now);
       for (const k of ["X1 @ Y1", "X2 @ Y2"]) { await R.del(pr.K_NBAPROPMODEL(D, k)); await R.del(pr.K_NBAPROPS(D, k)); }
       ok(S4.length === 1 && S4[0].type === "sgp4" && S4[0].game === "X1 @ Y1" && S4[0].stake === 5 && S4[0].legs.map((l) => l.label).join() === "Amos Pts Over 12.5,Boyd Pts Over 12.5,Cruz Pts Over 12.5,X1 +4.5"
-        && S4[0].legs.slice(0, 3).every((l, i) => Math.abs(l.prob - [0.68, 0.672, 0.664][i]) < 0.015) && Math.abs(S4[0].prob - S4[0].legs.reduce((a, l) => a * l.prob, 1)) < 0.002, "Same Game 4 legs (10/21): the 4 strongest (3 props 66-70% + the 61% spread; the 58% total left out), $5; a game with only 3 good legs gets none", S4); }
+        && S4[0].legs.slice(0, 3).every((l, i) => Math.abs(l.prob - [0.68, 0.672, 0.664][i]) < 0.015) && Math.abs(S4[0].prob - S4[0].legs.reduce((a, l) => a * l.prob, 1) * 1.03 * 0.97 * 0.97) < 0.002, "Same Game 4 legs (10/21): the 4 strongest (3 props 66-70% + the 61% spread; the 58% total left out), $5; a game with only 3 good legs gets none; chance = product x the links (X1 +4.5 with X1's Amos 1.03, with Y1's Boyd / Cruz 0.97 each)", S4); }
+    { // 10/23: same-game links between a game leg and a player's Over (measured 2024-26, 26,223 65%+ Overs)
+      const sp = { game: "A @ B", market: "spread", team: "A", prob: 0.6 }, ov = { game: "A @ B", market: "total", side: "over", prob: 0.56 }, un = { ...ov, side: "under" };
+      const pA = { game: "A @ B", market: "prop", team: "A", stat: "pts", side: "over", prob: 0.7 }, pB = { ...pA, team: "B" }, rB = { ...pB, stat: "reb" }, other = { ...pA, game: "C @ D" };
+      ok(pl.linkOf(sp, pA) === 1.03 && pl.linkOf(sp, pB) === 0.97 && pl.linkOf({ ...sp, market: "ml" }, pB) === 0.97 && pl.linkOf(ov, pA) === 1.04 && pl.linkOf(ov, rB) === 0.98 && pl.linkOf(un, pA) === 0.96 && pl.linkOf(un, rB) === 1.02
+        && pl.linkOf(sp, other) === 1 && pl.linkOf(pA, pB) === 1 && pl.linkOf(sp, { ...pA, team: null }) === 1
+        && Math.abs(pl.chanceOf([sp, pA, pB]) - 0.6 * 0.7 * 0.7 * 1.03 * 0.97) < 1e-9 && Math.abs(pl.chanceOf([pA, other]) - 0.49) < 1e-9 && pl.chanceOf([{ ...sp, prob: 0.9 }, { ...pA, prob: 0.92 }, { ...ov, prob: 0.95 }]) <= 0.9,
+        "NBA parlay chance (10/23): spread / ML with the player's own team 1.03x, the other team 0.97x; total Over with points 1.04x, rebounds 0.98x, the Under the mirror; props with each other and legs of other games stay independent; never above the weakest leg"); }
     const fourG = ["A @ B", "C @ D", "E @ F", "G @ H", "I @ J"].map((k, i) => ({ ...gG(k, 50, 50), poly: { ml: { away: 0.2 + i * 0.02, home: 0.82 - i * 0.02, midAway: 0.2 + i * 0.02, midHome: 0.8 - i * 0.02 } } }));
     fourG[0].card.spread.plain.hit = 62;   // our green spread pick backs A, the underdog
     ok(!pl.buildParlays(fourG, []).some((p) => p.type === "fav4"), "4 biggest favorites (10/19): no longer built (three legs max)"); }
