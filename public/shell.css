@@ -190,3 +190,6 @@ body .labslot .lst { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Hel
 .k.pmk .pmt { margin-left:auto; font-size:9px; font-weight:700; letter-spacing:0; color:var(--dim, #9aa0aa); white-space:nowrap; text-transform:none; }
 @media (max-width:420px) { .k.pmk > span:first-child { font-size:10px; letter-spacing:.02em; } .k.pmk .pm { width:12px; height:12px; margin-right:3px; } .k.pmk .pmt { font-size:8.5px; } }
 .k.pmk .pmt .r { text-transform:uppercase; }
+/* 10/23 (owner: "Capitalize the numbers or words that come with it. OKC BY 8.8"): on the game cards the label before the colon is plain (Pick:), what follows it in capitals */
+.modelcell b { text-transform:uppercase; }
+.modelcell b .lbw, .modelcell .lbw { text-transform:none; }

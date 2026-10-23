@@ -1801,7 +1801,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const uses = (x) => (x.match(/\$\{IBTN\}/g) || []).length;
   ok(uses(ap) === 4 && uses(nb) === 3 && (ap.match(/<div class="hd hm ihd">MODEL\$\{IBTN\}<\/div>\$\{ibox\(MODEL_INFO\.(spread|total)\)\}/g) || []).length === 2 && /<div class="hd hm ihd">MODEL\$\{IBTN\}<\/div>\$\{ibox\(info\)\}/.test(nb)
     && /Card picks<\/b>\$\{IBTN\}/.test(ap) && /Tracked angles\$\{IBTN\}/.test(ap) && /Card picks<\/b>\$\{IBTN\}/.test(nb) && /Shadow trackers<\/b>\$\{IBTN\}/.test(nb)
-    && /closest\("\.ibtn"\)/.test(sj) && /\.ibox\[hidden\] \{ display:none; \}/.test(sc) && /\.lbw \{ color:#fff; font-weight:400; \}/.test(sc)
+    && /closest\("\.ibtn"\)/.test(sj) && /\.ibox\[hidden\] \{ display:none; \}/.test(sc) && /\.lbw \{ color:#fff; font-weight:400; \}/.test(sc) && /\.modelcell b \{ text-transform:uppercase; \}/.test(sc)
     && !/<span class="lbw">/.test(ap.replace(/<span class="lbw">(Model:|Model \(Team\):|Model \(Stack\):|Pick:|Pick w\/ points:)<\/span>/g, "")) && /<span class="lbw">Pick w\/ points:<\/span>/.test(nb) && /\.lbw \{ color:#fff; font-weight:400; \}/.test(sc),
     "info buttons (10/22): one ⓘ on each game card's MODEL header (NFL spread + total, NBA every card) and the Models Card picks / tracked rows, a tap opens the box under it; the card labels are white");
 }
