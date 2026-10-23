@@ -598,7 +598,9 @@ function renderModels() {
 // ---------- Alerts
 let ALERTS = [], ALPREV = null;
 const ALK = { PICK: ["New pick", "var(--green)"], "LINE MOVE": ["Line move", "#fff"], INJURY: ["Injury", "var(--red)"] };   // injury red, line move white; Result is cut (10/18)
-const alSeen = () => { try { return localStorage.getItem("alSeen") || ""; } catch { return ""; } };
+// 10/23: NBA keeps its own "read" mark -- one shared key let opening the NFL alerts mark the NBA ones read (and back); the old shared mark seeds it once
+const AL_KEY = "alSeen:nba";
+const alSeen = () => { try { let v = localStorage.getItem(AL_KEY); if (v == null) { v = localStorage.getItem("alSeen") || ""; localStorage.setItem(AL_KEY, v); } return v; } catch { return ""; } };
 async function loadAlerts() {
   try { const d = await (await fetch("/api/nba/alerts", { cache: "no-store" })).json(); if (d.ok) { ALERTS = d.alerts || []; renderAlerts(); } } catch {}
 }
@@ -639,7 +641,7 @@ function showPanel(name) {
   if (!$("panel-" + name)) name = "lines";
   Shell.setActive(sub || name);   // 10/17: the menu replaces the tab bar
   document.body.classList.toggle("game-on", name === "lines" && !!DETAIL);
-  if (name === "alerts") { ALPREV = alSeen(); if (ALERTS.length) { try { localStorage.setItem("alSeen", ALERTS[0].t); } catch {} } }
+  if (name === "alerts") { ALPREV = alSeen(); if (ALERTS.length) { try { localStorage.setItem(AL_KEY, ALERTS[0].t); } catch {} } }
   document.querySelectorAll(".panel").forEach((p) => p.classList.remove("on")); $("panel-" + name).classList.add("on");
   if (name === "alerts") renderAlerts();
   try { window.scrollTo(0, 0); } catch {}

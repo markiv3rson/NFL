@@ -62,12 +62,39 @@
         const on = sb.querySelector && sb.querySelector(".si.on"); if (on && on.scrollIntoView && sb.scrollWidth > sb.clientWidth) { try { on.scrollIntoView({ block: "nearest", inline: "center" }); } catch {} } }
       document.body.classList.toggle("sbar-on", !!subs);
       document.body.classList.toggle("ref-on", REFRESH_ON(panel));
-      const sw = document.getElementById("bsport"); if (sw) sw.dataset.href = `${URL_[OTHER[sp]]}#${otherHash(panel, sp)}`;
       const home = sp === "nfl" && panel === "home";
+      if (!home) Shell.choose(sp);
+      const bar = home ? (Shell.chosen() || sp) : sp; Shell.paintBar(bar, panel);
+      const sw = document.getElementById("bsport"); if (sw) sw.dataset.href = home ? `${URL_[OTHER[bar]]}#lines` : `${URL_[OTHER[sp]]}#${otherHash(panel, sp)}`;
       document.body.classList.toggle("home-on", home); document.documentElement.classList.toggle("home-on", home);
       const sh = document.getElementById("shead"); if (sh) sh.style.display = "none";   // 10/22: SLATEZZ lives in the pinned top bar on every page
     },
-    setCount(sp, id, n) { const e = document.getElementById(`mcnt-${sp}-${id}`); if (!e) return; e.textContent = n > 9 ? "9+" : String(n || ""); e.style.display = n ? "flex" : "none"; },
+    counts: {},
+    setCount(sp, id, n) { Shell.counts[`${sp}-${id}`] = n; const e = document.getElementById(`mcnt-${sp}-${id}`); if (!e) return; e.textContent = n > 9 ? "9+" : String(n || ""); e.style.display = n ? "flex" : "none"; },
+    // 10/23 (owner: "when I press home it switches back to nfl ... It should just stay on what I choose"): home lives on the NFL page, so its bars
+    // follow the sport last chosen (any NFL / NBA page remembers its sport); the alerts "read" mark is kept per sport
+    SPORT_KEY: "slz-sport", seenKey: (sp) => (sp === "nba" ? "alSeen:nba" : "alSeen"),
+    chosen() { try { const v = localStorage.getItem(Shell.SPORT_KEY); return v === "nba" || v === "nfl" ? v : null; } catch { return null; } },
+    choose(sp) { try { localStorage.setItem(Shell.SPORT_KEY, sp); } catch {} },
+    bar: null,
+    paintBar(bar, panel) {
+      const o = OTHER[bar], q = (s) => document.querySelector && document.querySelector(s);
+      if (Shell.bar !== bar) {
+        Shell.bar = bar;
+        const bell = q("#tbar .tib"); if (bell) { bell.setAttribute("href", `${URL_[bar]}#alerts`); const c = bell.querySelector(".tcnt"); if (c) { c.id = `mcnt-${bar}-alerts`; const n = Shell.counts[`${bar}-alerts`]; c.textContent = n > 9 ? "9+" : String(n || ""); c.style.display = n ? "flex" : "none"; } }
+        const set = (b, h) => { const a = q(`#bnav [data-b="${b}"]`); if (a) a.setAttribute("href", h); };
+        set("bets", `${URL_[bar]}#mybets`); set("lines", `${URL_[bar]}#lines`); set("props", `${URL_[bar]}#${PROPS[bar][0][0]}`);
+        const bs = q("#bsport"); if (bs) { bs.className = `bsport ${bar}`; bs.setAttribute("aria-label", `Switch to ${o.toUpperCase()}`); const im = bs.querySelector("img"); if (im) { im.src = `/ball-${bar}.png?v=1`; im.alt = bar.toUpperCase(); } }
+        if (bar === "nba" && bar !== Shell.sport) Shell.awayCount(bar);
+      }
+    },
+    // the chosen sport's unread alerts on home, when that sport's own page is not the one loaded
+    async awayCount(sp) {
+      if (typeof fetch !== "function") return;
+      try { const d = await (await fetch(sp === "nba" ? "/api/nba/alerts" : "/api/alerts", { cache: "no-store" })).json(); if (!d || !d.ok) return;
+        let seen = ""; try { const v = localStorage.getItem(Shell.seenKey(sp)); seen = v == null ? localStorage.getItem("alSeen") || "" : v; } catch {}
+        Shell.setCount(sp, "alerts", (d.alerts || []).filter((a) => a.t > seen).length); } catch {}
+    },
     open() {}, close() {},   // (the side menu is gone 10/22)
     // the hash names the page ("#lines"); none = home on the NFL page, Game Lines on the NBA page
     hashPanel(valid, fallback) { const h = (location.hash || "").replace("#", ""); return valid.includes(h) ? h : fallback; },
