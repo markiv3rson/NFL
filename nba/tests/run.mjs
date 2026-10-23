@@ -971,6 +971,9 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
 { // 10/21 (owner): Props Parlays 6 / 8 / 10 legs ($5), the 65% bar, the 77c+ and star-out shadow trackers
   const pr = await import("../lib/props.js"), pl = await import("../lib/parlays.js"), R = globalThis.__TEST_REDIS__, D = "2027-01-05";
   ok(pr.onePerPlayer([{ name: "A", stat: "pts", chance: 0.64, price: 0.62 }, { name: "B", stat: "pts", chance: 0.66, price: 0.62 }]).map((p) => p.name).join() === "B", "NBA props (10/21): a row under 65% (saved under the old 62% bar) is not shown or counted");
+  { const bands = { 70: { n: 100, said: 0.72, won: 0.62 } }, rows = [{ name: "A", stat: "ast", side: "over", line: 5.5, chance: 0.72, price: 0.69 }, { name: "A", stat: "ast", side: "over", line: 3.5, chance: 0.88, price: 0.74 }];
+    const c = pr.onePerPlayer(rows, bands), raw = pr.onePerPlayer(rows.slice(0, 1));   // 10/23: the blend (0.4 x 72 + 0.6 x 69 = 70.2) calibrates to 65.3 < 69c -> cut; 3.5 shows
+    ok(raw.length === 1 && c.length === 1 && c[0].line === 3.5 && c[0].cal > c[0].price, "NBA props (10/23): with the calibration bands a row must be priced under its calibrated (shown) %; the player's next line shows", JSON.stringify(c)); }
   { const cut = pr.onePerPlayer([{ name: "A", stat: "pts", side: "over", chance: 0.75, price: 0.59 }, { name: "A", stat: "pts", side: "under", chance: 0.7, price: 0.62 }, { name: "B", stat: "reb", side: "under", chance: 0.8, price: 0.7 }, { name: "B", stat: "reb", side: "over", chance: 0.68, price: 0.63 }, { name: "C", stat: "ast", side: "over", chance: 0.72, price: 0.55 }]);
     ok(pr.MIN_PRICE === 0.6 && pr.CUT_SIDES.has("reb|under") && pr.CUT_UNDERS && cut.length === 1 && !cut.some((p) => p.side === "under") && cut.some((p) => p.name === "B" && p.side === "over") && !cut.some((p) => p.name === "C"),
       "NBA props (10/22 night + 10/23): a row priced under 60c is not shown (A's 75% Over at 59c is off, C at 55c is off); no NBA Under at all (A's 70% Under and B's rebounds Under are off; B shows his Over)", cut); }
@@ -992,6 +995,8 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(pp.length === 2 && p6 && p8 && !pp.some((p) => p.type === "pp10") && p6.stake === 5 && p6.legs.length === 6 && p8.legs.length === 8 && p6.legs[0].label === "Alpha Reb Over 4.5" && new Set(p8.legs.map((l) => l.name)).size === 8
     && p6.start === "2027-01-06T00:00:00Z" && p6.legs.every((l) => l.market === "prop" && l.price > 0) && Math.abs(p6.prob - [0.812, 0.73, 0.71, 0.706, 0.69, 0.678].reduce((a, x) => a * x, 1)) < 0.002,
     "Props Parlays (10/21): 6 and 8 legs from 9 players (no 10 with fewer than 10), one leg per player (Alpha's 95% rebounds, not his points), strongest first, $5, start = the first tip", pp);
+  { const mlG = ["A1", "A2", "A3", "A4", "A5", "A6"].map((t, i) => ({ ...mkG(`${t} @ H${i}`, "2027-01-06T02:00:00Z"), ml: { pick: { tier: "pick", team: `H${i}`, pct: 80, label: `H${i} ML` } }, poly: { ml: { home: 0.8, away: 0.22 } } }));
+    ok((await pl.buildPropParlays(D, mlG, now, [])).length === 0, "Prop Parlays (10/23): games with no prop rows yet do not make a Prop Parlay of moneylines only"); }
   // grading: a prop leg from ESPN's box score; a lost leg loses the parlay
   const k = "parlay:" + D + ":pp6"; await R.set(k, JSON.stringify({ ...p6, date: D })); await R.sadd("parlay:ids", k);
   const players2 = {}; for (const [n, v] of [["alpha", { reb: 9 }], ["bravo", { pts: 20 }], ["charlie", { pts: 12 }], ["delta", { pts: 15 }], ["echo", { pts: 11 }], ["foxtrot", { pts: 4 }]]) players2[n] = v;

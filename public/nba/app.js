@@ -518,7 +518,7 @@ function statTile(label, e, sub) {
 }
 function labStats(rc, clv) {
   const V = clv || { n: 0 }, av = V.n ? V.avg : null;
-  const clvTile = `<div class="stat" style="grid-column:1/-1"><div class="k">LINE VALUE</div><div class="v ${av == null ? "dim" : av > 0 ? "g" : av < 0 ? "r" : "y"}">${av == null ? "—" : `${av > 0 ? "+" : ""}${av.toFixed(2)}`}</div><div class="k2">${av == null ? "—" : `pts vs close · beat it ${V.beatPct}% · ${plural(V.n, "pick")}`}</div></div>`;
+  const clvTile = `<div class="stat" style="grid-column:1/-1"><div class="k">LINE VALUE</div><div class="v ${av == null ? "dim" : av > 0 ? "g" : av < 0 ? "r" : "y"}">${av == null ? "—" : `${av > 0 ? "+" : av < 0 ? "−" : ""}${Math.abs(av).toFixed(2)}`}</div><div class="k2">${av == null ? "—" : `pts vs close · beat it ${V.beatPct}% · ${plural(V.n, "pick")}`}</div></div>`;
   return `<div class="stats">${statTile("MONEYLINE", rc.ml, "right")}${statTile("SPREAD PICKS", rc.spread, "covered")}${statTile("TOTAL PICKS", rc.total, "right")}${clvTile}</div>`;
 }
 // 10/22 (owner: "MAKE IT LOOK LIKE A TABLE LIST ... words on one side and numbers on the other ... percentages in a vertical line"): a Models row = the

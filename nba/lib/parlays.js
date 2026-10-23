@@ -61,7 +61,8 @@ export async function buildPropParlays(date, games, now = Date.now(), dayLegs = 
   const ahead = (games || []).filter((g) => g.date === date && !g.inProgress && !g.preseason && Date.parse(g.start) > now).sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
   const strip = (ls) => ls.map(({ p, ...l }) => l);
   for (const g of ahead) {
-    const legs = [...sideLegs(g), ...props.filter((l) => l.game === g.key).map(propLeg)].sort((a, b) => b.p - a.p);
+    const pl = props.filter((l) => l.game === g.key); if (!pl.length) continue;   // 10/23: no prop rows yet (props not posted / scored) -> the game waits; a Prop Parlay of moneylines only is not one
+    const legs = [...sideLegs(g), ...pl.map(propLeg)].sort((a, b) => b.p - a.p);
     for (const n of PROP_LEGS) {
       if (legs.length >= n) { const pr = mk(`pp${n}`, strip(legs.slice(0, n)), g.key, g.start); if (pr) out.push({ ...pr, date }); }
       else (short[n] = short[n] || []).push(...legs.map((l) => ({ ...l, start: g.start })));
