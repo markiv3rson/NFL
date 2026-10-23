@@ -137,6 +137,9 @@ r_main, r_alt = e.spread_rate(4.5, 4.5)[0], e.spread_rate(4.5, 1.5)[0]
 ok(0.4 < r_main < 0.6 and r_alt > r_main + 0.05, "a teased (easier) line wins more often than the main line", (r_main, r_alt))
 e.hist_tot = pd.DataFrame({"line": rng.normal(220, 8, 4000), "total": 0.0}); e.hist_tot["total"] = e.hist_tot.line + rng.normal(0, 18, 4000)
 ok(e.total_rate(220.5, 214.5, True)[0] > e.total_rate(220.5, 220.5, True)[0] + 0.05, "over a lower number wins more often")
+# 10/24: a high total is measured against each history game's own line -- the old pooled-window way read the Under at 240.5 near 70% on this table
+ok(abs(e.total_rate(240.5, 240.5, False)[0] - 0.5) < 0.04 and abs(e.total_rate(240.5, 240.5, True)[0] - 0.5) < 0.04, "a high total's main line reads about 50 / 50, not Under-heavy", (e.total_rate(240.5, 240.5, False), e.total_rate(240.5, 240.5, True)))
+ok(abs(e.spread_rate(12.5, 12.5)[0] - 0.5) < 0.05, "a big favourite's main line reads about 50%", e.spread_rate(12.5, 12.5))
 hits = e._match({c: True for c in ["rest_adv2+", "opp_off_close_win"]}, "spread", None)
 ok(any(h["pattern"] == "rest_adv2+ & opp_off_close_win" for h in hits) and all(h["rate"] >= 52.4 for h in hits), "pattern lookup needs ALL its conditions")
 ok(e._match({"rest_adv2+": True}, "moneyline", None) == [], "no moneyline patterns exist (none beat the rate)")

@@ -185,16 +185,26 @@ class Engine:
         w = h[(h.line - fav_by_main).abs() <= 1.0]
         if len(w) < 200:
             w = h[(h.line - fav_by_main).abs() <= 2.0]
-        hit = (w.m - fav_by_alt) > 0
-        push = (w.m - fav_by_alt) == 0
+        # 10/24: each history game is measured against ITS OWN line (margin - its line vs the points bought), not against this game's number:
+        # a window of lines 1 point either side otherwise reads big favourites low and big underdogs high (each season left out, 2012-26:
+        # 7+ favourites +2 said 56.8 / won 57.5 -> 57.2; 7+ underdogs +2 59.2 / 58.7 -> 58.7)
+        c = fav_by_alt - fav_by_main
+        d = w.m - w.line
+        hit = d > c
+        push = d == c
         return float(hit.sum() / max((~push).sum(), 1)), int(len(w))
 
     def total_rate(self, main, alt, over):
         h = self.hist_tot
-        w = h[(h.line - main).abs() <= 4.0]
-        hit = (w.total > alt) if over else (w.total < alt)
-        push = w.total == alt
-        return float(hit.sum() / max((~push).sum(), 1)), int(len(w))
+        # 10/24: every history game measured against ITS OWN line (final total - its line vs the points bought). The old way pooled games whose
+        # line sat within 4 points of this one and compared their totals with THIS line, so at a high total (most of 2026-27 sits at 230-245) the
+        # pool was mostly lower-line games: 238+ totals, each season left out 2012-26 (804-809 games), Under at the main line said 53.9 / won 50.4,
+        # Under +2 said 57.9 / won 54.1, Over +2 said 50.6 / won 54.3; now 50.1 / 50.4, 54.8 / 54.1, 54.3 / 54.3 (Brier best in every band)
+        c = alt - main
+        d = h.total - h.line
+        hit = (d > c) if over else (d < c)
+        push = d == c
+        return float(hit.sum() / max((~push).sum(), 1)), int(len(h))
 
     # ---------------------------------------------------------------- slate
     def slate(self, games):
