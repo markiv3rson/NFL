@@ -6,7 +6,7 @@ import { getRedis, SLATE_CACHE } from "../../../nba/lib/redis";
 import { markSnapshot, logError } from "../../../nba/lib/status";
 import { recordBookGaps, recordGaps, recordInjuryShadow, recordMoves, pullPinnacle, pinnacleFailed, pinnacleOk } from "../../../nba/lib/pinnacle";
 import { scoreNbaProps } from "../../../nba/lib/props";
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 120 };   // 10/23: room for the props retry (25 s + 3 s + 25 s) after the slate build
 export default async function handler(req, res) {
   try {
     const data = await buildSlate({ days: 1, pullBooks: true, forceBooks: req.query.books === "now" });

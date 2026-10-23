@@ -950,6 +950,13 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
     { key: "LAL @ GSW", away: "LAL", home: "GSW", date: "2026-12-30", start: "2026-12-30T19:00:00Z" }];
   process.env.NBA_MODEL_SERVICE_URL = process.env.NBA_MODEL_SERVICE_URL || "http://test"; const sc = await pr.scoreNbaProps(games, { now, post });
   ok(sc.scored === 1 && sent.games.length === 1 && sent.games[0].outs.join() === "Jayson Tatum" && sent.games[0].quest.join() === "Al Horford" && sent.games[0].lines.length === 2 && JSON.parse(await R.get(pr.K_NBAPROPMODEL("2026-12-30", "BOS @ DET"))).rows.length === 5, "NBA props: the snapshot scores the not-started game's recorded lines with the Out list (+ the Questionable list for the teammates-out input, 10/21); the started game is skipped; saved per game", sc);
+  { // 10/23: a missed reply (timeout / empty) is asked once more; "building" is not; two misses report the error
+    let calls = 0; const flaky = async (b) => { calls++; if (calls === 1) throw Object.assign(new Error("The operation was aborted due to timeout"), { name: "TimeoutError" }); return { ok: true, results: [{ game: "BOS @ DET", rows }] }; };
+    const r1 = await pr.scoreNbaProps(games, { now, post: flaky, retryMs: 0 });
+    let c2 = 0; const dead = async () => { c2++; return null; }; const r2 = await pr.scoreNbaProps(games, { now, post: dead, retryMs: 0 });
+    let c3 = 0; const bld = async () => { c3++; return { ok: false, building: true }; }; const r3 = await pr.scoreNbaProps(games, { now, post: bld, retryMs: 0 });
+    let c4 = 0; const tdead = async () => { c4++; if (c4 === 1) throw Object.assign(new Error("aborted"), { name: "TimeoutError" }); return null; }; const r4 = await pr.scoreNbaProps(games, { now, post: tdead, retryMs: 0 });
+    ok(calls === 2 && r1.scored === 1 && r1.retried && c2 === 2 && r2.scored === 0 && r2.error === "no reply" && c3 === 1 && r3.building && c4 === 2 && /TimeoutError/.test(r4.error), "NBA props (10/23): a timeout / empty reply is retried once (then scored); two misses report the error; a model being built is not asked twice", { r1, r2, r3, r4 }); }
   { // 10/21: LAST = the row the page SHOWED that day (onePerPlayer), not the first graded line of the ladder
     await R.hset(pr.K_NBAPROPRES("2026-12-29"), "BOS @ NYK", JSON.stringify({ picks: [{ name: "Jaylen Brown", stat: "pts", side: "over", line: 14.5, chance: 0.9, price: 0.92, result: "W", actual: 27 }, { name: "Jaylen Brown", stat: "pts", side: "over", line: 22.5, chance: 0.75, price: 0.62, result: "W", actual: 27 }] }));
     const lw = await pr.lastNbaProps("2026-12-30", ["2026-12-29"]); await R.del(pr.K_NBAPROPRES("2026-12-29"));

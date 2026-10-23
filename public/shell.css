@@ -215,3 +215,17 @@ body .labslot .lst { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Hel
 }
 @media (min-width:1500px) { html body { zoom:1.25; --z:1.25; } }
 @media (min-width:1800px) { html body { zoom:1.35; --z:1.35; } }
+
+/* 10/23 (owner: "why is poly peeling off to the right ... why is model and Polymarket more in the middle? center it to the right ... make this
+   consistent"): ONE phone layout for every props-style row, both sports -- MODEL and POLYMARKET are fixed columns flush with the card's right
+   edge, the POLYMARKET column as wide as its own head ([logo] POLYMARKET), so nothing spills past the card. The First TD rows had picked up
+   the 4-column computer grid (a later rule) and left an empty column on the right. */
+@media (max-width:599px) {
+  .ppr { grid-template-columns:minmax(0,1fr) 72px 42px 76px; column-gap:4px; }
+  .ppr.first { grid-template-columns:minmax(0,1fr) 42px 76px; grid-template-areas:"n m p" "line m p"; }
+  .ppr.first.tdr, .ppr.tdh { grid-template-columns:minmax(0,1fr) 88px 42px 76px; grid-template-areas:"n w m p" "line w m p"; }
+  .ppr .pp3, .ppr .pp4 { justify-self:stretch; text-align:center; white-space:nowrap; }
+  .ppr.pph .pp4, .ppr.tdh .pp4 { display:flex; align-items:center; justify-content:center; gap:2px; letter-spacing:0; }
+  .ppr.pph .pp4 .pm, .ppr.tdh .pp4 .pm, .ppr.pph .pp4 .pm img { width:12px; height:12px; margin-right:0; }
+  .ppr .pp4 .nogap { margin-left:2px; }
+}
