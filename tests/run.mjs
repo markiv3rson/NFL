@@ -1535,6 +1535,11 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(!/Tested angle/.test(w({ outdoor: true, wind: 14 })) && !/Tested angle/.test(w({ outdoor: true, wind: 20 })), "windy-under note: removed from the card (tested, not added; review fix 10/14)");
     ok(!/★/.test(w({ outdoor: true, wind: 14 })), "total card: no extra angle note next to the PICK"); }
   vm.runInContext(`S = { week: 4, games: [] }; LIVE = {}; LIVE_T = null`, ctx);
+  { const fg = { key: "NE @ CHI", away: "NE", home: "CHI", kickoff: "2026-10-23T00:15:00Z", started: true, final: true, awayScore: 24, homeScore: 30, injuries: [], history: [], poly: { spread: { homeSpread: -2.5, home: 0.55, away: 0.45 }, total: { line: 50.5, over: 0.51, under: 0.49 } },
+      spreadPick: { label: "NE +2.5", result: "lost" }, totalPick: { label: "Under 50.5", result: "lost" },
+      lockedPicks: { spread: { pick: "CHI -2.5", hit: 52, result: "W", pts: { pick: "CHI -1.5", hit: 54, result: "W" } }, total: { pick: "Over 50.5", hit: 51, result: "W" } } };
+    const sc = ctx.T.gameCard(fg, "x"), tc = ctx.T.totalCard(fg, "x");
+    ok(!/leaned/.test(sc + tc) && /Pick CHI -2\.5 <span class="g">won/.test(sc) && /Pick w\/ points CHI -1\.5 <span class="g">won/.test(sc) && /Pick Over 50\.5 <span class="g">won/.test(tc) && /cover won/.test(sc), "finished cover names the stored PICK, not the old model side"); }
   const lg = { key: "PIT @ CLE", away: "PIT", home: "CLE", kickoff: "2026-10-02T00:15:00Z", started: true, final: false, injuries: [], history: [], poly: { spread: { homeSpread: 2.5, home: 0.5, away: 0.5 }, ml: { home: 0.4, away: 0.62 }, total: { line: 38.5, over: 0.5, under: 0.5 } } };
   ok(!/LIVE/.test(ctx.T.gameCard(lg, "x")), "live view: nothing live until live lines are loaded (the card shows the locked kickoff line)");
   vm.runInContext(`LIVE = { "PIT @ CLE": { spread: { homeSpread: 3.5, home: 0.48, away: 0.53 }, total: { line: 36.5, over: 0.5, under: 0.52 } } }; LIVE_T = new Date().toISOString()`, ctx);
