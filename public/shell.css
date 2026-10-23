@@ -197,3 +197,21 @@ body .labslot .lst { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Hel
    Model / Model (Team) / Model (Stack) (were the 11.5px data style) and Pick / Pick w/ points / ML pick (were 13-16px) */
 .modelcell b { font-size:13px !important; }
 .modelcell > .s:has(> .lbw), .modelcell .lbw { font-size:13px; }
+
+/* 10/23 (owner: "why does pc look so weird ... make everything bigger so its bigger on pc. only on pc"): a computer (1100 px+; a phone never
+   reaches it) shows the app as one centered column, everything scaled up together (zoom keeps the phone sizes' proportions), and the sharp
+   photo strip fades into the blurred copy at its sides instead of a hard edge. Both sports. */
+@media (min-width:1100px) {
+  html body { zoom:1.12; --z:1.12; }
+  .tbar { padding-left:max(14px,calc(50% - 502px)); padding-right:max(10px,calc(50% - 502px)); }   /* SLATEZZ and the bell line up with the column's edges */
+  html body.bnav-on .wrap, html body .wrap { max-width:1060px; margin:0 auto; padding-left:28px; padding-right:28px; }
+  body .tiles.stack { grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:12px; }   /* Game Lines: two games a row */
+  body #home .tiles.stack { grid-template-columns:1fr !important; }
+  html.lines-on body::after, html.home-on::after { --sw:calc(100vh * .474 / var(--z,1)); -webkit-mask:linear-gradient(90deg,transparent,#000 20%,#000 80%,transparent) center / var(--sw) 100% no-repeat; mask:linear-gradient(90deg,transparent,#000 20%,#000 80%,transparent) center / var(--sw) 100% no-repeat; }   /* the mask is the strip's own width (picture 1146 x 2418; vh is not zoomed, so divide by the zoom) */
+  html.home-on::after { --sw:calc(100vh * .5625); }   /* home picture 432 x 768 */
+  html, body { overflow-x:clip; }
+  body.bnav-on .phead { background:none; }
+  body.bnav-on .phead::before { content:""; position:absolute; top:0; bottom:0; left:-100vmax; right:-100vmax; z-index:-1; pointer-events:none; background:linear-gradient(to bottom,#0b0b10 0,#0b0b10 calc(100% - 30px),rgba(11,11,16,0) 100%); }   /* the title band runs the full screen width, not a box over the column */
+}
+@media (min-width:1500px) { html body { zoom:1.25; --z:1.25; } }
+@media (min-width:1800px) { html body { zoom:1.35; --z:1.35; } }
