@@ -61,7 +61,7 @@ export function nbaPropPicks(modelRows, saved, bar = NBA_PROP_BAR) {
     const side = r.over >= r.under ? "over" : "under", chance = side === "over" ? r.over : r.under; if (!(chance >= bar)) continue;
     if (!r.team) continue;   // 10/20 night (owner screenshot): Polymarket listed other games' players (Paul George under BOS @ DET); the model answers team null for a player not on either team -> not a row
     const p = px.get(`${r.name}|${r.stat}|${r.line}`) || {};
-    out.push({ name: r.name, team: r.team, stat: r.stat, line: r.line, side, chance, mu: r.mu, band: bandOf(chance), price: side === "over" ? p.oa ?? null : p.ua ?? null });
+    out.push({ name: r.name, team: r.team, stat: r.stat, line: r.line, side, chance, mu: r.mu, band: bandOf(chance), price: side === "over" ? p.oa ?? null : p.ua ?? null, ...(r.tsp != null ? { tsp: r.tsp } : {}) });
   }
   return out;
 }
@@ -81,6 +81,12 @@ export const CUT_UNDERS = true;
 // season); the page's rows on the blend said 70.5 and won 71.6% (81). The 65% bar, the "priced under its %" rule, the order, the RECORD tiles, the
 // calibration bands and the parlay legs all use it; the saved pick keeps the model's own % (`model`), so grading is unchanged.
 export const OVER_W = 0.4;
+// 10/23 research (owner: "find winning edges" on the Overs): an Over by a player whose team is a 2.5+ point underdog is not a row. Last season's real
+// Polymarket Over lines (one per player + stat, 45-77c): team +2.5 or more won 47.4% of 2,300 at 54c = -11.9 per $100 (Jan -9.6, Feb -16.1, Mar -8.1,
+// Apr -17.7; +3 to +6 -12.8, +6 to +10 -18.6, +10 or more -10.0), everyone else 52.7% of 4,007 (-2.1); the market prices both at 54c. The page's rows:
+// 78.7% (47) without them vs 61.8% (34) with them. Live 10/20-21: 30-17 (63.8%, -5.7) vs 45-22 (67.2%, -1.2). `tsp` = the team's spread, saved with the
+// scored rows (Polymarket's main line at scoring time); rows saved before 10/23 have none and are not cut.
+export const DOG_CUT = 2.5;
 export const effChance = (p) => (p.side === "over" && p.price > 0 && p.price < 1 ? OVER_W * p.chance + (1 - OVER_W) * p.price : p.chance);
 export function onePerPlayer(picks) {
   const priced = (p) => p.price > 0 && p.price < 1, best = new Map();
@@ -90,6 +96,7 @@ export function onePerPlayer(picks) {
     if (!(p.chance >= NBA_PROP_BAR)) continue;   // a row saved under an older, lower bar
     if (!priced(p) || p.price >= p.chance || p.price >= MAX_PRICE || p.price < MIN_PRICE) continue;
     if (CUT_SIDES.has(`${p.stat}|${p.side}`) || (CUT_UNDERS && p.side === "under")) continue;
+    if (p.side === "over" && typeof p.tsp === "number" && p.tsp >= DOG_CUT) continue;
     const k = `${normName(p.name)}|${p.stat}`, o = best.get(k);
     if (!o || p.chance > o.chance) best.set(k, p);
   }
@@ -107,6 +114,8 @@ export function starsOut(g, injuries = null) {
 const outsOf = (list, re = /^(out|doubtful)/i) => (list || []).filter((x) => re.test(String(x && x.status || ""))).map((x) => x.name).filter(Boolean);
 const QUEST = /^questionable/i;   // 10/21: sent too -- 45.5% of Questionable players sit (official reports 2021-26), the service counts them that much as teammates out
 // Ask the NBA service for every recorded line of each not-started game in the record window and save the answer (the snapshot's step).
+// the game's main spread for the home team (+ = home underdog): Polymarket's main line, else the sportsbooks'
+const homeSpreadOf = (g) => { const v = g && ((g.poly && g.poly.spread && g.poly.spread.homeSpread) ?? (g.books && g.books.spread && g.books.spread.homeSpread)); return typeof v === "number" && isFinite(v) ? v : null; };
 export async function scoreNbaProps(games, { now = Date.now(), injuries = null, post = null } = {}) {
   const base = modelBase(); if (!base) return { scored: 0, error: "NBA_MODEL_SERVICE_URL not set" };
   const todo = [];
@@ -124,7 +133,8 @@ export async function scoreNbaProps(games, { now = Date.now(), injuries = null, 
   if (!j || !j.ok) return { scored: 0, building: !!(j && j.building), error: (j && j.error) || "no reply" };
   const runAt = new Date(now).toISOString(); let n = 0;
   for (const r of j.results || []) { const t = todo.find((x) => x.g.key === r.game); if (!t || !Array.isArray(r.rows)) continue;
-    await setJSON(K_NBAPROPMODEL(t.g.date, t.g.key), { runAt, start: t.g.start, away: t.g.away, home: t.g.home, rows: r.rows, ...(t.star.length ? { star: t.star } : {}) }); n++; }
+    const hs = homeSpreadOf(t.g), rows = r.rows.map((x) => ({ ...x, tsp: hs == null || !x.team ? null : x.team === t.g.home ? hs : -hs }));   // 10/23: the player's team spread (+ = underdog)
+    await setJSON(K_NBAPROPMODEL(t.g.date, t.g.key), { runAt, start: t.g.start, away: t.g.away, home: t.g.home, hs, rows, ...(t.star.length ? { star: t.star } : {}) }); n++; }
   return { scored: n, built: j.built || null };
 }
 async function scanKeys(pattern) {

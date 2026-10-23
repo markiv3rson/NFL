@@ -972,6 +972,11 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   { const cut = pr.onePerPlayer([{ name: "A", stat: "pts", side: "over", chance: 0.75, price: 0.59 }, { name: "A", stat: "pts", side: "under", chance: 0.7, price: 0.62 }, { name: "B", stat: "reb", side: "under", chance: 0.8, price: 0.7 }, { name: "B", stat: "reb", side: "over", chance: 0.68, price: 0.63 }, { name: "C", stat: "ast", side: "over", chance: 0.72, price: 0.55 }]);
     ok(pr.MIN_PRICE === 0.6 && pr.CUT_SIDES.has("reb|under") && pr.CUT_UNDERS && cut.length === 1 && !cut.some((p) => p.side === "under") && cut.some((p) => p.name === "B" && p.side === "over") && !cut.some((p) => p.name === "C"),
       "NBA props (10/22 night + 10/23): a row priced under 60c is not shown (A's 75% Over at 59c is off, C at 55c is off); no NBA Under at all (A's 70% Under and B's rebounds Under are off; B shows his Over)", cut); }
+  { // 10/23: no Over by a player whose team is a 2.5+ point underdog; the team spread is saved with the scored rows
+    const rows = pr.onePerPlayer([{ name: "Dog", stat: "pts", side: "over", chance: 0.8, price: 0.65, tsp: 3.5 }, { name: "Fav", stat: "pts", side: "over", chance: 0.8, price: 0.65, tsp: -3.5 }, { name: "Even", stat: "pts", side: "over", chance: 0.8, price: 0.65, tsp: 1.5 }, { name: "Old", stat: "pts", side: "over", chance: 0.8, price: 0.65 }]);
+    const src = readFileSync(new URL("../lib/props.js", import.meta.url), "utf8");
+    ok(pr.DOG_CUT === 2.5 && rows.map((p) => p.name).sort().join() === "Even,Fav,Old" && /tsp: hs == null \|\| !x\.team \? null : x\.team === t\.g\.home \? hs : -hs/.test(src),
+      "NBA props (10/23): an Over by a +2.5-or-more underdog team's player is not a row (last season's real lines 47.4% of 2,300, -11.9 per $100); favorites / close games / rows saved without a spread stay", rows); }
   // 3 games, 9 players with priced 65%+ rows (one player has two stats: only his best leg)
   const mkG = (k, start) => ({ key: k, away: k.split(" @ ")[0], home: k.split(" @ ")[1], date: D, start });
   const G = [mkG("BOS @ NYK", "2027-01-06T00:00:00Z"), mkG("LAL @ GSW", "2027-01-06T03:00:00Z"), mkG("MIA @ ORL", "2027-01-06T00:30:00Z")];
