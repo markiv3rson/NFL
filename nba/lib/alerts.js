@@ -1,13 +1,13 @@
 // Alerts feed (the bell): a short newest-first list of "what just happened", NBA only. Three kinds:
 //   PICK       a new PICK / LEAN appeared (regular season; preseason TEST picks never alert)
-//   LINE MOVE  a Polymarket line moved since the last time we told you (spread 1+ pt, total 2+ pts, moneyline 5+ cents)
+//   LINE MOVE  a Polymarket line moved since the last time we told you (spread 1+ pt, total 2+ pts, moneyline 5+ cents) and held 20+ min
 //   INJURY     a rotation player (10+ ppg) newly listed Out / Doubtful / Questionable
 // Each job calls addAlert() when it notices a difference; the same id inside ttlH hours is skipped so a repeated snapshot never
 // re-alerts. Every call is wrapped so an alert problem can never break a snapshot or a grading run. Phone push is NOT built.
 import { getRedis, jparse } from "./redis";
 const KEY = "alerts:log", CAP = 200;
 const sgn = (n) => (n > 0 ? "+" : "") + n;
-export const MOVE = { spread: 1, total: 2, ml: 0.05 }, INJ_PPG = 10;
+export const MOVE = { spread: 1, total: 2, ml: 0.05 }, INJ_PPG = 10, MOVE_HOLD_MIN = 20;
 
 export async function addAlert(a, now = Date.now()) {
   try {
@@ -44,15 +44,22 @@ export async function alertsFromSlate(games, now = Date.now()) {
     const bkey = `alertbase:${g.date}:${g.key}`, cur = lineNow(g), base = jparse(await r.get(bkey).catch(() => null));
     if (!base) { await r.set(bkey, JSON.stringify(cur), "EX", 4 * 86400).catch(() => {}); }
     else {
-      const next = { ...base };
+      const next = { ...base, pend: { ...(base.pend || {}) } };
       for (const f of ["hs", "tl", "ml"]) if (base[f] == null && cur[f] != null) next[f] = cur[f];   // a market posted after the first look gets its baseline now
-      if (cur.hs != null && base.hs != null && Math.abs(cur.hs - base.hs) >= MOVE.spread) {
-        n += await addAlert({ kind: "LINE MOVE", game: g.key, id: `lm|${g.date}|${g.key}|s|${cur.hs}`, title: `${g.key} spread: ${g.home} ${sgn(base.hs)} → ${sgn(cur.hs)}`, sub: "" }, now); next.hs = cur.hs; }
-      if (cur.tl != null && base.tl != null && Math.abs(cur.tl - base.tl) >= MOVE.total) {
-        n += await addAlert({ kind: "LINE MOVE", game: g.key, id: `lm|${g.date}|${g.key}|t|${cur.tl}`, title: `${g.key} total: ${base.tl} → ${cur.tl}`, sub: "" }, now); next.tl = cur.tl; }
-      if (cur.ml != null && base.ml != null && Math.abs(cur.ml - base.ml) >= MOVE.ml) {
-        n += await addAlert({ kind: "LINE MOVE", game: g.key, id: `lm|${g.date}|${g.key}|m|${Math.round(cur.ml * 100)}`, title: `${g.key}: ${g.home} moneyline ${Math.round(base.ml * 100)}¢ → ${Math.round(cur.ml * 100)}¢`, sub: "" }, now); next.ml = cur.ml; }
-      if (next.hs !== base.hs || next.tl !== base.tl || next.ml !== base.ml) await r.set(bkey, JSON.stringify(next), "EX", 4 * 86400).catch(() => {});
+      // 10/23: a move alerts only when the new line still holds on a reading MOVE_HOLD_MIN+ after it first showed (Polymarket's main line flickers
+      // on thin books: 20 of 50 back-to-back NBA line-move alerts 10/21-22 were exact reversals, TOR @ WAS +4.5 -> +1.5 -> +4.5 in 7 minutes)
+      const say = { hs: (b, c) => `${g.key} spread: ${g.home} ${sgn(b)} → ${sgn(c)}`, tl: (b, c) => `${g.key} total: ${b} → ${c}`, ml: (b, c) => `${g.key}: ${g.home} moneyline ${Math.round(b * 100)}¢ → ${Math.round(c * 100)}¢` };
+      const lim = { hs: MOVE.spread, tl: MOVE.total, ml: MOVE.ml }, tag = { hs: "s", tl: "t", ml: "m" };
+      for (const f of ["hs", "tl", "ml"]) {
+        if (cur[f] == null || base[f] == null) continue;
+        if (Math.abs(cur[f] - base[f]) < lim[f]) { delete next.pend[f]; continue; }   // back within the limit: the flicker is forgotten
+        const pd = next.pend[f], same = pd && Math.sign(pd.v - base[f]) === Math.sign(cur[f] - base[f]);
+        if (!same) { next.pend[f] = { v: cur[f], t: new Date(now).toISOString() }; continue; }
+        if (now - Date.parse(pd.t) < MOVE_HOLD_MIN * 60e3) { next.pend[f] = { ...pd, v: cur[f] }; continue; }
+        n += await addAlert({ kind: "LINE MOVE", game: g.key, id: `lm|${g.date}|${g.key}|${tag[f]}|${f === "ml" ? Math.round(cur[f] * 100) : cur[f]}`, title: say[f](base[f], cur[f]), sub: "" }, now);
+        next[f] = cur[f]; delete next.pend[f];
+      }
+      if (JSON.stringify(next) !== JSON.stringify({ ...base, pend: base.pend || {} })) await r.set(bkey, JSON.stringify(next), "EX", 4 * 86400).catch(() => {});
     }
     // injuries: rotation players newly listed
     const ikey = `alertinj:${g.date}:${g.key}`, listed = [];

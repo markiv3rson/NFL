@@ -337,7 +337,7 @@ function applyBetsView() {
 // Threes, Steals, Blocks) -- /api/nba/props: the side the NBA prop model gives 65%+ on each recorded Polymarket line, one row per player and stat (its
 // highest %), under the tip-off headers game by game, a day and a team drop-down, RECORD tile = this tab's graded rows, ✓ / ✗ green / red once graded.
 let PROPS = null, PROPDAY = null, PROPTAB = "pts", PROPTEAM = "all";
-const PROP_TABS = [["pts", "Points"], ["reb", "Rebounds"], ["ast", "Assists"], ["pra", "PRA"], ["3pm", "Threes"], ["stl", "Steals"], ["blk", "Blocks"]];
+const PROP_TABS = [["pts", "Points"], ["reb", "Rebounds"], ["ast", "Assists"], ["pra", "PRA"], ["stl", "Steals"], ["blk", "Blocks"]];
 const PROP_SHORT = { pts: "Pts", reb: "Reb", ast: "Ast", pra: "PRA", "3pm": "3PM", stl: "Stl", blk: "Blk" };
 async function loadProps() {
   try { const d = await (await fetch(`/api/nba/props${PROPDAY ? `?date=${PROPDAY}` : ""}`, { cache: "no-store" })).json(); if (d && d.ok) { PROPS = d; renderProps(); } } catch {}

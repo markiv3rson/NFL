@@ -73,7 +73,9 @@ export function nbaPropPicks(modelRows, saved, bar = NBA_PROP_BAR) {
 export const MIN_PRICE = 0.60;
 // 10/23 (owner: "delete all the nba unders"): Polymarket US marks the No side of every NBA player prop "not tradable" (464 of 464 on 10/23), so an
 // Under cannot be bought -- no NBA Under row is shown, counted or used as a parlay leg; the Unders are still saved and graded in the background
-export const CUT_SIDES = new Set(["reb|under"]);
+// 10/23 night (owner: "build things that will help"): threes Overs off too -- live under the page's rules 5-5 at 72c (-28.8 per $100; the rows shown
+// went 1-4), and last season's real lines carry no threes market to test them on (every other stat is up live or on real lines in both halves)
+export const CUT_SIDES = new Set(["reb|under", "3pm|over"]);
 export const CUT_UNDERS = true;
 // 10/23 (owner: "fix the overs if it runs high ... so we're accurate"): an Over's % = OVER_W x the model + (1 - OVER_W) x Polymarket's price. The model
 // alone ran hot on Overs (live 10/20-21 said 74.7, won 65.8% of 114; last season's real lines said 74.3, won 68.8% of 138). On 8,041 real Polymarket Over
@@ -87,6 +89,13 @@ export const OVER_W = 0.4;
 // 78.7% (47) without them vs 61.8% (34) with them. Live 10/20-21: 30-17 (63.8%, -5.7) vs 45-22 (67.2%, -1.2). `tsp` = the team's spread, saved with the
 // scored rows (Polymarket's main line at scoring time); rows saved before 10/23 have none and are not cut.
 export const DOG_CUT = 2.5;
+// 10/23 night (rule 7 hunt): an NBA row must be priced at least MIN_GAP under its shown % (calibrated, else the blend). Rows barely under it lose:
+// last season's real Polymarket Over lines under the page's rules, gap under 2 points 18 rows won 61.1% at 67c (-9.9 per $100), 2+ points 63 rows
+// won 74.6% at 64c (+16.5); live graded rows 10/20-22 (threes out) under 2 points 21-9 (+0.9), 2+ 30-12 (+8.0), 3+ 22-7 (+15.3). NFL rows show no
+// such effect (weeks 6-7 under 2 points 8-3, under 4 points 23-5), so NFL keeps "priced under its %".
+export const MIN_GAP = 0.02;
+// PRA is left out: it has no real-line market to test on and its live rows priced within 2 points went 11-0 (points 4-7, the rest 6-2).
+export const GAP_FREE = new Set(["pra"]);
 export const effChance = (p) => (p.side === "over" && p.price > 0 && p.price < 1 ? OVER_W * p.chance + (1 - OVER_W) * p.price : p.chance);
 // 10/23 (owner: "check all calibration and wording and numbering"): with the calibration bands passed in, a row must ALSO be priced under its
 // calibrated % (the number the page shows), so no row reads a % under its own price. Live graded rows 10/20-22: calibrated % over the price 52-25
@@ -100,7 +109,8 @@ export function onePerPlayer(picks, bands = null) {
     if (!priced(p) || p.price >= p.chance || p.price >= MAX_PRICE || p.price < MIN_PRICE) continue;
     if (CUT_SIDES.has(`${p.stat}|${p.side}`) || (CUT_UNDERS && p.side === "under")) continue;
     if (p.side === "over" && typeof p.tsp === "number" && p.tsp >= DOG_CUT) continue;
-    if (bands) { p.cal = calibrate(p.chance, bands); if (p.price >= p.cal) continue; }
+    if (bands) p.cal = calibrate(p.chance, bands);
+    if (!GAP_FREE.has(p.stat) && p.price > (p.cal ?? p.chance) - MIN_GAP + 1e-9) continue;   // 10/23 night: priced at least 2 points under the shown %
     const k = `${normName(p.name)}|${p.stat}`, o = best.get(k);
     if (!o || p.chance > o.chance) best.set(k, p);
   }
@@ -246,7 +256,10 @@ export async function propShadows(dates) {
   for (const d of dates || []) { const h = await r.hgetall(K_NBAPROPRES(d)).catch(() => null); if (!h) continue;
     for (const v of Object.values(h)) { let x; try { x = JSON.parse(v); } catch { continue; }
       const best = new Map();
-      for (const p of x.picks || []) { if (!(p.chance >= NBA_PROP_BAR) || !(p.price >= MAX_PRICE && p.price < 1)) continue; const k = `${normName(p.name)}|${p.stat}`, o = best.get(k); if (!o || p.chance > o.chance) best.set(k, p); }
+      // 10/23: the page's own rules except the price cap -- Overs only (an NBA prop Under cannot be bought), the Over % blended with the price, no cut side
+      for (const p0 of x.picks || []) { if (!(p0.price >= MAX_PRICE && p0.price < 1) || (CUT_UNDERS && p0.side === "under") || CUT_SIDES.has(`${p0.stat}|${p0.side}`)) continue;
+        const p = { ...p0, chance: effChance(p0) }; if (!(p.chance >= NBA_PROP_BAR)) continue;
+        const k = `${normName(p.name)}|${p.stat}`, o = best.get(k); if (!o || p.chance > o.chance) best.set(k, p); }
       for (const p of best.values()) add(dear, p.result);
       for (const p of x.star || []) add(star, p.result); } }
   for (const e of [dear, star]) e.pct = e.w + e.l ? Math.round((e.w / (e.w + e.l)) * 1000) / 10 : null;

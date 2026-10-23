@@ -133,7 +133,7 @@ function leanCell(g, kind) {
   const U = g.modelUp, LN = g.lineNow || {}, mm = U ? U.margin : m.homeMargin, mt = U ? U.total : m.total;
   const mline = kind === "total" ? `<span class="lbw">Model:</span> <b class="mod">${mt.toFixed(1)}</b>` : `<span class="lbw">Model:</span> <b class="mod">${mm >= 0 ? g.home : g.away} by ${Math.abs(mm).toFixed(1)}</b>`;
   const tline = kind === "spread" && g.teamSide && !g.started && !g.final ? `<div class="s"><span class="lbw">Model (Team):</span> <b class="mod">${esc(g.teamSide.pick)} · ${g.teamSide.pct}%</b></div>` : "";   // 10/20 owner: the team model's side on every spread card
-  const sline = kind === "spread" && g.stackSide && !g.started && !g.final ? `<div class="s"><span class="lbw">Model (Stack):</span> <b class="mod">${esc(g.stackSide.pick)} · ${g.stackSide.pct}%</b></div>` : "";   // 10/21 owner (option A): the STACK shadow's side on every spread card, data only
+  const sline = kind === "spread" && g.stackSide && !g.started && !g.final ? `<div class="s"><span class="lbw">Model (Stack):</span> <b class="mod">${esc(g.stackSide.pick)} · ${(g.card && g.card.spread && g.card.spread.plain && g.card.spread.plain.ruleId === "stack|spread" && g.card.spread.plain.team === g.stackSide.team ? g.card.spread.plain.hit : g.stackSide.pct)}%</b></div>` : "";   // 10/21 owner (option A): the STACK shadow's side on every spread card, data only
   if (U && LN.hs != null && LN.tl != null) {   // the model's side vs the current line, from the upgraded numbers
     const homeSide = mm + LN.hs > 0, t = homeSide ? g.home : g.away, ln = homeSide ? LN.hs : -LN.hs;
     p = kind === "total" ? { side: mt > LN.tl ? "over" : "under", label: `${mt > LN.tl ? "Over" : "Under"} ${LN.tl}`, warn: p && p.warn } : { team: t, label: `${t} ${sgn(ln)}`, warn: p && p.warn };
@@ -171,7 +171,10 @@ function leanCell(g, kind) {
   // 10/12 (owner: the number must be honest). Tested on 2,578 games 2014-26, each season predicted without it: margin off by 9.99
   // points vs the line's 9.89, total 10.52 vs 10.47; the model beat the line in only 3 of 13 seasons on each. So it is shown as an
   // opinion, never as a pick.
-  return wrap(`<div class="s">${mline}</div>${tline}${sline}` + body + 
+  // 10/23 night: the moneyline PICK (the favorite when STACK's spread side is the favorite), before kickoff from the card, after it the locked one with W / L
+  const MLc = kind === "spread" ? (!g.started && !g.final ? g.card && g.card.ml && g.card.ml.plain : g.lockedPicks && g.lockedPicks.ml) : null;
+  const mlLine = MLc ? `<div style="margin-top:4px"><b class="${clsOf(MLc.hit)}" style="font-size:13px;white-space:nowrap"><span class="lbw">ML pick:</span> ${esc(MLc.pick)} · ${hitTxt(MLc.hit, clsOf(MLc.hit))}</b>${MLc.result === "W" ? ' · <span class="g">W</span>' : MLc.result === "L" ? ' · <span class="r">L</span>' : MLc.result === "P" ? " · push" : ""}</div>` : "";
+  return wrap(`<div class="s">${mline}</div>${tline}${sline}` + body + mlLine + 
     (adj ? `<div class="s r" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">${injBadgeFor(g)}${esc(adj)}</div>` : "") +
     (p && p.warn && !g.final ? `<div class="s y">${esc(p.warn)}</div>` : ""));   // e.g. QB change the model can't see
 }
@@ -704,7 +707,7 @@ const IBTN = `<button class="ibtn" type="button" aria-label="What is this?"><svg
 const ibox = (lines, st) => `<div class="ibox" hidden${st ? ` style="${st}"` : ""}>${lines.map(([k, t]) => `<div><b>${k}</b> ${t}</div>`).join("")}</div>`;
 const MODEL_INFO = {
   spread: [["Model:", "the game model’s score guess. Data only."], ["Model (Team):", "team-stats model at Polymarket’s line; it becomes the PICK at 58%+ sure."],
-    ["Model (Stack):", "everything the app knows in one model. With no tested rule it names the PICK."], ["Pick:", "the bet at Polymarket’s main line, from a tested rule, else the Stack model’s side. Green 56%+, light green 53–55%, yellow below."],
+    ["Model (Stack):", "everything the app knows in one model. With no tested rule it names the PICK."], ["Pick:", "the bet at Polymarket’s main line, from a tested rule, else the Stack model’s side. Green 56%+, light green 53–55%, yellow below."], ["ML pick:", "the favorite’s moneyline when the Stack model backs the favorite and is priced 50–70% (won 67.7–69.7% in 2022-25, priced 56–65%)."],
     ["Pick w/ points:", "same side, the fewest bought points (1–2) that won 56%+."], ["MORE list:", "every line within 2 points: points bought · history win % · Polymarket price."]],
   total: [["Model:", "the game model’s total points guess. Data only."], ["Pick:", "Over or Under at Polymarket’s main total, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
     ["Pick w/ points:", "same side, the fewest bought points (1–2) that won 56%+."], ["MORE list:", "every line within 2 points: points bought · history win % · Polymarket price."]],
@@ -886,8 +889,8 @@ const isSmall = (x) => x.n != null && x.n < SMALL_N;
 function straightPicks(g, min = BEST_MIN) {
   if (!g || g.started || g.final) return [];
   const out = [], games = (n) => (n != null && n < SMALL_N ? ` · ${n} game${n === 1 ? "" : "s"}` : "");
-  if (cardOf(g, "spread") || cardOf(g, "total")) {   // 10/15 (owner): Best bets / Parlay of the week / winners use the card's PICK at Polymarket's own line; green = win rate 56%+
-    for (const k of ["spread", "total"]) { const x = (cardOf(g, k) || {}).plain; if (!x) continue; const r = (g.combos || []).find((c) => c.id === x.ruleId);
+  if (cardOf(g, "spread") || cardOf(g, "total") || cardOf(g, "ml")) {   // 10/15 (owner): Best bets / Parlay of the week / winners use the card's PICK at Polymarket's own line; green = win rate 56%+
+    for (const k of ["spread", "total", "ml"]) { const x = (cardOf(g, k) || {}).plain; if (!x) continue; const r = (g.combos || []).find((c) => c.id === x.ruleId);   // 10/23 night: the ML pick too
       out.push({ pick: x.pick, game: g.key, why: (x.why || "") + games(x.n), p: x.hit / 100, rec: r ? r.rec : null, n: x.n ?? null, price: x.price ?? null, cushion: x.cushion ?? null, plain: null, green: clsOf(x.hit) === "g" }); }
     return out.filter((x) => (min > 0 ? x.green : x.p > min)).sort((a, b) => (isSmall(a) - isSmall(b)) || b.p - a.p);
   }
@@ -1180,7 +1183,7 @@ function applyBetsView() {
 // Pass Yds (/api/props: the side the model gives 65%+ in a family that passed the real-line test, one row per player and stat, its highest %).
 // Rows sit under the kickoff headers, game by game; a team drop-down filters them; RECORD tile = this tab's graded rows; ✓ / ✗ green / red once graded.
 let PROPS = null, PROPWEEK = null, PROPTAB = "recyds", PROPTEAM = "all";
-const PROP_TABS = [["td", "Anytime TD"], ["first", "First TD"], ["recyds", "Rec Yds"], ["rec", "Receptions"], ["passyds", "Pass Yds"]];
+const PROP_TABS = [["td", "Anytime TD"], ["first", "First TD"], ["recyds", "Rec Yds"], ["rec", "Receptions"]];
 const PROP_STAT = { recyds: "rec_yds", rec: "rec", passyds: "pass_yds" };
 const propTabLabel = (k) => (PROP_TABS.find(([t]) => t === k) || [, "Rec Yds"])[1];
 async function loadProps() {
