@@ -177,10 +177,14 @@ function leanCell(g, kind) {
 }
 // 10/16 (owner): a finished card turns GREEN when the PICK locked at kickoff won, red when it lost ("won" / "lost" / "" when there was no pick)
 function finClass(g, kind) { const LP = g.final && g.lockedPicks ? g.lockedPicks[kind] : null; return LP && LP.result === "W" ? "won" : LP && LP.result === "L" ? "lost" : ""; }
-function cover(g, pick, kind) {
+// 10/23 (owner: "Keep the stored pick"): the finished cover names the PICK locked at kickoff (and its PICK w/ POINTS), never the old game model's side
+function cover(g, kind) {
   if (!g.final) return "";
-  return `<div class="cover ${finClass(g, kind || "spread")}"><b>GAME FINISHED</b><div style="font-size:12.5px;color:#c9c9cf">${g.away} ${g.awayScore ?? ""} – ${g.home} ${g.homeScore ?? ""}` +
-    (pick && pick.result ? ` · Model leaned ${pick.label} <span class="${pick.result === "won" ? "g" : pick.result === "lost" ? "r" : "dim"}">${pick.result}</span>` : "") + `</div></div>`;
+  const LP = g.lockedPicks ? g.lockedPicks[kind] : null;
+  const res = (r) => r === "W" ? '<span class="g">won</span>' : r === "L" ? '<span class="r">lost</span>' : r === "P" ? '<span class="dim">push</span>' : "";
+  const line = (lb, x) => x && x.pick && x.result ? `<div>${lb} ${esc(x.pick)} ${res(x.result)}</div>` : "";
+  return `<div class="cover ${finClass(g, kind)}"><b>GAME FINISHED</b><div style="font-size:12.5px;color:#c9c9cf">${g.away} ${g.awayScore ?? ""} – ${g.home} ${g.homeScore ?? ""}</div>` +
+    (LP ? `<div style="font-size:12.5px;color:#c9c9cf">${line("Pick", LP)}${line("Pick w/ points", LP.pts)}</div>` : "") + `</div>`;
 }
 const order = (a, b) => (a.final - b.final) || (a.started - b.started) || (new Date(a.kickoff) - new Date(b.kickoff));
 
@@ -236,7 +240,7 @@ function gameCard(g, i) {
       `<div><div class="k">SPORTSBOOK</div>${b.spread ? `${g.home} ${sgn(b.spread.homeSpread)} ${odds(b.spread.home.odds)}<div class="s">fair ${g.home} ${odds(toAmerican(b.spread.home.fair))} / ${g.away} ${odds(toAmerican(b.spread.away.fair))}</div>` : dash}</div>` +
       `<div>${pmHead(g, lv)}${poly}</div>` +
       `</div><div class="hd hm ihd">MODEL${IBTN}</div>${ibox(MODEL_INFO.spread)}` + leanCell(g, "spread") +
-      `</div>${cover(g, g.spreadPick, "spread")}</div>`;
+      `</div>${cover(g, "spread")}</div>`;
   }
 }
 // ---------- Totals ----------
@@ -252,7 +256,7 @@ function totalCard(g, i) {
       `<div><div class="k">SPORTSBOOK</div>${b.total ? `${b.total.line}<div class="s">O ${odds(b.total.over.odds)} · U ${odds(b.total.under.odds)}</div>` : dash}</div>` +
       `<div>${pmHead(g, lv, "total")}${poly}</div>` +
       `</div><div class="hd hm ihd">MODEL${IBTN}</div>${ibox(MODEL_INFO.total)}` + leanCell(g, "total") +
-      `</div>${cover(g, g.totalPick, "total")}</div>`;
+      `</div>${cover(g, "total")}</div>`;
   }
 }
 // ---------- Anytime TD ----------
