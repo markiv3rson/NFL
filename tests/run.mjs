@@ -1880,6 +1880,14 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { const { bestLegParlays } = await import("../lib/paper.js");
     const gm = (k, home, team, hit) => ({ key: k, home, away: k.split(" @ ")[0], started: false, final: false, card: { spread: null, total: null, ml: { plain: { id: "stackml|ml", kind: "ml", team, line: 0, pick: `${team} ML`, hit, price: 0.62 } } } });
     const B = bestLegParlays([gm("A @ B", "B", "B", 67.7), gm("C @ D", "D", "D", 69.7)]), b2 = B.find((p) => p.strategy === "best_2");
-    ok(b2 && b2.legs.map((l) => l.label).join() === "D ML,B ML" && b2.legs.every((l) => l.kind === "ml" && l.team), "Best Legs (10/23 night): the green ML picks are legs too (team kept, graded like any moneyline leg)", B); } }
+    ok(b2 && b2.legs.map((l) => l.label).join() === "D ML,B ML" && b2.legs.every((l) => l.kind === "ml" && l.team), "Best Legs (10/23 night): the green ML picks are legs too (team kept, graded like any moneyline leg)", B); }
+  { const stk = await import("../lib/stack.js"), cpk = await import("../lib/cardpick.js"), { getRedis } = await import("../lib/redis.js");
+    const g = { key: "KC @ SEA", away: "KC", home: "SEA", poly: { ml: { home: 0.6, away: 0.42 } }, stackSide: { team: "SEA", confident: false, yv: 2, pct: 52.8 } };
+    const picks = cpk.cardPicks({ spread: null, total: null, ml: cpk.mlPart(g) });
+    await stk.recordStack(2099, 7, g, picks, "2099-10-25T20:00:00Z");
+    await stk.gradeStackWeek(2099, 7, [{ key: "KC @ SEA", homeScore: 27, awayScore: 20 }]);
+    const saved = JSON.parse(await getRedis().hget("stack:2099:7", "KC @ SEA|stackml|ml") || "null");
+    ok(saved && saved.pick === "SEA ML" && saved.kind === "ml" && saved.result === "W" && saved.hit === 67.7, "ML pick end to end (10/23 night): saved at kickoff with the card's picks and graded W from the final score", saved);
+    await getRedis().del("stack:2099:7"); } }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);
