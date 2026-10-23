@@ -9,7 +9,7 @@ import { recordPicks, lockedFor } from "./record";
 import { buildCard, cardLegs, isGreen } from "./cardpick";
 import { buildParlays, buildPropParlays, buildSameGame4, recordParlays } from "./parlays";
 import { saveParlayList } from "../../lib/comboquote";   // 10/17: real Polymarket parlay prices (shared with NFL: one Polymarket account, one request a second)
-import { recordCloses } from "./closes";
+import { recordCloses, closeKey } from "./closes";
 import { moveSignal } from "./pinnacle";
 import { alertsFromSlate } from "./alerts";
 import { pullBooksIfDue, loadBooks } from "./books";
@@ -158,6 +158,9 @@ export async function buildSlate({ now = Date.now(), days = 1, events = null, in
   const moves = await lineMoves(games, now).catch(() => ({}));
   const locked = {}, otByDate = {};
   for (const g of games) if (now >= Date.parse(g.start)) locked[g.key] = await lockedFor(g.date, g.key).catch(() => null);
+  // 10/23 (owner): a started game shows its tip-off line (the last Polymarket line saved before tip-off, lib/closes.js) under Polymarket, like NFL's kickoff line
+  const closes = {}, started = games.filter((g) => now >= Date.parse(g.start));
+  if (started.length) { const vals = await getRedis().mget(...started.map((g) => closeKey(g.date, g.key))).catch(() => []); started.forEach((g, i) => { const v = jparse(vals && vals[i]); if (v) closes[g.key] = { hs: v.hs, tl: v.tl, mlHome: v.mlHome }; }); }
   if (svc) for (const d of dates) otByDate[d] = await otSetFor(dayBefore(d), otSets, now);
   const out = games.map((g) => {
     const m = byKey[g.key] || {};
@@ -170,7 +173,8 @@ export async function buildSlate({ now = Date.now(), days = 1, events = null, in
     if (row.inProgress) for (const k of ["spread", "total", "ml"]) if (row[k] && row[k].pick) row[k] = { ...row[k], pick: { ...row[k].pick, tier: "none" } };
     if (m.context) { const o = otByDate[g.date]; const fh = fatigueOf(m.context.home, g.home, o), fa = fatigueOf(m.context.away, g.away, o); if (fh || fa) row.fatigue = { home: fh, away: fa }; }
     row.card = m.model ? buildCard(row) : null;          // PICK / PICK w/ POINTS / every buyable line (lib/cardpick.js)
-    if (row.inProgress) row.locked = locked[g.key] || null;   // the picks saved before tip-off, with W / L once graded
+    if (row.inProgress) row.locked = locked[g.key] || null;
+    if (row.inProgress) row.close = closes[g.key] || null;   // the picks saved before tip-off, with W / L once graded
     return row;
   });
   const picks = collectPicks(out), best = bestBets(picks);

@@ -1539,10 +1539,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(!/LIVE/.test(ctx.T.gameCard(lg, "x")), "live view: nothing live until live lines are loaded (the card shows the locked kickoff line)");
   vm.runInContext(`LIVE = { "PIT @ CLE": { spread: { homeSpread: 3.5, home: 0.48, away: 0.53 }, total: { line: 36.5, over: 0.5, under: 0.52 } } }; LIVE_T = new Date().toISOString()`, ctx);
   const lc = ctx.T.gameCard(lg, "x"), ltc = ctx.T.totalCard(lg, "x");
-  ok(/LIVE/.test(lc) && /CLE \+3\.5/.test(lc) && /Kickoff line \(locked\): CLE \+2\.5/.test(lc) && /updated 0s ago/.test(lc), "live view: live spread with a LIVE tag, with the locked kickoff line kept underneath", lc);
-  ok(/Over 36\.5/.test(ltc) && /Kickoff line \(locked\): 38\.5/.test(ltc), "live view: live total, locked kickoff total kept");
+  ok(/LIVE/.test(lc) && /CLE \+3\.5/.test(lc) && /Kickoff: PIT -2\.5 · ML PIT -163/.test(lc) && /LIVE<\/span> · 0s ago/.test(lc) && !/locked at kickoff/.test(lc), "live view: live spread with a LIVE tag, with the locked kickoff line kept underneath", lc);
+  ok(/Over 36\.5/.test(ltc) && /Kickoff: 38\.5/.test(ltc), "live view: live total, locked kickoff total kept");
   vm.runInContext(`LIVE = { "PIT @ CLE": null }`, ctx);
-  ok(/paused/.test(ctx.T.gameCard(lg, "x")) && /Kickoff line \(locked\): CLE \+2\.5/.test(ctx.T.gameCard(lg, "x")), "live view: no open lines -> says paused, not a stale number");
+  ok(/paused/.test(ctx.T.gameCard(lg, "x")) && /Kickoff: PIT -2\.5/.test(ctx.T.gameCard(lg, "x")), "live view: no open lines -> says paused, not a stale number");
   ok(!/LIVE/.test(ctx.T.gameCard({ ...lg, started: false }, "x")) && !/LIVE/.test(ctx.T.gameCard({ ...lg, final: true }, "x")), "live view: not shown before kickoff or after the game ends");
   vm.runInContext(`LIVE = {}; LIVE_T = null`, ctx);
   vm.runInContext(`S = { games: [{ key: "TEN @ BAL", away: "TEN", home: "BAL", started: false, winPct: 84.4, model: { homeMargin: 12, total: 40 }, poly: { ml: { home: 0.82, away: 0.2 }, spread: { homeSpread: -10.5, home: 0.5, away: 0.51 }, total: { line: 41.5, over: 0.5, under: 0.51 } } },
@@ -1799,7 +1799,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
 { // 10/22 (owner): ONE ⓘ per model section, both sports -- game card MODEL header + Models Card picks / Tracked angles (NBA: Card picks / Shadow trackers); white labels
   const ap = readFileSync(new URL("../public/app.js", import.meta.url), "utf8"), nb = readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8"), sj = readFileSync(new URL("../public/shell.js", import.meta.url), "utf8"), sc = readFileSync(new URL("../public/shell.css", import.meta.url), "utf8");
   const uses = (x) => (x.match(/\$\{IBTN\}/g) || []).length;
-  ok(uses(ap) === 4 && uses(nb) === 3 && (ap.match(/<div class="hd hm ihd">MODEL\$\{IBTN\}<\/div>\$\{ibox\(MODEL_INFO\.(spread|total)\)\}/g) || []).length === 2 && /<div class="hd hm ihd">MODEL\$\{IBTN\}<\/div>\$\{ibox\(MODEL_INFO\[kind\]/.test(nb)
+  ok(uses(ap) === 4 && uses(nb) === 3 && (ap.match(/<div class="hd hm ihd">MODEL\$\{IBTN\}<\/div>\$\{ibox\(MODEL_INFO\.(spread|total)\)\}/g) || []).length === 2 && /<div class="hd hm ihd">MODEL\$\{IBTN\}<\/div>\$\{ibox\(info\)\}/.test(nb)
     && /Card picks<\/b>\$\{IBTN\}/.test(ap) && /Tracked angles\$\{IBTN\}/.test(ap) && /Card picks<\/b>\$\{IBTN\}/.test(nb) && /Shadow trackers<\/b>\$\{IBTN\}/.test(nb)
     && /closest\("\.ibtn"\)/.test(sj) && /\.ibox\[hidden\] \{ display:none; \}/.test(sc) && /\.lbw \{ color:#fff; \}/.test(sc)
     && !/<span class="lbw">/.test(ap.replace(/<span class="lbw">(Model:|Model \(Team\):|Model \(Stack\):|PICK:|PICK w\/ POINTS:)<\/span>/g, "")) && /<span class="lbw">PICK w\/ POINTS:<\/span>/.test(nb),

@@ -184,3 +184,9 @@ body .labslot .lst { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Hel
 .ptb.pth { border-top:0; padding:2px 0 1px; } .ptb.pth span { font-size:8.5px; letter-spacing:.02em; color:var(--faint,#7c8494); font-weight:700; } .ptb.pth .pt3 { color:#2e5cff; display:flex; align-items:center; justify-content:center; gap:3px; } .ptb.pth .pm, .ptb.pth img { width:11px; height:11px; }
 .ptb.ptf { border-top:1px solid rgba(255,255,255,.18); margin-top:2px; padding-top:5px; } .ptb.ptf .pt1 { font-weight:700; } .ptb.ptf .pt3 { color:inherit; }
 @media (min-width:600px) { .ptb { grid-template-columns:minmax(0,1fr) 70px 110px; column-gap:16px; } }
+/* 10/23 (owner): the POLYMARKET header carries LIVE · 1s ago on its right, both sports */
+.k.pmk { display:flex; flex-wrap:wrap; align-items:center; column-gap:4px; row-gap:1px; }
+.k.pmk > span:first-child { white-space:nowrap; }
+.k.pmk .pmt { margin-left:auto; font-size:9px; font-weight:700; letter-spacing:0; color:var(--dim, #9aa0aa); white-space:nowrap; text-transform:none; }
+@media (max-width:420px) { .k.pmk > span:first-child { font-size:10px; letter-spacing:.02em; } .k.pmk .pm { width:12px; height:12px; margin-right:3px; } .k.pmk .pmt { font-size:8.5px; } }
+.k.pmk .pmt .r { text-transform:uppercase; }
