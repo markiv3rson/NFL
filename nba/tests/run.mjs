@@ -485,21 +485,26 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   const before = (await al.listAlerts()).length;
   ok(await al.alertsFromSlate([game()], T0) === 0, "alerts: the first look at a game stores a baseline and says nothing");
   ok(await al.alertsFromSlate([game({ poly: { spread: { homeSpread: -4 }, total: { line: 221 }, ml: { midHome: 0.64, midAway: 0.36 } } })], T0 + 60e3) === 0, "alerts: small moves (spread 0.5, total 0.5, moneyline 2¢) stay quiet");
-  const n1 = await al.alertsFromSlate([game({ poly: { spread: { homeSpread: -5 }, total: { line: 223 }, ml: { midHome: 0.7, midAway: 0.3 } } })], T0 + 120e3);
+  const n0 = await al.alertsFromSlate([game({ poly: { spread: { homeSpread: -5 }, total: { line: 223 }, ml: { midHome: 0.7, midAway: 0.3 } } })], T0 + 120e3), T1 = T0 + 120e3 + al.MOVE_HOLD_MIN * 60e3;
+  ok(n0 === 0, "alerts (10/23): a move first seen waits -- it alerts only if it still holds MOVE_HOLD_MIN later");
+  const n1 = await al.alertsFromSlate([game({ poly: { spread: { homeSpread: -5 }, total: { line: 223 }, ml: { midHome: 0.7, midAway: 0.3 } } })], T1);
   const L = (await al.listAlerts()).filter((a) => a.kind === "LINE MOVE");
-  ok(n1 === 3 && L.length === 3 && L.some((a) => /spread: NYK -3.5 → -5/.test(a.title)) && L.some((a) => /total: 220.5 → 223/.test(a.title)) && L.some((a) => /moneyline 62¢ → 70¢/.test(a.title)), "alerts: spread 1+, total 2+ and moneyline 5¢+ moves each alert, measured against the first line", L.map((a) => a.title));
-  ok(await al.alertsFromSlate([game({ poly: { spread: { homeSpread: -5 }, total: { line: 223 }, ml: { midHome: 0.7, midAway: 0.3 } } })], T0 + 180e3) === 0, "alerts: the same move never alerts twice");
+  ok(n1 === 3 && L.length === 3 && L.some((a) => /spread: NYK -3.5 → -5/.test(a.title)) && L.some((a) => /total: 220.5 → 223/.test(a.title)) && L.some((a) => /moneyline 62¢ → 70¢/.test(a.title)), "alerts: spread 1+, total 2+ and moneyline 5¢+ moves each alert once they held 20 min, measured against the first line", L.map((a) => a.title));
+  ok(await al.alertsFromSlate([game({ poly: { spread: { homeSpread: -5 }, total: { line: 223 }, ml: { midHome: 0.7, midAway: 0.3 } } })], T1 + 180e3) === 0, "alerts: the same move never alerts twice");
+  { const fg = (hs) => game({ key: "LAL @ GSW", away: "LAL", home: "GSW", poly: { spread: { homeSpread: hs }, total: { line: 230.5 }, ml: { midHome: 0.6, midAway: 0.4 } } });
+    const a = await al.alertsFromSlate([fg(-4.5)], T0), b = await al.alertsFromSlate([fg(-1.5)], T0 + 5 * 60e3), c = await al.alertsFromSlate([fg(-4.5)], T0 + 12 * 60e3), d = await al.alertsFromSlate([fg(-4.5)], T0 + 40 * 60e3);
+    ok(a + b + c + d === 0, "alerts (10/23): a line that flickers and snaps back (GSW -4.5 -> -1.5 -> -4.5 within minutes) never alerts", [a, b, c, d]); }
   { const src = (await import("fs")).readFileSync(new URL("../lib/alerts.js", import.meta.url), "utf8"); const h = Number((src.match(/kind: "PICK"[^\n]*ttlH: (\d+)/) || [])[1]);
     ok(h >= 72, "alerts: a PICK is remembered past the 2-day record window (36 h re-alerted the same pick on game day, 10/21)", h); }
   const withInj = (list) => game({ poly: { spread: { homeSpread: -5 }, total: { line: 223 }, ml: { midHome: 0.7, midAway: 0.3 } }, injuries: { home: list, away: [] } });
-  ok(await al.alertsFromSlate([withInj([{ name: "Star Guy", status: "Out", ppg: 24 }])], T0 + 240e3) === 1, "alerts: a rotation player newly listed Out alerts");
-  ok(await al.alertsFromSlate([withInj([{ name: "Star Guy", status: "Out", ppg: 24 }, { name: "Bench Guy", status: "Out", ppg: 4 }])], T0 + 300e3) === 0, "alerts: bench players (under 10 ppg) and repeats stay quiet");
+  ok(await al.alertsFromSlate([withInj([{ name: "Star Guy", status: "Out", ppg: 24 }])], T1 + 240e3) === 1, "alerts: a rotation player newly listed Out alerts");
+  ok(await al.alertsFromSlate([withInj([{ name: "Star Guy", status: "Out", ppg: 24 }, { name: "Bench Guy", status: "Out", ppg: 4 }])], T1 + 300e3) === 0, "alerts: bench players (under 10 ppg) and repeats stay quiet");
   const I = (await al.listAlerts()).find((a) => a.kind === "INJURY");
   ok(I && I.team === "NYK" && /Star Guy ruled out/.test(I.title) && /24 points a game/.test(I.sub), "alerts: injury text", I);
   const pickGame = (pre) => game({ date: "2026-11-04", key: "MIA @ ORL", away: "MIA", home: "ORL", preseason: pre, card: { spread: { plain: { id: "cardpick|spread", pick: "MIA +3", hit: 59.1, team: "MIA", line: 3 } }, total: { plain: { id: "modelpick|total", pick: "Over 220.5", hit: 50.5 } } } });
-  ok(await al.alertsFromSlate([pickGame(true)], T0 + 400e3) === 0, "alerts: a preseason TEST pick never alerts");
-  ok(await al.alertsFromSlate([pickGame(false)], T0 + 460e3) === 1 && await al.alertsFromSlate([pickGame(false)], T0 + 520e3) === 0, "alerts: a new green PICK alerts once (the model's 50% side does not)");
-  ok(await al.alertsFromSlate([{ ...pickGame(false), key: "X @ Y", inProgress: true }], T0 + 580e3) === 0, "alerts: games already under way are skipped");
+  ok(await al.alertsFromSlate([pickGame(true)], T1 + 400e3) === 0, "alerts: a preseason TEST pick never alerts");
+  ok(await al.alertsFromSlate([pickGame(false)], T1 + 460e3) === 1 && await al.alertsFromSlate([pickGame(false)], T1 + 520e3) === 0, "alerts: a new green PICK alerts once (the model's 50% side does not)");
+  ok(await al.alertsFromSlate([{ ...pickGame(false), key: "X @ Y", inProgress: true }], T1 + 580e3) === 0, "alerts: games already under way are skipped");
   ok(!al.alertForResult && !al.listResults, "alerts (cleanup 10/18): graded picks save no RESULT line and there is no results reader");
   const all = await al.listAlerts(); ok(all.length - before === 5 && !all.some((a) => a.kind === "RESULT") && all[0].t > all[1].t, "alerts: newest first, no RESULT lines", all.slice(0, 3).map((a) => a.kind));
   const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
@@ -771,8 +776,8 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   // PICK alerts: one per side, not one per half point; LINE MOVE baseline fills a late market
   { const mkg = (hs, tl) => ({ key: "DAL @ MEM", date: "2026-12-03", start: "2026-12-04T01:00:00Z", home: "MEM", away: "DAL", preseason: false, poly: { spread: { homeSpread: hs, home: 0.5, away: 0.5 }, total: tl ? { line: tl, over: 0.5, under: 0.5 } : null, ml: { midHome: 0.6, midAway: 0.4 } },
       card: { spread: { plain: { pick: `DAL ${hs > 0 ? "-" : "+"}${Math.abs(hs)}`, hit: 57.8, team: "DAL" } }, total: null } }), t = Date.parse("2026-12-03T15:00:00Z");
-    const a1 = await al.alertsFromSlate([mkg(-8.5, null)], t), a2 = await al.alertsFromSlate([mkg(-9, null)], t + 60e3), a3 = await al.alertsFromSlate([mkg(-9, 231)], t + 120e3), a4 = await al.alertsFromSlate([mkg(-9, 234)], t + 180e3);
-    ok(a1 === 1 && a2 === 0 && a3 === 0 && a4 === 1, "one PICK alert per side (not again at -9), a total posted later gets a baseline and alerts only on its next 2+ move", [a1, a2, a3, a4]); }
+    const a1 = await al.alertsFromSlate([mkg(-8.5, null)], t), a2 = await al.alertsFromSlate([mkg(-9, null)], t + 60e3), a3 = await al.alertsFromSlate([mkg(-9, 231)], t + 120e3), a4a = await al.alertsFromSlate([mkg(-9, 234)], t + 180e3), a4 = a4a + await al.alertsFromSlate([mkg(-9, 234)], t + 180e3 + al.MOVE_HOLD_MIN * 60e3);   // 10/23: a move alerts once it held 20 min
+    ok(a1 === 1 && a2 === 0 && a3 === 0 && a4a === 0 && a4 === 1, "one PICK alert per side (not again at -9), a total posted later gets a baseline and alerts only on its next 2+ move", [a1, a2, a3, a4]); }
   // injuries: a day the official report covers = its rows (none listed = healthy); a day it does not cover = ESPN's team list
   { const inj = { dates: { "2026-12-01": { BOS: [{ name: "A", status: "Out" }] } }, teams: { BOS: [{ name: "B", status: "Day-To-Day" }], NYK: [{ name: "C", status: "Out" }] } };
     ok(injLib.injuriesFor(inj, "2026-12-01", "BOS").length === 1 && injLib.injuriesFor(inj, "2026-12-01", "NYK").length === 0 && injLib.injuriesFor(inj, "2026-12-02", "NYK")[0].name === "C", "official rows for a covered day, ESPN's list for a day the report has not reached yet"); }
@@ -1018,9 +1023,9 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   const sr = pr.starRows({ star: st, rows: [{ name: "Jaylen Brown", team: "BOS", stat: "pts", line: 22.5, over: 0.55 }, { name: "Jaylen Brown", team: "BOS", stat: "pts", line: 25.5, over: 0.4 }, { name: "Jalen Brunson", team: "NYK", stat: "pts", line: 25.5, over: 0.5 }] },
     { m: { "Jaylen Brown|pts|22.5": [0.62, 0.6, 0.4, 0.62, "t"], "Jaylen Brown|pts|25.5": [0.49, 0.47, 0.53, 0.49, "t"], "Jalen Brunson|pts|25.5": [0.5, 0.48, 0.52, 0.5, "t"] } });
   ok(sr.length === 1 && sr[0].name === "Jaylen Brown" && sr[0].line === 25.5 && sr[0].side === "over" && sr[0].star === "Jayson Tatum", "star-out shadow: each teammate's points Over at the line priced nearest 50c, the other team's players left out", sr);
-  await R.hset(pr.K_NBAPROPRES(D), "BOS @ NYK", JSON.stringify({ picks: [{ name: "Q", stat: "pts", side: "under", line: 30.5, chance: 0.9, price: 0.85, result: "W" }, { name: "Q", stat: "pts", side: "under", line: 28.5, chance: 0.8, price: 0.8, result: "L" }, { name: "Z", stat: "reb", side: "over", line: 2.5, chance: 0.9, price: 0.6, result: "L" }], star: [{ name: "Jaylen Brown", result: "W" }, { name: "Derrick White", result: "L" }] }));
+  await R.hset(pr.K_NBAPROPRES(D), "BOS @ NYK", JSON.stringify({ picks: [{ name: "Q", stat: "pts", side: "over", line: 10.5, chance: 0.9, price: 0.85, result: "W" }, { name: "Q", stat: "pts", side: "over", line: 12.5, chance: 0.8, price: 0.8, result: "L" }, { name: "U", stat: "ast", side: "under", line: 8.5, chance: 0.95, price: 0.9, result: "W" }, { name: "Z", stat: "reb", side: "over", line: 2.5, chance: 0.9, price: 0.6, result: "L" }], star: [{ name: "Jaylen Brown", result: "W" }, { name: "Derrick White", result: "L" }] }));
   const sh = await pr.propShadows([D]); await R.del(pr.K_NBAPROPRES(D));
-  ok(sh.dear.w === 1 && sh.dear.l === 0 && sh.star.w === 1 && sh.star.l === 1 && sh.star.pct === 50, "shadow trackers: 77c+ hidden rows one per player + stat (Q's 90% 85c row; Z's 60c row is a page row, not counted); star-out 1-1", sh);
+  ok(sh.dear.w === 1 && sh.dear.l === 0 && sh.star.w === 1 && sh.star.l === 1 && sh.star.pct === 50, "shadow trackers: 77c+ hidden rows one per player + stat (Q's Over blended 87% at 85c; Z's 60c row is a page row; U's Under cannot be bought: not counted); star-out 1-1", sh);
   { // 10/22 (owner: "B and C if there's not enough players ... mix is like spreads totals or ml or player props" / "Run it through our calibration")
     const card = (g, sp, tot, ml) => ({ ...g, card: { spread: sp ? { plain: { pick: `${sp[0]} ${sp[1]}`, team: sp[0], line: sp[1], hit: sp[2], side: null } } : null, total: tot ? { plain: { pick: `Under ${tot[0]}`, side: "under", line: tot[0], hit: tot[1] } } : null },
       ml: ml ? { pick: { tier: "pick", team: ml[0], label: `${ml[0]} ML`, pct: ml[1] } } : null, poly: { ml: { home: 0.7, away: 0.3 } } });

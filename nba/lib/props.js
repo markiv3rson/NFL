@@ -246,7 +246,10 @@ export async function propShadows(dates) {
   for (const d of dates || []) { const h = await r.hgetall(K_NBAPROPRES(d)).catch(() => null); if (!h) continue;
     for (const v of Object.values(h)) { let x; try { x = JSON.parse(v); } catch { continue; }
       const best = new Map();
-      for (const p of x.picks || []) { if (!(p.chance >= NBA_PROP_BAR) || !(p.price >= MAX_PRICE && p.price < 1)) continue; const k = `${normName(p.name)}|${p.stat}`, o = best.get(k); if (!o || p.chance > o.chance) best.set(k, p); }
+      // 10/23: the page's own rules except the price cap -- Overs only (an NBA prop Under cannot be bought), the Over % blended with the price, no cut side
+      for (const p0 of x.picks || []) { if (!(p0.price >= MAX_PRICE && p0.price < 1) || (CUT_UNDERS && p0.side === "under") || CUT_SIDES.has(`${p0.stat}|${p0.side}`)) continue;
+        const p = { ...p0, chance: effChance(p0) }; if (!(p.chance >= NBA_PROP_BAR)) continue;
+        const k = `${normName(p.name)}|${p.stat}`, o = best.get(k); if (!o || p.chance > o.chance) best.set(k, p); }
       for (const p of best.values()) add(dear, p.result);
       for (const p of x.star || []) add(star, p.result); } }
   for (const e of [dear, star]) e.pct = e.w + e.l ? Math.round((e.w / (e.w + e.l)) * 1000) / 10 : null;
