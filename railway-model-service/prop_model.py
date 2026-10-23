@@ -428,3 +428,21 @@ def week_stats(season, week):
         key = f"{r.away_team} @ {r.home_team}"
         out.setdefault(key, {})[n] = {s: float(getattr(r, s)) for s in STATS}
     return out
+
+
+def week_snaps(season, week):
+    """10/23: every player who took at least one snap (offense, defense or special teams) in each game of the week, from nflverse snap counts:
+    { "AWAY @ HOME": [<normalized full name>, ...] }. Polymarket settles a player prop of a player who took no snap at the last fair price
+    (not Under), so the site grades him a push; a game missing here = snap counts not posted yet (the site waits)."""
+    sn = td_prob.fetch_snap(season); sn = sn[(sn.game_type == "REG") & (sn.week == int(week))]
+    if not len(sn): return {}
+    _, ros = _pos_map(season); pf = ros.dropna(subset=["pfr_id"]).drop_duplicates("pfr_id").set_index("pfr_id").gsis_id; nm = _names_now()
+    snaps = sn[["offense_snaps", "defense_snaps", "st_snaps"]].fillna(0).sum(axis=1); sn = sn[snaps > 0]
+    g = td_prob.fetch_pbp(season); g = g[g.week == int(week)].drop_duplicates("game_id").set_index("game_id")
+    out = {}
+    for r in sn.itertuples():
+        if r.game_id not in g.index: continue
+        gid = g.loc[r.game_id]; key = f"{gid.away_team} @ {gid.home_team}"
+        pid = pf.get(r.pfr_player_id); n = nm.get(pid) if pid is not None else None
+        out.setdefault(key, set()).add(n or td_prob._nn(r.player))
+    return {k: sorted(v) for k, v in out.items()}

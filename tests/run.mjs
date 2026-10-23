@@ -661,8 +661,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       "Polymarket US: moneyline / spread / total at the ask (other side = 1 - bid), every alternate, no half markets, TD 1+ only, 60+ yards = Over 59.5", { g, td, st }); }
   { // 10/16 (owner's pass): ESPN "ruled out" news joins the starters-out count before the official report says Out (Hurts: official "DNP" Thursday, ESPN Out)
     const { withEspnOuts } = await import("../lib/paper.js"); const { startersOut } = await import("../lib/snaps.js");
-    const rows = [{ home: "PHI", away: "DEN", kickoff: "2026-10-05T17:00:00Z" }], kick = "2026-10-18T17:00:00Z";
-    const off = withEspnOuts([{ name: "Jalen Hurts", pos: "QB", status: "Did Not Participate In Practice", week: 6 }], [{ name: "Jalen Hurts", pos: "QB", status: "Out", date: "2026-10-15T23:10:00Z" }, { name: "Old Guy", pos: "WR", status: "Out", date: "2026-09-20T12:00:00Z" }], "PHI", kick, rows, 6);
+    const at = (d) => new Date(Date.now() + d * 86400e3).toISOString();   // 10/23: dates relative to today (an ESPN entry older than 8 days is stale by design; the fixed 10/15 date crossed that line)
+    const rows = [{ home: "PHI", away: "DEN", kickoff: at(-6) }], kick = at(2);
+    const off = withEspnOuts([{ name: "Jalen Hurts", pos: "QB", status: "Did Not Participate In Practice", week: 6 }], [{ name: "Jalen Hurts", pos: "QB", status: "Out", date: at(-1) }, { name: "Old Guy", pos: "WR", status: "Out", date: at(-7) }], "PHI", kick, rows, 6);
     const snaps = { "00-1": { name: "Jalen Hurts", pos: "QB", weeks: { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 } } };
     ok(off.length === 1 && off[0].status === "Out" && startersOut(snaps, off, 6).qb === 1 && startersOut(snaps, [{ name: "Jalen Hurts", pos: "QB", status: "Did Not Participate In Practice", week: 6 }], 6).qb === 0,
       "starters out: ESPN Out overrides the official DNP (QB counted), a stale ESPN Out from before the last game is ignored", off); }
@@ -1861,7 +1862,23 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(pa.buildPaper({ games: [], propLegs: legs }).filter((p) => /^pp/.test(p.strategy)).length === 3 && pa.STRATEGIES.pp6 && pa.STRATEGIES.pp10 && pa.legKind({ kind: "prop" }) === "prop", "NFL prop parlays: saved with the week's paper, named on the scoreboard, counted in the legs review");
   const box = { "aj brown": { rec_yds: 38, rec: 5 } };
   ok(JSON.stringify(pr.gradePropLeg({ player: "A.J. Brown", stat: "rec_yds", side: "under", line: 49.5 }, box)) === JSON.stringify({ actual: 38, result: "W" }) && pr.gradePropLeg({ player: "A.J. Brown", stat: "rec", side: "over", line: 5.5 }, box).result === "L"
-    && pr.gradePropLeg({ player: "Nobody Here", stat: "rec_yds", side: "under", line: 20.5 }, box).result === "W" && pr.gradePropLeg({ player: "x", stat: "rec", side: "over", line: 1.5 }, null) === null, "NFL prop parlay legs graded from the official stats (a player not in them = 0); no stats yet = not graded");
+    && pr.gradePropLeg({ player: "Nobody Here", stat: "rec_yds", side: "under", line: 20.5 }, box) === null && pr.gradePropLeg({ player: "Nobody Here", stat: "rec_yds", side: "under", line: 20.5 }, box, ["nobody here"]).result === "W"
+    && pr.gradePropLeg({ player: "Nobody Here", stat: "rec_yds", side: "under", line: 20.5 }, box, ["someone else"]).result === "P" && pr.gradePropLeg({ player: "x", stat: "rec", side: "over", line: 1.5 }, null) === null,
+    "NFL prop parlay legs (10/23 recheck, Polymarket's rule: a player with no snap settles at the last fair price): a player with no touch waits for the snap counts, took a snap = 0 yards, no snap = push; no stats yet = not graded");
+  { // the game grading: no-snap = push, no touch before snap counts = wait and graded again later, an old "did not play" row re-checked once
+    const R = globalThis.__TEST_REDIS__ || (await import("../lib/redis.js")).getRedis(), rk = pr.K_PROPRES(2026, 99), g = { key: "AA @ BB", final: true };
+    await R.set(pr.K_PROPMODEL(2026, 99, g.key), JSON.stringify({ runAt: "x", rows: [{ name: "Has Catch", team: "BB", stat: "rec_yds", line: 30.5, mu: 20, over: 0.25, under: 0.75 }, { name: "No Touch", team: "BB", stat: "rec_yds", line: 20.5, mu: 10, over: 0.2, under: 0.8 }, { name: "Sat Out", team: "AA", stat: "rec_yds", line: 25.5, mu: 12, over: 0.22, under: 0.78 }] }));
+    const real = globalThis.fetch; let snaps = undefined;
+    globalThis.fetch = async (u) => ({ json: async () => ({ ok: true, games: { "AA @ BB": { "has catch": { rec_yds: 12 } } }, ...(snaps === undefined ? {} : { snaps: { "AA @ BB": snaps } }) }) });
+    process.env.MODEL_SERVICE_URL = process.env.MODEL_SERVICE_URL || "http://test";
+    const n1 = await pr.gradePropsGame(R, 2026, 99, g), r1 = JSON.parse(await R.hget(rk, g.key));
+    snaps = ["has catch", "no touch"]; pr.clearStatCache(); const pr2 = pr;
+    const n2 = await pr2.gradePropsGame(R, 2026, 99, g), r2 = JSON.parse(await R.hget(rk, g.key)), n3 = await pr2.gradePropsGame(R, 2026, 99, g);
+    globalThis.fetch = real;
+    const by = (r, nm) => r.picks.find((x) => x.name === nm) || {};
+    ok(n1 === 3 && r1.wait && by(r1, "Has Catch").result === "W" && by(r1, "No Touch").result === null && by(r1, "Sat Out").result === null
+      && n2 === 3 && !r2.wait && r2.snapChecked && by(r2, "No Touch").result === "W" && by(r2, "No Touch").played === true && by(r2, "Sat Out").result === "P" && by(r2, "Sat Out").played === false && n3 === 0,
+      "NFL props (10/23 recheck): a player with no touch waits for the snap counts; then took a snap = graded at 0 yards, no snap = push (Polymarket refunds at the last price); graded games are not touched again", { r1: r1.picks, r2: r2.picks, n3 }); }
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8"), sh = readFileSync(new URL("../public/shell.js", import.meta.url), "utf8"), mb = readFileSync(new URL("../pages/api/modelbets.js", import.meta.url), "utf8"), wk = readFileSync(new URL("../lib/week.js", import.meta.url), "utf8"), gp = readFileSync(new URL("../lib/paper.js", import.meta.url), "utf8");
   ok(/\["pp6", "6 Leg"\], \["pp8", "8 Leg"\], \["pp10", "10 Leg"\]\]/.test(app) && /\["pp6", "6 Leg"\], \["pp8", "8 Leg"\], \["pp10", "10 Leg"\]\],/.test(sh) && /pp6: "pp6", pp8: "pp8", pp10: "pp10"/.test(mb) && /S\.propParlays/.test(app) && /propParlays: propParlayList/.test(wk) && /\["PLAYER PROPS", \[\["pp6", "6 legs"\]/.test(app) && /l\.kind === "prop"\) \{ const st = await weekStats/.test(gp),
     "NFL prop parlays: Model bets tabs 6 / 8 / 10 Leg (menu + page), saved weeks grouped, live build on the slate, scoreboard rows, grading wired");
