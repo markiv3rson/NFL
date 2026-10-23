@@ -130,7 +130,8 @@ const QUEST = /^questionable/i;   // 10/21: sent too -- 45.5% of Questionable pl
 // Ask the NBA service for every recorded line of each not-started game in the record window and save the answer (the snapshot's step).
 // the game's main spread for the home team (+ = home underdog): Polymarket's main line, else the sportsbooks'
 const homeSpreadOf = (g) => { const v = g && ((g.poly && g.poly.spread && g.poly.spread.homeSpread) ?? (g.books && g.books.spread && g.books.spread.homeSpread)); return typeof v === "number" && isFinite(v) ? v : null; };
-export async function scoreNbaProps(games, { now = Date.now(), injuries = null, post = null, retryMs = 3000 } = {}) {
+export const CHUNK = 3;   // games per request to the service
+export async function scoreNbaProps(games, { now = Date.now(), injuries = null, post = null, retryMs = 3000, budgetMs = 85e3 } = {}) {
   const base = modelBase(); if (!base) return { scored: 0, error: "NBA_MODEL_SERVICE_URL not set" };
   const todo = [];
   for (const g of games || []) {
@@ -144,17 +145,29 @@ export async function scoreNbaProps(games, { now = Date.now(), injuries = null, 
   if (!todo.length) return { scored: 0 };
   const send = post || (async (body) => { const r = await fetch(`${base}/prop-probs`, { method: "POST", headers: modelHeaders({ "Content-Type": "application/json" }), body: JSON.stringify(body), cache: "no-store", signal: AbortSignal.timeout(25000) }); return r.json().catch(() => null); });
   // 10/23 (owner): the service missed a round twice in two days (a 25-s timeout, an empty reply) -- a miss is asked once more a few
-  // seconds later instead of waiting for the next 30-min snapshot; "building" (the prop model is being refit) is not asked again
-  const body = { games: todo.map((t) => t.body) };
-  const once = async () => { try { return await send(body); } catch (e) { return { ok: false, error: String((e && e.name) || "Error") + ": " + String((e && e.message) || e).slice(0, 120) }; } };
-  let j = await once(), retried = false;
-  if (!(j && j.ok) && !(j && j.building)) { retried = true; if (retryMs > 0) await new Promise((r) => setTimeout(r, retryMs)); const j2 = await once(); if ((j2 && j2.ok) || !(j && j.error)) j = j2; }
-  if (!j || !j.ok) return { scored: 0, retried, building: !!(j && j.building), error: (j && j.error) || "no reply" };
-  const runAt = new Date(now).toISOString(); let n = 0;
-  for (const r of j.results || []) { const t = todo.find((x) => x.g.key === r.game); if (!t || !Array.isArray(r.rows)) continue;
-    const hs = homeSpreadOf(t.g), rows = r.rows.map((x) => ({ ...x, tsp: hs == null || !x.team ? null : x.team === t.g.home ? hs : -hs }));   // 10/23: the player's team spread (+ = underdog)
-    await setJSON(K_NBAPROPMODEL(t.g.date, t.g.key), { runAt, start: t.g.start, away: t.g.away, home: t.g.home, hs, rows, ...(t.star.length ? { star: t.star } : {}) }); n++; }
-  return { scored: n, built: j.built || null, ...(retried ? { retried: true } : {}) };
+  // seconds later instead of waiting for the next 30-min snapshot; "building" (the prop model is being refit) is not asked again.
+  // 10/23 recheck: the 3:30 PM PT round timed out on BOTH tries -- 20 games (tonight + tomorrow) went in ONE request and the service could not
+  // answer in 25 s. Games go nearest tip-off first, CHUNK at a time, each group with its own retry, inside a time budget (the snapshot has
+  // 120 s), so a slow reply costs only its own games and the next tip-offs are always scored first.
+  todo.sort((a, b) => String(a.g.start).localeCompare(String(b.g.start)));
+  const t0 = Date.now(), left = () => budgetMs - (Date.now() - t0);
+  const runAt = new Date(now).toISOString(); let n = 0, retried = false, built = null, building = false, failed = 0, groups = 0, err = null;
+  for (let i = 0; i < todo.length; i += CHUNK) {
+    if (groups && left() < 30e3) { failed++; err = err || "time budget used up"; continue; }
+    const part = todo.slice(i, i + CHUNK), body = { games: part.map((t) => t.body) }; groups++;
+    const once = async () => { try { return await send(body); } catch (e) { return { ok: false, error: String((e && e.name) || "Error") + ": " + String((e && e.message) || e).slice(0, 120) }; } };
+    let j = await once();
+    if (!(j && j.ok) && !(j && j.building) && left() > 30e3) { retried = true; if (retryMs > 0) await new Promise((r) => setTimeout(r, retryMs)); const j2 = await once(); if ((j2 && j2.ok) || !(j && j.error)) j = j2; }
+    if (j && j.building) { building = true; err = err || (j.error || "building"); failed += Math.ceil((todo.length - i) / CHUNK); break; }
+    if (!j || !j.ok) { failed++; err = err || (j && j.error) || "no reply"; continue; }
+    built = built || j.built || null;
+    for (const r of j.results || []) { const t = part.find((x) => x.g.key === r.game); if (!t || !Array.isArray(r.rows)) continue;
+      const hs = homeSpreadOf(t.g), rows = r.rows.map((x) => ({ ...x, tsp: hs == null || !x.team ? null : x.team === t.g.home ? hs : -hs }));   // 10/23: the player's team spread (+ = underdog)
+      await setJSON(K_NBAPROPMODEL(t.g.date, t.g.key), { runAt, start: t.g.start, away: t.g.away, home: t.g.home, hs, rows, ...(t.star.length ? { star: t.star } : {}) }); n++; }
+  }
+  const total = Math.ceil(todo.length / CHUNK), extra = retried ? { retried: true } : {};
+  if (!n && failed) return { scored: 0, ...extra, building, error: total > 1 ? `${failed} of ${total} groups: ${err}` : err };
+  return { scored: n, built, ...extra, ...(failed ? { error: `${failed} of ${total} groups: ${err}` } : {}) };
 }
 async function scanKeys(pattern) {
   const r = getRedis(), ks = []; let c = "0";

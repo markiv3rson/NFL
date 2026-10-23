@@ -305,10 +305,17 @@ def chances_many(games):
         outs = {norm_name(n) for n in (g.get("outs") or [])}
         by, anyone = _player_rows(L, away, home)
         vac = _vac_live(L, (away, home), outs, {norm_name(n) for n in (g.get("quest") or [])})
-        rows = []
+        rows, mus = [], {}   # 10/23: the predicted average does not depend on the line -- once per player + stat, not once per ladder rung
         for ln in g.get("lines") or []:
             stat = str(ln.get("stat") or ""); nn = norm_name(ln.get("name"))
             if stat not in sp or nn in outs: continue
+            line = float(ln.get("line"))
+            if (nn, stat) in mus:
+                hit = mus[(nn, stat)]
+                if hit is None: continue
+                team, mu = hit; over = float(sp[stat].over([mu], [line])[0])
+                rows.append({"name": ln.get("name"), "team": team, "stat": stat, "line": line, "mu": round(mu, 2), "over": round(over, 4), "under": round(1 - over, 4)}); continue
+            mus[(nn, stat)] = None
             r = by.get(nn)
             if r is None: r = anyone.get(nn)
             if r is None: continue
@@ -328,7 +335,7 @@ def chances_many(games):
             for c in fs:
                 if c not in X: X[c] = np.nan
             mu = float(predict_mu(L["models"][stat], X, stat, fs)[0])
-            line = float(ln.get("line"))
+            mus[(nn, stat)] = (team, mu)
             over = float(sp[stat].over([mu], [line])[0])
             rows.append({"name": ln.get("name"), "team": team, "stat": stat, "line": line, "mu": round(mu, 2), "over": round(over, 4), "under": round(1 - over, 4)})
         out.append({"game": f"{away} @ {home}", "rows": rows})
