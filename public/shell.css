@@ -132,7 +132,7 @@ body.bnav-on.game-on #detail .dtop { position:sticky; top:calc(env(safe-area-ins
 .ibox { border:1px solid rgba(255,255,255,.28); border-radius:10px; background:rgba(14,14,20,.96); padding:9px 11px; margin:6px 0 4px; font-size:12px; line-height:1.4; color:#e9e9ee; font-weight:400; letter-spacing:0; text-transform:none; text-align:left; display:flex; flex-direction:column; gap:4px; white-space:normal; }
 .ibox[hidden] { display:none; }
 .ibox b { color:#fff; font-weight:800; }
-.lbw { color:#fff; }
+.lbw { color:#fff; font-weight:400; }
 #models .drop.open > .ibox { grid-column:1/-1; }   /* the box spans both columns on a computer */
 #models .drop.open > .s.ihd { border-bottom:1px solid var(--line2); padding-bottom:3px; } #models .drop.open > .s.ihd > b { border-bottom:0; padding-bottom:0; }   /* the heading's line runs under the ⓘ too */
 /* 10/21 night (owner: "MAKE IT LOOK LIKE A TABLE LIST ... words on one side and numbers on the other side and percentages in a vertical line"; both

@@ -193,14 +193,14 @@ function moreBox(inner) { return inner ? `<details class="more" style="margin-to
 function cardBody(g, kind, C) {
   const x = C.plain, p = C.pts, TEST = C.test;
   let l1;
-  if (x) { const c1 = clsOf(x.hit), tx = hitTxt(x.hit, c1), lab = TEST ? "TEST" : "PICK";
-    l1 = TEST ? `<b style="font-size:13px;color:#b9a8ff">${lab}: ${esc(x.pick)} · ${tx}</b>`
-      : c1 === "g" ? `<b class="g pulse" style="--gl:${glowOf(x.hit / 100)};font-size:13px"><span class="lbw">PICK:</span> ${esc(x.pick)} · <span class="reelpct" data-v="${tx}">${tx}</span></b>` : `<b class="${c1}" style="font-size:13px"><span class="lbw">PICK:</span> ${esc(x.pick)} · ${tx}</b>`; }
+  if (x) { const c1 = clsOf(x.hit), tx = hitTxt(x.hit, c1), lab = TEST ? "Test" : "Pick";
+    l1 = TEST ? `<b style="font-size:13px;color:#b9a8ff"><span class="lbw">${lab}:</span> ${esc(x.pick)} · ${tx}</b>`
+      : c1 === "g" ? `<b class="g pulse" style="--gl:${glowOf(x.hit / 100)};font-size:13px"><span class="lbw">Pick:</span> ${esc(x.pick)} · <span class="reelpct" data-v="${tx}">${tx}</span></b>` : `<b class="${c1}" style="font-size:13px"><span class="lbw">Pick:</span> ${esc(x.pick)} · ${tx}</b>`; }
   else l1 = `<b class="dim" style="font-size:13px">No pick</b>`;
   const why = x && x.why ? `<div class="s" style="margin-top:2px">${esc(x.why)}</div>` : "";
   let l2;
-  if (p) { const c2 = clsOf(p.hit); l2 = `<b class="${TEST ? "" : c2}" style="font-size:13px${TEST ? ";color:#b9a8ff" : ""}">${TEST ? "TEST" : "PICK"} w/ POINTS: ${esc(p.pick)} · ${hitTxt(p.hit, c2)}</b>`; }
-  else l2 = `<span class="dim" style="font-size:13px">PICK w/ POINTS: none</span>`;
+  if (p) { const c2 = clsOf(p.hit); l2 = `<b class="${TEST ? "" : c2}" style="font-size:13px${TEST ? ";color:#b9a8ff" : ""}"><span class="lbw">${TEST ? "Test" : "Pick"} w/ points:</span> ${esc(p.pick)} · ${hitTxt(p.hit, c2)}</b>`; }
+  else l2 = `<span class="dim" style="font-size:13px"><span class="lbw">Pick w/ points:</span> none</span>`;
   const grp = (r) => r.team || (r.side === "over" ? "Over" : "Under"), first = x ? x.team || (x.side === "over" ? "Over" : "Under") : null;
   const names = [...new Set(C.rows.map(grp))].sort((a, b) => (a === first ? -1 : 0) - (b === first ? -1 : 0));
   const rows = names.map((nm, i) => `<div style="margin-top:${i ? 8 : 2}px">` + C.rows.filter((r) => grp(r) === nm).map((r) => { const pk = !!(p && r.pick === p.pick);
@@ -210,8 +210,8 @@ function cardBody(g, kind, C) {
 function lockedBody(g, kind) {   // after tip-off: the picks saved before it, with W / L once graded
   const L = g.locked && g.locked[kind]; if (!L) return `<div style="margin-top:6px"><b class="dim" style="font-size:13px">Game in progress</b></div>`;
   const rs = (x) => (x.result === "win" ? ' · <span class="g">W</span>' : x.result === "loss" ? ' · <span class="r">L</span>' : x.result === "push" ? " · push" : x.result === "void" ? ' · <span class="dim">void</span>' : "");   // 10/23 (owner): no "live" on the model lines
-  return (L.plain ? `<div style="margin-top:6px"><b class="${clsOf(L.plain.pct)}" style="font-size:13px"><span class="lbw">PICK:</span> ${esc(L.plain.label)} · ${hitTxt(L.plain.pct, clsOf(L.plain.pct))}</b>${rs(L.plain)}</div>` : "") +
-    (L.pts ? `<div style="margin-top:4px"><b style="font-size:13px"><span class="lbw">PICK w/ POINTS:</span> ${esc(L.pts.label)} · ${hitTxt(L.pts.pct, clsOf(L.pts.pct))}</b>${rs(L.pts)}</div>` : "");
+  return (L.plain ? `<div style="margin-top:6px"><b class="${clsOf(L.plain.pct)}" style="font-size:13px"><span class="lbw">Pick:</span> ${esc(L.plain.label)} · ${hitTxt(L.plain.pct, clsOf(L.plain.pct))}</b>${rs(L.plain)}</div>` : "") +
+    (L.pts ? `<div style="margin-top:4px"><b style="font-size:13px"><span class="lbw">Pick w/ points:</span> ${esc(L.pts.label)} · ${hitTxt(L.pts.pct, clsOf(L.pts.pct))}</b>${rs(L.pts)}</div>` : "");
 }
 function modelCell(g, kind) {
   const m = g.model, k = g[kind];
@@ -236,10 +236,10 @@ const IBTN = `<button class="ibtn" type="button" aria-label="What is this?"><svg
 const ibox = (lines, st) => `<div class="ibox" hidden${st ? ` style="${st}"` : ""}>${lines.map(([k, t]) => `<div><b>${k}</b> ${t}</div>`).join("")}</div>`;
 const MODEL_INFO = {
   spread: [["Model:", "the game model’s score guess. Data only."], ["Model (Team):", "team-stats model at Polymarket’s line. Data only on NBA, never the pick."],
-    ["PICK:", "the bet at Polymarket’s main line, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
-    ["PICK w/ POINTS:", "same side with bought points that won 56%+."], ["MORE list:", "every line, both teams: points bought · history win % · Polymarket price."]],
-  total: [["Model:", "the game model’s total points guess. Data only."], ["PICK:", "Over or Under at Polymarket’s main total, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
-    ["PICK w/ POINTS:", "same side with bought points that won 56%+."], ["MORE list:", "every line, Over and Under: points bought · history win % · Polymarket price."]],
+    ["Pick:", "the bet at Polymarket’s main line, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
+    ["Pick w/ points:", "same side with bought points that won 56%+."], ["MORE list:", "every line, both teams: points bought · history win % · Polymarket price."]],
+  total: [["Model:", "the game model’s total points guess. Data only."], ["Pick:", "Over or Under at Polymarket’s main total, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
+    ["Pick w/ points:", "same side with bought points that won 56%+."], ["MORE list:", "every line, Over and Under: points bought · history win % · Polymarket price."]],
   ml: [["Model:", "the model’s own chance each team wins."], ["PICK:", "the market’s favorite and its chance with Polymarket’s fee taken out."]],
 };
 const CARD_INFO = [["PICK:", "the card’s bet at Polymarket’s main line, locked at tip-off."], ["LINE MOVE / FATIGUE / ATS REGRESSION:", "the tested rules that named a PICK."],
@@ -270,19 +270,19 @@ function mlPickLine(g) {   // the moneyline PICK under the spread lines (the mar
   const k = g.ml; if (!k) return "";
   if (g.inProgress) { const L = g.locked && g.locked.ml && g.locked.ml.plain; if (!L) return "";
     const rs = L.result === "win" ? ' · <span class="g">W</span>' : L.result === "loss" ? ' · <span class="r">L</span>' : L.result === "push" ? " · push" : "";
-    return `<div style="margin-top:4px"><b class="${clsOf(L.pct)}" style="font-size:13px"><span class="lbw">ML PICK:</span> ${esc(L.label)} · ${hitTxt(L.pct, clsOf(L.pct))}</b>${rs}</div>`; }
+    return `<div style="margin-top:4px"><b class="${clsOf(L.pct)}" style="font-size:13px"><span class="lbw">ML pick:</span> ${esc(L.label)} · ${hitTxt(L.pct, clsOf(L.pct))}</b>${rs}</div>`; }
   const pick = k.pick; if (!pick) return "";
-  if (pick.tier === "test") return `<div style="margin-top:4px"><b style="font-size:13px;color:#b9a8ff">TEST: ${esc(pick.label)} · ${pick.pct}%</b></div>`;
+  if (pick.tier === "test") return `<div style="margin-top:4px"><b style="font-size:13px;color:#b9a8ff"><span class="lbw">Test:</span> ${esc(pick.label)} · ${pick.pct}%</b></div>`;
   if (pick.tier !== "pick" && pick.tier !== "lean") return "";
   const c = clsOf(pick.pct), tx = hitTxt(pick.pct, c);
-  return `<div style="margin-top:4px"><b class="${c}" style="font-size:13px"><span class="lbw">ML PICK:</span> ${esc(pick.label)} · ${tx}</b></div>`;
+  return `<div style="margin-top:4px"><b class="${c}" style="font-size:13px"><span class="lbw">ML pick:</span> ${esc(pick.label)} · ${tx}</b></div>`;
 }
 function marketCard(g, kind, id) {
   const p = g.poly || {};
   const poly = kind === "spread" ? (p.spread || p.ml ? (p.spread ? row("Spread", `${g.home} ${sgn(p.spread.homeSpread)} ${odds(toAm(p.spread.home))}`, "mkt") + row("", `${g.away} ${sgn(-p.spread.homeSpread)} ${odds(toAm(p.spread.away))}`, "mkt") : "")
       + (p.ml ? row("Moneyline", `${g.home} ${odds(toAm(p.ml.home))}`, "mlc", !!p.spread) + row("", `${g.away} ${odds(toAm(p.ml.away))}`, "mlc") : "") : dash)
     : (p.total ? row(`Over ${p.total.line}`, odds(toAm(p.total.over)), "mkt") + row(`Under ${p.total.line}`, odds(toAm(p.total.under)), "mkt") : dash);
-  const info = kind === "spread" ? MODEL_INFO.spread.concat([["ML PICK:", MODEL_INFO.ml[1][1]]]) : MODEL_INFO.total;
+  const info = kind === "spread" ? MODEL_INFO.spread.concat([["ML pick:", MODEL_INFO.ml[1][1]]]) : MODEL_INFO.total;
   return `<div class="card"><div class="inner">${id ? injDrop(g, id) : ""}<div class="hd">MARKET</div><div class="mk">${bookBox(g, kind)}<div>${pmHead(g)}${poly}${tipLine(g, kind)}</div></div><div class="hd hm ihd">MODEL${IBTN}</div>${ibox(info)}${modelCell(g, kind)}</div></div>`;
 }
 // same-game parlays of this game (lib/parlays.js): 2 legs on Polymarket's lines, 2 legs on bought lines
