@@ -204,6 +204,14 @@ export async function nbaPropsForDay(date, now = Date.now()) {
   }
   return out.sort((a, b) => String(a.start || "").localeCompare(String(b.start || "")));
 }
+// 10/23 (owner: "make sure everything is graded correctly"): EVERY graded prop row of a day (shown or only tracked) for the outside re-grade,
+// and the games scored that day that never got graded
+export async function nbaPropsGradedAll(date) {
+  const r = getRedis(), res = await r.hgetall(K_NBAPROPRES(date)).catch(() => null) || {}, graded = [], missing = [];
+  for (const [game, v] of Object.entries(res)) { let d; try { d = JSON.parse(v); } catch { continue; } graded.push({ game, picks: (d.picks || []).map((p) => ({ name: p.name, stat: p.stat, side: p.side, line: p.line, actual: p.actual ?? null, result: p.result || null })) }); }
+  for (const k of await scanKeys(`nbapropmodel:${date}:*`)) { const key = k.slice(`nbapropmodel:${date}:`.length); if (!res[key]) missing.push(key); }
+  return { graded, missing };
+}
 // W-L per stat (and all) of the page's rows over the graded days
 export async function nbaPropsRecord(dates) {
   const r = getRedis(), rec = { all: { w: 0, l: 0 } }; for (const [s] of NBA_STATS) rec[s] = { w: 0, l: 0 };

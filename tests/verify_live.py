@@ -157,23 +157,45 @@ for r in res.values():
         n += 1
         if (got > 0) != bool(p["scored"]): wrong("TD", r["week"], r["game"], p["player"], "app", p["scored"], "nflverse", got)
 print(f"4. touchdowns: {n} player rows vs nflverse, {um} more with no touch in nflverse (all graded 'no TD')")
-n = nm = um = 0
+n = nm = um = 0; nfl_missing = []; nfl_all = True
 for w in sorted({r["week"] for r in res.values()}):
-    try: P = get(f"{SITE}/api/props?week={w}")
-    except Exception: continue
-    for g in P.get("games") or []:
-        for r in g.get("picks") or []:
-            if r.get("result") not in ("W", "L") or r.get("actual") is None: continue
-            n += 1
-            if ("W" if (r["actual"] < r["line"]) == (r["side"] == "under") else "L") != r["result"]: wrong("prop grade", w, r["name"], r)
-            y = yd.get((w, nn(r["name"]))); y = None if y is None else y.get(r.get("stat") or "rec_yds")
-            if y is None:   # no row = no catch that week -> 0 yards
-                um += 1
-                if int(r["actual"]) != 0: wrong("prop yards", w, r["name"], "app", r["actual"], "nflverse has no catch for him (name spelled differently?)")
-                continue
-            nm += 1
-            if int(y) != int(r["actual"]): wrong("prop yards", w, r["name"], "app", r["actual"], "nflverse", y)
-print(f"5. props: {n} graded, {nm} yard totals vs nflverse, {um} more with no catch in nflverse (all 0 yards in the app)")
+    # 10/23: every graded line of the week (shown AND only tracked) from ?all=1; the shown rows if the site is older
+    try: A = get(f"{SITE}/api/props?week={w}&all=1")
+    except Exception: A = {}
+    if A.get("ok") and "graded" in A:
+        rows = [(w, r) for g in A["graded"] for r in g.get("picks") or []]
+        nfl_missing += [f"week {w} {k}" for k in A.get("missing") or []]
+    else:
+        nfl_all = False
+        try: P = get(f"{SITE}/api/props?week={w}")
+        except Exception: continue
+        rows = [(w, r) for g in P.get("games") or [] for r in g.get("picks") or []]
+    for w, r in rows:
+        if r.get("result") not in ("W", "L") or r.get("actual") is None: continue
+        n += 1
+        if ("W" if (r["actual"] < r["line"]) == (r["side"] == "under") else "L") != r["result"]: wrong("prop grade", w, r["name"], r)
+        y = yd.get((w, nn(r["name"]))); y = None if y is None else y.get(r.get("stat") or "rec_yds")
+        if y is None:   # no row = no catch that week -> 0 yards
+            um += 1
+            if int(r["actual"]) != 0: wrong("prop yards", w, r["name"], "app", r["actual"], "nflverse has no catch for him (name spelled differently?)")
+            continue
+        nm += 1
+        if int(y) != int(r["actual"]): wrong("prop yards", w, r["name"], "app", r["actual"], "nflverse", y)
+for m in nfl_missing: wrong("props never graded", m)
+print(f"5. props: {n} graded lines ({'every line, shown and tracked' if nfl_all else 'shown rows only: site without ?all=1'}), {nm} totals vs nflverse, {um} more with no catch in nflverse (all 0 in the app), {len(nfl_missing)} final games never graded")
+
+# 10/23: player-prop legs inside the NFL model parlays (Player-prop Parlays 6 / 8 / 10) -> the same nflverse player stats
+npl = 0
+for wk, types in (MB.get("weeks") or {}).items():
+    for typ, lst in types.items():
+        for p in lst:
+            for l in p.get("legs") or []:
+                if l.get("kind") != "prop" or l.get("result") not in ("W", "L"): continue
+                y = yd.get((int(wk), nn(l.get("player")))); y = 0.0 if y is None else y.get(l.get("stat") or "rec_yds", 0.0)   # no row = no catch / no yards
+                npl += 1
+                gx = "W" if (y < l["line"]) == (l["side"] == "under") else "L"
+                if gx != l["result"] or (l.get("actual") is not None and int(l["actual"]) != int(y)): wrong("parlay prop leg", wk, typ, l.get("label"), "app", l["result"], l.get("actual"), "nflverse", y, gx)
+print(f"   NFL parlay prop legs: {npl} recomputed from nflverse")
 
 # 6. NBA picks (10/20 review) -> ESPN's final scores for each game day (an outside source; the app grades from the same feed, so this checks the math)
 ESPN_FIX = {"GS": "GSW", "NO": "NOP", "SA": "SAS", "NY": "NYK", "UTAH": "UTA", "WSH": "WAS"}
@@ -228,14 +250,13 @@ except Exception as e:
     print(f"6. NBA picks: could not check ({str(e)[:80]})")
 
 # 7. NBA player props (10/21 review) -> ESPN box scores (a second parser, written here from ESPN's own labels; the app's parser is nba/lib/espn.js parseBox)
+# 10/23: EVERY graded row (shown and only tracked: the Unders, the cut rows) via ?all=1, days with games scored but never graded, and every
+# player-prop leg inside the NBA model parlays (Prop Parlays 6 / 8 / 10, Same Game 4)
 try:
     nn2 = lambda x: re.sub(r"[^a-z]", "", re.sub(r"\s+(jr|sr|ii|iii|iv|v)\.?$", "", str(x or "").strip().lower()))
-    days = sorted({p["date"] for p in NP} | set((get(f"{SITE}/api/nba/props").get("days") or [])))
-    n = um = push = 0
-    for day in days:
-        P = get(f"{SITE}/api/nba/props?date={day}")
-        rows = [(g, r) for g in P.get("games") or [] for r in g.get("picks") or [] if r.get("result") in ("W", "L", "P")]
-        if not rows: continue
+    BOX = {}
+    def nba_box(day):
+        if day in BOX: return BOX[day]
         box = {}
         sb = get(f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates={day.replace('-', '')}")
         for e in sb.get("events") or []:
@@ -250,20 +271,41 @@ try:
                     d = dict(zip(lab, v)); num = lambda k: float(str(d.get(k, "0")).split("-")[0] or 0)
                     pts, reb, ast = num("PTS"), num("REB"), num("AST")
                     box[nm] = {"pts": pts, "reb": reb, "ast": ast, "pra": pts + reb + ast, "3pm": num("3PT"), "stl": num("STL"), "blk": num("BLK")}
-        for g, r in rows:
-            k = nn2(r["name"])
-            if k not in box: um += 1; continue
-            b = box[k]
-            if b is None:
-                push += 1
-                if r["result"] != "P": wrong("NBA prop", day, r["name"], r["stat"], "did not play but graded", r["result"])
-                continue
-            y = b.get(r["stat"])
-            if y is None: um += 1; continue
-            n += 1
-            gx = "P" if y == r["line"] else ("W" if (y < r["line"]) == (r["side"] == "under") else "L")
-            if gx != r["result"] or (r.get("actual") is not None and float(r["actual"]) != y): wrong("NBA prop", day, g["game"], r["name"], r["stat"], r["side"], r["line"], "app", r["result"], r.get("actual"), "ESPN", y, gx)
-    print(f"7. NBA props: {n} graded rows recomputed from ESPN box scores, {push} did-not-play pushes, {um} not matched")
+        BOX[day] = box; return box
+    def nba_prop_check(what, day, game, r):
+        k = nn2(r["name"]); box = nba_box(day)
+        if k not in box: return "um"
+        b = box[k]
+        if b is None:
+            if r["result"] != "P": wrong(what, day, r["name"], r["stat"], "did not play but graded", r["result"])
+            return "push"
+        y = b.get(r["stat"])
+        if y is None: return "um"
+        gx = "P" if y == r["line"] else ("W" if (y < r["line"]) == (r["side"] == "under") else "L")
+        if gx != r["result"] or (r.get("actual") is not None and float(r["actual"]) != y): wrong(what, day, game, r["name"], r["stat"], r["side"], r["line"], "app", r["result"], r.get("actual"), "ESPN", y, gx)
+        return "ok"
+    today = time.strftime("%Y-%m-%d", time.gmtime(time.time() - 8 * 3600))   # Pacific-ish date: games on or after it may not be final
+    days = sorted({p["date"] for p in NP} | set((get(f"{SITE}/api/nba/props").get("days") or [])))
+    cnt = collections.Counter(); nba_missing = []; nba_all = True
+    for day in days:
+        A = get(f"{SITE}/api/nba/props?date={day}&all=1")
+        if A.get("ok") and "graded" in A:
+            rows = [(g["game"], r) for g in A["graded"] for r in g.get("picks") or [] if r.get("result") in ("W", "L", "P")]
+            if day < today: nba_missing += [f"{day} {k}" for k in A.get("missing") or []]
+        else:
+            nba_all = False
+            P = get(f"{SITE}/api/nba/props?date={day}")
+            rows = [(g["game"], r) for g in P.get("games") or [] for r in g.get("picks") or [] if r.get("result") in ("W", "L", "P")]
+        for game, r in rows: cnt[nba_prop_check("NBA prop", day, game, r)] += 1
+    for m in nba_missing: wrong("NBA props never graded", m)
+    print(f"7. NBA props: {cnt['ok']} graded rows ({'every row, shown and tracked' if nba_all else 'shown rows only: site without ?all=1'}) recomputed from ESPN box scores, {cnt['push']} did-not-play pushes, {cnt['um']} not matched, {len(nba_missing)} past games never graded")
+    lc = collections.Counter()
+    for day, types in (get(f"{SITE}/api/nba/modelbets").get("days") or {}).items():
+        for typ, lst in types.items():
+            for p in lst:
+                for l in p.get("legs") or []:
+                    if l.get("market") == "prop" and l.get("result") in ("W", "L", "P"): lc[nba_prop_check("NBA parlay prop leg", day, l.get("game"), l)] += 1
+    print(f"   NBA parlay prop legs: {lc['ok']} recomputed from ESPN box scores, {lc['push']} did-not-play pushes, {lc['um']} not matched")
 except Exception as e:
     print(f"7. NBA props: could not check ({str(e)[:80]})")
 

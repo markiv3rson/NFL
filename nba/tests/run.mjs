@@ -955,6 +955,8 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
     const early = await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2026-12-31T10:00:00Z"), fetchBox: async () => fixedBox });
     const g2 = await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2026-12-31T15:00:00Z"), fetchBox: async () => fixedBox });
     const cc = JSON.parse(await R.hget(pr.K_NBAPROPRES("2026-12-30"), "BOS @ DET")).picks.find((p) => p.name === "Cade Cunningham");   // 10/23: the Under is graded in the background, not shown
+    { const ga = await pr.nbaPropsGradedAll("2026-12-30");   // 10/23: every graded row for npm run verify (the background Unders too)
+      ok(ga.graded.length >= 1 && ga.graded.some((g) => g.picks.some((p) => p.name === "Cade Cunningham" && p.side === "under" && p.result === "W")) && !ga.missing.includes("BOS @ DET"), "NBA props ?all=1 (10/23): every graded row, the Unders the page hides included", ga); }
     const g3 = await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2026-12-31T23:00:00Z"), fetchBox: async () => { throw new Error("no second look"); } });
     ok(early === 0 && g2 === 1 && cc.result === "W" && cc.actual === 38 && g3 === 0 && pr.RECHECK_H === 6, "NBA props grading: a graded game is looked at once more 6+ hours later and a corrected box score re-grades its rows; never a third time", { early, g2, cc, g3 }); }
   // ESPN box parse (the real summary shape): 3PT "1-3" = 1 made, a DNP is left out, the key from the header
@@ -995,7 +997,15 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   const players2 = {}; for (const [n, v] of [["alpha", { reb: 9 }], ["bravo", { pts: 20 }], ["charlie", { pts: 12 }], ["delta", { pts: 15 }], ["echo", { pts: 11 }], ["foxtrot", { pts: 4 }]]) players2[n] = v;
   const box = { "BOS @ NYK": { final: true, players: players2 }, "LAL @ GSW": { final: true, players: players2 } };
   await pl.gradeParlays(async () => ({}), async () => box);
-  const gp = JSON.parse(await R.get(k)); await R.del(k); await R.srem("parlay:ids", k);
+  const gp = JSON.parse(await R.get(k));
+  // 10/23: ESPN corrects a box score after the final -> the decided parlay's prop legs are re-graded once, 6+ h later; result and money follow
+  await pl.gradeParlays(async () => ({}), async () => ({ ...box, "BOS @ NYK": { final: true, players: { ...players2, foxtrot: { pts: 30 } } }, "LAL @ GSW": { final: true, players: { ...players2, foxtrot: { pts: 30 } } } }), Date.now() + 2 * 3600e3);
+  const g1 = JSON.parse(await R.get(k));
+  await pl.gradeParlays(async () => ({}), async () => ({ ...box, "BOS @ NYK": { final: true, players: { ...players2, foxtrot: { pts: 30 } } }, "LAL @ GSW": { final: true, players: { ...players2, foxtrot: { pts: 30 } } } }), Date.now() + 7 * 3600e3);
+  const g2 = JSON.parse(await R.get(k)); const fx = g2.legs.find((l) => l.name === "Foxtrot");
+  ok(!g1.rechecked && g1.result === "L" && g2.rechecked && g2.fixed >= 1 && fx.result === "W" && fx.actual === 30 && g2.result === (g2.legs.some((l) => l.result === "L") ? "L" : "W") && (g2.result !== "W" || g2.ret > 0),
+    "Props Parlays re-check (10/23): not before 6 h; then the prop legs are re-graded from the corrected box (Foxtrot 4 -> 30 pts = W) and the parlay result / money follow", g2);
+  await R.del(k); await R.srem("parlay:ids", k);
   ok(gp.result === "L" && gp.ret === -5 && gp.legs.find((l) => l.name === "Foxtrot").result === "L" && gp.legs.find((l) => l.name === "Foxtrot").actual === 4 && gp.legs.find((l) => l.name === "Alpha").result === "W", "Props Parlays grading: each leg from the box score (Foxtrot 4 pts < 10.5 loses), the parlay lost $5", gp);
   // shadow trackers: a 77c+ row at 65%+ (hidden on the page) and a star-out teammate's points Over at the ~50c line
   const st = pr.starsOut({ key: "BOS @ NYK", away: "BOS", home: "NYK", injuries: { away: [{ name: "Jayson Tatum", status: "Out", ppg: 27 }, { name: "X", status: "Out", ppg: 8 }], home: [{ name: "Y", status: "Questionable", ppg: 24 }] } });
