@@ -105,11 +105,11 @@ function cardBody(g, kind, C) {
   const x = C.plain, p = C.pts;
   let l1;
   if (x) { const c1 = clsOf(x.hit), tx = hitTxt(x.hit, c1);
-    l1 = c1 === "g" ? `<b class="g pulse" style="--gl:${glowOf(x.hit / 100)};font-size:13px;white-space:nowrap"><span class="lbw">PICK:</span> ${esc(x.pick)} · <span class="reelpct" data-v="${tx}">${tx}</span></b>` : `<b class="${c1}" style="font-size:13px;white-space:nowrap"><span class="lbw">PICK:</span> ${esc(x.pick)} · ${tx}</b>`; }
+    l1 = c1 === "g" ? `<b class="g pulse" style="--gl:${glowOf(x.hit / 100)};font-size:13px;white-space:nowrap"><span class="lbw">Pick:</span> ${esc(x.pick)} · <span class="reelpct" data-v="${tx}">${tx}</span></b>` : `<b class="${c1}" style="font-size:13px;white-space:nowrap"><span class="lbw">Pick:</span> ${esc(x.pick)} · ${tx}</b>`; }
   else l1 = `<b class="dim" style="font-size:13px">No pick</b>`;
   let l2;
-  if (p) { const c2 = clsOf(p.hit); l2 = `<b class="${c2}" style="font-size:13px;white-space:nowrap"><span class="lbw">PICK w/ POINTS:</span> ${esc(p.pick)} · ${hitTxt(p.hit, c2)}</b>`; }
-  else l2 = `<span class="dim" style="font-size:13px;white-space:nowrap">PICK w/ POINTS: none</span>`;
+  if (p) { const c2 = clsOf(p.hit); l2 = `<b class="${c2}" style="font-size:13px;white-space:nowrap"><span class="lbw">Pick w/ points:</span> ${esc(p.pick)} · ${hitTxt(p.hit, c2)}</b>`; }
+  else l2 = `<span class="dim" style="font-size:13px;white-space:nowrap"><span class="lbw">Pick w/ points:</span> none</span>`;
   const grp = (r) => r.team || (r.side === "over" ? "Over" : "Under"), first = x ? x.team || (x.side === "over" ? "Over" : "Under") : null;
   const names = [...new Set(C.rows.map(grp))].sort((a, b) => (a === first ? -1 : 0) - (b === first ? -1 : 0));
   // one list split by team with a gap, no titles (owner 10/15); only the model's chosen row is green, all the way across
@@ -145,7 +145,7 @@ function leanCell(g, kind) {
   if (LP) {   // 10/13: after kickoff, the pick that was locked in at kickoff and how it did
     const cls = LP.hit >= 56 ? "g" : LP.hit >= 53 ? "lg" : "y", pc = cls === "g" ? Math.round(LP.hit) : Math.floor(LP.hit), rs = LP.result === "W" ? ' · <span class="g">W</span>' : LP.result === "L" ? ' · <span class="r">L</span>' : LP.result === "P" ? " · push" : "";
     const lp = LP.pts, lrs = lp ? (lp.result === "W" ? ' · <span class="g">W</span>' : lp.result === "L" ? ' · <span class="r">L</span>' : lp.result === "P" ? " · push" : "") : "";
-    body = `<div style="margin-top:6px"><b class="${cls}" style="font-size:16px"><span class="lbw">PICK:</span> ${esc(LP.pick)} · ${pc}%</b>${rs}</div>` + (lp ? `<div style="margin-top:4px"><b><span class="lbw">PICK w/ POINTS:</span> ${esc(lp.pick)} · ${lp.hit >= 56 ? Math.round(lp.hit) : Math.floor(lp.hit)}%</b>${lrs}</div>` : "");
+    body = `<div style="margin-top:6px"><b class="${cls}" style="font-size:16px"><span class="lbw">Pick:</span> ${esc(LP.pick)} · ${pc}%</b>${rs}</div>` + (lp ? `<div style="margin-top:4px"><b><span class="lbw">Pick w/ points:</span> ${esc(lp.pick)} · ${lp.hit >= 56 ? Math.round(lp.hit) : Math.floor(lp.hit)}%</b>${lrs}</div>` : "");
   }
   else if (!g.final && CC) body = cardBody(g, kind, CC);
   else if (!g.final) {
@@ -156,13 +156,13 @@ function leanCell(g, kind) {
       // 10/12 (owner: "I want a pick, not a lean"): every game gets a PICK. Below 56% it stays yellow and says its real tested rate.
       // 10/13 (owner): 53-55% shows light green, below 53% yellow; no notes under either
       // 10/14: color from the real rate and the % rounded DOWN below green (55.6% used to read "56%" in light green)
-      body = lp ? `<div style="margin-top:6px"><b class="${lp.p >= 0.53 ? "lg" : "y"}" style="font-size:16px"><span class="lbw">PICK:</span> ${esc(lp.pick)} · ${Math.floor(lp.p * 100)}%</b></div>`
+      body = lp ? `<div style="margin-top:6px"><b class="${lp.p >= 0.53 ? "lg" : "y"}" style="font-size:16px"><span class="lbw">Pick:</span> ${esc(lp.pick)} · ${Math.floor(lp.p * 100)}%</b></div>`
         : `<div style="margin-top:6px"><b class="dim">No pick</b></div><div class="s" style="margin-top:4px">No tested edge on this one.</div>`;
     }
     else {
       const pc = Math.round(P.p * 100);
       // 10/14 casino look (owner): the green pick is the same size as the card's other text and only GLOWS (no growing), glows brighter the stronger it is, and its % rolls in like a slot reel
-      body = `<div style="margin-top:6px"><b class="g pulse" style="--gl:${glowOf(P.p)}"><span class="lbw">PICK:</span> ${esc(P.pick)} · <span class="reelpct" data-v="${pc}%">${pc}%</span></b></div>` +
+      body = `<div style="margin-top:6px"><b class="g pulse" style="--gl:${glowOf(P.p)}"><span class="lbw">Pick:</span> ${esc(P.pick)} · <span class="reelpct" data-v="${pc}%">${pc}%</span></b></div>` +
         // 10/13 (owner: fewer notes): just the green pick's own reason (e.g. the LINE MOVE numbers)
         `<div class="s" style="margin-top:4px">${esc(P.why)}</div>` +
         moreBox(recLine(P.rec) + lineCheck(g, kind, P.pick));
@@ -700,10 +700,10 @@ const IBTN = `<button class="ibtn" type="button" aria-label="What is this?"><svg
 const ibox = (lines, st) => `<div class="ibox" hidden${st ? ` style="${st}"` : ""}>${lines.map(([k, t]) => `<div><b>${k}</b> ${t}</div>`).join("")}</div>`;
 const MODEL_INFO = {
   spread: [["Model:", "the game model’s score guess. Data only."], ["Model (Team):", "team-stats model at Polymarket’s line; it becomes the PICK at 58%+ sure."],
-    ["Model (Stack):", "everything the app knows in one model. With no tested rule it names the PICK."], ["PICK:", "the bet at Polymarket’s main line, from a tested rule, else the Stack model’s side. Green 56%+, light green 53–55%, yellow below."],
-    ["PICK w/ POINTS:", "same side, the fewest bought points (1–2) that won 56%+."], ["MORE list:", "every line within 2 points: points bought · history win % · Polymarket price."]],
-  total: [["Model:", "the game model’s total points guess. Data only."], ["PICK:", "Over or Under at Polymarket’s main total, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
-    ["PICK w/ POINTS:", "same side, the fewest bought points (1–2) that won 56%+."], ["MORE list:", "every line within 2 points: points bought · history win % · Polymarket price."]],
+    ["Model (Stack):", "everything the app knows in one model. With no tested rule it names the PICK."], ["Pick:", "the bet at Polymarket’s main line, from a tested rule, else the Stack model’s side. Green 56%+, light green 53–55%, yellow below."],
+    ["Pick w/ points:", "same side, the fewest bought points (1–2) that won 56%+."], ["MORE list:", "every line within 2 points: points bought · history win % · Polymarket price."]],
+  total: [["Model:", "the game model’s total points guess. Data only."], ["Pick:", "Over or Under at Polymarket’s main total, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
+    ["Pick w/ points:", "same side, the fewest bought points (1–2) that won 56%+."], ["MORE list:", "every line within 2 points: points bought · history win % · Polymarket price."]],
 };
 const CARD_INFO = [["PICK:", "the card’s bet at Polymarket’s main line (a tested rule, else the model’s side), locked at kickoff."],
   ["PICK w/ POINTS:", "the same side with the fewest bought points (1–2) that won 56%+."], ["Line value:", "points better (+) or worse than the line at kickoff."]];

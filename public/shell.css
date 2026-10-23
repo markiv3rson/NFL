@@ -132,7 +132,7 @@ body.bnav-on.game-on #detail .dtop { position:sticky; top:calc(env(safe-area-ins
 .ibox { border:1px solid rgba(255,255,255,.28); border-radius:10px; background:rgba(14,14,20,.96); padding:9px 11px; margin:6px 0 4px; font-size:12px; line-height:1.4; color:#e9e9ee; font-weight:400; letter-spacing:0; text-transform:none; text-align:left; display:flex; flex-direction:column; gap:4px; white-space:normal; }
 .ibox[hidden] { display:none; }
 .ibox b { color:#fff; font-weight:800; }
-.lbw { color:#fff; }
+.lbw { color:#fff; font-weight:400; }
 #models .drop.open > .ibox { grid-column:1/-1; }   /* the box spans both columns on a computer */
 #models .drop.open > .s.ihd { border-bottom:1px solid var(--line2); padding-bottom:3px; } #models .drop.open > .s.ihd > b { border-bottom:0; padding-bottom:0; }   /* the heading's line runs under the ⓘ too */
 /* 10/21 night (owner: "MAKE IT LOOK LIKE A TABLE LIST ... words on one side and numbers on the other side and percentages in a vertical line"; both
@@ -190,3 +190,10 @@ body .labslot .lst { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Hel
 .k.pmk .pmt { margin-left:auto; font-size:9px; font-weight:700; letter-spacing:0; color:var(--dim, #9aa0aa); white-space:nowrap; text-transform:none; }
 @media (max-width:420px) { .k.pmk > span:first-child { font-size:10px; letter-spacing:.02em; } .k.pmk .pm { width:12px; height:12px; margin-right:3px; } .k.pmk .pmt { font-size:8.5px; } }
 .k.pmk .pmt .r { text-transform:uppercase; }
+/* 10/23 (owner: "Capitalize the numbers or words that come with it. OKC BY 8.8"): on the game cards the label before the colon is plain (Pick:), what follows it in capitals */
+.modelcell b { text-transform:uppercase; }
+.modelcell b .lbw, .modelcell .lbw { text-transform:none; }
+/* 10/23 (owner: "Why is pick and model different sizes ... make it consistent", both sports): every labeled line in a game card's MODEL section is one size --
+   Model / Model (Team) / Model (Stack) (were the 11.5px data style) and Pick / Pick w/ points / ML pick (were 13-16px) */
+.modelcell b { font-size:13px !important; }
+.modelcell > .s:has(> .lbw), .modelcell .lbw { font-size:13px; }
