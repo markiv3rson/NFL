@@ -75,6 +75,20 @@ function pickPts(rows) {
 const priced = (p) => (typeof p === "number" && p > 0 && p < 1 ? p : null);
 const near = (a, b) => a != null && b != null && Math.abs(a - b) <= 0.5;
 
+// 10/24 (re-check, the NFL card's 10/23 fix): a rule's PICK reads its tested rate (LINE MOVE 67.9%) while the lines with MORE points on the same side
+// read the plain table (MEM +1.5 57.6% under a MEM -1.5 PICK at 56.3%; a 2-point buy under a 67.9% PICK read ~58%). Now every line carries the PICK's
+// lift over the table: table rate + (PICK % - the table's rate on the PICK's main line), the other side the same amount down, never under its side's
+// main line. 2024-26 opening / closing lines (2,500 games): LINE MOVE spreads at +1 / +2 / +3 points won 71.0 / 72.7 / 74.1% (lift says 71.4 / 74.4 /
+// 77.4), totals 63.8 / 65.2 / 67.5% (lift 63.8 / 65.5 / 68.1). Only a rule's PICK carries a lift: the model side's 49.4 / 50.4% is one number for every game
+// and has no walk-forward to test it line by line, so its lines keep the table's rates (the two sides of the main line still add to 100).
+function boundRows(raw, plain, mine) {
+  if (!plain || !isFinite(plain.hit)) return raw;
+  const m0 = raw.find((r) => r.points === 0 && mine(r)), base = m0 && isFinite(m0.hist) ? m0.hist : null, lift = base == null || !String(plain.id).startsWith("cardpick|") ? 0 : plain.hit - base;
+  const p = r1(plain.hit), q = r1(100 - plain.hit);
+  return raw.map((r) => { const own = mine(r), floor = own ? p : q;
+    const hit = r.points === 0 ? floor : Math.max(r1(r.hist + (own ? lift : -lift)), floor);
+    return { ...r, hit }; });
+}
 function spreadPart(g) {
   const ps = g.poly && g.poly.spread, hs = ps && isFinite(ps.homeSpread) ? Number(ps.homeSpread) : null;
   if (hs == null) return null;
@@ -97,12 +111,11 @@ function spreadPart(g) {
   const raw = [];
   for (const x of lines) {
     const first = !!plain && x.team === plain.team;
-    const hit = first && x.points === 0 ? plain.hit : x.hist;
-    raw.push({ team: x.team, line: x.line, points: x.points, hit: r1(hit), n: x.n, price: priced(x.price), pick: x.label || `${x.team} ${sg(x.line)}`, first });
+    raw.push({ team: x.team, line: x.line, points: x.points, hit: r1(x.hist), hist: x.hist, n: x.n, price: priced(x.price), pick: x.label || `${x.team} ${sg(x.line)}`, first });
   }
   // 10/19 (owner: "why is your decision making wrong" -- the NFL one-side rule of 10/18): PICK w/ POINTS sits on the PICK's team; BOS @ DET read PICK DET +1.5 and
   // PICK w/ POINTS BOS +1.5, a guaranteed loser on one of the two. With no PICK it may still use either side.
-  const rows = finishRows(raw), b = pickPts(plain ? rows.filter((r) => r.team === plain.team) : rows), pts = b ? { id: "ptspick|spread", kind: "spread", ...b, ruleId: plain ? plain.ruleId : null } : null;
+  const rows = finishRows(boundRows(raw, plain, (r) => r.team === plain.team).map(({ hist, ...r }) => r)), b = pickPts(plain ? rows.filter((r) => r.team === plain.team) : rows), pts = b ? { id: "ptspick|spread", kind: "spread", ...b, ruleId: plain ? plain.ruleId : null } : null;
   if (!plain && !rows.length) return null;
   return { kind: "spread", plain, pts, rows };
 }
@@ -124,10 +137,9 @@ function totalPart(g) {
   const raw = [];
   for (const x of lines) {
     const first = !!plain && x.side === plain.side;
-    const hit = first && x.points === 0 ? plain.hit : x.hist;
-    raw.push({ side: x.side, line: x.line, points: x.points, hit: r1(hit), n: x.n, price: priced(x.price), pick: x.label || `${nm(x.side)} ${x.line}`, first });
+    raw.push({ side: x.side, line: x.line, points: x.points, hit: r1(x.hist), hist: x.hist, n: x.n, price: priced(x.price), pick: x.label || `${nm(x.side)} ${x.line}`, first });
   }
-  const rows = finishRows(raw), b = pickPts(plain ? rows.filter((r) => r.side === plain.side) : rows), pts = b ? { id: "ptspick|total", kind: "total", ...b, ruleId: plain ? plain.ruleId : null } : null;   // same side as the PICK (10/19)
+  const rows = finishRows(boundRows(raw, plain, (r) => r.side === plain.side).map(({ hist, ...r }) => r)), b = pickPts(plain ? rows.filter((r) => r.side === plain.side) : rows), pts = b ? { id: "ptspick|total", kind: "total", ...b, ruleId: plain ? plain.ruleId : null } : null;   // same side as the PICK (10/19)
   if (!plain && !rows.length) return null;
   return { kind: "total", plain, pts, rows };
 }
