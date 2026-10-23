@@ -576,11 +576,11 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       const withStack = (team) => ({ ...g0, td: tdU, card: { ...g0.card, spread: { ...(g0.card && g0.card.spread), plain: { id: "modelpick|spread", ruleId: "stack|spread", team, line: team === "PHI" ? -6.5 : 6.5, pick: `${team}`, hit: 52.8 } } } });
       ok(sameGameParlays(withStack("PHI")).upset === null && sameGameParlays(withStack("NYG")).upset && sameGameParlays(withStack("NYG")).upset.legs[0].label === "NYG ML",
         "UPSET (10/23): not when the card's spread PICK is the Stack model's side on the favorite (any %: the dog won 29.5% priced 34.4%); kept when STACK backs the underdog"); }
-    { const g0 = G("PHI", "NYG", .7), tdF = [{ player: "S.Barkley", team: "PHI", pos: "RB", fair: 62 }];
+    { const g0 = G("PHI", "NYG", .65), tdF = [{ player: "S.Barkley", team: "PHI", pos: "RB", fair: 62 }];
       const ws = (team) => sameGameParlays({ ...g0, td: tdF, card: { ...g0.card, spread: { ...(g0.card && g0.card.spread), plain: { id: "modelpick|spread", ruleId: "stack|spread", team, line: team === "PHI" ? -6.5 : 6.5, pick: team, hit: 52.8 } } } });
       const onFav = ws("PHI"), onDog = ws("NYG");
       ok(onFav.filled && onFav.best && onFav.best.legs.some((l) => l.label === "PHI ML") && !(onDog.best && onDog.best.legs.some((l) => l.label === "PHI ML")),
-        "favorite parlays (10/23 night): favorite ML + its scorer not built when the card's PICK is STACK's side on the underdog (the favorite won 64.3% there vs 71.7%)", { onFav: onFav.best, onDog: onDog.best }); }
+        "favorite parlays (10/23 night): favorite ML + its scorer not built when the card's PICK is STACK's side on the underdog and the favorite is priced under 70%", { onFav: onFav.best, onDog: onDog.best }); }
     const { STRATEGIES: STN, legKind } = await import("../lib/paper.js");
     ok(STN.sgp_upset && STN.leg4_td4 && legKind({ kind: "total", side: "under" }) === "under" && legKind({ kind: "total", label: "Over 44.5" }) === "over" && legKind({ kind: "td" }) === "td" && legKind({ kind: "x" }) === null, "new types named; leg kinds for the review");
     const mbj = readFileSync(new URL("../pages/api/modelbets.js", import.meta.url), "utf8"), apx = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
@@ -1865,16 +1865,16 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
 { // 10/23 night: ML PICK = the favorite's moneyline when the Stack model's spread side is that favorite (walk-forward 2022-25: 71.7% of 374 priced 65.7%)
   const cpk = await import("../lib/cardpick.js"), stk = await import("../lib/stack.js");
   const g = (team, conf, yv = 2) => ({ key: "KC @ SEA", away: "KC", home: "SEA", poly: { ml: { home: 0.6, away: 0.42 } }, stackSide: { team, confident: conf, yv, pct: conf ? 56.2 : 52.8 } });
-  const a = cpk.mlPart(g("SEA", false)), b = cpk.mlPart(g("SEA", true)), c = cpk.mlPart(g("KC", false)), d = cpk.mlPart(g("SEA", false, null));
+  const a = cpk.mlPart(g("SEA", false)), b = cpk.mlPart({ ...g("SEA", true), poly: { ml: { home: 0.66, away: 0.36 } } }), c = cpk.mlPart(g("KC", false)), d = cpk.mlPart(g("SEA", false, null)), e = cpk.mlPart({ ...g("SEA", false), poly: { ml: { home: 0.8, away: 0.22 } } });
   const pk = cpk.cardPicks({ spread: null, total: null, ml: a });
-  ok(a && a.plain.pick === "SEA ML" && a.plain.hit === 70.5 && a.plain.id === "stackml|ml" && a.plain.price === 0.6 && b.plain.hit === 78.0 && c === null && d === null && pk.length === 1 && pk[0].kind === "ml"
+  ok(a && a.plain.pick === "SEA ML" && a.plain.hit === 67.7 && a.plain.id === "stackml|ml" && a.plain.price === 0.6 && b.plain.hit === 69.7 && c === null && d === null && e === null && pk.length === 1 && pk[0].kind === "ml"
     && stk.gradeStackPick({ kind: "ml", team: "SEA", home: "SEA", line: 0 }, 24, 20) === "W" && stk.gradeStackPick({ kind: "ml", team: "KC", home: "SEA", line: 0 }, 24, 20) === "L" && stk.ruleLabel({ id: "stackml|ml" }) === "ML PICK · STACK on the favorite",
-    "ML PICK (10/23 night): the favorite's moneyline only when STACK backs it (70.5% / 78.0% confident), never on the underdog or from old STACK yards; saved with the card's picks, graded W / L");
+    "ML PICK (10/23 night): the favorite's moneyline only when STACK backs it and the favorite is priced 50-70% (67.7 / 69.7%), never on the underdog, a 70%+ favorite or old STACK yards; saved with the card's picks, graded W / L");
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   ok(/<span class="lbw">ML pick:<\/span>/.test(app) && /g\.lockedPicks && g\.lockedPicks\.ml/.test(app), "the spread card shows the ML pick (locked one with W / L after kickoff)");
   { const { bestLegParlays } = await import("../lib/paper.js");
     const gm = (k, home, team, hit) => ({ key: k, home, away: k.split(" @ ")[0], started: false, final: false, card: { spread: null, total: null, ml: { plain: { id: "stackml|ml", kind: "ml", team, line: 0, pick: `${team} ML`, hit, price: 0.62 } } } });
-    const B = bestLegParlays([gm("A @ B", "B", "B", 70.5), gm("C @ D", "D", "D", 78)]), b2 = B.find((p) => p.strategy === "best_2");
+    const B = bestLegParlays([gm("A @ B", "B", "B", 67.7), gm("C @ D", "D", "D", 69.7)]), b2 = B.find((p) => p.strategy === "best_2");
     ok(b2 && b2.legs.map((l) => l.label).join() === "D ML,B ML" && b2.legs.every((l) => l.kind === "ml" && l.team), "Best Legs (10/23 night): the green ML picks are legs too (team kept, graded like any moneyline leg)", B); } }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);
