@@ -1183,7 +1183,7 @@ function applyBetsView() {
 // Pass Yds (/api/props: the side the model gives 65%+ in a family that passed the real-line test, one row per player and stat, its highest %).
 // Rows sit under the kickoff headers, game by game; a team drop-down filters them; RECORD tile = this tab's graded rows; ✓ / ✗ green / red once graded.
 let PROPS = null, PROPWEEK = null, PROPTAB = "recyds", PROPTEAM = "all";
-const PROP_TABS = [["td", "Anytime TD"], ["first", "First TD"], ["recyds", "Rec Yds"], ["rec", "Receptions"], ["passyds", "Pass Yds"]];
+const PROP_TABS = [["td", "Anytime TD"], ["first", "First TD"], ["recyds", "Rec Yds"], ["rec", "Receptions"]];
 const PROP_STAT = { recyds: "rec_yds", rec: "rec", passyds: "pass_yds" };
 const propTabLabel = (k) => (PROP_TABS.find(([t]) => t === k) || [, "Rec Yds"])[1];
 async function loadProps() {
