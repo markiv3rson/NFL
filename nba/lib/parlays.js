@@ -11,7 +11,7 @@
 //   sgp_pts  same game, 2 legs on bought lines -- NOT built since 10/19 (owner: PICK w/ POINTS only on the card); old ones stay graded history
 //   pp6 / pp8 / pp10  PROPS PARLAYS (10/21, owner: "I want to see 6 legs 8 legs and 10 legs under models bets ... name it Props Parlays", "$5 per parlay
 //            for all 3 since its long shots"; the one exception to the 3-legs-max rule): the day's prop rows (65%+, priced under 77c), one leg per player,
-//            the strongest first, across games; none when the day has fewer rows than legs. Chance = product (no link measured), payout = the legs' prices.
+//            the strongest first, across games; none when the day has fewer rows than legs. Chance = product with the same-game links (LINK), payout = the legs' prices.
 import { getRedis, jparse, mgetAll } from "./redis";
 import { cardLegs } from "./cardpick";
 import { staleDate } from "./pinnacle";
@@ -22,10 +22,29 @@ export const STAKES = { best4: 10, fav4: 10, sgp: 20, sgp_pts: 5, pp6: 5, pp8: 5
 export const PROP_LEGS = [6, 8, 10];
 const IDS = "parlay:ids", KEY = (date, type, game) => `parlay:${date}:${type}${game ? ":" + game : ""}`;
 const r3 = (x) => Math.round(x * 1000) / 1000;
+// 10/23 (owner: "do another recheck and build. Fix the weak spots"): a spread / moneyline / total leg and a player's Over in the SAME game are linked,
+// so the chance is the product times one link per (game leg, prop leg) pair -- the product alone read every leg as independent. Measured on the
+// prop model's walk-forward rows 2024-26 (127,146 player-games) against the Kaggle closing lines, the legs the app uses (65%+ Overs, 26,223):
+// the player's own team covers / wins and his Over hits 1.03x the product, the other team 0.97x (2024-25 1.036 / 0.965, 2025-26 1.029 / 0.973);
+// the game total Over with a points / assists Over 1.04x (pts 1.044, ast 1.038), with a rebounds Over 0.98x (missed shots), the Under the mirror
+// (pts / ast 0.96x, reb 1.02x). Pairs stack about fully: a cover + 2 / 3 own players' Overs won 1.056 / 1.11x (1.03^k says 1.061 / 1.093), the
+// other team's 0.91 / 0.89x (0.97^k 0.94 / 0.91). Props in one game with each other stay independent (10/21: within 0.1%).
+export const LINK = { own: 1.03, opp: 0.97, over: { pts: 1.04, ast: 1.04, pra: 1.03, "3pm": 1.04, reb: 0.98 }, under: { pts: 0.96, ast: 0.96, pra: 0.97, "3pm": 0.96, reb: 1.02 } };
+export function linkOf(c, p) {
+  if (!c || !p || c.game !== p.game || p.market !== "prop" || p.side !== "over") return 1;
+  if ((c.market === "spread" || c.market === "ml") && c.team && p.team) return p.team === c.team ? LINK.own : LINK.opp;
+  if (c.market === "total" && (c.side === "over" || c.side === "under")) return LINK[c.side][p.stat] || 1;
+  return 1;
+}
+export function chanceOf(legs) {
+  const base = legs.reduce((a, l) => a * (l.prob || 0), 1); let f = 1;
+  for (const c of legs) if (c.market !== "prop") for (const p of legs) f *= linkOf(c, p);
+  return Math.min(base * f, ...legs.map((l) => l.prob || 0));   // never above the weakest leg
+}
 const mk = (type, legs, game, start) => {
   if (!legs || !legs.length) return null;
   const pay = legs.every((l) => l.price > 0 && l.price < 1) ? legs.reduce((a, l) => a / l.price, 1) : null;
-  return { type, game: game || null, start: start || null, stake: STAKES[type] || 10, legs, prob: r3(legs.reduce((a, l) => a * (l.prob || 0), 1)), pay: pay == null ? null : Math.round(pay * 100) / 100 };
+  return { type, game: game || null, start: start || null, stake: STAKES[type] || 10, legs, prob: r3(chanceOf(legs)), pay: pay == null ? null : Math.round(pay * 100) / 100 };
 };
 const leg = (g, x) => ({ game: g.key, market: x.market, team: x.team || null, side: x.side || null, line: x.line ?? null, label: x.label, prob: r3((x.pct || 0) / 100), price: x.price > 0 && x.price < 1 ? x.price : null, ...(x.bought ? { bought: true, points: x.points } : {}) });
 
@@ -45,7 +64,7 @@ const PSTAT = { pts: "Pts", reb: "Reb", ast: "Ast", pra: "PRA", "3pm": "3PM", st
 // moneyline PICK when green (56%+; spread and moneyline never both on one game, they win or lose together: the stronger stays) and the game's
 // prop rows (65%+, priced under 77c and under the %, one per player, chance run through the live prop calibration) -- strongest first.
 // A game with fewer legs than a size gives its legs to ONE mixed parlay of that size across the games that were short (C). Chance = product
-// (NBA legs in one game measured independent: spread vs total link 1.00, prop pairs within 0.1%), payout = the legs' prices.
+// (spread vs total link 1.00, prop pairs within 0.1%) times the measured game-leg x player-Over links (LINK, 10/23), payout = the legs' prices.
 const sideLegs = (g) => {
   const c = cardLegs(g).filter((x) => x && x.line != null && x.pct >= GREEN && (x.market === "spread" || x.market === "total")).map((x) => ({ ...leg(g, x), p: x.pct / 100 }));
   const m = g.ml && g.ml.pick, px = g.poly && g.poly.ml;
@@ -75,7 +94,7 @@ export async function buildPropParlays(date, games, now = Date.now(), dayLegs = 
 }
 // 10/21 (owner: "For the same game make it 4 leg parlays for each game. Your best choices go in here and make the stake $5"): per game, the 4 strongest
 // legs by win %: the card's spread / total PICK when green (56%+) and the game's prop rows (65%+, priced under 77c and under the %, one per player);
-// fewer than 4 -> no Same Game parlay for that game. Chance = product (legs in one game move together: the live record is the judge).
+// fewer than 4 -> no Same Game parlay for that game. Chance = product times the measured game-leg x player-Over links (LINK, 10/23).
 export async function buildSameGame4(date, games, now = Date.now(), dayLegs = null) {
   const all = dayLegs || await propLegsForDay(date, games, now);   // one read of the day's prop rows serves both builders (one leg per player = per game too)
   const out = [];
@@ -103,7 +122,7 @@ export async function recordParlays(date, parlays, games, now = Date.now()) {
     const old = jparse(await r.get(k).catch(() => null));
     // 10/21 recheck: a SAVED parlay is locked once ITS first leg tips -- the new build leaves started games out, so its own start is later and
     // the 6 / 8 / 10-leg prop parlays were replaced at 4:05 and 4:29 PM PT after the 4:00 PM tips
-    if (old && (old.result || !(now < startOf(old)) || legsOf(old) === legsOf(p))) continue;   // graded, locked, or nothing changed
+    if (old && (old.result || !(now < startOf(old)) || (legsOf(old) === legsOf(p) && old.prob === p.prob))) continue;   // graded, locked, or nothing changed (10/23: a new chance -- the links, the calibration -- is saved too)
     await r.set(k, JSON.stringify({ ...p, date, t: new Date(now).toISOString(), ...(old ? { first: old.first || old.t } : {}) })).catch(() => null);
     await r.sadd(IDS, k).catch(() => {}); n++;
   }
