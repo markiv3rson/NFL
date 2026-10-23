@@ -967,7 +967,10 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(/@app\.route\("\/prop-probs", methods=\["POST"\]\)/.test(ap) && /nba_prop_model\.chances_many/.test(ap) && /PROPS_ON_START/.test(ap) && /jobs\.append\(\("props", _props\)\)/.test(sch), "NBA service: /prop-probs route, background build when missing, daily 4:20 AM refit"); }
 { // 10/21 (owner): Props Parlays 6 / 8 / 10 legs ($5), the 65% bar, the 77c+ and star-out shadow trackers
   const pr = await import("../lib/props.js"), pl = await import("../lib/parlays.js"), R = globalThis.__TEST_REDIS__, D = "2027-01-05";
-  ok(pr.onePerPlayer([{ name: "A", stat: "pts", chance: 0.64, price: 0.5 }, { name: "B", stat: "pts", chance: 0.66, price: 0.5 }]).map((p) => p.name).join() === "B", "NBA props (10/21): a row under 65% (saved under the old 62% bar) is not shown or counted");
+  ok(pr.onePerPlayer([{ name: "A", stat: "pts", chance: 0.64, price: 0.62 }, { name: "B", stat: "pts", chance: 0.66, price: 0.62 }]).map((p) => p.name).join() === "B", "NBA props (10/21): a row under 65% (saved under the old 62% bar) is not shown or counted");
+  { const cut = pr.onePerPlayer([{ name: "A", stat: "pts", side: "over", chance: 0.75, price: 0.59 }, { name: "A", stat: "pts", side: "under", chance: 0.7, price: 0.62 }, { name: "B", stat: "reb", side: "under", chance: 0.8, price: 0.7 }, { name: "B", stat: "reb", side: "over", chance: 0.68, price: 0.63 }, { name: "C", stat: "ast", side: "over", chance: 0.72, price: 0.55 }]);
+    ok(pr.MIN_PRICE === 0.6 && pr.CUT_SIDES.has("reb|under") && cut.length === 2 && cut.some((p) => p.name === "A" && p.side === "under") && cut.some((p) => p.name === "B" && p.side === "over") && !cut.some((p) => p.name === "C"),
+      "NBA props (10/22 night, owner: cut the two): a row priced under 60c is not shown (A's 75% Over at 59c gives way to his 70% Under at 62c, C at 55c is off); no rebounds Under (B shows his Over)", cut); }
   // 3 games, 9 players with priced 65%+ rows (one player has two stats: only his best leg)
   const mkG = (k, start) => ({ key: k, away: k.split(" @ ")[0], home: k.split(" @ ")[1], date: D, start });
   const G = [mkG("BOS @ NYK", "2027-01-06T00:00:00Z"), mkG("LAL @ GSW", "2027-01-06T03:00:00Z"), mkG("MIA @ ORL", "2027-01-06T00:30:00Z")];
