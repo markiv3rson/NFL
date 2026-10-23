@@ -73,7 +73,9 @@ export function nbaPropPicks(modelRows, saved, bar = NBA_PROP_BAR) {
 export const MIN_PRICE = 0.60;
 // 10/23 (owner: "delete all the nba unders"): Polymarket US marks the No side of every NBA player prop "not tradable" (464 of 464 on 10/23), so an
 // Under cannot be bought -- no NBA Under row is shown, counted or used as a parlay leg; the Unders are still saved and graded in the background
-export const CUT_SIDES = new Set(["reb|under"]);
+// 10/23 night (owner: "build things that will help"): threes Overs off too -- live under the page's rules 5-5 at 72c (-28.8 per $100; the rows shown
+// went 1-4), and last season's real lines carry no threes market to test them on (every other stat is up live or on real lines in both halves)
+export const CUT_SIDES = new Set(["reb|under", "3pm|over"]);
 export const CUT_UNDERS = true;
 // 10/23 (owner: "fix the overs if it runs high ... so we're accurate"): an Over's % = OVER_W x the model + (1 - OVER_W) x Polymarket's price. The model
 // alone ran hot on Overs (live 10/20-21 said 74.7, won 65.8% of 114; last season's real lines said 74.3, won 68.8% of 138). On 8,041 real Polymarket Over

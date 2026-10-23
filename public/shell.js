@@ -21,7 +21,7 @@
   // middle switches the sport. Pages with sub tabs (Player props, Model bets) get their tabs in a bar right above it. Both sports.
   // 10/20 (owner: "rename it player props and have the sub tabs ... ANYTIME TD should be a sub tab under props"): the stat tabs, one page each
   const PROPS = { nfl: [["td", "Anytime TD"], ["props-first", "First TD"], ["props-recyds", "Rec Yds"], ["props-rec", "Receptions"], ["props-passyds", "Pass Yds"]],
-    nba: [["props-pts", "Points"], ["props-reb", "Rebounds"], ["props-ast", "Assists"], ["props-pra", "PRA"], ["props-3pm", "Threes"], ["props-stl", "Steals"], ["props-blk", "Blocks"]] };
+    nba: [["props-pts", "Points"], ["props-reb", "Rebounds"], ["props-ast", "Assists"], ["props-pra", "PRA"], ["props-stl", "Steals"], ["props-blk", "Blocks"]] };
   const URL_ = { nfl: "/index.html", nba: "/nba/index.html" };
   // the Model bets parlay types (10/20 night: Over/Under and Spread + Total removed; 10/21: NBA Prop Parlays 6 / 8 / 10 legs + Same Game; 3 legs at most elsewhere)
   const TYPES = { nfl: [["best", "Best Legs"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"], ["pp6", "6 Leg"], ["pp8", "8 Leg"], ["pp10", "10 Leg"]],
