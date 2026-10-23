@@ -1305,6 +1305,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       ok(P[0].pick === "CIN -6.5" && !P.some((x) => x.pick === "MIA +6.5") && P2[0].pick === "MIA +6.5" && /3 games/.test(P2[0].why), "picks: a tested pick beats a small-sample one in its market; small-sample picks show their game count"); }
       { const Gm = { key: "A @ B", away: "A", home: "B", started: false, final: false, card: { spread: null, total: null, ml: { plain: { id: "stackml|ml", kind: "ml", team: "B", line: 0, pick: "B ML", hit: 69.7, price: 0.64 }, rows: [] } } };
         const SP = ctx.T.straightPicks(Gm); ok(SP.length === 1 && SP[0].pick === "B ML" && SP[0].green, "Best bets (10/23 night): the green ML pick is a straight pick", SP); }
+      { const Gc = { ...G, card: { ...(G.card || {}), ml: { plain: { id: "stackml|ml", kind: "ml", team: G.home, line: 0, pick: `${G.home} ML`, hit: 69.7, price: 0.64 } } } };
+        const h = ctx.T.leanCell(Gc, "spread"), ht = ctx.T.leanCell(Gc, "total");
+        ok(/ML pick:<\/span> [A-Z]+ ML · 70%/.test(h) && !/ML pick/.test(ht), "the spread card renders the ML pick line (the total card does not)", h.slice(-400)); }
     { vm.runInContext(`S = { games: [{ key: "PHI @ JAX", away: "PHI", home: "JAX", kickoff: "2026-10-11T13:30:00Z", td: [{ player: "D.Cooper", team: "PHI" }] }, { key: "CHI @ GB", away: "CHI", home: "GB", kickoff: "2026-10-11T17:00:00Z", td: [{ player: "D.Swift", team: "CHI" }, { player: "J.Love", team: "GB" }] },
         { key: "SF @ SEA", away: "SF", home: "SEA", kickoff: "2026-10-11T20:25:00Z", td: [{ player: "C.McCaffrey", team: "SF" }] }, { key: "DET @ ARI", away: "DET", home: "ARI", kickoff: "2026-10-11T20:25:00Z", td: [{ player: "J.Love", team: "ARI" }] },
         { key: "BAL @ ATL", away: "BAL", home: "ATL", kickoff: "2026-10-12T00:20:00Z", badge: "SNF", td: [] }] }`, ctx);
