@@ -130,7 +130,7 @@ let NBL = {};
 const scOf = (g) => (g.inProgress ? NBL[g.key] || null : null), isFinal = (g) => { const sc = scOf(g); return !!(sc && sc.st === "post"); };
 async function loadLiveScores() {
   if (!S || !S.games.some((g) => g.inProgress)) return;
-  try { const d = await (await fetch("/api/nba/live", { cache: "no-store" })).json(); if (d && d.ok) { NBL = d.scores || {}; if ($("panel-lines").classList.contains("on") && !DETAIL) renderLines(); else if ($("panel-record").classList.contains("on") && BETS) renderBets(); } } catch {}
+  try { const d = await (await fetch("/api/nba/live", { cache: "no-store" })).json(); if (d && d.ok) { NBL = d.scores || {}; if ($("panel-lines").classList.contains("on")) { const open = [...document.querySelectorAll(".drop.open")].map((e) => e.id).filter(Boolean); renderLines(); for (const id of open) { const e = $(id); if (e) e.classList.add("open"); } } else if ($("panel-record").classList.contains("on") && BETS) renderBets(); } } catch {}
 }
 function tile(g) {
   const sc = scOf(g), fin = isFinal(g), live = g.inProgress && !fin;
@@ -178,11 +178,11 @@ function setBg(g) {
 }
 function detailTop(g) {
   const w = mktWin(g), ap = w ? Math.round(w.away * 100) : null, hr = ap == null ? null : 100 - ap;
-  const st = g.inProgress ? '<span class="r">Live · locked</span>' : startsIn(g);
-  const ca = teamColor(g.away), ch = teamColor(g.home), badge = g.inProgress ? '<span class="chip c-red">LIVE</span>' : g.preseason ? '<span class="chip c-amb">PRESEASON</span>' : "";
+  const st = g.inProgress ? '<span class="r">Live · locked</span>' : startsIn(g), dsc = scOf(g);   // 10/23 (owner, = NFL): a game being played shows its score + quarter clock
+  const ca = teamColor(g.away), ch = teamColor(g.home), badge = g.preseason && !g.inProgress ? '<span class="chip c-amb">PRESEASON</span>' : "";
   return `<div class="card dtop" style="background:linear-gradient(90deg,${ca}40 0%,${ca}14 50%,${ch}14 50%,${ch}40 100%),var(--card)"><img class="dwm l" src="${esc(logoUrl(g.away))}" alt="" onerror="this.style.display='none'"><img class="dwm r" src="${esc(logoUrl(g.home))}" alt="" onerror="this.style.display='none'"><div class="inner"><div class="nm"><span class="t">${tlogo(g.away)}${g.away}${recOf(g, g.away)}</span>` +
-    `<div class="mid">${badge}<div class="s2">${tm(g.start)}</div><div class="s3">${st}</div></div><span class="t hm">${g.home}${tlogo(g.home)}${recOf(g, g.home)}</span></div>` +
-    (w ? `<div class="wc"><div class="wl"><b class="mkt">${ap}%</b><span class="mkt">MARKET’S WIN CHANCE</span><span class="dim">${hr}%</span></div><div class="bar"><i style="width:${ap}%"></i></div></div>` : "") + `</div></div>`;
+    `<div class="mid">${badge}${dsc && (dsc.st === "in" || dsc.st === "post") ? `<div class="s2"><b>${dsc.a} – ${dsc.h}</b></div><div class="s3 r">${dsc.st === "post" ? "FINAL" : "● LIVE · " + esc(dsc.lbl)}</div>` : `<div class="s2">${tm(g.start)}</div><div class="s3">${st}</div>`}</div><span class="t hm">${g.home}${tlogo(g.home)}${recOf(g, g.home)}</span></div>` +
+    (w && !isFinal(g) ? `<div class="wc"><div class="wl"><b class="mkt">${ap}%</b><span class="mkt">MARKET’S WIN CHANCE</span><span class="dim">${hr}%</span></div><div class="bar"><i style="width:${ap}%"></i></div></div>` : "") + `</div></div>`;
 }
 const row = (k, v, c, mt) => `<div class="prl${mt ? " mt" : ""}"><span class="s">${k}</span><span class="${c || ""}">${v}</span></div>`;
 // 10/16 (the NFL app's game page, ported): the section title sits on its own row outside the card with the Injuries pill next to it; inside the card
@@ -209,7 +209,7 @@ function cardBody(g, kind, C) {
 }
 function lockedBody(g, kind) {   // after tip-off: the picks saved before it, with W / L once graded
   const L = g.locked && g.locked[kind]; if (!L) return `<div style="margin-top:6px"><b class="dim" style="font-size:13px">Game in progress</b></div>`;
-  const rs = (x) => (x.result === "win" ? ' · <span class="g">W</span>' : x.result === "loss" ? ' · <span class="r">L</span>' : x.result === "push" ? " · push" : x.result === "void" ? ' · <span class="dim">void</span>' : ' · <span class="dim">live</span>');
+  const rs = (x) => (x.result === "win" ? ' · <span class="g">W</span>' : x.result === "loss" ? ' · <span class="r">L</span>' : x.result === "push" ? " · push" : x.result === "void" ? ' · <span class="dim">void</span>' : "");   // 10/23 (owner): no "live" on the model lines
   return (L.plain ? `<div style="margin-top:6px"><b class="${clsOf(L.plain.pct)}" style="font-size:13px"><span class="lbw">PICK:</span> ${esc(L.plain.label)} · ${hitTxt(L.plain.pct, clsOf(L.plain.pct))}</b>${rs(L.plain)}</div>` : "") +
     (L.pts ? `<div style="margin-top:4px"><b style="font-size:13px"><span class="lbw">PICK w/ POINTS:</span> ${esc(L.pts.label)} · ${hitTxt(L.pts.pct, clsOf(L.pts.pct))}</b>${rs(L.pts)}</div>` : "");
 }
@@ -218,24 +218,11 @@ function modelCell(g, kind) {
   const wrap = (inner) => `<div class="modelcell">${inner}</div>`;
   if (!m || !k) return wrap(dash);
   const H = g.home, A = g.away;
-  const line = kind === "total" ? `<span class="lbw">Model:</span> <b class="mod">${m.total.toFixed(1)}</b>` : kind === "spread" ? `<span class="lbw">Model:</span> <b class="mod">${m.margin >= 0 ? H : A} by ${Math.abs(m.margin).toFixed(1)}</b>`
-    : (() => { const h = m.modelOnlyWinPct;   // 10/19: the model's OWN win chance (from its margin), so it names the same team as "Model: X by N"; modelWinPct mixes in the market's line
-      return h != null ? `<span class="lbw">Model:</span> <b class="mod">${h >= 50 ? H : A} ${Math.max(h, 100 - h).toFixed(1)}%</b>` : `<span class="lbw">Model:</span> <b class="mod">${k.side} ${Math.max(k.modelWinPct[H], k.modelWinPct[A])}%</b>`; })();
-  let body = "";
-  if (kind === "ml") {
-    const pick = k.pick;
-    if (g.inProgress) body = lockedBody(g, "ml");
-    else if (pick && (pick.tier === "pick" || pick.tier === "lean")) { const c = clsOf(pick.pct), tx = hitTxt(pick.pct, c);
-      body = c === "g" ? `<div style="margin-top:6px"><b class="g pulse" style="--gl:${glowOf(pick.pct / 100)};font-size:13px"><span class="lbw">PICK:</span> ${esc(pick.label)} · <span class="reelpct" data-v="${tx}">${tx}</span></b></div>` : `<div style="margin-top:6px"><b class="${c}" style="font-size:13px"><span class="lbw">PICK:</span> ${esc(pick.label)} · ${tx}</b></div>`; }
-    else if (pick && pick.tier === "test") body = `<div style="margin-top:6px"><b style="font-size:13px;color:#b9a8ff">TEST: ${esc(pick.label)} · ${pick.pct}%</b></div>`;
-    else body = `<div style="margin-top:6px"><b class="dim" style="font-size:13px">No pick</b></div>`;
-    if (k.marketWinPct) body += moreBox(`<div class="s" style="font-size:11px">${H} ${k.marketWinPct[H]}% · ${A} ${k.marketWinPct[A]}%</div>`);
-  } else {
-    const C = g.inProgress ? null : cardOf(g, kind);
-    body = g.inProgress ? lockedBody(g, kind) : C ? cardBody(g, kind, C) : `<div style="margin-top:6px"><b class="dim" style="font-size:13px">No pick</b></div>`;
-  }
+  const line = kind === "total" ? `<span class="lbw">Model:</span> <b class="mod">${m.total.toFixed(1)}</b>` : `<span class="lbw">Model:</span> <b class="mod">${m.margin >= 0 ? H : A} by ${Math.abs(m.margin).toFixed(1)}</b>`;
+  const C = g.inProgress ? null : cardOf(g, kind);
+  const body = g.inProgress ? lockedBody(g, kind) : C ? cardBody(g, kind, C) : `<div style="margin-top:6px"><b class="dim" style="font-size:13px">No pick</b></div>`;
   const ts = kind === "spread" && m.teamSide && !g.inProgress ? `<div class="s"><span class="lbw">Model (Team):</span> <b class="mod">${esc(m.teamSide.team)} ${sgn(m.teamSide.line)} · ${m.teamSide.pct}%</b></div>` : "";   // 10/20 owner: the team model's side on every spread card, both sports (NBA: data only)
-  return wrap(`<div class="s">${line}</div>${ts}${body}`);
+  return wrap(`<div class="s">${line}</div>${ts}${body}${kind === "spread" ? mlPickLine(g) : ""}`);
 }
 const injList = (g) => { const j = g.injuries || {}; return [...(j.away || []).map((p) => ({ t: g.away, ...p })), ...(j.home || []).map((p) => ({ t: g.home, ...p }))]; };
 function injPill(g, id) { const n = injList(g).length; return n ? `<div class="btns"><button class="tag" data-drop="${id}">Injuries ${n} ▾</button></div>` : ""; }
@@ -243,13 +230,6 @@ function injDrop(g, id) {
   const inj = injList(g); if (!inj.length) return "";
   return `<div class="drop" id="${id}">` + inj.map((p) => `<div class="drow"><span>${tlogo(p.t)}${esc(p.name)} <span class="dim">· ${esc(p.t)}</span></span><span class="${/out|doubtful/i.test(p.status) ? "r" : "y"}">${esc(p.status)} · ${p.ppg} ppg</span></div>`).join("") + `</div>`;
 }
-const booksBlock = (g, kind) => {
-  const b = g.books && g.books[kind]; if (!b) return `<div><div class="k">SPORTSBOOKS</div>${dash}</div>`;
-  const rows = kind === "ml" ? row("Moneyline", `${g.away} ${odds(b.away)}`, "mlc") + row("", `${g.home} ${odds(b.home)}`, "mlc")
-    : kind === "spread" ? row("Spread", `${g.home} ${sgn(b.homeSpread)} ${odds(b.home)}`, "mkt") + row("", `${g.away} ${sgn(-b.homeSpread)} ${odds(b.away)}`, "mkt")
-    : row(`Over ${b.line}`, odds(b.over), "mkt") + row(`Under ${b.line}`, odds(b.under), "mkt");
-  return `<div><div class="k">SPORTSBOOKS</div>${rows}</div>`;
-};
 // 10/22 (owner: "only 1 information button next to the model header and it will explain everything in it"): one ⓘ per model section,
 // a tap opens a short box right under the header (the tap is handled in public/shell.js). Model lines read white labels + colored numbers.
 const IBTN = `<button class="ibtn" type="button" aria-label="What is this?"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6.6"/><line x1="8" y1="7.2" x2="8" y2="11.4"/><circle cx="8" cy="4.8" r=".6" fill="currentColor"/></svg></button>`;
@@ -269,12 +249,41 @@ const SHADOW_INFO = [["Test picks,", "never shown on a card: recorded and graded
   ["LINE MOVE:", "Pinnacle moved 3+ points; that side at the first number / at the number when seen."], ["INJURY:", "a star newly out; the healthy side at the open / when seen."],
   ["Gaps:", "Pinnacle or the sportsbooks 1+ point off Polymarket; their side at Polymarket’s number."],
   ["Props · 77¢+:", "prop rows at 65%+ the page hides because they cost 77¢ or more."], ["Props · star out:", "a 20+ ppg player out; his teammates’ points Over at the ~50¢ line."], ["Closing-line value:", "points gained vs the line at tip-off."]];
+// 10/23 (owner: "make all the layout consistent"): the NFL game page -- SPREAD & ML in one card (Polymarket spread + moneyline, the sportsbook line,
+// the model's spread lines, then the moneyline PICK), TOTALS in the other; POLYMARKET header with LIVE · 1s ago on its right; the tip-off line under it
+const pmHead = (g) => `<div class="k pmk"><span>${pmLogo()}POLYMARKET</span>${g.inProgress && !isFinal(g) ? `<span class="pmt"><span class="r">LIVE</span>${S && S.now ? ` · ${ago(S.now)}` : ""}</span>` : ""}</div>`;
+const ago = (iso) => { const sec = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000)); return sec < 60 ? sec + "s ago" : Math.round(sec / 60) + " min ago"; };
+function tipLine(g, kind) {
+  const c = g.inProgress && g.close; if (!c) return "";
+  if (kind === "total") return c.tl != null ? `<div class="s dim" style="margin-top:6px">Tip-off: ${c.tl}</div>` : "";
+  const sp = c.hs != null ? (c.hs <= 0 ? `${g.home} ${sgn(c.hs)}` : `${g.away} ${sgn(-c.hs)}`) : null;
+  const ml = c.mlHome > 0 && c.mlHome < 1 ? (c.mlHome >= 0.5 ? `ML ${g.home} ${odds(toAm(c.mlHome))}` : `ML ${g.away} ${odds(toAm(1 - c.mlHome))}`) : null;
+  return sp || ml ? `<div class="s dim" style="margin-top:6px">Tip-off: ${[sp, ml].filter(Boolean).join(" · ")}</div>` : "";
+}
+function bookBox(g, kind) {   // one line like NFL's: the spread + its price, the moneyline small under it; totals: the line, O / U prices under it
+  const B = g.books || {}, b = B[kind === "total" ? "total" : "spread"], m = B.ml;
+  if (kind === "total") return `<div><div class="k">SPORTSBOOK</div>${b ? `${b.line}<div class="s">O ${odds(b.over)} · U ${odds(b.under)}</div>` : dash}</div>`;
+  if (!b && !m) return `<div><div class="k">SPORTSBOOK</div>${dash}</div>`;
+  return `<div><div class="k">SPORTSBOOK</div>${b ? `${g.home} ${sgn(b.homeSpread)} ${odds(b.home)}` : ""}${m ? `<div class="s">ML ${g.home} ${odds(m.home)} / ${g.away} ${odds(m.away)}</div>` : ""}</div>`;
+}
+function mlPickLine(g) {   // the moneyline PICK under the spread lines (the market's chance, fee out)
+  const k = g.ml; if (!k) return "";
+  if (g.inProgress) { const L = g.locked && g.locked.ml && g.locked.ml.plain; if (!L) return "";
+    const rs = L.result === "win" ? ' · <span class="g">W</span>' : L.result === "loss" ? ' · <span class="r">L</span>' : L.result === "push" ? " · push" : "";
+    return `<div style="margin-top:4px"><b class="${clsOf(L.pct)}" style="font-size:13px"><span class="lbw">ML PICK:</span> ${esc(L.label)} · ${hitTxt(L.pct, clsOf(L.pct))}</b>${rs}</div>`; }
+  const pick = k.pick; if (!pick) return "";
+  if (pick.tier === "test") return `<div style="margin-top:4px"><b style="font-size:13px;color:#b9a8ff">TEST: ${esc(pick.label)} · ${pick.pct}%</b></div>`;
+  if (pick.tier !== "pick" && pick.tier !== "lean") return "";
+  const c = clsOf(pick.pct), tx = hitTxt(pick.pct, c);
+  return `<div style="margin-top:4px"><b class="${c}" style="font-size:13px"><span class="lbw">ML PICK:</span> ${esc(pick.label)} · ${tx}</b></div>`;
+}
 function marketCard(g, kind, id) {
-  const p = g.poly || {}, live = !g.inProgress ? '<span class="live"></span>' : "";
-  const poly = kind === "ml" ? (p.ml ? live + row("Moneyline", `${g.away} ${odds(toAm(p.ml.away))}`, "mlc") + row("", `${g.home} ${odds(toAm(p.ml.home))}`, "mlc") : dash)
-    : kind === "spread" ? (p.spread ? live + row("Spread", `${g.home} ${sgn(p.spread.homeSpread)} ${odds(toAm(p.spread.home))}`, "mkt") + row("", `${g.away} ${sgn(-p.spread.homeSpread)} ${odds(toAm(p.spread.away))}`, "mkt") : dash)
-    : (p.total ? live + row(`Over ${p.total.line}`, odds(toAm(p.total.over)), "mkt") + row(`Under ${p.total.line}`, odds(toAm(p.total.under)), "mkt") : dash);
-  return `<div class="card"><div class="inner">${id ? injDrop(g, id) : ""}<div class="hd">MARKET</div><div class="mk">${booksBlock(g, kind)}<div><div class="k">${pmLogo()}POLYMARKET</div>${poly}</div></div><div class="hd hm ihd">MODEL${IBTN}</div>${ibox(MODEL_INFO[kind] || MODEL_INFO.spread)}${modelCell(g, kind)}</div></div>`;
+  const p = g.poly || {};
+  const poly = kind === "spread" ? (p.spread || p.ml ? (p.spread ? row("Spread", `${g.home} ${sgn(p.spread.homeSpread)} ${odds(toAm(p.spread.home))}`, "mkt") + row("", `${g.away} ${sgn(-p.spread.homeSpread)} ${odds(toAm(p.spread.away))}`, "mkt") : "")
+      + (p.ml ? row("Moneyline", `${g.home} ${odds(toAm(p.ml.home))}`, "mlc", !!p.spread) + row("", `${g.away} ${odds(toAm(p.ml.away))}`, "mlc") : "") : dash)
+    : (p.total ? row(`Over ${p.total.line}`, odds(toAm(p.total.over)), "mkt") + row(`Under ${p.total.line}`, odds(toAm(p.total.under)), "mkt") : dash);
+  const info = kind === "spread" ? MODEL_INFO.spread.concat([["ML PICK:", MODEL_INFO.ml[1][1]]]) : MODEL_INFO.total;
+  return `<div class="card"><div class="inner">${id ? injDrop(g, id) : ""}<div class="hd">MARKET</div><div class="mk">${bookBox(g, kind)}<div>${pmHead(g)}${poly}${tipLine(g, kind)}</div></div><div class="hd hm ihd">MODEL${IBTN}</div>${ibox(info)}${modelCell(g, kind)}</div></div>`;
 }
 // same-game parlays of this game (lib/parlays.js): 2 legs on Polymarket's lines, 2 legs on bought lines
 function sgpBox(g) {
@@ -288,8 +297,7 @@ function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = ""; linesBg();
   document.body.classList.add("game-on");   // 10/18 (owner, same as NFL): the game card is the header; ← Games under it
   $("detail").innerHTML = `${detailTop(g)}<button class="back" id="back-btn">← Games</button>` +
-    secRow("MONEYLINE", injPill(g, "inj")) + `<div class="grid">${marketCard(g, "ml", "inj")}</div>` +
-    secRow("SPREAD") + `<div class="grid">${marketCard(g, "spread")}</div>` +
+    secRow("SPREAD &amp; ML", injPill(g, "inj")) + `<div class="grid">${marketCard(g, "spread", "inj")}</div>` +
     secRow("TOTALS") + `<div class="grid">${marketCard(g, "total")}</div>` + sgpBox(g);
   $("back-btn").onclick = closeGame;
   setBg($("panel-lines").classList.contains("on") ? g : null);
