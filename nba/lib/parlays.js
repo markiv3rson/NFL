@@ -15,7 +15,7 @@
 import { getRedis, jparse, mgetAll } from "./redis";
 import { cardLegs } from "./cardpick";
 import { staleDate } from "./pinnacle";
-import { propLegsForDay, gradeProp } from "./props";
+import { propLegsForDay, gradeProp, RECHECK_H } from "./props";
 import { boxFor } from "./espn";
 const GREEN = 56;   // the card's green bar (lib/cardpick.js)
 export const STAKES = { best4: 10, fav4: 10, sgp: 20, sgp_pts: 5, pp6: 5, pp8: 5, pp10: 5, sgp4: 5 };
@@ -61,7 +61,8 @@ export async function buildPropParlays(date, games, now = Date.now(), dayLegs = 
   const ahead = (games || []).filter((g) => g.date === date && !g.inProgress && !g.preseason && Date.parse(g.start) > now).sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
   const strip = (ls) => ls.map(({ p, ...l }) => l);
   for (const g of ahead) {
-    const legs = [...sideLegs(g), ...props.filter((l) => l.game === g.key).map(propLeg)].sort((a, b) => b.p - a.p);
+    const pl = props.filter((l) => l.game === g.key); if (!pl.length) continue;   // 10/23: no prop rows yet (props not posted / scored) -> the game waits; a Prop Parlay of moneylines only is not one
+    const legs = [...sideLegs(g), ...pl.map(propLeg)].sort((a, b) => b.p - a.p);
     for (const n of PROP_LEGS) {
       if (legs.length >= n) { const pr = mk(`pp${n}`, strip(legs.slice(0, n)), g.key, g.start); if (pr) out.push({ ...pr, date }); }
       else (short[n] = short[n] || []).push(...legs.map((l) => ({ ...l, start: g.start })));
@@ -128,9 +129,35 @@ export function gradeLeg(l, away, home, f) {
   if (l.market === "total") { const t = f.away + f.home; if (t === l.line) return "P"; return (t > l.line) === (l.side === "over") ? "W" : "L"; }
   return null;
 }
-export async function gradeParlays(fetchFinals, fetchBox = boxFor) {
-  const r = getRedis(), byDate = {}; let n = 0;
-  for (const p of await loadParlays()) if (!p.result && Array.isArray(p.legs)) (byDate[p.date] = byDate[p.date] || []).push(p);
+// 10/23 (owner: "make sure everything is graded correctly"): ESPN corrects box scores after the final (IND @ NOP 10/21: I.Zubac 14 -> 15 rebounds);
+// the prop rows were re-checked once 6+ h after grading (props.js RECHECK_H) but the SAME legs inside the parlays were not -- a decided parlay with
+// prop legs is now re-graded once too (`rechecked`), its result and money follow the corrected legs.
+const recheckDue = (p, now) => !p.rechecked && p.result && Array.isArray(p.legs) && p.legs.some((l) => l.market === "prop")
+  && now - (p.gradedAt ? Date.parse(p.gradedAt) : Date.parse(p.date + "T12:00:00Z") + 30 * 3600e3) >= RECHECK_H * 3600e3;
+function settle(p) {
+  const res = p.legs.map((l) => l.result); let out = null;
+  if (res.some((x) => x === "L")) out = "L"; else if (res.length && res.every((x) => x === "W" || x === "P")) out = res.every((x) => x === "P") ? "P" : "W";
+  if (!out) return false;
+  const won = p.legs.filter((l) => l.result === "W"), pay = won.length && won.every((l) => l.price > 0 && l.price < 1) ? won.reduce((a, l) => a / l.price, 1) : null;   // a pushed leg drops out of the payout
+  p.result = out; p.ret = out === "W" ? (pay != null ? Math.round(p.stake * (pay - 1) * 100) / 100 : null) : out === "L" ? -p.stake : 0;
+  return true;
+}
+export async function gradeParlays(fetchFinals, fetchBox = boxFor, now = Date.now()) {
+  const r = getRedis(), byDate = {}, again = {}; let n = 0;
+  for (const p of await loadParlays()) {
+    if (!p.result && Array.isArray(p.legs)) (byDate[p.date] = byDate[p.date] || []).push(p);
+    else if (recheckDue(p, now)) (again[p.date] = again[p.date] || []).push(p);
+  }
+  for (const [date, list] of Object.entries(again)) {
+    let box; try { box = await fetchBox(date); } catch { continue; }
+    for (const p of list) {
+      if (p.legs.some((l) => l.market === "prop" && !(box && box[l.game] && box[l.game].final))) continue;   // that game's box is not there: try next run
+      let fixed = 0;
+      for (const l of p.legs) { if (l.market !== "prop") continue; const gp = gradeProp(l, box[l.game]); if (gp.result !== l.result || gp.actual !== l.actual) fixed++; l.result = gp.result; l.actual = gp.actual; }
+      settle(p); p.rechecked = new Date(now).toISOString(); if (fixed) p.fixed = fixed;
+      const { _k, ...row } = p; await r.set(_k, JSON.stringify(row)).catch(() => {}); if (fixed) n++;
+    }
+  }
   for (const [date, list] of Object.entries(byDate)) {
     let finals; try { finals = await fetchFinals(date); } catch { continue; }
     let box = null; if (list.some((p) => p.legs.some((l) => l.market === "prop" && !l.result))) { try { box = await fetchBox(date); } catch { box = null; } }   // prop legs: ESPN's box score
@@ -139,10 +166,7 @@ export async function gradeParlays(fetchFinals, fetchBox = boxFor) {
       for (const l of p.legs) { if (l.result) continue;
         if (l.market === "prop") { const b = box && box[l.game]; if (!b || !b.final) { if (staleDate(date)) { l.result = "P"; changed = true; } continue; } const gp = gradeProp(l, b); l.result = gp.result; l.actual = gp.actual; changed = true; continue; }   // a DNP is a push
         const f = finals[l.game]; if (!f || !f.final) { if (staleDate(date)) { l.result = "P"; changed = true; } continue; } const [away, home] = l.game.split(" @ "); l.result = gradeLeg(l, away, home, f); changed = true; }   // a leg whose game never happened is a push
-      const res = p.legs.map((l) => l.result);
-      if (res.some((x) => x === "L")) p.result = "L"; else if (res.every((x) => x === "W" || x === "P")) p.result = res.every((x) => x === "P") ? "P" : "W";
-      if (p.result) { const won = p.legs.filter((l) => l.result === "W"), pay = won.length && won.every((l) => l.price > 0 && l.price < 1) ? won.reduce((a, l) => a / l.price, 1) : null;   // a pushed leg drops out of the payout
-        p.ret = p.result === "W" ? (pay != null ? Math.round(p.stake * (pay - 1) * 100) / 100 : null) : p.result === "L" ? -p.stake : 0; changed = true; n++; }
+      if (settle(p)) { p.gradedAt = new Date(now).toISOString(); changed = true; n++; }
       if (changed) { const { _k, ...row } = p; await r.set(_k, JSON.stringify(row)).catch(() => {}); }
     }
   }

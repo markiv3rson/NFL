@@ -2,7 +2,7 @@
 // lib/props.js PROP_PASS) with their Polymarket price, ✓ / ✗ once the game is graded, and the season's W-L. ?week=N picks the week.
 import { getRedis } from "../../lib/redis";
 import { SEASON, displayWeek, loadGames, started } from "../../lib/games";
-import { propsForWeek, propsRecord, propSummary } from "../../lib/props";
+import { propsForWeek, propsRecord, propSummary, propsGradedAll } from "../../lib/props";
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   try {
@@ -12,6 +12,7 @@ export default async function handler(req, res) {
     const r = getRedis(), weeks = new Set([cur]); let c = "0";
     do { const [n, ks] = await r.scan(c, "MATCH", `propmodel:${season}:*`, "COUNT", 200); c = n; for (const k of ks) weeks.add(Number(k.split(":")[2])); } while (c !== "0");
     const games = (await loadGames(season, week)).map((g) => ({ ...g, started: started(g) }));
+    if (req.query.all) { res.status(200).json({ ok: true, season, week, ...(await propsGradedAll(r, season, week, games)) }); return; }   // 10/23: every graded line, for npm run verify
     let list = await propsForWeek(r, season, week, games);
     if (week === dw.week && dw.carry.length) {
       const cg = (await loadGames(season, dw.cur)).filter((g) => dw.carry.includes(g.key)).map((g) => ({ ...g, started: started(g) }));

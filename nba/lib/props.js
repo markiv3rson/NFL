@@ -88,7 +88,10 @@ export const OVER_W = 0.4;
 // scored rows (Polymarket's main line at scoring time); rows saved before 10/23 have none and are not cut.
 export const DOG_CUT = 2.5;
 export const effChance = (p) => (p.side === "over" && p.price > 0 && p.price < 1 ? OVER_W * p.chance + (1 - OVER_W) * p.price : p.chance);
-export function onePerPlayer(picks) {
+// 10/23 (owner: "check all calibration and wording and numbering"): with the calibration bands passed in, a row must ALSO be priced under its
+// calibrated % (the number the page shows), so no row reads a % under its own price. Live graded rows 10/20-22: calibrated % over the price 52-25
+// (67.5%, +0.2 per $100), at or under it 27-16 (62.8%, -12.2). The bands themselves are fit on the rows without this test (propCalibration).
+export function onePerPlayer(picks, bands = null) {
   const priced = (p) => p.price > 0 && p.price < 1, best = new Map();
   for (const p0 of picks) {
     if (!priced(p0)) continue;
@@ -97,6 +100,7 @@ export function onePerPlayer(picks) {
     if (!priced(p) || p.price >= p.chance || p.price >= MAX_PRICE || p.price < MIN_PRICE) continue;
     if (CUT_SIDES.has(`${p.stat}|${p.side}`) || (CUT_UNDERS && p.side === "under")) continue;
     if (p.side === "over" && typeof p.tsp === "number" && p.tsp >= DOG_CUT) continue;
+    if (bands) { p.cal = calibrate(p.chance, bands); if (p.price >= p.cal) continue; }
     const k = `${normName(p.name)}|${p.stat}`, o = best.get(k);
     if (!o || p.chance > o.chance) best.set(k, p);
   }
@@ -179,37 +183,46 @@ export async function gradeNbaProps({ dates = null, now = Date.now(), fetchBox =
 }
 // The page: one day's games with their rows (every stat; the page filters by its tab), ✓ / ✗ once graded.
 // 10/20 night (owner): a player's most recent graded prop of the same stat before this day (line, side, ✓ / ✗, the real number)
-export async function lastNbaProps(date, days = null) {
+export async function lastNbaProps(date, days = null, bands = null) {
   const r = getRedis(), out = {}, all = (days || await nbaPropDays()).filter((d) => d < date).sort().reverse().slice(0, 10);
   for (const d of all) { const h = await r.hgetall(K_NBAPROPRES(d)).catch(() => null) || {};
     for (const v of Object.values(h)) { let rec; try { rec = JSON.parse(v); } catch { continue; }
       // 10/21: the row the page SHOWED that day (onePerPlayer, as nbaPropsForDay / nbaPropsRecord), not the first graded line of the ladder
-      for (const p of onePerPlayer(rec.picks || [])) { const k = `${p.name}|${p.stat}`; if (!out[k] && p.result && p.result !== "P") out[k] = { date: d, line: p.line, side: p.side, result: p.result, actual: p.actual ?? null }; } } }
+      for (const p of onePerPlayer(rec.picks || [], bands)) { const k = `${p.name}|${p.stat}`; if (!out[k] && p.result && p.result !== "P") out[k] = { date: d, line: p.line, side: p.side, result: p.result, actual: p.actual ?? null }; } } }
   return out;
 }
 // 10/22 (owner: the NBA props page % = the calibrated chance): each row carries `cal` = its model % moved toward what its 5-point band really won on
 // the graded rows (propCalibration, CAL_K 100) -- the same number the prop parlay legs use. The ROWS are unchanged (chosen on the model's %, the 65% bar).
 // Walk-forward 10/21 rows calibrated from 10/20's: Brier 0.2119 raw -> 0.2112 (the model said 76.5, the rows won 70.1).
 export async function nbaPropsForDay(date, now = Date.now()) {
-  const r = getRedis(), res = await r.hgetall(K_NBAPROPRES(date)).catch(() => null) || {}, out = [], last = await lastNbaProps(date).catch(() => ({}));
   const bands = await propCalibration(now).catch(() => null);
+  const r = getRedis(), res = await r.hgetall(K_NBAPROPRES(date)).catch(() => null) || {}, out = [], last = await lastNbaProps(date, null, bands).catch(() => ({}));
   for (const k of await scanKeys(`nbapropmodel:${date}:*`)) {
     const key = k.slice(`nbapropmodel:${date}:`.length), model = await getJSON(k).catch(() => null); if (!model) continue;
     let picks;
     if (res[key]) { try { picks = JSON.parse(res[key]).picks || []; } catch { picks = []; } }
     else picks = nbaPropPicks(model.rows, await getJSON(K_NBAPROPS(date, key)).catch(() => null)).map((p) => ({ ...p, result: null }));
-    picks = onePerPlayer(picks); if (!picks.length) continue;
+    picks = onePerPlayer(picks, bands); if (!picks.length) continue;
     out.push({ game: key, away: model.away, home: model.home, start: model.start || null, final: !!res[key],
       picks: picks.map((p) => ({ name: p.name, team: p.team || null, stat: p.stat, side: p.side, line: p.line, chance: p.chance, cal: calibrate(p.chance, bands), price: p.price ?? null, result: p.result || null, actual: p.actual ?? null, last: last[`${p.name}|${p.stat}`] || null })) });
   }
   return out.sort((a, b) => String(a.start || "").localeCompare(String(b.start || "")));
 }
+// 10/23 (owner: "make sure everything is graded correctly"): EVERY graded prop row of a day (shown or only tracked) for the outside re-grade,
+// and the games scored that day that never got graded
+export async function nbaPropsGradedAll(date) {
+  const r = getRedis(), res = await r.hgetall(K_NBAPROPRES(date)).catch(() => null) || {}, graded = [], missing = [];
+  for (const [game, v] of Object.entries(res)) { let d; try { d = JSON.parse(v); } catch { continue; } graded.push({ game, picks: (d.picks || []).map((p) => ({ name: p.name, stat: p.stat, side: p.side, line: p.line, actual: p.actual ?? null, result: p.result || null })) }); }
+  for (const k of await scanKeys(`nbapropmodel:${date}:*`)) { const key = k.slice(`nbapropmodel:${date}:`.length); if (!res[key]) missing.push(key); }
+  return { graded, missing };
+}
 // W-L per stat (and all) of the page's rows over the graded days
-export async function nbaPropsRecord(dates) {
+export async function nbaPropsRecord(dates, now = Date.now()) {
+  const bands = await propCalibration(now).catch(() => null);
   const r = getRedis(), rec = { all: { w: 0, l: 0 } }; for (const [s] of NBA_STATS) rec[s] = { w: 0, l: 0 };
   for (const d of dates) { const h = await r.hgetall(K_NBAPROPRES(d)).catch(() => null); if (!h) continue;
     for (const v of Object.values(h)) { let x; try { x = JSON.parse(v); } catch { continue; }
-      for (const p of onePerPlayer(x.picks || [])) { if (p.result !== "W" && p.result !== "L") continue; const k = p.result === "W" ? "w" : "l"; rec.all[k]++; if (rec[p.stat]) rec[p.stat][k]++; } } }
+      for (const p of onePerPlayer(x.picks || [], bands)) { if (p.result !== "W" && p.result !== "L") continue; const k = p.result === "W" ? "w" : "l"; rec.all[k]++; if (rec[p.stat]) rec[p.stat][k]++; } } }
   for (const k of Object.keys(rec)) rec[k].pct = rec[k].w + rec[k].l ? Math.round((rec[k].w / (rec[k].w + rec[k].l)) * 1000) / 10 : null;
   return rec;
 }
@@ -264,13 +277,12 @@ export function calibrate(chance, bands) {
   return Math.min(0.99, Math.max(0.01, chance + (b.won - b.said) * (b.n / (b.n + CAL_K))));
 }
 export async function propLegsForDay(date, games, now = Date.now()) {
-  const legs = [];
+  const legs = [], bands = await propCalibration(now).catch(() => null);
   for (const g of games || []) {
     if (!g || g.date !== date || !(Date.parse(g.start) > now)) continue;
     const model = await getJSON(K_NBAPROPMODEL(date, g.key)).catch(() => null); if (!model || !model.rows) continue;
-    for (const p of onePerPlayer(nbaPropPicks(model.rows, await getJSON(K_NBAPROPS(date, g.key)).catch(() => null)))) if (p.price > 0 && p.price < 1) legs.push({ ...p, game: g.key, start: g.start });
+    for (const p of onePerPlayer(nbaPropPicks(model.rows, await getJSON(K_NBAPROPS(date, g.key)).catch(() => null)), bands)) if (p.price > 0 && p.price < 1) legs.push({ ...p, game: g.key, start: g.start });
   }
   const best = new Map(); for (const p of legs) { const k = normName(p.name), o = best.get(k); if (!o || p.chance > o.chance) best.set(k, p); }
-  const bands = legs.length ? await propCalibration(now).catch(() => null) : null;
   return [...best.values()].map((p) => ({ ...p, cal: calibrate(p.chance, bands) })).sort((a, b) => b.cal - a.cal);
 }
