@@ -1821,7 +1821,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(uses(ap) === 4 && uses(nb) === 3 && (ap.match(/<div class="hd hm ihd">MODEL\$\{IBTN\}<\/div>\$\{ibox\(MODEL_INFO\.(spread|total)\)\}/g) || []).length === 2 && /<div class="hd hm ihd">MODEL\$\{IBTN\}<\/div>\$\{ibox\(info\)\}/.test(nb)
     && /Card picks<\/b>\$\{IBTN\}/.test(ap) && /Tracked angles\$\{IBTN\}/.test(ap) && /Card picks<\/b>\$\{IBTN\}/.test(nb) && /Shadow trackers<\/b>\$\{IBTN\}/.test(nb)
     && /closest\("\.ibtn"\)/.test(sj) && /\.ibox\[hidden\] \{ display:none; \}/.test(sc) && /\.lbw \{ color:#fff; font-weight:400; \}/.test(sc) && /\.modelcell b \{ text-transform:uppercase; \}/.test(sc) && /\.modelcell b \{ font-size:13px !important; \}/.test(sc) && /\.modelcell > \.s:has\(> \.lbw\), \.modelcell \.lbw \{ font-size:13px; \}/.test(sc)
-    && !/<span class="lbw">/.test(ap.replace(/<span class="lbw">(Model:|Model \(Team\):|Model \(Stack\):|Pick:|Pick w\/ points:)<\/span>/g, "")) && /<span class="lbw">Pick w\/ points:<\/span>/.test(nb) && /\.lbw \{ color:#fff; font-weight:400; \}/.test(sc),
+    && !/<span class="lbw">/.test(ap.replace(/<span class="lbw">(Model:|Model \(Team\):|Model \(Stack\):|Pick:|Pick w\/ points:|ML pick:)<\/span>/g, "")) && /<span class="lbw">Pick w\/ points:<\/span>/.test(nb) && /\.lbw \{ color:#fff; font-weight:400; \}/.test(sc),
     "info buttons (10/22): one ⓘ on each game card's MODEL header (NFL spread + total, NBA every card) and the Models Card picks / tracked rows, a tap opens the box under it; the card labels are white");
 }
 { // 10/21 (owner): menu see-through like the Game Lines tiles; every red -> green gradient is red -> dark red (SLATEZZ, refresh ring, grip, menu lines, home clock)
@@ -1857,5 +1857,15 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
 { // 10/22 (owner): a fresh start opens on home; 2+ minutes in the background resets to home and reloads; app page switches never reset (same session)
   const sh = readFileSync(new URL("../public/shell.js", import.meta.url), "utf8");
   ok(/AWAY_MS: 120e3/.test(sh) && /fresh = !ss\.getItem\("slz-live"\)/.test(sh) && /if \(Shell\.homeReset\(\)\) return;/.test(sh) && /location\.replace\(Shell\.HOME\)/.test(sh) && /!Shell\.resetting/.test(sh), "home reset: fresh start + 2 minutes away land on home, the build reload does not fight it"); }
+{ // 10/23 night: ML PICK = the favorite's moneyline when the Stack model's spread side is that favorite (walk-forward 2022-25: 71.7% of 374 priced 65.7%)
+  const cpk = await import("../lib/cardpick.js"), stk = await import("../lib/stack.js");
+  const g = (team, conf, yv = 2) => ({ key: "KC @ SEA", away: "KC", home: "SEA", poly: { ml: { home: 0.6, away: 0.42 } }, stackSide: { team, confident: conf, yv, pct: conf ? 56.2 : 52.8 } });
+  const a = cpk.mlPart(g("SEA", false)), b = cpk.mlPart(g("SEA", true)), c = cpk.mlPart(g("KC", false)), d = cpk.mlPart(g("SEA", false, null));
+  const pk = cpk.cardPicks({ spread: null, total: null, ml: a });
+  ok(a && a.plain.pick === "SEA ML" && a.plain.hit === 70.5 && a.plain.id === "stackml|ml" && a.plain.price === 0.6 && b.plain.hit === 78.0 && c === null && d === null && pk.length === 1 && pk[0].kind === "ml"
+    && stk.gradeStackPick({ kind: "ml", team: "SEA", home: "SEA", line: 0 }, 24, 20) === "W" && stk.gradeStackPick({ kind: "ml", team: "KC", home: "SEA", line: 0 }, 24, 20) === "L" && stk.ruleLabel({ id: "stackml|ml" }) === "ML PICK · STACK on the favorite",
+    "ML PICK (10/23 night): the favorite's moneyline only when STACK backs it (70.5% / 78.0% confident), never on the underdog or from old STACK yards; saved with the card's picks, graded W / L");
+  const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  ok(/<span class="lbw">ML pick:<\/span>/.test(app) && /g\.lockedPicks && g\.lockedPicks\.ml/.test(app), "the spread card shows the ML pick (locked one with W / L after kickoff)"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);
