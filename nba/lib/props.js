@@ -94,6 +94,8 @@ export const DOG_CUT = 2.5;
 // won 74.6% at 64c (+16.5); live graded rows 10/20-22 (threes out) under 2 points 21-9 (+0.9), 2+ 30-12 (+8.0), 3+ 22-7 (+15.3). NFL rows show no
 // such effect (weeks 6-7 under 2 points 8-3, under 4 points 23-5), so NFL keeps "priced under its %".
 export const MIN_GAP = 0.02;
+// PRA is left out: it has no real-line market to test on and its live rows priced within 2 points went 11-0 (points 4-7, the rest 6-2).
+export const GAP_FREE = new Set(["pra"]);
 export const effChance = (p) => (p.side === "over" && p.price > 0 && p.price < 1 ? OVER_W * p.chance + (1 - OVER_W) * p.price : p.chance);
 // 10/23 (owner: "check all calibration and wording and numbering"): with the calibration bands passed in, a row must ALSO be priced under its
 // calibrated % (the number the page shows), so no row reads a % under its own price. Live graded rows 10/20-22: calibrated % over the price 52-25
@@ -108,7 +110,7 @@ export function onePerPlayer(picks, bands = null) {
     if (CUT_SIDES.has(`${p.stat}|${p.side}`) || (CUT_UNDERS && p.side === "under")) continue;
     if (p.side === "over" && typeof p.tsp === "number" && p.tsp >= DOG_CUT) continue;
     if (bands) p.cal = calibrate(p.chance, bands);
-    if (p.price > (p.cal ?? p.chance) - MIN_GAP + 1e-9) continue;   // 10/23 night: priced at least 2 points under the shown %
+    if (!GAP_FREE.has(p.stat) && p.price > (p.cal ?? p.chance) - MIN_GAP + 1e-9) continue;   // 10/23 night: priced at least 2 points under the shown %
     const k = `${normName(p.name)}|${p.stat}`, o = best.get(k);
     if (!o || p.chance > o.chance) best.set(k, p);
   }
