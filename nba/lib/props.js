@@ -89,6 +89,11 @@ export const OVER_W = 0.4;
 // 78.7% (47) without them vs 61.8% (34) with them. Live 10/20-21: 30-17 (63.8%, -5.7) vs 45-22 (67.2%, -1.2). `tsp` = the team's spread, saved with the
 // scored rows (Polymarket's main line at scoring time); rows saved before 10/23 have none and are not cut.
 export const DOG_CUT = 2.5;
+// 10/23 night (rule 7 hunt): an NBA row must be priced at least MIN_GAP under its shown % (calibrated, else the blend). Rows barely under it lose:
+// last season's real Polymarket Over lines under the page's rules, gap under 2 points 18 rows won 61.1% at 67c (-9.9 per $100), 2+ points 63 rows
+// won 74.6% at 64c (+16.5); live graded rows 10/20-22 (threes out) under 2 points 21-9 (+0.9), 2+ 30-12 (+8.0), 3+ 22-7 (+15.3). NFL rows show no
+// such effect (weeks 6-7 under 2 points 8-3, under 4 points 23-5), so NFL keeps "priced under its %".
+export const MIN_GAP = 0.02;
 export const effChance = (p) => (p.side === "over" && p.price > 0 && p.price < 1 ? OVER_W * p.chance + (1 - OVER_W) * p.price : p.chance);
 // 10/23 (owner: "check all calibration and wording and numbering"): with the calibration bands passed in, a row must ALSO be priced under its
 // calibrated % (the number the page shows), so no row reads a % under its own price. Live graded rows 10/20-22: calibrated % over the price 52-25
@@ -102,7 +107,8 @@ export function onePerPlayer(picks, bands = null) {
     if (!priced(p) || p.price >= p.chance || p.price >= MAX_PRICE || p.price < MIN_PRICE) continue;
     if (CUT_SIDES.has(`${p.stat}|${p.side}`) || (CUT_UNDERS && p.side === "under")) continue;
     if (p.side === "over" && typeof p.tsp === "number" && p.tsp >= DOG_CUT) continue;
-    if (bands) { p.cal = calibrate(p.chance, bands); if (p.price >= p.cal) continue; }
+    if (bands) p.cal = calibrate(p.chance, bands);
+    if (p.price > (p.cal ?? p.chance) - MIN_GAP + 1e-9) continue;   // 10/23 night: priced at least 2 points under the shown %
     const k = `${normName(p.name)}|${p.stat}`, o = best.get(k);
     if (!o || p.chance > o.chance) best.set(k, p);
   }
