@@ -281,7 +281,9 @@ def player_stats():
     """Official passing / rushing / receiving stats of one week (nflverse play-by-play + snap counts), to grade prop picks (lib/props.js)."""
     try:
         season = int(request.args.get("season") or _season.data_season()); week = int(request.args.get("week"))
-        return jsonify({"ok": True, "season": season, "week": week, "games": prop_model.week_stats(season, week)})
+        try: snaps = prop_model.week_snaps(season, week)
+        except Exception: snaps = None   # snap counts unreadable: the site waits on the no-show rows
+        return jsonify({"ok": True, "season": season, "week": week, "games": prop_model.week_stats(season, week), "snaps": snaps})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 

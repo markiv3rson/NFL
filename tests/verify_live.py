@@ -157,7 +157,14 @@ for r in res.values():
         n += 1
         if (got > 0) != bool(p["scored"]): wrong("TD", r["week"], r["game"], p["player"], "app", p["scored"], "nflverse", got)
 print(f"4. touchdowns: {n} player rows vs nflverse, {um} more with no touch in nflverse (all graded 'no TD')")
-n = nm = um = 0; nfl_missing = []; nfl_all = True
+# 10/23 recheck: Polymarket settles a player prop of a player with NO snap at the last fair price -> the app grades him a push (P), never W / L
+snapped = set()
+try:
+    for r in csv.DictReader(io.StringIO(get(f"https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_{SEASON}.csv", True))):
+        if r.get("game_type") == "REG" and sum(float(r.get(c) or 0) for c in ("offense_snaps", "defense_snaps", "st_snaps")) > 0: snapped.add((int(r["week"]), nn(r["player"])))
+except Exception: snapped = None
+snap_weeks = {w for w, _ in snapped} if snapped else set()
+n = nm = um = npush = 0; nfl_missing = []; nfl_all = True
 for w in sorted({r["week"] for r in res.values()}):
     # 10/23: every graded line of the week (shown AND only tracked) from ?all=1; the shown rows if the site is older
     try: A = get(f"{SITE}/api/props?week={w}&all=1")
@@ -171,7 +178,13 @@ for w in sorted({r["week"] for r in res.values()}):
         except Exception: continue
         rows = [(w, r) for g in P.get("games") or [] for r in g.get("picks") or []]
     for w, r in rows:
+        took = None if not snapped or w not in snap_weeks else (w, nn(r["name"])) in snapped
+        if r.get("result") == "P":
+            npush += 1
+            if took: wrong("prop push", w, r["name"], "graded a push (no snap) but nflverse snap counts have him playing")
+            continue
         if r.get("result") not in ("W", "L") or r.get("actual") is None: continue
+        if took is False and yd.get((w, nn(r["name"]))) is None: wrong("prop grade", w, r["name"], r["result"], "he took no snap: Polymarket settles at the last fair price, the app should grade a push")
         n += 1
         if ("W" if (r["actual"] < r["line"]) == (r["side"] == "under") else "L") != r["result"]: wrong("prop grade", w, r["name"], r)
         y = yd.get((w, nn(r["name"]))); y = None if y is None else y.get(r.get("stat") or "rec_yds")
@@ -182,7 +195,7 @@ for w in sorted({r["week"] for r in res.values()}):
         nm += 1
         if int(y) != int(r["actual"]): wrong("prop yards", w, r["name"], "app", r["actual"], "nflverse", y)
 for m in nfl_missing: wrong("props never graded", m)
-print(f"5. props: {n} graded lines ({'every line, shown and tracked' if nfl_all else 'shown rows only: site without ?all=1'}), {nm} totals vs nflverse, {um} more with no catch in nflverse (all 0 in the app), {len(nfl_missing)} final games never graded")
+print(f"5. props: {n} graded lines ({'every line, shown and tracked' if nfl_all else 'shown rows only: site without ?all=1'}), {nm} totals vs nflverse, {um} more with no catch in nflverse (all 0 in the app, all took a snap), {npush} no-snap pushes, {len(nfl_missing)} final games never graded")
 
 # 10/23: player-prop legs inside the NFL model parlays (Player-prop Parlays 6 / 8 / 10) -> the same nflverse player stats
 npl = 0
