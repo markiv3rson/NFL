@@ -1012,6 +1012,29 @@ const recOf = (g, t) => (g.rec && g.rec[t] ? `<small class="rec">${esc(g.rec[t])
 // Market's win chance (home %) on the tile and the game page (10/17, owner): Polymarket's moneyline with its fee taken out (each side's price / both),
 // its own win price. It used to come from the spread, so a coin flip with NO -1.5 read NO 56% while the moneyline said 50/50. No moneyline -> the spread.
 const mktHome = (g) => { const m = g.poly && g.poly.ml; return m && m.home > 0 && m.home < 1 && m.away > 0 && m.away < 1 ? (100 * m.home) / (m.home + m.away) : g.winPct != null && isFinite(g.winPct) ? Number(g.winPct) : null; };
+// 10/23 (owner: "If the game is done can you put the models win/lost?"): a finished tile shows the card's picks locked at kickoff / tip-off,
+// ✓ green / ✗ red / push gray. The saved grade when there is one, else graded here from the final score (the grade run comes later at night).
+const normRes = (r) => (r === "W" || r === "win" ? "W" : r === "L" || r === "loss" ? "L" : r === "P" || r === "push" ? "P" : r === "void" ? "V" : null);
+function pickRes(label, away, home, as, hs) {
+  const s = String(label || "").replace(/−/g, "-").trim(), num = (x) => (/^pk$/i.test(x) ? 0 : Number(x));
+  if (!isFinite(as) || !isFinite(hs)) return null;
+  let m = s.match(/^(Over|Under) ([\d.]+)$/i);
+  if (m) { const d = as + hs - Number(m[2]); return d === 0 ? "P" : (d > 0) === /^o/i.test(m[1]) ? "W" : "L"; }
+  m = s.match(/^(\S+) ML$/i);
+  if (m) { const mine = m[1] === away ? as : m[1] === home ? hs : null; if (mine == null) return null; const o = m[1] === away ? hs : as; return mine === o ? "P" : mine > o ? "W" : "L"; }
+  m = s.match(/^(\S+) ([+-]?[\d.]+|pk)$/i);
+  if (m) { const mine = m[1] === away ? as : m[1] === home ? hs : null; if (mine == null) return null; const d = mine + num(m[2]) - (m[1] === away ? hs : as); return d === 0 ? "P" : d > 0 ? "W" : "L"; }
+  return null;
+}
+function resLine(picks, away, home, as, hs) {
+  const out = (picks || []).filter((p) => p && p.label).map((p) => {
+    const r = normRes(p.result) || pickRes(p.label, away, home, as, hs), lbl = String(p.label).replace(/^Over /, "O ").replace(/^Under /, "U ");
+    return `<span class="${r === "W" ? "g" : r === "L" ? "r" : "dim"}">${esc(lbl)} ${r === "W" ? "✓" : r === "L" ? "✗" : r === "P" ? "push" : r === "V" ? "void" : ""}</span>`;
+  });
+  return out.length ? `<div class="tres">${out.join('<span class="dim"> · </span>')}</div>` : "";
+}
+// NFL: the card's PICK (spread, total) + the ML pick, locked at kickoff
+const nflRes = (g, as, hs) => { const L = g.lockedPicks; return L ? resLine(["spread", "total", "ml"].map((k) => L[k] && { label: L[k].pick, result: L[k].result }), g.away, g.home, as, hs) : ""; };
 function tile(g) {
   const sc = g.started && !g.final ? LIVE_SC[g.key] : null;   // live score from ESPN (display only)
   const hp = mktHome(g), ap = hp == null ? null : 100 - hp;
@@ -1023,8 +1046,9 @@ function tile(g) {
   // 10/18 (owner): logo + code + record each side, the % (or score) in the middle with the kickoff time + the pick / London tag under it, the bar; no "starts in".
   // A live tile with its score drops the bar (10/18, same as NBA and home): the bar is the pre-game % the score replaced.
   // 10/18 evening (owner, sketch D): NO big faded logos and NO team colours behind the tile -- a plain 55% dark card so the page picture shows through.
+  const res = g.final && g.awayScore != null && g.homeScore != null ? nflRes(g, Number(g.awayScore), Number(g.homeScore)) : sc && sc.st === "post" ? nflRes(g, Number(sc.a), Number(sc.h)) : "";
   return `<button class="tile${g.started && !g.final ? " live" : ""}" data-game="${esc(g.key)}">` +
-    `<div class="in"><div class="nm"><span class="t">${tlogo(g.away)}${g.away}${recOf(g, g.away)}</span><div class="tmid">${mid2}${chips ? `<div class="s2">${chips}</div>` : ""}${moveLines(moveBits(g))}</div><span class="t hm">${g.home}${tlogo(g.home)}${recOf(g, g.home)}</span></div>${g.final || sc || hp == null ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
+    `<div class="in"><div class="nm"><span class="t">${tlogo(g.away)}${g.away}${recOf(g, g.away)}</span><div class="tmid">${mid2}${res}${chips ? `<div class="s2">${chips}</div>` : ""}${moveLines(moveBits(g))}</div><span class="t hm">${g.home}${tlogo(g.home)}${recOf(g, g.home)}</span></div>${g.final || sc || hp == null ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
 }
 // Graded touchdown results for a finished game (same records the Models tab uses). Loaded once, only when a finished game page opens.
 let GRADES = null, GRADES_AT = 0;
@@ -1341,7 +1365,7 @@ function homeTile(o) {
     : live ? '<span class="mid lvmid"><span class="lv r">● LIVE</span></span>' : ap == null ? '<span class="mid dim">—</span>' : `<span class="mid"><span class="${lead(ap, hp)}">${ap}</span><span class="dim"> · </span><span class="${lead(hp, ap)}">${hp}</span><span class="dim" style="font-size:11px">%</span></span>`;
   const under = live ? [o.aSp != null ? `${esc(o.away)} ${hsp(o.aSp)}` : "", o.tot != null ? `O/U ${o.tot}` : ""].filter(Boolean).join(" · ") : o.time ? esc(o.time) : "";
   const team = (code, logo, rec, hm) => `<span class="t${hm ? " hm" : ""}">${hm ? "" : `<img class="tlogo" src="${logo}" alt="" onerror="this.style.display='none'">`}${esc(code)}${hm ? `<img class="tlogo" src="${logo}" alt="" onerror="this.style.display='none'">` : ""}${rec ? `<small class="rec">${esc(rec)}</small>` : ""}</span>`;
-  return `<button class="tile${live ? " live" : ""}" ${o.attr}="${esc(o.key)}"><div class="in"><div class="nm">${team(o.away, o.aLogo, o.aRec, false)}<div class="tmid">${mid}${under ? `<div class="s2"><span class="tmt">${under}</span></div>` : ""}</div>${team(o.home, o.hLogo, o.hRec, true)}</div>${live || ap == null ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
+  return `<button class="tile${live ? " live" : ""}" ${o.attr}="${esc(o.key)}"><div class="in"><div class="nm">${team(o.away, o.aLogo, o.aRec, false)}<div class="tmid">${mid}${o.sc && o.sc.st === "post" && o.res ? o.res(Number(o.sc.a), Number(o.sc.h)) : ""}${under && !(o.sc && o.sc.st === "post") ? `<div class="s2"><span class="tmt">${under}</span></div>` : ""}</div>${team(o.home, o.hLogo, o.hRec, true)}</div>${live || ap == null ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
 }
 // 10/18 night (owner: "I need the exact time and second ... a clock that flips its numbers, like a game clock"): the countdown is
 // [days]d HH:MM:SS, every digit its own flip tile; a tile whose digit changes flips (so the seconds tile flips every second)
@@ -1368,7 +1392,7 @@ function renderHome() {
     const line = (g) => { const b = g.books || {}, p = g.poly || {}, hs = b.spread ? b.spread.homeSpread : p.spread ? p.spread.homeSpread : null, tl = b.total ? b.total.line : p.total ? p.total.line : null;
       return { hSp: hs == null ? null : Number(hs), aSp: hs == null ? null : -Number(hs), tot: tl }; };
     const base = (g) => ({ key: g.key, attr: "data-game", away: g.away, home: g.home, aLogo: logoUrl(g.away), hLogo: logoUrl(g.home), aRec: g.rec && g.rec[g.away], hRec: g.rec && g.rec[g.home], pct: mktHome(g) == null ? null : 100 - mktHome(g) });
-    const tiles = live.length ? live.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff)).map((g) => homeTile({ ...base(g), live: true, ...line(g), sc: LIVE_SC[g.key] || null })).join("")
+    const tiles = live.length ? live.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff)).map((g) => homeTile({ ...base(g), live: true, ...line(g), sc: LIVE_SC[g.key] || null, res: (as, hs) => nflRes(g, as, hs) })).join("")
       : nx ? homeTile({ ...base(nx), time: tm(nx.kickoff) }) : "";
     out += homeSection("NFL", live.length > 0, nx ? { ts: new Date(nx.kickoff).getTime() } : null, tiles);
   }
@@ -1382,7 +1406,7 @@ function renderHome() {
     const rec = (g, t) => { const c = g.context && g.context[t === g.home ? "home" : "away"]; if (!c || !c.gp) return ""; const w = Math.round((c.win_pct || 0) * c.gp); return `${w}–${c.gp - w}`; };
     const pct = (g) => { const m = g.poly && g.poly.ml; if (!m) return null; const h = m.midHome ?? m.home, a = m.midAway ?? m.away; return h > 0 && a > 0 ? (100 * a) / (a + h) : null; };
     const base = (g) => ({ key: g.key, attr: "data-nbagame", away: g.away, home: g.home, aLogo: lg(g.away), hLogo: lg(g.home), aRec: rec(g, g.away), hRec: rec(g, g.home), pct: pct(g) });
-    const tiles = live.length ? live.sort((a, b) => Date.parse(a.start) - Date.parse(b.start)).map((g) => homeTile({ ...base(g), live: true, ...line(g), sc: NBL[g.key] || null })).join("")
+    const tiles = live.length ? live.sort((a, b) => Date.parse(a.start) - Date.parse(b.start)).map((g) => homeTile({ ...base(g), live: true, ...line(g), sc: NBL[g.key] || null, res: (as, hs) => { const L = g.locked; return L ? resLine(["spread", "total", "ml"].map((k) => L[k] && L[k].plain), g.away, g.home, as, hs) : ""; } })).join("")
       : nx ? homeTile({ ...base(nx), time: tm(nx.start) }) : "";
     out += homeSection("NBA", live.length > 0, nx ? { ts: Date.parse(nx.start) } : null, tiles);
   }
