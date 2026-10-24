@@ -230,7 +230,9 @@ const injList = (g) => { const j = g.injuries || {}; return [...(j.away || []).m
 function injPill(g, id) { const n = injList(g).length; return n ? `<div class="btns"><button class="tag" data-drop="${id}">Injuries ${n} ▾</button></div>` : ""; }
 function injDrop(g, id) {
   const inj = injList(g); if (!inj.length) return "";
-  return `<div class="drop" id="${id}">` + inj.map((p) => `<div class="drow"><span>${tlogo(p.t)}${esc(p.name)} <span class="dim">· ${esc(p.t)}</span></span><span class="${/out|doubtful/i.test(p.status) ? "r" : "y"}">${esc(p.status)} · ${p.ppg} ppg</span></div>`).join("") + `</div>`;
+  // 10/23 (design = both sports): the same header line as the NFL box -- where the list came from and when
+  const src = S && S.injuriesSource === "nba-official" ? "Official report + ESPN" : "ESPN";
+  return `<div class="drop" id="${id}"><div class="s" style="margin-bottom:4px">${src} · updated ${hm(S && S.injuriesUpdated)}</div>` + inj.map((p) => `<div class="drow"><span>${tlogo(p.t)}${esc(p.name)} <span class="dim">· ${esc(p.t)}</span></span><span class="${/out|doubtful/i.test(p.status) ? "r" : "y"}">${esc(p.status)} · ${p.ppg} ppg</span></div>`).join("") + `</div>`;
 }
 // 10/22 (owner: "only 1 information button next to the model header and it will explain everything in it"): one ⓘ per model section,
 // a tap opens a short box right under the header (the tap is handled in public/shell.js). Model lines read white labels + colored numbers.

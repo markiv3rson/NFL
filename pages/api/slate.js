@@ -19,8 +19,8 @@ export default async function handler(req, res) {
     // 10/19 (owner: "after sunday games are done i need to start seeing week 7 on monday except for the week 6 monday game"): the pages show
     // lib/games.js displayWeek -- the next week once only the current week's Monday game is left, with that game on top (carry, its own week's data).
     const dw = req.query.week ? null : await displayWeek().catch(() => null);
-    const data = await buildWeek({ week: Number(req.query.week) || (dw ? dw.week : undefined), injuries, injuriesPrev: inj ? inj.prev : null });
-    const carryData = dw && dw.carry.length ? await buildWeek({ week: dw.cur, injuries, injuriesPrev: inj ? inj.prev : null, only: dw.carry }).catch(() => null) : null;
+    const data = await buildWeek({ week: Number(req.query.week) || (dw ? dw.week : undefined), injuries, injuriesPrev: inj ? inj.prev : null, injuriesAt: inj ? inj.updated : null });
+    const carryData = dw && dw.carry.length ? await buildWeek({ week: dw.cur, injuries, injuriesPrev: inj ? inj.prev : null, injuriesAt: inj ? inj.updated : null, only: dw.carry }).catch(() => null) : null;
     if (cacheable) await recordSgp(data, setJSON).catch(() => 0);   // same-game parlays saved until kickoff, then graded (10/14)
     if (cacheable && carryData) await recordSgp(carryData, setJSON).catch(() => 0);   // the Monday game's own (week 6) copy
     const own = data.games;   // the shown week's own games: status, week check and watchdog stay about them
