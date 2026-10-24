@@ -1098,6 +1098,19 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(L.map((x) => x.name).join("") === "EBAD" && L[2].shown === "DNP (practice)" && L[3].shown === "Limited (practice)" && !L[0].shown, "injuries: Out/Questionable first, then DNP and Limited (labeled); full practice left out");
     const card = ctx.T.gameCard({ ...tg, injuries: L.map((x) => ({ ...x, team: "PIT", pos: "WR", week: 5 })) }, "x");
     ok(/Injuries 4/.test(card) && /DNP \(practice\)/.test(card), "injuries: the button shows with practice-only notes"); }
+  { // 10/23: ESPN statuses posted after the official copy replace the practice tags in the Injuries box
+    const { injDisplay, injWithEspn } = await import("../lib/week.js");
+    const base = injDisplay([{ name: "Trent McDuffie", status: "Did Not Participate In Practice", team: "LA", week: 7 }, { name: "Quay Walker", status: "Limited Participation in Practice", team: "LV", week: 7 }, { name: "Old Guy", status: "Limited Participation in Practice", team: "LV", week: 7 }]);
+    const espnT = { LA: [{ name: "Trent McDuffie", status: "Questionable", date: "2026-10-23T23:40Z" }, { name: "Nate Landman", pos: "LB", status: "Out", date: "2026-10-23T23:34Z" }, { name: "Stale Out", status: "Out", date: "2026-10-23T10:00Z" }],
+      LV: [{ name: "Quay Walker", status: "Active", date: "2026-10-24T00:04Z" }, { name: "Healthy Guy", status: "Active", date: "2026-10-24T00:04Z" }, { name: "Last Week", status: "Out", date: "2026-10-17T00:00Z" }] };
+    const M = injWithEspn(base, espnT, ["LA", "LV"], "2026-10-23T12:34Z", { LA: Date.parse("2026-10-12T20:00Z"), LV: Date.parse("2026-10-19T00:15Z") });
+    const by = Object.fromEntries(M.list.map((x) => [x.name, x]));
+    ok(by["Trent McDuffie"].status === "Questionable" && !by["Trent McDuffie"].shown && by["Nate Landman"].status === "Out" && by["Nate Landman"].team === "LA"
+      && by["Quay Walker"].shown === "No designation" && by["Old Guy"].shown === "Limited (practice)" && !by["Stale Out"] && !by["Healthy Guy"] && !by["Last Week"]
+      && M.list[0].name === "Nate Landman" && M.list[M.list.length - 1].name === "Quay Walker" && M.t === "2026-10-24T00:04:00.000Z",
+      "injuries: newer ESPN statuses replace the official copy's practice tags (Out added, Questionable, no designation), older ESPN rows ignored");
+    const card = ctx.T.gameCard({ ...tg, injuries: M.list.map((x) => ({ ...x, pos: x.pos || "LB" })), injEspnAt: M.t }, "x");
+    ok(/Official report \+ ESPN/.test(card) && /No designation/.test(card), "injuries: the box says Official report + ESPN when ESPN statuses are used"); }
   { // ESPN kickoff overrides a stale schedule time (10/7: CHI @ GB moved to 4:25 ET; nflverse still said 1:00)
     const { overlayEspnKickoffs, kickoffsFromScoreboard, resetKickCache } = await import("../lib/espnFinals.js");
     const sb = { events: [{ date: "2026-10-11T20:25Z", competitions: [{ competitors: [{ homeAway: "home", team: { displayName: "Green Bay Packers" } }, { homeAway: "away", team: { displayName: "Chicago Bears" } }] }] },
