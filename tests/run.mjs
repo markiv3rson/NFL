@@ -120,7 +120,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ctx.window = ctx; ctx.addEventListener = () => {}; ctx.body = undefined;
   vm.createContext(ctx);
   vm.runInContext(readFileSync(new URL("../public/shell.js", import.meta.url), "utf8"), ctx);   // 10/17: the shared menu / header script loads first, as on the page
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={tdNameEq,recTile,tdWeekGames,injLine,mktHome,tdPct,plural,pBlock,plPay,linkedPay,plTap,plShown,plKey,PLC,sgpBox,labParlays,renderLabList,logoLabel,tdTeam,legName,moreBox,slotOf,parlayPicks,parlayStrip,lineCheck,recLine,bestBets,injTag,weakLeg,kickLine,tdNoGap,tdHead,tdWeekLine,tdDrought,tdWarn,tdScoredRecent,tdCut,propLast,trackedRows,renderLines,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,earlyNote,leanCell,betRow,moveBits,winnersBox,winnerOf,tile,tdRow,gameCard,totalCard,detailTop,renderMine,gbgHtml,renderLab,renderModel,renderTd,betsSummary,cardRecBox,legPct,cardBody,betsAnalysis,keepOpenState,winnersBands,mSec,legFlipped,betSlots,openBySlot,straightPicks,sgpBox,glowOf,stampFor,betRow};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={pickRes,tdNameEq,recTile,tdWeekGames,injLine,mktHome,tdPct,plural,pBlock,plPay,linkedPay,plTap,plShown,plKey,PLC,sgpBox,labParlays,renderLabList,logoLabel,tdTeam,legName,moreBox,slotOf,parlayPicks,parlayStrip,lineCheck,recLine,bestBets,injTag,weakLeg,kickLine,tdNoGap,tdHead,tdWeekLine,tdDrought,tdWarn,tdScoredRecent,tdCut,propLast,trackedRows,renderLines,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,earlyNote,leanCell,betRow,moveBits,winnersBox,winnerOf,tile,tdRow,gameCard,totalCard,detailTop,renderMine,gbgHtml,renderLab,renderModel,renderTd,betsSummary,cardRecBox,legPct,cardBody,betsAnalysis,keepOpenState,winnersBands,mSec,legFlipped,betSlots,openBySlot,straightPicks,sgpBox,glowOf,stampFor,betRow};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   g = { away: "A", home: "H", model: { total: 44.4, fix: { dome: 2.59, pace: 0.1, div: true } }, poly: { total: { line: 45.5 } } };
@@ -398,6 +398,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   vm.runInContext(`S = { games: [] }`, ctx);
   const tg = { key: "PIT @ CLE", away: "PIT", home: "CLE", kickoff: "2026-10-02T00:15:00Z", started: false, final: false, winPct: 40, badge: "TNF", td: [] };
   const tl = ctx.T.tile(tg);
+  { // 10/23: a finished tile shows the locked picks with ✓ / ✗ (saved grade first, else graded from the final score)
+    const fin = ctx.T.tile({ ...tg, started: true, final: true, awayScore: 24, homeScore: 30, lockedPicks: { spread: { pick: "CLE -2.5", result: null }, total: { pick: "Over 55.5", result: null }, ml: { pick: "PIT ML", result: "L" } } });
+    const pr = ctx.T.pickRes;
+    ok(/class="tres"/.test(fin) && /<span class="g">CLE -2\.5 ✓<\/span>/.test(fin) && /<span class="r">O 55\.5 ✗<\/span>/.test(fin) && /<span class="r">PIT ML ✗<\/span>/.test(fin) && !/class="tres"/.test(ctx.T.tile(tg))
+      && pr("CLE -6", "PIT", "CLE", 24, 30) === "P" && pr("PIT +6.5", "PIT", "CLE", 24, 30) === "W" && pr("Under 54", "PIT", "CLE", 24, 30) === "P" && pr("CLE ML", "PIT", "CLE", 24, 30) === "W",
+      "tile: a finished game shows its locked picks ✓ / ✗ (grade from the score when the saved grade is not in yet); upcoming tiles show none", fin); }
   ok(tl.indexOf(">PIT<") < tl.indexOf(">CLE<") && /<span class="mkt">60<\/span><span class="dim"> · <\/span><span class="dim">40<\/span>/.test(tl) && /TNF/.test(tl) && !/GAP/.test(tl), "tile: away name left, home name right, away 60 · home 40, TNF chip, no price-gap chip", tl);
   { const half = ctx.T.tile({ ...tg, winPct: 39.5 }), nums = (half.match(/<span class="(?:mkt|dim)">(\d+)<\/span><span class="dim"> · /) || [])[1], nums2 = (half.match(/ · <\/span><span class="(?:mkt|dim)">(\d+)<\/span>/) || [])[1];
     ok(Number(nums) + Number(nums2) === 100, "tile: the two percentages always add to 100 (60.5 and 39.5 do not both round up)", half); }

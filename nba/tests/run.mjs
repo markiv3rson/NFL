@@ -1076,7 +1076,23 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
     ok(bands[65] && bands[65].n === 50 && Math.abs(bands[65].won - 0.7) < 1e-9 && Math.abs(ce - (e + (0.7 - e) * 50 / 150)) < 1e-6 && c === 0.82 && pr.calibrate(0.72, bands) === 0.72,
       "prop calibration (10/22): a leg's chance moves toward what its 5-point band really won, shrunk by 100 graded rows (82% band won 70% of 50 -> 78%); a band with no graded rows keeps the model's %", { bands, c }); }
   for (const g of G) { await R.del(pr.K_NBAPROPMODEL(D, g.key)); await R.del(pr.K_NBAPROPS(D, g.key)); }
-  const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8"), sl = readFileSync(new URL("../lib/slate.js", import.meta.url), "utf8");
+  { // BOOK GAP (10/24): books 1-4 pts (spread) / 2-6 pts (total) off Polymarket's main line, books pulled in the last 6 h -> the books' side at Polymarket's number
+  const T = new Date(Date.now() - 3600e3).toISOString(), old = new Date(Date.now() - 7 * 3600e3).toISOString();
+  const bg = (books, at = T, over = {}) => cp.buildCard(mk("OKC", "ATL", { books, booksAt: at, ...over }));
+  const sp = bg({ spread: { homeSpread: -10.5 }, total: { line: 227 } });
+  ok(sp.spread.plain.ruleId === "bookgap|spread" && sp.spread.plain.pick === "ATL -8.5" && sp.spread.plain.hit === 59.7 && sp.spread.plain.id === "cardpick|spread", "BOOK GAP spread: books ATL -10.5 vs Polymarket -8.5 -> ATL -8.5 at 59.7%", sp.spread.plain);
+  ok(sp.total.plain.ruleId === "bookgap|total" && sp.total.plain.pick === "Over 223.5" && sp.total.plain.hit === 64.1, "BOOK GAP total: books 227 vs Polymarket 223.5 -> Over 223.5 at 64.1%", sp.total.plain);
+  { const o2 = sp.total.rows.find((r) => r.side === "over" && r.points === 2), a2 = sp.spread.rows.find((r) => r.team === "ATL" && r.points === 2), a3 = sp.spread.rows.find((r) => r.team === "ATL" && r.points === 3);
+    ok(o2 && o2.hit === 66.7 && a2 && a2.hit === 65.4 && a3 && a3.hit === 70 && sp.total.pts && sp.total.pts.hit === 66.7,
+      "BOOK GAP bought lines read the rule's own measured rates on real Polymarket closes (Over +2 66.7%, ATL +2 pts 65.4%, +3 70.0%), not the main-line lift", { o2, a2, a3, pts: sp.total.pts }); }
+  const dog = bg({ spread: { homeSpread: -6.5 }, total: { line: 220 } });
+  ok(dog.spread.plain.pick === "OKC +8.5" && dog.total.plain.pick === "Under 223.5", "BOOK GAP the other way: books ATL -6.5 -> OKC +8.5; books 220 -> Under", [dog.spread.plain.pick, dog.total.plain.pick]);
+  const small = bg({ spread: { homeSpread: -9 }, total: { line: 224.5 } }), big = bg({ spread: { homeSpread: -14.5 }, total: { line: 233 } }), stale = bg({ spread: { homeSpread: -10.5 }, total: { line: 227 } }, old), nob = bg(null);
+  ok(small.spread.plain.ruleId === "model|spread" && small.total.plain.ruleId === "model|total" && big.spread.plain.ruleId === "model|spread" && big.total.plain.ruleId === "model|total" && stale.spread.plain.ruleId === "model|spread" && nob.total.plain.ruleId === "model|total",
+    "no BOOK GAP under 1 pt / 2 pts, over 4 / 6 pts (bad read), with books older than 6 h or no books: the model's side");
+  const lmv = bg({ spread: { homeSpread: -10.5 } }, T, { move: { signal: { spread: { team: "OKC", open: 8.5, pts: 3 } } } });
+  ok(lmv.spread.plain.ruleId === "linemove|spread" && lmv.spread.plain.hit === 67.9, "LINE MOVE at the open (67.9%) outranks BOOK GAP (59.7%)", lmv.spread.plain); }
+const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8"), sl = readFileSync(new URL("../lib/slate.js", import.meta.url), "utf8");
   ok(/\["pp10", "Prop Parlays · 10 Leg"\]/.test(app) && /pp10: "Prop Parlays · 10 legs"/.test(app) && !/\["best4", "Parlay"\]/.test(app) && /Props · 77¢\+ hidden rows/.test(app) && /Props · star out → teammates Over/.test(app) && /buildPropParlays\(d, out, now, legs\)/.test(sl) && /buildSameGame4\(d, out, now, legs\)/.test(sl) && /l\.market !== "prop"/.test(sl),
     "Prop Parlays: Model bets tabs 6 / 8 / 10 Leg (no Parlay tab), scoreboard rows per size, the two shadow rows on Models; built on the slate; never sent for a Polymarket combo quote"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`);

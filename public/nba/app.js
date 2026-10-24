@@ -134,6 +134,27 @@ async function loadLiveScores() {
   if (!S || !S.games.some((g) => g.inProgress)) return;
   try { const d = await (await fetch("/api/nba/live", { cache: "no-store" })).json(); if (d && d.ok) { NBL = d.scores || {}; if ($("panel-lines").classList.contains("on")) { const open = [...document.querySelectorAll(".drop.open")].map((e) => e.id).filter(Boolean); renderLines(); for (const id of open) { const e = $(id); if (e) e.classList.add("open"); } } else if ($("panel-record").classList.contains("on") && BETS) renderBets(); } } catch {}
 }
+// 10/23 (owner: "If the game is done can you put the models win/lost?"): a finished tile shows the card's picks locked at kickoff / tip-off,
+// ✓ green / ✗ red / push gray. The saved grade when there is one, else graded here from the final score (the grade run comes later at night).
+const normRes = (r) => (r === "W" || r === "win" ? "W" : r === "L" || r === "loss" ? "L" : r === "P" || r === "push" ? "P" : r === "void" ? "V" : null);
+function pickRes(label, away, home, as, hs) {
+  const s = String(label || "").replace(/−/g, "-").trim(), num = (x) => (/^pk$/i.test(x) ? 0 : Number(x));
+  if (!isFinite(as) || !isFinite(hs)) return null;
+  let m = s.match(/^(Over|Under) ([\d.]+)$/i);
+  if (m) { const d = as + hs - Number(m[2]); return d === 0 ? "P" : (d > 0) === /^o/i.test(m[1]) ? "W" : "L"; }
+  m = s.match(/^(\S+) ML$/i);
+  if (m) { const mine = m[1] === away ? as : m[1] === home ? hs : null; if (mine == null) return null; const o = m[1] === away ? hs : as; return mine === o ? "P" : mine > o ? "W" : "L"; }
+  m = s.match(/^(\S+) ([+-]?[\d.]+|pk)$/i);
+  if (m) { const mine = m[1] === away ? as : m[1] === home ? hs : null; if (mine == null) return null; const d = mine + num(m[2]) - (m[1] === away ? hs : as); return d === 0 ? "P" : d > 0 ? "W" : "L"; }
+  return null;
+}
+function resLine(picks, away, home, as, hs) {
+  const out = (picks || []).filter((p) => p && p.label).map((p) => {
+    const r = normRes(p.result) || pickRes(p.label, away, home, as, hs), lbl = String(p.label).replace(/^Over /, "O ").replace(/^Under /, "U ");
+    return `<span class="${r === "W" ? "g" : r === "L" ? "r" : "dim"}">${esc(lbl)} ${r === "W" ? "✓" : r === "L" ? "✗" : r === "P" ? "push" : r === "V" ? "void" : ""}</span>`;
+  });
+  return out.length ? `<div class="tres">${out.join('<span class="dim"> · </span>')}</div>` : "";
+}
 function tile(g) {
   const sc = scOf(g), fin = isFinal(g), live = g.inProgress && !fin;
   const hp0 = mktWin(g), hp = hp0 ? hp0.home * 100 : null, ap = hp == null ? null : 100 - hp;
@@ -144,8 +165,9 @@ function tile(g) {
   const mid = sc && (sc.st === "in" || sc.st === "post") ? `<span class="mid lvmid"><span class="sr"><span class="${sc.a > sc.h ? "g" : "dim"}">${sc.a}</span><span class="dim"> – </span><span class="${sc.h > sc.a ? "g" : "dim"}">${sc.h}</span></span><span class="lv ${fin ? "dim" : "r"}">${fin ? "FINAL" : "● LIVE · " + esc(sc.lbl)}</span></span>` : mid0;
   // 10/18 (owner, same as NFL): logo + code + record each side, the % (or score) in the middle with the tip time + the pick / PRESEASON tag under it, the bar.
   // 10/18 evening (owner, sketch D): NO big faded logos and NO team colours behind the tile -- a plain 55% dark card so the page picture shows through.
+  const L = fin && g.locked, res = L ? resLine(["spread", "total", "ml"].map((k) => L[k] && L[k].plain), g.away, g.home, Number(sc.a), Number(sc.h)) : "";   // NBA: the card's PICK (spread, total) + the ML pick, locked at tip-off
   return `<button class="tile${live ? " live" : ""}" data-game="${esc(g.key)}">` +
-    `<div class="in"><div class="nm"><span class="t">${tlogo(g.away)}${g.away}${recOf(g, g.away)}</span><div class="tmid">${mid}${chips ? `<div class="s2">${chips}</div>` : ""}${moveLines(moveBits(g))}</div><span class="t hm">${g.home}${tlogo(g.home)}${recOf(g, g.home)}</span></div>${hp == null || sc ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
+    `<div class="in"><div class="nm"><span class="t">${tlogo(g.away)}${g.away}${recOf(g, g.away)}</span><div class="tmid">${mid}${res}${chips ? `<div class="s2">${chips}</div>` : ""}${moveLines(moveBits(g))}</div><span class="t hm">${g.home}${tlogo(g.home)}${recOf(g, g.home)}</span></div>${hp == null || sc ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
 }
 function renderLines() {
   if (!S) { $("lines").innerHTML = '<div class="s dim center">Loading…</div>'; return; }
@@ -246,7 +268,7 @@ const MODEL_INFO = {
     ["Pick w/ points:", "same side with bought points that won 56%+."], ["MORE list:", "every line, Over and Under: points bought · history win % · Polymarket price."]],
   ml: [["Model:", "the model’s own chance each team wins."], ["PICK:", "the market’s favorite and its chance with Polymarket’s fee taken out."]],
 };
-const CARD_INFO = [["PICK:", "the card’s bet at Polymarket’s main line, locked at tip-off."], ["LINE MOVE / FATIGUE / ATS REGRESSION:", "the tested rules that named a PICK."],
+const CARD_INFO = [["PICK:", "the card’s bet at Polymarket’s main line, locked at tip-off."], ["LINE MOVE / BOOK GAP / FATIGUE / ATS REGRESSION / SHOT QUALITY:", "the tested rules that named a PICK."],
   ["PICK w/ POINTS:", "the same side with bought points that won 56%+."], ["MODEL SIDE:", "no rule fired; the model’s side (about 50%)."],
   ["MONEYLINE:", "the market’s favorite to win."], ["GREEN 56%+:", "every pick shown green; “said” = the average % shown."], ["PRESEASON TEST:", "preseason games, not in the season record."]];
 const SHADOW_INFO = [["Test picks,", "never shown on a card: recorded and graded live. One becomes a pick only after it holds 56%+ over about 100 games."],
@@ -562,7 +584,7 @@ function renderModels() {
   const board = `<div class="s"><b>This season · hit vs said · money · past</b></div>` + Object.entries(PTYPES).map(([k, lab]) => { const b = pl[k];
     return `<div class="row"><span>${esc(lab)}</span><span>${b && b.decided ? `${b.hits}–${b.decided - b.hits} · ${b.pct}% <span class="dim">said ${b.said}%</span> <span class="${b.money >= 0 ? "g" : "r"}">${b.money >= 0 ? "+" : "−"}$${Math.abs(Math.round(b.money))}</span>` : b && b.pending ? `<span class="dim">${plural(b.pending, "open")}</span>` : '<span class="dim">waiting</span>'}${PH[k] ? ` · <span class="dim">${PH[k]}</span>` : ""}</span></div>`; }).join("");
   // card picks: PICK (rule / model side), PICK w/ POINTS, moneyline; shadow trackers below
-  const cardRows = `<div class="s ihd"><b>Card picks</b>${IBTN}</div>` + ibox(CARD_INFO) + REC_HEAD + recRow("PICK · spread", rc["cardpick|spread"]) + recRow("LINE MOVE · spread", rc["rule:linemove|spread"]) + recRow("FATIGUE · spread", rc["rule:fatigue|spread"]) + recRow("ATS REGRESSION · spread", rc["rule:atsreg|spread"]) + recRow("PICK w/ POINTS · spread", rc["ptspick|spread"]) + recRow("PICK · total", rc["cardpick|total"]) + recRow("TOTAL MOVE · total", rc["rule:linemove|total"]) + recRow("SHOT QUALITY · total", rc["rule:shotq|total"]) + recRow("PICK w/ POINTS · total", rc["ptspick|total"]) +
+  const cardRows = `<div class="s ihd"><b>Card picks</b>${IBTN}</div>` + ibox(CARD_INFO) + REC_HEAD + recRow("PICK · spread", rc["cardpick|spread"]) + recRow("LINE MOVE · spread", rc["rule:linemove|spread"]) + recRow("BOOK GAP · spread", rc["rule:bookgap|spread"]) + recRow("FATIGUE · spread", rc["rule:fatigue|spread"]) + recRow("ATS REGRESSION · spread", rc["rule:atsreg|spread"]) + recRow("PICK w/ POINTS · spread", rc["ptspick|spread"]) + recRow("PICK · total", rc["cardpick|total"]) + recRow("TOTAL MOVE · total", rc["rule:linemove|total"]) + recRow("BOOK GAP · total", rc["rule:bookgap|total"]) + recRow("SHOT QUALITY · total", rc["rule:shotq|total"]) + recRow("PICK w/ POINTS · total", rc["ptspick|total"]) +
     recRow("MODEL SIDE · spread", rc["modelpick|spread"]) + recRow("MODEL SIDE · total", rc["modelpick|total"]) + recRow("MONEYLINE", rc.ml) + recRow("GREEN · 56%+", rc.green, true) + recRow("PRESEASON TEST", rc.test, true) +
     `<div class="s ihd"><b>Shadow trackers</b>${IBTN}</div>` + ibox(SHADOW_INFO) + REC_HEAD + recRow("LINE MOVE · at the open", mv.all) + recRow("LINE MOVE · at the number seen", mv["now:all"]) + recRow("INJURY · at the open", mv.inj) + recRow("INJURY · at the number seen", mv["now:inj"]) + recRow("Pinnacle vs Polymarket gap", mv.gap) + recRow("Books vs Polymarket gap", mv.bgap) +
     recRow("Props · 77¢+ hidden rows", (j.props || {}).dear || { w: 0, l: 0 }) + recRow("Props · star out → teammates Over", (j.props || {}).star || { w: 0, l: 0 }) +

@@ -229,3 +229,7 @@ body .labslot .lst { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Hel
   .ppr.pph .pp4 .pm, .ppr.tdh .pp4 .pm, .ppr.pph .pp4 .pm img { width:12px; height:12px; margin-right:0; }
   .ppr .pp4 .nogap { margin-left:2px; }
 }
+
+/* 10/23 (owner: "If the game is done can you put the models win/lost?"): a finished tile's locked picks, ✓ green / ✗ red (both sports) */
+.tile .tmid .tres { font-size:11px; font-weight:700; margin-top:3px; line-height:1.35; white-space:normal; } .tile .tmid .tres > span { white-space:nowrap; }
+.tile .tmid .tres .g { color:var(--green); } .tile .tmid .tres .r { color:var(--red); }

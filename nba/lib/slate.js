@@ -166,7 +166,7 @@ export async function buildSlate({ now = Date.now(), days = 1, events = null, in
     const m = byKey[g.key] || {};
     const row = { key: g.key, away: g.away, home: g.home, start: g.start, date: g.date, poly: g.poly,
       model: m.model || null, spread: m.spread || null, total: m.total || null, ml: m.ml || null, context: m.context || null,
-      injuries: m.injuries || { home: [], away: [] }, starOut: m.starOut || null, lines: m.lines || [], preseason: preOf(g), move: moves[g.key] || null, books: (bk && bk.games && booksCurrent(bk, now) && bk.games[g.key]) || null };
+      injuries: m.injuries || { home: [], away: [] }, starOut: m.starOut || null, lines: m.lines || [], preseason: preOf(g), move: moves[g.key] || null, books: (bk && bk.games && booksCurrent(bk, now) && bk.games[g.key]) || null, booksAt: (bk && bk.t) || null };
     // A game already under way: Polymarket's lines are live, but the patterns and win rates were tested on closing lines only,
     // so no PICK / LEAN / teaser is offered on it (picks seen before tip-off were already saved for the record).
     row.inProgress = now >= Date.parse(g.start);
