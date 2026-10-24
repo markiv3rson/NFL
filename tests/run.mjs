@@ -1095,15 +1095,20 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { // injury dropdown: game statuses first; practice-only notes (Wed-Thu) show too so it never vanishes midweek
     const { injDisplay } = await import("../lib/week.js");
     const L = injDisplay([{ name: "A", status: "Did Not Participate In Practice" }, { name: "B", status: "Questionable" }, { name: "C", status: "Full Participation in Practice" }, { name: "D", status: "Limited Participation in Practice" }, { name: "E", status: "Out" }]);
-    ok(L.map((x) => x.name).join("") === "EBAD" && L[2].shown === "DNP (practice)" && L[3].shown === "Limited (practice)" && !L[0].shown, "injuries: Out/Questionable first, then DNP and Limited (labeled); full practice left out");
+    ok(L.map((x) => x.name).join("") === "EBADC" && L[2].shown === "DNP (practice)" && L[3].shown === "Limited (practice)" && L[4].shown === "Full (practice)" && !L[0].shown, "injuries: Out/Questionable first, then DNP, Limited and Full practice (labeled)");
     const card = ctx.T.gameCard({ ...tg, injuries: L.map((x) => ({ ...x, team: "PIT", pos: "WR", week: 5 })) }, "x");
-    ok(/Injuries 4/.test(card) && /DNP \(practice\)/.test(card), "injuries: the button shows with practice-only notes"); }
+    ok(/Injuries 5/.test(card) && /DNP \(practice\)/.test(card) && /Full \(practice\)/.test(card), "injuries: the button shows with practice-only notes"); }
   { // 10/23: ESPN statuses posted after the official copy replace the practice tags in the Injuries box
     const { injDisplay, injWithEspn } = await import("../lib/week.js");
     const base = injDisplay([{ name: "Trent McDuffie", status: "Did Not Participate In Practice", team: "LA", week: 7 }, { name: "Quay Walker", status: "Limited Participation in Practice", team: "LV", week: 7 }, { name: "Old Guy", status: "Limited Participation in Practice", team: "LV", week: 7 }]);
     const espnT = { LA: [{ name: "Trent McDuffie", status: "Questionable", date: "2026-10-23T23:40Z" }, { name: "Nate Landman", pos: "LB", status: "Out", date: "2026-10-23T23:34Z" }, { name: "Stale Out", status: "Out", date: "2026-10-23T10:00Z" }],
       LV: [{ name: "Quay Walker", status: "Active", date: "2026-10-24T00:04Z" }, { name: "Healthy Guy", status: "Active", date: "2026-10-24T00:04Z" }, { name: "Last Week", status: "Out", date: "2026-10-17T00:00Z" }] };
     const M = injWithEspn(base, espnT, ["LA", "LV"], "2026-10-23T12:34Z", { LA: Date.parse("2026-10-12T20:00Z"), LV: Date.parse("2026-10-19T00:15Z") });
+    espnT.LV.push({ name: "Dont'e Thornton Jr.", pos: "WR", status: "Injured Reserve", date: "2026-10-23T23:43Z" }, { name: "Old IR", pos: "TE", status: "Injured Reserve", date: "2026-09-20T00:00Z" }, { name: "Banned Guy", status: "Suspension", date: "2026-10-01T00:00Z" });
+    const M2 = injWithEspn(base, espnT, ["LA", "LV"], "2026-10-23T12:34Z", { LA: Date.parse("2026-10-12T20:00Z"), LV: Date.parse("2026-10-19T00:15Z") });
+    const b2 = Object.fromEntries(M2.list.map((x) => [x.name, x]));
+    ok(b2["Dont'e Thornton Jr."].status === "Out (IR)" && b2["Old IR"].status === "Out (IR)" && b2["Banned Guy"].status === "Out (suspended)" && M2.list[0].name === "Nate Landman" && /^Out \(/.test(M2.list[1].status),
+      "injuries: reserve-list / suspended players show as Out (IR) / Out (suspended) whatever the note's date, listed right after Out");
     const by = Object.fromEntries(M.list.map((x) => [x.name, x]));
     ok(by["Trent McDuffie"].status === "Questionable" && !by["Trent McDuffie"].shown && by["Nate Landman"].status === "Out" && by["Nate Landman"].team === "LA"
       && by["Quay Walker"].shown === "No designation" && by["Old Guy"].shown === "Limited (practice)" && !by["Stale Out"] && !by["Healthy Guy"] && !by["Last Week"]
