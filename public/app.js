@@ -244,7 +244,7 @@ function gameCard(g, i) {
     return secRow("SPREAD &amp; ML", headPills(g, "l" + i)) + `<div class="card${g.final ? " fin " + finClass(g, "spread") : ""}" style="margin-top:10px"><div class="inner">${headDrops(g, "l" + i)}<div class="hd">MARKET</div><div class="mk">` +
       `<div><div class="k">SPORTSBOOK</div>${b.spread ? `${g.home} ${sgn(b.spread.homeSpread)} ${odds(b.spread.home.odds)}<div class="s">fair ${g.home} ${odds(toAmerican(b.spread.home.fair))} / ${g.away} ${odds(toAmerican(b.spread.away.fair))}</div>` : dash}</div>` +
       `<div>${pmHead(g, lv)}${poly}</div>` +
-      `</div><div class="hd hm ihd">MODEL${IBTN}</div>${ibox(MODEL_INFO.spread)}` + leanCell(g, "spread") +
+      `</div><div class="hd hm ihd">MODEL${IBTN}</div>${whyBox(g, "spread", MODEL_INFO.spread)}` + leanCell(g, "spread") +
       `</div>${cover(g, "spread")}</div>`;
   }
 }
@@ -260,7 +260,7 @@ function totalCard(g, i) {
     return secRow("TOTALS", headPills(g, "t" + i, true)) + `<div class="card${g.final ? " fin " + finClass(g, "total") : ""}" style="margin-top:10px"><div class="inner">${headDrops(g, "t" + i, true)}<div class="hd">MARKET</div><div class="mk">` +
       `<div><div class="k">SPORTSBOOK</div>${b.total ? `${b.total.line}<div class="s">O ${odds(b.total.over.odds)} · U ${odds(b.total.under.odds)}</div>` : dash}</div>` +
       `<div>${pmHead(g, lv, "total")}${poly}</div>` +
-      `</div><div class="hd hm ihd">MODEL${IBTN}</div>${ibox(MODEL_INFO.total)}` + leanCell(g, "total") +
+      `</div><div class="hd hm ihd">MODEL${IBTN}</div>${whyBox(g, "total", MODEL_INFO.total)}` + leanCell(g, "total") +
       `</div>${cover(g, "total")}</div>`;
   }
 }
@@ -707,9 +707,17 @@ function mSec(id, title, body, warn = 0, open = false) {
 // a tap opens a short box right under the header (the tap is handled in public/shell.js). Model lines read white labels + colored numbers.
 const IBTN = `<button class="ibtn" type="button" aria-label="What is this?"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6.6"/><line x1="8" y1="7.2" x2="8" y2="11.4"/><circle cx="8" cy="4.8" r=".6" fill="currentColor"/></svg></button>`;
 const ibox = (lines, st) => `<div class="ibox" hidden${st ? ` style="${st}"` : ""}>${lines.map(([k, t]) => `<div><b>${k}</b> ${t}</div>`).join("")}</div>`;
+// 10/26 (owner: "a reason why by all factors ... why it chose this or why it doesn't choose this"): the game's own facts (lib/why.js, `g.why`) sit on top
+// of the MODEL ⓘ box -- one line per factor, + for the PICK's side, − against, · neither -- then the glossary. Still opens only on the tap.
+const whyMark = (s) => `<span class="wm${s > 0 ? " wf" : s < 0 ? " wa" : ""}">${s > 0 ? "+" : s < 0 ? "−" : "·"}</span>`;
+function whyBox(g, kind, info) {
+  const W = g && g.why ? (g.why[kind] || []).concat(kind === "spread" ? g.why.ml || [] : []) : [];
+  const own = W.length ? `<div class="wh">THIS GAME · + for the pick · − against</div>` + W.map(([k, t, s]) => `<div>${whyMark(s)}<b>${esc(k)}</b> ${esc(t)}</div>`).join("") + `<div class="wsep"></div>` : "";
+  return `<div class="ibox" hidden>${own}${info.map(([k, t]) => `<div><b>${k}</b> ${t}</div>`).join("")}</div>`;
+}
 const MODEL_INFO = {
   spread: [["Model:", "the game model’s score guess. Data only."], ["Model (Team):", "team-stats model at Polymarket’s line; it becomes the PICK at 58%+ sure, but not once the line has moved 1+ point its way."],
-    ["Model (Stack):", "everything the app knows in one model. With no tested rule it names the PICK."], ["Pick:", "the bet at Polymarket’s main line, from a tested rule (LINE MOVE, TEAM MODEL, OVERSHOOT, INJURY, BOUNCE BACK), else the Stack model’s side. Green 56%+, light green 53–55%, yellow below."], ["OVERSHOOT:", "the line moved 1+ point toward a side the game model still likes by 2+; the other side won 57% (242 games 2014-25)."], ["ML pick:", "the favorite’s moneyline when the Stack model backs the favorite and is priced 50–70% (won 67.7–69.7% in 2022-25, priced 56–65%)."],
+    ["Model (Stack):", "everything the app knows in one model. With no tested rule it names the PICK."], ["Pick:", "the bet at Polymarket’s main line, from a tested rule (LINE MOVE, TEAM MODEL, OVERSHOOT, INJURY, BOUNCE BACK), else the Stack model’s side. Green 56%+, light green 53–55%, yellow below."], ["OVERSHOOT:", "the line moved 1+ point toward a side the game model still likes by 2+; the other side won 57% (242 games 2014-25)."], ["ML pick:", "the favorite’s moneyline when the Stack model backs the favorite and is priced 50–70% (won 67.7–69.7% in 2022-25, priced 56–65%); or the team model’s side when it is 58%+ sure and the line moved 1+ point against it (favorites won 77%, underdogs priced 30–50¢ won 57%, 2014-25)."],
     ["Pick w/ points:", "same side, the fewest bought points (1–2) that won 56%+."], ["MORE list:", "every line within 2 points: points bought · history win % · Polymarket price."]],
   total: [["Model:", "the game model’s total points guess. Data only."], ["Pick:", "Over or Under at Polymarket’s main total, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
     ["Pick w/ points:", "same side, the fewest bought points (1–2) that won 56%+."], ["MORE list:", "every line within 2 points: points bought · history win % · Polymarket price."]],

@@ -260,6 +260,13 @@ function injDrop(g, id) {
 // a tap opens a short box right under the header (the tap is handled in public/shell.js). Model lines read white labels + colored numbers.
 const IBTN = `<button class="ibtn" type="button" aria-label="What is this?"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6.6"/><line x1="8" y1="7.2" x2="8" y2="11.4"/><circle cx="8" cy="4.8" r=".6" fill="currentColor"/></svg></button>`;
 const ibox = (lines, st) => `<div class="ibox" hidden${st ? ` style="${st}"` : ""}>${lines.map(([k, t]) => `<div><b>${k}</b> ${t}</div>`).join("")}</div>`;
+// 10/26 (owner, design = both sports): the game's own facts (nba/lib/why.js, `g.why`) on top of the MODEL ⓘ box -- + for the PICK's side, − against, · neither -- then the glossary
+const whyMark = (s) => `<span class="wm${s > 0 ? " wf" : s < 0 ? " wa" : ""}">${s > 0 ? "+" : s < 0 ? "−" : "·"}</span>`;
+function whyBox(g, kind, info) {
+  const W = g && g.why ? g.why[kind] || [] : [];
+  const own = W.length ? `<div class="wh">THIS GAME · + for the pick · − against</div>` + W.map(([k, t, s]) => `<div>${whyMark(s)}<b>${esc(k)}</b> ${esc(t)}</div>`).join("") + `<div class="wsep"></div>` : "";
+  return `<div class="ibox" hidden>${own}${info.map(([k, t]) => `<div><b>${k}</b> ${t}</div>`).join("")}</div>`;
+}
 const MODEL_INFO = {
   spread: [["Model:", "the game model’s score guess. Data only."], ["Model (Team):", "team-stats model at Polymarket’s line. Data only on NBA, never the pick."],
     ["Pick:", "the bet at Polymarket’s main line, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
@@ -309,7 +316,7 @@ function marketCard(g, kind, id) {
       + (p.ml ? row("Moneyline", `${g.home} ${odds(toAm(p.ml.home))}`, "mlc", !!p.spread) + row("", `${g.away} ${odds(toAm(p.ml.away))}`, "mlc") : "") : dash)
     : (p.total ? row(`Over ${p.total.line}`, odds(toAm(p.total.over)), "mkt") + row(`Under ${p.total.line}`, odds(toAm(p.total.under)), "mkt") : dash);
   const info = kind === "spread" ? MODEL_INFO.spread.concat([["ML pick:", MODEL_INFO.ml[1][1]]]) : MODEL_INFO.total;
-  return `<div class="card"><div class="inner">${id ? injDrop(g, id) : ""}<div class="hd">MARKET</div><div class="mk">${bookBox(g, kind)}<div>${pmHead(g)}${poly}${tipLine(g, kind)}</div></div><div class="hd hm ihd">MODEL${IBTN}</div>${ibox(info)}${modelCell(g, kind)}</div></div>`;
+  return `<div class="card"><div class="inner">${id ? injDrop(g, id) : ""}<div class="hd">MARKET</div><div class="mk">${bookBox(g, kind)}<div>${pmHead(g)}${poly}${tipLine(g, kind)}</div></div><div class="hd hm ihd">MODEL${IBTN}</div>${whyBox(g, kind, info)}${modelCell(g, kind)}</div></div>`;
 }
 // same-game parlays of this game (lib/parlays.js): 2 legs on Polymarket's lines, 2 legs on bought lines
 function sgpBox(g) {

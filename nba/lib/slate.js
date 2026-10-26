@@ -7,6 +7,7 @@ import { modelBase, modelHeaders } from "./model";
 import { getRedis, jparse } from "./redis";
 import { recordPicks, lockedFor } from "./record";
 import { buildCard, cardLegs, isGreen } from "./cardpick";
+import { gameWhy } from "./why";
 import { buildParlays, buildPropParlays, buildSameGame4, recordParlays } from "./parlays";
 import { saveParlayList } from "../../lib/comboquote";   // 10/17: real Polymarket parlay prices (shared with NFL: one Polymarket account, one request a second)
 import { recordCloses, closeKey } from "./closes";
@@ -173,6 +174,7 @@ export async function buildSlate({ now = Date.now(), days = 1, events = null, in
     if (row.inProgress) for (const k of ["spread", "total", "ml"]) if (row[k] && row[k].pick) row[k] = { ...row[k], pick: { ...row[k].pick, tier: "none" } };
     if (m.context) { const o = otByDate[g.date]; const fh = fatigueOf(m.context.home, g.home, o), fa = fatigueOf(m.context.away, g.away, o); if (fh || fa) row.fatigue = { home: fh, away: fa }; }
     row.card = m.model ? buildCard(row) : null;          // PICK / PICK w/ POINTS / every buyable line (lib/cardpick.js)
+    row.why = row.card && !row.inProgress ? gameWhy({ ...row, now }, now) : null;   // 10/26: the per-game facts for the MODEL ⓘ box (lib/why.js), display only
     if (row.inProgress) row.locked = locked[g.key] || null;
     if (row.inProgress) row.close = closes[g.key] || null;   // the picks saved before tip-off, with W / L once graded
     return row;

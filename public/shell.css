@@ -233,3 +233,10 @@ body .labslot .lst { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Hel
 /* 10/23 (owner: "If the game is done can you put the models win/lost?"): a finished tile's locked picks, ✓ green / ✗ red (both sports) */
 .tile .tmid .tres { font-size:11px; font-weight:700; margin-top:3px; line-height:1.35; white-space:normal; } .tile .tmid .tres > span { white-space:nowrap; }
 .tile .tmid .tres .g { color:var(--green); } .tile .tmid .tres .r { color:var(--red); }
+/* 10/26 (owner: "a little information button on the models cards where it tells us a reason why by all factors"; both sports): the game's own
+   facts sit on top of the ⓘ box -- a small THIS GAME head, one line per factor with a mark (+ for the PICK side, − against, · neither), then a
+   thin line and the glossary that was there before. Opens on the tap only, like before. */
+.ibox .wh { font-size:10px; letter-spacing:.06em; font-weight:800; color:rgba(255,255,255,.55); }
+.ibox .wm { display:inline-block; width:13px; font-weight:900; color:rgba(255,255,255,.45); }
+.ibox .wm.wf { color:var(--green); } .ibox .wm.wa { color:var(--red); }
+.ibox .wsep { border-top:1px solid rgba(255,255,255,.18); margin:3px 0; }
