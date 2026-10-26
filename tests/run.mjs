@@ -1826,6 +1826,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(n1 === 1 && n2 === 0, "TD JUMP: only a rise of 10+ points to 25%+ is recorded (X.Back 22 -> 41; Y.Wide +6 and Z.End 24% are not), once per player", { n1, n2 });
   await tr.gradeTdJumps(2099, 1, { key: "A @ B" }, [{ player: "X.Back", team: "A", scored: true }]);
   const row = JSON.parse(await R.hget(tr.tkey(2099, 1), "A @ B|tdjump|X.Back")); ok(row.result === "W" && row.prevFair === 22 && row.fair === 41, "TD JUMP graded from the game's TD list", row);
+  { // 10/26: a jumped player who dropped off the kickoff TD list is decided by the outcome callback (no snap = push, snap = scored or not); undecided stays pending
+    await R.hset(tr.tkey(2099, 1), "A @ B|tdjump|Off.List", JSON.stringify({ game: "A @ B", week: 1, kind: "td", tdjump: true, player: "Off.List", team: "A", fair: 37, prevFair: 18 }));
+    await R.hset(tr.tkey(2099, 1), "A @ B|tdjump|Wait.Snap", JSON.stringify({ game: "A @ B", week: 1, kind: "td", tdjump: true, player: "Wait.Snap", team: "A", fair: 30, prevFair: 15 }));
+    const n = await tr.gradeTdJumps(2099, 1, { key: "A @ B" }, [{ player: "X.Back", team: "A", scored: true }], async (leg) => leg.player === "Off.List" ? "P" : null);
+    const a = JSON.parse(await R.hget(tr.tkey(2099, 1), "A @ B|tdjump|Off.List")), b = JSON.parse(await R.hget(tr.tkey(2099, 1), "A @ B|tdjump|Wait.Snap"));
+    const gs = readFileSync(new URL("../lib/grade.js", import.meta.url), "utf8");
+    ok(n === 1 && a.result === "P" && !b.result && /jumpOutcome\(season, week, g, snaps\), jumps\)/.test(gs), "TD JUMP (10/26): a player off the kickoff list is graded from snaps + scorers (no snap = push), later passes finish pending rows", { a, b }); }
   await R.del(tr.tkey(2099, 1));
   ok(!/FIRST TD · TEAM MODEL/.test(ap) && !/firstBox/.test(ap) && !/FTD_OPEN/.test(ap) && /TD JUMP \(shadow\)/.test(ap), "Anytime TD page: NO First TD box (owner 10/20 night: it lives on the First TD tab only); Models: TD JUMP row");
   // 10/20 (owner): the FIRST TD TEAM MODEL -- which team scores first from the spread, each player = his team's chance x his share of the team
