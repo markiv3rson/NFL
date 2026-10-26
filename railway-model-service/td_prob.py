@@ -657,7 +657,7 @@ def run(team,opp,imp,outs=(),posadj=False,active=False,returning=(),quest=()):
     if posadj: df['o_rec']=df.pos.map(pos_rec(opp))
     # (Vacated-usage boost removed 9/30: handing an Out player's red-zone share to teammates tested WORSE in 7 of 7
     # seasons, 2019-25 -- the teammates' own usage already carries most of it, and the bump overshot.)
-    pb_=team_budget(shrink(m.predict_proba(design(df))[:,1]), imp)
+    pb_=wrte_shift(team_budget(shrink(m.predict_proba(design(df))[:,1]), imp), df.pos.values)   # 10/26: WR / TE at 45%+ run low
     playing_ = df.name.apply(lambda s: match_any(s, list(returning))).values if returning else None
     df['p']=touch_adjusted(df, pb_, team, active, playing_)   # 10/1: x the chance he plays AND touches the ball (falls back to the rank tilt)
     df['boosted'] = False
@@ -702,6 +702,18 @@ def team_budget(p, imp):
     if lam.sum() > 0:
         l2 = lam ** BUDGET_CONC; lam = l2 * lam.sum() / l2.sum()
     return 1 - np.exp(-lam)
+
+# WR / TE at a high chance (10/26): after the team budget, receivers and tight ends the model puts at 45%+ scored 40.1% vs 49.7% said
+# (673 rows 2019-25, under said in EVERY season: 32 / 46 / 41 / 41 / 46 / 43 / 40); running backs in the same band are not steady
+# either way, so they are left alone. A logit shift of half the full-sample gap (-0.196), ramped in from 42% to 48% so there is no step,
+# fit on the earlier seasons each time: Brier better in 5 of 5 seasons overall (0.15525 -> 0.15518) and on the rows it touches
+# (0.24534 -> 0.24295). Applied to the post-budget chance, before the availability tilt.
+WRTE_SHIFT, WRTE_RAMP = -0.196, (0.42, 0.48)
+def wrte_shift(p, pos):
+    p = np.clip(np.asarray(p, dtype=float), 1e-4, 1 - 1e-4); pos = np.asarray(pos)
+    w = np.clip((p - WRTE_RAMP[0]) / (WRTE_RAMP[1] - WRTE_RAMP[0]), 0, 1) * np.isin(pos, ['WR', 'TE'])
+    z = np.log(p / (1 - p)) + WRTE_SHIFT * w
+    return 1 / (1 + np.exp(-z))
 
 # Availability (10/1): the model learns from player-games where the player TOUCHED the ball, but the list holds every player
 # who has touched it this season, including ones who sit, are inactive, or play without a touch. Replayed on the live-style list
