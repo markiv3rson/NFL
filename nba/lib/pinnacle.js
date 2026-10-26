@@ -231,7 +231,10 @@ export async function recordBookGaps(games, booksAt, now = Date.now()) {
 //   restvstar  the team with 2+ more days of rest against an opponent missing its star:                 56.0% of 425 (52 / 59 / 57)
 //   restfav    a road favorite with 2+ more days of rest at a home underdog:                            57.6% of 311 (60 / 53 / 59)
 //   restlate   the team with 2+ more days of rest from mid-February on (season day 120+):                 59.7% of 196 unseen 2019-26 (found 54.8% of 409 on 2009-18)
-export const ANGLE_SHADOWS = { tired: [55.2, 1024], dogvtired: [56.2, 365], restvstar: [56.0, 425], restfav: [57.6, 311], restlate: [59.7, 196] };
+//   Totals (same scan, 2011-26 closes vs the service's walk-forward total; uneven by season, so shadows only):
+//   mtotlate   the model's total 8+ points off the line, from March 1 on (season day 130+): its side 57.0% of 481 (Over 58, Under 56; 2024 59% of 123, the rest 50-62)
+//   mtotstar   the model's total 8+ UNDER the line with a star out on either team: Under 60.2% of 256 (2025 40% of 15, the rest 53-69)
+export const ANGLE_SHADOWS = { tired: [55.2, 1024], dogvtired: [56.2, 365], restvstar: [56.0, 425], restfav: [57.6, 311], restlate: [59.7, 196], mtotlate: [57.0, 481], mtotstar: [60.2, 256] };
 const lateSeason = (date) => { const md = String(date || "").slice(5); return md >= "02-15" && md <= "04-30"; };
 export function angleSides(g) {
   const c = g && g.context, so = g && g.starOut, px = g && g.poly && g.poly.spread; if (!c || !c.home || !c.away || !px || px.homeSpread == null) return [];
@@ -244,15 +247,22 @@ export function angleSides(g) {
     if (ra - rh >= 2 && hs >= 1) out.push(["restfav", away]);
     if (lateSeason(g.date)) { if (rh - ra >= 2) out.push(["restlate", home]); else if (ra - rh >= 2) out.push(["restlate", away]); }
   }
-  return out.map(([kind, team]) => ({ kind, team, line: team === home ? hs : -hs }));
+  const rows = out.map(([kind, team]) => ({ kind, market: "spread", team, line: team === home ? hs : -hs }));
+  const mt = g.model && isFinite(Number(g.model.total)) ? Number(g.model.total) : null, tl = g.poly.total && isFinite(Number(g.poly.total.line)) ? Number(g.poly.total.line) : null;
+  if (mt != null && tl != null && Math.abs(mt - tl) >= 8) {
+    const side = mt > tl ? "over" : "under", md = String(g.date || "").slice(5);
+    if (md >= "03-01" && md <= "04-30") rows.push({ kind: "mtotlate", market: "total", side, line: tl });
+    if (side === "under" && (sth || sta)) rows.push({ kind: "mtotstar", market: "total", side, line: tl });
+  }
+  return rows;
 }
 export async function recordAngleShadows(games, now = Date.now()) {
   const r = getRedis(); let n = 0;
   for (const g of games) {
     if (now >= Date.parse(g.start)) continue;
     for (const x of angleSides(g)) {
-      const k = lmKey(g.date, g.key, `${x.kind}-spread`);
-      const ok = await r.set(k, JSON.stringify({ kind: x.kind, market: "spread", team: x.team, line: x.line, label: `${x.team} ${x.line > 0 ? "+" : ""}${x.line}`, date: g.date, game: g.key, start: g.start, t: new Date(now).toISOString() }), "NX").catch(() => null);
+      const k = lmKey(g.date, g.key, `${x.kind}-${x.market}`);
+      const ok = await r.set(k, JSON.stringify({ kind: x.kind, market: x.market, team: x.team, side: x.side, line: x.line, label: x.team ? `${x.team} ${x.line > 0 ? "+" : ""}${x.line}` : `${x.side} ${x.line}`, date: g.date, game: g.key, start: g.start, t: new Date(now).toISOString() }), "NX").catch(() => null);
       if (ok) { await r.sadd(LM_IDS, k).catch(() => {}); n++; }
     }
   }
