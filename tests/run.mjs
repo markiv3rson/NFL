@@ -861,6 +861,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
         ok(a1.spread.plain.pick === "NE -7.5" && a1.spread.plain.id === "modelpick|spread" && a1.spread.plain.hit === 50.6 && a1.total.plain.pick === "Over 42.5" && a1.total.plain.id === "modelpick|total" && a1.total.plain.hit === 51.7
           && a2.spread.plain.pick === "NYJ +7.5" && a2.total.plain.pick === "Under 42.5" && a3.spread.plain.pick === "NE -7.5",
           "card (10/15): no rule -> the model's side at the main line (NE by 7.8 vs NE -7.5 = NE -7.5; NE by 7.0 = NYJ +7.5; a tie goes to the favorite; total Over / Under by the model's number), shown at its honest 50.6% / 51.7% with its own record id", { a1: a1.spread.plain, a2: a2.spread.plain }); }
+      { // 10/24 night: the model-side total's more-points lines = 51.7 + the smallest history-group step from the main line (not the general lift)
+        const { totalRate } = await import("../lib/linetable.js"), T = 42.5, rec = { t: new Date().toISOString(), talts: [41.5, 40.5, 39.5].map((line) => ({ side: "over", line, price: 0.55 })) };
+        const c = buildCard({ ...NE, modelUp: { margin: 7.8, total: 44.8 } }, [], { ...ps(-7.5, 0.5), total: { line: T, over: 0.5, under: 0.5 } }, { total: { line: T } }, rec);
+        const t0 = totalRate(T, "over", T), want = (L) => { const t = totalRate(T, "over", L); return Math.round((51.7 + Math.min(...["c", "o", "r"].filter((k) => t0.parts[k] && t.parts[k]).map((k) => t.parts[k].raw - t0.parts[k].raw))) * 10) / 10; };
+        const rows = c.total.rows.filter((r) => r.side === "over" && r.points > 0);
+        ok(c.total.plain.id === "modelpick|total" && rows.length === 3 && rows.every((r) => r.hit === Math.max(want(r.line), 51.7) && !("step" in r)) && c.total.pts && c.total.pts.side === "over",
+          "model-side total (10/24 night): bought lines read 51.7% + the smallest group step (leave-one-season-out: chosen lines said 59.1, won 59.2; the general lift said 60.5, won 58.8)", rows.map((r) => [r.line, r.hit, want(r.line)])); }
       { // 10/22 (owner: "fix the problems only"): no tested rule -> STACK's side (shown at its band %) when the game has a STACK line; else the game model's side; a rule still wins
         const st = (team, pct, n, yv = 2) => ({ ...NE, modelUp: { margin: 7.8, total: 44.8 }, stackSide: { team, line: team === "NE" ? -7.5 : 7.5, pct, n, confident: pct > 55, yv } });
         const P = { ...ps(-7.5, 0.5), total: { line: 42.5, over: 0.5, under: 0.5 } };
