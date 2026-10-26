@@ -973,6 +973,14 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(teamModelPick({ key: "DDD @ CCC", away: "DDD", home: "CCC" }, -3, 7) === null, "team model under 58% sure (52.5%) -> no pick (a coin flip in the test)");
     ok(teamModelPick(g, -3, 8) === null && teamModelPick(g, 0, 7) === null && teamModelPick({ key: "X @ Y", away: "X", home: "Y" }, -3, 7) === null, "team model: no pick with last week's numbers, at a pick'em, or for a team it has no numbers for");
     ok(TEAM_BANDS[0][1] === 62.1 && TEAM_BANDS[1][0] === 0.58 && TEAM_BANDS[1][1] === 55.3, "team model band rates = the tested ones (10/20, no spread input: 60%+ 62.1%, 58-60% 55.3%)");
+    { // 10/26 angle mix: OVERSHOOT -- the game model likes a side by 2+ vs the current line AND the line moved 1+ that way since the week's first line -> the other side
+      const { overshootPick, OVERSHOOT } = await import("../lib/stack.js"), og = { key: "BBB @ AAA", away: "BBB", home: "AAA" };
+      const a = overshootPick(og, 6, -3.5, -2.5, 7), b = overshootPick(og, 6, -3.5, -3, 7), c = overshootPick(og, 4.5, -3.5, -2.5, 7), d = overshootPick(og, -5, 2.5, 1.5, 7), e = overshootPick(og, 6, -3.5, -2.5, 3), f = overshootPick(og, null, -3.5, -2.5, 7);
+      ok(a && a.id === "overshoot|spread" && a.pick === "BBB +3.5" && a.team === "BBB" && a.line === 3.5 && a.hit === 57 && a.n === 242 && OVERSHOOT.edge === 2 && OVERSHOOT.move === 1,
+        "OVERSHOOT: AAA opened -2.5, now -3.5 (moved 1 toward AAA) and the model says AAA by 6 (2.5 over the line) -> BBB +3.5 at 57%", a);
+      ok(b === null && c === null && e === null && f === null, "no OVERSHOOT when the line moved under 1 point, the model edge is under 2, before week 4, or with no model number", { b, c, e, f });
+      ok(d && d.pick === "AAA +2.5" && d.team === "AAA", "OVERSHOOT the other way: BBB opened -1.5, now -2.5 (moved 1 toward BBB), model BBB by 5 (2.5 over the line) -> AAA +2.5", d);
+    }
     { // 10/26 angle mix: TEAM MODEL x the line move since the week's first line (AAA home -3 now, 62.2% sure)
       const ag = teamModelPick(g, -3, 7, undefined, -4), tw = teamModelPick(g, -3, 7, undefined, -2), fl = teamModelPick(g, -3, 7, undefined, -3.5), aw = teamModelPick({ key: "AAA @ BBB", away: "AAA", home: "BBB" }, 3, 7, undefined, 4), aw2 = teamModelPick({ key: "AAA @ BBB", away: "AAA", home: "BBB" }, 3, 7, undefined, 2);
       ok(ag && ag.hit === 63.9 && ag.n === 144 && ag.mv === "against" && tw === null && fl && fl.hit === 60.4 && fl.mv === "flat" && aw && aw.mv === "against" && aw.hit === 63.9 && aw2 === null && pk.mv === null,

@@ -230,7 +230,9 @@ export async function recordBookGaps(games, booksAt, now = Date.now()) {
 //   dogvtired  a 9+ point underdog against a favorite on a back-to-back:                              56.2% of 365 (51 / 63 / 55)
 //   restvstar  the team with 2+ more days of rest against an opponent missing its star:                 56.0% of 425 (52 / 59 / 57)
 //   restfav    a road favorite with 2+ more days of rest at a home underdog:                            57.6% of 311 (60 / 53 / 59)
-export const ANGLE_SHADOWS = { tired: [55.2, 1024], dogvtired: [56.2, 365], restvstar: [56.0, 425], restfav: [57.6, 311] };
+//   restlate   the team with 2+ more days of rest from mid-February on (season day 120+):                 59.7% of 196 unseen 2019-26 (found 54.8% of 409 on 2009-18)
+export const ANGLE_SHADOWS = { tired: [55.2, 1024], dogvtired: [56.2, 365], restvstar: [56.0, 425], restfav: [57.6, 311], restlate: [59.7, 196] };
+const lateSeason = (date) => { const md = String(date || "").slice(5); return md >= "02-15" && md <= "04-30"; };
 export function angleSides(g) {
   const c = g && g.context, so = g && g.starOut, px = g && g.poly && g.poly.spread; if (!c || !c.home || !c.away || !px || px.homeSpread == null) return [];
   const [away, home] = g.key.split(" @ "), hs = Number(px.homeSpread), rh = Number(c.home.rest), ra = Number(c.away.rest);
@@ -240,6 +242,7 @@ export function angleSides(g) {
   if (isFinite(rh) && isFinite(ra)) {
     if (rh - ra >= 2 && sta && !sth) out.push(["restvstar", home]); else if (ra - rh >= 2 && sth && !sta) out.push(["restvstar", away]);
     if (ra - rh >= 2 && hs >= 1) out.push(["restfav", away]);
+    if (lateSeason(g.date)) { if (rh - ra >= 2) out.push(["restlate", home]); else if (ra - rh >= 2) out.push(["restlate", away]); }
   }
   return out.map(([kind, team]) => ({ kind, team, line: team === home ? hs : -hs }));
 }
