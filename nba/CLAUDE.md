@@ -325,3 +325,8 @@ Every PL line on the NBA pages fills in Polymarket's real combo price by itself 
 
 - `lib/cardpick.js bookGapRule`: books' consensus 1-4 pts (spread) / 2-6 pts (total) off Polymarket's main line, books pulled in the last 6 h -> the books' side at Polymarket's number; 59.7% of 263 / 64.1% of 198 on Polymarket's real 2025-26 closes. Every other simple / paired spread and total rule on closing lines 2008-26 failed the unseen 2017-26 test (0 of 44).
 - 10/24 night: a BOOK GAP PICK's bought lines show the rule's own measured rates on real Polymarket closes (`BGAP_PTS`: spread +1 / +2 / +3 63.1 / 65.4 / 70.0, total 65.2 / 66.7 / 68.2), not the main-line lift (totals read 1-2.5 high). Books' opening line vs Polymarket, moneyline books vs Polymarket, and every split of the rule: nothing new built (root CLAUDE.md 10-MINUTE ANGLE HUNT).
+
+## 10/26 re-checks (owner: "find all the issues ... build now"; see the root CLAUDE.md "MONDAY CHECK + REBUILD 10/26")
+
+- ESPN corrected box scores a day or more after the one 6-h recheck (6 graded results flipped on 10/21-24), so a graded game's prop rows and the parlays' prop legs are re-checked up to 3 times: 6 h after the grade, then every 20+ h; days stay in the pass for 7 days (`lib/props.js RECHECKS / RECHECK_GAP_H / RECHECK_DAYS / recheckDue`, `lib/parlays.js parlayRecheckDue`).
+

@@ -989,7 +989,16 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
     { const ga = await pr.nbaPropsGradedAll("2026-12-30");   // 10/23: every graded row for npm run verify (the background Unders too)
       ok(ga.graded.length >= 1 && ga.graded.some((g) => g.picks.some((p) => p.name === "Cade Cunningham" && p.side === "under" && p.result === "W")) && !ga.missing.includes("BOS @ DET"), "NBA props ?all=1 (10/23): every graded row, the Unders the page hides included", ga); }
     const g3 = await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2026-12-31T23:00:00Z"), fetchBox: async () => { throw new Error("no second look"); } });
-    ok(early === 0 && g2 === 1 && cc.result === "W" && cc.actual === 38 && g3 === 0 && pr.RECHECK_H === 6, "NBA props grading: a graded game is looked at once more 6+ hours later and a corrected box score re-grades its rows; never a third time", { early, g2, cc, g3 }); }
+    ok(early === 0 && g2 === 1 && cc.result === "W" && cc.actual === 38 && g3 === 0 && pr.RECHECK_H === 6, "NBA props grading: a graded game is looked at again 6+ hours later and a corrected box score re-grades its rows; not again within 20 h", { early, g2, cc, g3 });
+    // 10/26: ESPN kept correcting a day+ later -> 2 more looks, 20+ h apart (3 in all), then never again
+    const box2 = { "BOS @ DET": { final: true, players: { ...fixedBox["BOS @ DET"].players, "cade cunningham": { pts: 30, reb: 6, ast: 8, pra: 44, "3pm": 3, stl: 1, blk: 1 } } } };
+    const g4 = await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2027-01-01T12:00:00Z"), fetchBox: async () => box2 });
+    const r4 = JSON.parse(await R.hget(pr.K_NBAPROPRES("2026-12-30"), "BOS @ DET"));
+    const g5 = await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2027-01-02T10:00:00Z"), fetchBox: async () => fixedBox });
+    const g6 = await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2027-01-04T10:00:00Z"), fetchBox: async () => { throw new Error("no fourth look"); } });
+    const r6 = JSON.parse(await R.hget(pr.K_NBAPROPRES("2026-12-30"), "BOS @ DET"));
+    ok(g4 === 1 && r4.rechecks === 2 && r4.picks.find((p) => p.name === "Cade Cunningham").result === "L" && g5 === 1 && g6 === 0 && r6.rechecks === 3 && r6.fixed === 3 && pr.recheckCount({ rechecked: "x" }) === 1,
+      "NBA props re-check (10/26): up to 3 looks (6 h, then every 20 h), each correction re-grades the rows, then never a 4th; an old `rechecked` row counts as 1", { g4, g5, g6, r6 }); }
   // ESPN box parse (the real summary shape): 3PT "1-3" = 1 made, a DNP is left out, the key from the header
   const b = parseBox({ header: { competitions: [{ status: { type: { completed: true } }, competitors: [{ homeAway: "away", team: { abbreviation: "MIA" } }, { homeAway: "home", team: { abbreviation: "ORL" } }] }] },
     boxscore: { players: [{ team: { abbreviation: "MIA" }, statistics: [{ names: ["MIN", "PTS", "FG", "3PT", "FT", "REB", "AST", "TO", "STL", "BLK", "OREB", "DREB", "PF", "+/-"], athletes: [{ athlete: { displayName: "Andrew Wiggins Jr." }, stats: ["15", "13", "4-7", "1-3", "4-5", "2", "1", "0", "2", "0", "0", "2", "2", "-1"] }, { athlete: { displayName: "Nobody Played" }, didNotPlay: true, stats: [] }] }] }] } });
@@ -1042,6 +1051,10 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   const g1 = JSON.parse(await R.get(k));
   await pl.gradeParlays(async () => ({}), async () => ({ ...box, "BOS @ NYK": { final: true, players: { ...players2, foxtrot: { pts: 30 } } }, "LAL @ GSW": { final: true, players: { ...players2, foxtrot: { pts: 30 } } } }), Date.now() + 7 * 3600e3);
   const g2 = JSON.parse(await R.get(k)); const fx = g2.legs.find((l) => l.name === "Foxtrot");
+  { await pl.gradeParlays(async () => ({}), async () => box, Date.now() + 9 * 3600e3); const g8 = JSON.parse(await R.get(k));
+    await pl.gradeParlays(async () => ({}), async () => box, Date.now() + 28 * 3600e3); const g9 = JSON.parse(await R.get(k));
+    ok(g8.rechecks === 1 && g8.legs.find((l) => l.name === "Foxtrot").result === "W" && g9.rechecks === 2 && g9.legs.find((l) => l.name === "Foxtrot").result === "L" && g9.result === "L" && g9.ret === -5,
+      "Props Parlays re-check (10/26): not again within 20 h; the next look re-grades the legs again (a correction back to 4 pts loses the parlay)", { g8, g9 }); }
   ok(!g1.rechecked && g1.result === "L" && g2.rechecked && g2.fixed >= 1 && fx.result === "W" && fx.actual === 30 && g2.result === (g2.legs.some((l) => l.result === "L") ? "L" : "W") && (g2.result !== "W" || g2.ret > 0),
     "Props Parlays re-check (10/23): not before 6 h; then the prop legs are re-graded from the corrected box (Foxtrot 4 -> 30 pts = W) and the parlay result / money follow", g2);
   await R.del(k); await R.srem("parlay:ids", k);

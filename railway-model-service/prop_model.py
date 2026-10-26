@@ -58,6 +58,20 @@ def stat_games(season):
     w = c.groupby(["receiver_player_id", "game_id", "posteam", "defteam"]).agg(
         tgt=("pass_attempt", "size"), rec=("complete_pass", "sum"), rec_yds=("ry", "sum"), long_rec=("ry", "max")).reset_index()
     w.columns = ["pid", "game_id", "team", "opp", "tgt", "rec", "rec_yds", "long_rec"]
+    # 10/26 (owner: "find everything that's wrong"): the official stats -- what Polymarket settles on -- credit yards after a LATERAL to the player
+    # who took the lateral (week 7 SF @ ATL: London 2 yds, lateral to Bi.Robinson +14 -> official 59, this 45), and nflverse keeps them in
+    # lateral_receiving_yards / lateral_rushing_yards, not receiving_yards / rushing_yards. 9 laterals in weeks 1-7 (D.Samuel +80 in week 3 had no
+    # target of his own, so he had no row at all); with them every weekly receiving / rushing yards total equals nflverse's official stats file.
+    for lid, ly, col in (("lateral_receiver_player_id", "lateral_receiving_yards", "rec_yds"), ("lateral_rusher_player_id", "lateral_rushing_yards", "rush_yds")):
+        if lid not in p.columns or ly not in p.columns: continue
+        la = p[p[lid].notna() & p[ly].notna()]
+        if not len(la): continue
+        la = la.groupby([lid, "game_id", "posteam", "defteam"])[ly].sum().reset_index(); la.columns = ["pid", "game_id", "team", "opp", "lat"]
+        tgt = w if col == "rec_yds" else r
+        m = tgt.merge(la, on=["pid", "game_id", "team", "opp"], how="outer")
+        m[col] = m[col].fillna(0.0) + m["lat"].fillna(0.0); m = m.drop(columns=["lat"])
+        if col == "rec_yds": w = m
+        else: r = m
     x = q.merge(r, on=["pid", "game_id", "team", "opp"], how="outer").merge(w, on=["pid", "game_id", "team", "opp"], how="outer")
     # players who played (snap counts) with no pass / rush / target: zero rows
     pos, ros = _pos_map(season)
