@@ -4,7 +4,7 @@
 import { buildSlate } from "../../../nba/lib/slate";
 import { getRedis, SLATE_CACHE } from "../../../nba/lib/redis";
 import { markSnapshot, logError } from "../../../nba/lib/status";
-import { recordBookGaps, recordGaps, recordInjuryShadow, recordMoves, pullPinnacle, pinnacleFailed, pinnacleOk } from "../../../nba/lib/pinnacle";
+import { recordBookGaps, recordGaps, recordInjuryShadow, recordAngleShadows, recordMoves, pullPinnacle, pinnacleFailed, pinnacleOk } from "../../../nba/lib/pinnacle";
 import { scoreNbaProps } from "../../../nba/lib/props";
 export const config = { maxDuration: 120 };   // 10/23: room for the props retry (25 s + 3 s + 25 s) after the slate build
 export default async function handler(req, res) {
@@ -23,7 +23,7 @@ export default async function handler(req, res) {
       const r = await pullPinnacle(data.games); pin = r.n;
       if (r.n === 0 && data.games.some((g) => !g.inProgress && !g.preseason)) await pinnacleFailed(r.fails > 0 ? "one league failed and nothing was saved" : "the feed answered but no game was saved", logError); else await pinnacleOk();
       const reg = data.games.filter((g) => !g.preseason);   // the signals were tested on regular-season lines only
-      await recordMoves(reg); await recordGaps(reg); await recordBookGaps(reg, data.books && data.books.t); await recordInjuryShadow(reg);
+      await recordMoves(reg); await recordGaps(reg); await recordBookGaps(reg, data.books && data.books.t); await recordInjuryShadow(reg); await recordAngleShadows(reg).catch(() => 0);
     } catch (e) { await pinnacleFailed(String(e.message || e).slice(0, 120), logError); }
     res.status(200).json({ ok: true, games: data.games.length, modelOk: data.modelOk, picks: data.bestBets.length, books: data.booksPull, pinnacle: pin, props, at: data.now });
   } catch (err) { await logError("snapshot", err); await markSnapshot({ games: 0, modelOk: null, failed: String(err && err.message || err).slice(0, 120) }).catch(() => {}); res.status(500).json({ ok: false, error: String(err) }); }

@@ -151,8 +151,8 @@ export async function gradeMoves(fetchFinals, grade) {
 export function summarizeMoves(all) {
   const by = {};
   const tally = (k, m, field) => { const e = (by[k] = by[k] || { w: 0, l: 0, push: 0, pending: 0 }); const r = m[field]; if (!r) e.pending++; else if (r === "win") e.w++; else if (r === "loss") e.l++; else if (r !== "void") e.push++; };
-  const kinds = ["gap", "bgap", "inj"];
-  for (const m of all.filter((x) => x.kind === "gap" || x.kind === "bgap")) { tally(m.kind, m, "result"); tally(`${m.kind}:${m.market}`, m, "result"); }
+  const kinds = ["gap", "bgap", "inj", ...Object.keys(ANGLE_SHADOWS)];
+  for (const m of all.filter((x) => x.kind === "gap" || x.kind === "bgap" || ANGLE_SHADOWS[x.kind])) { tally(m.kind, m, "result"); tally(`${m.kind}:${m.market}`, m, "result"); }
   for (const m of all.filter((x) => x.kind === "inj")) { tally("inj", m, "result"); tally("now:inj", m, "resultNow"); }
   for (const m of all.filter((x) => !kinds.includes(x.kind))) { tally("all", m, "result"); tally(m.market, m, "result"); tally("now:all", m, "resultNow"); tally(`now:${m.market}`, m, "resultNow"); }
   for (const e of Object.values(by)) e.pct = e.w + e.l ? Math.round((e.w / (e.w + e.l)) * 1000) / 10 : null;
@@ -217,6 +217,39 @@ export async function recordBookGaps(games, booksAt, now = Date.now()) {
     for (const [market, x] of Object.entries(gp)) {
       const k = lmKey(g.date, g.key, `bgap-${market}`);
       const ok = await r.set(k, JSON.stringify({ kind: "bgap", market, team: x.team, side: x.side, line: x.line, pinLine: x.pinLine, pts: x.pts, label: x.team ? `${x.team} ${x.line > 0 ? "+" : ""}${x.line}` : `${x.side} ${x.line}`, date: g.date, game: g.key, start: g.start, t: new Date(now).toISOString() }), "NX").catch(() => null);
+      if (ok) { await r.sadd(LM_IDS, k).catch(() => {}); n++; }
+    }
+  }
+  return n;
+}
+
+// 10/26 angle mix (owner: "mix up some angles together ... build different options ... just for tracking angles"), shadow only: four pairs from a
+// scan of 13 spread angles in pairs (found 2009-18, checked 2019-26 unseen, NBA closing lines with the service's walk-forward rows; 3 passed vs 0.4 for
+// shuffled results). Recorded once at Polymarket's main line when first seen and graded like the others; never a pick until it holds live.
+//   tired      fade the team that is on a back-to-back AND missing its star (the other team neither): 55.2% of 1,024 (2009-14 53, 2015-20 55, 2021-26 57; 16 of 18 seasons)
+//   dogvtired  a 9+ point underdog against a favorite on a back-to-back:                              56.2% of 365 (51 / 63 / 55)
+//   restvstar  the team with 2+ more days of rest against an opponent missing its star:                 56.0% of 425 (52 / 59 / 57)
+//   restfav    a road favorite with 2+ more days of rest at a home underdog:                            57.6% of 311 (60 / 53 / 59)
+export const ANGLE_SHADOWS = { tired: [55.2, 1024], dogvtired: [56.2, 365], restvstar: [56.0, 425], restfav: [57.6, 311] };
+export function angleSides(g) {
+  const c = g && g.context, so = g && g.starOut, px = g && g.poly && g.poly.spread; if (!c || !c.home || !c.away || !px || px.homeSpread == null) return [];
+  const [away, home] = g.key.split(" @ "), hs = Number(px.homeSpread), rh = Number(c.home.rest), ra = Number(c.away.rest);
+  const b2h = rh === 1, b2a = ra === 1, sth = !!(so && so.home === 1), sta = !!(so && so.away === 1), out = [];
+  if (b2h && sth && !b2a && !sta) out.push(["tired", away]); else if (b2a && sta && !b2h && !sth) out.push(["tired", home]);
+  if (hs >= 9 && b2a && !b2h) out.push(["dogvtired", home]); else if (hs <= -9 && b2h && !b2a) out.push(["dogvtired", away]);
+  if (isFinite(rh) && isFinite(ra)) {
+    if (rh - ra >= 2 && sta && !sth) out.push(["restvstar", home]); else if (ra - rh >= 2 && sth && !sta) out.push(["restvstar", away]);
+    if (ra - rh >= 2 && hs >= 1) out.push(["restfav", away]);
+  }
+  return out.map(([kind, team]) => ({ kind, team, line: team === home ? hs : -hs }));
+}
+export async function recordAngleShadows(games, now = Date.now()) {
+  const r = getRedis(); let n = 0;
+  for (const g of games) {
+    if (now >= Date.parse(g.start)) continue;
+    for (const x of angleSides(g)) {
+      const k = lmKey(g.date, g.key, `${x.kind}-spread`);
+      const ok = await r.set(k, JSON.stringify({ kind: x.kind, market: "spread", team: x.team, line: x.line, label: `${x.team} ${x.line > 0 ? "+" : ""}${x.line}`, date: g.date, game: g.key, start: g.start, t: new Date(now).toISOString() }), "NX").catch(() => null);
       if (ok) { await r.sadd(LM_IDS, k).catch(() => {}); n++; }
     }
   }
