@@ -973,6 +973,11 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     ok(teamModelPick({ key: "DDD @ CCC", away: "DDD", home: "CCC" }, -3, 7) === null, "team model under 58% sure (52.5%) -> no pick (a coin flip in the test)");
     ok(teamModelPick(g, -3, 8) === null && teamModelPick(g, 0, 7) === null && teamModelPick({ key: "X @ Y", away: "X", home: "Y" }, -3, 7) === null, "team model: no pick with last week's numbers, at a pick'em, or for a team it has no numbers for");
     ok(TEAM_BANDS[0][1] === 62.1 && TEAM_BANDS[1][0] === 0.58 && TEAM_BANDS[1][1] === 55.3, "team model band rates = the tested ones (10/20, no spread input: 60%+ 62.1%, 58-60% 55.3%)");
+    { // 10/26 angle mix: TEAM MODEL x the line move since the week's first line (AAA home -3 now, 62.2% sure)
+      const ag = teamModelPick(g, -3, 7, undefined, -4), tw = teamModelPick(g, -3, 7, undefined, -2), fl = teamModelPick(g, -3, 7, undefined, -3.5), aw = teamModelPick({ key: "AAA @ BBB", away: "AAA", home: "BBB" }, 3, 7, undefined, 4), aw2 = teamModelPick({ key: "AAA @ BBB", away: "AAA", home: "BBB" }, 3, 7, undefined, 2);
+      ok(ag && ag.hit === 63.9 && ag.n === 144 && ag.mv === "against" && tw === null && fl && fl.hit === 60.4 && fl.mv === "flat" && aw && aw.mv === "against" && aw.hit === 63.9 && aw2 === null && pk.mv === null,
+        "TEAM MODEL x line move: opened AAA -4, now -3 (1 point more for its side) -> 63.9%; opened -2 (moved its way) -> no pick; half a point -> the flat 60%+ rate 60.4%; no opener -> the plain band", { ag, tw, fl, aw });
+    }
     const card = buildCard({ key: "BBB @ AAA", away: "BBB", home: "AAA", poly: { spread: { homeSpread: -3, home: 0.5, away: 0.5 } } }, [pk], { spread: { homeSpread: -3, home: 0.5, away: 0.5 } }, null, null);
     ok(card && card.spread && card.spread.plain && card.spread.plain.pick === "AAA -3" && card.spread.plain.hit === 62.1 && /^teammodel/.test(card.spread.plain.ruleId || card.spread.plain.id || "teammodel"), "the card's PICK comes from the TEAM MODEL rule when it is the only rule", card && card.spread && card.spread.plain);
     { const { recordStack, gradeStackWeek, stackSummary } = await import("../lib/stack.js"), RR = globalThis.__TEST_REDIS__, now = "2099-10-25T17:00:00Z";
