@@ -33,6 +33,11 @@ q2 = ns["team_budget"](p, 24); lam = -np.log(1 - np.clip(p, 0, .95)); tgt = max(
 exp_total = (lam * (tgt / np.sort(lam)[::-1][:8].sum()) ** 0.5).sum()
 ok(abs((-np.log(1 - q2)).sum() - exp_total) < 1e-9, "concentration tilt keeps the team's expected TDs unchanged")
 ok((-np.log(1 - q2))[0] / (-np.log(1 - q2)).sum() > lam[0] / lam.sum(), "concentration tilt gives the top player a bigger share")
+# WR / TE shift (td_prob.wrte_shift, 10/26): a receiver at 50% drops about 5 points, at 42% or below nothing moves, a running back never moves, order inside a position holds
+ws = ns["wrte_shift"](np.array([0.50, 0.42, 0.45, 0.60, 0.50, 0.30]), np.array(["WR", "WR", "TE", "WR", "RB", "WR"]))
+assert 0.44 < ws[0] < 0.46, ws; assert abs(ws[1] - 0.42) < 1e-9, ws; assert 0.42 < ws[2] < 0.45, ws; assert ws[3] < 0.60 and ws[3] > 0.54, ws
+assert abs(ws[4] - 0.50) < 1e-9, ws; assert abs(ws[5] - 0.30) < 1e-9, ws; assert ws[3] > ws[0] > ws[2], ws
+print("ok: wrte_shift")
 # availability tilt (td_prob.availability): the best option is scaled least, order never changes, nothing goes up
 a = ns["availability"](p); fac = a / p
 ok(bool(np.all(a <= p + 1e-12)) and bool(np.all(np.diff(a) <= 0)) and abs(fac[0] - 0.918) < 1e-9 and bool(np.all(np.diff(fac) <= 1e-12)), "availability: scales down, keeps order, #1 least")
