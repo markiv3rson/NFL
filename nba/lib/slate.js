@@ -48,6 +48,10 @@ export async function lineMoves(games, now = Date.now()) {
     if (!open) { open = { ...now_, t: new Date(now).toISOString() }; await r.set(key, JSON.stringify(open), "EX", 4 * 86400).catch(() => {}); }
     else { let ch = false; for (const f of ["hs", "tl"]) if (open[f] == null && now_[f] != null) { open[f] = now_[f]; ch = true; }   // a market posted later gets its first line now
       if (ch) await r.set(key, JSON.stringify(open), "KEEPTTL").catch(() => {}); }
+    // 10/26 recheck: an "opening" line 10+ (spread) / 15+ (total) from the current one was a placeholder read (Over 195.5 the day before), not a move --
+    // the baseline is reset to the line seen now and no move is shown
+    { let ch = false; if (open.hs != null && now_.hs != null && Math.abs(open.hs - now_.hs) >= 10) { open.hs = now_.hs; ch = true; } if (open.tl != null && now_.tl != null && Math.abs(open.tl - now_.tl) >= 15) { open.tl = now_.tl; ch = true; }
+      if (ch) await r.set(key, JSON.stringify(open), "KEEPTTL").catch(() => {}); }
     const mv = {};
     if (open.hs != null && now_.hs != null && open.hs !== now_.hs) mv.spread = { open: open.hs, now: now_.hs };
     if (open.tl != null && now_.tl != null && open.tl !== now_.tl) mv.total = { open: open.tl, now: now_.tl };

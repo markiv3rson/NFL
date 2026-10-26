@@ -1126,7 +1126,6 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
 const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8"), sl = readFileSync(new URL("../lib/slate.js", import.meta.url), "utf8");
   ok(/\["pp10", "Prop Parlays · 10 Leg"\]/.test(app) && /pp10: "Prop Parlays · 10 legs"/.test(app) && !/\["best4", "Parlay"\]/.test(app) && /Props · 77¢\+ hidden rows/.test(app) && /Props · star out → teammates Over/.test(app) && /buildPropParlays\(d, out, now, legs\)/.test(sl) && /buildSameGame4\(d, out, now, legs\)/.test(sl) && /l\.market !== "prop"/.test(sl),
     "Prop Parlays: Model bets tabs 6 / 8 / 10 Leg (no Parlay tab), scoreboard rows per size, the two shadow rows on Models; built on the slate; never sent for a Polymarket combo quote"); }
-console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`);
 { // 10/26 (owner, design = both sports): the per-game facts on top of the NBA MODEL ⓘ box (nba/lib/why.js)
   const { gameWhy } = whyLib, now = Date.parse("2026-10-26T23:00:00Z");
   const g = { home: "DET", away: "BOS", poly: { spread: { homeSpread: -1.5, home: 0.52, away: 0.48 }, total: { line: 229.5, over: 0.5, under: 0.5 }, ml: { midHome: 0.56, midAway: 0.44 } },
@@ -1155,4 +1154,43 @@ console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`
   ok(gameWhy(null) === null, "NBA reason box: no row, no lines");
 }
 
+{ // 10/26 recheck: a PLACEHOLDER market (a side priced 0.99 / the other 0.49, nobody selling -- Polymarket's stub for a game posted a day early) is not a line.
+  // It had been the main total of tomorrow's games ("Over 195.5"), saved as the model-side PICK at first sighting and graded a free win (32 such picks 10/23-27).
+  const ev = JSON.parse(JSON.stringify(events[0])), g0 = eventGame(events[0]);
+  const stub = (m) => { m.bestAsk = 0.99; m.bestBid = 0.51; m.outcomePrices = JSON.stringify([0.5, 0.5]); };
+  for (const m of ev.markets) if (/^(totals|spreads)$/i.test(m.sportsMarketType || "")) stub(m);
+  const P = parseGame(ev.markets, g0.away, g0.home), P0 = parseGame(events[0].markets, g0.away, g0.home);
+  ok(P.total === undefined && P.spread === undefined && !!P.ml && !!P0.total && !!P0.spread && !(P.totalAlts || []).length && !(P.alts || []).length, "parser (10/26): one-sided placeholder totals / spreads are never the main line nor an alternate; the moneyline still reads", { P, P0: { t: P0.total, s: P0.spread } });
+  const evMix = JSON.parse(JSON.stringify(events[0])); let first = true;
+  for (const m of evMix.markets) if (/^totals$/i.test(m.sportsMarketType || "")) { if (first) { first = false; continue; } stub(m); }   // one real total among stubs -> that one
+  const PM = parseGame(evMix.markets, g0.away, g0.home);
+  ok(!!PM.total && PM.total.over > 0.1 && PM.total.over < 0.9 && PM.total.under > 0.1 && PM.total.under < 0.9, "parser (10/26): a real two-sided total is the main total even next to stubs", PM.total);
+  // the opening-line baseline: an "opener" 15+ (total) / 10+ (spread) from the current line was a stub -> reset, no move shown
+  const alx = await import("../lib/alerts.js");
+  const R = globalThis.__TEST_REDIS__; await R.set("open:2026-11-05:BOS @ NYK", JSON.stringify({ hs: 13.5, tl: 195.5, t: "2026-11-04T20:00:00Z" }), "EX", 4 * 86400);
+  const mv = await slate.lineMoves([{ key: "BOS @ NYK", date: "2026-11-05", poly: { spread: { homeSpread: -3.5 }, total: { line: 225.5 } } }], Date.parse("2026-11-05T20:00:00Z"));
+  const openNow = JSON.parse(await R.get("open:2026-11-05:BOS @ NYK"));
+  ok(!(mv["BOS @ NYK"] && (mv["BOS @ NYK"].total || mv["BOS @ NYK"].spread)) && openNow.tl === 225.5 && openNow.hs === -3.5, "line moves (10/26): a placeholder opener is replaced by the line seen now, no 30-point move", { mv, openNow });
+  const mv2 = await slate.lineMoves([{ key: "BOS @ NYK", date: "2026-11-05", poly: { spread: { homeSpread: -4.5 }, total: { line: 227.5 } } }], Date.parse("2026-11-05T21:00:00Z"));
+  ok(mv2["BOS @ NYK"] && mv2["BOS @ NYK"].total.open === 225.5 && mv2["BOS @ NYK"].total.now === 227.5 && mv2["BOS @ NYK"].spread.open === -3.5, "line moves: a real move after the reset shows from the reset baseline", mv2);
+  // alerts: the same jump is a re-base, not a LINE MOVE
+  const T0 = Date.parse("2026-11-06T20:00:00Z"), game = (over = {}) => ({ key: "MIA @ ORL", away: "MIA", home: "ORL", date: "2026-11-06", inProgress: false, poly: { spread: { homeSpread: -3.5 }, total: { line: 195.5 }, ml: { midHome: 0.62, midAway: 0.38 } }, spread: null, total: null, ml: null, injuries: { home: [], away: [] }, ...over });
+  await alx.alertsFromSlate([game()], T0);
+  const n1 = await alx.alertsFromSlate([game({ poly: { spread: { homeSpread: -3.5 }, total: { line: 226.5 }, ml: { midHome: 0.62, midAway: 0.38 } } })], T0 + 60e3);
+  const n2 = await alx.alertsFromSlate([game({ poly: { spread: { homeSpread: -3.5 }, total: { line: 226.5 }, ml: { midHome: 0.62, midAway: 0.38 } } })], T0 + 60e3 + (alx.MOVE_HOLD_MIN + 1) * 60e3);
+  const base = JSON.parse(await R.get("alertbase:2026-11-06:MIA @ ORL"));
+  ok(n1 === 0 && n2 === 0 && base.tl === 226.5 && !(await alx.listAlerts()).some((a) => /MIA @ ORL total: 195\.5/.test(a.title)), "alerts (10/26): a 31-point total jump is a placeholder re-base, never a LINE MOVE alert", { n1, n2, base });
+  // the record: a pick on a stub price is never saved; one already saved (graded or not) is voided and leaves every record row
+  const g = { key: "MIA @ ORL", away: "MIA", home: "ORL", date: "2026-11-06", start: "2026-11-07T00:00:00Z", poly: { total: { line: 195.5, over: 0.99, under: 0.49 } }, card: { total: { plain: { id: "modelpick|total", kind: "total", side: "over", line: 195.5, pick: "Over 195.5", hit: 50.4, price: 0.99 }, rows: [] }, spread: null } };
+  const saved = await rec.recordPicks([g], Date.parse("2026-11-06T20:00:00Z"));
+  await R.set("pick:2026-11-04:A @ B:modelpick|total", JSON.stringify({ date: "2026-11-04", game: "A @ B", id: "modelpick|total", market: "total", label: "Over 193.5", side: "over", line: 193.5, pct: 50.4, tier: "pick", price: 0.99, result: "win" })); await R.sadd("pick:ids", "pick:2026-11-04:A @ B:modelpick|total");
+  await R.set("pick:2026-11-04:A @ B:ptspick|spread", JSON.stringify({ date: "2026-11-04", game: "A @ B", id: "ptspick|spread", market: "spread", label: "B -1.5", team: "B", line: -1.5, pct: 57, tier: "pick", price: 0.52, result: "win" })); await R.sadd("pick:ids", "pick:2026-11-04:A @ B:ptspick|spread");
+  const nv = await rec.voidStubPicks(), after = (await rec.loadPicks()).filter((p) => p.game === "A @ B"), sm = rec.summarize(after);
+  ok(saved === 0 && rec.isStubPick({ market: "total", price: 0.99 }) && !rec.isStubPick({ market: "total", price: 0.52 }) && !rec.isStubPick({ market: "ml", price: 0.99 }) && nv === 1
+    && after.find((p) => p.id === "modelpick|total").result === "void" && after.find((p) => p.id === "modelpick|total").was === "win" && after.find((p) => p.id === "ptspick|spread").result === "win"
+    && !(sm["modelpick|total"] && sm["modelpick|total"].w) && sm["ptspick|spread"].w === 1, "record (10/26): a stub-price pick is never saved; a saved one is voided (its old result kept as `was`) and counts in no row; real picks untouched", { saved, nv, after, sm: Object.keys(sm) });
+  await R.srem("pick:ids", "pick:2026-11-04:A @ B:modelpick|total", "pick:2026-11-04:A @ B:ptspick|spread");
+}
+
+console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`);
 process.exit(bad ? 1 : 0);

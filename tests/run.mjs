@@ -1925,6 +1925,18 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(/\$\{whyBox\(g, "spread", MODEL_INFO\.spread\)\}/.test(ap) && /\$\{whyBox\(g, "total", MODEL_INFO\.total\)\}/.test(ap) && /\$\{whyBox\(g, kind, info\)\}\$\{modelCell\(g, kind\)\}/.test(na) && /THIS GAME · \+ for the pick · − against/.test(ap) && /THIS GAME · \+ for the pick · − against/.test(na)
     && /\.ibox \.wm\.wf \{ color:var\(--green\); \} \.ibox \.wm\.wa \{ color:var\(--red\); \}/.test(sc) && /G\.why = gameWhy\(/.test(wk) && /row\.why = row\.card && !row\.inProgress \? gameWhy\(/.test(ns) && /if \(e\.comment\) row\.note = /.test(wk), "reason box: wired on both game cards (NFL spread + total, NBA every card), the slates build it, ESPN's note and date ride on the injury row");
 }
+{ // 10/26 recheck: an ESPN status labels a TD row only when it was posted after the team's previous game (+6 h) -- the Monday-night inactives were tagging next week's rows
+  const { espnFreshFor, espnOutFor } = await import("../lib/espn.js");
+  const rows = [{ home: "PHI", away: "DAL", kickoff: "2026-10-27T00:15:00Z" }, { home: "WAS", away: "PHI", kickoff: "2026-11-02T01:20:00Z" }];
+  const note = { status: "Out", date: "2026-10-26T22:45:00Z" };
+  ok(espnFreshFor(note, "PHI", "2026-11-02T01:20:00Z", rows) === false && espnFreshFor(note, "PHI", "2026-10-27T00:15:00Z", rows) === true && espnFreshFor({ status: "Out" }, "PHI", "2026-11-02T01:20:00Z", rows) === true
+    && espnOutFor(note, "PHI", "2026-11-02T01:20:00Z", rows, Date.parse("2026-10-27T00:00:00Z")) === false && /espnFreshFor\(e, r\.team, g\.kickoff, seasonRows\)\) r\.espn = /.test(readFileSync(new URL("../lib/week.js", import.meta.url), "utf8")),
+    "ESPN status dates (10/26): a note posted before the team's previous game neither labels nor removes next week's row; an undated note still counts; the TD rows use it");
+  // the NFL main total is never a one-sided stub (0.99 / 0.49)
+  const { parseGame } = await import("../lib/poly.js");
+  const src = readFileSync(new URL("../lib/poly.js", import.meta.url), "utf8");
+  ok(/if \(!t\.prices\.every\(\(p\) => p > 0\.1 && p < 0\.9\)\) continue;/.test(src) && typeof parseGame === "function", "NFL Polymarket parser (10/26): a one-sided placeholder total is never the main total");
+}
 { // 10/22 (owner): ONE ⓘ per model section, both sports -- game card MODEL header + Models Card picks / Tracked angles (NBA: Card picks / Shadow trackers); white labels
   const ap = readFileSync(new URL("../public/app.js", import.meta.url), "utf8"), nb = readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8"), sj = readFileSync(new URL("../public/shell.js", import.meta.url), "utf8"), sc = readFileSync(new URL("../public/shell.css", import.meta.url), "utf8");
   const uses = (x) => (x.match(/\$\{IBTN\}/g) || []).length;

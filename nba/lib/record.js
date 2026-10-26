@@ -34,6 +34,7 @@ export async function recordPicks(games, now = Date.now()) {
     const pickOf = (k) => { const i = k === "spread" ? 0 : 3; return v[i + 1] || v[i + 2] || rows.find((x) => x.market === k && /^(cardpick|modelpick)\|/.test(x.id)) || null; };
     for (const row of rows) {
       if (/^ptspick\|/.test(row.id)) { const pk = pickOf(row.market); if (pk && sideOf(pk) !== sideOf(row)) continue; }
+      if (isStubPick(row)) continue;   // 10/26: a placeholder line (a side at 0.9+) is never saved as a pick
       const key = KEY(row.date, row.game, row.id);
       if (!(await r.set(key, JSON.stringify(row), "NX"))) continue;   // the first sighting stands (NX: saved only when new, one command)
       await r.sadd(IDS, key); n++;
@@ -63,9 +64,24 @@ export async function loadPicks() {
   ids.forEach((k, i) => { const v = jparse(vals[i]); if (v) out.push({ ...v, id: v.id || v.market, _k: k }); });
   return out.sort((a, b) => (a.date < b.date ? 1 : -1));
 }
+// 10/26 recheck: a spread / total pick saved on a PLACEHOLDER line (a side priced 0.9+ = nobody selling; Polymarket's stub for a game posted a day
+// early, e.g. "Over 195.5" at 0.99) is void -- it was never a bettable line, and two such stubs had been graded free wins (LAC @ OKC Over 193.5,
+// WAS @ CHI Under 255.5). The parser no longer makes a main line of one (lib/poly.js twoSided); this voids the ones already saved, graded or not.
+export const STUB_PRICE = 0.9;
+export const isStubPick = (p) => (p.market === "spread" || p.market === "total") && p.price != null && (p.price >= STUB_PRICE || p.price <= 1 - STUB_PRICE);
+export async function voidStubPicks(picks = null) {
+  const r = getRedis(); let n = 0;
+  for (const p of picks || (await loadPicks())) {
+    if (!isStubPick(p) || p.result === "void") continue;
+    const { _k, ...row } = p; row.was = row.result || null; row.result = "void"; row.voided = "placeholder line";
+    await r.set(_k || KEY(row.date, row.game, row.id), JSON.stringify(row)); n++;
+  }
+  return n;
+}
 export async function gradeAll(fetchFinals = finalsFor) {
   const r = getRedis(), picks = await loadPicks(), byDate = {};
-  for (const p of picks) if (!p.result) (byDate[p.date] = byDate[p.date] || []).push(p);
+  await voidStubPicks(picks).catch(() => 0);
+  for (const p of picks) if (!p.result && !isStubPick(p)) (byDate[p.date] = byDate[p.date] || []).push(p);
   let graded = 0;
   for (const [date, list] of Object.entries(byDate)) {
     let finals; try { finals = await fetchFinals(date); } catch { continue; }
