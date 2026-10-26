@@ -15,7 +15,7 @@
 import { getRedis, jparse, mgetAll } from "./redis";
 import { cardLegs } from "./cardpick";
 import { staleDate } from "./pinnacle";
-import { propLegsForDay, gradeProp, RECHECK_H } from "./props";
+import { propLegsForDay, gradeProp, recheckDue, recheckCount, RECHECK_DAYS } from "./props";
 import { boxFor } from "./espn";
 const GREEN = 56;   // the card's green bar (lib/cardpick.js)
 export const STAKES = { best4: 10, fav4: 10, sgp: 20, sgp_pts: 5, pp6: 5, pp8: 5, pp10: 5, sgp4: 5 };
@@ -151,8 +151,10 @@ export function gradeLeg(l, away, home, f) {
 // 10/23 (owner: "make sure everything is graded correctly"): ESPN corrects box scores after the final (IND @ NOP 10/21: I.Zubac 14 -> 15 rebounds);
 // the prop rows were re-checked once 6+ h after grading (props.js RECHECK_H) but the SAME legs inside the parlays were not -- a decided parlay with
 // prop legs is now re-graded once too (`rechecked`), its result and money follow the corrected legs.
-const recheckDue = (p, now) => !p.rechecked && p.result && Array.isArray(p.legs) && p.legs.some((l) => l.market === "prop")
-  && now - (p.gradedAt ? Date.parse(p.gradedAt) : Date.parse(p.date + "T12:00:00Z") + 30 * 3600e3) >= RECHECK_H * 3600e3;
+// 10/26: up to 3 times (6 h after the grade, then every 20 h), the same schedule as the prop rows (props.js recheckDue)
+const parlayRecheckDue = (p, now) => p.result && Array.isArray(p.legs) && p.legs.some((l) => l.market === "prop")
+  && recheckDue(p, now, p.gradedAt || new Date(Date.parse(p.date + "T12:00:00Z") + 30 * 3600e3).toISOString())
+  && now - Date.parse(p.date + "T12:00:00Z") <= (RECHECK_DAYS + 1) * 86400e3;
 function settle(p) {
   const res = p.legs.map((l) => l.result); let out = null;
   if (res.some((x) => x === "L")) out = "L"; else if (res.length && res.every((x) => x === "W" || x === "P")) out = res.every((x) => x === "P") ? "P" : "W";
@@ -165,7 +167,7 @@ export async function gradeParlays(fetchFinals, fetchBox = boxFor, now = Date.no
   const r = getRedis(), byDate = {}, again = {}; let n = 0;
   for (const p of await loadParlays()) {
     if (!p.result && Array.isArray(p.legs)) (byDate[p.date] = byDate[p.date] || []).push(p);
-    else if (recheckDue(p, now)) (again[p.date] = again[p.date] || []).push(p);
+    else if (parlayRecheckDue(p, now)) (again[p.date] = again[p.date] || []).push(p);
   }
   for (const [date, list] of Object.entries(again)) {
     let box; try { box = await fetchBox(date); } catch { continue; }
@@ -173,7 +175,7 @@ export async function gradeParlays(fetchFinals, fetchBox = boxFor, now = Date.no
       if (p.legs.some((l) => l.market === "prop" && !(box && box[l.game] && box[l.game].final))) continue;   // that game's box is not there: try next run
       let fixed = 0;
       for (const l of p.legs) { if (l.market !== "prop") continue; const gp = gradeProp(l, box[l.game]); if (gp.result !== l.result || gp.actual !== l.actual) fixed++; l.result = gp.result; l.actual = gp.actual; }
-      settle(p); p.rechecked = new Date(now).toISOString(); if (fixed) p.fixed = fixed;
+      settle(p); const at = new Date(now).toISOString(); p.rechecks = recheckCount(p) + 1; p.rechecked = p.rechecked || at; p.checkedAt = at; if (fixed) p.fixed = (p.fixed || 0) + fixed;
       const { _k, ...row } = p; await r.set(_k, JSON.stringify(row)).catch(() => {}); if (fixed) n++;
     }
   }

@@ -1905,11 +1905,33 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const n1 = await pr.gradePropsGame(R, 2026, 99, g), r1 = JSON.parse(await R.hget(rk, g.key));
     snaps = ["has catch", "no touch"]; pr.clearStatCache(); const pr2 = pr;
     const n2 = await pr2.gradePropsGame(R, 2026, 99, g), r2 = JSON.parse(await R.hget(rk, g.key)), n3 = await pr2.gradePropsGame(R, 2026, 99, g);
+    // 10/26: corrected stats a day later (Has Catch 12 -> 40 yds, the Under 30.5 now loses): re-graded twice more, 20+ h apart, then never again
+    let catchYds = 40; globalThis.fetch = async (u) => ({ json: async () => ({ ok: true, games: { "AA @ BB": { "has catch": { rec_yds: catchYds } } }, snaps: { "AA @ BB": ["has catch", "no touch"] } }) });
+    const t0 = Date.now(); pr.clearStatCache();
+    const e1 = await pr.gradePropsGame(R, 2026, 99, g, t0 + 5 * 3600e3);
+    const c1 = await pr.gradePropsGame(R, 2026, 99, g, t0 + 21 * 3600e3), rc1 = JSON.parse(await R.hget(rk, g.key));
+    catchYds = 12; pr.clearStatCache();
+    const e2 = await pr.gradePropsGame(R, 2026, 99, g, t0 + 30 * 3600e3);
+    const c2 = await pr.gradePropsGame(R, 2026, 99, g, t0 + 42 * 3600e3), rc2 = JSON.parse(await R.hget(rk, g.key));
+    catchYds = 99; pr.clearStatCache();
+    const c3 = await pr.gradePropsGame(R, 2026, 99, g, t0 + 90 * 3600e3), rc3 = JSON.parse(await R.hget(rk, g.key));
     globalThis.fetch = real;
     const by = (r, nm) => r.picks.find((x) => x.name === nm) || {};
+    ok(e1 === 0 && c1 === 3 && rc1.rechecks === 1 && by(rc1, "Has Catch").result === "L" && by(rc1, "Has Catch").actual === 40 && rc1.fixed === 1 && by(rc1, "Sat Out").result === "P"
+      && e2 === 0 && c2 === 3 && rc2.rechecks === 2 && by(rc2, "Has Catch").result === "W" && rc2.fixed === 2 && c3 === 0 && by(rc3, "Has Catch").actual === 12 && pr.PROP_RECHECKS === 2,
+      "NFL props re-check (10/26): a graded game is re-graded from fresh stats twice more, 20+ h apart (a corrected number flips the row), then never again", { rc1: rc1.picks, rc2, c3 });
+    { // the same for a decided prop parlay's legs (10/26): result and money follow the corrected leg
+      const pk = "paper:2026:98", legs = [{ kind: "prop", player: "Has Catch", game: "AA @ BB", stat: "rec_yds", side: "under", line: 30.5, price: 0.6, result: "W", actual: 12 }, { kind: "prop", player: "Other Guy", game: "AA @ BB", stat: "rec_yds", side: "under", line: 50.5, price: 0.7, result: "W", actual: 20 }];
+      await R.set(pk, JSON.stringify({ parlays: [{ strategy: "pp6", stake: 5, legs, result: "W", ret: 1 }] }));
+      globalThis.fetch = async (u) => ({ json: async () => ({ ok: true, games: { "AA @ BB": { "has catch": { rec_yds: 40 }, "other guy": { rec_yds: 20 } } }, snaps: { "AA @ BB": ["has catch", "other guy"] } }) }); pr.clearStatCache();
+      await pa.gradePaper(2026, 98, [], async () => null, Date.now()); const q1 = JSON.parse(await R.get(pk)).parlays[0];
+      await pa.gradePaper(2026, 98, [], async () => null, Date.now() + 5 * 3600e3); const q2 = JSON.parse(await R.get(pk)).parlays[0];
+      globalThis.fetch = real; await R.del(pk);
+      ok(q1.result === "L" && q1.ret === -1 && q1.rechecks === 1 && q1.fixed === 1 && q1.legs[0].result === "L" && q1.legs[0].actual === 40 && q2.rechecks === 1,
+        "NFL prop parlay re-check (10/26): a decided parlay's prop legs are re-graded from fresh stats (the corrected leg loses the parlay), not again within 20 h", { q1, q2 }); }
     ok(n1 === 3 && r1.wait && by(r1, "Has Catch").result === "W" && by(r1, "No Touch").result === null && by(r1, "Sat Out").result === null
       && n2 === 3 && !r2.wait && r2.snapChecked && by(r2, "No Touch").result === "W" && by(r2, "No Touch").played === true && by(r2, "Sat Out").result === "P" && by(r2, "Sat Out").played === false && n3 === 0,
-      "NFL props (10/23 recheck): a player with no touch waits for the snap counts; then took a snap = graded at 0 yards, no snap = push (Polymarket refunds at the last price); graded games are not touched again", { r1: r1.picks, r2: r2.picks, n3 }); }
+      "NFL props (10/23 recheck): a player with no touch waits for the snap counts; then took a snap = graded at 0 yards, no snap = push (Polymarket refunds at the last price); a graded game is not touched again until its re-check", { r1: r1.picks, r2: r2.picks, n3 }); }
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8"), sh = readFileSync(new URL("../public/shell.js", import.meta.url), "utf8"), mb = readFileSync(new URL("../pages/api/modelbets.js", import.meta.url), "utf8"), wk = readFileSync(new URL("../lib/week.js", import.meta.url), "utf8"), gp = readFileSync(new URL("../lib/paper.js", import.meta.url), "utf8");
   ok(/\["pp6", "6 Leg"\], \["pp8", "8 Leg"\], \["pp10", "10 Leg"\]\]/.test(app) && /\["pp6", "6 Leg"\], \["pp8", "8 Leg"\], \["pp10", "10 Leg"\]\],/.test(sh) && /pp6: "pp6", pp8: "pp8", pp10: "pp10"/.test(mb) && /S\.propParlays/.test(app) && /propParlays: propParlayList/.test(wk) && /\["PLAYER PROPS", \[\["pp6", "6 legs"\]/.test(app) && /l\.kind === "prop"\) \{ const st = await weekStats/.test(gp),
     "NFL prop parlays: Model bets tabs 6 / 8 / 10 Leg (menu + page), saved weeks grouped, live build on the slate, scoreboard rows, grading wired");
