@@ -1105,6 +1105,23 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
     "no BOOK GAP under 1 pt / 2 pts, over 4 / 6 pts (bad read), with books older than 6 h or no books: the model's side");
   const lmv = bg({ spread: { homeSpread: -10.5 } }, T, { move: { signal: { spread: { team: "OKC", open: 8.5, pts: 3 } } } });
   ok(lmv.spread.plain.ruleId === "linemove|spread" && lmv.spread.plain.hit === 67.9, "LINE MOVE at the open (67.9%) outranks BOOK GAP (59.7%)", lmv.spread.plain); }
+{ // 10/26 angle-mix shadows: tired + star out, big dog vs a tired favorite, rested vs star out, rested road favorite
+  const pn4 = await import("../lib/pinnacle.js"), ctx = (rh, ra) => ({ home: { rest: rh }, away: { rest: ra } });
+  const g1 = { key: "AAA @ BBB", date: "2026-10-27", start: "2026-10-28T00:00:00Z", context: ctx(1, 2), starOut: { home: 1, away: 0 }, poly: { spread: { homeSpread: -9.5 } } };
+  const s1 = pn4.angleSides(g1);
+  ok(s1.length === 2 && s1.some((x) => x.kind === "tired" && x.team === "AAA" && x.line === 9.5) && s1.some((x) => x.kind === "dogvtired" && x.team === "AAA" && x.line === 9.5), "tired + star out: home BBB on a back-to-back and missing its star -> AAA +9.5 (TIRED), and the same AAA as a 9+ dog vs a tired favorite", JSON.stringify(s1));
+  const s2 = pn4.angleSides({ ...g1, context: ctx(1, 4), starOut: { home: 0, away: 1 }, poly: { spread: { homeSpread: 2.5 } } });
+  ok(s2.length === 1 && s2[0].kind === "restfav" && s2[0].team === "AAA" && s2[0].line === -2.5, "rested road favorite at a home dog (AAA 4 days rest vs BBB 1) -> AAA -2.5; AAA's own star out blocks RESTED vs STAR OUT", JSON.stringify(s2));
+  const s3 = pn4.angleSides({ ...g1, context: ctx(4, 2), starOut: { home: 0, away: 1 }, poly: { spread: { homeSpread: -3 } } });
+  ok(s3.length === 1 && s3[0].kind === "restvstar" && s3[0].team === "BBB" && s3[0].line === -3 && pn4.angleSides({ ...g1, context: null }).length === 0, "rested vs star out: BBB 2 more days of rest, AAA missing its star -> BBB -3; no context -> nothing", JSON.stringify(s3));
+  const tA = Date.parse("2026-10-27T18:00:00Z");
+  ok((await pn4.recordAngleShadows([g1], tA)) === 2 && (await pn4.recordAngleShadows([g1], tA + 60e3)) === 0 && (await pn4.recordAngleShadows([{ ...g1, key: "C @ D" }], Date.parse(g1.start) + 1)) === 0, "angle shadows saved once (NX), never after tip-off");
+  const smA = pn4.summarizeMoves(await pn4.loadMoves());
+  ok(smA.tired && smA.tired.pending === 1 && smA.dogvtired.pending === 1 && !(smA.all && smA.all.pending > 50), "angle shadows tallied under their own kinds, apart from LINE MOVE", JSON.stringify({ t: smA.tired, d: smA.dogvtired }));
+  const s4 = pn4.angleSides({ ...g1, date: "2027-03-05", context: ctx(2, 2), starOut: { home: 1, away: 0 }, model: { total: 218 }, poly: { spread: { homeSpread: -3 }, total: { line: 227.5 } } });
+  ok(s4.length === 2 && s4.every((x) => x.market === "total" && x.side === "under" && x.line === 227.5) && s4.some((x) => x.kind === "mtotlate") && s4.some((x) => x.kind === "mtotstar"), "total shadows: model 218 vs 227.5 in March with a star out -> Under 227.5 under both MODEL TOTAL 8+ kinds", JSON.stringify(s4));
+  ok(pn4.angleSides({ ...g1, date: "2027-03-05", context: ctx(2, 2), starOut: { home: 0, away: 0 }, model: { total: 240 }, poly: { spread: { homeSpread: -3 }, total: { line: 227.5 } } }).filter((x) => x.market === "total").map((x) => x.kind + ":" + x.side).join() === "mtotlate:over", "model 240 vs 227.5 in March, nobody out -> only the late-season Over");
+  ok(/TIRED \+ STAR OUT · fade/.test(readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8")), "Models -> Shadow trackers lists the four angle rows"); }
 const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8"), sl = readFileSync(new URL("../lib/slate.js", import.meta.url), "utf8");
   ok(/\["pp10", "Prop Parlays · 10 Leg"\]/.test(app) && /pp10: "Prop Parlays · 10 legs"/.test(app) && !/\["best4", "Parlay"\]/.test(app) && /Props · 77¢\+ hidden rows/.test(app) && /Props · star out → teammates Over/.test(app) && /buildPropParlays\(d, out, now, legs\)/.test(sl) && /buildSameGame4\(d, out, now, legs\)/.test(sl) && /l\.market !== "prop"/.test(sl),
     "Prop Parlays: Model bets tabs 6 / 8 / 10 Leg (no Parlay tab), scoreboard rows per size, the two shadow rows on Models; built on the slate; never sent for a Polymarket combo quote"); }

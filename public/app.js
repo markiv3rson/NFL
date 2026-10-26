@@ -708,8 +708,8 @@ function mSec(id, title, body, warn = 0, open = false) {
 const IBTN = `<button class="ibtn" type="button" aria-label="What is this?"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6.6"/><line x1="8" y1="7.2" x2="8" y2="11.4"/><circle cx="8" cy="4.8" r=".6" fill="currentColor"/></svg></button>`;
 const ibox = (lines, st) => `<div class="ibox" hidden${st ? ` style="${st}"` : ""}>${lines.map(([k, t]) => `<div><b>${k}</b> ${t}</div>`).join("")}</div>`;
 const MODEL_INFO = {
-  spread: [["Model:", "the game model’s score guess. Data only."], ["Model (Team):", "team-stats model at Polymarket’s line; it becomes the PICK at 58%+ sure."],
-    ["Model (Stack):", "everything the app knows in one model. With no tested rule it names the PICK."], ["Pick:", "the bet at Polymarket’s main line, from a tested rule, else the Stack model’s side. Green 56%+, light green 53–55%, yellow below."], ["ML pick:", "the favorite’s moneyline when the Stack model backs the favorite and is priced 50–70% (won 67.7–69.7% in 2022-25, priced 56–65%)."],
+  spread: [["Model:", "the game model’s score guess. Data only."], ["Model (Team):", "team-stats model at Polymarket’s line; it becomes the PICK at 58%+ sure, but not once the line has moved 1+ point its way."],
+    ["Model (Stack):", "everything the app knows in one model. With no tested rule it names the PICK."], ["Pick:", "the bet at Polymarket’s main line, from a tested rule (LINE MOVE, TEAM MODEL, OVERSHOOT, INJURY, BOUNCE BACK), else the Stack model’s side. Green 56%+, light green 53–55%, yellow below."], ["OVERSHOOT:", "the line moved 1+ point toward a side the game model still likes by 2+; the other side won 57% (242 games 2014-25)."], ["ML pick:", "the favorite’s moneyline when the Stack model backs the favorite and is priced 50–70% (won 67.7–69.7% in 2022-25, priced 56–65%)."],
     ["Pick w/ points:", "same side, the fewest bought points (1–2) that won 56%+."], ["MORE list:", "every line within 2 points: points bought · history win % · Polymarket price."]],
   total: [["Model:", "the game model’s total points guess. Data only."], ["Pick:", "Over or Under at Polymarket’s main total, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
     ["Pick w/ points:", "same side, the fewest bought points (1–2) that won 56%+."], ["MORE list:", "every line within 2 points: points bought · history win % · Polymarket price."]],
@@ -1209,8 +1209,8 @@ function applyBetsView() {
 // Pass Yds (/api/props: the side the model gives 65%+ in a family that passed the real-line test, one row per player and stat, its highest %).
 // Rows sit under the kickoff headers, game by game; a team drop-down filters them; RECORD tile = this tab's graded rows; ✓ / ✗ green / red once graded.
 let PROPS = null, PROPWEEK = null, PROPTAB = "recyds", PROPTEAM = "all";
-const PROP_TABS = [["td", "Anytime TD"], ["first", "First TD"], ["recyds", "Rec Yds"], ["rec", "Receptions"]];
-const PROP_STAT = { recyds: "rec_yds", rec: "rec", passyds: "pass_yds" };
+const PROP_TABS = [["td", "Anytime TD"], ["first", "First TD"], ["recyds", "Rec Yds"], ["rec", "Receptions"], ["rushyds", "Rush Yds"]];
+const PROP_STAT = { recyds: "rec_yds", rec: "rec", passyds: "pass_yds", rushyds: "rush_yds" };
 const propTabLabel = (k) => (PROP_TABS.find(([t]) => t === k) || [, "Rec Yds"])[1];
 async function loadProps() {
   try { const d = await (await fetch(`/api/props${PROPWEEK ? `?week=${PROPWEEK}` : ""}`, { cache: "no-store" })).json(); if (d && d.ok) { PROPS = d; renderProps(); } } catch {}
@@ -1224,7 +1224,7 @@ const teamSel = (teams) => `<div class="wksel"><select id="props-team" aria-labe
 const propLast = (p, tag) => { const l = p.last; if (!l) return '<span class="pp5 dim">—</span>';
   if (l.line == null) return `<span class="pp5 dim">${l.actual != null ? Math.round(l.actual * 10) / 10 : "—"}</span>`;
   return `<span class="pp5 ${l.result === "W" ? "g" : "r"}">${l.side === "over" ? "O" : "U"} ${l.line} ${l.result === "W" ? "✓" : "✗"}${l.actual != null ? ` <span class="dim">${Math.round(l.actual * 10) / 10}</span>` : ""}</span>`; };
-const propRow = (p) => `<div class="pbl ppr${p.first ? " first" : ""}${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${tlogo(p.team || "")}${esc(p.name)}</span><span class="pp2">${p.first ? "First TD" : `${p.stat === "rec" ? "Rec " : p.stat === "pass_yds" ? "Pass Yds " : ""}${p.side === "over" ? "Over" : "Under"} ${p.line}`}</span>${p.first ? "" : propLast(p)}<span class="pp3 mod">${Math.round((p.cal ?? p.chance) * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
+const propRow = (p) => `<div class="pbl ppr${p.first ? " first" : ""}${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${tlogo(p.team || "")}${esc(p.name)}</span><span class="pp2">${p.first ? "First TD" : `${p.stat === "rec" ? "Rec " : p.stat === "pass_yds" ? "Pass Yds " : p.stat === "rush_yds" ? "Rush Yds " : ""}${p.side === "over" ? "Over" : "Under"} ${p.line}`}</span>${p.first ? "" : propLast(p)}<span class="pp3 mod">${Math.round((p.cal ?? p.chance) * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
 // 10/20 night (owner): the POLYMARKET head carries the Polymarket logo on every props page (both sports); the First TD tab has NO LAST WK column (nothing to grade there)
 const propHead = (first) => `<div class="pbl ppr pph${first ? " first" : ""}"><span class="pp1">PLAYER</span><span class="pp2">LINE</span>${first ? "" : '<span class="pp5">LAST WK</span>'}<span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
 // the rows of one game, split by team (away first, then home, then anyone with no team), each team with its small label (owner: "separate them by teams")
