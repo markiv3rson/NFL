@@ -55,10 +55,13 @@
       if (!document.querySelectorAll) return;
       document.querySelectorAll("#bnav [data-b]").forEach((a) => a.classList.toggle("on", a.dataset.b === t));
       document.querySelectorAll("#tbar [data-pg]").forEach((a) => a.classList.toggle("on", a.dataset.pg === panel));
-      const subs = subsOf(sp, panel), sb = document.getElementById("sbar");
-      if (sb) { sb.innerHTML = subs ? subs.map(([id, l]) => `<a class="si${id === panel ? " on" : ""}" data-nav href="${URL_[sp]}#${id}">${l}</a>`).join("") : "";
-        const on = sb.querySelector && sb.querySelector(".si.on"); if (on && on.scrollIntoView && sb.scrollWidth > sb.clientWidth) { try { on.scrollIntoView({ block: "nearest", inline: "center" }); } catch {} } }
-      document.body.classList.toggle("sbar-on", !!subs);
+      // 10/27 (owner: "organize or fix these ... change the layout if you need to"): the Model bets types and the Player props tabs are chips under the
+      // page title (like the game page's), no longer a strip behind the bottom bar
+      const subs = subsOf(sp, panel), html = subs ? subs.map(([id, l]) => `<a class="gchip${id === panel ? " on" : ""}" data-nav href="${URL_[sp]}#${id}">${l}</a>`).join("") : "";
+      document.querySelectorAll(".phead").forEach((h) => { let c = h.querySelector(".phchips"); if (!c && html) { c = document.createElement("div"); c.className = "gchips phchips"; h.appendChild(c); } if (c) { c.innerHTML = html; c.style.display = html ? "" : "none"; } });
+      // the NFL | NBA row opens Home on the other sport
+      const same = panel === "home" ? "lines" : /^modelbets/.test(panel) ? "modelbets" : panel === "record" ? "mybets" : panel;
+      document.querySelectorAll(".lgt[data-sp]").forEach((a) => a.setAttribute("href", `${URL_[a.dataset.sp]}#${same}`));
       document.body.classList.toggle("ref-on", REFRESH_ON(panel));
       Shell.choose(sp);   // Home and Model open on the sport last chosen
       document.body.classList.toggle("tbar-on", panel === "lines");   // 10/27 (owner): the SLATEZZ bar is on Home only
@@ -71,7 +74,7 @@
     choose(sp) { try { localStorage.setItem(Shell.SPORT_KEY, sp); } catch {} },
     // the NFL | NBA tabs that title Home and Model (10/27): the same page on each sport, the one open in white
     // (owner 10/27, Polymarket's phone app: the category row -- an icon over its name, the open one in a rounded square)
-    leagueTabs(sp, page) { return ["nfl", "nba"].map((x) => `<a class="lgt${x === sp ? " on" : ""}" data-nav href="${URL_[x]}#${page}"><i><img src="/ball-${x}.png?v=1" alt=""></i><span>${x.toUpperCase()}</span></a>`).join(""); },
+    leagueTabs(sp, page) { return ["nfl", "nba"].map((x) => `<a class="lgt${x === sp ? " on" : ""}" data-sp="${x}" data-nav href="${URL_[x]}#${page}"><i><img src="/ball-${x}.png?v=1" alt=""></i><span>${x.toUpperCase()}</span></a>`).join(""); },
     open() {}, close() {},   // (the side menu is gone 10/22)
     // the hash names the page ("#lines"); none = Home (the games list)
     hashPanel(valid, fallback) { const h = (location.hash || "").replace("#", ""); return valid.includes(h) ? h : fallback; },
@@ -132,7 +135,6 @@
       const d = document.createElement("div");
       d.innerHTML = `<header class="tbar" id="tbar"><a class="slatelogo sgrad" data-nav href="${URL_[sp]}#lines">SLATEZZ</a>` +
         `<a class="tib" data-nav data-pg="alerts" href="${URL_[sp]}#alerts" aria-label="Alerts">${svg("bell", 28)}<b class="tcnt" id="mcnt-${sp}-alerts"></b></a></header>` +   // 10/21 night (owner): the bell at the top right
-        `<nav class="sbar" id="sbar" aria-label="Tabs"></nav>` +
         `<nav class="bnav" id="bnav" aria-label="Main menu">` +
         `<a class="bi" data-nav data-b="home" href="${URL_[sp]}#lines" aria-label="Home">${svg("home", 23)}<span>Home</span></a>` +
         `<a class="bi" data-nav data-b="bets" href="${URL_[sp]}#mybets" aria-label="Bets">${svg("bets", 23)}<span>Bets</span></a>` +
@@ -152,8 +154,8 @@
         // (10/21 night, owner: no time under it -- the refresh time shows in the message at the bottom right after a tap)
         box.appendChild(b); const tb = h.querySelector(".pt b"); if (tb && tb.after) tb.after(box); else h.appendChild(box);   // on the title's line, right after the title (owner 10/21 night)
       });
-      // Home and Model: the NFL | NBA tabs are the title
-      [["panel-lines", "lines"], ["panel-models", "models"]].forEach(([id, pg]) => { const t = document.querySelector && document.querySelector(`#${id} .phead .pt b`); if (t) { t.className = "lgts"; t.innerHTML = Shell.leagueTabs(sp, pg); } });
+      // Home: the NFL | NBA row is the title (owner 10/27: on Home only -- Bets and Model follow the sport last picked there)
+      [["panel-lines", "lines"]].forEach(([id, pg]) => { const t = document.querySelector && document.querySelector(`#${id} .phead .pt b`); if (t) { t.className = "lgts"; t.innerHTML = Shell.leagueTabs(sp, pg); } });
       if (document.addEventListener) document.addEventListener("click", (e) => {
         const a = e.target.closest && e.target.closest("a[data-nav]"); if (!a) return;
         e.preventDefault(); Shell.go(a.getAttribute("href"));

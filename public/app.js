@@ -352,10 +352,10 @@ function tdWeekLine(data, team, player) {
   return parts.join(' <span class="dim">·</span> ') + (drought >= 2 ? ` <span class="dim">· no TD last ${drought} games</span>` : "");
 }
 // 10/27 (owner, on PHI @ WAS / CHI @ SEA showing 3 a team: "show me top 4 of each team and make note of how many td weeks they missed" / "like no TD last 2 games
-// or 3 4 5 6 7 games"; SUPERSEDES the 10/21 "scored in his last 2 or off" cut): the page lists the TD_POOL (4) likeliest scorers per team, nobody is cut for a
+// or 3 4 5 6 7 games"; SUPERSEDES the 10/21 "scored in his last 2 or off" cut): the page lists the TD_POOL (5 since the owner's later 10/27 ask) likeliest scorers per team, nobody is cut for a
 // drought; a player who did not score last game carries the red note with the count -- "✗ no TD last game", "✗ no TD last 2 games", "... last 5 games" (a player
 // with no TD this season counts every game he played). The page is still drawn only once the week feed is in. Model lists, parlays and grading unchanged.
-const TD_WARN = 1, TD_POOL = 4;
+const TD_WARN = 1, TD_POOL = 5;   // 10/27 later (owner: "for anytime td's show me the top 5 players on each team")
 // the note text for a row, or null (scored last game, no feed yet, or no played games)
 function tdWarn(r, data) { if (data == null || !r) return null; const d = tdDrought(data, r.team, r.player); return d == null || d < TD_WARN ? null : d === 1 ? "✗ no TD last game" : `✗ no TD last ${d} games`; }
 async function loadTdWeeks() {
@@ -617,15 +617,16 @@ function renderMineNow() {
   // 10/22 (owner: "Make all of this its own card ... No columns one card"; "a little darker"): Best bets, Parlay of the week, the open bets / record / profit
   // tiles and the summary are ONE card, one row each (name left, number right); a tap on Best bets / Parlay opens its list under the card
   const T = ticketRows(), recCls = tot ? (s.wins / tot >= 0.5 ? "g" : "r") : "dim";
-  const top = `<div class="card mbtop" style="margin-top:10px"><div class="sec">${T.rows}` +
-    (past ? `<div class="row"><span class="dim">Bets</span><span>${shown.length}</span></div>` : `<div class="row"><span class="dim">Open bets</span><span>${nOpen} · ${money(s.openCost)} staked</span></div>`) +
-    `<div class="row"><span class="dim">Record</span><span class="${recCls}">${tot ? `${s.wins}–${s.losses}` : "—"}</span></div>` +
-    `<div class="row"><span class="dim">Profit</span><span>${cMoney(s.pl)} · ${sel === "all" ? "this season" : "Week " + sel}</span></div>` +
+  // 10/27 (owner: "organize or fix these ... change the layout if you need to"): Profit as one big number on top (like Polymarket's portfolio), the record,
+  // open bets and stake on one line under it; then Best bets, Parlay of the week, Return · CLV as plain rows
+  const hero = `<div class="mbhero"><span class="lbl">Profit · ${sel === "all" ? "this season" : "Week " + sel}</span><b>${cMoney(s.pl)}</b>` +
+    `<span class="sub"><span class="${recCls}">${tot ? `${s.wins}–${s.losses}` : "0–0"}</span> · ${past ? `${shown.length} bet${shown.length === 1 ? "" : "s"}` : `${nOpen} open · ${money(s.openCost)} staked`}</span></div>`;
+  const top = hero + `<div class="card mbtop"><div class="sec">${T.rows}` +
     `<div class="row"><span class="dim">Return · CLV</span><span>${cPct(s.roi)} · ${cPct(s.avgClv)}</span></div>` +
     (() => { const sc = MB.summary && MB.summary.settleCheck; if (!sc || !(sc.agree + sc.disagree)) return "";
       return sc.disagree ? `<div class="s y">⚠ Settlement mismatch on ${sc.disagree} combo${sc.disagree === 1 ? "" : "s"}</div>`
         : ""; })() +
-    (past ? "" : `<div class="row"><span class="dim">Open this week</span><span>${money(s.openCost)}</span></div>`) + `</div></div>` + T.drops;
+    `</div></div>` + T.drops;
   $("record-mine").innerHTML = ddSlot($("record-mine"), wkChips) + top + `<div class="card" style="margin-top:10px">` +
     (past || !open.length ? "" : openBySlot(open) +
     `<div class="sec"><div class="sh">Expected returns</div>` +
@@ -1207,7 +1208,7 @@ let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model
 // 10/21 night (owner): a page's drop-downs go to the right of its title (Shell.dd); without the shell (tests) they stay on top of the block
 function ddSlot(el, html) { if (typeof Shell !== "undefined" && Shell.dd && el && el.closest) { Shell.dd(el, html); return ""; } return html; }
 function applyBetsView() {
-  const bt = $("bets-title"); if (bt) bt.innerHTML = BETSVIEW === "model" ? `Model bets<span class="ptab"> · ${esc((LAB_TABS.find(([k]) => k === LABTYPE) || [, ""])[1])}</span>` : "My bets";
+  const bt = $("bets-title"); if (bt) bt.innerHTML = BETSVIEW === "model" ? "Model bets" : "My bets";   // 10/27: the parlay type is the chip under the switch
   const m = BETSVIEW === "model", set = (id, on) => { const e = $(id); if (e) e.style.display = on ? "" : "none"; };
   set("record-mine", !m); set("lab", m); set("dd-record-mine", !m); set("dd-lab", m);
 

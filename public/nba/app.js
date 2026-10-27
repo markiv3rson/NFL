@@ -370,14 +370,15 @@ function ticketRows() {   // 10/22 (owner: "Make all of this its own card ... No
     drops: (B.length ? `<div class="drop" id="bestdrop"><div class="card modelglow"><div class="inner">${B.map(bb).join("")}</div></div></div>` : "") +
       (P.length ? `<div class="drop" id="parlaydrop"><div class="card modelglow"><div class="inner">${P.map(bb).join("")}</div></div></div>` : "") };
 }
-const topCard = (rows) => { const T = ticketRows(); return `<div class="card mbtop" style="margin-top:10px"><div class="sec">${T.rows}${rows}</div></div>${T.drops}`; };
+// 10/27 (owner, = NFL): Profit as one big number on top, the record / open / stake line under it, then Best bets and the Parlay as plain rows
+const topCard = (rows, hero = "") => { const T = ticketRows(); return `${hero}<div class="card mbtop"><div class="sec">${T.rows}${rows}</div></div>${T.drops}`; };
 
 // ---------- Bets: My bets | Model bets
 let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
 // 10/21 night (owner): a page's drop-downs go to the right of its title (Shell.dd); without the shell (tests) they stay on top of the block
 function ddSlot(el, html) { if (typeof Shell !== "undefined" && Shell.dd && el && el.closest) { Shell.dd(el, html); return ""; } return html; }
 function applyBetsView() {
-  const bt = $("bets-title"); if (bt) bt.innerHTML = BETSVIEW === "model" ? `Model bets<span class="ptab"> · ${esc((LAB_TABS.find(([k]) => k === LABTYPE) || [, ""])[1])}</span>` : "My bets";
+  const bt = $("bets-title"); if (bt) bt.innerHTML = BETSVIEW === "model" ? "Model bets" : "My bets";   // 10/27: the parlay type is the chip under the switch
   const m = BETSVIEW === "model", set = (id, on) => { const e = $(id); if (e) e.style.display = on ? "" : "none"; };
   set("record-mine", !m); set("lab", m); set("dd-record-mine", !m); set("dd-lab", m);   // 10/17 (owner): the parlay types are menu sub tabs under Model bets
 
@@ -462,10 +463,9 @@ function renderBets() {
   const w = done.filter((e) => e.result === "win").length, l = done.filter((e) => e.result === "loss" || (!e.result && legLost(e))).length, sold = done.filter((e) => e.result === "sold").length;
   const pl = done.reduce((a, e) => a + (e.result ? e.pl : -(e.cost || 0)), 0), staked = done.reduce((a, e) => a + (e.cost || 0), 0), tot = w + l;
   const dayPick = `<div class="wksel"><select id="mb-day" aria-label="Day">${days.map((d) => `<option value="${d}"${sel === d ? " selected" : ""}>${dayName(d)}</option>`).join("")}<option value="all"${sel === "all" ? " selected" : ""}>Season</option></select></div>`;
-  $("record-mine").innerHTML = ddSlot($("record-mine"), dayPick) + topCard((past ? `<div class="row"><span class="dim">Bets</span><span>${shown.length}</span></div>` : `<div class="row"><span class="dim">Open bets</span><span>${openB.length} · ${money(openB.reduce((a, e) => a + (e.cost || 0), 0))} staked</span></div>`) +
-    `<div class="row"><span class="dim">Record</span><span class="${tot ? (w / tot >= 0.5 ? "g" : "r") : "dim"}">${tot ? `${w}–${l}` : "—"}${sold ? ` <span class="dim">· ${sold} sold</span>` : ""}</span></div>` +
-    `<div class="row"><span class="dim">Profit</span><span>${cMoney(pl)} · ${sel === "all" ? "this season" : dayName(sel)}</span></div>` +
-    `<div class="row"><span class="dim">Staked</span><span>${money(staked)} · settled</span></div>`) +
+  $("record-mine").innerHTML = ddSlot($("record-mine"), dayPick) + topCard(`<div class="row"><span class="dim">Staked</span><span>${money(staked)} · settled</span></div>`,
+    `<div class="mbhero"><span class="lbl">Profit · ${sel === "all" ? "this season" : dayName(sel)}</span><b>${cMoney(pl)}</b>` +
+    `<span class="sub"><span class="${tot ? (w / tot >= 0.5 ? "g" : "r") : "dim"}">${tot ? `${w}–${l}` : "0–0"}</span>${sold ? ` · ${sold} sold` : ""} · ${past ? `${shown.length} bet${shown.length === 1 ? "" : "s"}` : `${openB.length} open · ${money(openB.reduce((a, e) => a + (e.cost || 0), 0))} staked`}</span></div>`) +
     `<div class="card" style="margin-top:10px">` + (past || !openB.length ? "" : `<div class="sec"><div class="sh">Open</div>${rowsOf(firstSingles(openB), false)}</div>`) +
     `<div class="fold" data-drop="settled"><span>${past ? "Results" : "Settled bets"}</span><span>▾</span></div><div class="drop${past ? " open" : ""}" id="settled">${done.length ? rowsOf(done, true) : '<div class="s dim empty">None yet.</div>'}</div></div>` +
     `<div class="center"><button class="btn" id="sync-btn">↻ Sync account</button></div>`;
