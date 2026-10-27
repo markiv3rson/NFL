@@ -160,13 +160,13 @@
   .pagewm img { width:50%; height:100%; object-fit:contain; transform:scale(1.25); opacity:.2; }
   .pagewm::after { content:""; position:absolute; inset:0; background:rgba(0,0,0,.1); }   /* 10/18 night (owner): the game page's backdrop carries only a 10% shade too (was 40%) */
   /* 10/17 (owner): every NBA page (not a game page) gets its photo behind it, like NFL; the cards see-through over it */
-  html.lines-on .pagewm { background:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.1)),url(/nba/lines-bg.jpg?v=5) center/cover no-repeat,#000; }   /* 10/18 evening (owner): only a 10% shade -- "why is it so dark in the app"; it was 68-86% */
+  html.lines-on .pagewm { background:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.1)),url(/nba/lines-bg.jpg?v=6) center/cover no-repeat,#000; }   /* 10/18 evening (owner): only a 10% shade -- "why is it so dark in the app"; it was 68-86% */
   html.lines-on .pagewm::after { display:none; }
   /* 10/27 night (owner): the picture = the silver ball in the net on top melting into the ESPN ball below, one phone-tall image (public/nba/lines-bg.jpg, 1170 x 2532);
      on a computer the same as NFL: the sharp picture at its own proportions over the same picture blurred, filling the screen */
   @media (min-width:1100px) { html.lines-on body { background:transparent; }
-    html.lines-on .pagewm { z-index:-2; background:url(/nba/lines-bg.jpg?v=5) center/cover no-repeat #000; filter:blur(34px) brightness(.55); transform:scale(1.12); }
-    html.lines-on body::after { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; background:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.1)),url(/nba/lines-bg.jpg?v=5) center/contain no-repeat; } }
+    html.lines-on .pagewm { z-index:-2; background:url(/nba/lines-bg.jpg?v=6) center/cover no-repeat #000; filter:blur(34px) brightness(.55); transform:scale(1.12); }
+    html.lines-on body::after { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; background:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.1)),url(/nba/lines-bg.jpg?v=6) center/contain no-repeat; } }
   html.lines-on .panel .card, html.lines-on .panel .stat { background:rgba(8,8,12,.8); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 80% dark so the text reads (owner 10/17), no frosted haze */
   html.lines-on .panel .tile { background:rgba(8,8,12,.55); border-color:rgba(255,255,255,.28); box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }   /* 10/18 evening (owner, sketch D): game tiles 55% dark, no team colours, no faded logos */
   html.lines-on #panel-record .card, html.lines-on #panel-record .stat { background:rgba(8,8,12,.55); }   /* 10/21 night (owner): My bets as see-through as the Game Lines tiles */
