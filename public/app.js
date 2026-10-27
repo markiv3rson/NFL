@@ -714,7 +714,7 @@ const CARD_INFO = [["PICK:", "the card’s bet at Polymarket’s main line (a te
   ["PICK w/ POINTS:", "the same side with the fewest bought points (1–2) that won 56%+."], ["Line value:", "points better (+) or worse than the line at kickoff."]];
 const TRACK_INFO = [["Test picks,", "never shown on a card: recorded and graded live. One becomes a pick only after it holds 56%+ over about 100 games."],
   ["INJURY EARLY:", "a starter newly out; the healthy team at the line of that moment."], ["TD JUMP:", "a player’s TD chance up 10+ points between reruns; did he score?"],
-  ["STACK:", "everything the app knows in one model; confident = its top fifth."]];
+  ["STACK:", "everything the app knows in one model; confident = its top fifth."], ["WIDE:", "every situation flag on both teams in one boosted-tree model; confident = its top fifth."]];
 function cardRecBox() {
   const R = (COMBOS && COMBOS.cardRec) || {};
   const row = (lab, k) => { const b = R[k]; if (!b || !(b.w + b.l)) return tRow(lab, "", ['<span class="dim">—</span>', '<span class="dim">—</span>', '<span class="dim">—</span>']);
@@ -774,6 +774,13 @@ function renderModelNow() {
   const fitLine = (f) => { if (!f) return "— (after the next Tuesday rebuild)";
     const one = (nm, [a, b]) => a == null ? `${nm} —` : `${nm} ours <b>${Number(a).toFixed(2)}</b>${b == null ? "" : ` · line <b>${Number(b).toFixed(2)}</b> <span class="${a <= b ? "g" : "r"}">${a <= b ? "better" : "worse"}</span>`}`;
     return `${one("margin", f.margin)} · ${one("total", f.total)} · ${one("team total", f.teamTotal)} (${f.games} games)`; };
+  // 10/27: the service's rebuild state from /health -- running since, failed (why), or the published build's time; "site copy" = the build the site reads now
+  const rebuildLine = (rw, f) => { if (!rw) return "—"; const rb = rw.rebuild || {}, b = rw.build || {}, last = rb.last || {};
+    if (rb.running) return `<span class="y">running since ${hm(rb.startedAt)}</span>`;
+    if (last.error) return `<span class="r">failed ${rb.finishedAt ? hm(rb.finishedAt) : ""} · ${esc(String(last.error).slice(0, 80))}</span>` + (b.builtAt ? ` · keeps the build of ${hm(b.builtAt)}` : "");
+    if (!b.builtAt) return rw.ok ? "no build published yet" : "—";
+    const site = f && f.builtAt ? (f.builtAt === b.builtAt ? '<span class="g">site up to date</span>' : `<span class="y">site copy ${hm(f.builtAt)} · updates on the next build</span>`) : "";
+    return `${hm(b.builtAt)} · ${last.published === false ? '<span class="y">did not pass its checks</span>' : "published"}${site ? " · " + site : ""}`; };
   const st = S.status, wc = S.weekCheck || { games: 0, withLines: 0, modelRun: false, watch: [] };
   const stOk = st && st.ok && !st.creditWarning;
   const stRows = st ? [
@@ -786,6 +793,7 @@ function renderModelNow() {
     ["Last TD retrain", st.retrain ? `${hm(st.retrain.t)} · ${/kept/i.test(st.retrain.summary || "") ? "kept current" : /switch|new model|live/i.test(st.retrain.summary || "") ? "new model live" : esc(String(st.retrain.summary || "").slice(0, 40))}` : '<span class="dim">not run yet</span>'],
     ["Kickoff check (ESPN)", kickLine(st.kickcheck)],
     ["Game model vs the line (unseen seasons)", fitLine(st.fitCheck)],   // 10/26 night (owner): margin, total and each team's points -- the model's miss next to the closing line's
+    ["Model rebuild (Railway)", rebuildLine(st.railway, st.fitCheck)],   // 10/27 (owner: "check the railway rebuild"): running / failed / published, and whether the site holds that build
     ["Errors (last 2 days)", (st.errors || []).length ? st.errors.map((e) => `<div class="y">${hm(e.t)} · ${esc(e.msg)}</div>`).join("") : '<span class="g">none</span>'],
     ["Model service (Railway)", st.railway ? (st.railway.ok ? `answering · ${st.railway.ms} ms` : `<span class="r">NOT answering${st.railway.code ? " (HTTP " + st.railway.code + ")" : st.railway.err ? " (" + esc(st.railway.err) + ")" : ""}</span>`) : "—"],
     ["Database used", st.usedMb != null ? `${st.usedMb.toFixed(1)} of ${st.capMb} MB` : "—"],
@@ -878,8 +886,9 @@ function trackedRows() {
   const rr = (x) => (x && x.n ? `${x.w}–${x.l}` : "—");
   const tj = T.tdjump && (T.tdjump.n || T.tdjump.recorded) ? `<div class="row"><span class="dim">TD JUMP (shadow) · chance up 10+ pts</span><span>${T.tdjump.n ? `${T.tdjump.w}–${T.tdjump.l} · ${Math.round(100 * T.tdjump.hit)}%${T.tdjump.said != null ? ` · said ${Math.round(T.tdjump.said)}%` : ""}` : `${T.tdjump.recorded} recorded`}</span></div>` : "";
   const ie = T.injearly && (T.injearly.n || T.injearly.recorded) ? `<div class="row"><span class="dim">INJURY EARLY (shadow)${(T.injearly.fresh && T.injearly.fresh.n) || (T.injearly.cont && T.injearly.cont.n) ? ` · new injury ${rr(T.injearly.fresh)} · continuing ${rr(T.injearly.cont)}` : ""}</span><span>${T.injearly.n ? `${T.injearly.w}–${T.injearly.l} · ${Math.round(100 * T.injearly.hit)}%` : `${T.injearly.recorded} saved`}</span></div>` : "";
+  const wd = T.wide && (T.wide.n || T.wide.recorded) ? `<div class="row"><span class="dim">WIDE (shadow)${T.wide.confident && (T.wide.confident.n || (T.wide.rest && T.wide.rest.n)) ? ` · confident ${rr(T.wide.confident)} · rest ${rr(T.wide.rest)}` : ""}</span><span>${T.wide.n ? `${T.wide.w}–${T.wide.l} · ${Math.round(100 * T.wide.hit)}%` : `${T.wide.recorded} saved`}</span></div>` : "";   // 10/27 WIDE shadow
   const sk = T.stack && (T.stack.n || T.stack.recorded) ? `<div class="row"><span class="dim">STACK (shadow)${T.stack.confident && T.stack.confident.n ? ` · confident ${rr(T.stack.confident)} · rest ${rr(T.stack.rest)}` : ""}</span><span>${T.stack.n ? `${T.stack.w}–${T.stack.l} · ${Math.round(100 * T.stack.hit)}%` : `${T.stack.recorded} saved`}</span></div>` : "";   // 10/21 STACK shadow
-  return sk + ie + tj || '<div class="s dim empty">None yet.</div>';
+  return wd + sk + ie + tj || '<div class="s dim empty">None yet.</div>';
 }
 // Decision model (10/9): straight bets only (no teasers, no alt lines), ONE pick per game per market (spread, total): the one
 // with the best record. Two angles on opposite sides of the same total no longer both show.

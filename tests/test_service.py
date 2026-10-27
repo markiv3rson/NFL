@@ -33,6 +33,31 @@ q2 = ns["team_budget"](p, 24); lam = -np.log(1 - np.clip(p, 0, .95)); tgt = max(
 exp_total = (lam * (tgt / np.sort(lam)[::-1][:8].sum()) ** 0.5).sum()
 ok(abs((-np.log(1 - q2)).sum() - exp_total) < 1e-9, "concentration tilt keeps the team's expected TDs unchanged")
 ok((-np.log(1 - q2))[0] / (-np.log(1 - q2)).sum() > lam[0] / lam.sum(), "concentration tilt gives the top player a bigger share")
+
+# WIDE MODEL shadow (wide_model.py, 10/27): the team table + features on a made-up schedule, and picks() on it
+import pandas as pd, numpy as np
+try:
+    import wide_model as WM
+    rng = np.random.default_rng(1); rows = []; teams = [f"T{i}" for i in range(8)]
+    for season in (2001, 2002, 2003):
+        for week in range(1, 15):
+            order = list(rng.permutation(teams))
+            for i in range(0, 8, 2):
+                h, a = order[i], order[i + 1]; sp = float(rng.integers(-7, 8)); played = not (season == 2003 and week == 14)
+                rows.append(dict(game_id=f"{season}_{week:02d}_{a}_{h}", season=season, game_type="REG", week=week, gameday=f"{season}-09-{min(28, week + 7):02d}", weekday="Sunday", gametime="13:00", away_team=a, home_team=h,
+                                 away_score=(None if not played else int(rng.integers(10, 35))), home_score=(None if not played else int(rng.integers(10, 35))), spread_line=sp, total_line=44.5, away_rest=7, home_rest=7, div_game=0, roof="outdoors", away_qb_id=None, home_qb_id=None))
+    g = pd.DataFrame(rows); g["gameday"] = pd.to_datetime(g.gameday); opens = pd.DataFrame({"game_id": g.game_id, "so": g.spread_line + 0.5, "to": 44.0})
+    T = WM.team_table(g, opens); H = T[T.home.astype(bool)]
+    X, names = WM.features(H)
+    ok(len(T) == 2 * len(g) and X.shape == (len(H), 90) and "mvAway" in names and "o_szn_cov" in names and float(H.mv.iloc[0]) == 0.5, "wide model: two rows a game, 90 inputs (75 flags + 15 numbers), the move = line - opening line (home line -sp, opened -sp-0.5 -> +0.5)")
+    last = H[(H.season == 2003) & (H.week == 13)].iloc[0]; prev = T[(T.team == last.team) & (T.season == 2003) & (T.week < 13)].sort_values("week").iloc[-1]
+    ok(float(last.prev_margin) == float(prev.pf - prev.pa) and int(last.gp) == 12, "wide model: a row's 'last game' numbers are the team's previous row (pre-game state only)")
+    WM._CACHE.update(key=None, fit=None)
+    r = WM.picks([dict(game="T1 @ T0", season=2003, week=14, away="T1", home="T0", homeSpread=-3.0, total=45.5, openHomeSpread=-2.0, openTotal=45.0)], g, opens)
+    q = r["games"].get("T1 @ T0") or r["games"].get(next(iter(r["games"])))
+    ok(r["fitGames"] > 100 and 0 <= r["thr"] <= 0.5 and (("error" in q) or (q["team"] in ("T0", "T1") and abs(q["line"]) == 3.0 and 0 < q["p"] < 1 and isinstance(q["confident"], bool))), "wide model: picks() fits on every played game with a line, sets the confident cut from out-of-sample confidence, names a side at the posted line")
+    print("ok: wide_model")
+except ModuleNotFoundError as e: print("skip: wide_model (", e, ")")
 # WR / TE shift (td_prob.wrte_shift, 10/26): a receiver at 50% drops about 5 points, at 42% or below nothing moves, a running back never moves, order inside a position holds
 ws = ns["wrte_shift"](np.array([0.50, 0.42, 0.45, 0.60, 0.50, 0.30]), np.array(["WR", "WR", "TE", "WR", "RB", "WR"]))
 assert 0.44 < ws[0] < 0.46, ws; assert abs(ws[1] - 0.42) < 1e-9, ws; assert 0.42 < ws[2] < 0.45, ws; assert ws[3] < 0.60 and ws[3] > 0.54, ws

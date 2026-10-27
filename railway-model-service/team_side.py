@@ -2,7 +2,7 @@
 team_side.py -- the TEAM MODEL spread rule (owner 10/19: "go off the win success rate of the entire team", not prices).
 Each team's season so far (record, cover rate, margin, points for / against, offense + defense EPA / success rate / yards per play,
 pass / rush EPA, turnover margin) blended with last season's full average (as 4 games), plus an opponent-adjusted margin (SRS),
-home minus away -> logistic regression (C 0.05) for "home covers". Trained on seasons 2012 .. last season.
+home minus away -> logistic regression (C 0.02 since 10/27; 0.05 before) for "home covers". Trained on seasons 2012 .. last season.
 10/20 (the label-shuffle check of the walk-forward found it): WITHOUT the spread as an input the same fit does better in every era --
 60%+ sure 62.1% (211; eras 58 / 65 / 62, 11 of 12 seasons up) vs 60.4% with it (54 / 64 / 62), 58-60% sure 55.3% (199) vs 55.7%; the
 spread's coefficient only pulled the picks toward the market. Shuffled training labels drop the 58%+ bucket to 47-54% (a real edge, not a leak).
@@ -13,7 +13,7 @@ import extra_factors as xf
 
 FIX = {"STL": "LA", "SD": "LAC", "OAK": "LV", "LAR": "LA"}
 STATS = ["win", "cov", "marg", "pf", "pa", "oepa", "depa", "osr", "dsr", "oypp", "dypp", "tom", "opass", "orush"]
-K, FIRST, C = 4, 2011, 0.05
+K, FIRST, C = 4, 2011, 0.02   # 10/27: C 0.05 -> 0.02 (re-test with 2026 weeks 1-7: 58%+ 63.4% of 257, eras 61 / 64 / 65, 11 of 13 seasons up; C 0.05 58.6% of 415, 55 / 61 / 60)
 
 def _plays(y):
     cols = ["game_id", "season", "week", "season_type", "posteam", "defteam", "epa", "success", "yards_gained", "play_type", "interception", "fumble_lost", "pass", "rush"]

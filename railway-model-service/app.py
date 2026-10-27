@@ -96,9 +96,34 @@ def rebuild_combos():
     threading.Thread(target=weekly_rebuild.run, args=(body.get("opens"),), daemon=True).start()
     return jsonify({"ok": True, "note": "started", "last": weekly_rebuild.STATUS["last"]})
 
+# 10/27 (owner: "check the railway rebuild"): /health also carries the published build's tag + time and the rebuild's state (running / last
+# result), so the site re-reads the build the moment it changes and Models -> System shows a running or failed rebuild. No token needed.
+_HB = {"mtime": None, "build": None}
+def _build_info():
+    try:
+        st = os.stat(weekly_rebuild.ARTIFACT)
+        if _HB["mtime"] != st.st_mtime:
+            a = weekly_rebuild.latest() or {}; c = a.get("checks") or {}
+            _HB.update(mtime=st.st_mtime, build={"tag": a.get("tag"), "builtAt": a.get("builtAt"), "published": c.get("published"), "games": c.get("games")})
+        return _HB["build"]
+    except Exception: return None
+def _rebuild_info():
+    S = weekly_rebuild.STATUS; last = S.get("last") or None
+    if isinstance(last, dict): last = {k: last.get(k) for k in ("published", "error", "minutes", "games") if k in last}
+    return {"running": bool(S.get("running")), "startedAt": S.get("startedAt"), "finishedAt": S.get("finishedAt"), "last": last}
+# 10/27: WIDE MODEL shadow (wide_model.py) -- the model's side on the week's games at the posted lines; the site records and grades it (never a pick)
+@app.route("/wide-picks", methods=["POST"])
+def wide_picks():
+    body = request.get_json(force=True)
+    try:
+        import wide_model
+        return jsonify({"ok": True, **wide_model.picks(body.get("games", []))})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:200]}), 500
+
 @app.route("/health", methods=["GET"])
 def health():
-    return jsonify({"ok": True, "service": "nfl-bettors-model"})
+    return jsonify({"ok": True, "service": "nfl-bettors-model", "build": _build_info(), "rebuild": _rebuild_info()})
 
 _LINES_LOCK = threading.Lock()   # 10/9: fair_line.build keeps module state; one game-lines run at a time
 @app.route("/rerun-game-lines", methods=["POST"])
