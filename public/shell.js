@@ -202,6 +202,71 @@
       document.addEventListener("visibilitychange", () => { if (!document.hidden && !Shell.resetting) { if (Shell.stale) location.reload(); else Shell.buildCheck("visible"); } });
     },
   };
+  // GAME PAGE CHART (10/27, owner: "inside the card to look like theirs but catered to ours", sketch A claude.ai/artifact/5y2kVMTo7ru4xrJNdWr24q; both sports):
+  // the game's title, then each team's Polymarket US win price over time (moneyline history, /api/pricehist or /api/nba/pricehist), a line per team in
+  // its team colour with the current % at the end, 1D / 1W / 1M / ALL under it (LIVE while the game is on, redrawn every 30 s); our team card follows.
+  // o: { key, sport, away, home, start, live, title, ca, ch }. The chosen window is kept per phone (gRange); the data per game + window for the session.
+  const CH = { data: {}, timer: null, cur: null };
+  const lsG = (k, d) => { try { return localStorage.getItem(k) || d; } catch { return d; } };
+  const hexRgb = (h) => { const m = /^#?([0-9a-f]{6})$/i.exec(String(h || "")); const n = m ? parseInt(m[1], 16) : 0x888888; return [n >> 16, (n >> 8) & 255, n & 255]; };
+  const toHex = (c) => "#" + c.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("");
+  const lum = (c) => (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
+  // a team colour that reads on the black page: dark ones are lifted toward white; two near-equal colours -> the home line goes light gray
+  function chartColors(ca, ch) {
+    const lift = (h) => { let c = hexRgb(h); for (let i = 0; i < 8 && lum(c) < 0.42; i++) c = c.map((v) => v + (255 - v) * 0.18); return c; };
+    const a = lift(ca), h = lift(ch), d = Math.hypot(a[0] - h[0], a[1] - h[1], a[2] - h[2]);
+    return [toHex(a), d < 70 ? "#e4e4e8" : toHex(h)];
+  }
+  const chartRange = (o) => (o.live ? (CH.liveRange || "live") : lsG("gRange", "all"));
+  function chartSvg(o, pts, range, w) {
+    const H = 172, P = { l: 30, r: 58, t: 12, b: 20 };
+    if (!pts || pts.length < 2) return `<div class="gcempty">${pts ? "No price history yet." : "Loading…"}</div>`;
+    const [ca, ch] = chartColors(o.ca, o.ch), x0 = pts[0][0], x1 = pts[pts.length - 1][0];
+    const vals = pts.flatMap((p) => [p[1], p[2]]);
+    let lo = Math.max(0, Math.floor((Math.min(...vals) - 0.05) * 10) / 10), hi = Math.min(1, Math.ceil((Math.max(...vals) + 0.05) * 10) / 10); if (hi - lo < 0.2) { lo = Math.max(0, lo - 0.1); hi = Math.min(1, hi + 0.1); }
+    const X = (t) => P.l + ((t - x0) / (x1 - x0 || 1)) * (w - P.l - P.r), Y = (v) => P.t + ((hi - v) / (hi - lo)) * (H - P.t - P.b);
+    const path = (i) => pts.map((p, k) => (k ? `H${X(p[0]).toFixed(1)}V` : `M${X(p[0]).toFixed(1)},`) + Y(p[i]).toFixed(1)).join("");
+    let g = "";
+    const step = hi - lo > 0.5 ? 0.2 : 0.1;
+    for (let v = Math.ceil(lo / step - 1e-9) * step; v <= hi + 1e-9; v += step) g += `<line x1="${P.l}" x2="${w - P.r + 4}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" class="gl"/><text x="${P.l - 5}" y="${(Y(v) + 3).toFixed(1)}" class="ga" text-anchor="end">${Math.round(v * 100)}%</text>`;
+    const span = x1 - x0, short = span < 2 * 86400, n = 4, fmt = (t) => new Date(t * 1000).toLocaleString(undefined, short ? { hour: "numeric", minute: "2-digit" } : { month: "short", day: "numeric" });
+    for (let i = 0; i <= n; i++) { const t = x0 + (span * i) / n; g += `<text x="${X(t).toFixed(1)}" y="${H - 5}" class="ga" text-anchor="${i === 0 ? "start" : i === n ? "end" : "middle"}">${fmt(t)}</text>`; }
+    const last = pts[pts.length - 1]; let ya = Y(last[1]), yh = Y(last[2]);
+    if (Math.abs(ya - yh) < 30) { const mid = (ya + yh) / 2, up = ya <= yh ? -1 : 1; ya = mid + up * 15; yh = mid - up * 15; }
+    const lab = (v, y, col, code, cy) => `<circle cx="${X(x1).toFixed(1)}" cy="${cy.toFixed(1)}" r="3.2" fill="${col}"/><text x="${(X(x1) + 8).toFixed(1)}" y="${(y - 3).toFixed(1)}" fill="${col}" class="gn">${code}</text><text x="${(X(x1) + 8).toFixed(1)}" y="${(y + 12).toFixed(1)}" fill="${col}" class="gp">${Math.round(v * 100)}%</text>`;
+    return `<svg viewBox="0 0 ${w} ${H}" width="${w}" height="${H}" role="img" aria-label="${o.away} and ${o.home} win price over time">${g}<path d="${path(2)}" fill="none" stroke="${ch}" stroke-width="2"/><path d="${path(1)}" fill="none" stroke="${ca}" stroke-width="2"/>${lab(last[2], yh, ch, o.home, Y(last[2]))}${lab(last[1], ya, ca, o.away, Y(last[1]))}</svg>`;
+  }
+  const chartKey = (o, r) => `${o.key}|${r}`;
+  function chartFill(o) {
+    const el = document.getElementById("gcv"); if (!el || CH.cur !== o.key) return;
+    const r = chartRange(o), d = CH.data[chartKey(o, r)];
+    el.innerHTML = chartSvg(o, d ? d.pts : null, r, Math.max(280, Math.min(1000, Math.round(el.clientWidth || 360))));
+  }
+  Shell.chartBlock = (o) => {
+    CH.cur = o.key; const r = chartRange(o), keys = o.live ? ["live", "1d", "1w", "all"] : ["1d", "1w", "1m", "all"];
+    const btn = (k) => `<button type="button" class="${k === r ? "on" : ""}" data-grange="${k}">${k === "live" ? "LIVE" : k.toUpperCase()}</button>`;
+    return `<div class="gchart"><div class="gt">${o.title}</div><div class="gsub"><img src="/polymarket.png" alt="">Polymarket</div><div class="gcv" id="gcv"></div>` +
+      `<div class="grng"><span>${o.live ? '<span class="r">● LIVE</span> · updates every 30 s' : ""}</span><span class="gb">${keys.map(btn).join("")}</span></div></div>`;
+  };
+  Shell.chartLoad = async (o, force) => {
+    CH.cur = o.key; CH.o = o; chartFill(o);
+    const r = chartRange(o), k = chartKey(o, r), have = CH.data[k], age = have ? Date.now() - have.t : Infinity;
+    if (!force && age < (r === "live" ? 25e3 : 120e3)) return;
+    const url = `/api/${o.sport === "nba" ? "nba/" : ""}pricehist?away=${encodeURIComponent(o.away)}&home=${encodeURIComponent(o.home)}&start=${encodeURIComponent(o.start)}&range=${r}`;
+    try { const d = await (await fetch(url)).json(); CH.data[k] = { pts: d && d.ok ? d.pts : [], t: Date.now() }; } catch { if (!have) CH.data[k] = { pts: [], t: Date.now() }; }
+    chartFill(o);
+    clearTimeout(CH.timer);
+    if (typeof setTimeout === "function") CH.timer = setTimeout(() => { if (CH.cur === o.key && document.getElementById("gcv") && !document.hidden) Shell.chartLoad(CH.o); }, o.live ? 30e3 : 300e3);
+  };
+  Shell.chartStop = () => { CH.cur = null; clearTimeout(CH.timer); };
+  if (typeof document !== "undefined" && document.addEventListener) document.addEventListener("click", (e) => {
+    const b = e.target && e.target.closest && e.target.closest("[data-grange]"); if (!b || !CH.o) return;
+    const r = b.dataset.grange;
+    if (CH.o.live) CH.liveRange = r; else { try { localStorage.setItem("gRange", r); } catch {} }
+    const box = b.closest(".gchart"); if (box) box.querySelectorAll("[data-grange]").forEach((x) => x.classList.toggle("on", x === b));
+    Shell.chartLoad(CH.o);
+  });
+  if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("resize", () => { if (CH.o && CH.cur) chartFill(CH.o); });
   // 10/22 (owner): the one ⓘ next to a model header opens / closes the short box right under that header (both sports)
   if (typeof document !== "undefined" && document.addEventListener) document.addEventListener("click", (e) => {
     const b = e.target && e.target.closest && e.target.closest(".ibtn"); if (!b) return;

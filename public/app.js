@@ -1368,12 +1368,18 @@ function gamePropsBody(g) {
   return picks.length ? `<div class="pgrid" style="margin-top:6px"><div class="par">${propHead(false)}${teamRows({ away: g.away, home: g.home, picks }, propRow)}</div></div>` : gNone("None for this game.");
 }
 function gameParlaysBody(g) { const b = sgpBox(g); return b ? b.replace('<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAYS</div>', "") : gNone(g.started || g.final ? "Same-game parlays close at kickoff; they are on Model bets with their results." : "No same-game parlay for this game."); }
+// the game page chart (10/27, owner's pick: open chart, sketch A): Polymarket US's moneyline history for both teams, drawn by the shared shell (Shell.chartBlock)
+const NICK = { ARI: "Cardinals", ATL: "Falcons", BAL: "Ravens", BUF: "Bills", CAR: "Panthers", CHI: "Bears", CIN: "Bengals", CLE: "Browns", DAL: "Cowboys", DEN: "Broncos", DET: "Lions", GB: "Packers", HOU: "Texans", IND: "Colts", JAX: "Jaguars", KC: "Chiefs", LA: "Rams", LAC: "Chargers", LV: "Raiders", MIA: "Dolphins", MIN: "Vikings", NE: "Patriots", NO: "Saints", NYG: "Giants", NYJ: "Jets", PHI: "Eagles", PIT: "Steelers", SEA: "Seahawks", SF: "49ers", TB: "Buccaneers", TEN: "Titans", WAS: "Commanders" };
+const chartOf = (g) => ({ key: g.key, sport: "nfl", away: g.away, home: g.home, start: g.kickoff, live: !!(g.started && !g.final),
+  title: `${esc(g.away)} ${esc(NICK[g.away] || "")} vs ${esc(g.home)} ${esc(NICK[g.home] || "")}`, ca: TEAM_COLOR[g.away] || "#888888", ch: TEAM_COLOR[g.home] || "#888888" });
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = ""; linesBg();
   document.body.classList.add("game-on");   // 10/18 (owner): on a game page the game card IS the header -- the NEXT GAME strip is hidden, ← Games sits under the card
   const early = g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : "";
   const body = GTAB === "props" ? gameChips() + gamePropsBody(g) : GTAB === "parlays" ? gameParlaysBody(g) : `${early}${gameCard(g, "x")}${totalCard(g, "x")}`;
-  $("detail").innerHTML = `${detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs()}${body}`;
+  const co = chartOf(g);
+  $("detail").innerHTML = `${typeof Shell !== "undefined" && Shell.chartBlock ? Shell.chartBlock(co) : ""}${detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs()}${body}`;
+  if (typeof Shell !== "undefined" && Shell.chartLoad) Shell.chartLoad(co);
   $("back-btn").onclick = closeGame;
   if (g.final) ensureGrades();
   setBg($("panel-lines").classList.contains("on") ? g : null);   // 10/14 fix: the background redraw ran while another tab was showing (SEA/DEN logos on Models)
@@ -1392,7 +1398,7 @@ function linesBySlot() {
   return slots.map((sl) => `<div class="sh labslot">${sl}</div><div class="tiles stack">${by[sl].map(tile).join("")}</div>`).join("");   // 10/18 (owner): just the slot name -- the time sits on each tile
 }
 function openGame(key) { LASTY = (typeof window !== "undefined" && window.scrollY) || 0; DETAIL = key; renderLines(); if (window.scrollTo) window.scrollTo(0, 0); setTimeout(() => slotMoney($("detail")), 60); const g = S.games.find((x) => x.key === key); if (g && g.started && !g.final) liveLoop(); }
-function closeGame() { DETAIL = null; renderLines(); if (window.scrollTo) window.scrollTo(0, LASTY); }
+function closeGame() { if (typeof Shell !== "undefined" && Shell.chartStop) Shell.chartStop(); DETAIL = null; renderLines(); if (window.scrollTo) window.scrollTo(0, LASTY); }
 // ---------- HOME (10/17, owner's sketch): SLATEZZ header, then NFL and NBA live games as a list -- logos, team, its spread from the
 // sportsbooks before kickoff, the total in the middle, the score and clock. Each section's title row: LIVE NOW + NEXT GAME logos and clock.
 // Nothing live in a sport: its next game only. NBA data comes from the NBA side's own routes (/api/nba/slate, /api/nba/live).

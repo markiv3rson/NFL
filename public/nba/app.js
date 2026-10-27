@@ -340,17 +340,22 @@ function gameParlaysBody(g) {
   const blocks = (S.parlays || []).filter((p) => p.game === g.key).map((p) => pBlock(esc(PTYPES[p.type] || p.type), p, false)).join("");
   return blocks ? `<div class="pgrid" style="margin-top:6px">${blocks}</div>` : gNone("No same-game parlay for this game.");
 }
+// the game page chart (10/27, owner's pick: open chart, = NFL): Polymarket US's moneyline history for both teams, drawn by the shared shell
+const chartOf = (g) => ({ key: g.key, sport: "nba", away: g.away, home: g.home, start: g.start, live: !!(g.inProgress && !isFinal(g)),
+  title: `${esc(g.away)} ${esc((TEAMS[g.away] || {}).nick || "")} vs ${esc(g.home)} ${esc((TEAMS[g.home] || {}).nick || "")}`, ca: teamColor(g.away), ch: teamColor(g.home) });
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = ""; linesBg();
   document.body.classList.add("game-on");   // 10/18 (owner, same as NFL): the game card is the header; ← Games under it
   const body = GTAB === "props" ? gameChips() + gamePropsBody(g) : GTAB === "parlays" ? gameParlaysBody(g)
     : secRow("SPREAD &amp; ML", injPill(g, "inj")) + `<div class="grid">${marketCard(g, "spread", "inj")}</div>` + secRow("TOTALS") + `<div class="grid">${marketCard(g, "total")}</div>`;
-  $("detail").innerHTML = `${detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs()}${body}`;
+  const co = chartOf(g);
+  $("detail").innerHTML = `${typeof Shell !== "undefined" && Shell.chartBlock ? Shell.chartBlock(co) : ""}${detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs()}${body}`;
+  if (typeof Shell !== "undefined" && Shell.chartLoad) Shell.chartLoad(co);
   $("back-btn").onclick = closeGame;
   setBg($("panel-lines").classList.contains("on") ? g : null);
 }
 function openGame(key) { LASTY = window.scrollY || 0; DETAIL = key; renderLines(); window.scrollTo(0, 0); setTimeout(() => slotMoney($("detail")), 60); }
-function closeGame() { DETAIL = null; renderLines(); window.scrollTo(0, LASTY); }
+function closeGame() { if (typeof Shell !== "undefined" && Shell.chartStop) Shell.chartStop(); DETAIL = null; renderLines(); window.scrollTo(0, LASTY); }
 
 // ---------- Best bets + Parlay: two gold tickets at the top of the Bets tab (tap one to open its list)
 function bestBets() { return S ? S.bestBets || [] : []; }

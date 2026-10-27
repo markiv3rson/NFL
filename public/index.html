@@ -117,16 +117,6 @@
   .c-amb { color:var(--gold); } .c-red { color:var(--red); }
   .c-grn { color:var(--green); }
   .back { min-height:28px; font:inherit; font-size:12.5px; font-weight:700; color:var(--rose); background:none; border:0; border-radius:999px; padding:2px 0; cursor:pointer; margin-top:8px; margin-bottom:12px; }
-  /* 10/14 Game Lines top: casino tickets + line-move chips */
-  .jrow { margin-top:10px; display:grid; grid-template-columns:repeat(auto-fit,minmax(0,1fr)); gap:10px; }
-  .ticket { position:relative; display:grid; gap:2px; justify-items:start; text-align:left; font:inherit; color:#fff; cursor:pointer; padding:12px 16px; border-radius:14px; border:0;
-    background:linear-gradient(135deg,rgba(255,207,74,.16),rgba(255,207,74,.05)); outline:1.5px dashed rgba(255,207,74,.6); outline-offset:-6px;
-    -webkit-mask:radial-gradient(circle at 0 50%,transparent 8px,#000 8.5px) left/51% 100% no-repeat,radial-gradient(circle at 100% 50%,transparent 8px,#000 8.5px) right/51% 100% no-repeat;
-            mask:radial-gradient(circle at 0 50%,transparent 8px,#000 8.5px) left/51% 100% no-repeat,radial-gradient(circle at 100% 50%,transparent 8px,#000 8.5px) right/51% 100% no-repeat; }
-  .ticket.one { width:100%; margin-top:10px; gap:6px; }
-  .ticket .tk { font-size:10.5px; font-weight:800; letter-spacing:.14em; color:#ffcf4a; }
-  .ticket .tb { font-size:30px; font-weight:900; line-height:1.05; color:#fff; font-variant-numeric:tabular-nums; }
-  .ticket .ts { font-size:11px; color:#e9dcc0; }
   .tile .tmid .mvt { font-size:11px; color:#c9ced6; margin-top:2px; line-height:1.3; } .tile .tmid .mvt > span { display:block; white-space:nowrap; }   /* 10/18 night (owner): a game's line move sits inside its tile (the LINE MOVES strip is gone) */
   #lab > .drop { margin-top:10px; border-top:0; padding-top:0; }
   .pgrid { display:block; } .par { padding:11px 0; font-size:13.5px; } .pgrid > .par:first-child { padding-top:2px; }   /* 10/16 (owner): no lines between parlays, only the line under each time-slot header */
@@ -139,8 +129,7 @@
 .ppr.pph { margin-top:7px; } .ppr.pph span { font-size:8.5px; letter-spacing:.02em; color:var(--faint); font-weight:700; } .ppr.first { grid-template-columns:minmax(0,3fr) minmax(max-content,1fr) minmax(44px,.7fr) minmax(74px,.8fr); }   /* 10/20 night (owner): heads fit their column and sit centered over their values; First TD tab has no LAST WK column */
   .pbl.pteam { display:flex; align-items:center; gap:5px; margin-top:6px; font-size:11px; font-weight:800; color:var(--dim); } .pbl.pteam .tlogo { width:14px; height:14px; margin:0; }
   .ppr .pp3.mod { color:var(--violet); font-weight:800; }
-  .pbl { margin-top:3px; padding-left:12px; overflow-wrap:anywhere; } .pbr { text-align:right; font-weight:800; min-height:4px; }
-  .pbl.pleg { display:flex; justify-content:space-between; align-items:center; gap:10px; } .pbl.pleg .plp { flex:0 0 auto; font-weight:800; } .pbx { display:flex; align-items:center; gap:12px; white-space:nowrap; flex:0 0 auto; } .pbx .mod { font-weight:800; }   /* 10/20 night (owner): Model % next to the Polymarket line, leg % on the right */
+  .pbl { margin-top:3px; padding-left:12px; overflow-wrap:anywhere; }
   @media (max-width:500px) { .par { font-size:12.5px; } .pbn { font-size:13px; } .pbh { gap:6px; } .plb { font-size:12px; } .labslot { font-size:19px; } .labslot .lst { font-size:11px; } }   /* 10/17 (owner): everything fits on the iPhone */
   /* 10/16 (owner): EVERY docked strip -- Model bets sub-tabs, My bets weeks, Alerts kinds -- is the same flat strip: equal columns, bold text, purple underline, no pills */
   .wksel { position:relative; display:inline-block; margin-top:12px; padding-right:20px; } .wksel select { -webkit-appearance:none; appearance:none; width:auto; max-width:100%; min-height:36px; padding:0 2px; border:0; border-radius:0; color:#fff; font:inherit; font-size:17px; font-weight:800; cursor:pointer; background:transparent; }

@@ -1893,8 +1893,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   for (const f of ["../public/index.html", "../public/nba/index.html"]) { const h = readFileSync(new URL(f, import.meta.url), "utf8"); ok(/id="panel-lines"><div class="phead"><div class="pt"><b>Game Lines<\/b>/.test(h) && /body\.game-on #panel-lines \.phead \{ display:none; \}/.test(h), `${f}: Game Lines has its page title, hidden on a game page`); } }
 // ---------- 10/18 (owner): game page = the game card is the header, ← Games under it; slot / day headers carry no times
 { for (const f of ["../public/app.js", "../public/nba/app.js"]) { const a = readFileSync(new URL(f, import.meta.url), "utf8");
-    ok(/document\.body\.classList\.add\("game-on"\)/.test(a) && /`\$\{detailTop\(g\)\}<button class="back" id="back-btn">← Games<\/button>/.test(a) && /classList\.toggle\("game-on", name === "lines" && !!DETAIL\)/.test(a) && /classList\.remove\("game-on"\)/.test(a) && !/linesBySlot[\s\S]{0,1200}class="lst">· \$\{times/.test(a),
-      `${f}: game card first, ← Games under it, header hidden only on a game page; Game Lines slot headers without the times list`); } }
+    ok(/document\.body\.classList\.add\("game-on"\)/.test(a) && /Shell\.chartBlock\(co\) : ""\}\$\{detailTop\(g\)\}<button class="back" id="back-btn">← Games<\/button>/.test(a) && /classList\.toggle\("game-on", name === "lines" && !!DETAIL\)/.test(a) && /classList\.remove\("game-on"\)/.test(a) && !/linesBySlot[\s\S]{0,1200}class="lst">· \$\{times/.test(a),
+      `${f}: chart, then the game card, ← Games under it, header hidden only on a game page; Game Lines slot headers without the times list`); } }
 // ---------- 10/20 review: a bet's week = the week of its games (a combo on Thursday's NE @ CHI placed during Monday night's week-6 game was filed under week 6)
 { const { gameWeekOf } = await import("../lib/placed.js");
   const rows = [{ key: "WAS @ SF", week: 6 }, { key: "NE @ CHI", week: 7 }, { key: "DAL @ PHI", week: 7 }, { key: "PHI @ DAL", week: 15 }, { key: "KC @ DEN", week: 2 }, { key: "KC @ DEN", week: 12 }];
@@ -2125,5 +2125,16 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       const c3 = cpk.buildCard({ ...base, stackSide: { team: "KC", confident: false, yv: 2, pct: 52.8, n: 608 } }, [], base.poly, null, {});
       ok(c1.spread.plain.hit === 57 && c1.spread.plain.n === 249 && c2.spread.plain.hit === 49.6 && c3.spread.plain.hit === 52.8, "STACK spread PICK % (10/23 night): 57.0% when it backs a 50-70% favorite, 49.6% a 70%+ favorite, the old bands on the underdog", [c1.spread.plain, c2.spread.plain, c3.spread.plain]); }
     await getRedis().del("stack:2099:7"); } }
+// ---------- 10/27 (owner's pick: open chart): the game page chart -- Polymarket US's moneyline history, team-colour lines, our team card under it
+{ const css = readFileSync(new URL("../public/shell.css", import.meta.url), "utf8"), sh = readFileSync(new URL("../public/shell.js", import.meta.url), "utf8");
+  ok(/Shell\.chartBlock = /.test(sh) && /Shell\.chartLoad = /.test(sh) && /\/api\/\$\{o\.sport === "nba" \? "nba\/" : ""\}pricehist/.test(sh) && /\.gchart \{/.test(css), "shell: the shared game chart (block, loader, both sports' routes, styles)");
+  for (const f of ["../public/app.js", "../public/nba/app.js"]) { const a = readFileSync(new URL(f, import.meta.url), "utf8"); ok(/const chartOf = \(g\)/.test(a) && /Shell\.chartLoad\(co\)/.test(a) && /Shell\.chartStop\(\)/.test(a), `${f}: the game page draws the chart and stops it on ← Games`); }
+  const { cleanHistory, moneylineSlug, usCode } = await import("../lib/polyus.js");
+  const pts = cleanHistory([{ timestamp: 3, longPrice: 0.4, shortPrice: 0.62 }, { timestamp: 1, longPrice: 0.9, shortPrice: 0.9 }, { timestamp: 2, longPrice: 0.42, shortPrice: 0.6 }, { timestamp: 4, longPrice: 0.02, shortPrice: 0.99 }]);
+  ok(JSON.stringify(pts) === JSON.stringify([[2, 0.42, 0.6], [3, 0.4, 0.62], [4, 0.02, 0.99]]), "price history: the placeholder prices before a book are dropped from the front, the rest kept in time order");
+  ok(moneylineSlug("nfl", "CAR", "GB", "2026-10-30T00:15:00Z") === "aec-nfl-car-gb-2026-10-29" && moneylineSlug("nfl", "LA", "SF", "2026-11-01T20:05:00Z") === "aec-nfl-lar-sf-2026-11-01" && moneylineSlug("nba", "SAC", "SAS", "2026-10-28T00:00:00Z") === "aec-nba-sac-sa-2026-10-27" && usCode("GSW", "nba") === "gs",
+    "price history: the moneyline market name = Polymarket US's team codes + the Eastern date of the start");
+  const h = (await import("../lib/pricehist.js")).default; let code = 0; await h({ query: { away: "C<A", home: "GB", start: "x" } }, { setHeader() {}, status(c) { code = c; return this; }, json() {} }, "nfl");
+  ok(code === 400, "price history route: a bad team or start is refused"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);
