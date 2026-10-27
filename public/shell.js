@@ -1,7 +1,10 @@
 // SLATEZZ shell (10/17, owner; 10/22: a pinned top bar + a bottom bar instead of the side menu), the refresh button (reruns BOTH models), the
 // drop-down slot of the page titles and the logo helpers. Loaded by /index.html (NFL + home) and /nba/index.html before each page's app.js.
-// Pages: NFL #home (no hash) #alerts #lines #td #props-<tab> #mybets #modelbets #models on /index.html; NBA #alerts #lines #props-<tab> #mybets #modelbets #models on /nba/index.html.
+// Pages: #lines (= Home; none = Home) #alerts #td #props-<tab> #mybets #modelbets #models on /index.html (NFL) and /nba/index.html (NBA).
 // (10/22: Bets holds My bets | Model bets; the Model bets types and the Player props tabs are the sub-tab bar above the bottom bar.)
+// 10/27 (owner: "New order for the bottom tab: Home -- Game Lines should be in here split by NFL and NBA, make it like Polymarket ... remove the football
+// and basketball switch" + "Home / Bets / Model. remove the model tabs in home and make it its own"): the bottom bar is Home · Bets · Model; Home is the
+// games list with NFL | NBA tabs as its title, Model the Models page with the same tabs; the ball switch, Lines and Props buttons and the Models bar are gone.
 (function () {
   const ICON = {
     bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
@@ -27,19 +30,14 @@
   const TYPES = { nfl: [["best", "Best Legs"], ["3", "3 Leg"], ["2", "2 Leg"], ["pp6", "6 Leg"], ["pp8", "8 Leg"], ["pp10", "10 Leg"]],
     nba: [["pp6", "6 Leg"], ["pp8", "8 Leg"], ["pp10", "10 Leg"], ["sgp4", "Same Game"]] };
   const OTHER = { nfl: "nba", nba: "nfl" };
-  // 10/21 night (owner): a white curved arrow on each side of the ball -- left one up, right one down (the switch)
-  const SWAP_ARROW = (id) => `<svg viewBox="0 0 16 26" aria-hidden="true"><defs><linearGradient id="${id}" x1="0" y1="26" x2="0" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ec3f9a"/><stop offset=".52" stop-color="#f0805a"/><stop offset="1" stop-color="#f6c560"/></linearGradient></defs><path d="M11.5 24C4.5 20.5 3.2 12 6.8 6.4" fill="none" stroke="url(#${id})" stroke-width="2.6" stroke-linecap="round"/><path d="M2.6 8.6L7.6 1.4L11 9.6Z" fill="url(#${id})"/></svg>`;   // each arrow fades pink -> orange -> yellow (the SLATEZZ colors), owner 10/21 night
   const REF_SVG = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>';
   const REFRESH_ON = (p) => p === "lines" || p === "td" || /^props/.test(p) || /^modelbets/.test(p);   // the pages the refresh button matters on
   // which bottom tab a page belongs to; the sub tabs a page shows
-  const tabOf = (p) => p === "home" ? "home" : p === "lines" ? "lines" : p === "td" || /^props/.test(p) ? "props" : p === "mybets" || /^modelbets/.test(p) || p === "record" ? "bets" : "";
+  const tabOf = (p) => p === "home" || p === "lines" ? "home" : p === "models" ? "model" : p === "mybets" || /^modelbets/.test(p) || p === "record" ? "bets" : "";
   const subsOf = (sp, p) => p === "td" || /^props-/.test(p) ? PROPS[sp].map(([id, l]) => [id, l]) : /^modelbets-/.test(p) ? TYPES[sp].map(([k, l]) => [`modelbets-${k}`, l]) : null;
-  // the same page on the other sport (the middle button); home goes to the other sport's Game Lines
-  const otherHash = (p, sp) => { const o = OTHER[sp], t = tabOf(p);
-    return t === "props" ? PROPS[o][0][0] : t === "bets" ? (/^modelbets/.test(p) ? `modelbets-${TYPES[o][0][0]}` : "mybets") : ["alerts", "models"].includes(p) ? p : "lines"; };
   const NFL_LOGO_FIX = { WSH: "wsh", WAS: "wsh", LA: "lar", LAR: "lar" };
   const Shell = {
-    sport: "nfl", panel: "home",
+    sport: "nfl", panel: "lines",
     nflLogo: (t) => (String(t || "").toUpperCase() === "KC" ? "/kc.png?v=1" : t ? `https://a.espncdn.com/i/teamlogos/nfl/500/${NFL_LOGO_FIX[t] || String(t).toLowerCase()}.png` : ""),
     nbaLogo: (t, teams) => (teams && teams[t] && teams[t].logo) || (t ? `https://a.espncdn.com/i/teamlogos/nba/500/${String(t).toLowerCase()}.png` : ""),
     img: (src) => (src ? `<img src="${src}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '<span class="nl"></span>'),
@@ -62,41 +60,19 @@
         const on = sb.querySelector && sb.querySelector(".si.on"); if (on && on.scrollIntoView && sb.scrollWidth > sb.clientWidth) { try { on.scrollIntoView({ block: "nearest", inline: "center" }); } catch {} } }
       document.body.classList.toggle("sbar-on", !!subs);
       document.body.classList.toggle("ref-on", REFRESH_ON(panel));
-      const home = sp === "nfl" && panel === "home";
-      if (!home) Shell.choose(sp);
-      const bar = home ? (Shell.chosen() || sp) : sp; Shell.paintBar(bar, panel);
-      const sw = document.getElementById("bsport"); if (sw) sw.dataset.href = home ? `${URL_[OTHER[bar]]}#lines` : `${URL_[OTHER[sp]]}#${otherHash(panel, sp)}`;
-      document.body.classList.toggle("home-on", home); document.documentElement.classList.toggle("home-on", home);
-      const sh = document.getElementById("shead"); if (sh) sh.style.display = "none";   // 10/22: SLATEZZ lives in the pinned top bar on every page
+      Shell.choose(sp);   // Home and Model open on the sport last chosen
     },
     counts: {},
     setCount(sp, id, n) { Shell.counts[`${sp}-${id}`] = n; const e = document.getElementById(`mcnt-${sp}-${id}`); if (!e) return; e.textContent = n > 9 ? "9+" : String(n || ""); e.style.display = n ? "flex" : "none"; },
-    // 10/23 (owner: "when I press home it switches back to nfl ... It should just stay on what I choose"): home lives on the NFL page, so its bars
-    // follow the sport last chosen (any NFL / NBA page remembers its sport); the alerts "read" mark is kept per sport
+    // the sport last chosen is kept per phone (a fresh start lands on its Home); the alerts "read" mark is kept per sport
     SPORT_KEY: "slz-sport", seenKey: (sp) => (sp === "nba" ? "alSeen:nba" : "alSeen"),
     chosen() { try { const v = localStorage.getItem(Shell.SPORT_KEY); return v === "nba" || v === "nfl" ? v : null; } catch { return null; } },
     choose(sp) { try { localStorage.setItem(Shell.SPORT_KEY, sp); } catch {} },
-    bar: null,
-    paintBar(bar, panel) {
-      const o = OTHER[bar], q = (s) => document.querySelector && document.querySelector(s);
-      if (Shell.bar !== bar) {
-        Shell.bar = bar;
-        const bell = q("#tbar .tib"); if (bell) { bell.setAttribute("href", `${URL_[bar]}#alerts`); const c = bell.querySelector(".tcnt"); if (c) { c.id = `mcnt-${bar}-alerts`; const n = Shell.counts[`${bar}-alerts`]; c.textContent = n > 9 ? "9+" : String(n || ""); c.style.display = n ? "flex" : "none"; } }
-        const set = (b, h) => { const a = q(`#bnav [data-b="${b}"]`); if (a) a.setAttribute("href", h); };
-        set("bets", `${URL_[bar]}#mybets`); set("lines", `${URL_[bar]}#lines`); set("props", `${URL_[bar]}#${PROPS[bar][0][0]}`);
-        const bs = q("#bsport"); if (bs) { bs.className = `bsport ${bar}`; bs.setAttribute("aria-label", `Switch to ${o.toUpperCase()}`); const im = bs.querySelector("img"); if (im) { im.src = `/ball-${bar}.png?v=1`; im.alt = bar.toUpperCase(); } }
-        if (bar === "nba" && bar !== Shell.sport) Shell.awayCount(bar);
-      }
-    },
-    // the chosen sport's unread alerts on home, when that sport's own page is not the one loaded
-    async awayCount(sp) {
-      if (typeof fetch !== "function") return;
-      try { const d = await (await fetch(sp === "nba" ? "/api/nba/alerts" : "/api/alerts", { cache: "no-store" })).json(); if (!d || !d.ok) return;
-        let seen = ""; try { const v = localStorage.getItem(Shell.seenKey(sp)); seen = v == null ? localStorage.getItem("alSeen") || "" : v; } catch {}
-        Shell.setCount(sp, "alerts", (d.alerts || []).filter((a) => a.t > seen).length); } catch {}
-    },
+    // the NFL | NBA tabs that title Home and Model (10/27): the same page on each sport, the one open in white
+    // (owner 10/27, Polymarket's phone app: the category row -- an icon over its name, the open one in a rounded square)
+    leagueTabs(sp, page) { return ["nfl", "nba"].map((x) => `<a class="lgt${x === sp ? " on" : ""}" data-nav href="${URL_[x]}#${page}"><i><img src="/ball-${x}.png?v=1" alt=""></i><span>${x.toUpperCase()}</span></a>`).join(""); },
     open() {}, close() {},   // (the side menu is gone 10/22)
-    // the hash names the page ("#lines"); none = home on the NFL page, Game Lines on the NBA page
+    // the hash names the page ("#lines"); none = Home (the games list)
     hashPanel(valid, fallback) { const h = (location.hash || "").replace("#", ""); return valid.includes(h) ? h : fallback; },
     onRefreshed: null,
     async refresh() {
@@ -134,35 +110,32 @@
     // 10/22 (owner: "Every time I open the app can it land me on the home page" + "background for more than 2 [minutes] reset"; both sports):
     // a fresh start of the app (a new session: nothing in sessionStorage yet) opens on home; coming back after 2+ minutes in the background
     // lands on home and reloads everything; back sooner keeps the page. Switches inside the app (NFL <-> NBA) keep the session, so they never reset.
-    HOME: "/index.html", AWAY_MS: 120e3, resetting: false,
-    isHome() { return /^\/(index\.html)?$/.test(location.pathname) && (!location.hash || location.hash === "#" || location.hash === "#home"); },
+    AWAY_MS: 120e3, resetting: false,
+    home() { return `${URL_[Shell.chosen() || "nfl"]}#lines`; },   // Home = the games list of the sport last chosen
+    isHome() { return /^\/(nba\/)?(index\.html)?$/.test(location.pathname) && ["", "#", "#home", "#lines"].includes(location.hash || ""); },
     homeReset() {
       let ss = null; try { ss = window.sessionStorage; } catch {}
       if (!ss || typeof document === "undefined" || !document.addEventListener) return false;
       let fresh = false; try { fresh = !ss.getItem("slz-live"); ss.setItem("slz-live", "1"); } catch { return false; }
-      if (fresh && !Shell.isHome()) { Shell.resetting = true; location.replace(Shell.HOME); return true; }
+      if (fresh && !Shell.isHome()) { Shell.resetting = true; location.replace(Shell.home()); return true; }
       document.addEventListener("visibilitychange", () => { try {
         if (document.hidden) { ss.setItem("slz-away", String(Date.now())); return; }
         const t = Number(ss.getItem("slz-away") || 0); ss.removeItem("slz-away");
-        if (t && Date.now() - t >= Shell.AWAY_MS) { Shell.resetting = true; location.replace(Shell.HOME); }
+        if (t && Date.now() - t >= Shell.AWAY_MS) { Shell.resetting = true; location.replace(Shell.home()); }
       } catch {} });
       return false;
     },
     init(sport) {
       if (Shell.homeReset()) return;   // a fresh start on another page: home is loading instead
-      Shell.sport = sport; const sp = sport, o = OTHER[sp];
+      Shell.sport = sport; const sp = sport;
       const d = document.createElement("div");
-      d.innerHTML = `<header class="tbar" id="tbar"><a class="slatelogo sgrad" data-nav href="/index.html#home">SLATEZZ</a>` +
+      d.innerHTML = `<header class="tbar" id="tbar"><a class="slatelogo sgrad" data-nav href="${URL_[sp]}#lines">SLATEZZ</a>` +
         `<a class="tib" data-nav data-pg="alerts" href="${URL_[sp]}#alerts" aria-label="Alerts">${svg("bell", 28)}<b class="tcnt" id="mcnt-${sp}-alerts"></b></a></header>` +   // 10/21 night (owner): the bell at the top right
-        `<nav class="hmod" id="hmod" aria-label="Model analysis"><a data-nav href="/index.html#models">${svg("bars", 22)}<span>NFL</span></a><a data-nav href="/nba/index.html#models">${svg("bars", 22)}<span>NBA</span></a></nav>` +
         `<nav class="sbar" id="sbar" aria-label="Tabs"></nav>` +
         `<nav class="bnav" id="bnav" aria-label="Main menu">` +
-        // 10/22 (owner): Home · Bets · [ball] · Lines · Props
-        `<a class="bi" data-nav data-b="home" href="/index.html#home">${svg("home", 22)}<span>Home</span></a>` +
-        `<a class="bi" data-nav data-b="bets" href="${URL_[sp]}#mybets">${svg("bets", 22)}<span>Bets</span></a>` +
-        `<button class="bsport ${sp}" id="bsport" aria-label="Switch to ${o.toUpperCase()}"><i class="barr up">${SWAP_ARROW("barrg1")}</i><img src="/ball-${sp}.png?v=1" alt="${sp.toUpperCase()}"><i class="barr dn">${SWAP_ARROW("barrg2")}</i></button>` +   // 10/21 night (owner): just the ball of the sport you are on (cut out of the owner's photos); a tap switches sport
-        `<a class="bi" data-nav data-b="lines" href="${URL_[sp]}#lines">${svg("grid", 22)}<span>Lines</span></a>` +
-        `<a class="bi" data-nav data-b="props" href="${URL_[sp]}#${PROPS[sp][0][0]}">${svg("props", 22)}<span>Props</span></a></nav>`;
+        `<a class="bi" data-nav data-b="home" href="${URL_[sp]}#lines" aria-label="Home">${svg("home", 23)}<span>Home</span></a>` +
+        `<a class="bi" data-nav data-b="bets" href="${URL_[sp]}#mybets" aria-label="Bets">${svg("bets", 23)}<span>Bets</span></a>` +
+        `<a class="bi" data-nav data-b="model" href="${URL_[sp]}#models" aria-label="Model">${svg("bars", 23)}<span>Model</span></a></nav>`;   // (owner 10/27: like Polymarket's phone app -- a floating pill, icons only, the open one in a round bubble)
       while (d.firstChild) document.body.appendChild(d.firstChild);
       if (document.body.classList) document.body.classList.add("bnav-on");
       // My bets | Model bets sit inside Bets, under its title in the pinned header (10/22, sketch L)
@@ -178,8 +151,8 @@
         // (10/21 night, owner: no time under it -- the refresh time shows in the message at the bottom right after a tap)
         box.appendChild(b); const tb = h.querySelector(".pt b"); if (tb && tb.after) tb.after(box); else h.appendChild(box);   // on the title's line, right after the title (owner 10/21 night)
       });
-      const bs = document.getElementById("bsport");
-      if (bs) bs.onclick = (e) => Shell.go(e.currentTarget.dataset.href || `${URL_[o]}#lines`);
+      // Home and Model: the NFL | NBA tabs are the title
+      [["panel-lines", "lines"], ["panel-models", "models"]].forEach(([id, pg]) => { const t = document.querySelector && document.querySelector(`#${id} .phead .pt b`); if (t) { t.className = "lgts"; t.innerHTML = Shell.leagueTabs(sp, pg); } });
       if (document.addEventListener) document.addEventListener("click", (e) => {
         const a = e.target.closest && e.target.closest("a[data-nav]"); if (!a) return;
         e.preventDefault(); Shell.go(a.getAttribute("href"));

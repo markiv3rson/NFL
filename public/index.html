@@ -237,17 +237,15 @@
   .card.modelglow { border-color:rgba(255,255,255,.28); }   /* 10/18 (owner): no glow -- a model parlay card looks like any other card */
   @media (prefers-reduced-motion: reduce) { .card.modelglow { animation:none; } }
 </style>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Passion+One:wght@700&family=Share+Tech+Mono&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Passion+One:wght@700&display=swap">
 <link rel="stylesheet" href="/shell.css">
 </head>
 <body>
 <div class="pagewm" id="bgwm"></div>
 <div class="wrap">
-  <div class="shead" id="shead"><div class="shome" id="shead-home"><span class="sgrad">SLATEZZ</span></div></div>   <!-- 10/18 night (owner): the NEXT GAME strip is gone; the SLATEZZ header shows on home only -->
   <div id="weekline" style="display:none"></div>
 
-  <div class="panel on" id="panel-home"><div id="home"></div></div>
-  <div class="panel" id="panel-lines"><div class="phead"><div class="pt"><b>Game Lines</b></div></div><div id="lines"></div><div id="detail" style="display:none"></div></div>
+  <div class="panel on" id="panel-lines"><div class="phead"><div class="pt"><b>Game Lines</b></div></div><div id="lines"></div><div id="detail" style="display:none"></div></div>
   <div class="panel" id="panel-td"><div class="phead"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg><div class="pt"><b>Anytime TD</b><span id="td-header"></span></div></div><div id="td"></div></div>
   <div class="panel" id="panel-record">
     <div class="phead"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a1.5 1.5 0 0 1 1.5-1.5h13A1.5 1.5 0 0 1 20 7v2.5a2.5 2.5 0 0 0 0 5V17a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17v-2.5a2.5 2.5 0 0 0 0-5z"/><path d="M14.5 6v2M14.5 11v2M14.5 16v2"/></svg><div class="pt"><b id="bets-title">Bets</b><span id="upd-record"></span></div></div>
