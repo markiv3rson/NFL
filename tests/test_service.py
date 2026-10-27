@@ -130,6 +130,8 @@ ok(_c == {"a": None, "b": 1.5, "c": {"d": None, "e": True}} and "NaN" not in _js
 # Weekly rebuild (10/9): a build that is worse than the old model or too small is never published (10/16: the combo-count gate went with the scanned table)
 _wr = importlib.import_module("weekly_rebuild")
 _good = {"checks": {"games": 2500, "marginErr": 10.0, "oldMarginErr": 10.25, "totalErr": 10.5, "oldTotalErr": 10.8}}
+# 10/26 night: team-total miss = each team's points from the margin + total guess; toy: real 30-20 (margin 10, total 50), guess margin 4 / total 40 -> home 22 vs 30 (8), away 18 vs 20 (2) -> 5.0
+ok(abs(_wr.team_total_err([4], [40], [10], [50]) - 5.0) < 1e-9 and _wr.team_total_err([10, -3], [50, 44], [10, -3], [50, 44]) == 0.0, "weekly rebuild: team-total miss helper (toy 2.5; a perfect guess 0)")
 ok(_wr.passes(_good) and not _wr.passes({"checks": {**_good["checks"], "games": 500}}) and not _wr.passes({"checks": {**_good["checks"], "marginErr": 10.6}}) and not hasattr(_wr, "scan") and not hasattr(_wr, "train_chooser"), "weekly rebuild: only a sound build is published; the combo scan and the chooser are gone (10/16)")
 # TEAM MODEL week (10/20): a game already played but not yet scored by nflverse (Monday night at the Tuesday 4 AM rebuild) does not hold the week back
 _ts = importlib.import_module("team_side")

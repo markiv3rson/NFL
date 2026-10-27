@@ -63,6 +63,11 @@ def implied(ml):
         return np.where(ml < 0, -ml / (-ml + 100), 100 / (ml + 100))
 
 
+def team_total_miss(margin, total, pred_margin, pred_total):
+    """Average miss of each team's points: home = (total + margin) / 2, away = (total - margin) / 2, for the real numbers vs a margin + total guess."""
+    m, t, pm, pt = (np.asarray(x, dtype=float) for x in (margin, total, pred_margin, pred_total))
+    home = np.abs((t + m) / 2 - (pt + pm) / 2); away = np.abs((t - m) / 2 - (pt - pm) / 2)
+    return round(float(np.concatenate([home, away]).mean()), 2) if len(m) else None
 def brier(p, y):
     return float(np.mean((np.asarray(p) - np.asarray(y)) ** 2))
 
@@ -108,6 +113,11 @@ def report(x, train_end=TRAIN_END, basis="who actually sat (no injury-report his
     out["rows"].append({"model": "Total", "what": "average miss, points", "ours": round(float(np.abs(te.total - te.adj_total).mean()), 2),
                         "ours_same_games": round(float(np.abs(LT.total - LT.adj_total).mean()), 2),
                         "market": round(float(np.abs(LT.total - LT.total_line).mean()), 2), "games": int(len(LT))})
+    # 10/26 night (owner: "how accurate is our team totals?"): each team's points = (total +/- margin) / 2, ours from the model's total and margin,
+    # the market's from the closing total and spread; the miss is averaged over both teams of every game that has both lines
+    LB = te[te.home_line.notna() & te.total_line.notna()]
+    out["rows"].append({"model": "Team total", "what": "average miss, points, each team", "ours": team_total_miss(te.margin, te.total, te.adj, te.adj_total),
+                        "ours_same_games": team_total_miss(LB.margin, LB.total, LB.adj, LB.adj_total), "market": team_total_miss(LB.margin, LB.total, LB.home_line, LB.total_line), "games": int(len(LB))})
     # win chance
     lg = LogisticRegression(C=100).fit(LinearRegression().fit(tr[MARGIN_COLS], tr.margin).predict(tr[MARGIN_COLS]).reshape(-1, 1), (tr.margin > 0).astype(int))
     pw = lg.predict_proba(te[["adj"]].values)[:, 1]

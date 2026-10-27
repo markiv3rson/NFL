@@ -779,6 +779,9 @@ function renderModelNow() {
       (() => { const no = tdPx.filter((p) => 1 - mp(p) > 1 - p.bid), plNo = no.reduce((a, p) => a + (!p.scored ? 1 / (1 - p.bid) - 1 : -1), 0);   // buying No costs 1 - bid
         return `<div class="row plain"><span class="dim">No bets</span><span>${no.filter((p) => !p.scored).length} of ${no.length} won · ${cMoney(plNo)} ${no.length ? `(${cPct(plNo / no.length)})` : ""}</span></div>`; })();
   }
+  const fitLine = (f) => { if (!f) return "— (after the next Tuesday rebuild)";
+    const one = (nm, [a, b]) => a == null ? `${nm} —` : `${nm} ours <b>${Number(a).toFixed(2)}</b>${b == null ? "" : ` · line <b>${Number(b).toFixed(2)}</b> <span class="${a <= b ? "g" : "r"}">${a <= b ? "better" : "worse"}</span>`}`;
+    return `${one("margin", f.margin)} · ${one("total", f.total)} · ${one("team total", f.teamTotal)} (${f.games} games)`; };
   const st = S.status, wc = S.weekCheck || { games: 0, withLines: 0, modelRun: false, watch: [] };
   const stOk = st && st.ok && !st.creditWarning;
   const stRows = st ? [
@@ -790,6 +793,7 @@ function renderModelNow() {
     ["Last backup", st.backup ? `${hm(st.backup.t)} · ${st.backup.where === "volume" ? "saved" : st.backup.where === "failed" ? '<span class="r">failed</span>' : '<span class="y">temporary</span>'}` : '<span class="y">none yet</span>'],
     ["Last TD retrain", st.retrain ? `${hm(st.retrain.t)} · ${/kept/i.test(st.retrain.summary || "") ? "kept current" : /switch|new model|live/i.test(st.retrain.summary || "") ? "new model live" : esc(String(st.retrain.summary || "").slice(0, 40))}` : '<span class="dim">not run yet</span>'],
     ["Kickoff check (ESPN)", kickLine(st.kickcheck)],
+    ["Game model vs the line (unseen seasons)", fitLine(st.fitCheck)],   // 10/26 night (owner): margin, total and each team's points -- the model's miss next to the closing line's
     ["Errors (last 2 days)", (st.errors || []).length ? st.errors.map((e) => `<div class="y">${hm(e.t)} · ${esc(e.msg)}</div>`).join("") : '<span class="g">none</span>'],
     ["Model service (Railway)", st.railway ? (st.railway.ok ? `answering · ${st.railway.ms} ms` : `<span class="r">NOT answering${st.railway.code ? " (HTTP " + st.railway.code + ")" : st.railway.err ? " (" + esc(st.railway.err) + ")" : ""}</span>`) : "—"],
     ["Database used", st.usedMb != null ? `${st.usedMb.toFixed(1)} of ${st.capMb} MB` : "—"],
