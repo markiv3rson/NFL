@@ -131,7 +131,7 @@
       if (Shell.homeReset()) return;   // a fresh start on another page: home is loading instead
       Shell.sport = sport; const sp = sport;
       const d = document.createElement("div");
-      d.innerHTML = `<header class="tbar" id="tbar"><a class="slatelogo sgrad" data-nav href="${URL_[sp]}#lines">SLATEZZ</a>` +
+      d.innerHTML = `<header class="tbar" id="tbar"><a class="slatelogo sgrad" data-nav href="${URL_[sp]}#lines">SLATEZZ</a><span class="lgts tlg">${Shell.leagueTabs(sp, "lines")}</span>` +   // 10/27 (owner): the NFL | NBA switch right next to SLATEZZ
         `<span class="tright"><button class="mref" aria-label="Rerun both models">${REF_SVG}</button>` +   // 10/27 (owner): the refresh sits next to the bell, white
         `<a class="tib" data-nav data-pg="alerts" href="${URL_[sp]}#alerts" aria-label="Alerts">${svg("bell", 28)}<b class="tcnt" id="mcnt-${sp}-alerts"></b></a></span></header>` +   // 10/21 night (owner): the bell at the top right
         `<nav class="bnav" id="bnav" aria-label="Main menu">` +
@@ -144,8 +144,6 @@
       // My bets | Model bets sit inside Bets, under its title in the pinned header (10/22, sketch L)
       const sw = document.getElementById("bets-sw"), rh = document.querySelector && document.querySelector("#panel-record .phead");
       if (sw && rh && rh.appendChild) { rh.appendChild(sw); sw.style.display = ""; }
-      // Home: the NFL | NBA row is the title (owner 10/27: on Home only -- Bets and Model follow the sport last picked there)
-      [["panel-lines", "lines"]].forEach(([id, pg]) => { const t = document.querySelector && document.querySelector(`#${id} .phead .pt b`); if (t) { t.className = "lgts"; t.innerHTML = Shell.leagueTabs(sp, pg); } });
       if (document.addEventListener) document.addEventListener("click", (e) => {
         const a = e.target.closest && e.target.closest("a[data-nav]"); if (!a) return;
         e.preventDefault(); Shell.go(a.getAttribute("href"));
