@@ -18,6 +18,7 @@ const { redisUrl } = await import("../lib/redis.js");
 const injLib = await import("../lib/injuries.js");
 
 let bad = 0, n = 0;
+const whyLib = await import("../lib/why.js");
 const ok = (c, msg, v) => { n++; if (!c) { bad++; console.log("FAIL", msg, v === undefined ? "" : JSON.stringify(v)); } };
 const near = (a, b, t = 1e-3) => Math.abs(a - b) < t;
 async function getRedisClear() { await globalThis.__TEST_REDIS__.del("injuries:nba:v2"); }
@@ -305,6 +306,53 @@ ok(redisUrl({ UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://a:1", REDIS_URL: "redis
   const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
   ok(/Combo · \$\{e\.picks\.length\} picks/.test(app) && /\(e\.picks \|\| \[\]\)\.map\(\(p\) => legRow\(p, lk\)\)/.test(app) && /legTxt\(p\.result, `\$\{p\.team \? tlogo/.test(app), "NBA My bets lists a combo's legs (✓ / ✗, logo, green / red)");
   ok(/sc\.st === "in"/.test(app) && /● LIVE · \$\{esc\(liveSc\(lk\[0\]\)\.lbl/.test(app) && /const lk = settled \? \[\] : liveOf\(e\)/.test(app) && /\$\{betName\(e\)\}\$\{lv \? " " \+ lv\.trim\(\) : ""\}/.test(app) && /panel-record"\)\.classList\.contains\("on"\) && BETS\) renderBets\(\)/.test(app), "NBA My bets: an open bet in a live game says ● LIVE · quarter clock (no score), refreshed with the live scores"); }
+// 10/27 (owner: "Fix the player props ... Also fix the straight bets"): prop legs named and graded, totals carry their number, singles are bets
+{ const R = globalThis.__TEST_REDIS__, real = globalThis.fetch;
+  const ps = mb.propStat("astatc-nba-atl-hou-2026-10-26-pra-ametho-gte25");
+  ok(ps && ps.game === "ATL @ HOU" && ps.date === "2026-10-26" && ps.stat === "pra" && ps.code === "ametho" && ps.n === 25 && ps.line === 24.5 && ps.what === "25+ PRA" && mb.propStat("asc-nba-atl-hou-2026-10-26-pos-2pt5") === null, "NBA prop slug read (stat, code, N+ = line N - 0.5)", ps);
+  const L = [{ slug: "astatc-nba-atl-hou-2026-10-26-pra-ametho-gte25", eventSlug: "nba-atl-hou-2026-10-26", title: "ATL Hawks vs. HOU Rockets", outcome: "Yes", state: "COMBO_LEG_STATE_PENDING", team: { abbreviation: "hou" }, player: "Amen Thompson" },
+    { slug: "astatc-nba-min-cle-2026-10-26-reb-donmit-gte4", eventSlug: "nba-min-cle-2026-10-26", title: "MIN Timberwolves vs. CLE Cavaliers", outcome: "No", state: "", team: { abbreviation: "cle" } },
+    { slug: "tsc-nba-gs-den-2026-10-26-241pt5", eventSlug: "nba-gs-den-2026-10-26", title: "GS Warriors vs. DEN Nuggets", outcome: "Under", state: "" }];
+  const P = mb.comboPicks(mb.slimLegs(L));
+  ok(P[0].label === "Amen Thompson 25+ PRA" && P[0].kind === "prop" && P[0].team === "HOU" && P[0].game === "ATL @ HOU" && P[0].player === "Amen Thompson" && P[0].stat === "pra" && P[0].line === 24.5 && P[0].side === "over"
+    && P[1].label === "donmit under 4 Reb" && P[1].side === "under" && P[1].team === "CLE" && P[2].label === "Under 241.5" && P[2].kind === "total" && P[2].game === "GSW @ DEN", "NBA combo prop legs read the player + the bet (a nameless leg keeps its code until the name is found); an NBA total leg carries its number", P);
+  const box = { final: true, players: { "amen thompson": { pts: 18, reb: 9, ast: 4, pra: 31 }, "donovan mitchell": { pts: 30, reb: 3, ast: 5, pra: 38 } } };
+  ok(mb.markProp(P[0], box).result === "W" && mb.markProp(P[0], box).actual === 31 && mb.markProp({ ...P[1], player: "Donovan Mitchell" }, box).result === "W" && mb.markProp({ ...P[0], line: 34.5 }, box).result === "L"
+    && mb.markProp({ ...P[0], player: "Nobody Here" }, box).result === "P" && mb.markProp(P[0], { ...box, final: false }).result === null && mb.markProp({ ...P[0], result: "L" }, box).result === "L" && mb.markProp(P[2], box) === P[2],
+    "NBA prop legs graded from the box score: over / under, a player not in a final game's box = push, an unfinished game or a marked leg untouched");
+  const names = mb.usPlayerNames({ markets: [{ slug: "astatc-nba-atl-hou-2026-10-26-pra-ametho-gte25", titleShort: "Amen Thompson 25+ Pts + Reb + Ast", marketSides: [{ team: { abbreviation: "hou" } }] }, { slug: "asc-nba-atl-hou-2026-10-26-pos-2pt5", titleShort: "ATL +2.5" }] });
+  ok(names["astatc-nba-atl-hou-2026-10-26-pra-ametho-gte25"].name === "Amen Thompson" && names["astatc-nba-atl-hou-2026-10-26-pra-ametho-gte25"].team === "HOU" && Object.keys(names).length === 1, "Polymarket US event -> player name + team per prop market", names);
+  ok(mb.codeName("ametho", ["Amen Thompson", "Alperen Sengun", "Kevin Durant"]) === "Amen Thompson" && mb.codeName("donmit", ["Donovan Mitchell", "Dean Wade"]) === "Donovan Mitchell" && mb.codeName("jamhar", ["James Harden", "Jaylon Tyson"]) === "James Harden" && mb.codeName("zzz", ["Amen Thompson"]) === null, "player code -> name among the game's recorded names");
+  // nameLegs: the event names a leg's player (one gateway read, cached 7 days); a leg the event does not list falls back to the recorded prop names
+  globalThis.fetch = async (u) => (String(u).includes("gateway.polymarket.us/v1/events/slug/nba-atl-hou-2026-10-26") ? { ok: true, json: async () => ({ event: { markets: [{ slug: "astatc-nba-atl-hou-2026-10-26-pra-ametho-gte25", titleShort: "Amen Thompson 25+ Pts + Reb + Ast", marketSides: [{ team: { abbreviation: "hou" } }] }] } }) } : { ok: false, status: 404, json: async () => ({}) });
+  await R.set("nbaprops:2026-10-26:MIN @ CLE", JSON.stringify({ first: "t", t: "t", m: { "Donovan Mitchell|reb|3.5": [0.6, 0.5, 0.5, 0.6, "t"], "James Harden|reb|3.5": [0.6, 0.5, 0.5, 0.6, "t"] } }));
+  const L2 = mb.slimLegs(L.map((l) => ({ ...l, player: undefined })));
+  const changed = await mb.nameLegs(L2);
+  ok(changed && L2[0].player === "Amen Thompson" && L2[1].player === "Donovan Mitchell" && !L2[2].player && (await R.get("usnames:nba:nba-atl-hou-2026-10-26")) && mb.comboPicks(L2)[1].label === "Donovan Mitchell under 4 Reb", "nameLegs: names from the event (cached) or the recorded prop names; the total leg untouched", L2);
+  globalThis.fetch = real; await R.del("usnames:nba:nba-atl-hou-2026-10-26"); await R.del("nbaprops:2026-10-26:MIN @ CLE");
+  // singles: an "astatc-" market traded on its own is a bet (NFL's rule); the rest are combo legs
+  const sl = "astatc-nba-atl-hou-2026-10-26-pts-kevdur-gte25", acts = { activities: [{ type: "ACTIVITY_TYPE_TRADE", trade: { marketSlug: sl } }, { type: "ACTIVITY_TYPE_TRADE", trade: { marketSlug: "crossd-abc" } }] }, sing = mb.tradedSingles(acts);
+  ok(sing.has(sl) && sing.size === 1 && !mb.isComboLeg(sl, {}, sing) && mb.isComboLeg("astatc-nba-atl-hou-2026-10-26-pra-ametho-gte25", {}, sing) && mb.isComboLeg(sl) && mb.isComboLeg("x", { state: "COMBO_LEG_STATE_PENDING" }, sing) && !mb.isComboLeg("aec-nba-atl-hou-2026-10-26", {}, sing),
+    "NBA singles: an astatc- market traded on its own is a bet; other astatc- markets and anything marked COMBO_LEG stay legs", [...sing]);
+  const pr = mb.propOf(sl, { outcome: "Yes", subject: { name: "Kevin Durant 25+ points", image: "https://static.polymarket.us/images/teams/basketball/nba/hou/jerseys/7.png" } });
+  const pr2 = mb.propOf(sl, { outcome: "No" }, { name: "Kevin Durant", team: "HOU" });
+  ok(pr && pr.label === "Kevin Durant 25+ Pts" && pr.team === "HOU" && pr.game === "ATL @ HOU" && pr.date === "2026-10-26" && pr.kind === "prop" && pr.stat === "pts" && pr.line === 24.5 && pr.side === "over" && pr2.label === "Kevin Durant under 25 Pts" && pr2.side === "under" && pr2.team === "HOU",
+    "NBA single player bet: player + bet, team, game, date; the No side reads under", { pr, pr2 });
+  ok(mb.markProp(pr, { final: true, players: { "kevin durant": { pts: 27 } } }).result === "W" && mb.markProp(pr2, { final: true, players: { "kevin durant": { pts: 27 } } }).result === "L", "a single prop bet is graded from the box score too");
+  // loadMyBets: a settled combo's unmarked prop leg and total leg are graded from ESPN (one scoreboard + one summary read per game day)
+  const comp = { competitors: [{ homeAway: "away", team: { abbreviation: "ATL" } }, { homeAway: "home", team: { abbreviation: "HOU" } }], status: { type: { completed: true } } };
+  const summary = { header: { competitions: [comp] }, boxscore: { players: [{ statistics: [{ names: ["MIN", "PTS", "REB", "AST", "3PT", "STL", "BLK"], athletes: [{ athlete: { displayName: "Amen Thompson" }, stats: ["34", "18", "9", "4", "1-3", "2", "1"] }] }] }] } };
+  const sb = { events: [{ id: "401", status: { type: { completed: true, state: "post" } }, competitions: [{ ...comp, competitors: comp.competitors.map((c) => ({ ...c, score: c.homeAway === "away" ? "110" : "121" })) }] }] };
+  globalThis.fetch = async (u) => (/scoreboard\?dates=20261026/.test(String(u)) ? { ok: true, json: async () => sb } : /summary\?event=401/.test(String(u)) ? { ok: true, json: async () => summary } : { ok: false, status: 404, json: async () => ({}) });
+  await R.set("mybets:nba:ledger", JSON.stringify({ "crossd-p1": { id: "crossd-p1", title: "", cost: 7, shares: 36, legs: [L[0], { slug: "tsc-nba-atl-hou-2026-10-26-230pt5", eventSlug: "nba-atl-hou-2026-10-26", title: "ATL Hawks vs. HOU Rockets", outcome: "Over", state: "" }], closedAt: "2026-10-27T05:00:00Z", resolved: { win: true, pl: 29, t: "2026-10-27T04:00:00Z" } },
+    [sl]: { id: sl, title: "ATL Hawks vs. HOU Rockets", outcome: "Yes", cost: 5, shares: 10, single: true, prop: { ...pr, player: "Amen Thompson", stat: "pra", line: 24.5, label: "Amen Thompson 25+ PRA" } } }));
+  const out = await mb.loadMyBets();
+  const c1 = out.settled.find((e) => e.id === "crossd-p1"), s1 = out.open.find((e) => e.id === sl);
+  ok(c1 && c1.picks[0].result === "W" && c1.picks[0].actual === 31 && c1.picks[1].label === "Over 230.5" && c1.picks[1].result === "W" && s1 && s1.prop.result === "W", "loadMyBets: an unmarked prop leg graded from the box score, the total from the final score, an open single's prop graded too", { c1: c1 && c1.picks, s1: s1 && s1.prop });
+  globalThis.fetch = real; await R.del("mybets:nba:ledger");
+  const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
+  ok(/e\.prop \? `\$\{e\.prop\.result \? legMark\(e\.prop\.result\) \+ " " : ""\}\$\{e\.prop\.team \? tlogo\(e\.prop\.team\) : ""\}\$\{esc\(e\.prop\.label\)\}`/.test(app) && /rowsOf\(firstSingles\(j\.open\), false\)/.test(app) && /firstSingles = \(a\) => \[\.\.\.a\.filter\(isSingle\), \.\.\.a\.filter\(\(e\) => !isSingle\(e\)\)\]/.test(app) && !/stampFor|playStamps/.test(app),
+    "NBA My bets page: a single shows the player + bet with the logo and its mark, singles sit on top of the open list, no HIT / MISS stamp (10/27)"); }
 
 // ---------- sign-in (same as the NFL app: Basic login, then a 1-year "remember this phone" cookie of its own)
 if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (await import("typescript")).default, { writeFileSync, mkdtempSync } = await import("node:fs"), { tmpdir } = await import("node:os"), { join } = await import("node:path");
@@ -364,7 +412,7 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(!/LEAN/.test(app) && !/TEASER/.test(app) && !/Anytime TD|anytime-td/i.test(app), "page: no LEAN, no teasers, no TD");
   ok(!/has not beaten the market|Watching only|not a pick\b|Tested on 2024-26 only|Saved and graded to|what the model counted|can't see/i.test(app), "page: no explanatory notes (owner 10/15: show data only)");
   ok(/secRow\("SPREAD &amp; ML", injPill\(g, "inj"\)\)/.test(app) && !/secRow\("MONEYLINE"/.test(app) && /secRow\("TOTALS"\)/.test(app) && /class="trow"><div class="sh">\$\{title\}<\/div>\$\{pills\}/.test(app), "game page (10/23, = NFL): SPREAD & ML + TOTALS section rows, the Injuries pill on the SPREAD & ML row");
-  ok(/<div class="hd">MARKET<\/div><div class="mk">\$\{bookBox\(g, kind\)\}<div>\$\{pmHead\(g\)\}\$\{poly\}\$\{tipLine\(g, kind\)\}<\/div><\/div><div class="hd hm ihd">MODEL\$\{IBTN\}<\/div>\$\{ibox\(info\)\}\$\{modelCell\(g, kind\)\}/.test(app) && !/class="live"/.test(app) && !/class="f"/.test(app) && !/grid-row:span 2/.test(app), "game page card (10/23, = NFL): MARKET = SPORTSBOOK | POLYMARKET (LIVE · Xs ago in its header, the tip-off line under it), MODEL below it full width; the injuries drop-down opens at the top of the card"); }
+  ok(/<div class="hd">MARKET<\/div><div class="mk">\$\{bookBox\(g, kind\)\}<div>\$\{pmHead\(g\)\}\$\{poly\}\$\{tipLine\(g, kind\)\}<\/div><\/div><div class="hd hm ihd">MODEL\$\{IBTN\}<\/div>\$\{whyBox\(g, kind, info\)\}\$\{modelCell\(g, kind\)\}/.test(app) && !/class="live"/.test(app) && !/class="f"/.test(app) && !/grid-row:span 2/.test(app), "game page card (10/23, = NFL): MARKET = SPORTSBOOK | POLYMARKET (LIVE · Xs ago in its header, the tip-off line under it), MODEL below it full width; the injuries drop-down opens at the top of the card"); }
 { // NBA information only: no NFL words anywhere in the shipped code
   const files = []; const walk = (d) => { for (const f of readdirSync(d)) { const p = `${d}/${f}`; if (["node_modules", ".next", ".git", "fixtures", "data", "__pycache__"].includes(f)) continue; if (statSync(p).isDirectory()) walk(p); else if (/\.(js|mjs|ts|tsx|py|html|json)$/.test(f) && f !== "package-lock.json" && f !== "run.mjs" && f !== "tests_service.py") files.push(p); } };
   walk(new URL("..", import.meta.url).pathname);
@@ -1125,5 +1173,71 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
 const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8"), sl = readFileSync(new URL("../lib/slate.js", import.meta.url), "utf8");
   ok(/\["pp10", "Prop Parlays · 10 Leg"\]/.test(app) && /pp10: "Prop Parlays · 10 legs"/.test(app) && !/\["best4", "Parlay"\]/.test(app) && /Props · 77¢\+ hidden rows/.test(app) && /Props · star out → teammates Over/.test(app) && /buildPropParlays\(d, out, now, legs\)/.test(sl) && /buildSameGame4\(d, out, now, legs\)/.test(sl) && /l\.market !== "prop"/.test(sl),
     "Prop Parlays: Model bets tabs 6 / 8 / 10 Leg (no Parlay tab), scoreboard rows per size, the two shadow rows on Models; built on the slate; never sent for a Polymarket combo quote"); }
+{ // 10/26 (owner, design = both sports): the per-game facts on top of the NBA MODEL ⓘ box (nba/lib/why.js)
+  const { gameWhy } = whyLib, now = Date.parse("2026-10-26T23:00:00Z");
+  const g = { home: "DET", away: "BOS", poly: { spread: { homeSpread: -1.5, home: 0.52, away: 0.48 }, total: { line: 229.5, over: 0.5, under: 0.5 }, ml: { midHome: 0.56, midAway: 0.44 } },
+    card: { spread: { plain: { team: "DET", pick: "DET -1.5", hit: 67.9, ruleId: "linemove|spread", why: "LINE MOVE 3", atOpen: true } }, total: { plain: { side: "over", pick: "Over 229.5", hit: 55.2, ruleId: "shotq|total", why: "SHOT QUALITY" } } },
+    move: { spread: { open: -3.5, now: -1.5 }, total: { open: 231.5, now: 229.5 }, signal: { spread: { team: "DET", pts: 3, open: -1.5 }, total: { side: "under", pts: 3, open: 232.5 } } },
+    books: { spread: { homeSpread: -3.5 }, total: { line: 232.5 } }, booksAt: "2026-10-26T21:00:00Z", fatigue: { away: { ot: false, far: true } },
+    context: { home: { rest: 3, trav_km: 0, sq_l20: -4.1, sq_x10: 242, sq_gp: 12, sq_cold_mu: 0.4, sq_mu: 1.2 }, away: { rest: 1, trav_km: 1900, ats_pct: 0.3, ats_n: 24, sq_l20: -3.4, sq_x10: 238 } },
+    model: { margin: 2.4, total: 233.1, marketWinPct: 56, teamSide: { team: "DET", line: -1.5, pct: 52.1 }, injuryShift: -0.8 }, injuries: { home: [], away: [{ name: "Jayson Tatum", status: "Out", ppg: 26.8 }, { name: "Al Horford", status: "Questionable", ppg: 9.1 }] }, starOut: { home: 0, away: 1 },
+    ml: { pick: { label: "DET ML", pct: 56, tier: "pick", team: "DET" } } };
+  const W = gameWhy(g, now), sp = W.spread, tt = W.total, find = (xs, k) => xs.find((x) => x[0] === k), txt = JSON.stringify(W);
+  ok(/^DET -1\.5 · 67\.9% · LINE MOVE rule \(Polymarket still at Pinnacle’s opening number: 67\.9%\) — LINE MOVE 3$/.test(sp[0][1].replace("'", "’")) && sp[0][2] === 1, "NBA reason box: the PICK line with its rule and the at-the-open rate", sp[0]);
+  ok(/^moved 3 points toward DET since its first line \(opened DET -1\.5\)$/.test(find(sp, "Pinnacle:")[1]) && find(sp, "Pinnacle:")[2] === 1 && /opened DET -3\.5 → now -1\.5: moved 2 toward BOS · DET gets 2/.test(find(sp, "Polymarket line:")[1]) && find(sp, "Polymarket line:")[2] === 1, "NBA reason box: Pinnacle's move and Polymarket's own move with who gained");
+  ok(/^DET -3\.5 \(pulled Mon .*PM\) vs Polymarket -1\.5 · 2 off → BOOK GAP \(a stronger rule named the side\)$/.test(find(sp, "Sportsbooks:")[1]) && find(sp, "Sportsbooks:")[2] === 1, "NBA reason box: the books vs Polymarket, inside the BOOK GAP window, outranked by LINE MOVE", find(sp, "Sportsbooks:"));
+  ok(/^DET 3 days rest, BOS 1 · BOS flew 1900 km on a back-to-back$/.test(find(sp, "Rest:")[1]) && find(sp, "Rest:")[2] === 1 && /^BOS covered 30% of 24 lined games → ATS REGRESSION/.test(find(sp, "ATS:")[1]) && find(sp, "ATS:")[2] === -1, "NBA reason box: rest / FATIGUE and ATS REGRESSION (fires for BOS, against the pick)", [find(sp, "Rest:"), find(sp, "ATS:")]);
+  ok(/^DET by 2\.4 · vs the line it leans nowhere/.test(find(sp, "Model:")[1]) === false && /^DET by 2\.4 · vs the line it leans DET by 0\.9 · injuries moved it -0\.8$/.test(find(sp, "Model:")[1]) && find(sp, "Model:")[2] === 0 && /^DET 52\.1% · data only on NBA/.test(find(sp, "Team model:")[1]), "NBA reason box: the model vs the line (under 1 point = neutral) and the team model as data", find(sp, "Model:"));
+  ok(/^top scorer out · J\.Tatum Out \(26\.8 ppg\); A\.Horford Questionable \(9\.1 ppg\)$/.test(find(sp, "BOS injuries:")[1]) && find(sp, "BOS injuries:")[2] === 1 && !find(sp, "DET injuries:") && /^DET ML · 56% = the market’s own chance with the fee out$/.test(find(sp, "ML pick:")[1].replace("'", "’")), "NBA reason box: injuries by points a game with the star flag, and the ML pick", find(sp, "BOS injuries:"));
+  ok(/^Over 229\.5 · 55\.2% · SHOT QUALITY rule — SHOT QUALITY$/.test(tt[0][1]) && /^moved the total 3 toward the Under since its first number \(opened 232\.5\) · TOTAL MOVE fires only while Polymarket still has the opening number$/.test(find(tt, "Pinnacle:")[1]) && find(tt, "Pinnacle:")[2] === -1
+    && /opened 231\.5 → now 229\.5: down 2 · a better number for the Over/.test(find(tt, "Polymarket total:")[1]) && find(tt, "Polymarket total:")[2] === 1 && /^232\.5 \(pulled .*\) vs Polymarket 229\.5 · 3 off → BOOK GAP \(a stronger rule named the side\)$/.test(find(tt, "Sportsbooks:")[1])
+    && /^both teams’ shooting ran cold by 7\.9 over 20 games \(Over at -6\.9 or colder\) · their shots are worth \+9\.3 vs the total \(Over at \+10\.9\) → SHOT QUALITY$/.test(find(tt, "Shot quality:")[1].replace("'", "’")) && find(tt, "Shot quality:")[2] === 1
+    && /^233\.1 vs 229\.5 → leans Over by 3\.6$/.test(find(tt, "Model:")[1]) && find(tt, "BOS:")[1] === "top scorer out" && find(tt, "BOS:")[2] === -1, "NBA reason box: the total's lines (Pinnacle, Polymarket, books, shot quality with the cut-offs, model, star out)", tt);
+  ok(!/undefined|NaN|null/.test(txt), "NBA reason box: no undefined / NaN", txt.match(/.{30}(undefined|NaN|null).{30}/g));
+  const g2 = { ...g, card: { spread: { plain: { team: "BOS", pick: "BOS +1.5", hit: 49.4, ruleId: "model|spread" } }, total: null }, move: null, books: { spread: { homeSpread: -1.5 } }, booksAt: "2026-10-26T10:00:00Z", fatigue: null, context: { home: { rest: 1 }, away: { rest: 2, ats_pct: 0.5, ats_n: 10 } }, ml: { pick: { tier: "none" } }, model: { margin: -0.5, total: 230, marketWinPct: 53 }, injuries: { home: [], away: [] }, starOut: null };
+  const W2 = gameWhy(g2, now), s2 = W2.spread;
+  ok(/^BOS \+1\.5 · 49\.4% · the model’s side \(no tested rule fired; about a coin flip, 49\.4%\)$/.test(s2[0][1].replace("'", "’")) && /unchanged since first seen/.test(find(s2, "Polymarket line:")[1]) && /the same number$/.test(find(s2, "Sportsbooks:")[1])
+    && /a plain back-to-back for DET \(priced by the market, 50\.9%: no rule\)/.test(find(s2, "Rest:")[1]) && find(s2, "Rest:")[2] === 0 && /\(the rule needs 20\+\)$/.test(find(s2, "ATS:")[1]) && /^none: DET is the favorite at 53% with the fee out, under the 56% bar$/.test(find(s2, "ML pick:")[1]) && W2.total[0][1] === "none yet on this total" && /leans Over by 0\.5/.test(find(W2.total, "Model:")[1]), "NBA reason box: the why-nots -- model side, no move, same books number, a plain back-to-back, ATS under 20 games, no ML pick", s2);
+  ok(gameWhy(null) === null, "NBA reason box: no row, no lines");
+}
+
+{ // 10/26 recheck: a PLACEHOLDER market (a side priced 0.99 / the other 0.49, nobody selling -- Polymarket's stub for a game posted a day early) is not a line.
+  // It had been the main total of tomorrow's games ("Over 195.5"), saved as the model-side PICK at first sighting and graded a free win (32 such picks 10/23-27).
+  const ev = JSON.parse(JSON.stringify(events[0])), g0 = eventGame(events[0]);
+  const stub = (m) => { m.bestAsk = 0.99; m.bestBid = 0.51; m.outcomePrices = JSON.stringify([0.5, 0.5]); };
+  for (const m of ev.markets) if (/^(totals|spreads)$/i.test(m.sportsMarketType || "")) stub(m);
+  const P = parseGame(ev.markets, g0.away, g0.home), P0 = parseGame(events[0].markets, g0.away, g0.home);
+  ok(P.total === undefined && P.spread === undefined && !!P.ml && !!P0.total && !!P0.spread && !(P.totalAlts || []).length && !(P.alts || []).length, "parser (10/26): one-sided placeholder totals / spreads are never the main line nor an alternate; the moneyline still reads", { P, P0: { t: P0.total, s: P0.spread } });
+  const evMix = JSON.parse(JSON.stringify(events[0])); let first = true;
+  for (const m of evMix.markets) if (/^totals$/i.test(m.sportsMarketType || "")) { if (first) { first = false; continue; } stub(m); }   // one real total among stubs -> that one
+  const PM = parseGame(evMix.markets, g0.away, g0.home);
+  ok(!!PM.total && PM.total.over > 0.1 && PM.total.over < 0.9 && PM.total.under > 0.1 && PM.total.under < 0.9, "parser (10/26): a real two-sided total is the main total even next to stubs", PM.total);
+  // the opening-line baseline: an "opener" 15+ (total) / 10+ (spread) from the current line was a stub -> reset, no move shown
+  const alx = await import("../lib/alerts.js");
+  const R = globalThis.__TEST_REDIS__; await R.set("open:2026-11-05:BOS @ NYK", JSON.stringify({ hs: 13.5, tl: 195.5, t: "2026-11-04T20:00:00Z" }), "EX", 4 * 86400);
+  const mv = await slate.lineMoves([{ key: "BOS @ NYK", date: "2026-11-05", poly: { spread: { homeSpread: -3.5 }, total: { line: 225.5 } } }], Date.parse("2026-11-05T20:00:00Z"));
+  const openNow = JSON.parse(await R.get("open:2026-11-05:BOS @ NYK"));
+  ok(!(mv["BOS @ NYK"] && (mv["BOS @ NYK"].total || mv["BOS @ NYK"].spread)) && openNow.tl === 225.5 && openNow.hs === -3.5, "line moves (10/26): a placeholder opener is replaced by the line seen now, no 30-point move", { mv, openNow });
+  const mv2 = await slate.lineMoves([{ key: "BOS @ NYK", date: "2026-11-05", poly: { spread: { homeSpread: -4.5 }, total: { line: 227.5 } } }], Date.parse("2026-11-05T21:00:00Z"));
+  ok(mv2["BOS @ NYK"] && mv2["BOS @ NYK"].total.open === 225.5 && mv2["BOS @ NYK"].total.now === 227.5 && mv2["BOS @ NYK"].spread.open === -3.5, "line moves: a real move after the reset shows from the reset baseline", mv2);
+  // alerts: the same jump is a re-base, not a LINE MOVE
+  const T0 = Date.parse("2026-11-06T20:00:00Z"), game = (over = {}) => ({ key: "MIA @ ORL", away: "MIA", home: "ORL", date: "2026-11-06", inProgress: false, poly: { spread: { homeSpread: -3.5 }, total: { line: 195.5 }, ml: { midHome: 0.62, midAway: 0.38 } }, spread: null, total: null, ml: null, injuries: { home: [], away: [] }, ...over });
+  await alx.alertsFromSlate([game()], T0);
+  const n1 = await alx.alertsFromSlate([game({ poly: { spread: { homeSpread: -3.5 }, total: { line: 226.5 }, ml: { midHome: 0.62, midAway: 0.38 } } })], T0 + 60e3);
+  const n2 = await alx.alertsFromSlate([game({ poly: { spread: { homeSpread: -3.5 }, total: { line: 226.5 }, ml: { midHome: 0.62, midAway: 0.38 } } })], T0 + 60e3 + (alx.MOVE_HOLD_MIN + 1) * 60e3);
+  const base = JSON.parse(await R.get("alertbase:2026-11-06:MIA @ ORL"));
+  ok(n1 === 0 && n2 === 0 && base.tl === 226.5 && !(await alx.listAlerts()).some((a) => /MIA @ ORL total: 195\.5/.test(a.title)), "alerts (10/26): a 31-point total jump is a placeholder re-base, never a LINE MOVE alert", { n1, n2, base });
+  // the record: a pick on a stub price is never saved; one already saved (graded or not) is voided and leaves every record row
+  const g = { key: "MIA @ ORL", away: "MIA", home: "ORL", date: "2026-11-06", start: "2026-11-07T00:00:00Z", poly: { total: { line: 195.5, over: 0.99, under: 0.49 } }, card: { total: { plain: { id: "modelpick|total", kind: "total", side: "over", line: 195.5, pick: "Over 195.5", hit: 50.4, price: 0.99 }, rows: [] }, spread: null } };
+  const saved = await rec.recordPicks([g], Date.parse("2026-11-06T20:00:00Z"));
+  await R.set("pick:2026-11-04:A @ B:modelpick|total", JSON.stringify({ date: "2026-11-04", game: "A @ B", id: "modelpick|total", market: "total", label: "Over 193.5", side: "over", line: 193.5, pct: 50.4, tier: "pick", price: 0.99, result: "win" })); await R.sadd("pick:ids", "pick:2026-11-04:A @ B:modelpick|total");
+  await R.set("pick:2026-11-04:A @ B:ptspick|spread", JSON.stringify({ date: "2026-11-04", game: "A @ B", id: "ptspick|spread", market: "spread", label: "B -1.5", team: "B", line: -1.5, pct: 57, tier: "pick", price: 0.52, result: "win" })); await R.sadd("pick:ids", "pick:2026-11-04:A @ B:ptspick|spread");
+  const nv = await rec.voidStubPicks(), after = (await rec.loadPicks()).filter((p) => p.game === "A @ B"), sm = rec.summarize(after);
+  ok(saved === 0 && rec.isStubPick({ market: "total", price: 0.99 }) && !rec.isStubPick({ market: "total", price: 0.52 }) && !rec.isStubPick({ market: "ml", price: 0.99 }) && nv === 1
+    && after.find((p) => p.id === "modelpick|total").result === "void" && after.find((p) => p.id === "modelpick|total").was === "win" && after.find((p) => p.id === "ptspick|spread").result === "win"
+    && !(sm["modelpick|total"] && sm["modelpick|total"].w) && sm["ptspick|spread"].w === 1, "record (10/26): a stub-price pick is never saved; a saved one is voided (its old result kept as `was`) and counts in no row; real picks untouched", { saved, nv, after, sm: Object.keys(sm) });
+  await R.srem("pick:ids", "pick:2026-11-04:A @ B:modelpick|total", "pick:2026-11-04:A @ B:ptspick|spread");
+}
+
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`);
 process.exit(bad ? 1 : 0);

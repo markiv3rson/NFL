@@ -54,7 +54,7 @@ function rollMoney(root) {
     setTimeout(() => { if (el.parentNode && el.replaceWith) el.replaceWith(document.createTextNode(v)); else el.textContent = v; }, 1700);   // back to plain text once it lands
   });
 }
-const SLOT_SKIP = ".reelpct,.stamp,.fclk,script,style,input,textarea,select,svg";
+const SLOT_SKIP = ".reelpct,.fclk,script,style,input,textarea,select,svg";
 function slotMoney(root, max = 120) {
   if (REDUCE || !root || typeof document === "undefined" || !document.createTreeWalker) return;
   const walk = document.createTreeWalker(root, 4), nodes = [];
@@ -69,22 +69,7 @@ function slotMoney(root, max = 120) {
   }
   rollMoney(root);
 }
-function coinBurst(el) {
-  if (REDUCE || !el || !el.getBoundingClientRect) return;
-  const e = el.getBoundingClientRect(), cv = document.createElement("canvas"); cv.className = "coinfx"; document.body.appendChild(cv);
-  const W = innerWidth, H = innerHeight, dpr = devicePixelRatio || 1; cv.width = W * dpr; cv.height = H * dpr; const cx = cv.getContext("2d"); cx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const P = Array.from({ length: 30 }, () => ({ x: e.left + e.width / 2, y: e.top + e.height / 2, vx: (Math.random() - .5) * 8, vy: -Math.random() * 7 - 2, s: 4 + Math.random() * 4 })); let t = 0;
-  (function f() { cx.clearRect(0, 0, W, H); P.forEach((q) => { q.x += q.vx; q.y += q.vy; q.vy += .35; cx.fillStyle = "#ffcf4a"; cx.beginPath(); cx.ellipse(q.x, q.y, q.s, q.s * Math.abs(Math.cos(t / 4 + q.s)), 0, 0, 7); cx.fill(); });
-    if (++t < 60) requestAnimationFrame(f); else cv.remove(); })();
-}
-function playStamps() {
-  try { if (!$("panel-record").classList.contains("on")) return; } catch { return; }
-  let seen = []; try { seen = JSON.parse(localStorage.getItem("stampSeen") || "[]"); } catch {}
-  const set = new Set(seen); let added = false;
-  document.querySelectorAll("#record-mine .stamp[data-sid]").forEach((st) => { const id = st.dataset.sid; if (set.has(id)) return;
-    set.add(id); added = true; st.classList.add("go"); if (st.classList.contains("hit")) setTimeout(() => coinBurst(st), 250); });
-  if (added) { try { localStorage.setItem("stampSeen", JSON.stringify([...set].slice(-500))); } catch {} }
-}
+// 10/27 (owner): the HIT / MISS stamp and its coins are gone from the bet rows
 
 function tickCd() {   // refreshes the slate once when the next game tips off
   clearTimeout(tickCd._h);
@@ -260,6 +245,13 @@ function injDrop(g, id) {
 // a tap opens a short box right under the header (the tap is handled in public/shell.js). Model lines read white labels + colored numbers.
 const IBTN = `<button class="ibtn" type="button" aria-label="What is this?"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6.6"/><line x1="8" y1="7.2" x2="8" y2="11.4"/><circle cx="8" cy="4.8" r=".6" fill="currentColor"/></svg></button>`;
 const ibox = (lines, st) => `<div class="ibox" hidden${st ? ` style="${st}"` : ""}>${lines.map(([k, t]) => `<div><b>${k}</b> ${t}</div>`).join("")}</div>`;
+// 10/26 (owner, design = both sports): the game's own facts (nba/lib/why.js, `g.why`) on top of the MODEL ⓘ box -- + for the PICK's side, − against, · neither -- then the glossary
+const whyMark = (s) => `<span class="wm${s > 0 ? " wf" : s < 0 ? " wa" : ""}">${s > 0 ? "+" : s < 0 ? "−" : "·"}</span>`;
+function whyBox(g, kind, info) {
+  const W = g && g.why ? g.why[kind] || [] : [];
+  const own = W.length ? `<div class="wh">THIS GAME · + for the pick · − against</div>` + W.map(([k, t, s]) => `<div>${whyMark(s)}<b>${esc(k)}</b> ${esc(t)}</div>`).join("") + `<div class="wsep"></div>` : "";
+  return `<div class="ibox" hidden>${own}${info.map(([k, t]) => `<div><b>${k}</b> ${t}</div>`).join("")}</div>`;
+}
 const MODEL_INFO = {
   spread: [["Model:", "the game model’s score guess. Data only."], ["Model (Team):", "team-stats model at Polymarket’s line. Data only on NBA, never the pick."],
     ["Pick:", "the bet at Polymarket’s main line, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
@@ -309,7 +301,7 @@ function marketCard(g, kind, id) {
       + (p.ml ? row("Moneyline", `${g.home} ${odds(toAm(p.ml.home))}`, "mlc", !!p.spread) + row("", `${g.away} ${odds(toAm(p.ml.away))}`, "mlc") : "") : dash)
     : (p.total ? row(`Over ${p.total.line}`, odds(toAm(p.total.over)), "mkt") + row(`Under ${p.total.line}`, odds(toAm(p.total.under)), "mkt") : dash);
   const info = kind === "spread" ? MODEL_INFO.spread.concat([["ML pick:", MODEL_INFO.ml[1][1]]]) : MODEL_INFO.total;
-  return `<div class="card"><div class="inner">${id ? injDrop(g, id) : ""}<div class="hd">MARKET</div><div class="mk">${bookBox(g, kind)}<div>${pmHead(g)}${poly}${tipLine(g, kind)}</div></div><div class="hd hm ihd">MODEL${IBTN}</div>${ibox(info)}${modelCell(g, kind)}</div></div>`;
+  return `<div class="card"><div class="inner">${id ? injDrop(g, id) : ""}<div class="hd">MARKET</div><div class="mk">${bookBox(g, kind)}<div>${pmHead(g)}${poly}${tipLine(g, kind)}</div></div><div class="hd hm ihd">MODEL${IBTN}</div>${whyBox(g, kind, info)}${modelCell(g, kind)}</div></div>`;
 }
 // same-game parlays of this game (lib/parlays.js): 2 legs on Polymarket's lines, 2 legs on bought lines
 function sgpBox(g) {
@@ -401,9 +393,8 @@ function renderProps() {
 async function loadBets() {
   try { BETS = await (await fetch("/api/nba/mybets", { cache: "no-store" })).json(); } catch { BETS = { ok: false }; }
   try { const d = await (await fetch("/api/nba/modelbets", { cache: "no-store" })).json(); if (d && d.ok) MODELBETS = d; } catch {}
-  renderBets(); renderLabList(); setTimeout(playStamps, 50);
+  renderBets(); renderLabList();
 }
-const stampFor = (e) => (e.result === "win" || e.result === "loss" ? `<span class="stamp ${e.result === "win" ? "hit" : "miss"}" data-sid="${esc(String(e.id || ""))}">${e.result === "win" ? "HIT!" : "MISS"}</span>` : "");
 function renderBets() {
   const j = BETS; if (!j || !j.ok) { $("record-mine").innerHTML = topCard('<div class="s dim">Bets unavailable right now.</div>'); return; }
   $("upd-record").textContent = j.syncedAt ? "Synced " + hm(j.syncedAt) : j.keysSet ? "Not synced yet" : "Polymarket keys not set";
@@ -413,10 +404,11 @@ function renderBets() {
   const liveSc = (k) => { const sc = k && NBL[k]; return sc && sc.st === "in" ? sc : null; };
   const liveOf = (e) => [...new Set((e.picks || []).map((p) => p.game).filter((k) => liveSc(k)))];
   const legRow = (p, lk = []) => `<div class="s" style="padding:0 0 0 16px">${p.result ? legMark(p.result) + " " : "• "}${legTxt(p.result, `${p.team ? tlogo(p.team) : ""}${esc(p.label)}`)}${p.kind === "total" && p.game ? ` <span class="dim">${gameLogos(p.game)}</span>` : ""}${lk.length > 1 && !p.result && liveSc(p.game) ? ` <span class="r lvb">· ${esc(liveSc(p.game).lbl || "")}</span>` : ""}</div>`;
-  const betName = (e) => (e.picks && e.picks.length ? `Combo · ${e.picks.length} picks` : `${esc(e.title)}${e.outcome ? ` — ${esc(e.outcome)}` : ""}`);
+  const betName = (e) => (e.picks && e.picks.length ? `Combo · ${e.picks.length} picks` : e.prop ? `${e.prop.result ? legMark(e.prop.result) + " " : ""}${e.prop.team ? tlogo(e.prop.team) : ""}${esc(e.prop.label)}` : `${esc(e.title)}${e.outcome ? ` — ${esc(e.outcome)}` : ""}`);   // 10/27: a single player bet = the player + the bet
+  const isSingle = (e) => !(e.picks && e.picks.length), firstSingles = (a) => [...a.filter(isSingle), ...a.filter((e) => !isSingle(e))];   // 10/27 (owner): singles on top, then the combos
   const rowsOf = (a, settled) => a.map((e) => { const lk = settled ? [] : liveOf(e), lv = lk.length === 1 ? `<span class="r lvb">● LIVE · ${esc(liveSc(lk[0]).lbl || "")}</span> ` : lk.length ? '<span class="r lvb">● LIVE</span> ' : "";
     return `<div class="betwrap"><div class="row"><span>${betName(e)}${lv ? " " + lv.trim() : ""}</span><span>${settled ? (e.result === "win" ? '<span class="g">Won</span>' : e.result === "loss" ? '<span class="r">Lost</span>' : '<span class="y">Sold</span>') + " " + cMoney(e.pl) : e.value != null ? "$" + e.value.toFixed(2) : ""}</span></div>` +
-    `${(e.picks || []).map((p) => legRow(p, lk)).join("")}<div class="s" style="padding:0 0 6px 8px">${money(e.cost)}${e.price ? ` at ${betCents(e.price)}¢` : ""}${e.shares ? ` · ${e.shares} shares` : ""}</div>${stampFor(e)}</div>`; }).join("");
+    `${(e.picks || []).map((p) => legRow(p, lk)).join("")}<div class="s" style="padding:0 0 6px 8px">${money(e.cost)}${e.price ? ` at ${betCents(e.price)}¢` : ""}${e.shares ? ` · ${e.shares} shares` : ""}</div></div>`; }).join("");
   const open = [...document.querySelectorAll("#record-mine .drop.open")].map((e) => e.id);
   // 10/17 (owner: "make everything consistent"): a day drop-down like NFL's week drop-down; it picks which settled bets show (open bets always show)
   const dayOf = (e) => { const t = e.closedAt || (e.resolved && e.resolved.t) || (e.sold && e.sold.t); return t ? new Date(t).toLocaleDateString("en-CA", { timeZone: "America/New_York" }) : null; };
@@ -427,7 +419,7 @@ function renderBets() {
   $("record-mine").innerHTML = ddSlot($("record-mine"), dayPick) + topCard(`<div class="row"><span class="dim">Record</span><span class="${rc.pct >= 55 ? "g" : rc.pct >= 50 ? "y" : "r"}">${rc.w || 0}–${rc.l || 0}${rc.pct == null ? "" : ` · ${rc.pct}% won`}</span></div>` +
     `<div class="row"><span class="dim">Profit</span><span class="${(rc.pl || 0) >= 0 ? "g" : "r"}">${(rc.pl || 0) >= 0 ? "+" : "−"}$${Math.abs(rc.pl || 0).toFixed(2)} · settled</span></div>` +
     `<div class="row"><span class="dim">Staked</span><span>$${(rc.staked || 0).toFixed(2)} · settled</span></div>`) +
-    `<div class="card" style="margin-top:10px"><div class="sec"><div class="sh">Open</div>${(j.open || []).length ? rowsOf(j.open, false) : '<div class="s dim">None.</div>'}</div>` +
+    `<div class="card" style="margin-top:10px"><div class="sec"><div class="sh">Open</div>${(j.open || []).length ? rowsOf(firstSingles(j.open), false) : '<div class="s dim">None.</div>'}</div>` +
     `<div class="fold" data-drop="settled"><span>Settled bets</span><span>▾</span></div><div class="drop" id="settled">${settled.length ? rowsOf(settled, true) : '<div class="s dim empty">None yet.</div>'}</div></div>` +
     `<div class="center"><button class="btn" id="sync-btn">↻ Sync account</button></div>`;
   for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }

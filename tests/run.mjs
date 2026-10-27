@@ -120,7 +120,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ctx.window = ctx; ctx.addEventListener = () => {}; ctx.body = undefined;
   vm.createContext(ctx);
   vm.runInContext(readFileSync(new URL("../public/shell.js", import.meta.url), "utf8"), ctx);   // 10/17: the shared menu / header script loads first, as on the page
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={pickRes,tdNameEq,recTile,tdWeekGames,injLine,mktHome,tdPct,plural,pBlock,plPay,linkedPay,plTap,plShown,plKey,PLC,sgpBox,labParlays,renderLabList,logoLabel,tdTeam,legName,moreBox,slotOf,parlayPicks,parlayStrip,lineCheck,recLine,bestBets,injTag,weakLeg,kickLine,tdNoGap,tdHead,tdWeekLine,tdDrought,tdWarn,tdScoredRecent,tdCut,propLast,trackedRows,renderLines,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,earlyNote,leanCell,betRow,moveBits,winnersBox,winnerOf,tile,tdRow,gameCard,totalCard,detailTop,renderMine,gbgHtml,renderLab,renderModel,renderTd,betsSummary,cardRecBox,legPct,cardBody,betsAnalysis,keepOpenState,winnersBands,mSec,legFlipped,betSlots,openBySlot,straightPicks,sgpBox,glowOf,stampFor,betRow};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={pickRes,tdNameEq,recTile,tdWeekGames,injLine,mktHome,tdPct,plural,pBlock,plPay,linkedPay,plTap,plShown,plKey,PLC,sgpBox,labParlays,renderLabList,logoLabel,tdTeam,legName,moreBox,slotOf,parlayPicks,parlayStrip,lineCheck,recLine,bestBets,injTag,weakLeg,kickLine,tdNoGap,tdHead,tdWeekLine,tdDrought,tdWarn,tdScoredRecent,tdCut,propLast,trackedRows,renderLines,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,earlyNote,leanCell,betRow,moveBits,winnersBox,winnerOf,tile,tdRow,gameCard,totalCard,detailTop,renderMine,gbgHtml,renderLab,renderModel,renderTd,betsSummary,cardRecBox,legPct,cardBody,betsAnalysis,keepOpenState,winnersBands,mSec,legFlipped,betSlots,openBySlot,straightPicks,sgpBox,glowOf,betRow,isSingle,singleGame};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   g = { away: "A", home: "H", model: { total: 44.4, fix: { dome: 2.59, pace: 0.1, div: true } }, poly: { total: { line: 45.5 } } };
@@ -131,6 +131,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   vm.runInContext(`S = { games: [{ key: "DAL @ PHI", away: "DAL", home: "PHI", started: false, poly: { spread: { homeSpread: -4 }, total: { line: 45.5 }, ml: { home: 0.66 } },
     history: [{ t: "2026-10-01T10:00:00Z", poly: { spread: { homeSpread: -3 }, total: { line: 45.5 }, ml: { home: 0.60 } } }] }] }`, ctx);
   { const G0 = vm.runInContext("S.games[0]", ctx), bits = T.moveBits(G0); ok(bits.length === 2 && /spread PHI -3 → -4/.test(bits[0]) && /moneyline 60¢ → 66¢/.test(bits[1]) && /class="mvt"><span>spread PHI -3 → -4<\/span>/.test(T.tile(G0)), "what changed (10/18 night): the game's moves sit inside its tile, one line each"); }
+  // 10/26 reason box on the page: the game's own lines with their marks sit on top of the MODEL ⓘ box, then the glossary; no lines -> the glossary alone
+  vm.runInContext(`S.games[0].why = { spread: [["Pick:", "DAL -4 · 61% · TEAM MODEL rule", 1], ["Line:", "unchanged", 0]], total: [], ml: [["ML pick:", "none: a <b>test</b>", -1]] }`, ctx);
+  const G0 = vm.runInContext("S.games[0]", ctx), html = T.gameCard(G0, 0), tot = T.totalCard(G0, 0);
+  ok(/<div class="ibox" hidden><div class="wh">THIS GAME · \+ for the pick · − against<\/div><div><span class="wm wf">\+<\/span><b>Pick:<\/b> DAL -4 · 61% · TEAM MODEL rule<\/div><div><span class="wm">·<\/span><b>Line:<\/b> unchanged<\/div><div><span class="wm wa">−<\/span><b>ML pick:<\/b> none: a &lt;b>test&lt;\/b><\/div><div class="wsep"><\/div><div><b>Model:<\/b>/.test(html), "reason box on the spread card: marks, escaped text, then the glossary", (html.match(/<div class="ibox"[^]{0,400}/) || [html.slice(Math.max(0, html.indexOf("ibox") - 15), html.indexOf("ibox") + 500)])[0]);
+  ok(/<div class="ibox" hidden><div><b>Model:<\/b>/.test(tot), "reason box: a market with no lines shows the glossary alone");
+  vm.runInContext(`delete S.games[0].why`, ctx);
   globalThis.__ctx = ctx; }
 
 // ---------- Parlay Lab (paper parlays)
@@ -419,7 +425,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const two = ctx.T.betRow({ source: "account", title: "c", week: 6, cost: 5, toWin: 50, price: 0.1, result: "pending", picks: [{ label: "PIT +3.5", game: "PIT @ CLE" }, { label: "BUF ML", game: "BUF @ LV" }, { label: "J.Cook 1+ TD", game: "BUF @ LV", result: "W" }] });
     ok(/class="r lvb">● LIVE</.test(two) && !/wk 6/.test(two) && /PIT \+3\.5[\s\S]*· Q3 4:12/.test(two) && /BUF ML[\s\S]*· Q1 2:05/.test(two) && (two.match(/· Q1 2:05/g) || []).length === 1, "open combo, two live games: ● LIVE on the bet, each undecided leg its own clock", two);
     const fin = ctx.T.betRow({ source: "account", title: "c", week: 6, cost: 5, toWin: 50, price: 0.1, result: "pending", picks: [{ label: "SEA +2.5", game: "SEA @ DEN" }] });
-    ok(!/LIVE/.test(fin) && />open</.test(fin) && /wk 6/.test(fin), "a finished or unstarted game: still open and wk 6, no LIVE", fin);
+    ok(!/LIVE/.test(fin) && />open</.test(fin) && !/wk 6/.test(fin), "a finished or unstarted game: still open, no LIVE, no week tag (10/27)", fin);
     const won = ctx.T.betRow({ source: "account", title: "c", week: 6, cost: 5, toWin: 50, price: 0.1, result: "W", pl: 45, picks: [{ label: "PIT +3.5", game: "PIT @ CLE", result: "W" }] });
     ok(!/LIVE/.test(won), "a settled bet never says LIVE", won);
     const typed = ctx.T.betRow({ source: "preloaded", legs: [{ result: "pending", kind: "spread", team: "PIT", line: 3.5, game: "PIT @ CLE" }], result: "pending", cost: 5, toWin: 9, pl: null });
@@ -705,6 +711,19 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       resetGamesCache(); globalThis.fetch = async (u) => (String(u).includes("games.csv") ? { ok: true, text: async () => H + "2026,REG,5,2026-10-05,13:00,BAL,20,ATL,27,dome,X,Home,turf\n" } : { ok: false, status: 404, json: async () => ({}), text: async () => "" });
       const m2 = await markFromFinals([{ label: "ATL ML", game: "BAL @ ATL", kind: "ml", result: null }, { label: "BAL ML", game: "BAL @ ATL", kind: "ml", result: null }], 2026, 5);
       ok(m2[0].result === "W" && m2[1].result === "L", "crossd combos: moneyline legs graded from the final score", m2);
+      { // 10/27 (owner: "fix the player props"): yard / reception legs graded from the official stats (snap counts decide a no-show), 2+ TD legs from the scorer counts, the No side inverted
+        const oldUrl = process.env.MODEL_SERVICE_URL; process.env.MODEL_SERVICE_URL = "https://svc.test"; const { clearStatCache } = await import("../lib/props.js"); clearStatCache();
+        globalThis.fetch = async (u) => (String(u).includes("games.csv") ? { ok: true, text: async () => H + "2026,REG,5,2026-10-05,13:00,BAL,20,ATL,27,dome,X,Home,turf\n" }
+          : String(u).includes("/player-stats") ? { ok: true, json: async () => ({ ok: true, games: { "BAL @ ATL": { "drake london": { rec_yds: 77, rec: 6, rush_yds: 0 }, "lamar jackson": { pass_yds: 240, pass_cmp: 22, pass_att: 30, rush_yds: 41 } } }, snaps: { "BAL @ ATL": ["drake london", "lamar jackson", "zay flowers"] } }) }
+          : { ok: false, status: 404, json: async () => ({}), text: async () => "" });
+        await R.set("tdscorers:2026:5", JSON.stringify({ t: new Date().toISOString(), games: { "BAL @ ATL": ["D.London", "B.Robinson"] }, teams: null, counts: { "BAL @ ATL": { "D.London": 2, "B.Robinson": 1 } } }));
+        const m3 = await markFromFinals([{ label: "Drake London 70+ Rec Yds", game: "BAL @ ATL", kind: "prop", result: null }, { label: "Lamar Jackson 250+ Pass Yds", game: "BAL @ ATL", kind: "prop", result: null, player: "Lamar Jackson", stat: "pyd", n: 250, side: "over" },
+          { label: "Lamar Jackson under 250 Pass Yds", game: "BAL @ ATL", kind: "prop", result: null, player: "Lamar Jackson", stat: "pyd", n: 250, side: "under" }, { label: "Zay Flowers 50+ Rec Yds", game: "BAL @ ATL", kind: "prop", result: null },
+          { label: "Lamar Jackson 60+ Scrimmage Yds", game: "BAL @ ATL", kind: "prop", result: null }, { label: "Drake London 2+ TD", game: "BAL @ ATL", kind: "td", result: null }, { label: "Bijan Robinson 2+ TD", game: "BAL @ ATL", kind: "td", result: null },
+          { label: "Zay Flowers no TD", game: "BAL @ ATL", kind: "td", result: null }, { label: "Lamar Jackson 2+ Pass TD", game: "BAL @ ATL", kind: "prop", result: null }], 2026, 5);
+        ok(m3[0].result === "W" && m3[0].actual === 77 && m3[1].result === "L" && m3[2].result === "W" && m3[3].result === "L" && m3[3].actual === 0 && m3[4].result === "L" && m3[4].actual === 41 && m3[5].result === "W" && m3[6].result === "L" && m3[7].result === "W" && m3[8].result === null,
+          "10/27: prop legs graded from the week's official stats (a player with snaps but no touch = 0), scrimmage = rush + rec, 2+ TD from the counts, 'no TD' = the No side, a pass-TD leg waits for Polymarket", m3.map((x) => [x.label, x.result, x.actual]));
+        clearStatCache(); if (oldUrl === undefined) delete process.env.MODEL_SERVICE_URL; else process.env.MODEL_SERVICE_URL = oldUrl; await R.del("tdscorers:2026:5"); }
       globalThis.fetch = realFetch; resetGamesCache(); await R.del("combolegs:crossd-t2"); }
     await R.del("combolegs:caoc-t1"); }
   { // bets analysis: hand-worked numbers
@@ -1289,6 +1308,17 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
         "my bets: an astatc- market traded on its own is a single bet; other astatc- legs (and anything marked COMBO_LEG) stay combo legs", [...sing]);
       const pr = propOf(sl, meta), pr2 = propOf("astatc-nfl-nyg-was-2026-10-11-td-camska-gte2", { eventSlug: "nfl-nyg-was-2026-10-11", subject: { name: "Cam Skattebo", image: ".../football/nfl/nyg/jerseys/44.png" } });
       ok(pr && pr.label === "Terry McLaurin First TD" && pr.team === "WAS" && pr.game === "WAS @ SF" && pr.kind === "td" && pr2.label === "Cam Skattebo 2+ TD" && pr2.team === "NYG", "my bets: single player bet label, team and game", { pr, pr2 });
+      { // 10/27 (owner: "fix the straight bets"): Polymarket's subject.name now carries the stat ("CeeDee Lamb 1+ touchdowns") -> the page read "CeeDee Lamb 1+ touchdowns 1+ TD"
+        const { cleanLabel, propSpec } = await import("../lib/mybets.js");
+        const p3 = propOf("astatc-nfl-dal-phi-2026-10-26-td-ceelam-gte1", { eventSlug: "nfl-dal-phi-2026-10-26", outcome: "Yes", subject: { name: "CeeDee Lamb 1+ touchdowns", image: ".../football/nfl/dal/jerseys/88.png" } });
+        const p4 = propOf("astatc-nfl-gb-det-2026-10-25-pyd-jargof-gte250", { eventSlug: "nfl-gb-det-2026-10-25", outcome: "No", subject: { name: "Jared Goff 250+ passing yards", image: ".../football/nfl/det/jerseys/16.png" } });
+        ok(p3.label === "CeeDee Lamb 1+ TD" && p3.kind === "td" && p3.team === "DAL" && p4.label === "Jared Goff under 250 Pass Yds" && p4.kind === "prop" && p4.side === "under" && p4.stat === "pyd" && p4.n === 250,
+          "10/27: a single's name is cut at its N+; the No side reads 'under N'", { p3, p4 });
+        ok(cleanLabel("CeeDee Lamb 1+ touchdowns 1+ TD") === "CeeDee Lamb 1+ TD" && cleanLabel("Jared Goff 250+ Pass Yds") === "Jared Goff 250+ Pass Yds" && cleanLabel("Tee Higgins First TD") === "Tee Higgins First TD" && cleanLabel("Amon-Ra St. Brown 1+ touchdowns 1+ TD") === "Amon-Ra St. Brown 1+ TD",
+          "10/27: a saved doubled label reads right; other labels untouched");
+        const q1 = propSpec({ label: "Jared Goff 250+ Pass Yds", kind: "prop" }), q2 = propSpec(p4), q3 = propSpec({ label: "Kirk Cousins 22+ Completions" }), q4 = propSpec({ label: "Kirk Cousins 2+ Pass TD" });
+        ok(q1 && q1.key === "pass_yds" && q1.line === 249.5 && q1.side === "over" && q1.name === "Jared Goff" && q2 && q2.key === "pass_yds" && q2.side === "under" && q3 && q3.key === "pass_cmp" && q3.line === 21.5 && q4 === null,
+          "10/27: a prop leg's grading spec from its fields or its label (pass TD has no stats field -> not graded here)", { q1, q2, q3, q4 }); }
       const resA = { positionResolution: { marketSlug: sl, beforePosition: { netPosition: "94", cost: { value: "4.999" }, realized: { value: "0" }, marketMetadata: meta }, afterPosition: { realized: { value: "94" } } } };
       const rx = resolvedFrom(resA, sing);
       ok(rx && rx.win && Math.abs(rx.pl - (94 - 4.999)) < 1e-9 && resolvedFrom(resA) === null, "my bets: a single player bet's settlement is read (a combo leg's is not)", rx);
@@ -1333,8 +1363,23 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
         "model card (10/14 cleanup): pick + % + one reason stay on the card; record, line moved, cost and without-the-points sit behind a More tap"); }
     { // casino look (10/14): glow by strength, HIT/MISS stamps only on settled (not sold) bets, parlay card glows purple
       ok(ctx.T.glowOf(0.57) === 0.45 && ctx.T.glowOf(0.596) === 0.75 && ctx.T.glowOf(0.62) === 1, "casino: stronger green picks glow brighter");
-      ok(/stamp hit/.test(ctx.T.stampFor({ id: "a", result: "W" })) && /MISS/.test(ctx.T.stampFor({ id: "b", result: "L" })) && ctx.T.stampFor({ id: "c", result: "W", sold: { pl: 3 } }) === "" && ctx.T.stampFor({ id: "d", result: "pending" }) === "", "casino: HIT on a won bet, MISS on a lost one, nothing on open or cashed-out bets");
-      ok(/class="betwrap"[\s\S]*HIT!/.test(ctx.T.betRow({ source: "account", id: "x", result: "W", pl: 5, cost: 10, toWin: 15, week: 5, title: "t", legs: [] })), "casino: the stamp sits on the bet row");
+      { // 10/27 (owner: "Remove wk 7 and also remove that hit and miss pill tag"): no stamp, no week tag on a bet row, both pages
+        const won = ctx.T.betRow({ source: "account", id: "x", result: "W", pl: 5, cost: 10, toWin: 15, week: 5, title: "t", legs: [] });
+        ok(!/HIT!|MISS|class="stamp/.test(won) && !/wk 5/.test(won) && /class="g">Won</.test(won) && ctx.T.stampFor === undefined && !/playStamps|coinBurst|\.stamp\b/.test(readFileSync(new URL("../public/app.js", import.meta.url), "utf8")) && !/\.stamp \{|coinfx/.test(readFileSync(new URL("../public/index.html", import.meta.url), "utf8")),
+          "10/27: no HIT / MISS stamp and no wk tag on a bet row; the stamp code and styles are gone", won);
+        const nb = readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8"), nh = readFileSync(new URL("../public/nba/index.html", import.meta.url), "utf8");
+        ok(!/stampFor|playStamps|coinBurst/.test(nb) && !/\.stamp \{|coinfx/.test(nh), "10/27: NBA page the same (design = both sports)"); }
+      { // 10/27 (owner: "Fix the time unknown. And put the single bets at the top of the list first then the parlays")
+        vm.runInContext(`S = { games: [{ key: "DAL @ PHI", away: "DAL", home: "PHI", kickoff: "2026-10-27T00:15:00Z", td: [] }, { key: "KC @ SEA", away: "KC", home: "SEA", kickoff: "2026-10-25T20:25:00Z", td: [] }] }`, ctx);
+        const single = { source: "account", id: "astatc-nfl-dal-phi-2026-10-26-td-ceelam-gte1", result: "pending", cost: 9.99, toWin: 22, price: 0.45, prop: { label: "CeeDee Lamb 1+ TD", team: "DAL", game: "DAL @ PHI", kind: "td" } };
+        const ml = { source: "account", id: "aec-nfl-kc-sea-2026-10-25", title: "KC Chiefs vs. SEA Seahawks", outcome: "Seahawks", result: "pending", cost: 48, toWin: 80 };
+        const combo = { source: "account", id: "crossd-1", result: "pending", cost: 25, toWin: 200, picks: [{ label: "DAL -1.5", game: "DAL @ PHI" }, { label: "Over 38.5 · DAL @ PHI", game: "DAL @ PHI" }] };
+        const SG = vm.runInContext("S.games", ctx);
+        ok(ctx.T.isSingle(single) && ctx.T.isSingle(ml) && !ctx.T.isSingle(combo) && ctx.T.singleGame(single, SG).key === "DAL @ PHI" && ctx.T.singleGame(ml, SG).key === "KC @ SEA" && ctx.T.betSlots(single).length === 1 && ctx.T.betSlots(ml).length === 1 && ctx.T.betSlots(single)[0] === ctx.T.betSlots(combo)[0],
+          "10/27: a single bet finds its game (its prop, or its Polymarket id) and so its time slot", { s: ctx.T.betSlots(single), m: ctx.T.betSlots(ml) });
+        const html = ctx.T.openBySlot([combo, single, ml]);
+        ok(!/Time unknown/.test(html) && /Singles · /.test(html) && /Combos · /.test(html) && html.indexOf("CeeDee Lamb") < html.indexOf("Combos ·") && html.indexOf("Seahawks") < html.indexOf("Combos ·") && html.indexOf("Combos ·") < html.indexOf("DAL -1.5"),
+          "10/27: the open list = every single bet first (by kickoff slot), then the combos; nothing under Time unknown", html.slice(0, 300)); }
       ok(/class="pgrid"/.test(ctx.T.sgpBox({ key: "A @ B", sgp: { best: { legs: [{ label: "x", prob: .6 }, { label: "y", prob: .6 }], prob: .36 } } })), "game page: the same-game parlays are one plain list (10/15)"); }
     { const pp = { legs: [{ label: "A", prob: .6, price: .5 }, { label: "B", prob: .6, price: .4 }], prob: .36 };
       const h = ctx.T.sgpBox({ key: "A @ B", sgp: { best: pp } });
@@ -1365,7 +1410,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       ok(sl(["PHI +7.5", "Darius Cooper 1+ TD", "Over 42.5 · PHI @ JAX"]).join() === "Early (London / international)" && sl(["CHI -1.5", "D'Andre Swift 1+ TD", "Under 46.5 · CHI @ GB"]).join() === "Morning (10 AM)"
         && sl(["Christian McCaffrey 1+ TD", "ATL -3.5"]).length === 2 && sl(["Jeremiyah Love 1+ TD"]).length === 0, "bets: legs matched to kickoff slots (team, game, TD name); same short name on two teams stays unknown");
       const h = ctx.T.openBySlot([{ picks: [{ label: "CHI -1.5" }], legs: [], cost: 5, toWin: 10, price: 0.5, title: "x", result: "pending" }, { picks: [{ label: "CHI -1.5" }, { label: "BAL +3.5" }], legs: [], cost: 5, toWin: 20, price: 0.25, title: "y", result: "pending" }]);
-      ok(/Open · Morning \(10 AM\)/.test(h) && /Open · Mixed times/.test(h) && !/more than one time slot/.test(h) && /Morning \(10 AM\) \+ Prime time/.test(h), "bets: open bets listed by time slot, mixed ones in their own list (no warning sentence, 10/15)"); }
+      ok(/Combos · Morning \(10 AM\)/.test(h) && /Combos · Mixed times/.test(h) && !/more than one time slot/.test(h) && /Morning \(10 AM\) \+ Prime time/.test(h), "bets: open combos listed by time slot, mixed ones in their own list (no warning sentence, 10/15; 'Combos ·' since the singles went first 10/27)"); }
     { vm.runInContext(`S = { games: [{ key: "CHI @ GB", away: "CHI", home: "GB", started: false, final: false, angles: [], combos: [{ pick: "Under 46.5", hit: 57, why: "wind" }, { pick: "GB +1.5", hit: 52, why: "x" }] }] }`, ctx);
       ok(ctx.T.legFlipped("Over 46.5 · CHI @ GB") && !ctx.T.legFlipped("Under 46.5 · CHI @ GB") && !ctx.T.legFlipped("CHI -1.5") && !ctx.T.legFlipped("Over 40.5 · NYG @ WAS"), "bets: a leg is flagged only when the app now has a 56%+ pick on the other side"); }
     const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "models" ? box : id === "export-btn" ? { onclick: null } : old(id));
@@ -1882,10 +1927,59 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const rows = pk.tdRows("NE @ CHI", "NE", "CHI", { away: [], home: [{ name: "A.J. Brown", pos: "WR", fair: 30, first: 9 }] }, { "A.J. Brown 1+ touchdowns": { ask: 0.33, bid: 0.3 }, "A.J. Brown first touchdown": { ask: 0.09, bid: 0.05, first: true } }, { home: [], away: [] });
   ok(rows.length === 1 && Math.abs(rows[0].price - 0.33) < 1e-9, "the anytime price matcher ignores the first-TD entry (A.J. Brown 33c, not 9c)", rows[0] && rows[0].price);
   ok(/first touchdown\$\/i\.test\(q\)/.test(readFileSync(new URL("../lib/week.js", import.meta.url), "utf8")) && /firstPrice/.test(readFileSync(new URL("../public/app.js", import.meta.url), "utf8")), "the slate attaches firstPrice; the First TD box shows it"); }
+{ // 10/26 (owner: "a reason why by all factors ... why it chose this or why it doesn't choose this"): the per-game facts on top of the MODEL ⓘ box (lib/why.js)
+  const { gameWhy, ptTime } = await import("../lib/why.js");
+  const g = { home: "CHI", away: "NE", poly: { ml: { home: 0.62, away: 0.40 } } };
+  const card = { spread: { plain: { team: "CHI", pick: "CHI -2.5", hit: 63.9, ruleId: "teammodel|spread", why: "TEAM MODEL: CHI · 58.4% sure · line moved 1+ against it" } }, total: { plain: { side: "under", pick: "Under 44.5", hit: 51.7, ruleId: "model|total" } }, ml: { plain: { pick: "CHI ML", hit: 69.7, ruleId: "stackml|ml" } } };
+  const combos = [{ id: "teammodel|spread", kind: "spread", team: "CHI", pick: "CHI -2.5", hit: 63.9, why: "TEAM MODEL: CHI · 58.4% sure · line moved 1+ against it", mv: "against" }, { id: "bounceback|spread", kind: "spread", team: "NE", pick: "NE +2.5", hit: 61.3, why: "BOUNCE BACK: NE missed the spread by 26 last game" }];
+  const W = gameWhy({ g, card, combos, teamSide: { team: "CHI", pct: 58.4 }, stackSide: { team: "CHI", confident: false, yv: 2 }, mar: 1.2, tot: 41.8, hs: -2.5, tl: 44.5, hsOpen: -3.5, tlOpen: 45.5, openAt: "2026-10-20T14:05:00Z",
+    hist: [{ t: "2026-10-20T14:05:00Z", poly: { spread: { homeSpread: -3.5 }, total: { line: 45.5 } } }, { t: "2026-10-23T20:10:00Z", poly: { spread: { homeSpread: -2.5 }, total: { line: 44.5 } } }], bk: { spread: { homeSpread: -3 }, total: { line: 44.5 } }, bkAt: "2026-10-24T14:00:00Z",
+    sit: { home: { inj: { qb: 0, ol: 0, db: 0 }, prevAts: 3 }, away: { inj: { qb: 1, ol: 0, db: 0 }, injPrev: { qb: 1, ol: 0, db: 0 }, prevAts: -26, prevPts: 3 } },
+    inj: [{ team: "NE", name: "Drake Maye", pos: "QB", status: "Out", src: "espn", at: "2026-10-23T20:10:00Z", note: "Maye (ankle) was ruled out for Sunday's game." }], qb: { NE: "QB change: Drake Maye Out" },
+    td: { home: [{ fair: 55 }, { fair: 40 }], away: [{ fair: 30 }] }, xf: { homeRest: 7, awayRest: 7 }, wx: { outdoor: true, wind: 14, temp: 48 }, week: 8, mvT: { move: 0.6, thr20: 1.1, thr10: 1.6 } });
+  const sp = W.spread, tt = W.total, txt = JSON.stringify(W), find = (xs, k) => xs.find((x) => x[0] === k);
+  ok(sp[0][0] === "Pick:" && /CHI -2\.5 · 63\.9% · TEAM MODEL rule — TEAM MODEL: CHI/.test(sp[0][1]) && sp[0][2] === 1, "reason box: the PICK line first, with its rule and the rule's own words", sp[0]);
+  ok(sp.some(([k, t, s]) => /BOUNCE BACK/.test(k) && /also fired: NE \+2\.5 61\.3%/.test(t) && /the other side/.test(t) && s === -1), "reason box: a rule that fired on the other side is listed against the pick");
+  ok(/opened CHI -3\.5 \(Tue .*AM\) → now -2\.5: moved 1 toward NE, last move Fri .*PM · CHI gets 1 point vs the opener/.test(find(sp, "Line:")[1]) && find(sp, "Line:")[2] === 1, "reason box: the line's move with its opening and last-move times (Pacific) and who gained", find(sp, "Line:"));
+  ok(/CHI -3 \(pulled Sat .*AM\) vs Polymarket -2\.5 · the books lean CHI by 0\.5 \(under 1 point, no LINE MOVE\)/.test(find(sp, "Sportsbooks:")[1]) && find(sp, "Sportsbooks:")[2] === 1, "reason box: the books vs Polymarket and why LINE MOVE does not fire", find(sp, "Sportsbooks:"));
+  ok(/^CHI by 1\.2 · vs the line it leans NE by 1\.3/.test(find(sp, "Game model:")[1]) && find(sp, "Game model:")[2] === -1, "reason box: the game model's lean vs the line, marked against the pick", find(sp, "Game model:"));
+  ok(/^CHI 58\.4% sure$/.test(find(sp, "Team model:")[1]) && /^CHI · not confident/.test(find(sp, "Stack model:")[1]), "reason box: the team and Stack model lines");
+  ok(/^starting QB out · D\.Maye QB Out \(ESPN Fri .*PM: “Maye \(ankle\) was ruled out for Sunday’s game\.”\)$/.test(find(sp, "NE injuries:")[1].replace("'", "’")) && find(sp, "NE injuries:")[2] === 1, "reason box: ESPN's own sentence with its date, marked for the pick (the hurt team is the opponent)", find(sp, "NE injuries:"));
+  ok(/does not fire: the injury is not new/.test(find(sp, "INJURY rule:")[1]), "reason box: why INJURY did not fire (a continuing injury)");
+  ok(/QB change: Drake Maye Out/.test(find(sp, "NE:")[1]) && find(sp, "NE:")[2] === 1 && /missed the spread by 26, scored 3/.test(find(sp, "NE last game:")[1]) && /wind 14 mph, 48°F/.test(find(sp, "Weather:")[1]) && /expects CHI 1\.0 TDs, NE 0\.3/.test(find(sp, "TD model:")[1]) && !find(sp, "Rest:"), "reason box: QB change, last game, weather, TD team totals; no Rest line on equal rest");
+  ok(W.ml[0][0] === "ML pick:" && /^CHI ML · 69\.7% · the Stack model backs the favorite, priced 61¢/.test(W.ml[0][1]) && W.ml[0][2] === 1, "reason box: the ML pick with its band", W.ml[0]);
+  ok(/^Under 44\.5 · 51\.7% · the game model.s side \(no tested rule fired\)$/.test(tt[0][1]) && /opened 45\.5 \(Tue .*\) → now 44\.5: down 1, last move Fri .* · a worse number for the Under/.test(find(tt, "Total:")[1]) && find(tt, "Total:")[2] === -1
+    && /^44\.5 \(pulled .*\) vs Polymarket 44\.5 · the same number$/.test(find(tt, "Sportsbooks:")[1]) && /^41\.8 vs 44\.5 → leans Under by 2\.7/.test(find(tt, "Game model:")[1]) && find(tt, "Game model:")[2] === 1
+    && /expects the total to rise 0\.6 from its opener · the total already left its opening number, so TOTAL MOVE cannot fire/.test(find(tt, "Move model:")[1]) && find(tt, "Move model:")[2] === -1
+    && /wind 14 mph outdoors/.test(find(tt, "Weather:")[1]) && find(tt, "Weather:")[2] === 1 && find(tt, "NE:")[1] === "starting QB out" && /expects 1\.3 touchdowns in all/.test(find(tt, "TD model:")[1]), "reason box: the total's lines (the move, the books, the model, the move model's why-not, wind and a QB out for the Under)", tt);
+  ok(!/undefined|NaN|null/.test(txt), "reason box: no undefined / NaN in any line", txt.match(/.{30}(undefined|NaN|null).{30}/g));
+  const W2 = gameWhy({ g, card: { spread: { plain: { team: "NE", pick: "NE +2.5", hit: 52.8, ruleId: "stack|spread" } } }, combos: [], teamSide: { team: "CHI", pct: 59 }, stackSide: { team: "NE", yv: 2 }, hs: -2.5, hsOpen: -1.5, hist: [], inj: [], sit: { home: { inj: { qb: 0, ol: 0, db: 0 } }, away: { inj: { qb: 1, ol: 0, db: 0 } } }, week: 8 });
+  ok(/^CHI 59% sure · 58%\+ but the line moved 1\+ toward it since the week’s first line \(51\.7% there\), so it does not fire$/.test(find(W2.spread, "Team model:")[1].replace("'", "’")) && find(W2.spread, "Team model:")[2] === -1, "reason box: TEAM MODEL at 58%+ that does not fire because the line already moved its way", find(W2.spread, "Team model:"));
+  ok(/^none: the Stack model backs NE, the underdog/.test(W2.ml[0][1]) && /does not fire: the line already moved 1 toward CHI/.test(find(W2.spread, "INJURY rule:")[1]) && /^NE \+2\.5 · 52\.8% · the Stack model’s side \(no tested rule fired\)$/.test(W2.spread[0][1].replace("'", "’")), "reason box: the ML why-not (Stack on the underdog), INJURY why-not (line moved), the Stack fallback wording", [W2.ml[0], find(W2.spread, "INJURY rule:")]);
+  const W3 = gameWhy({ g, card: null, combos: [], teamSide: { team: "CHI", pct: 55.1 }, stackSide: null, hs: -2.5, hsOpen: -2.5, hist: [], inj: [], sit: {}, week: 8 });
+  ok(/none yet on this line/.test(W3.spread[0][1]) && /under 58% sure, not a pick/.test(find(W3.spread, "Team model:")[1]) && find(W3.spread, "Team model:")[2] === 0 && /unchanged since the week’s first Polymarket line/.test(find(W3.spread, "Line:")[1].replace("'", "’")) && /^none: no Stack line yet \(CHI is the favorite at 61¢\)/.test(W3.ml[0][1]), "reason box: no card -> neutral marks, TEAM MODEL under 58%, unchanged line, no Stack line", W3.spread);
+  ok(gameWhy(null) === null && gameWhy({ g: { home: "A", away: "B" } }).spread.length === 0 && /^(Fri|Sat) \d/.test(ptTime("2026-10-23T20:10:00Z")), "reason box: no inputs -> no lines; times in Pacific");
+  // the page: the game's lines sit on top of the MODEL ⓘ box with their marks, then the glossary; a game without them shows the glossary alone (both sports)
+  const ap = readFileSync(new URL("../public/app.js", import.meta.url), "utf8"), na = readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8"), wk = readFileSync(new URL("../lib/week.js", import.meta.url), "utf8"), ns = readFileSync(new URL("../nba/lib/slate.js", import.meta.url), "utf8"), sc = readFileSync(new URL("../public/shell.css", import.meta.url), "utf8");
+  ok(/\$\{whyBox\(g, "spread", MODEL_INFO\.spread\)\}/.test(ap) && /\$\{whyBox\(g, "total", MODEL_INFO\.total\)\}/.test(ap) && /\$\{whyBox\(g, kind, info\)\}\$\{modelCell\(g, kind\)\}/.test(na) && /THIS GAME · \+ for the pick · − against/.test(ap) && /THIS GAME · \+ for the pick · − against/.test(na)
+    && /\.ibox \.wm\.wf \{ color:var\(--green\); \} \.ibox \.wm\.wa \{ color:var\(--red\); \}/.test(sc) && /G\.why = gameWhy\(/.test(wk) && /row\.why = row\.card && !row\.inProgress \? gameWhy\(/.test(ns) && /if \(e\.comment\) row\.note = /.test(wk), "reason box: wired on both game cards (NFL spread + total, NBA every card), the slates build it, ESPN's note and date ride on the injury row");
+}
+{ // 10/26 recheck: an ESPN status labels a TD row only when it was posted after the team's previous game (+6 h) -- the Monday-night inactives were tagging next week's rows
+  const { espnFreshFor, espnOutFor } = await import("../lib/espn.js");
+  const rows = [{ home: "PHI", away: "DAL", kickoff: "2026-10-27T00:15:00Z" }, { home: "WAS", away: "PHI", kickoff: "2026-11-02T01:20:00Z" }];
+  const note = { status: "Out", date: "2026-10-26T22:45:00Z" };
+  ok(espnFreshFor(note, "PHI", "2026-11-02T01:20:00Z", rows) === false && espnFreshFor(note, "PHI", "2026-10-27T00:15:00Z", rows) === true && espnFreshFor({ status: "Out" }, "PHI", "2026-11-02T01:20:00Z", rows) === true
+    && espnOutFor(note, "PHI", "2026-11-02T01:20:00Z", rows, Date.parse("2026-10-27T00:00:00Z")) === false && /espnFreshFor\(e, r\.team, g\.kickoff, seasonRows\)\) r\.espn = /.test(readFileSync(new URL("../lib/week.js", import.meta.url), "utf8")),
+    "ESPN status dates (10/26): a note posted before the team's previous game neither labels nor removes next week's row; an undated note still counts; the TD rows use it");
+  // the NFL main total is never a one-sided stub (0.99 / 0.49)
+  const { parseGame } = await import("../lib/poly.js");
+  const src = readFileSync(new URL("../lib/poly.js", import.meta.url), "utf8");
+  ok(/if \(!t\.prices\.every\(\(p\) => p > 0\.1 && p < 0\.9\)\) continue;/.test(src) && typeof parseGame === "function", "NFL Polymarket parser (10/26): a one-sided placeholder total is never the main total");
+}
 { // 10/22 (owner): ONE ⓘ per model section, both sports -- game card MODEL header + Models Card picks / Tracked angles (NBA: Card picks / Shadow trackers); white labels
   const ap = readFileSync(new URL("../public/app.js", import.meta.url), "utf8"), nb = readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8"), sj = readFileSync(new URL("../public/shell.js", import.meta.url), "utf8"), sc = readFileSync(new URL("../public/shell.css", import.meta.url), "utf8");
   const uses = (x) => (x.match(/\$\{IBTN\}/g) || []).length;
-  ok(uses(ap) === 4 && uses(nb) === 3 && (ap.match(/<div class="hd hm ihd">MODEL\$\{IBTN\}<\/div>\$\{ibox\(MODEL_INFO\.(spread|total)\)\}/g) || []).length === 2 && /<div class="hd hm ihd">MODEL\$\{IBTN\}<\/div>\$\{ibox\(info\)\}/.test(nb)
+  ok(uses(ap) === 4 && uses(nb) === 3 && (ap.match(/<div class="hd hm ihd">MODEL\$\{IBTN\}<\/div>\$\{whyBox\(g, "(spread|total)", MODEL_INFO\.(spread|total)\)\}/g) || []).length === 2 && /<div class="hd hm ihd">MODEL\$\{IBTN\}<\/div>\$\{whyBox\(g, kind, info\)\}/.test(nb)
     && /Card picks<\/b>\$\{IBTN\}/.test(ap) && /Tracked angles\$\{IBTN\}/.test(ap) && /Card picks<\/b>\$\{IBTN\}/.test(nb) && /Shadow trackers<\/b>\$\{IBTN\}/.test(nb)
     && /closest\("\.ibtn"\)/.test(sj) && /\.ibox\[hidden\] \{ display:none; \}/.test(sc) && /\.lbw \{ color:#fff; font-weight:400; \}/.test(sc) && /\.modelcell b \{ text-transform:uppercase; \}/.test(sc) && /\.modelcell b \{ font-size:13px !important; \}/.test(sc) && /\.modelcell > \.s:has\(> \.lbw\), \.modelcell \.lbw \{ font-size:13px; \}/.test(sc)
     && !/<span class="lbw">/.test(ap.replace(/<span class="lbw">(Model:|Model \(Team\):|Model \(Stack\):|Pick:|Pick w\/ points:|ML pick:)<\/span>/g, "")) && /<span class="lbw">Pick w\/ points:<\/span>/.test(nb) && /\.lbw \{ color:#fff; font-weight:400; \}/.test(sc),
@@ -1970,6 +2064,14 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(a && a.plain.pick === "SEA ML" && a.plain.hit === 67.7 && a.plain.id === "stackml|ml" && a.plain.price === 0.6 && b.plain.hit === 69.7 && c === null && d === null && e === null && pk.length === 1 && pk[0].kind === "ml"
     && stk.gradeStackPick({ kind: "ml", team: "SEA", home: "SEA", line: 0 }, 24, 20) === "W" && stk.gradeStackPick({ kind: "ml", team: "KC", home: "SEA", line: 0 }, 24, 20) === "L" && stk.ruleLabel({ id: "stackml|ml" }) === "ML PICK · STACK on the favorite",
     "ML PICK (10/23 night): the favorite's moneyline only when STACK backs it and the favorite is priced 50-70% (67.7 / 69.7%), never on the underdog, a 70%+ favorite or old STACK yards; saved with the card's picks, graded W / L");
+  { // 10/26: ML PICK · TEAM MODEL vs the move -- the team model's side straight up when 58%+ sure and the line moved 1+ against it (a favorite 77.4% of 31, an underdog priced 30-50c 57.1% of 49; under 30c never)
+    const tm = (team) => [{ id: "teammodel|spread", kind: "spread", team, pick: `${team} +3.5`, hit: 63.9, mv: "against" }];
+    const f = cpk.mlPart(g("KC", false), null, tm("SEA")), dg = cpk.mlPart(g("KC", false), null, tm("KC")), lo = cpk.mlPart({ ...g("KC", false), poly: { ml: { home: 0.78, away: 0.24 } } }, null, tm("KC")), flat = cpk.mlPart(g("KC", false), null, [{ ...tm("KC")[0], mv: "flat" }]), both = cpk.mlPart(g("SEA", false), null, tm("KC"));
+    ok(f && f.plain.id === "tmml|ml" && f.plain.pick === "SEA ML" && f.plain.hit === 77.4 && f.plain.n === 31 && dg && dg.plain.pick === "KC ML" && dg.plain.hit === 57.1 && dg.plain.price === 0.42 && lo === null && flat === null
+      && both && both.plain.id === "stackml|ml" && both.plain.pick === "SEA ML" && both.also && both.also.id === "tmml|ml" && both.also.team === "KC" && stk.ruleLabel({ id: "tmml|ml" }) === "ML PICK · TEAM MODEL vs the move" && stk.CURRENT_RULES.test("tmml|ml")
+      && cpk.cardPicks({ spread: null, total: null, ml: dg })[0].id === "tmml|ml" && /tmml/.test(readFileSync(new URL("../lib/week.js", import.meta.url), "utf8").match(/cardpick\|modelpick\|stackml\|tmml/) || ""),
+      "ML PICK · TEAM MODEL vs the move (10/26): the team model's side when the line moved 1+ against it -- a favorite at 77.4%, an underdog priced 30-50c at 57.1%, never under 30c or without the move; two rules on different teams -> the higher win rate shows, the other rides along as `also`; locked and graded like the STACK ML pick", { f, dg, lo, flat, both });
+  }
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   ok(/<span class="lbw">ML pick:<\/span>/.test(app) && /g\.lockedPicks && g\.lockedPicks\.ml/.test(app), "the spread card shows the ML pick (locked one with W / L after kickoff)");
   { const { bestLegParlays } = await import("../lib/paper.js");

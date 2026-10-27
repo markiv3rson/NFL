@@ -52,6 +52,7 @@ export async function alertsFromSlate(games, now = Date.now()) {
       const lim = { hs: MOVE.spread, tl: MOVE.total, ml: MOVE.ml }, tag = { hs: "s", tl: "t", ml: "m" };
       for (const f of ["hs", "tl", "ml"]) {
         if (cur[f] == null || base[f] == null) continue;
+        if ((f === "hs" && Math.abs(cur[f] - base[f]) >= 10) || (f === "tl" && Math.abs(cur[f] - base[f]) >= 15)) { next[f] = cur[f]; delete next.pend[f]; continue; }   // 10/26: a placeholder baseline (Over 195.5), not a move -- re-based, no alert
         if (Math.abs(cur[f] - base[f]) < lim[f]) { delete next.pend[f]; continue; }   // back within the limit: the flicker is forgotten
         const pd = next.pend[f], same = pd && Math.sign(pd.v - base[f]) === Math.sign(cur[f] - base[f]);
         if (!same) { next.pend[f] = { v: cur[f], t: new Date(now).toISOString() }; continue; }

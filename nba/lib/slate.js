@@ -7,6 +7,7 @@ import { modelBase, modelHeaders } from "./model";
 import { getRedis, jparse } from "./redis";
 import { recordPicks, lockedFor } from "./record";
 import { buildCard, cardLegs, isGreen } from "./cardpick";
+import { gameWhy } from "./why";
 import { buildParlays, buildPropParlays, buildSameGame4, recordParlays } from "./parlays";
 import { saveParlayList } from "../../lib/comboquote";   // 10/17: real Polymarket parlay prices (shared with NFL: one Polymarket account, one request a second)
 import { recordCloses, closeKey } from "./closes";
@@ -46,6 +47,10 @@ export async function lineMoves(games, now = Date.now()) {
     let open = jparse(await r.get(key).catch(() => null));
     if (!open) { open = { ...now_, t: new Date(now).toISOString() }; await r.set(key, JSON.stringify(open), "EX", 4 * 86400).catch(() => {}); }
     else { let ch = false; for (const f of ["hs", "tl"]) if (open[f] == null && now_[f] != null) { open[f] = now_[f]; ch = true; }   // a market posted later gets its first line now
+      if (ch) await r.set(key, JSON.stringify(open), "KEEPTTL").catch(() => {}); }
+    // 10/26 recheck: an "opening" line 10+ (spread) / 15+ (total) from the current one was a placeholder read (Over 195.5 the day before), not a move --
+    // the baseline is reset to the line seen now and no move is shown
+    { let ch = false; if (open.hs != null && now_.hs != null && Math.abs(open.hs - now_.hs) >= 10) { open.hs = now_.hs; ch = true; } if (open.tl != null && now_.tl != null && Math.abs(open.tl - now_.tl) >= 15) { open.tl = now_.tl; ch = true; }
       if (ch) await r.set(key, JSON.stringify(open), "KEEPTTL").catch(() => {}); }
     const mv = {};
     if (open.hs != null && now_.hs != null && open.hs !== now_.hs) mv.spread = { open: open.hs, now: now_.hs };
@@ -173,6 +178,7 @@ export async function buildSlate({ now = Date.now(), days = 1, events = null, in
     if (row.inProgress) for (const k of ["spread", "total", "ml"]) if (row[k] && row[k].pick) row[k] = { ...row[k], pick: { ...row[k].pick, tier: "none" } };
     if (m.context) { const o = otByDate[g.date]; const fh = fatigueOf(m.context.home, g.home, o), fa = fatigueOf(m.context.away, g.away, o); if (fh || fa) row.fatigue = { home: fh, away: fa }; }
     row.card = m.model ? buildCard(row) : null;          // PICK / PICK w/ POINTS / every buyable line (lib/cardpick.js)
+    row.why = row.card && !row.inProgress ? gameWhy({ ...row, now }, now) : null;   // 10/26: the per-game facts for the MODEL ⓘ box (lib/why.js), display only
     if (row.inProgress) row.locked = locked[g.key] || null;
     if (row.inProgress) row.close = closes[g.key] || null;   // the picks saved before tip-off, with W / L once graded
     return row;

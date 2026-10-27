@@ -47,6 +47,10 @@ export function parseGame(markets, away, home) {
   // home spread the moneyline implies (negative = home favoured), using the NBA spread of results (12.7 points)
   const implied = out.ml ? -12.7 * ninv(out.ml.midHome / (out.ml.midHome + out.ml.midAway)) : null;
   const liveBook = (m) => Number(m.bestBid) > 0 && Number(m.bestAsk) > 0;
+  // 10/26 recheck: a market nobody is selling (a side at 0.99 / the other at 0.49 -- Polymarket's stub for a game posted early) is NOT a line. It was the main
+  // total of BKN @ BOS "Over 195.5" / DET @ NYK "Over 192.5" the day before, got saved as the model-side PICK at first sighting and graded a free win twice
+  // (LAC @ OKC Over 193.5, WAS @ CHI Under 255.5). Both sides must be priced 0.1-0.9 (the NFL card's rule) for a market to be the main spread / total.
+  const twoSided = (prices) => prices.every((p) => p > 0.1 && p < 0.9);
   const useLive = spreads.some((s) => liveBook(s.m));
   const lineOf = (s) => {
     const q = (s.m.question || "").match(/:\s*(.+?)\s*\(([+-]?\d+(?:\.\d+)?)\)/);
@@ -57,6 +61,7 @@ export function parseGame(markets, away, home) {
   let best = null;
   for (const s of spreads) {
     if (useLive && !liveBook(s.m)) continue;
+    if (!twoSided(s.prices)) continue;
     const { team, line } = lineOf(s);
     if (!team || isNaN(line)) continue;
     const i = s.outcomes.findIndex((lab) => abbrOf(lab, away, home) === team);
@@ -91,6 +96,7 @@ export function parseGame(markets, away, home) {
     const oi = t.outcomes.findIndex((x) => /over/i.test(x)), ui = t.outcomes.findIndex((x) => /under/i.test(x));
     if (isNaN(line) || oi < 0 || ui < 0) continue;
     const over = t.prices[oi], midO = t.mid[oi];
+    if (!twoSided(t.prices)) continue;   // a stub market is neither the main total nor an alternate
     if (!bt || Math.abs(midO - 0.5) < Math.abs(bt.midO - 0.5)) bt = { line, over, under: t.prices[ui], midO };
     totalAlts.push({ line, over: +over.toFixed(4), under: +t.prices[ui].toFixed(4) });
   }
