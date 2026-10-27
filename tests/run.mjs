@@ -39,6 +39,9 @@ ok(near(winPctAt({ homeMargin: 5 }, -3), 100 * (1 / (1 + Math.exp(-(-0.0470 + 0.
 { const sh = firstTdShares([{ fair: 40 }, { fair: 20 }]), l1 = -Math.log(0.6), l2 = -Math.log(0.8), T = l1 + l2 + 0.4; ok(near(sh[0], l1 / T * (1 - Math.exp(-T)) * 100, 1e-9), "firstTdShares == td_prob.first_td"); }
 { const recs = [{ td: [...Array(60)].map((_, i) => ({ fair: 10 + (i % 10), scored: i % 3 === 0 })).concat([...Array(60)].map((_, i) => ({ fair: 38 + (i % 6), scored: i % 5 === 0 }))) }];
   const cal = buildCalibration(recs); let prev = -1, mono = true; for (let f = 1; f <= 90; f += 0.1) { const v = applyCalibration(f, cal); if (v < prev - 1e-9) mono = false; prev = v; } ok(mono, "calibration keeps order"); }
+{ const cal = buildCalibration(Array.from({ length: 4 }, (_, i) => ({ week: 4 + i, td: Array.from({ length: 60 }, (_, j) => ({ fair: 40, scored: j < 12, played: true })) })));   // 10/27: a band that scored 20% vs said 40
+  const cm = await import("../lib/calibration.js");
+  ok(cm.TD_CAL_ON === false && applyCalibration(40, cal) === 40 && cm.FTD_CAL_ON === false && cal.ftd.on === false, "TD calibration (10/27): the live layer is off -- a shown chance is the model's own (walk-forward: every correction strength scored worse than none)"); }
 { const r = priceTd({ fair: 30, price: 0.25, teamRank: 1 }); ok(near(r.ev, 0.2), "TD EV"); }
 // ---------- names
 ok(!nameMatches("Mike Williams", "Mike Williamson 1+ touchdowns"), "whole-word names");
@@ -1128,7 +1131,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const { buildFtdCalibration, applyFtdCalibration, FTD_MIN_GAMES } = await import("../lib/calibration.js");
     const recs = (n) => [...Array(n)].map(() => ({ td: [...Array(10)].map((_, i) => ({ ftd: 8, ftdHit: i === 0, played: true })) }));
     const off = { ftd: buildFtdCalibration(recs(15)) }, on = { ftd: buildFtdCalibration(recs(FTD_MIN_GAMES)) };
-    ok(!off.ftd.on && applyFtdCalibration(8, off) === 8 && on.ftd.on && applyFtdCalibration(8, on) > 8 && applyFtdCalibration(8, on) <= 8 * 1.15 + 0.05, "first-TD calibration: off under 100 graded games; then a shrunk, capped correction");
+    ok(!off.ftd.on && applyFtdCalibration(8, off) === 8 && !on.ftd.on && applyFtdCalibration(8, on) === 8 && applyFtdCalibration(8, { ftd: { ...on.ftd, on: true } }) > 8 && applyFtdCalibration(8, { ftd: { ...on.ftd, on: true } }) <= 8 * 1.15 + 0.05, "first-TD calibration: off for good (10/27 walk-forward: worse than none), even past 100 graded games; the shrunk, capped correction is still built");
   }
   { // "No" mark on Anytime TD: real market, model 5+ points under the bid
     ok(ctx.T.tdNoGap({ fair: 30, price: 0.4, bid: 0.38 }) === 8 && ctx.T.tdNoGap({ fair: 35, price: 0.4, bid: 0.38 }) === null && ctx.T.tdNoGap({ fair: 20, price: 0.9, bid: 0.1, thin: true }) === null && ctx.T.tdNoGap({ fair: 20, price: 0.5, bid: 0.3 }) === null, "No mark: only a real market where the model is 5+ under the bid");
