@@ -500,14 +500,14 @@ function betRowInner(b) {
   if (b.source === "account") {   // bet recorded automatically from your Polymarket account
     const lk = !b.sold && (!b.result || b.result === "pending") ? liveOf(b.picks || (b.prop ? [b.prop] : [])) : [];
     const st = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : legLost(b) ? '<span class="r">Lost</span>' : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Even" : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : (b.waiting ? '<span class="y">waiting for TD results</span>' : '<span class="dim">open</span>');
-    const name = b.picks && b.picks.length ? `Combo · ${b.picks.length} picks` : b.prop ? `${tlogo(b.prop.team)}${esc(b.prop.label)}` : `${esc(b.title)}${b.outcome ? ` — ${esc(b.outcome)}` : ""}`;   // 10/19: single player bet
+    const name = b.picks && b.picks.length ? `${b.picks.length} picks` : b.prop ? `${tlogo(b.prop.team)}${esc(b.prop.label)}` : `${esc(b.title)}${b.outcome ? ` — ${esc(b.outcome)}` : ""}`;   // 10/19: single player bet
     const picks = b.picks && b.picks.length ? b.picks.map((p) => `<div class="s" style="padding:0 0 0 16px">${p.result ? RESMARK[p.result] + " " : "• "}${legTxt(p.result, logoLabel(p.label, p.team))}${liveLegTxt(lk, p, !!p.result)}${!p.result && legFlipped(p.label) ? ' <span class="y">⚠ app now picks the other side</span>' : ""}</div>`).join("") : "";
     return `<div class="row"><span>${name}${lk.length ? " " + liveHeadTxt(lk) : ""}</span><span>${st}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
       `<div class="s" style="padding:0 0 ${picks ? 2 : 6}px 8px">${money(b.cost)}${b.price != null ? ` at ${betCents(b.price)}¢` : ""} · ${b.sold ? `sold early for ${money(Math.max(0, (b.cost || 0) + (b.pl || 0)))}` : legLost(b) ? `−${money(b.cost)}` : `pays ${money(b.toWin)} if it wins`}</div>` + (picks ? `<div style="padding-bottom:6px">${picks}</div>` : "");
   }
   const hit = b.legs.filter((l) => l.result === "W").length, lk = !b.sold && b.result === "pending" ? liveOf(b.legs) : [];
   const state = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? (b.pushUnconfirmed ? '<span class="y">Push leg</span>' : "Push") : (b.waiting ? '<span class="y">waiting for TD results</span>' : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : `<span class="dim">${hit} of ${b.legs.length} hit</span>`);
-  return `<div class="row"><span>${b.legs.length > 1 ? "Combo" : "Single"} · ${money(b.cost)} → ${money(b.toWin)}${lk.length ? " " + liveHeadTxt(lk) : ""}</span><span>${state}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
+  return `<div class="row"><span>${b.legs.length > 1 ? `${b.legs.length} picks` : "Single"} · ${money(b.cost)} → ${money(b.toWin)}${lk.length ? " " + liveHeadTxt(lk) : ""}</span><span>${state}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
     `<div class="s" style="padding:0 0 6px 8px">${b.legs.map((l) => `${RESMARK[l.result]} ${weakLeg(b) === l ? '<b class="y">⚠</b> ' : ""}${legTxt(l.result, legName(l))}${liveLegTxt(lk, l, l.result !== "pending")}${l.clv != null ? ` <span class="${signCls(l.clv)}">(${(l.clv * 100).toFixed(0)}%)</span>` : ""}`).join(" · ")}</div>`;
 }
 // Re-rendering a tab must not close what you opened (auto-refresh every 2 min, "Show all games", Sync): remember each section's state
@@ -554,7 +554,7 @@ function betsAnalysis(bets) {
     return `<div class="row"><span>${LK[kk] || kk} <span class="dim">· ${k.w}–${k.n - k.w}</span></span><span>hit <b>${Math.round(hit)}%</b>${paid == null ? "" : ` · paid ${Math.round(paid)}¢ · <b class="${d > 3 ? "g" : d < -3 ? "r" : "dim"}">${d > 0 ? "+" : "−"}${Math.abs(d).toFixed(0)} pts</b>`}${small(k.n)}</span></div>`; }).join("");
   const sizeRows = Object.keys(bySize).map(Number).sort((a, b) => a - b).map((z) => { const k = bySize[z];
     return `<div class="row"><span>${z === 1 ? "Singles" : z + "-leg combos"} <span class="dim">· ${k.n}</span></span><span>${k.w} won · ${cMoney(k.pl)}${k.cost ? ` <span class="dim">(${cPct(k.pl / k.cost)})</span>` : ""}${small(k.n)}</span></div>`; }).join("");
-  return `<div class="s"><b>By leg type</b></div>${legRows}<div class="s" style="margin-top:8px"><b>By combo size</b></div>${sizeRows || '<div class="s dim empty">None yet.</div>'}` +
+  return `<div class="s"><b>By leg type</b></div>${legRows}<div class="s" style="margin-top:8px"><b>By number of picks</b></div>${sizeRows || '<div class="s dim empty">None yet.</div>'}` +
     "";
 }
 // The numbers in the Bets tiles and Summary, from the bets being shown. One function so a week's numbers and the season's always add up.
@@ -602,14 +602,14 @@ function betSlots(b) {
 }
 // 10/27 (owner: "put the single bets at the top of the list first then the parlays"): the open list = every single bet (by kickoff slot), then the combos
 function openBySlot(open) {
-  const block = (list, word) => {
-    const groups = Object.fromEntries(BET_SLOTS.map((k) => [k, []])), mixed = [], other = [];
+  const block = (list, word) => {   // 10/27 (owner: "Remove the word Combo in Bets"): the singles keep their word, the parlays' headers are the time slot alone
+    const groups = Object.fromEntries(BET_SLOTS.map((k) => [k, []])), mixed = [], other = [], head = (k) => (word ? `${word} · ${k}` : k);
     for (const b of list) { const sl = betSlots(b); if (sl.length === 1) groups[sl[0]].push(b); else if (sl.length > 1) mixed.push({ b, sl }); else other.push(b); }
-    return BET_SLOTS.filter((k) => groups[k].length).map((k) => `<div class="sec"><div class="sh">${word} · ${k}</div>${groups[k].map(betRow).join("")}</div>`).join("") +
-      (mixed.length ? `<div class="sec"><div class="sh">${word} · Mixed times</div>${mixed.map(({ b, sl }) => `<div class="s dim" style="margin-top:6px">${sl.sort((x, y) => BET_SLOTS.indexOf(x) - BET_SLOTS.indexOf(y)).join(" + ")}</div>${betRow(b)}`).join("")}</div>` : "") +
-      (other.length ? `<div class="sec"><div class="sh">${word} · Time unknown</div>${other.map(betRow).join("")}</div>` : "");
+    return BET_SLOTS.filter((k) => groups[k].length).map((k) => `<div class="sec"><div class="sh">${head(k)}</div>${groups[k].map(betRow).join("")}</div>`).join("") +
+      (mixed.length ? `<div class="sec"><div class="sh">${head("Mixed times")}</div>${mixed.map(({ b, sl }) => `<div class="s dim" style="margin-top:6px">${sl.sort((x, y) => BET_SLOTS.indexOf(x) - BET_SLOTS.indexOf(y)).join(" + ")}</div>${betRow(b)}`).join("")}</div>` : "") +
+      (other.length ? `<div class="sec"><div class="sh">${head("Time unknown")}</div>${other.map(betRow).join("")}</div>` : "");
   };
-  return block(open.filter(isSingle), "Singles") + block(open.filter((b) => !isSingle(b)), "Combos");
+  return block(open.filter(isSingle), "Singles") + block(open.filter((b) => !isSingle(b)), "");
 }
 function renderMineNow() {
   if (!MB) { $("record-mine").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }
