@@ -101,14 +101,14 @@ export function propOf(slug, meta, us = null) {
 export function comboPicks(L) {
   return (Array.isArray(L) ? L : []).map((l) => {
     const slug = l.slug || "", m = /^nba-([a-z]+)-([a-z]+)-(\d{4}-\d\d-\d\d)/.exec(l.eventSlug || ""), game = m ? `${usTeam(m[1])} @ ${usTeam(m[2])}` : "";
-    const result = /WON/.test(l.state || "") ? "W" : /LOST/.test(l.state || "") ? "L" : null, team = l.team && l.team.abbreviation ? usTeam(l.team.abbreviation) : null;
+    const result = /WON/.test(l.state || "") ? "W" : /LOST/.test(l.state || "") ? "L" : l.result || null, team = l.team && l.team.abbreviation ? usTeam(l.team.abbreviation) : null;   // 10/27: a grade saved on the ledger's leg (from ESPN) rides along
     let label = l.title || slug, kind = "other", extra = {};
     if (/^asc-/.test(slug)) { const x = Number(l.outcome); label = `${team} ${isFinite(x) ? sgnLine(x) : l.outcome}`; kind = "spread"; }
     else if (/^aec-/.test(slug)) { label = `${team} ML`; kind = "ml"; }
     else if (/^tsc-/.test(slug)) { const t = /-(\d+)pt(\d)$/.exec(slug); label = `${l.outcome} ${t ? `${t[1]}.${t[2]}` : ""}`.trim(); kind = "total"; }
     else if (/^astatc-nba-/.test(slug)) { const ps = propStat(slug); if (ps) { const name = l.player || ps.code, no = /^no$/i.test(String(l.outcome || "")); label = propLabel(name, ps, no); kind = "prop"; extra = { player: name, stat: ps.stat, line: ps.line, side: no ? "under" : "over" }; } }
     const date = m ? m[3] : (propStat(slug) || {}).date || null;
-    return { label, result, game: game || (propStat(slug) || {}).game || "", date, kind, ...(team && kind !== "total" ? { team } : {}), ...extra };
+    return { label, result, ...(l.actual != null && l.result ? { actual: l.actual } : {}), game: game || (propStat(slug) || {}).game || "", date, kind, ...(team && kind !== "total" ? { team } : {}), ...extra };
   });
 }
 // A leg Polymarket never marked, graded from the game's final score (f = { away, home, final } from ESPN)
@@ -174,8 +174,8 @@ export async function syncAccount() {
     const e = ledger[p.id] || { id: p.id, title: p.title, outcome: p.outcome, firstSeen: t };
     Object.assign(e, { cost: p.cost, shares: p.shares, value: p.value, realized: p.realized, expired: p.expired, lastSeen: t });
     if (p.legs && p.legs.length) {   // the names found before ride along (Polymarket's legs never carry them); new prop legs get theirs now
-      const old = new Map((e.legs || []).filter((l) => l && l.player).map((l) => [l.slug, l.player]));
-      for (const l of p.legs) if (!l.player && old.has(l.slug)) l.player = old.get(l.slug);
+      const old = new Map((e.legs || []).filter((l) => l && (l.player || l.result)).map((l) => [l.slug, l]));
+      for (const l of p.legs) { const o = old.get(l.slug); if (!o) continue; if (!l.player && o.player) l.player = o.player; if (o.result && !l.result) { l.result = o.result; if (o.actual != null) l.actual = o.actual; } }   // 10/27: the names AND the grades found before ride along
       await nameLegs(p.legs).catch(() => false); e.legs = p.legs; }
     if (singles.has(p.id)) { e.single = true; const meta = (positions.positions[p.id] || {}).marketMetadata || {}; const us = (await usNamesFor(meta.eventSlug).catch(() => ({})))[p.id]; e.prop = propOf(p.id, meta, us) || e.prop || null; }
     if (e.shares > 0 && e.cost > 0) e.price = e.cost / e.shares;
@@ -224,15 +224,22 @@ export async function loadMyBets() {
     if (await nameLegs(e.legs).catch(() => false)) dirty = true; }
   if (dirty) await setJSON(KEY.ledger, ledger).catch(() => {});
   const out = summarizeLedger(ledger), finals = {}, boxes = {}, today = etDate(new Date().toISOString());
-  const fin = async (d) => (d in finals ? finals[d] : (finals[d] = await finalsFor(d).catch(() => null)));
-  const box = async (d) => (d in boxes ? boxes[d] : (boxes[d] = await boxFor(d).catch(() => null)));
+  // 10/27: the promise is memoized (not the value), so a combo's four legs on one day share ONE ESPN read instead of four at once
+  const fin = (d) => (finals[d] = finals[d] || finalsFor(d).catch(() => null));
+  const box = (d) => (boxes[d] = boxes[d] || boxFor(d).catch(() => null));
   // Legs Polymarket never marked are graded once the game is final: spread / moneyline / total from the score, a prop from the box score
   // (one ESPN read per game day); the same for a single prop bet still open after its game. Settled and open bets alike (a 2-day combo).
+  // 10/27: a grade is written back onto the ledger's leg (result / actual), so a graded leg is never read from ESPN again -- before, every
+  // page load re-read the box score of every day with a prop leg in the ledger (a dozen ESPN calls a load, growing with every bet).
   for (const e of [...out.settled, ...out.open]) {
     const todo = (e.picks || []).filter((p) => !p.result && p.date && p.date <= today);
     if (todo.length) e.picks = await Promise.all(e.picks.map(async (p) => (p.result || !p.date || p.date > today ? p
       : p.kind === "prop" ? markProp(p, ((await box(p.date)) || {})[p.game]) : markLeg(p, ((await fin(p.date)) || {})[p.game]))));
     if (e.prop && !e.prop.result && e.prop.date && e.prop.date <= today) e.prop = markProp(e.prop, ((await box(e.prop.date)) || {})[e.prop.game]);
+    const L = ledger[e.id];
+    if (L && L.legs && e.picks) e.picks.forEach((p, i) => { const l = L.legs[i]; if (l && p.result && !l.result && !/WON|LOST/.test(l.state || "")) { l.result = p.result; if (p.actual != null) l.actual = p.actual; dirty = true; } });
+    if (L && L.prop && e.prop && e.prop.result && !L.prop.result) { L.prop = e.prop; dirty = true; }
   }
+  if (dirty) await setJSON(KEY.ledger, ledger).catch(() => {});
   return { syncedAt: synced ? synced.t : null, ...out };
 }

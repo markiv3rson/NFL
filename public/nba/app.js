@@ -11,7 +11,7 @@ const odds = (o) => (o == null ? "—" : (o > 0 ? "+" : "") + o);
 const toAm = (p) => { if (!(p > 0 && p < 1)) return null; return p >= 0.5 ? Math.round((-100 * p) / (1 - p)) : Math.round((100 * (1 - p)) / p); };
 const cents = (p) => (p > 0 && p < 1 ? Math.round(p * 100) + "¢" : "—");
 const money = (v) => (v == null ? "—" : (v < 0 ? "−" : "") + "$" + Math.abs(v).toFixed(2));
-const cMoney = (v) => (v == null ? "—" : `<span class="${v >= 0 ? "g" : "r"}">${v >= 0 ? "+" : "−"}$${Math.abs(v).toFixed(2)}</span>`);
+const cMoney = (v) => (v == null ? "—" : `<span class="${Math.abs(v) < 0.005 ? "" : v > 0 ? "g" : "r"}">${Math.abs(v) < 0.005 ? "$" : v > 0 ? "+$" : "−$"}${Math.abs(v).toFixed(2)}</span>`);   // zero reads "$0.00", no sign, no colour (same as NFL)
 const tm = (iso) => (!iso || isNaN(new Date(iso)) ? "TBD" : new Date(iso).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" }));
 const hm = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { weekday: "short", month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—");
 const dayName = (d) => (d ? new Date(d + "T12:00:00").toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric" }) : "—");
@@ -372,6 +372,7 @@ function renderProps() {
   const dsel = `<div class="wksel"><select id="props-day" aria-label="Day">${days.map((x) => `<option value="${x}"${x === d.date ? " selected" : ""}>${dayName(x)}</option>`).join("")}</select></div>`;
   const all = (d.games || []).map((g) => ({ ...g, picks: (g.picks || []).filter((p) => p.stat === PROPTAB) })).filter((g) => g.picks.length);
   const teams = [...new Set(all.flatMap((g) => g.picks.map((p) => p.team).filter(Boolean)))].sort();
+  if (PROPTEAM !== "all" && !teams.includes(PROPTEAM)) PROPTEAM = "all";   // 10/27: a team chosen on another day / tab with no rows here would leave "None yet." under a drop-down reading "All teams"
   const tsel = `<div class="wksel"><select id="props-team" aria-label="Team"><option value="all"${PROPTEAM === "all" ? " selected" : ""}>All teams</option>${teams.map((t) => `<option value="${esc(t)}"${PROPTEAM === t ? " selected" : ""}>${esc(t)}</option>`).join("")}</select></div>`;
   const games = all.map((g) => ({ ...g, picks: PROPTEAM === "all" ? g.picks : g.picks.filter((p) => p.team === PROPTEAM) })).filter((g) => g.picks.length);
   const rc = (d.record || {})[PROPTAB] || null;
@@ -404,7 +405,7 @@ function renderBets() {
   const liveOf = (e) => [...new Set((e.picks || []).map((p) => p.game).concat(e.prop && e.prop.game ? [e.prop.game] : []).filter((k) => liveSc(k)))];
   const legLost = (e) => !e.sold && !e.resolved && (e.picks || []).some((p) => p && p.result === "L");   // same as NFL: a combo with a lost leg is done
   const legRow = (p, lk = []) => `<div class="s" style="padding:0 0 0 16px">${p.result ? legMark(p.result) + " " : "• "}${legTxt(p.result, `${p.team ? tlogo(p.team) : ""}${esc(p.label)}`)}${p.kind === "total" && p.game ? ` <span class="dim">${gameLogos(p.game)}</span>` : ""}${lk.length > 1 && !p.result && liveSc(p.game) ? ` <span class="r lvb">· ${esc(liveSc(p.game).lbl || "")}</span>` : ""}</div>`;
-  const betName = (e) => (e.picks && e.picks.length ? `Combo · ${e.picks.length} picks` : e.prop ? `${e.prop.result ? legMark(e.prop.result) + " " : ""}${e.prop.team ? tlogo(e.prop.team) : ""}${esc(e.prop.label)}` : `${esc(e.title)}${e.outcome ? ` — ${esc(e.outcome)}` : ""}`);   // 10/27: a single player bet = the player + the bet
+  const betName = (e) => (e.picks && e.picks.length ? `${e.picks.length} picks` : e.prop ? `${e.prop.result ? legMark(e.prop.result) + " " : ""}${e.prop.team ? tlogo(e.prop.team) : ""}${esc(e.prop.label)}` : `${esc(e.title)}${e.outcome ? ` — ${esc(e.outcome)}` : ""}`);   // 10/27: a single player bet = the player + the bet
   const isSingle = (e) => !(e.picks && e.picks.length), firstSingles = (a) => [...a.filter(isSingle), ...a.filter((e) => !isSingle(e))];   // 10/27 (owner): singles on top, then the combos
   // 10/27 (owner: "make everything consistent"): the rows read like NFL's -- right side open / Won +$ / Lost −$ / Sold, under it "$cost at N¢ · pays $X if it wins"
   const state = (e, settled) => settled ? (e.result === "win" ? '<span class="g">Won</span>' : e.result === "loss" ? '<span class="r">Lost</span>' : `<span class="${e.pl >= 0 ? "g" : "r"}">Sold</span>`) + " " + cMoney(e.pl) : legLost(e) ? `<span class="r">Lost</span> ${cMoney(-(e.cost || 0))}` : '<span class="dim">open</span>';
