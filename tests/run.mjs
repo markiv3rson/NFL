@@ -264,6 +264,26 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const wk = readFileSync(new URL("../lib/week.js", import.meta.url), "utf8"), rr = readFileSync(new URL("../pages/api/rerun.js", import.meta.url), "utf8"), ap = readFileSync(new URL("../public/app.js", import.meta.url), "utf8"), gm = readFileSync(new URL("../lib/games.js", import.meta.url), "utf8"), py = readFileSync(new URL("../railway-model-service/app.py", import.meta.url), "utf8");
   ok(/G\.stackSide = await stackFor\(G\)/.test(wk) && wk.indexOf("G.stackSide = await stackFor(G)") < wk.indexOf("G.card = buildCard(G") && /recordStackShadow\(season, wk, G, sl/.test(wk) && /stackin:\$\{season\}:\$\{wk\}:\$\{G\.key\}/.test(wk) && /\/team-yards/.test(rr) && /stackin:\$\{season\}:\$\{week\}:\$\{q\.key\}/.test(rr) && /Model \(Stack\):<\/span> <b class="mod">/.test(ap) && /STACK \(shadow\)/.test(ap) && /homeRest:/.test(gm) && /@app\.route\("\/team-yards"/.test(py),
     "STACK: the slate builds the line and records the shadow, the rerun saves the prop model's team yards, the card shows the purple Model (Stack) line, Models lists the row, the schedule carries rest days, the service has the route"); }
+{ // 10/27 WIDE MODEL shadow: recorded per game and rewritten until kickoff (first kept), graded with the tracked legs, summed confident / rest; one service call per build, cached while the lines hold
+  const { recordWideShadow, gradeTrackedWeek, trackedSummary } = await import("../lib/tracked.js"), { widePicks, wideInputs, WIDE_TTL } = await import("../lib/wide.js"), { getRedis, getJSON } = await import("../lib/redis.js");
+  const G = { key: "CAR @ GB", home: "GB", away: "CAR" };
+  await recordWideShadow(2095, 8, G, { team: "CAR", line: 3.5, p: 0.37, conf: 0.13, confident: true, thr: 0.05 }, "2095-10-27T10:00:00Z");
+  await recordWideShadow(2095, 8, G, { team: "CAR", line: 4.5, p: 0.36, conf: 0.14, confident: true, thr: 0.05 }, "2095-10-29T10:00:00Z");
+  await recordWideShadow(2095, 8, { key: "BAL @ BUF", home: "BUF", away: "BAL" }, { team: "BUF", line: -3.5, p: 0.51, conf: 0.01, confident: false, thr: 0.05 }, "2095-10-29T10:00:00Z");
+  const sv = JSON.parse(await getRedis().hget("teaser:2095:8", "CAR @ GB|wide"));
+  ok(sv.wide === true && sv.kind === "spread" && sv.team === "CAR" && sv.line === 4.5 && sv.confident === true && sv.first && sv.first.line === 3.5 && sv.first.t === "2095-10-27T10:00:00Z", "WIDE shadow: the last copy before kickoff is the record, the first sighting kept", sv);
+  await gradeTrackedWeek(2095, 8, [{ key: "CAR @ GB", home: "GB", away: "CAR", homeScore: 27, awayScore: 24 }, { key: "BAL @ BUF", home: "BUF", away: "BAL", homeScore: 20, awayScore: 27 }]);
+  const T = await trackedSummary(2095);
+  ok(T.wide && T.wide.n === 2 && T.wide.w === 1 && T.wide.l === 1 && T.wide.confident.n === 1 && T.wide.confident.w === 1 && T.wide.rest.n === 1 && T.wide.rest.l === 1, "WIDE shadow: CAR +4.5 wins (lost by 3), BUF -3.5 loses; confident 1-0, rest 0-1", T.wide);
+  const g0 = { key: "CAR @ GB", home: "GB", away: "CAR", started: false, week: 8, lineNow: { hs: -3.5, tl: 47.5 }, open: { spread: { homeSpread: -2.5 }, total: { line: 46.5 } } };
+  ok(JSON.stringify(wideInputs(2095, 8, [g0, { ...g0, key: "X @ Y", started: true }, { ...g0, key: "A @ B", lineNow: null }])) === JSON.stringify([{ game: "CAR @ GB", season: 2095, week: 8, away: "CAR", home: "GB", homeSpread: -3.5, total: 47.5, openHomeSpread: -2.5, openTotal: 46.5 }]), "WIDE inputs: unplayed games with a Polymarket line only; the home spread, total and the week's first lines");
+  const realFetch = globalThis.fetch, oldUrl = process.env.MODEL_SERVICE_URL; process.env.MODEL_SERVICE_URL = "https://svc.test"; let calls = 0;
+  globalThis.fetch = async (u, o) => { calls++; const b = JSON.parse(o.body); return { ok: true, status: 200, json: async () => ({ ok: true, thr: 0.05, v: 1, games: Object.fromEntries(b.games.map((x) => [x.game, { team: x.away, line: -x.homeSpread, p: 0.4, conf: 0.1, confident: true, thr: 0.05 }])) }) }; };
+  const w1 = await widePicks(2095, 8, [g0]); const w2 = await widePicks(2095, 8, [g0]); const c12 = calls; const w3 = await widePicks(2095, 8, [{ ...g0, lineNow: { hs: -4.5, tl: 47.5 } }]);
+  ok(w1["CAR @ GB"] && w1["CAR @ GB"].team === "CAR" && w1["CAR @ GB"].line === 3.5 && c12 === 1 && JSON.stringify(w2) === JSON.stringify(w1) && w3["CAR @ GB"].line === 4.5 && calls === 2 && (await getJSON("wide:2095:8")).sig, "WIDE picks: one service call per build, the reply cached while the lines hold, a changed line asks again", { calls, w1, w3 });
+  globalThis.fetch = realFetch; if (oldUrl === undefined) delete process.env.MODEL_SERVICE_URL; else process.env.MODEL_SERVICE_URL = oldUrl; await getRedis().del("teaser:2095:8"); await getRedis().del("wide:2095:8");
+  const apx = readFileSync(new URL("../public/app.js", import.meta.url), "utf8"), wk = readFileSync(new URL("../lib/week.js", import.meta.url), "utf8"), py = readFileSync(new URL("../railway-model-service/app.py", import.meta.url), "utf8");
+  ok(/WIDE \(shadow\)/.test(apx) && /return wd \+ sk \+ ie \+ tj/.test(apx) && /\["WIDE:", /.test(apx) && /await widePicks\(season, week, games\)/.test(wk) && /recordWideShadow\(season, wk, G, G\.wideSide/.test(wk) && /@app\.route\("\/wide-picks", methods=\["POST"\]\)/.test(py), "WIDE shadow: Models -> Tracked angles row + ⓘ line, the slate records it on every build, the service route exists"); }
 { const { trackedSummary, gradeTrackedWeek } = await import("../lib/tracked.js"); const { getRedis } = await import("../lib/redis.js");
   ok(!/recordShadow|bookDepth/.test(readFileSync(new URL("../pages/api/pinnaclepull.js", import.meta.url), "utf8")), "review 10/19: the Pinnacle LINE MOVE / order-book tilt shadow picks and their book reads are gone");
   { // INJURY EARLY shadow (10/16): the healthy team at the current line the first time exactly one team has its QB / 2+ DBs / 2+ OL out; once per game; graded
@@ -983,12 +1003,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
         && ruleLabel({ id: "teamside|spread" }) === "MODEL (TEAM) · spread" && /teamside/.test(readFileSync(new URL("../public/app.js", import.meta.url), "utf8").match(/Model \(Team\)/) ? "teamside" : ""),
         "Model (Team) line: side + sure % on every game (52.5% shown while no TEAM MODEL pick), only this week's numbers, never on a pick'em; own record label", { a, b, c, d });
     }
-    ok(pk && pk.id === "teammodel|spread" && pk.pick === "AAA -3" && pk.hit === 62.1 && pk.team === "AAA" && pk.line === -3, "team model 62% sure -> TEAM MODEL pick on that team at the line, shown at the tested 60%+ band rate (60.3%)", pk);
+    ok(pk && pk.id === "teammodel|spread" && pk.pick === "AAA -3" && pk.hit === 63.4 && pk.team === "AAA" && pk.line === -3, "team model 62% sure -> TEAM MODEL pick on that team at the line, shown at the tested 58%+ band rate (63.4%, C 0.02)", pk);
     const away = teamModelPick({ key: "AAA @ BBB", away: "AAA", home: "BBB" }, 3, 7);
     ok(away && away.pick === "AAA -3" && away.team === "AAA" && away.line === -3, "team model: the away side when it is the sure one (line from the away team's view)", away);
     ok(teamModelPick({ key: "DDD @ CCC", away: "DDD", home: "CCC" }, -3, 7) === null, "team model under 58% sure (52.5%) -> no pick (a coin flip in the test)");
     ok(teamModelPick(g, -3, 8) === null && teamModelPick(g, 0, 7) === null && teamModelPick({ key: "X @ Y", away: "X", home: "Y" }, -3, 7) === null, "team model: no pick with last week's numbers, at a pick'em, or for a team it has no numbers for");
-    ok(TEAM_BANDS[0][1] === 62.1 && TEAM_BANDS[1][0] === 0.58 && TEAM_BANDS[1][1] === 55.3, "team model band rates = the tested ones (10/20, no spread input: 60%+ 62.1%, 58-60% 55.3%)");
+    ok(TEAM_BANDS.length === 1 && TEAM_BANDS[0][0] === 0.58 && TEAM_BANDS[0][1] === 63.4 && /C = 4, 2011, 0\.02/.test(readFileSync(new URL("../railway-model-service/team_side.py", import.meta.url), "utf8")), "team model band rates = the tested ones (10/27, C 0.02, no spread input: 58%+ 63.4%)");
     { // 10/26 angle mix: OVERSHOOT -- the game model likes a side by 2+ vs the current line AND the line moved 1+ that way since the week's first line -> the other side
       const { overshootPick, OVERSHOOT } = await import("../lib/stack.js"), og = { key: "BBB @ AAA", away: "BBB", home: "AAA" };
       const a = overshootPick(og, 6, -3.5, -2.5, 7), b = overshootPick(og, 6, -3.5, -3, 7), c = overshootPick(og, 4.5, -3.5, -2.5, 7), d = overshootPick(og, -5, 2.5, 1.5, 7), e = overshootPick(og, 6, -3.5, -2.5, 3), f = overshootPick(og, null, -3.5, -2.5, 7);
@@ -999,11 +1019,11 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     }
     { // 10/26 angle mix: TEAM MODEL x the line move since the week's first line (AAA home -3 now, 62.2% sure)
       const ag = teamModelPick(g, -3, 7, undefined, -4), tw = teamModelPick(g, -3, 7, undefined, -2), fl = teamModelPick(g, -3, 7, undefined, -3.5), aw = teamModelPick({ key: "AAA @ BBB", away: "AAA", home: "BBB" }, 3, 7, undefined, 4), aw2 = teamModelPick({ key: "AAA @ BBB", away: "AAA", home: "BBB" }, 3, 7, undefined, 2);
-      ok(ag && ag.hit === 63.9 && ag.n === 144 && ag.mv === "against" && tw === null && fl && fl.hit === 60.4 && fl.mv === "flat" && aw && aw.mv === "against" && aw.hit === 63.9 && aw2 === null && pk.mv === null,
-        "TEAM MODEL x line move: opened AAA -4, now -3 (1 point more for its side) -> 63.9%; opened -2 (moved its way) -> no pick; half a point -> the flat 60%+ rate 60.4%; no opener -> the plain band", { ag, tw, fl, aw });
+      ok(ag && ag.hit === 70.6 && ag.n === 85 && ag.mv === "against" && tw === null && fl && fl.hit === 61.3 && fl.mv === "flat" && aw && aw.mv === "against" && aw.hit === 70.6 && aw2 === null && pk.mv === null,
+        "TEAM MODEL x line move (10/27, C 0.02): opened AAA -4, now -3 (1 point more for its side) -> 70.6%; opened -2 (moved its way) -> no pick; half a point -> the flat rate 61.3%; no opener -> the plain band", { ag, tw, fl, aw });
     }
     const card = buildCard({ key: "BBB @ AAA", away: "BBB", home: "AAA", poly: { spread: { homeSpread: -3, home: 0.5, away: 0.5 } } }, [pk], { spread: { homeSpread: -3, home: 0.5, away: 0.5 } }, null, null);
-    ok(card && card.spread && card.spread.plain && card.spread.plain.pick === "AAA -3" && card.spread.plain.hit === 62.1 && /^teammodel/.test(card.spread.plain.ruleId || card.spread.plain.id || "teammodel"), "the card's PICK comes from the TEAM MODEL rule when it is the only rule", card && card.spread && card.spread.plain);
+    ok(card && card.spread && card.spread.plain && card.spread.plain.pick === "AAA -3" && card.spread.plain.hit === 63.4 && /^teammodel/.test(card.spread.plain.ruleId || card.spread.plain.id || "teammodel"), "the card's PICK comes from the TEAM MODEL rule when it is the only rule", card && card.spread && card.spread.plain);
     { const { recordStack, gradeStackWeek, stackSummary } = await import("../lib/stack.js"), RR = globalThis.__TEST_REDIS__, now = "2099-10-25T17:00:00Z";
       for (const k of await RR.keys("stack*:2099:8")) await RR.del(k);
       await recordStack(2099, 8, g, [pk], now);
@@ -1337,6 +1357,25 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       const fake = { table: Array.from({ length: 300 }, () => ["Dog ATS", ["homeDog"], 99.9, 100]), upgrade: { ...UP, mi: UP.mi + 5 }, early: null };
       ok(applyComboModel(fake) && Math.abs(upgraded({ mm: 3, km: 3, mt: 44, kt: 44 }).margin - base.margin - 5) < 0.11, "weekly rebuild: a published set is used");
       ok(!applyComboModel({ table: [] }) && Math.abs(upgraded({ mm: 3, km: 3, mt: 44, kt: 44 }).margin - base.margin) < 0.01, "weekly rebuild: a bad set falls back to the built-in model"); }
+    { // 10/27 (owner: "check the railway rebuild"): a deploy rebuild was invisible for up to 2 h -- now /health says which build the service holds and the site re-reads it at once
+      const { getJSON, getRedis } = await import("../lib/redis.js"), { UP } = await import("../lib/upgrade.js");
+      const realFetch = globalThis.fetch, oldUrl = process.env.MODEL_SERVICE_URL; process.env.MODEL_SERVICE_URL = "https://svc.test";
+      const mk = (b) => ({ ok: true, tag: "t", builtAt: b, upgrade: { ...UP }, early: null, moveT: null, teamSide: { week: 8 }, checks: { games: 1 } });
+      const calls = []; let svcBuild = "2026-10-27T17:23:00Z";
+      globalThis.fetch = async (u) => { calls.push(String(u)); if (/\/health$/.test(String(u))) return { ok: true, status: 200, json: async () => ({ ok: true, build: { builtAt: svcBuild, tag: "t" }, rebuild: { running: false, last: { published: true } } }) };
+        return { ok: true, status: 200, json: async () => mk(svcBuild) }; };
+      await setJSON("combomodel:latest", { ...mk("2026-10-27T11:00:00Z"), fetchedAt: new Date().toISOString() });   // a fresh copy (inside the 2-h cache) of an OLDER build
+      const { loadComboModel } = await import("../lib/combomodel.js?fresh=1"); const a = await loadComboModel(); const saved = await getJSON("combomodel:latest");
+      ok(!!a && a.builtAt === "2026-10-27T17:23:00Z" && calls.some((u) => /\/health$/.test(u)) && calls.some((u) => /combo-model/.test(u)) && saved.builtAt === "2026-10-27T17:23:00Z",
+        "rebuild visibility (10/27): the service holds a newer build than the site's fresh copy -> /health is asked and the build re-read at once", { calls, saved: saved && saved.builtAt });
+      calls.length = 0; const { loadComboModel: load2 } = await import("../lib/combomodel.js?fresh=2"); await load2(); const s2 = await getJSON("combomodel:latest");
+      ok(calls.some((u) => /\/health$/.test(u)) && !calls.some((u) => /combo-model/.test(u)) && s2.healthAt && s2.builtAt === "2026-10-27T17:23:00Z", "rebuild visibility: the same build on the service -> no re-read, the health check is stamped (asked again after HEALTH_EVERY)", calls);
+      calls.length = 0; const { loadComboModel: load3 } = await import("../lib/combomodel.js?fresh=3"); await load3();
+      ok(!calls.length, "rebuild visibility: a health check in the last 5 minutes is not repeated");
+      const { applyComboModel: ap0 } = await import("../lib/combomodel.js"); ap0(null); globalThis.fetch = realFetch; if (oldUrl === undefined) delete process.env.MODEL_SERVICE_URL; else process.env.MODEL_SERVICE_URL = oldUrl; await getRedis().del("combomodel:latest");
+      const py = readFileSync(new URL("../railway-model-service/app.py", import.meta.url), "utf8"), wr = readFileSync(new URL("../railway-model-service/weekly_rebuild.py", import.meta.url), "utf8"), stj = readFileSync(new URL("../lib/status.js", import.meta.url), "utf8"), wd = readFileSync(new URL("../lib/watchdog.js", import.meta.url), "utf8"), apx = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+      ok(/"build": _build_info\(\), "rebuild": _rebuild_info\(\)/.test(py) && /STATUS\["startedAt"\] = time/.test(wr) && /STATUS\["finishedAt"\] = time/.test(wr) && /build: \(health && health\.build\) \|\| null, rebuild: \(health && health\.rebuild\) \|\| null/.test(stj) && /\["Model rebuild \(Railway\)", rebuildLine\(st\.railway, st\.fitCheck\)\]/.test(apx) && /running since/.test(apx) && /site up to date/.test(apx) && /model rebuild on Railway FAILED/.test(wd) && /did not pass its checks/.test(wd),
+        "rebuild visibility: /health carries the build + rebuild state, status keeps it, System shows running / failed / published + whether the site is up to date, the watchdog warns on a failed or unpublished rebuild"); }
   }
   ok(ctx.T.slotOf({ badge: "SNF", kickoff: "2026-10-11T12:00:00" }) === "Primetime" && ctx.T.slotOf({ kickoff: "2026-10-11T10:00:00" }) === "Morning" && ctx.T.slotOf({ kickoff: "2026-10-11T13:25:00" }) === "Afternoon", "best bets: morning / afternoon / primetime");
   { // kickoff check line in System: failures and moved games are visible
@@ -2062,10 +2101,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { // 10/26: ML PICK · TEAM MODEL vs the move -- the team model's side straight up when 58%+ sure and the line moved 1+ against it (a favorite 77.4% of 31, an underdog priced 30-50c 57.1% of 49; under 30c never)
     const tm = (team) => [{ id: "teammodel|spread", kind: "spread", team, pick: `${team} +3.5`, hit: 63.9, mv: "against" }];
     const f = cpk.mlPart(g("KC", false), null, tm("SEA")), dg = cpk.mlPart(g("KC", false), null, tm("KC")), lo = cpk.mlPart({ ...g("KC", false), poly: { ml: { home: 0.78, away: 0.24 } } }, null, tm("KC")), flat = cpk.mlPart(g("KC", false), null, [{ ...tm("KC")[0], mv: "flat" }]), both = cpk.mlPart(g("SEA", false), null, tm("KC"));
-    ok(f && f.plain.id === "tmml|ml" && f.plain.pick === "SEA ML" && f.plain.hit === 77.4 && f.plain.n === 31 && dg && dg.plain.pick === "KC ML" && dg.plain.hit === 57.1 && dg.plain.price === 0.42 && lo === null && flat === null
+    ok(f && f.plain.id === "tmml|ml" && f.plain.pick === "SEA ML" && f.plain.hit === 88.9 && f.plain.n === 18 && dg && dg.plain.pick === "KC ML" && dg.plain.hit === 63.3 && dg.plain.price === 0.42 && lo === null && flat === null
       && both && both.plain.id === "stackml|ml" && both.plain.pick === "SEA ML" && both.also && both.also.id === "tmml|ml" && both.also.team === "KC" && stk.ruleLabel({ id: "tmml|ml" }) === "ML PICK · TEAM MODEL vs the move" && stk.CURRENT_RULES.test("tmml|ml")
       && cpk.cardPicks({ spread: null, total: null, ml: dg })[0].id === "tmml|ml" && /tmml/.test(readFileSync(new URL("../lib/week.js", import.meta.url), "utf8").match(/cardpick\|modelpick\|stackml\|tmml/) || ""),
-      "ML PICK · TEAM MODEL vs the move (10/26): the team model's side when the line moved 1+ against it -- a favorite at 77.4%, an underdog priced 30-50c at 57.1%, never under 30c or without the move; two rules on different teams -> the higher win rate shows, the other rides along as `also`; locked and graded like the STACK ML pick", { f, dg, lo, flat, both });
+      "ML PICK · TEAM MODEL vs the move (10/27, C 0.02): the team model's side when the line moved 1+ against it -- a favorite at 88.9%, an underdog priced 30-50c at 63.3%, never under 30c or without the move; two rules on different teams -> the higher win rate shows, the other rides along as `also`; locked and graded like the STACK ML pick", { f, dg, lo, flat, both });
   }
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   ok(/<span class="lbw">ML pick:<\/span>/.test(app) && /g\.lockedPicks && g\.lockedPicks\.ml/.test(app), "the spread card shows the ML pick (locked one with W / L after kickoff)");

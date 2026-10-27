@@ -32,12 +32,12 @@ FIRST = 2014                       # first season with the game-model replay (ne
 UP_ALPHA = 3000
 # 10/16 (owner: "rebuild it now"): bump this tag whenever the rebuild code changes what it publishes. app.py rebuilds on start when the saved
 # build carries a different tag, so a deploy to Railway rebuilds right away instead of waiting for Tuesday 4 AM PT.
-BUILD_TAG = "2026-10-27 team-total + market-total checks in the rebuild report"
+BUILD_TAG = "2026-10-27b TEAM MODEL C 0.02 + the team-total checks"
 COLD = {"GB", "CHI", "BUF", "NE", "CLE", "PIT", "DEN", "KC", "NYJ", "NYG", "PHI", "CIN", "BAL"}
 TZ = {"SEA": -3, "SF": -3, "LA": -3, "LAC": -3, "LV": -3, "OAK": -3, "SD": -3, "STL": -1, "ARI": -2, "DEN": -2, "KC": -1, "DAL": -1, "HOU": -1,
       "MIN": -1, "CHI": -1, "GB": -1, "NO": -1, "TEN": -1}
 _LOCK = threading.Lock()
-STATUS = {"running": False, "last": None}
+STATUS = {"running": False, "last": None, "startedAt": None, "finishedAt": None}   # 10/27: /health reports it, so the site can show a running / failed rebuild
 
 def _log(*a): print("[rebuild]", *a, flush=True)
 
@@ -370,7 +370,7 @@ def passes(a):
 def run(site_opens=None):
     """Build, check, publish. Returns the checks (and whether it went live)."""
     if not _LOCK.acquire(blocking=False): return {"ok": False, "note": "already running"}
-    STATUS["running"] = True
+    STATUS["running"] = True; STATUS["startedAt"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     try:
         a = build(site_opens); ok = passes(a); a["checks"]["published"] = ok
         if ok:
@@ -381,7 +381,7 @@ def run(site_opens=None):
     except Exception as e:
         _log("failed", repr(e)); STATUS["last"] = {"error": str(e)}; return {"ok": False, "error": str(e)}
     finally:
-        STATUS["running"] = False; _LOCK.release()
+        STATUS["running"] = False; STATUS["finishedAt"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()); _LOCK.release()
 
 def latest():
     try:
