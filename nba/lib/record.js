@@ -41,9 +41,11 @@ export async function recordPicks(games, now = Date.now()) {
     }
     for (const [i, k] of ["spread", "total"].entries()) {
       const pk = ks[i * 3], old = v[i * 3], pick = v[i * 3 + 1] || v[i * 3 + 2];
-      if (!old || !pick || sideOf(old) === sideOf(pick)) continue;
+      // 10/26 night: the card no longer buys points on the model-side TOTAL, so a saved ptspick|total under a modelpick|total (saved before the change) leaves the record before tip-off too
+      const noneNow = !!old && !!pick && k === "total" && pick.id === "modelpick|total" && !rows.some((x) => x.id === "ptspick|total");
+      if (!old || !pick || (sideOf(old) === sideOf(pick) && !noneNow)) continue;
       const cur = rows.find((x) => x.id === `ptspick|${k}` && sideOf(x) === sideOf(pick));
-      await r.set(`removed:${pk}`, JSON.stringify({ ...old, removedAt: new Date(now).toISOString(), why: "PICK w/ POINTS on the other side of the PICK" }), "NX");
+      await r.set(`removed:${pk}`, JSON.stringify({ ...old, removedAt: new Date(now).toISOString(), why: noneNow ? "no PICK w/ POINTS on the model-side total (10/26)" : "PICK w/ POINTS on the other side of the PICK" }), "NX");
       if (cur) await r.set(pk, JSON.stringify(cur)); else { await r.del(pk); await r.srem(IDS, pk); }
       n++;
     }

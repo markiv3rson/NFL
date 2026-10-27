@@ -341,7 +341,10 @@ def build(site_opens=None):
     err = lambda p, y: float(np.mean(np.abs(p - y)))
     checks = {"games": int(len(d)), "seasons": [int(d.season.min()), int(d.season.max())], "openLines": int(eo.sum()),
               "marginErr": round(err(um, d.res), 3), "oldMarginErr": round(err(d.mm, d.res), 3), "marketMarginErr": round(err(d.km, d.res), 3),
-              "totalErr": round(err(ut, d.tot), 3), "oldTotalErr": round(err(d.mt, d.tot), 3), "minutes": round((time.time() - t0) / 60, 1)}
+              "totalErr": round(err(ut, d.tot), 3), "oldTotalErr": round(err(d.mt, d.tot), 3), "marketTotalErr": round(err(d.kt, d.tot), 3),
+              # 10/26 night (owner: "how accurate is our team totals?"): each team's points from the margin + total guess, leave-one-season-out, vs the closing line's
+              "teamTotalErr": round(team_total_err(um, ut, d.res.values, d.tot.values), 3), "marketTeamTotalErr": round(team_total_err(d.km.values, d.kt.values, d.res.values, d.tot.values), 3),
+              "minutes": round((time.time() - t0) / 60, 1)}
     feat = list(Z.columns)
     # 10/19 (owner, option B): the TEAM MODEL spread rule's fit + every team's numbers for the coming week (team_side.py). A failure here never
     # blocks the rest of the build: the site simply has no TEAM MODEL pick that week.
@@ -354,6 +357,11 @@ def build(site_opens=None):
             "upgrade": {"feat": feat, "m": [round(float(v), 6) for v in fm.coef_], "mi": round(float(fm.intercept_), 6), "t": [round(float(v), 6) for v in ft.coef_], "ti": round(float(ft.intercept_), 6)},
             "early": {"feat": list(ZE.columns), "t": [round(float(v), 6) for v in fe.coef_], "ti": round(float(fe.intercept_), 6)},
             "moveT": train_move(ZE.drop(columns=[c for c in MOVE_DROP if c in ZE.columns]), (d.kt[eo] - d.to[eo]).values, d.season[eo].values, d.tot[eo].values, d.to[eo].values)}
+
+def team_total_err(pred_margin, pred_total, margin, total):
+    """Average miss of each team's points: home = (total + margin) / 2, away = (total - margin) / 2 (margins home-favored, as res / km are)."""
+    pm, pt, m, t = (np.asarray(x, dtype=float) for x in (pred_margin, pred_total, margin, total))
+    return float(np.mean(np.concatenate([np.abs((t + m) / 2 - (pt + pm) / 2), np.abs((t - m) / 2 - (pt - pm) / 2)])))
 
 def passes(a):
     c = a["checks"]

@@ -24,7 +24,7 @@
     nba: [["props-pts", "Points"], ["props-reb", "Rebounds"], ["props-ast", "Assists"], ["props-pra", "PRA"], ["props-stl", "Steals"], ["props-blk", "Blocks"]] };
   const URL_ = { nfl: "/index.html", nba: "/nba/index.html" };
   // the Model bets parlay types (10/20 night: Over/Under and Spread + Total removed; 10/21: NBA Prop Parlays 6 / 8 / 10 legs + Same Game; 3 legs at most elsewhere)
-  const TYPES = { nfl: [["best", "Best Legs"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"], ["pp6", "6 Leg"], ["pp8", "8 Leg"], ["pp10", "10 Leg"]],
+  const TYPES = { nfl: [["best", "Best Legs"], ["3", "3 Leg"], ["2", "2 Leg"], ["pp6", "6 Leg"], ["pp8", "8 Leg"], ["pp10", "10 Leg"]],
     nba: [["pp6", "6 Leg"], ["pp8", "8 Leg"], ["pp10", "10 Leg"], ["sgp4", "Same Game"]] };
   const OTHER = { nfl: "nba", nba: "nfl" };
   // 10/21 night (owner): a white curved arrow on each side of the ball -- left one up, right one down (the switch)

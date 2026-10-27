@@ -2,6 +2,7 @@
 //   PICK            -- the side a TESTED rule likes, at Polymarket's own line, with its win rate; no rule -> the model's side at the main line,
 //                      shown at the model's honest history (regular season 2025-26, 1,783 games, each game predicted before it was played)
 //   PICK w/ POINTS  -- 2 points is the first buy (owner 10/16): the fewest points (2+) that reach 56% on EITHER team; none reaching it -> the highest
+//                      (10/19: on the PICK's side; 10/26 night: never on the model-side TOTAL, a coin flip whose bought points went 18-21 live)
 //                      win rate within 2 points. A 1-point line is listed but never chosen: on unseen seasons (2008-26, each left out) the 1-point
 //                      buys the old rule chose said 56.5% and won 53.7% (1,570 games); the same games at 2 points won 54.8%.
 //   rows            -- every line you could buy (both teams; Over AND Under): Polymarket's main line ("main") and every alternate up to 7 points from
@@ -165,7 +166,12 @@ function totalPart(g) {
     const first = !!plain && x.side === plain.side;
     raw.push({ side: x.side, line: x.line, points: x.points, hit: r1(x.hist), hist: x.hist, n: x.n, price: priced(x.price), pick: x.label || `${nm(x.side)} ${x.line}`, first });
   }
-  const rows = finishRows(boundRows(raw, plain, (r) => r.side === plain.side).map(({ hist, ...r }) => r)), b = pickPts(plain ? rows.filter((r) => r.side === plain.side) : rows), pts = b ? { id: "ptspick|total", kind: "total", ...b, ruleId: plain ? plain.ruleId : null } : null;   // same side as the PICK (10/19)
+  const rows = finishRows(boundRows(raw, plain, (r) => r.side === plain.side).map(({ hist, ...r }) => r));
+  // 10/26 night (owner: "I want all 3"): NO PICK w/ POINTS on the model-side total. The model's total is a coin flip (MODEL_HIT.total 50.4% on
+  // 2,462 unseen games), so points bought on its side are the plain table's rate with no edge, and live they went 18-21 (46.2%, -23 per $100,
+  // 10/20-26). A rule's total (BOOK GAP / TOTAL MOVE / SHOT QUALITY) keeps its PICK w/ POINTS; the MORE list still shows every line.
+  const modelSide = !!plain && plain.id === "modelpick|total";
+  const b = modelSide ? null : pickPts(plain ? rows.filter((r) => r.side === plain.side) : rows), pts = b ? { id: "ptspick|total", kind: "total", ...b, ruleId: plain ? plain.ruleId : null } : null;   // same side as the PICK (10/19)
   if (!plain && !rows.length) return null;
   return { kind: "total", plain, pts, rows };
 }

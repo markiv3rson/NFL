@@ -261,7 +261,7 @@ const MODEL_INFO = {
   ml: [["Model:", "the model’s own chance each team wins."], ["PICK:", "the market’s favorite and its chance with Polymarket’s fee taken out."]],
 };
 const CARD_INFO = [["PICK:", "the card’s bet at Polymarket’s main line, locked at tip-off."], ["LINE MOVE / BOOK GAP / FATIGUE / ATS REGRESSION / SHOT QUALITY:", "the tested rules that named a PICK."],
-  ["PICK w/ POINTS:", "the same side with bought points that won 56%+."], ["MODEL SIDE:", "no rule fired; the model’s side (about 50%)."],
+  ["PICK w/ POINTS:", "the same side with bought points that won 56%+; none on the model-side total."], ["MODEL SIDE:", "no rule fired; the model’s side (about 50%)."],
   ["MONEYLINE:", "the market’s favorite to win."], ["GREEN 56%+:", "every pick shown green; “said” = the average % shown."], ["PRESEASON TEST:", "preseason games, not in the season record."]];
 const SHADOW_INFO = [["Test picks,", "never shown on a card: recorded and graded live. One becomes a pick only after it holds 56%+ over about 100 games."],
   ["LINE MOVE:", "Pinnacle moved 3+ points; that side at the first number / at the number when seen."], ["INJURY:", "a star newly out; the healthy side at the open / when seen."],
