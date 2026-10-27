@@ -308,7 +308,7 @@ function linesBg() { const p = $("panel-lines"); document.documentElement.classL
 // GAME PAGE TABS (10/27, owner; design = both sports, same as NFL): GAME LINES · PLAYER PROPS · PARLAYS under the game card, the prop kinds as plain-text sub tabs
 const lsGet = (k, d) => { try { return localStorage.getItem(k) || d; } catch { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
-const GTABS = [["lines", "Game Lines"], ["props", "Player Props"], ["parlays", "Parlays"]];
+const GTABS = [["lines", "Game Lines"], ["props", "Player Props"], ["gprops", "Game Props"], ["parlays", "Parlays"]];
 const GPROP_TABS = [["pts", "Points"], ["reb", "Rebounds"], ["ast", "Assists"], ["pra", "PRA"], ["stl", "Steals"], ["blk", "Blocks"]];
 let GTAB = lsGet("gTab", "lines"), GPROP = lsGet("gProp:nba", "pts");
 if (!GTABS.some(([k]) => k === GTAB)) GTAB = "lines";
@@ -318,6 +318,7 @@ const gameChips = () => `<div class="gchips">${GPROP_TABS.map(([k, t]) => `<butt
 const gNone = (t) => `<div class="card" style="margin-top:10px"><div class="inner"><div class="s dim">${t}</div></div></div>`;
 const etDay = (iso) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
 let GPROPS = {}, GPROPS_LOADING = {};
+if (typeof Shell !== "undefined") Shell.onMkt = (key) => { if (DETAIL && (key == null || key === DETAIL)) refreshDetail(); };   // 10/27: the other markets landed or a chip was tapped
 function refreshDetail() { const open = [...document.querySelectorAll(".drop.open")].map((e) => e.id).filter(Boolean); renderLines(); for (const id of open) { const e = $(id); if (e) e.classList.add("open"); } }
 function loadGameProps(day) {
   if (GPROPS_LOADING[day]) return; GPROPS_LOADING[day] = true;
@@ -341,15 +342,14 @@ function gameParlaysBody(g) {
   return blocks ? `<div class="pgrid" style="margin-top:6px">${blocks}</div>` : gNone("No same-game parlay for this game.");
 }
 // the game page chart (10/27, owner's pick: open chart, = NFL): Polymarket US's moneyline history for both teams, drawn by the shared shell
-const chartOf = (g) => ({ key: g.key, sport: "nba", away: g.away, home: g.home, start: g.start, live: !!(g.inProgress && !isFinal(g)),
-  title: `${esc(g.away)} ${esc((TEAMS[g.away] || {}).nick || "")} vs ${esc(g.home)} ${esc((TEAMS[g.home] || {}).nick || "")}`, ca: teamColor(g.away), ch: teamColor(g.home) });
+const chartOf = (g) => ({ key: g.key, sport: "nba", away: g.away, home: g.home, start: g.start, live: !!(g.inProgress && !isFinal(g)), ca: teamColor(g.away), ch: teamColor(g.home) });
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = ""; linesBg();
   document.body.classList.add("game-on");   // 10/18 (owner, same as NFL): the game card is the header; ← Games under it
-  const body = GTAB === "props" ? gameChips() + gamePropsBody(g) : GTAB === "parlays" ? gameParlaysBody(g)
-    : secRow("SPREAD &amp; ML", injPill(g, "inj")) + `<div class="grid">${marketCard(g, "spread", "inj")}</div>` + secRow("TOTALS") + `<div class="grid">${marketCard(g, "total")}</div>`;
-  const co = chartOf(g);
-  $("detail").innerHTML = `${typeof Shell !== "undefined" && Shell.chartBlock ? Shell.chartTitle(co) + detailTop(g).replace('class="card dtop"', 'class="card dtop dblend"') + Shell.chartBlock(co) : detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs()}${body}`;
+  const co = chartOf(g), mk = typeof Shell !== "undefined" && Shell.mktLines;   // 10/27: the other Polymarket markets (halves, quarters, team totals, game / team props)
+  const body = GTAB === "props" ? gameChips() + gamePropsBody(g) : GTAB === "parlays" ? gameParlaysBody(g) : GTAB === "gprops" ? (mk ? Shell.mktProps(co, gNone("Polymarket lists no game or team props for this game yet.")) : "")
+    : secRow("SPREAD &amp; ML", injPill(g, "inj")) + `<div class="grid">${marketCard(g, "spread", "inj")}</div>` + secRow("TOTALS") + `<div class="grid">${marketCard(g, "total")}</div>` + (mk ? Shell.mktLines(co) : "");
+  $("detail").innerHTML = `${typeof Shell !== "undefined" && Shell.chartBlock ? detailTop(g).replace('class="card dtop"', 'class="card dtop dblend"') + Shell.chartBlock(co) : detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs()}${body}`;
   if (typeof Shell !== "undefined" && Shell.chartLoad) Shell.chartLoad(co);
   $("back-btn").onclick = closeGame;
   setBg($("panel-lines").classList.contains("on") ? g : null);

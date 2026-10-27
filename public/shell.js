@@ -61,6 +61,7 @@
       document.body.classList.toggle("sbar-on", !!subs);
       document.body.classList.toggle("ref-on", REFRESH_ON(panel));
       Shell.choose(sp);   // Home and Model open on the sport last chosen
+      document.body.classList.toggle("tbar-on", panel === "lines");   // 10/27 (owner): the SLATEZZ bar is on Home only
     },
     counts: {},
     setCount(sp, id, n) { Shell.counts[`${sp}-${id}`] = n; const e = document.getElementById(`mcnt-${sp}-${id}`); if (!e) return; e.textContent = n > 9 ? "9+" : String(n || ""); e.style.display = n ? "flex" : "none"; },
@@ -176,7 +177,7 @@
     },
   };
   // GAME PAGE CHART (10/27, owner: "inside the card to look like theirs but catered to ours", sketch A claude.ai/artifact/5y2kVMTo7ru4xrJNdWr24q; both sports):
-  // the game's title, then each team's Polymarket US win price over time (moneyline history, /api/pricehist or /api/nba/pricehist), a line per team in
+  // each team's Polymarket US win price over time (moneyline history, /api/pricehist or /api/nba/pricehist), a line per team in
   // its team colour with the current % at the end, 1D / 1W / 1M / ALL under it (LIVE while the game is on, redrawn every 30 s).
   // o: { key, sport, away, home, start, live, title, ca, ch }. The chosen window is kept per phone (gRange); the data per game + window for the session.
   const CH = { data: {}, timer: null, cur: null };
@@ -215,9 +216,59 @@
     const r = chartRange(o), d = CH.data[chartKey(o, r)];
     el.innerHTML = chartSvg(o, d ? d.pts : null, r, Math.max(280, Math.min(1000, Math.round(el.clientWidth || 360))));
   }
-  // 10/27 (owner, Polymarket's game screen: "put [the game card] on top of the chart but blend it nicely together"): the title, then our team card
-  // (no border, square bottom corners), then the chart on the same team-colour wash fading into the page, the windows and Polymarket's mark under it
-  Shell.chartTitle = (o) => `<div class="gtitle">${o.title}</div>`;
+  // 10/27 (owner, Polymarket's game screen: "put [the game card] on top of the chart but blend it nicely together" / "remove this title"): our team
+  // card (no border, square bottom corners), then the chart on the same team-colour wash fading into the page, the windows and Polymarket's mark under it
+  // OTHER MARKETS (10/27, owner: Polymarket's game page -- halves, quarters, team totals, game / team props; "add everything else if it passes our 65%
+  // rule"): Polymarket US's prices from /api/gamemarkets (NBA /api/nba/gamemarkets). No tested model covers them yet, so there is no pick column; a pick
+  // goes here only once a model reaches 65% on one. Game Lines gets HALVES & QUARTERS (period chips) and TEAM TOTALS (team chips), GAME PROPS its own tab.
+  const MK = { data: {}, busy: {} }, PERL = { "1h": "1st Half", "2h": "2nd Half", q1: "1st Q", q2: "2nd Q", q3: "3rd Q", q4: "4th Q" }, TTL = { full: "Full game", "1h": "1st half", "2h": "2nd half" };
+  const mkKey = (o) => `${o.sport}|${o.key}`, cents = (x) => (x == null ? "—" : `${Math.round(x * 100)}¢`), sgn = (x) => (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x);
+  const lsS = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+  Shell.onMkt = null;
+  Shell.mktLoad = (o) => {
+    const k = mkKey(o), c = MK.data[k]; if ((c && Date.now() - c.t < 120e3) || MK.busy[k] || typeof fetch !== "function") return;
+    MK.busy[k] = true;
+    fetch(`/api/${o.sport === "nba" ? "nba/" : ""}gamemarkets?away=${encodeURIComponent(o.away)}&home=${encodeURIComponent(o.home)}&start=${encodeURIComponent(o.start)}`, { cache: "no-store" })
+      .then((r) => r.json()).then((d) => { MK.data[k] = { t: Date.now(), d: d && d.ok ? d : null }; }).catch(() => { MK.data[k] = { t: Date.now(), d: null }; })
+      .finally(() => { MK.busy[k] = false; if (typeof Shell.onMkt === "function") Shell.onMkt(o.key); });
+  };
+  const mkHead = (a, b, c) => `<div class="mkx mkh"><span>${a}</span><span>${b}</span><span>${c}</span></div>`;
+  const mkRow = (a, b, c) => `<div class="mkx"><span>${a}</span><span class="v">${b}</span><span class="v">${c}</span></div>`;
+  const chips = (attr, list, on) => `<div class="gchips">${list.map(([k, l]) => `<button class="gchip${k === on ? " on" : ""}" type="button" ${attr}="${k}">${l}</button>`).join("")}</div>`;
+  const pmh = '<img class="mkpm" src="/polymarket.png" alt="">';
+  // Game Lines extras: "" until loaded (the cards above show first), nothing when Polymarket lists none
+  Shell.mktLines = (o) => {
+    const c = MK.data[mkKey(o)]; Shell.mktLoad(o); const d = c && c.d; if (!d) return "";
+    let out = "";
+    const pk = Object.keys(PERL).filter((k) => d.periods && d.periods[k]);
+    if (pk.length) {
+      let per = lsG("gPer", "1h"); if (!pk.includes(per)) per = pk[0]; const P = d.periods[per];
+      out += `<div class="trow"><div class="sh">HALVES &amp; QUARTERS</div></div><div class="card mkc">${chips("data-gper", pk.map((k) => [k, PERL[k]]), per)}` +
+        (P.spread.length ? `<div class="mks">Spread</div>${mkHead(`${pmh}LINE`, o.away, o.home)}${P.spread.map((r) => mkRow(`${o.away} ${sgn(r.line)} · ${o.home} ${sgn(-r.line)}`, cents(r.aPrice), cents(r.hPrice))).join("")}` : "") +
+        (P.total.length ? `<div class="mks">Total</div>${mkHead(`${pmh}LINE`, "OVER", "UNDER")}${P.total.map((r) => mkRow(String(r.line), cents(r.over), cents(r.under))).join("")}` : "") +
+        (P.winner.length ? `<div class="mks">Winner</div>${mkHead(`${pmh}`, "YES", "")}${P.winner.map((r) => mkRow(r.label, cents(r.price), "")).join("")}` : "") + `</div>`;
+    }
+    const tt = d.teamTotals || {}, teams = [o.away, o.home].filter((t) => tt[t] && Object.keys(tt[t]).length);
+    if (teams.length) {
+      let tm = lsG("gTT", o.away); if (!teams.includes(tm)) tm = teams[0];
+      out += `<div class="trow"><div class="sh">TEAM TOTALS</div></div><div class="card mkc">${chips("data-gtt", teams.map((t) => [t, t]), tm)}` +
+        Object.keys(TTL).filter((k) => tt[tm][k]).map((k) => `<div class="mks">${TTL[k]}</div>${mkHead(`${pmh}LINE`, "OVER", "UNDER")}${tt[tm][k].map((r) => mkRow(`${tm} ${r.line}`, cents(r.over), cents(r.under))).join("")}`).join("") + `</div>`;
+    }
+    return out;
+  };
+  // GAME PROPS tab: Game | Team chips, each market group with its rows
+  Shell.mktProps = (o, none) => {
+    const c = MK.data[mkKey(o)]; Shell.mktLoad(o); if (!c) return '<div class="s dim" style="margin:12px 2px">Loading…</div>';
+    const d = c.d, pr = (d && d.props) || {}, has = (x) => x && Object.keys(x).length, kinds = [["game", "Game"], ["team", "Team"]].filter(([k]) => has(pr[k]));
+    if (!kinds.length) return none;
+    let kd = lsG("gPx", "game"); if (!kinds.some(([k]) => k === kd)) kd = kinds[0][0];
+    return chips("data-gpx", kinds, kd) + Object.entries(pr[kd]).map(([g, rows]) => `<div class="card mkc"><div class="mks">${g}</div>${mkHead(pmh, "YES", "NO")}${rows.map((r) => mkRow(r.label, cents(r.yes), cents(r.no))).join("")}</div>`).join("");
+  };
+  if (typeof document !== "undefined" && document.addEventListener) document.addEventListener("click", (e) => {
+    const b = e.target.closest && e.target.closest("[data-gper],[data-gtt],[data-gpx]"); if (!b) return;
+    if (b.dataset.gper) lsS("gPer", b.dataset.gper); else if (b.dataset.gtt) lsS("gTT", b.dataset.gtt); else lsS("gPx", b.dataset.gpx);
+    if (typeof Shell.onMkt === "function") Shell.onMkt(null);
+  });
   Shell.chartBlock = (o) => {
     CH.cur = o.key; const r = chartRange(o), keys = o.live ? ["live", "1d", "1w", "all"] : ["1d", "1w", "1m", "all"];
     const btn = (k) => `<button type="button" class="${k === r ? "on" : ""}" data-grange="${k}">${k === "live" ? "LIVE" : k.toUpperCase()}</button>`;
