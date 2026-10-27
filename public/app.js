@@ -1330,10 +1330,50 @@ function renderLabList() {
 // 10/17 (owner): the NFL logo photo behind every NFL page but home (home keeps the Raiders photo); a game page keeps its team colours
 function linesBg() { const on = (id) => { const p = $(id); return !!(p && p.classList.contains("on")); };
   document.documentElement.classList.toggle("lines-on", !on("panel-home") && !(on("panel-lines") && DETAIL)); }
+// GAME PAGE TABS (10/27, owner's Polymarket screenshots: "make our cards look like this where it has all of the sub tabs on 1 page ... catered to our designs"; design = both sports):
+// under the game card, three tab words -- GAME LINES · PLAYER PROPS · PARLAYS -- and on Player Props the prop kinds as plain-text sub tabs (no pills, accent underline).
+// Game Lines = the spread & ML and totals cards as before; Player Props = THIS game's rows in the props-page look; Parlays = the same-game parlays. The choice is kept per phone.
+const lsGet = (k, d) => { try { return localStorage.getItem(k) || d; } catch { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+const GTABS = [["lines", "Game Lines"], ["props", "Player Props"], ["parlays", "Parlays"]];
+let GTAB = lsGet("gTab", "lines"), GPROP = lsGet("gProp:nfl", "td");
+if (!GTABS.some(([k]) => k === GTAB)) GTAB = "lines";
+if (!PROP_TABS.some(([k]) => k === GPROP)) GPROP = "td";
+const gameTabs = () => `<div class="gtabs">${GTABS.map(([k, t]) => `<button class="gtab${GTAB === k ? " on" : ""}" type="button" data-gtab="${k}">${t}</button>`).join("")}</div>`;
+const gameChips = () => `<div class="gchips">${PROP_TABS.map(([k, t]) => `<button class="gchip${GPROP === k ? " on" : ""}" type="button" data-gprop="${k}">${t}</button>`).join("")}</div>`;
+const gNone = (t) => `<div class="card" style="margin-top:10px"><div class="inner"><div class="s dim">${t}</div></div></div>`;
+let GPROPS = {}, GPROPS_LOADING = {};
+function loadGameProps(week) {
+  if (GPROPS_LOADING[week]) return; GPROPS_LOADING[week] = true;
+  fetch(`/api/props?week=${week}`, { cache: "no-store" }).then((r) => r.json()).then((d) => { if (d && d.ok) GPROPS[week] = { d, t: Date.now() }; })
+    .catch(() => {}).finally(() => { GPROPS_LOADING[week] = false; if (DETAIL && GTAB === "props") refreshDetail(); });
+}
+function gamePropsBody(g) {
+  if (GPROP === "td") {
+    if (!TDW) loadTdWeeks().then((d) => { if (d && DETAIL === g.key && GTAB === "props") refreshDetail(); });
+    const rows = (g.td || []).filter((r) => r.fair != null && usable(r)).sort((a, b) => b.fair - a.fair);
+    const per = {}, pool = rows.filter((r) => { const n = per[r.team] || 0; if (n >= TD_POOL) return false; per[r.team] = n + 1; return true; });
+    const part = (t) => { const rs = pool.filter((r) => r.team === t); return rs.length ? `<div class="pbl pteam">${esc(t)}</div>${rs.map((r) => tdRow({ r, g })).join("")}` : ""; };
+    return pool.length ? `<div class="pgrid tdl" style="margin-top:6px"><div class="par">${tdHead()}${part(g.away)}${part(g.home)}</div></div>` : gNone("No touchdown chances for this game yet.");
+  }
+  if (GPROP === "first") {
+    const rows = (g.td || []).filter((r) => r.first != null && usable(r) && !/^(out|doubtful)$/i.test(r.injury || "")).sort((a, b) => b.first - a.first);
+    const picks = [g.away, g.home].flatMap((t) => rows.filter((r) => r.team === t).slice(0, 3)).map((r) => ({ name: r.player, team: r.team, chance: r.first / 100, price: r.firstPrice ?? null, first: true }));
+    return picks.length ? `<div class="pgrid" style="margin-top:6px"><div class="par">${propHead(true)}${teamRows({ away: g.away, home: g.home, picks }, propRow)}</div></div>` : gNone("No first-touchdown chances for this game yet.");
+  }
+  const wk = Number(g.week || (S && S.week)), c = GPROPS[wk];
+  if (!c || Date.now() - c.t > 5 * 60e3) loadGameProps(wk);
+  if (!c) return gNone("Loading…");
+  const pg = (c.d.games || []).find((x) => x.game === g.key), stat = PROP_STAT[GPROP] || "rec_yds", picks = pg ? (pg.picks || []).filter((p) => p.stat === stat) : [];
+  return picks.length ? `<div class="pgrid" style="margin-top:6px"><div class="par">${propHead(false)}${teamRows({ away: g.away, home: g.home, picks }, propRow)}</div></div>` : gNone("None for this game.");
+}
+function gameParlaysBody(g) { const b = sgpBox(g); return b ? b.replace('<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAYS</div>', "") : gNone(g.started || g.final ? "Same-game parlays close at kickoff; they are on Model bets with their results." : "No same-game parlay for this game."); }
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = ""; linesBg();
   document.body.classList.add("game-on");   // 10/18 (owner): on a game page the game card IS the header -- the NEXT GAME strip is hidden, ← Games sits under the card
-  $("detail").innerHTML = `${detailTop(g)}<button class="back" id="back-btn">← Games</button>${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : ""}${gameCard(g, "x")}${totalCard(g, "x")}${sgpBox(g)}`;
+  const early = g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : "";
+  const body = GTAB === "props" ? gameChips() + gamePropsBody(g) : GTAB === "parlays" ? gameParlaysBody(g) : `${early}${gameCard(g, "x")}${totalCard(g, "x")}`;
+  $("detail").innerHTML = `${detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs()}${body}`;
   $("back-btn").onclick = closeGame;
   if (g.final) ensureGrades();
   setBg($("panel-lines").classList.contains("on") ? g : null);   // 10/14 fix: the background redraw ran while another tab was showing (SEA/DEN logos on Models)
@@ -1514,6 +1554,8 @@ $("al-read").onclick = () => { ALPREV = ALERTS.length ? ALERTS[0].t : ""; render
 document.addEventListener("click", (e) => {
   const d = e.target.closest("[data-drop]"); if (d) { const el = $(d.dataset.drop); if (el) { el.classList.toggle("open"); if (d.dataset.drop === "bestlist") { BEST_OPEN = el.classList.contains("open"); try { localStorage.setItem("bestOpen", BEST_OPEN ? "1" : "0"); } catch {} }
       if (d.dataset.drop === "gamebest") { GAMEBEST_OPEN = el.classList.contains("open"); try { localStorage.setItem("gameBestOpen", GAMEBEST_OPEN ? "1" : "0"); } catch {} } } return; }
+  const gtb = e.target.closest("[data-gtab]"); if (gtb) { GTAB = gtb.dataset.gtab; lsSet("gTab", GTAB); refreshDetail(); return; }   // 10/27: game page tabs
+  const gpr = e.target.closest("[data-gprop]"); if (gpr) { GPROP = gpr.dataset.gprop; lsSet("gProp:nfl", GPROP); refreshDetail(); return; }
   const gt = e.target.closest("[data-game]"); if (gt) { if (!$("panel-lines").classList.contains("on")) { history.replaceState(null, "", "#lines"); showPanel("lines"); } openGame(gt.dataset.game); return; }
   const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k) { history.replaceState(null, "", "#lines"); showPanel("lines"); openGame(k); } return; }
   const nb = e.target.closest("[data-nbagame]"); if (nb) { location.replace("/nba/index.html#game=" + encodeURIComponent(nb.dataset.nbagame)); return; }   // 10/18 night: no history entry, so a swipe cannot "go back"
