@@ -959,7 +959,7 @@ function renderLab() {
     ["BEST BETS", [["best_2", "Top 2 picks"], ["best_3", "Top 3 picks"]]],
     ["TOUCHDOWNS", [["td_likely_2", "2 likeliest scorers"], ["td_likely_3", "3 likeliest scorers"]]],
     ["PLAYER PROPS", [["pp6", "6 legs"], ["pp8", "8 legs"], ["pp10", "10 legs"]]]];   // 10/19: 3 legs at most (the 4-leg rows are gone; their saved records stay)
-  const TESTED = { sgp_best_fill: 49.5, sgp_3: 30.2, sgp_upset: 25.1, td_likely_2: 46.7, td_likely_3: 32.2 };   // research (CLAUDE.md); same-game rates = the 10/19 filters, 2019-25; TD pair / triple = walk-forward TD model 2021-25, 90 weeks (10/20)
+  const TESTED = { sgp_best_fill: 49.5, sgp_3: 31.4, sgp_upset: 25.1, td_likely_2: 48.1, td_likely_3: 33.8 };   // research (CLAUDE.md); same-game rates = the 10/19 filters with the 10/26 55% scorer bar, 2019-25; TD pair / triple = walk-forward TD model 2021-25 with the 55% bar (79 / 68 weeks); Upset = history only (not built since 10/26)
   const hist = (k) => (TESTED[k] != null ? `${TESTED[k]}%` : "—");
   const now = (k) => { const b = board[k]; if (!b || !b.decided) return '<span class="dim">waiting</span>'; const l = b.decided - b.hits;
     return `${b.hits}–${l} · ${Math.round((b.hits / b.decided) * 100)}%${b.money != null ? ` <span class="${b.money >= 0 ? "g" : "r"}">${b.money >= 0 ? "+" : "−"}$${Math.abs(Math.round(b.money))}</span>` : ""}`; };
@@ -1187,14 +1187,14 @@ function pBlock(title, p, showGame) {
 }
 function sgpBox(g) {
   const x = g.sgp; if (!x || g.started || g.final) return "";
-  const blocks = [["2 legs", x.best], ["3 legs", x.three], ["Upset", x.upset], ["Spread + total", x.st]].map(([t, p]) => pBlock(esc(t), p, false)).join("");
+  const blocks = [["2 legs", x.best], ["3 legs", x.three], ["Spread + total", x.st]].map(([t, p]) => pBlock(esc(t), p, false)).join("");   // 10/26 night: no Upset
   return blocks ? `<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAYS</div><div class="pgrid" style="margin-top:6px">${blocks}</div>` : "";
 }
 // Model bets: the parlay types are menu sub tabs (Over/Under, Best Legs, 3 Leg, 2 Leg, Upset; 10/19: 3 legs at most, the 4-leg tabs are gone), the week a drop-down;
 // each shows only its parlays, one column, in kickoff order. The current week comes from the live slate (results from the saved copies once a game starts); past weeks from /api/modelbets.
 const FOUR_NAMES = { best_2: "2 best green picks", best_3: "3 best green picks", td_likely_2: "2 most likely TD scorers", td_likely_3: "3 most likely TD scorers", pp6: "Player props · 6 legs", pp8: "Player props · 8 legs", pp10: "Player props · 10 legs" };
 // 10/17 (owner): Over/Under first, then the parlays in this order and with these names
-const LAB_TABS = [["best", "Best Legs"], ["3", "3 Leg"], ["2", "2 Leg"], ["upset", "Upset"], ["pp6", "6 Leg"], ["pp8", "8 Leg"], ["pp10", "10 Leg"]];   // 10/21 night: + Player props parlays 6 / 8 / 10 legs   // 10/20 night (owner): Over/Under and Spread + Total tabs removed ("not needed"); the Spread + Total parlays are still saved and graded   // 10/17 parlay lab: Upset; 10/19 (owner: "three max ... cut all the four legs"): 4 Leg, 4 Leg (My Style), Different Game Parlays gone
+const LAB_TABS = [["best", "Best Legs"], ["3", "3 Leg"], ["2", "2 Leg"], ["pp6", "6 Leg"], ["pp8", "8 Leg"], ["pp10", "10 Leg"]];   // 10/26 night (owner): the Upset tab is gone (1 of 16 live; old rows stay on the scoreboard)   // 10/21 night: + Player props parlays 6 / 8 / 10 legs   // 10/20 night (owner): Over/Under and Spread + Total tabs removed ("not needed"); the Spread + Total parlays are still saved and graded   // 10/17 parlay lab: Upset; 10/19 (owner: "three max ... cut all the four legs"): 4 Leg, 4 Leg (My Style), Different Game Parlays gone
 let MODELBETS = null, LABTYPE = "best", LABWEEK = null;
 // 10/15 (owner): ONE Bets tab -- My bets on the left (the list as before), Model bets on the right (the model's parlays). The choice is remembered.
 let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
@@ -1292,7 +1292,7 @@ function labParlays(week, type) {
   if (type === "ou") return S && Number(week) === Number(S.week) ? ((S && S.games) || []).map((g) => ({ p: { legs: ouLegs(g) }, game: g.key, kick: g.kickoff, title: gameLogos(g.key), ou: true })).filter((x) => x.p.legs.length) : [];
   const rec = (MODELBETS && MODELBETS.weeks && MODELBETS.weeks[week] && MODELBETS.weeks[week][type]) || [];
   if (!(S && Number(week) === Number(S.week))) return rec.map((p) => ({ p, game: p.game, kick: p.kickoff, title: p.game ? gameLogos(p.game) : esc(FOUR_NAMES[p.strategy] || p.strategy), across: !p.game }));
-  const pick = { 2: (g) => g.sgp.best, 3: (g) => g.sgp.three, upset: (g) => g.sgp.upset, st: (g) => g.sgp.st };
+  const pick = { 2: (g) => g.sgp.best, 3: (g) => g.sgp.three, st: (g) => g.sgp.st };
   if (/^pp\d+$/.test(type)) {   // Player props parlays (10/21 night): the week's saved copy once it exists (the one graded), the live build before that
     const saved = MODELBETS && Array.isArray(MODELBETS.saved) && MODELBETS.saved.includes(Number(week));
     return (saved ? rec : ((S && S.propParlays) || []).filter((p) => p && p.strategy === type && Array.isArray(p.legs))).map((p) => ({ p, game: null, kick: null, title: esc(FOUR_NAMES[p.strategy] || p.strategy), across: true })); }
