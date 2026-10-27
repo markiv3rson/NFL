@@ -9,24 +9,26 @@
 /* 10/27 (owner, Polymarket's web bar: "make the header page something like this, but only our title and bell" / "remove the SLATEZZ header on every
    page and only keep it on the home tab"): a slim plain dark bar, SLATEZZ at the left, the bell at the right, on Home only (not on a game page); every
    other page starts right under the phone's clock. */
-:root { --tbh:0px; } body.tbar-on:not(.game-on) { --tbh:56px; }
+:root { --tbh:0px; --stop:calc(env(safe-area-inset-top,0px) + 20px); } body.tbar-on:not(.game-on) { --tbh:56px; }   /* --stop: the phone's clock + a solid 20 px strip under it (owner 10/27: "lower the header ... see it in a clear view") */
 .tbar { position:fixed; left:0; right:0; top:0; z-index:120; display:none; align-items:center; justify-content:space-between; gap:8px; box-sizing:border-box;
-  height:calc(env(safe-area-inset-top,0px) + var(--tbh)); padding:env(safe-area-inset-top,0px) max(10px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px));
+  height:calc(var(--stop) + var(--tbh)); padding:var(--stop) max(10px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px));
   background:#0b0b10; border-bottom:1px solid rgba(255,255,255,.07); }
 body.tbar-on:not(.game-on) .tbar { display:flex; }
 .slatelogo { flex:none; font-family:"Bowlby One","Arial Black",Impact,sans-serif; font-size:26px; font-weight:400; font-style:normal; letter-spacing:.02em; line-height:1; white-space:nowrap; padding-right:.08em; text-decoration:none; }
 .slatelogo.sgrad { background:linear-gradient(90deg,#ec3f9a 0%,#f0805a 52%,#f6c560 100%); -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent; -webkit-text-stroke:0; }   /* 10/21 night (owner: the GTA logo's background colors across SLATEZZ): pink -> orange -> yellow */
-.tib { position:relative; flex:none; width:46px; height:46px; display:flex; align-items:center; justify-content:center; color:#fff; text-decoration:none; }
+.tib { position:relative; flex:none; width:40px; height:46px; display:flex; align-items:center; justify-content:center; color:#fff; text-decoration:none; }
 .tib.on { color:#ff5fa2; }
+.tright { display:flex; align-items:center; gap:0; flex:none; margin-left:auto; }
+/* 10/27 (owner): the NFL | NBA switch sits in the top bar right after SLATEZZ; Home has no row under the bar any more */
+.tbar .tlg { display:flex; align-items:center; gap:4px; margin-left:10px; flex:none; }
+.tbar .lgt { min-width:40px; gap:1px; font-size:10px; }
+.tbar .lgt i { width:30px; height:30px; border-radius:9px; } .tbar .lgt img { width:22px; height:22px; }
+#panel-lines > .phead { display:none !important; }
 .tcnt { position:absolute; top:4px; right:2px; font-size:12px; font-weight:800; color:#fff; display:none; }   /* the unread number, plain text (10/18: no filled circles) */
-/* the refresh: just the red outline of the icon, no circle (owner 10/21 night), centered over "Model Refresh: <time>" at the right of the page header;
-   only on Lines, Player props and Model bets (body.ref-on) */
-.prefbox { display:none; flex:none; flex-direction:column; align-items:center; justify-content:center; gap:0; }   /* right after the title on its line: the icon centered over the time; title + icon centered together */
-body.ref-on .phead .prefbox { display:flex; }
 /* 10/21 night (owner: "make everything 1 row except for the header"): under the title ONE row -- My bets | Model bets, the drop-downs, the refresh at the right */
 body.bnav-on .phead { align-items:center; justify-content:center; }   /* the row under the title is centered too (owner 10/21 night: "center the sub tabs") */
-.mref { width:40px; height:34px; display:flex; align-items:center; justify-content:center; padding:0; border:0; background:none; color:#ff5fa2; cursor:pointer; }
-.phead .mref svg { display:block; }   /* (both index.html hide header icons: .phead svg) */
+.mref { width:38px; height:46px; display:flex; align-items:center; justify-content:center; padding:0; border:0; background:none; color:#fff; cursor:pointer; }   /* white, in the top bar next to the bell (owner 10/27) */
+.mref svg { display:block; }
 .mref.spin svg { animation:mspin .8s linear infinite; } @keyframes mspin { to { transform:rotate(360deg); } }
 .mref:disabled { opacity:.75; }
 .bnav { position:fixed; left:0; right:0; bottom:0; z-index:120; display:flex; align-items:flex-end; justify-content:space-around; box-sizing:border-box;
@@ -42,7 +44,7 @@ body.bnav-on .wrap { padding-top:calc(var(--tbh) + 8px); padding-bottom:calc(env
 body.bnav-on .toast { bottom:calc(env(safe-area-inset-bottom,0px) + var(--bnh) + 14px); z-index:130; }
 /* 10/22 (owner: "it stays at the top and I can just scroll up and down ... the blurriness in the back"): every page title is pinned under the top
    bar on a see-through blurred band; its drop-downs sit on the right (Shell.dd) and Bets carries My bets | Model bets under it */
-body.bnav-on .phead { position:sticky; top:calc(env(safe-area-inset-top,0px) + var(--tbh)); z-index:60; margin:-8px -12px -10px; padding:8px 14px 30px;
+body.bnav-on .phead { position:sticky; top:calc(var(--stop) + var(--tbh)); z-index:60; margin:-8px -12px -10px; padding:8px 14px 30px;
   background:linear-gradient(to bottom,#0b0b10 0,#0b0b10 calc(100% - 30px),rgba(11,11,16,0) 100%); border-bottom:0; pointer-events:none; }
 body.bnav-on .phead > * { pointer-events:auto; }   /* the fade at the bottom never blocks a tap on the card under it */   /* 10/21 night (owner: sketch A solid, then "the tab headers should still have a fade below it not straight line bar"): solid behind the title and its row, then a 30 px fade into the page, no line */
 @media (min-width:1100px) { body.bnav-on .phead { margin-left:-28px; margin-right:-28px; padding-left:30px; padding-right:30px; } }
@@ -60,7 +62,7 @@ body.bnav-on .phead .pt b { font-family:"Passion One","Arial Narrow",Impact,sans
 #upd-record, #upd-models { display:none !important; }
 @media (max-width:599px) { body.bnav-on .phead .ptab { display:none; } body.bnav-on .phead .pt b { white-space:nowrap; } }   /* a phone: the open tab is named in the sub-tab bar, the title keeps the section's name on one line and never shrinks under its drop-downs: they wrap to a row of their own, still on the right */
 /* a game page: the team card is the pinned header */
-body.bnav-on.game-on #detail .dtop { position:sticky; top:calc(env(safe-area-inset-top,0px) + var(--tbh) + 4px); z-index:60; background-color:#0b0b10 !important; }   /* solid under the team colours (same rule as the titles) */
+body.bnav-on.game-on #detail .dtop { position:sticky; top:calc(var(--stop) + var(--tbh) + 4px); z-index:60; background-color:#0b0b10 !important; }   /* solid under the team colours (same rule as the titles) */
 
 
 /* 10/18 (owner: "make the words smaller for the live"): the LIVE · quarter clock on My bets, both sports */

@@ -23,10 +23,10 @@
   button, .tile, .tdr, .al { touch-action:manipulation; -webkit-touch-callout:none; }
   button { -webkit-appearance:none; appearance:none; }
   html, body { margin:0; padding:0; color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
-  body { padding-top:env(safe-area-inset-top,0px); }
+  body { padding-top:var(--stop,env(safe-area-inset-top,0px)); }
   /* 10/14 (owner screenshot: the clock / battery were drawn over the game header): content scrolls UNDER the translucent iPhone status bar, so a
      solid-ish strip the height of the status bar sits above everything (0 tall on a desktop / non-notch screen) */
-  body::before { content:""; position:fixed; top:0; left:0; right:0; height:env(safe-area-inset-top,0px); background:linear-gradient(to bottom,rgba(8,9,14,.97),rgba(8,9,14,.9)); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); z-index:90; pointer-events:none; }   /* 10/13: once only (it was on html AND body = double gap); the bottom bar has its own */
+  body::before { content:""; position:fixed; top:0; left:0; right:0; height:var(--stop,env(safe-area-inset-top,0px)); background:#0b0b10; z-index:90; pointer-events:none; }   /* 10/13: once only (it was on html AND body = double gap); the bottom bar has its own */
   html { background:linear-gradient(160deg,#1e2025 0%,#121418 50%,#08090b 100%) fixed #08090b; }
   body { background:transparent; min-height:100vh; }
   .wrap { position:relative; z-index:0; max-width:980px; margin:0 auto; padding:14px max(12px,env(safe-area-inset-right)) 96px max(12px,env(safe-area-inset-left)); }   /* 10/17: no tab bar -> less room needed at the bottom */
