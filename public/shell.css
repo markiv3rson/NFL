@@ -1,31 +1,20 @@
-/* SLATEZZ shell (10/17, owner; 10/22: pinned top bar + bottom bar, the side menu is gone), the home screen lists. Used by /index.html (NFL + home)
+/* SLATEZZ shell (10/17, owner; 10/22: pinned top bar + bottom bar, the side menu is gone; 10/27: Home · Bets · Model). Used by /index.html (NFL)
    and /nba/index.html. */
-.shead { position:relative; display:flex; align-items:center; gap:12px; padding:4px 4px 14px; margin-bottom:6px; }
 :root { --ggrad:linear-gradient(90deg,#ffb27d,#ff5fa2 55%,#a67cff); --accent:#ff5fa2; }   /* 10/21 night (owner: the GTA VI sunset art = the app's colors, but the cards and backgrounds stay black): peach -> pink -> violet on lines and accents only */   /* 10/21 (owner: "the slatezz should just be gradient red to dark red ... and everywhere else in the app that has red to green"): red -> dark red */
    /* 10/18 night (owner): plain red -> green like the bull / bear picture (owner: "just red and green", no white), no glow, no filled circles; purple only on MODEL ANALYSIS */
-.shead::after { content:""; position:absolute; left:0; right:0; bottom:0; height:1px; background:var(--ggrad); opacity:.75; }
 .sgrad { background:var(--ggrad); -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent; }
-.shome { flex:1 1 auto; min-width:0; text-align:center; font-size:clamp(40px,15vw,60px); font-weight:900; font-style:italic; letter-spacing:.01em; line-height:1; white-space:nowrap; -webkit-text-stroke:.8px rgba(255,255,255,.55); }
-.shome span { display:inline-block; padding-right:.08em; }
-body.home-on { background:transparent !important; } html.home-on { background:#000 !important; }
-/* 10/17 (owner): the Raiders photo behind the home screen; the NFL / NBA lists are see-through so it shows under them */
-html.home-on::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
-  background:linear-gradient(180deg,rgba(0,0,0,.30),rgba(0,0,0,.50) 60%,rgba(0,0,0,.70)),url(/home-bg.jpg?v=3) center/cover no-repeat,#000; }
-html.home-on .tile { background:rgba(8,8,12,.55); border-color:rgba(255,255,255,.28); box-shadow:none; }   /* 10/18 night (owner): the home tiles look like the Game Lines tiles */
 
 /* 10/22 (owner, option K + Home): the side menu is gone -- a pinned top bar, a bottom bar and (on Player props / Model bets) a sub-tab bar above it. Both sports. */
-:root { --tbh:98px; --bnh:64px; --sbh:46px; --hmh:58px; }
-.tbar { position:fixed; left:0; right:0; top:0; z-index:120; display:flex; align-items:center; justify-content:space-between; gap:8px; box-sizing:border-box;
-  height:calc(env(safe-area-inset-top,0px) + var(--tbh)); padding:calc(env(safe-area-inset-top,0px) + 24px) max(10px,env(safe-area-inset-right,0px)) 0 max(14px,env(safe-area-inset-left,0px));
-  background:rgba(8,8,12,.78); -webkit-backdrop-filter:blur(18px) saturate(1.3); backdrop-filter:blur(18px) saturate(1.3); border-bottom:0; }
-/* 10/21 night (owner): the GTA VI photo strip behind the top bar, see-through like the team logos on the game tiles */
-.tbar { isolation:isolate; overflow:hidden; }
-.tbar::after { content:""; position:absolute; left:0; right:0; bottom:0; height:2px; background:var(--ggrad); pointer-events:none; }   /* GTA colors as a line, not on the cards */
-.tbar::before { content:""; position:absolute; left:0; right:0; bottom:0; top:calc(env(safe-area-inset-top,0px) + 24px); z-index:-1; background:url(/hdr-bg.jpg?v=1) center 22%/cover no-repeat; opacity:.62; filter:contrast(1.08) saturate(1.1); pointer-events:none; }   /* 10/21 night (owner, A): the photo starts BELOW the phone's clock / battery, faces behind SLATEZZ; 10/22 (owner: "add the black bar more lower so our title sits more lower"): the black strip under the clock is 24 px (was 8), the bar 98 px, SLATEZZ 16 px lower */
-.tbar { background:#0b0b10 !important; -webkit-backdrop-filter:none !important; backdrop-filter:none !important; }   /* 10/21 night (owner: "the top is still blurred ... just add a black bar at the top"): solid black, nothing from the page shows through */
-/* 10/21 night (owner: "make the SLATEZZ BIGGER I SAID. Make it fit" / "Make both headers fatter letters"): Archivo Black, as wide as the bar allows next to the bell */
-.slatelogo { flex:none; font-family:"Bowlby One","Arial Black",Impact,sans-serif; font-size:clamp(36px,calc((100vw - 84px) / 4.95),84px); font-weight:400; font-style:normal; letter-spacing:.02em; line-height:1; white-space:nowrap; padding-right:.08em; text-decoration:none; -webkit-text-stroke:1px #e4e4e8; }
-.tbar .slatelogo, .tbar .tib { position:relative; top:5px; }   /* 10/21 night (owner: "move it more down"): SLATEZZ and the bell sit lower in the photo band */
+:root { --bnh:66px; }
+/* 10/27 (owner, Polymarket's web bar: "make the header page something like this, but only our title and bell" / "remove the SLATEZZ header on every
+   page and only keep it on the home tab"): a slim plain dark bar, SLATEZZ at the left, the bell at the right, on Home only (not on a game page); every
+   other page starts right under the phone's clock. */
+:root { --tbh:0px; } body.tbar-on:not(.game-on) { --tbh:56px; }
+.tbar { position:fixed; left:0; right:0; top:0; z-index:120; display:none; align-items:center; justify-content:space-between; gap:8px; box-sizing:border-box;
+  height:calc(env(safe-area-inset-top,0px) + var(--tbh)); padding:env(safe-area-inset-top,0px) max(10px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px));
+  background:#0b0b10; border-bottom:1px solid rgba(255,255,255,.07); }
+body.tbar-on:not(.game-on) .tbar { display:flex; }
+.slatelogo { flex:none; font-family:"Bowlby One","Arial Black",Impact,sans-serif; font-size:26px; font-weight:400; font-style:normal; letter-spacing:.02em; line-height:1; white-space:nowrap; padding-right:.08em; text-decoration:none; }
 .slatelogo.sgrad { background:linear-gradient(90deg,#ec3f9a 0%,#f0805a 52%,#f6c560 100%); -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent; -webkit-text-stroke:0; }   /* 10/21 night (owner: the GTA logo's background colors across SLATEZZ): pink -> orange -> yellow */
 .tib { position:relative; flex:none; width:46px; height:46px; display:flex; align-items:center; justify-content:center; color:#fff; text-decoration:none; }
 .tib.on { color:#ff5fa2; }
@@ -38,15 +27,6 @@ body.ref-on .phead .prefbox { display:flex; }
 body.bnav-on .phead { align-items:center; justify-content:center; }   /* the row under the title is centered too (owner 10/21 night: "center the sub tabs") */
 .mref { width:40px; height:34px; display:flex; align-items:center; justify-content:center; padding:0; border:0; background:none; color:#ff5fa2; cursor:pointer; }
 .phead .mref svg { display:block; }   /* (both index.html hide header icons: .phead svg) */
-/* Home only (owner 10/21 night): Model analysis as one long see-through bar above the bottom bar, split NFL | NBA */
-.hmod { position:fixed; left:max(12px,env(safe-area-inset-left,0px)); right:max(12px,env(safe-area-inset-right,0px)); bottom:calc(env(safe-area-inset-bottom,0px) + var(--bnh) + 10px); z-index:119; height:var(--hmh); display:none;
-  border:1px solid rgba(255,255,255,.28); border-radius:16px; overflow:hidden; background:rgba(8,8,12,.55); -webkit-backdrop-filter:blur(18px) saturate(1.3); backdrop-filter:blur(18px) saturate(1.3); }
-body.home-on .hmod { display:flex; }
-.hmod a { flex:1 1 0; display:flex; align-items:center; justify-content:center; gap:10px; color:#fff; text-decoration:none; font-size:18px; font-weight:900; letter-spacing:.06em; }
-.hmod a + a { border-left:1px solid rgba(255,255,255,.2); }
-.hmod svg { color:#b58cff; }   /* purple: the model's things */
-body.bnav-on.home-on .wrap { padding-bottom:calc(env(safe-area-inset-bottom,0px) + var(--bnh) + var(--hmh) + 34px); }
-@media (min-width:600px) { .hmod { left:50%; right:auto; width:560px; transform:translateX(-50%); } }
 .mref.spin svg { animation:mspin .8s linear infinite; } @keyframes mspin { to { transform:rotate(360deg); } }
 .mref:disabled { opacity:.75; }
 .bnav { position:fixed; left:0; right:0; bottom:0; z-index:120; display:flex; align-items:flex-end; justify-content:space-around; box-sizing:border-box;
@@ -54,31 +34,12 @@ body.bnav-on.home-on .wrap { padding-bottom:calc(env(safe-area-inset-bottom,0px)
   background:rgba(8,8,12,.8); -webkit-backdrop-filter:blur(18px) saturate(1.3); backdrop-filter:blur(18px) saturate(1.3); border-top:2px solid transparent; border-image:var(--ggrad) 1; }
 .bi { flex:1 1 0; min-width:0; height:var(--bnh); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; color:#8d95a3; text-decoration:none; font-size:11px; font-weight:700; }
 .bi.on { color:#fff; } .bi.on svg { color:#ff5fa2; }
-.bsport { flex:0 0 auto; width:64px; height:64px; margin:0 4px 2px; padding:0; border:0; border-radius:50%; background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; }   /* 10/21 night (owner): just the ball, no ring, no words */
-.bsport img { display:block; width:100%; height:100%; object-fit:contain; pointer-events:none; }
-.bsport { position:relative; margin:0 18px 2px; overflow:visible; }
-.barr { position:absolute; top:50%; width:13px; height:22px; color:#fff; pointer-events:none; }
-.barr svg { display:block; width:100%; height:100%; }
-.barr.up { left:-15px; transform:translateY(-50%); }
-.barr.dn { right:-15px; transform:translateY(-50%) rotate(180deg); }
-.bsport.nfl .barr.up { left:-21px; } .bsport.nfl .barr.dn { right:-21px; }   /* the football is wider than its button */
-.bsport.nfl img { width:76px; max-width:none; height:76px; }   /* the football is wide and flat: drawn larger so it reads the same size as the basketball */
-.bsport:active img { transform:scale(.92); }
-.sbar { position:fixed; left:0; right:0; bottom:calc(env(safe-area-inset-bottom,0px) + var(--bnh)); z-index:119; display:none; justify-content:space-between; gap:14px; overflow-x:auto; scrollbar-width:none; box-sizing:border-box;
-  height:var(--sbh); padding:0 max(12px,env(safe-area-inset-right,0px)) 0 max(12px,env(safe-area-inset-left,0px));
-  background:rgba(8,8,12,.72); -webkit-backdrop-filter:blur(18px) saturate(1.3); backdrop-filter:blur(18px) saturate(1.3); border-top:1px solid rgba(255,255,255,.1); }
-.sbar::-webkit-scrollbar { display:none; }
-body.sbar-on .sbar { display:flex; }
-.si { flex:none; display:flex; align-items:center; height:100%; padding:0 2px; box-sizing:border-box; border-top:3px solid transparent; color:#8d95a3; text-decoration:none; font-size:13px; font-weight:800; white-space:nowrap; }
-.si.on { color:#fff; border-top-color:#ff5fa2; }
-/* 10/22: a game name in a card head never breaks across lines; the sub-tab row fits a phone (7 tabs: "10 Leg" / "Blocks" were cut at the right edge) */
+/* 10/22: a game name in a card head never breaks across lines */
 .gl { display:inline-flex; align-items:center; gap:4px; white-space:nowrap; }
-@media (max-width:440px) { .sbar { gap:9px; padding:0 8px; } .si { font-size:12px; } }
-@media (min-width:600px) { .sbar { justify-content:center; gap:26px; } .si { font-size:14px; } .bnav { justify-content:center; gap:28px; } .bi { flex:0 0 84px; } }
-/* room for the bars: the page starts under the top bar and ends above the bottom bar(s) */
+@media (min-width:600px) { .bnav { gap:12px; } }
+/* room for the bars: the page starts under the top bar and ends above the bottom bar */
 body.bnav-on .wrap { padding-top:calc(var(--tbh) + 8px); padding-bottom:calc(env(safe-area-inset-bottom,0px) + var(--bnh) + 28px); }
-body.bnav-on.sbar-on .wrap { padding-bottom:calc(env(safe-area-inset-bottom,0px) + var(--bnh) + var(--sbh) + 28px); }
-body.bnav-on .toast { bottom:calc(env(safe-area-inset-bottom,0px) + var(--bnh) + var(--sbh) + 14px); z-index:130; }
+body.bnav-on .toast { bottom:calc(env(safe-area-inset-bottom,0px) + var(--bnh) + 14px); z-index:130; }
 /* 10/22 (owner: "it stays at the top and I can just scroll up and down ... the blurriness in the back"): every page title is pinned under the top
    bar on a see-through blurred band; its drop-downs sit on the right (Shell.dd) and Bets carries My bets | Model bets under it */
 body.bnav-on .phead { position:sticky; top:calc(env(safe-area-inset-top,0px) + var(--tbh)); z-index:60; margin:-8px -12px -10px; padding:8px 14px 30px;
@@ -101,28 +62,9 @@ body.bnav-on .phead .pt b { font-family:"Passion One","Arial Narrow",Impact,sans
 /* a game page: the team card is the pinned header */
 body.bnav-on.game-on #detail .dtop { position:sticky; top:calc(env(safe-area-inset-top,0px) + var(--tbh) + 4px); z-index:60; background-color:#0b0b10 !important; }   /* solid under the team colours (same rule as the titles) */
 
-@media (min-width:1100px) { #home { max-width:760px; margin:0 auto; } }   /* a computer: the lists stay readable instead of spanning the whole screen */
-/* home: NFL / NBA live lists (sketch "Home, games live") */
-.hsec { margin-top:6px; }
-/* 10/18 night (owner): "NFL NEXT GAME" + a flipping clock as the header above each sport's tiles; the same look as the Game Lines slot headers */
-.hsh2 { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin:22px 2px 2px; font-size:22px; font-weight:900; letter-spacing:.07em; color:#fff; white-space:nowrap; text-shadow:0 1px 2px rgba(0,0,0,.95),0 -1px 1px rgba(0,0,0,.6); }
-.hsh2 .fclk { display:inline-flex; align-items:center; font-family:"Share Tech Mono",ui-monospace,Menlo,monospace; font-weight:400; font-size:26px; letter-spacing:.04em; font-variant-numeric:tabular-nums; text-shadow:none; }
-/* 10/18 night (owner, sketch G): plain monospace digits, no tiles; ONE red -> green run across the whole clock (each digit shows its slice of the
-   same gradient -- homeClocks sizes background-size / background-position per digit), and only the digit that changes flips */
-.hsh2 .fclk span, .hsh2 .fclk em { display:inline-block; min-width:.6em; text-align:center; font-style:normal; background:var(--ggrad); background-repeat:no-repeat; -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent; }
-.hsh2 .fclk span.d { margin-right:.4em; }
-.hsh2 .fclk span.flip { animation:hflip .4s ease; } @keyframes hflip { 0% { transform:rotateX(0); } 50% { transform:rotateX(90deg); } 100% { transform:rotateX(0); } }
-.hsh2 .lv { display:flex; align-items:center; gap:8px; color:#ff6b6b; } .hsh2 .lv i { width:8px; height:8px; border-radius:50%; background:#ff6b6b; display:inline-block; }
-.hsec .tiles.stack { margin-top:8px; }
-.hempty { padding:14px 2px; font-size:13px; color:#8d95a3; }
-@media (max-width:500px) { .hsh2 { font-size:19px; } .hsh2 .fclk { font-size:22px; } }
-@media (prefers-reduced-motion: reduce) { .hsh2 .fclk span.flip { animation:none; } }
 
 /* 10/18 (owner: "make the words smaller for the live"): the LIVE · quarter clock on My bets, both sports */
 #record-mine .lvb { font-size:11px; font-weight:700; letter-spacing:.03em; white-space:nowrap; }
-/* 10/20 night (owner: "why is this not showing the full background too?"): on a computer the whole home picture fits the screen at its own proportions */
-@media (min-width:1100px) { html.home-on body { background:transparent; } html.home-on::before { z-index:-2; filter:blur(34px) brightness(.55); transform:scale(1.12); }
-  html.home-on::after { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; background:linear-gradient(180deg,rgba(0,0,0,.30),rgba(0,0,0,.50) 60%,rgba(0,0,0,.70)),url(/home-bg.jpg?v=3) center/contain no-repeat; } }   /* the whole picture at its own proportions, the same picture blurred behind it fills the screen */
 
 /* 10/22 (owner): ONE ⓘ per model section (game card MODEL header, Models Card picks / Shadow trackers); a tap opens a short box under it.
    Model lines on the cards: the label ("Model:", "PICK:" ...) white, the number keeps its color. Both sports. */
@@ -167,13 +109,10 @@ body #models .tgame { margin-top:8px !important; font-size:12px; font-weight:800
 /* 10/21 night (owner: "Make these font just like the header and title. Bold. And the same font", both sports): every section header -- the time-slot /
    day headers, Best TD picks, the home "NFL NEXT GAME" / "● NBA · LIVE NOW" lines -- in the page titles' Passion One, bold, a bit bigger (it is narrow);
    the small kickoff times beside them and the home clock keep their own fonts */
-body .labslot, body .hsh2 > span { font-family:"Passion One","Arial Narrow",Impact,sans-serif !important; font-weight:700 !important; letter-spacing:.04em !important; font-size:27px !important; }
+body .labslot { font-family:"Passion One","Arial Narrow",Impact,sans-serif !important; font-weight:700 !important; letter-spacing:.04em !important; font-size:27px !important; }
 body .labslot .lst { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif !important; font-size:12.5px !important; font-weight:600 !important; letter-spacing:0 !important; }
-@media (max-width:500px) { body .labslot, body .hsh2 > span { font-size:24px !important; } body .labslot .lst { font-size:11px !important; } }
-/* 10/21 night (owner: "Center this ... make it consistent", both sports): a lone ticket (NBA's BEST BETS) centered at the width it has beside a second
-   one; "None yet." centered */
-.jrow:has(> .ticket:only-child) { display:flex; justify-content:center; }
-.jrow > .ticket:only-child { flex:0 1 calc((100% - 10px) / 2); }
+@media (max-width:500px) { body .labslot { font-size:24px !important; } body .labslot .lst { font-size:11px !important; } }
+/* 10/21 night (owner: "Center this ... make it consistent", both sports): "None yet." centered */
 .s.empty { text-align:center; }
 
 /* 10/22 (owner: "make this into a table format", both sports): parlay blocks are tables -- LEG | MODEL | POLYMARKET, each value centered under its head */
@@ -206,9 +145,7 @@ body .labslot .lst { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Hel
   .tbar { padding-left:max(14px,calc(50% - 502px)); padding-right:max(10px,calc(50% - 502px)); }   /* SLATEZZ and the bell line up with the column's edges */
   html body.bnav-on .wrap, html body .wrap { max-width:1060px; margin:0 auto; padding-left:28px; padding-right:28px; }
   body .tiles.stack { grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:12px; }   /* Game Lines: two games a row */
-  body #home .tiles.stack { grid-template-columns:1fr !important; }
-  html.lines-on body::after, html.home-on::after { --sw:calc(100vh * .474 / var(--z,1)); -webkit-mask:linear-gradient(90deg,transparent,#000 20%,#000 80%,transparent) center / var(--sw) 100% no-repeat; mask:linear-gradient(90deg,transparent,#000 20%,#000 80%,transparent) center / var(--sw) 100% no-repeat; }   /* the mask is the strip's own width (picture 1146 x 2418; vh is not zoomed, so divide by the zoom) */
-  html.home-on::after { --sw:calc(100vh * .5625); }   /* home picture 432 x 768 */
+  html.lines-on body::after { --sw:calc(100vh * .474 / var(--z,1)); -webkit-mask:linear-gradient(90deg,transparent,#000 20%,#000 80%,transparent) center / var(--sw) 100% no-repeat; mask:linear-gradient(90deg,transparent,#000 20%,#000 80%,transparent) center / var(--sw) 100% no-repeat; }   /* the mask is the strip's own width (picture 1146 x 2418; vh is not zoomed, so divide by the zoom) */
   html, body { overflow-x:clip; }
   body.bnav-on .phead { background:none; }
   body.bnav-on .phead::before { content:""; position:absolute; top:0; bottom:0; left:-100vmax; right:-100vmax; z-index:-1; pointer-events:none; background:linear-gradient(to bottom,#0b0b10 0,#0b0b10 calc(100% - 30px),rgba(11,11,16,0) 100%); }   /* the title band runs the full screen width, not a box over the column */
@@ -240,3 +177,82 @@ body .labslot .lst { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Hel
 .ibox .wm { display:inline-block; width:13px; font-weight:900; color:rgba(255,255,255,.45); }
 .ibox .wm.wf { color:var(--green); } .ibox .wm.wa { color:var(--red); }
 .ibox .wsep { border-top:1px solid rgba(255,255,255,.18); margin:3px 0; }
+/* GAME PAGE TABS (10/27, owner's Polymarket screenshots; both sports): GAME LINES · PLAYER PROPS · PARLAYS under the game card in the page titles' Passion One,
+   the open one white with the accent line under it, the rest gray; the prop kinds below as plain words (no pills), the open one white + accent line; both rows scroll sideways if they do not fit */
+.gtabs { display:flex; gap:clamp(8px,2.2vw,22px); margin:10px 2px 2px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+.gtabs::-webkit-scrollbar, .gchips::-webkit-scrollbar { display:none; }
+.gtab { flex:none; background:none; border:0; padding:2px 0 5px; cursor:pointer; font-family:"Passion One","Arial Narrow",Impact,sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:.02em; font-size:clamp(11px,3.2vw,30px); line-height:1.05; color:rgba(228,228,232,.38); border-bottom:2px solid transparent; white-space:nowrap; }
+.gtab.on { color:#e4e4e8; border-bottom-color:var(--accent); }
+.gchips { display:flex; gap:clamp(11px,3.4vw,18px); margin:8px 2px 0; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+.gchip { flex:none; background:none; border:0; padding:4px 0 5px; cursor:pointer; font:inherit; font-size:clamp(12px,3.4vw,13.5px); font-weight:800; color:rgba(255,255,255,.5); border-bottom:2px solid transparent; white-space:nowrap; }
+.gchip.on { color:#fff; border-bottom-color:var(--accent); }
+#detail .gtabs + .trow, #detail .gtabs + .card, #detail .gtabs + .sh { margin-top:10px; }
+/* GAME PAGE CHART (10/27, owner's pick: open chart, sketch A; both sports): the game's title in the titles' Passion One, a thin "Polymarket" divider,
+   the two team lines straight on the page (no card), the window buttons under it; our team card follows unchanged */
+#detail .dtop.dblend { border-color:transparent; border-bottom-left-radius:0; border-bottom-right-radius:0; margin-bottom:0; }
+.gchart { position:relative; isolation:isolate; margin:0 0 8px; padding:8px 12px 10px; border-radius:0 0 16px 16px; }
+.gchart::before { content:""; position:absolute; inset:0; z-index:-1; border-radius:inherit; pointer-events:none; background:var(--gwash),var(--card); -webkit-mask:linear-gradient(#000 0%,rgba(0,0,0,.55) 55%,transparent 100%); mask:linear-gradient(#000 0%,rgba(0,0,0,.55) 55%,transparent 100%); }
+.gchart .gpm { display:flex; align-items:center; gap:6px; } .gchart .gpm img { width:13px; height:13px; }
+.gchart .gcv { min-height:172px; }
+.gchart .gcv svg { display:block; max-width:100%; }
+.gchart .gcv .gl { stroke:rgba(255,255,255,.08); stroke-dasharray:2 4; }
+.gchart .gcv .ga { fill:rgba(228,228,232,.42); font-size:9px; }
+.gchart .gcv .gn { font-size:10px; font-weight:700; }
+.gchart .gcv .gp { font-size:16px; font-weight:800; }
+.gchart .gcempty { height:172px; display:flex; align-items:center; justify-content:center; color:rgba(228,228,232,.4); font-size:12px; }
+.gchart .grng { display:flex; justify-content:space-between; align-items:center; gap:10px; font-size:11.5px; color:rgba(228,228,232,.55); margin-top:2px; }
+.gchart .grng .gb { display:flex; gap:12px; }
+.gchart .grng button { background:none; border:0; padding:2px 0 3px; font:inherit; font-weight:800; color:rgba(228,228,232,.38); border-bottom:2px solid transparent; cursor:pointer; }
+.gchart .grng button.on { color:#fff; border-bottom-color:var(--accent); }
+
+/* 10/27 (owner: "Home ... split by NFL and NBA, make it like Polymarket" / "Home / Bets / Model"): Home and Model are titled by NFL | NBA tabs --
+   the open one white with the accent line, the other gray; a tap opens the same page on that sport. Both sports. */
+body.bnav-on .phead .pt b.lgts { display:flex; flex:1 1 auto; justify-content:flex-start; gap:6px; font:inherit; -webkit-text-stroke:0; text-transform:none; }
+.lgt { display:flex; flex-direction:column; align-items:center; gap:4px; min-width:58px; color:#8d95a3; text-decoration:none; font-size:12px; font-weight:700; letter-spacing:.02em; }
+.lgt i { display:flex; align-items:center; justify-content:center; box-sizing:border-box; width:44px; height:44px; border-radius:13px; border:1px solid transparent; }
+.lgt img { width:30px; height:30px; object-fit:contain; }
+.lgt.on { color:#fff; } .lgt.on i { background:rgba(255,255,255,.13); border:1px solid rgba(255,255,255,.12); }
+/* the bottom bar (owner 10/27, Polymarket's phone app): a floating pill, icons only, the open one in a round bubble */
+.bnav { left:50%; right:auto; bottom:calc(env(safe-area-inset-bottom,0px) + 10px); transform:translateX(-50%); width:auto; height:56px; padding:0 8px; gap:4px; align-items:center; justify-content:center;
+  border:1px solid rgba(255,255,255,.12); border-image:none; border-radius:28px; background:rgba(22,22,30,.94); }
+.bnav .bi { flex:0 0 auto; width:70px; height:44px; gap:0; border-radius:22px; }
+.bnav .bi span { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+.bnav .bi.on { background:rgba(255,255,255,.14); } .bnav .bi.on svg { color:#fff; }
+/* 10/27 (owner: Polymarket's game page, catered to ours): the other markets -- halves / quarters, team totals, game / team props -- in a plain
+   three-column list (what it is | Polymarket's price | the other side), prices in Polymarket's blue. Both sports. */
+#detail .card.mkc { padding-top:8px; }
+.mks { margin:10px 0 2px; font-size:12px; font-weight:800; letter-spacing:.04em; color:#e4e4e8; }
+.mkx { display:grid; grid-template-columns:minmax(0,1fr) 56px 56px; gap:10px; align-items:center; padding:5px 0; border-top:1px solid rgba(255,255,255,.07); font-size:13px; }
+.mkx > span:first-child { min-width:0; overflow-wrap:anywhere; }
+.mkx .v { text-align:center; color:#2e5cff; font-weight:800; font-variant-numeric:tabular-nums; }
+.mkx.mkh { border-top:0; padding:2px 0 1px; } .mkx.mkh span { font-size:8.5px; font-weight:700; letter-spacing:.04em; color:var(--faint,#7c8494); text-align:center; } .mkx.mkh span:first-child { text-align:left; display:flex; align-items:center; gap:4px; }
+.mkpm { width:11px; height:11px; }
+/* 10/27 (owner: "remove the card look and make it like the graph where it's just the background of everything" / "no card boxes in these pages too" /
+   "organize or fix these ones too"): no boxes anywhere but the game tiles and the game's own team card -- sections sit on the page background with a thin
+   line between them; Bets opens with Profit as one big number; Alerts are plain rows; Model's tiles and sections are flat rows. Both sports. */
+html body .panel .card:not(.dtop), html.lines-on body .panel .card:not(.dtop) { background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important; -webkit-backdrop-filter:none !important; backdrop-filter:none !important; padding-left:2px; padding-right:2px; }
+html body .panel .card:not(.dtop) + .card:not(.dtop) { border-top:1px solid rgba(255,255,255,.09) !important; }
+html body .panel .pgrid > .par, html.lines-on body .panel .pgrid > .par { background:none !important; border-radius:0 !important; padding:11px 2px !important; margin-bottom:0 !important; border-top:1px solid rgba(255,255,255,.09); }
+html body .panel .pgrid > .par:first-child { border-top:0; }
+html body .panel .stat, html.lines-on body .panel .stat { background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important; }
+html body #models .fold, html.lines-on body #models .fold { background:none !important; border:0 !important; border-bottom:1px solid rgba(255,255,255,.09) !important; border-radius:0 !important; }
+html body #models .drop.open, html.lines-on body #models .drop.open { background:none !important; border:0 !important; border-radius:0 !important; }
+html body .panel .fold { border-radius:0; }
+.mbhero { display:flex; flex-direction:column; align-items:flex-start; gap:2px; margin:6px 2px 6px; }
+.mbhero .lbl { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#8d95a3; }
+.mbhero b { font-size:40px; font-weight:800; line-height:1.05; font-variant-numeric:tabular-nums; }
+.mbhero .sub { font-size:13px; color:#c9ced6; }
+body.bnav-on #panel-alerts .phead .pt b { font-size:clamp(22px,6.4vw,32px); }
+/* Home: the NFL | NBA row right under SLATEZZ (owner: "bring this closer together") */
+body.bnav-on.tbar-on .phead { padding-top:2px; }
+body.tbar-on .lgt { gap:1px; } .lgt i { width:40px; height:40px; } .lgt img { width:28px; height:28px; }
+/* the flat pages (Bets, Model, Alerts, Player props) sit on a darker photo so the rows read without boxes; Home keeps its light shade (tiles keep boxes) */
+html.lines-on body.bnav-on:not(.tbar-on) .pagewm::after { display:block !important; content:""; position:absolute; inset:0; background:rgba(5,5,9,.68); }
+@media (min-width:1100px) { html.lines-on body.bnav-on:not(.tbar-on)::after { filter:brightness(.36); } }
+/* the type / tab chips go under My bets | Model bets */
+body.bnav-on .phead .phchips { order:4; flex:1 0 100%; justify-content:center; margin:2px 0 0; }
+/* the flat pages (Bets, Model, Alerts, Player props) sit on a darker photo so the rows read without boxes; Home keeps its light shade (its tiles keep boxes) */
+html.lines-on body.bnav-on:not(.tbar-on) .pagewm::after { display:block !important; content:""; position:absolute; inset:0; background:rgba(5,5,9,.68); }
+@media (min-width:1100px) { html.lines-on body.bnav-on:not(.tbar-on)::after { filter:brightness(.36); } }
+/* the type / tab chips go under My bets | Model bets */
+body.bnav-on .phead .phchips { order:4; flex:1 0 100%; justify-content:center; margin:2px 0 0; }

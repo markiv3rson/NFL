@@ -303,25 +303,59 @@ function marketCard(g, kind, id) {
   const info = kind === "spread" ? MODEL_INFO.spread.concat([["ML pick:", MODEL_INFO.ml[1][1]]]) : MODEL_INFO.total;
   return `<div class="card"><div class="inner">${id ? injDrop(g, id) : ""}<div class="hd">MARKET</div><div class="mk">${bookBox(g, kind)}<div>${pmHead(g)}${poly}${tipLine(g, kind)}</div></div><div class="hd hm ihd">MODEL${IBTN}</div>${whyBox(g, kind, info)}${modelCell(g, kind)}</div></div>`;
 }
-// same-game parlays of this game (lib/parlays.js): 2 legs on Polymarket's lines, 2 legs on bought lines
-function sgpBox(g) {
-  if (g.inProgress || g.preseason || !S.parlays) return "";
-  const blocks = S.parlays.filter((p) => p.game === g.key).map((p) => pBlock(esc(PTYPES[p.type] || p.type), p, false)).join("");
-  return blocks ? secRow("SAME-GAME PARLAYS") + `<div class="pgrid" style="margin-top:6px">${blocks}</div>` : "";
-}
 // 10/17 (owner): the NBA photo behind every NBA page (a game page keeps its team colours)
 function linesBg() { const p = $("panel-lines"); document.documentElement.classList.toggle("lines-on", !(p && p.classList.contains("on") && DETAIL)); }
+// GAME PAGE TABS (10/27, owner; design = both sports, same as NFL): GAME LINES · PLAYER PROPS · PARLAYS under the game card, the prop kinds as plain-text sub tabs
+const lsGet = (k, d) => { try { return localStorage.getItem(k) || d; } catch { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+const GTABS = [["lines", "Game Lines"], ["props", "Player Props"], ["gprops", "Game Props"], ["parlays", "Parlays"]];
+const GPROP_TABS = [["pts", "Points"], ["reb", "Rebounds"], ["ast", "Assists"], ["pra", "PRA"], ["stl", "Steals"], ["blk", "Blocks"]];
+let GTAB = lsGet("gTab", "lines"), GPROP = lsGet("gProp:nba", "pts");
+if (!GTABS.some(([k]) => k === GTAB)) GTAB = "lines";
+if (!GPROP_TABS.some(([k]) => k === GPROP)) GPROP = "pts";
+const gameTabs = () => `<div class="gtabs">${GTABS.map(([k, t]) => `<button class="gtab${GTAB === k ? " on" : ""}" type="button" data-gtab="${k}">${t}</button>`).join("")}</div>`;
+const gameChips = () => `<div class="gchips">${GPROP_TABS.map(([k, t]) => `<button class="gchip${GPROP === k ? " on" : ""}" type="button" data-gprop="${k}">${t}</button>`).join("")}</div>`;
+const gNone = (t) => `<div class="card" style="margin-top:10px"><div class="inner"><div class="s dim">${t}</div></div></div>`;
+const etDay = (iso) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
+let GPROPS = {}, GPROPS_LOADING = {};
+if (typeof Shell !== "undefined") Shell.onMkt = (key) => { if (DETAIL && (key == null || key === DETAIL)) refreshDetail(); };   // 10/27: the other markets landed or a chip was tapped
+function refreshDetail() { const open = [...document.querySelectorAll(".drop.open")].map((e) => e.id).filter(Boolean); renderLines(); for (const id of open) { const e = $(id); if (e) e.classList.add("open"); } }
+function loadGameProps(day) {
+  if (GPROPS_LOADING[day]) return; GPROPS_LOADING[day] = true;
+  fetch(`/api/nba/props?date=${day}`, { cache: "no-store" }).then((r) => r.json()).then((d) => { if (d && d.ok) GPROPS[day] = { d, t: Date.now() }; })
+    .catch(() => {}).finally(() => { GPROPS_LOADING[day] = false; if (DETAIL && GTAB === "props") refreshDetail(); });
+}
+function gamePropsBody(g) {
+  const day = g.start ? etDay(g.start) : null; if (!day) return gNone("None for this game.");
+  const c = GPROPS[day]; if (!c || Date.now() - c.t > 5 * 60e3) loadGameProps(day);
+  if (!c) return gNone("Loading…");
+  const pg = (c.d.games || []).find((x) => x.game === g.key), picks = pg ? (pg.picks || []).filter((p) => p.stat === GPROP) : [];
+  if (!picks.length) return gNone("None for this game.");
+  const row = (p) => `<div class="pbl ppr${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${tlogo(p.team || "")}${esc(p.name)}</span><span class="pp2">${PROP_SHORT[p.stat] || ""} ${p.side === "over" ? "Over" : "Under"} ${p.line}</span>${propLast(p)}<span class="pp3 mod">${Math.round((p.cal ?? p.chance) * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
+  const head = `<div class="pbl ppr pph"><span class="pp1">PLAYER</span><span class="pp2">LINE</span><span class="pp5">LAST</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
+  const part = (t) => { const rs = picks.filter((p) => (p.team || "") === t); return rs.length ? `${t ? `<div class="pbl pteam">${esc(t)}</div>` : ""}${rs.map(row).join("")}` : ""; };
+  return `<div class="pgrid" style="margin-top:6px"><div class="par">${head}${[...new Set([g.away, g.home, ...picks.map((p) => p.team || "")])].map(part).join("")}</div></div>`;
+}
+function gameParlaysBody(g) {
+  if (g.inProgress) return gNone("Same-game parlays close at tip-off; they are on Model bets with their results.");
+  const blocks = (S.parlays || []).filter((p) => p.game === g.key).map((p) => pBlock(esc(PTYPES[p.type] || p.type), p, false)).join("");
+  return blocks ? `<div class="pgrid" style="margin-top:6px">${blocks}</div>` : gNone("No same-game parlay for this game.");
+}
+// the game page chart (10/27, owner's pick: open chart, = NFL): Polymarket US's moneyline history for both teams, drawn by the shared shell
+const chartOf = (g) => ({ key: g.key, sport: "nba", away: g.away, home: g.home, start: g.start, live: !!(g.inProgress && !isFinal(g)), ca: teamColor(g.away), ch: teamColor(g.home) });
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = ""; linesBg();
   document.body.classList.add("game-on");   // 10/18 (owner, same as NFL): the game card is the header; ← Games under it
-  $("detail").innerHTML = `${detailTop(g)}<button class="back" id="back-btn">← Games</button>` +
-    secRow("SPREAD &amp; ML", injPill(g, "inj")) + `<div class="grid">${marketCard(g, "spread", "inj")}</div>` +
-    secRow("TOTALS") + `<div class="grid">${marketCard(g, "total")}</div>` + sgpBox(g);
+  const co = chartOf(g), mk = typeof Shell !== "undefined" && Shell.mktLines;   // 10/27: the other Polymarket markets (halves, quarters, team totals, game / team props)
+  const body = GTAB === "props" ? gameChips() + gamePropsBody(g) : GTAB === "parlays" ? gameParlaysBody(g) : GTAB === "gprops" ? (mk ? Shell.mktProps(co, gNone("Polymarket lists no game or team props for this game yet.")) : "")
+    : secRow("SPREAD &amp; ML", injPill(g, "inj")) + `<div class="grid">${marketCard(g, "spread", "inj")}</div>` + secRow("TOTALS") + `<div class="grid">${marketCard(g, "total")}</div>` + (mk ? Shell.mktLines(co) : "");
+  $("detail").innerHTML = `${typeof Shell !== "undefined" && Shell.chartBlock ? detailTop(g).replace('class="card dtop"', 'class="card dtop dblend"') + Shell.chartBlock(co) : detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs()}${body}`;
+  if (typeof Shell !== "undefined" && Shell.chartLoad) Shell.chartLoad(co);
   $("back-btn").onclick = closeGame;
   setBg($("panel-lines").classList.contains("on") ? g : null);
 }
 function openGame(key) { LASTY = window.scrollY || 0; DETAIL = key; renderLines(); window.scrollTo(0, 0); setTimeout(() => slotMoney($("detail")), 60); }
-function closeGame() { DETAIL = null; renderLines(); window.scrollTo(0, LASTY); }
+function closeGame() { if (typeof Shell !== "undefined" && Shell.chartStop) Shell.chartStop(); DETAIL = null; renderLines(); window.scrollTo(0, LASTY); }
 
 // ---------- Best bets + Parlay: two gold tickets at the top of the Bets tab (tap one to open its list)
 function bestBets() { return S ? S.bestBets || [] : []; }
@@ -336,14 +370,15 @@ function ticketRows() {   // 10/22 (owner: "Make all of this its own card ... No
     drops: (B.length ? `<div class="drop" id="bestdrop"><div class="card modelglow"><div class="inner">${B.map(bb).join("")}</div></div></div>` : "") +
       (P.length ? `<div class="drop" id="parlaydrop"><div class="card modelglow"><div class="inner">${P.map(bb).join("")}</div></div></div>` : "") };
 }
-const topCard = (rows) => { const T = ticketRows(); return `<div class="card mbtop" style="margin-top:10px"><div class="sec">${T.rows}${rows}</div></div>${T.drops}`; };
+// 10/27 (owner, = NFL): Profit as one big number on top, the record / open / stake line under it, then Best bets and the Parlay as plain rows
+const topCard = (rows, hero = "") => { const T = ticketRows(); return `${hero}<div class="card mbtop"><div class="sec">${T.rows}${rows}</div></div>${T.drops}`; };
 
 // ---------- Bets: My bets | Model bets
 let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
 // 10/21 night (owner): a page's drop-downs go to the right of its title (Shell.dd); without the shell (tests) they stay on top of the block
 function ddSlot(el, html) { if (typeof Shell !== "undefined" && Shell.dd && el && el.closest) { Shell.dd(el, html); return ""; } return html; }
 function applyBetsView() {
-  const bt = $("bets-title"); if (bt) bt.innerHTML = BETSVIEW === "model" ? `Model bets<span class="ptab"> · ${esc((LAB_TABS.find(([k]) => k === LABTYPE) || [, ""])[1])}</span>` : "My bets";
+  const bt = $("bets-title"); if (bt) bt.innerHTML = BETSVIEW === "model" ? "Model bets" : "My bets";   // 10/27: the parlay type is the chip under the switch
   const m = BETSVIEW === "model", set = (id, on) => { const e = $(id); if (e) e.style.display = on ? "" : "none"; };
   set("record-mine", !m); set("lab", m); set("dd-record-mine", !m); set("dd-lab", m);   // 10/17 (owner): the parlay types are menu sub tabs under Model bets
 
@@ -428,10 +463,9 @@ function renderBets() {
   const w = done.filter((e) => e.result === "win").length, l = done.filter((e) => e.result === "loss" || (!e.result && legLost(e))).length, sold = done.filter((e) => e.result === "sold").length;
   const pl = done.reduce((a, e) => a + (e.result ? e.pl : -(e.cost || 0)), 0), staked = done.reduce((a, e) => a + (e.cost || 0), 0), tot = w + l;
   const dayPick = `<div class="wksel"><select id="mb-day" aria-label="Day">${days.map((d) => `<option value="${d}"${sel === d ? " selected" : ""}>${dayName(d)}</option>`).join("")}<option value="all"${sel === "all" ? " selected" : ""}>Season</option></select></div>`;
-  $("record-mine").innerHTML = ddSlot($("record-mine"), dayPick) + topCard((past ? `<div class="row"><span class="dim">Bets</span><span>${shown.length}</span></div>` : `<div class="row"><span class="dim">Open bets</span><span>${openB.length} · ${money(openB.reduce((a, e) => a + (e.cost || 0), 0))} staked</span></div>`) +
-    `<div class="row"><span class="dim">Record</span><span class="${tot ? (w / tot >= 0.5 ? "g" : "r") : "dim"}">${tot ? `${w}–${l}` : "—"}${sold ? ` <span class="dim">· ${sold} sold</span>` : ""}</span></div>` +
-    `<div class="row"><span class="dim">Profit</span><span>${cMoney(pl)} · ${sel === "all" ? "this season" : dayName(sel)}</span></div>` +
-    `<div class="row"><span class="dim">Staked</span><span>${money(staked)} · settled</span></div>`) +
+  $("record-mine").innerHTML = ddSlot($("record-mine"), dayPick) + topCard(`<div class="row"><span class="dim">Staked</span><span>${money(staked)} · settled</span></div>`,
+    `<div class="mbhero"><span class="lbl">Profit · ${sel === "all" ? "this season" : dayName(sel)}</span><b>${cMoney(pl)}</b>` +
+    `<span class="sub"><span class="${tot ? (w / tot >= 0.5 ? "g" : "r") : "dim"}">${tot ? `${w}–${l}` : "0–0"}</span>${sold ? ` · ${sold} sold` : ""} · ${past ? `${shown.length} bet${shown.length === 1 ? "" : "s"}` : `${openB.length} open · ${money(openB.reduce((a, e) => a + (e.cost || 0), 0))} staked`}</span></div>`) +
     `<div class="card" style="margin-top:10px">` + (past || !openB.length ? "" : `<div class="sec"><div class="sh">Open</div>${rowsOf(firstSingles(openB), false)}</div>`) +
     `<div class="fold" data-drop="settled"><span>${past ? "Results" : "Settled bets"}</span><span>▾</span></div><div class="drop${past ? " open" : ""}" id="settled">${done.length ? rowsOf(done, true) : '<div class="s dim empty">None yet.</div>'}</div></div>` +
     `<div class="center"><button class="btn" id="sync-btn">↻ Sync account</button></div>`;
@@ -695,6 +729,8 @@ window.addEventListener("hashchange", routeHash);
 $("al-read").onclick = () => { ALPREV = ALERTS.length ? ALERTS[0].t : ""; renderAlerts(); };
 document.addEventListener("click", (e) => {
   const d = e.target.closest("[data-drop]"); if (d) { const el = $(d.dataset.drop); if (el) el.classList.toggle("open"); return; }
+  const gtb = e.target.closest("[data-gtab]"); if (gtb) { GTAB = gtb.dataset.gtab; lsSet("gTab", GTAB); refreshDetail(); return; }   // 10/27: game page tabs
+  const gpr = e.target.closest("[data-gprop]"); if (gpr) { GPROP = gpr.dataset.gprop; lsSet("gProp:nba", GPROP); refreshDetail(); return; }
   const gt = e.target.closest("[data-game]"); if (gt) { if (!$("panel-lines").classList.contains("on")) showPanel("lines"); openGame(gt.dataset.game); return; }
   const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k && S && S.games.some((x) => x.key === k)) { showPanel("lines"); openGame(k); } return; }
   const bv = e.target.closest("[data-bv]"); if (bv) { history.replaceState(null, "", bv.dataset.bv === "model" ? "#modelbets" : "#mybets"); routeHash(); return; }   // 10/22: My bets | Model bets inside Bets -- the page key follows, so the sub-tab bar does too

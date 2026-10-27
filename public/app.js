@@ -352,10 +352,10 @@ function tdWeekLine(data, team, player) {
   return parts.join(' <span class="dim">·</span> ') + (drought >= 2 ? ` <span class="dim">· no TD last ${drought} games</span>` : "");
 }
 // 10/27 (owner, on PHI @ WAS / CHI @ SEA showing 3 a team: "show me top 4 of each team and make note of how many td weeks they missed" / "like no TD last 2 games
-// or 3 4 5 6 7 games"; SUPERSEDES the 10/21 "scored in his last 2 or off" cut): the page lists the TD_POOL (4) likeliest scorers per team, nobody is cut for a
+// or 3 4 5 6 7 games"; SUPERSEDES the 10/21 "scored in his last 2 or off" cut): the page lists the TD_POOL (5 since the owner's later 10/27 ask) likeliest scorers per team, nobody is cut for a
 // drought; a player who did not score last game carries the red note with the count -- "✗ no TD last game", "✗ no TD last 2 games", "... last 5 games" (a player
 // with no TD this season counts every game he played). The page is still drawn only once the week feed is in. Model lists, parlays and grading unchanged.
-const TD_WARN = 1, TD_POOL = 4;
+const TD_WARN = 1, TD_POOL = 5;   // 10/27 later (owner: "for anytime td's show me the top 5 players on each team")
 // the note text for a row, or null (scored last game, no feed yet, or no played games)
 function tdWarn(r, data) { if (data == null || !r) return null; const d = tdDrought(data, r.team, r.player); return d == null || d < TD_WARN ? null : d === 1 ? "✗ no TD last game" : `✗ no TD last ${d} games`; }
 async function loadTdWeeks() {
@@ -448,7 +448,7 @@ function rollMoney(root) {
     setTimeout(() => { if (el.parentNode && el.replaceWith) el.replaceWith(document.createTextNode(v)); else el.textContent = v; }, 1700);   // back to plain text once it lands
   });
 }
-const SLOT_SKIP = ".reelpct,.fclk,script,style,input,textarea,select,svg";
+const SLOT_SKIP = ".reelpct,script,style,input,textarea,select,svg";
 function slotMoney(root, max = 120) {
   if (REDUCE || !root || typeof document === "undefined" || !document.createTreeWalker) return;
   const walk = document.createTreeWalker(root, 4), nodes = [];
@@ -617,15 +617,16 @@ function renderMineNow() {
   // 10/22 (owner: "Make all of this its own card ... No columns one card"; "a little darker"): Best bets, Parlay of the week, the open bets / record / profit
   // tiles and the summary are ONE card, one row each (name left, number right); a tap on Best bets / Parlay opens its list under the card
   const T = ticketRows(), recCls = tot ? (s.wins / tot >= 0.5 ? "g" : "r") : "dim";
-  const top = `<div class="card mbtop" style="margin-top:10px"><div class="sec">${T.rows}` +
-    (past ? `<div class="row"><span class="dim">Bets</span><span>${shown.length}</span></div>` : `<div class="row"><span class="dim">Open bets</span><span>${nOpen} · ${money(s.openCost)} staked</span></div>`) +
-    `<div class="row"><span class="dim">Record</span><span class="${recCls}">${tot ? `${s.wins}–${s.losses}` : "—"}</span></div>` +
-    `<div class="row"><span class="dim">Profit</span><span>${cMoney(s.pl)} · ${sel === "all" ? "this season" : "Week " + sel}</span></div>` +
+  // 10/27 (owner: "organize or fix these ... change the layout if you need to"): Profit as one big number on top (like Polymarket's portfolio), the record,
+  // open bets and stake on one line under it; then Best bets, Parlay of the week, Return · CLV as plain rows
+  const hero = `<div class="mbhero"><span class="lbl">Profit · ${sel === "all" ? "this season" : "Week " + sel}</span><b>${cMoney(s.pl)}</b>` +
+    `<span class="sub"><span class="${recCls}">${tot ? `${s.wins}–${s.losses}` : "0–0"}</span> · ${past ? `${shown.length} bet${shown.length === 1 ? "" : "s"}` : `${nOpen} open · ${money(s.openCost)} staked`}</span></div>`;
+  const top = hero + `<div class="card mbtop"><div class="sec">${T.rows}` +
     `<div class="row"><span class="dim">Return · CLV</span><span>${cPct(s.roi)} · ${cPct(s.avgClv)}</span></div>` +
     (() => { const sc = MB.summary && MB.summary.settleCheck; if (!sc || !(sc.agree + sc.disagree)) return "";
       return sc.disagree ? `<div class="s y">⚠ Settlement mismatch on ${sc.disagree} combo${sc.disagree === 1 ? "" : "s"}</div>`
         : ""; })() +
-    (past ? "" : `<div class="row"><span class="dim">Open this week</span><span>${money(s.openCost)}</span></div>`) + `</div></div>` + T.drops;
+    `</div></div>` + T.drops;
   $("record-mine").innerHTML = ddSlot($("record-mine"), wkChips) + top + `<div class="card" style="margin-top:10px">` +
     (past || !open.length ? "" : openBySlot(open) +
     `<div class="sec"><div class="sh">Expected returns</div>` +
@@ -1004,13 +1005,14 @@ function liveHead(g, lv, kind) {
   return liveHas(lv, kind) ? "" : `<div class="s y">Lines paused.</div>${lockedNote(g, kind)}`;
 }
 const liveTail = (g, lv, kind) => (liveHas(lv, kind) ? lockedNote(g, kind) : "");
+if (typeof Shell !== "undefined") Shell.onMkt = (key) => { if (DETAIL && (key == null || key === DETAIL)) refreshDetail(); };   // 10/27: the other markets landed or a chip was tapped
 function refreshDetail() { const open = [...document.querySelectorAll(".drop.open")].map((e) => e.id).filter(Boolean); renderLines(); for (const id of open) { const e = $(id); if (e) e.classList.add("open"); } }
 const anyLive = () => !!(S && S.games && S.games.some((g) => g.started && !g.final));
 async function loadLive() {
   const rec = $("panel-record").classList.contains("on");
-  if (!anyLive() || document.hidden || !($("panel-lines").classList.contains("on") || $("panel-home").classList.contains("on") || rec)) return;
+  if (!anyLive() || document.hidden || !($("panel-lines").classList.contains("on") || rec)) return;
   try { const d = await (await fetch("/api/live", { cache: "no-store" })).json();
-    if (d.ok) { LIVE = d.games || {}; LIVE_SC = d.scores || {}; LIVE_T = d.t; if ($("panel-home").classList.contains("on")) renderHome(); else if (rec) { if (MB) renderMine(); } else if (DETAIL) refreshDetail(); else renderLines(); } } catch {}
+    if (d.ok) { LIVE = d.games || {}; LIVE_SC = d.scores || {}; LIVE_T = d.t; if (rec) { if (MB) renderMine(); } else if (DETAIL) refreshDetail(); else renderLines(); } } catch {}
 }
 function liveLoop() { clearTimeout(liveLoop._h); loadLive().finally(() => { liveLoop._h = setTimeout(liveLoop, 30000); }); }
 let DETAIL = null, LASTY = 0, ALERTS = [], ALPREV = null;
@@ -1206,7 +1208,7 @@ let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model
 // 10/21 night (owner): a page's drop-downs go to the right of its title (Shell.dd); without the shell (tests) they stay on top of the block
 function ddSlot(el, html) { if (typeof Shell !== "undefined" && Shell.dd && el && el.closest) { Shell.dd(el, html); return ""; } return html; }
 function applyBetsView() {
-  const bt = $("bets-title"); if (bt) bt.innerHTML = BETSVIEW === "model" ? `Model bets<span class="ptab"> · ${esc((LAB_TABS.find(([k]) => k === LABTYPE) || [, ""])[1])}</span>` : "My bets";
+  const bt = $("bets-title"); if (bt) bt.innerHTML = BETSVIEW === "model" ? "Model bets" : "My bets";   // 10/27: the parlay type is the chip under the switch
   const m = BETSVIEW === "model", set = (id, on) => { const e = $(id); if (e) e.style.display = on ? "" : "none"; };
   set("record-mine", !m); set("lab", m); set("dd-record-mine", !m); set("dd-lab", m);
 
@@ -1329,11 +1331,56 @@ function renderLabList() {
 }
 // 10/17 (owner): the NFL logo photo behind every NFL page but home (home keeps the Raiders photo); a game page keeps its team colours
 function linesBg() { const on = (id) => { const p = $(id); return !!(p && p.classList.contains("on")); };
-  document.documentElement.classList.toggle("lines-on", !on("panel-home") && !(on("panel-lines") && DETAIL)); }
+  document.documentElement.classList.toggle("lines-on", !(on("panel-lines") && DETAIL)); }
+// GAME PAGE TABS (10/27, owner's Polymarket screenshots: "make our cards look like this where it has all of the sub tabs on 1 page ... catered to our designs"; design = both sports):
+// under the game card, three tab words -- GAME LINES · PLAYER PROPS · PARLAYS -- and on Player Props the prop kinds as plain-text sub tabs (no pills, accent underline).
+// Game Lines = the spread & ML and totals cards as before; Player Props = THIS game's rows in the props-page look; Parlays = the same-game parlays. The choice is kept per phone.
+const lsGet = (k, d) => { try { return localStorage.getItem(k) || d; } catch { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+const GTABS = [["lines", "Game Lines"], ["props", "Player Props"], ["gprops", "Game Props"], ["parlays", "Parlays"]];
+let GTAB = lsGet("gTab", "lines"), GPROP = lsGet("gProp:nfl", "td");
+if (!GTABS.some(([k]) => k === GTAB)) GTAB = "lines";
+if (!PROP_TABS.some(([k]) => k === GPROP)) GPROP = "td";
+const gameTabs = () => `<div class="gtabs">${GTABS.map(([k, t]) => `<button class="gtab${GTAB === k ? " on" : ""}" type="button" data-gtab="${k}">${t}</button>`).join("")}</div>`;
+const gameChips = () => `<div class="gchips">${PROP_TABS.map(([k, t]) => `<button class="gchip${GPROP === k ? " on" : ""}" type="button" data-gprop="${k}">${t}</button>`).join("")}</div>`;
+const gNone = (t) => `<div class="card" style="margin-top:10px"><div class="inner"><div class="s dim">${t}</div></div></div>`;
+let GPROPS = {}, GPROPS_LOADING = {};
+function loadGameProps(week) {
+  if (GPROPS_LOADING[week]) return; GPROPS_LOADING[week] = true;
+  fetch(`/api/props?week=${week}`, { cache: "no-store" }).then((r) => r.json()).then((d) => { if (d && d.ok) GPROPS[week] = { d, t: Date.now() }; })
+    .catch(() => {}).finally(() => { GPROPS_LOADING[week] = false; if (DETAIL && GTAB === "props") refreshDetail(); });
+}
+function gamePropsBody(g) {
+  if (GPROP === "td") {
+    if (!TDW) loadTdWeeks().then((d) => { if (d && DETAIL === g.key && GTAB === "props") refreshDetail(); });
+    const rows = (g.td || []).filter((r) => r.fair != null && usable(r)).sort((a, b) => b.fair - a.fair);
+    const per = {}, pool = rows.filter((r) => { const n = per[r.team] || 0; if (n >= TD_POOL) return false; per[r.team] = n + 1; return true; });
+    const part = (t) => { const rs = pool.filter((r) => r.team === t); return rs.length ? `<div class="pbl pteam">${esc(t)}</div>${rs.map((r) => tdRow({ r, g })).join("")}` : ""; };
+    return pool.length ? `<div class="pgrid tdl" style="margin-top:6px"><div class="par">${tdHead()}${part(g.away)}${part(g.home)}</div></div>` : gNone("No touchdown chances for this game yet.");
+  }
+  if (GPROP === "first") {
+    const rows = (g.td || []).filter((r) => r.first != null && usable(r) && !/^(out|doubtful)$/i.test(r.injury || "")).sort((a, b) => b.first - a.first);
+    const picks = [g.away, g.home].flatMap((t) => rows.filter((r) => r.team === t).slice(0, 3)).map((r) => ({ name: r.player, team: r.team, chance: r.first / 100, price: r.firstPrice ?? null, first: true }));
+    return picks.length ? `<div class="pgrid" style="margin-top:6px"><div class="par">${propHead(true)}${teamRows({ away: g.away, home: g.home, picks }, propRow)}</div></div>` : gNone("No first-touchdown chances for this game yet.");
+  }
+  const wk = Number(g.week || (S && S.week)), c = GPROPS[wk];
+  if (!c || Date.now() - c.t > 5 * 60e3) loadGameProps(wk);
+  if (!c) return gNone("Loading…");
+  const pg = (c.d.games || []).find((x) => x.game === g.key), stat = PROP_STAT[GPROP] || "rec_yds", picks = pg ? (pg.picks || []).filter((p) => p.stat === stat) : [];
+  return picks.length ? `<div class="pgrid" style="margin-top:6px"><div class="par">${propHead(false)}${teamRows({ away: g.away, home: g.home, picks }, propRow)}</div></div>` : gNone("None for this game.");
+}
+function gameParlaysBody(g) { const b = sgpBox(g); return b ? b.replace('<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAYS</div>', "") : gNone(g.started || g.final ? "Same-game parlays close at kickoff; they are on Model bets with their results." : "No same-game parlay for this game."); }
+// the game page chart (10/27, owner's pick: open chart, sketch A; later: the team card on top of it, blended): Polymarket US's moneyline history for both teams, drawn by the shared shell (Shell.chartBlock)
+const chartOf = (g) => ({ key: g.key, sport: "nfl", away: g.away, home: g.home, start: g.kickoff, live: !!(g.started && !g.final), ca: TEAM_COLOR[g.away] || "#888888", ch: TEAM_COLOR[g.home] || "#888888" });
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = ""; linesBg();
   document.body.classList.add("game-on");   // 10/18 (owner): on a game page the game card IS the header -- the NEXT GAME strip is hidden, ← Games sits under the card
-  $("detail").innerHTML = `${detailTop(g)}<button class="back" id="back-btn">← Games</button>${g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : ""}${gameCard(g, "x")}${totalCard(g, "x")}${sgpBox(g)}`;
+  const early = g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : "";
+  const co = chartOf(g), mk = typeof Shell !== "undefined" && Shell.mktLines;   // 10/27: the other Polymarket markets (halves, quarters, team totals, game / team props)
+  const body = GTAB === "props" ? gameChips() + gamePropsBody(g) : GTAB === "parlays" ? gameParlaysBody(g) : GTAB === "gprops" ? (mk ? Shell.mktProps(co, gNone("Polymarket lists no game or team props for this game yet.")) : "")
+    : `${early}${gameCard(g, "x")}${totalCard(g, "x")}${mk ? Shell.mktLines(co) : ""}`;
+  $("detail").innerHTML = `${typeof Shell !== "undefined" && Shell.chartBlock ? detailTop(g).replace('class="card dtop"', 'class="card dtop dblend"') + Shell.chartBlock(co) : detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs()}${body}`;
+  if (typeof Shell !== "undefined" && Shell.chartLoad) Shell.chartLoad(co);
   $("back-btn").onclick = closeGame;
   if (g.final) ensureGrades();
   setBg($("panel-lines").classList.contains("on") ? g : null);   // 10/14 fix: the background redraw ran while another tab was showing (SEA/DEN logos on Models)
@@ -1352,95 +1399,14 @@ function linesBySlot() {
   return slots.map((sl) => `<div class="sh labslot">${sl}</div><div class="tiles stack">${by[sl].map(tile).join("")}</div>`).join("");   // 10/18 (owner): just the slot name -- the time sits on each tile
 }
 function openGame(key) { LASTY = (typeof window !== "undefined" && window.scrollY) || 0; DETAIL = key; renderLines(); if (window.scrollTo) window.scrollTo(0, 0); setTimeout(() => slotMoney($("detail")), 60); const g = S.games.find((x) => x.key === key); if (g && g.started && !g.final) liveLoop(); }
-function closeGame() { DETAIL = null; renderLines(); if (window.scrollTo) window.scrollTo(0, LASTY); }
-// ---------- HOME (10/17, owner's sketch): SLATEZZ header, then NFL and NBA live games as a list -- logos, team, its spread from the
-// sportsbooks before kickoff, the total in the middle, the score and clock. Each section's title row: LIVE NOW + NEXT GAME logos and clock.
-// Nothing live in a sport: its next game only. NBA data comes from the NBA side's own routes (/api/nba/slate, /api/nba/live).
-let NB = null, NBL = {}, NBC = {}, HOME_T = 0;   // NBC: NBA games' last Polymarket line before tip-off (no sportsbook line, e.g. preseason)
-async function loadHome() {
-  if (Date.now() - HOME_T < 25000 && NB) return; HOME_T = Date.now();
-  try { const d = await (await fetch("/api/nba/slate", { cache: "no-store" })).json(); if (d && d.ok) NB = d; } catch {}
-  try { const d = await (await fetch("/api/nba/live", { cache: "no-store" })).json(); if (d && d.ok) NBL = d.scores || {}; } catch {}
-  try { const since = new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10), d = await (await fetch("/api/nba/closes?since=" + since, { cache: "no-store" })).json();
-    if (d && d.ok) { NBC = {}; for (const c of d.closes || []) NBC[c.game] = c; } } catch {}
-  if ($("panel-home").classList.contains("on")) renderHome();
-  clearTimeout(loadHome._h); loadHome._h = setTimeout(() => { if (!document.hidden && $("panel-home").classList.contains("on")) { HOME_T = 0; loadHome(); } }, 30000);
-}
-const hsp = (x) => (x == null || !isFinite(x) ? "" : x === 0 ? "PK" : (x > 0 ? "+" : "−") + Math.abs(x));
-// 10/18 night (owner): the home screen uses the Game Lines tile look -- logo + code + record each side, the % (or live score) in the middle with the
-// kickoff time (live: each team's pre-kickoff spread + the total) under it, the green bar. o: { key, attr, away, home, aLogo, hLogo, aRec, hRec, pct (away %), time, sc, aSp, hSp, tot }
-function homeTile(o) {
-  const sc = o.sc && (o.sc.st === "in" || o.sc.st === "post") ? o.sc : null, live = !!o.live, ap = o.pct == null || !isFinite(o.pct) ? null : Math.round(o.pct), hp = ap == null ? null : 100 - ap;
-  const lead = (v, w) => (v >= w ? "mkt" : "dim");
-  const mid = sc ? `<span class="mid lvmid"><span class="sr"><span class="${sc.a > sc.h ? "g" : "dim"}">${sc.a}</span><span class="dim"> – </span><span class="${sc.h > sc.a ? "g" : "dim"}">${sc.h}</span></span><span class="lv ${sc.st === "post" ? "dim" : "r"}">${sc.st === "post" ? "FINAL" : "● LIVE · " + esc(sc.lbl || "")}</span></span>`
-    : live ? '<span class="mid lvmid"><span class="lv r">● LIVE</span></span>' : ap == null ? '<span class="mid dim">—</span>' : `<span class="mid"><span class="${lead(ap, hp)}">${ap}</span><span class="dim"> · </span><span class="${lead(hp, ap)}">${hp}</span><span class="dim" style="font-size:11px">%</span></span>`;
-  const under = live ? [o.aSp != null ? `${esc(o.away)} ${hsp(o.aSp)}` : "", o.tot != null ? `O/U ${o.tot}` : ""].filter(Boolean).join(" · ") : o.time ? esc(o.time) : "";
-  const team = (code, logo, rec, hm) => `<span class="t${hm ? " hm" : ""}">${hm ? "" : `<img class="tlogo" src="${logo}" alt="" onerror="this.style.display='none'">`}${esc(code)}${hm ? `<img class="tlogo" src="${logo}" alt="" onerror="this.style.display='none'">` : ""}${rec ? `<small class="rec">${esc(rec)}</small>` : ""}</span>`;
-  return `<button class="tile${live ? " live" : ""}" ${o.attr}="${esc(o.key)}"><div class="in"><div class="nm">${team(o.away, o.aLogo, o.aRec, false)}<div class="tmid">${mid}${o.sc && o.sc.st === "post" && o.res ? o.res(Number(o.sc.a), Number(o.sc.h)) : ""}${under && !(o.sc && o.sc.st === "post") ? `<div class="s2"><span class="tmt">${under}</span></div>` : ""}</div>${team(o.home, o.hLogo, o.hRec, true)}</div>${live || ap == null ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
-}
-// 10/18 night (owner: "I need the exact time and second ... a clock that flips its numbers, like a game clock"): the countdown is
-// [days]d HH:MM:SS, every digit its own flip tile; a tile whose digit changes flips (so the seconds tile flips every second)
-function clockParts(ms) {
-  if (!(ms > 0)) ms = 0;
-  const d = Math.floor(ms / 864e5), h = Math.floor((ms % 864e5) / 36e5), m = Math.floor((ms % 36e5) / 6e4), s = Math.floor((ms % 6e4) / 1e3), p2 = (n) => String(n).padStart(2, "0");
-  return (d ? [`${d}d`] : []).concat([...`${p2(h)}:${p2(m)}:${p2(s)}`]);
-}
-const flipSpans = (parts) => parts.map((p) => (p === ":" ? "<em>:</em>" : `<span${/d$/.test(p) ? ' class="d"' : ""}>${esc(p)}</span>`)).join("");   // the days span keeps a gap before the hours
-// one gradient run across the whole clock: every digit (and colon) shows its own slice of a gradient as wide as the clock (owner 10/18 night, sketch G)
-function clockRun(e) { const r = e.getBoundingClientRect(); if (!r.width) return; e.querySelectorAll("span, em").forEach((sp) => { const b = sp.getBoundingClientRect(); sp.style.backgroundSize = `${r.width}px 100%`; sp.style.backgroundPosition = `${r.left - b.left}px 0`; }); }
-// 10/18 night (owner): the header above each sport's tiles = "NFL NEXT GAME" + a flipping clock (live: "● NFL · LIVE NOW")
-function homeSection(sport, live, next, tiles) {
-  const head = live ? `<div class="hsh2"><span class="lv"><i></i>${sport} · LIVE NOW</span></div>`
-    : next ? `<div class="hsh2"><span>${sport} NEXT GAME</span><b class="fclk" data-hclk="${next.ts}">${flipSpans(clockParts(next.ts - Date.now()))}</b></div>` : `<div class="hsh2"><span>${sport}</span></div>`;
-  return `<div class="hsec">${head}<div class="tiles stack">${tiles || '<div class="hempty">No games scheduled.</div>'}</div></div>`;
-}
-function renderHome() {
-  if (!$("home")) return;
-  let out = "";
-  if (S) {   // NFL
-    const live = S.games.filter((g) => g.started && !g.final);
-    const nx = S.games.filter((g) => !g.started && g.kickoff && new Date(g.kickoff) > Date.now()).sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff))[0];
-    const line = (g) => { const b = g.books || {}, p = g.poly || {}, hs = b.spread ? b.spread.homeSpread : p.spread ? p.spread.homeSpread : null, tl = b.total ? b.total.line : p.total ? p.total.line : null;
-      return { hSp: hs == null ? null : Number(hs), aSp: hs == null ? null : -Number(hs), tot: tl }; };
-    const base = (g) => ({ key: g.key, attr: "data-game", away: g.away, home: g.home, aLogo: logoUrl(g.away), hLogo: logoUrl(g.home), aRec: g.rec && g.rec[g.away], hRec: g.rec && g.rec[g.home], pct: mktHome(g) == null ? null : 100 - mktHome(g) });
-    const tiles = live.length ? live.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff)).map((g) => homeTile({ ...base(g), live: true, ...line(g), sc: LIVE_SC[g.key] || null, res: (as, hs) => nflRes(g, as, hs) })).join("")
-      : nx ? homeTile({ ...base(nx), time: tm(nx.kickoff) }) : "";
-    out += homeSection("NFL", live.length > 0, nx ? { ts: new Date(nx.kickoff).getTime() } : null, tiles);
-  }
-  if (NB && Array.isArray(NB.games)) {   // NBA (its own data)
-    const T = NB.teams || {}, lg = (t) => Shell.nbaLogo(t, T), bt = NB.books && NB.books.t ? Date.parse(NB.books.t) : null;
-    const live = NB.games.filter((g) => Date.now() >= Date.parse(g.start) && !(NBL[g.key] && NBL[g.key].st === "post"));
-    const nx = NB.games.filter((g) => Date.parse(g.start) > Date.now()).sort((a, b) => Date.parse(a.start) - Date.parse(b.start))[0];
-    const line = (g) => { const b = bt != null && bt <= Date.parse(g.start) ? g.books || {} : {}, c = NBC[g.key] || {};   // sportsbook numbers from before tip-off; none (preseason) -> Polymarket's last line before tip-off (10/17, owner)
-      const hs = b.spread ? Number(b.spread.homeSpread) : c.hs != null ? Number(c.hs) : null, tot = b.total ? b.total.line : c.tl != null ? c.tl : null;
-      return { hSp: hs, aSp: hs == null ? null : -hs, tot }; };
-    const rec = (g, t) => { const c = g.context && g.context[t === g.home ? "home" : "away"]; if (!c || !c.gp) return ""; const w = Math.round((c.win_pct || 0) * c.gp); return `${w}–${c.gp - w}`; };
-    const pct = (g) => { const m = g.poly && g.poly.ml; if (!m) return null; const h = m.midHome ?? m.home, a = m.midAway ?? m.away; return h > 0 && a > 0 ? (100 * a) / (a + h) : null; };
-    const base = (g) => ({ key: g.key, attr: "data-nbagame", away: g.away, home: g.home, aLogo: lg(g.away), hLogo: lg(g.home), aRec: rec(g, g.away), hRec: rec(g, g.home), pct: pct(g) });
-    const tiles = live.length ? live.sort((a, b) => Date.parse(a.start) - Date.parse(b.start)).map((g) => homeTile({ ...base(g), live: true, ...line(g), sc: NBL[g.key] || null, res: (as, hs) => { const L = g.locked; return L ? resLine(["spread", "total", "ml"].map((k) => L[k] && L[k].plain), g.away, g.home, as, hs) : ""; } })).join("")
-      : nx ? homeTile({ ...base(nx), time: tm(nx.start) }) : "";
-    out += homeSection("NBA", live.length > 0, nx ? { ts: Date.parse(nx.start) } : null, tiles);
-  }
-  $("home").innerHTML = out || '<div class="hempty">Loading…</div>';
-  document.querySelectorAll("#home .fclk").forEach(clockRun);
-}
-// the flip clock: a part that changed is replaced and flips (10/18 night, owner: "a flipping clock as their header")
-function homeClocks() {
-  document.querySelectorAll("[data-hclk]").forEach((e) => {
-    const all = clockParts(Number(e.dataset.hclk) - Date.now()), parts = all.filter((p) => p !== ":"), spans = e.querySelectorAll("span");
-    if (spans.length !== parts.length) { e.innerHTML = flipSpans(all); clockRun(e); return; }
-    spans.forEach((sp, i) => { if (sp.textContent !== parts[i]) { sp.textContent = parts[i]; sp.classList.remove("flip"); void sp.offsetWidth; sp.classList.add("flip"); } });
-    if (!e.dataset.run || e.dataset.run !== String(window.innerWidth)) { e.dataset.run = String(window.innerWidth); clockRun(e); }
-  });
-}
-// the next game that has not started: drives the home clocks and refreshes the slate once when it kicks off
+function closeGame() { if (typeof Shell !== "undefined" && Shell.chartStop) Shell.chartStop(); DETAIL = null; renderLines(); if (window.scrollTo) window.scrollTo(0, LASTY); }
+// the next game that has not started: refreshes the slate once when it kicks off
 function tickCd() {
   clearTimeout(tickCd._h);
   if (!S) return;
   const nxt = S.games.filter((g) => !g.started && g.kickoff && new Date(g.kickoff) > Date.now()).sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff))[0];   // by the clock, so it moves on at kickoff even before the next data load
   if (nxt && tickCd._cur && tickCd._cur !== nxt.key && Date.now() - (tickCd._last || 0) > 15000) { tickCd._last = Date.now(); setTimeout(() => loadSlate().catch(() => {}), 4000); }   // the game we were counting to just kicked off: refresh once
   tickCd._cur = nxt ? nxt.key : null;
-  if ($("panel-home").classList.contains("on")) homeClocks();
   tickCd._h = setTimeout(tickCd, 1000);
 }
 // alerts: built on the server from changes it already sees between pulls (injuries, QB changes, lines, weather)
@@ -1462,7 +1428,7 @@ function renderAlerts() {
     '<div class="card" style="margin-top:10px"><div class="s">No alerts.</div></div>';
 }
 // 10/22: renderAll also redraws the First TD tab (built from the slate -- opened before the slate landed it sat on "Loading…")
-function renderAll() { if ($("panel-home").classList.contains("on")) renderHome(); renderLines(); renderTd(); if (PROPTAB === "first" && $("panel-props") && $("panel-props").classList.contains("on")) renderProps(); if (PAPER) renderLab(); else renderLabList(); if (MB) renderRecord(); applyBetsView(); tickCd(); renderAlerts(); }
+function renderAll() { renderLines(); renderTd(); if (PROPTAB === "first" && $("panel-props") && $("panel-props").classList.contains("on")) renderProps(); if (PAPER) renderLab(); else renderLabList(); if (MB) renderRecord(); applyBetsView(); tickCd(); renderAlerts(); }
 // Newest version all the time (9/30): if a new deploy went live while this page was open (or sat in a phone tab),
 // reload once to pick it up; data refreshes on its own when you come back to the tab after 2+ minutes.
 let BUILD = null, LOADED_AT = 0, LOAD_SEQ = 0;
@@ -1486,14 +1452,13 @@ function showPanel(name) {
   if (name === "props") sub = `props-${PROPTAB}`;
   if (name === "mybets" || name === "modelbets") { sub = sub || name; BETSVIEW = name === "modelbets" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} name = "record"; }
   if (name === "record" && !sub) sub = BETSVIEW === "model" ? `modelbets-${LABTYPE}` : "mybets";
-  if (!$("panel-" + name)) name = "home";
+  if (name === "home" || !$("panel-" + name)) name = "lines";   // 10/27: Home is the games list (an old #home link lands there)
   Shell.setActive(sub || name);   // 10/17: the menu replaces the tab bar
   document.body.classList.toggle("game-on", name === "lines" && !!DETAIL);   // a game page is open (the game card sits at the top)
   if (name === "alerts") { ALPREV = alSeen(); if (ALERTS.length) { try { localStorage.setItem("alSeen", ALERTS[0].t); } catch {} } }   // opening Alerts marks them read (was the bell)
   document.querySelectorAll(".panel").forEach((p) => p.classList.remove("on")); $("panel-" + name).classList.add("on");
   if (name === "alerts") renderAlerts();
-  if (name === "home") { renderHome(); loadHome(); }
-  if (name === "home" || name === "lines") liveLoop();
+  if (name === "lines") liveLoop();
   try { if (window.scrollTo) window.scrollTo(0, 0); } catch {}   // 10/14 (owner): every tab change starts at the top of the page
   if (name === "record" || name === "models") loadRecord();
   if (name === "record") applyBetsView();
@@ -1502,10 +1467,10 @@ function showPanel(name) {
   if (S && S.games) setBg(name === "lines" && DETAIL ? S.games.find((x) => x.key === DETAIL) : null);   // game background only on an open game page
   linesBg();
 }
-// 10/17: pages switch by the address' #name (the menu links set it): #home (or none), #alerts, #lines, #td, #record, #models
+// 10/17: pages switch by the address' #name (the bar links set it): #lines (or none = Home), #alerts, #td, #record, #models
 const PANELS = ["home", "alerts", "lines", "td", "record", "mybets", "modelbets", "props", ...LAB_TABS.map(([k]) => `modelbets-${k}`), ...PROP_TABS.filter(([k]) => k !== "td").map(([k]) => `props-${k}`), "models"];
 function routeHash() {
-  const name = Shell.hashPanel(PANELS, "home");
+  const name = Shell.hashPanel(PANELS, "lines");
   if (name === "lines" && DETAIL && $("panel-lines").classList.contains("on")) closeGame();   // choosing Game Lines while on a game goes back to the games
   showPanel(name);
 }
@@ -1514,9 +1479,10 @@ $("al-read").onclick = () => { ALPREV = ALERTS.length ? ALERTS[0].t : ""; render
 document.addEventListener("click", (e) => {
   const d = e.target.closest("[data-drop]"); if (d) { const el = $(d.dataset.drop); if (el) { el.classList.toggle("open"); if (d.dataset.drop === "bestlist") { BEST_OPEN = el.classList.contains("open"); try { localStorage.setItem("bestOpen", BEST_OPEN ? "1" : "0"); } catch {} }
       if (d.dataset.drop === "gamebest") { GAMEBEST_OPEN = el.classList.contains("open"); try { localStorage.setItem("gameBestOpen", GAMEBEST_OPEN ? "1" : "0"); } catch {} } } return; }
+  const gtb = e.target.closest("[data-gtab]"); if (gtb) { GTAB = gtb.dataset.gtab; lsSet("gTab", GTAB); refreshDetail(); return; }   // 10/27: game page tabs
+  const gpr = e.target.closest("[data-gprop]"); if (gpr) { GPROP = gpr.dataset.gprop; lsSet("gProp:nfl", GPROP); refreshDetail(); return; }
   const gt = e.target.closest("[data-game]"); if (gt) { if (!$("panel-lines").classList.contains("on")) { history.replaceState(null, "", "#lines"); showPanel("lines"); } openGame(gt.dataset.game); return; }
   const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k) { history.replaceState(null, "", "#lines"); showPanel("lines"); openGame(k); } return; }
-  const nb = e.target.closest("[data-nbagame]"); if (nb) { location.replace("/nba/index.html#game=" + encodeURIComponent(nb.dataset.nbagame)); return; }   // 10/18 night: no history entry, so a swipe cannot "go back"
   const bv = e.target.closest("[data-bv]"); if (bv) { history.replaceState(null, "", bv.dataset.bv === "model" ? "#modelbets" : "#mybets"); routeHash(); return; }   // 10/22: My bets | Model bets inside Bets -- the page key follows, so the sub-tab bar does too
   const lw = e.target.closest("[data-labw]"); if (lw) { LABWEEK = Number(lw.dataset.labw); renderLabList(); return; }
   const gb = e.target.closest("[data-gbw]"); if (gb) { GBGWEEK = gb.dataset.gbw === "all" ? "all" : Number(gb.dataset.gbw); $("gbg").innerHTML = gbgHtml(); return; }
@@ -1533,7 +1499,7 @@ async function refreshAll() { try { catchUp(); await loadSlate(); await loadAler
 function autoRefresh() { setTimeout(async () => { if (!document.hidden) await refreshAll(); autoRefresh(); }, 120e3); }
 Shell.init("nfl");
 document.querySelectorAll("[data-mp]").forEach((a) => a.addEventListener("click", () => { if (a.dataset.msp === "nfl" && location.hash === "#" + a.dataset.mp) setTimeout(routeHash, 0); }));   // same item again: still go back from a game page
-Shell.onRefreshed = async () => { await loadSlate(); if ($("panel-home").classList.contains("on")) await loadHome(); };
+Shell.onRefreshed = async () => { await loadSlate(); };
 routeHash();
 loadSlate().then(loadAlerts).then(() => { catchUp(); autoRefresh(); plAuto(); }).catch((e) => toast("Couldn't load this week: " + e.message, 12000));
 document.addEventListener("visibilitychange", () => { if (!document.hidden && Date.now() - LOADED_AT > 60e3) refreshAll(); });

@@ -1,7 +1,10 @@
 // SLATEZZ shell (10/17, owner; 10/22: a pinned top bar + a bottom bar instead of the side menu), the refresh button (reruns BOTH models), the
 // drop-down slot of the page titles and the logo helpers. Loaded by /index.html (NFL + home) and /nba/index.html before each page's app.js.
-// Pages: NFL #home (no hash) #alerts #lines #td #props-<tab> #mybets #modelbets #models on /index.html; NBA #alerts #lines #props-<tab> #mybets #modelbets #models on /nba/index.html.
+// Pages: #lines (= Home; none = Home) #alerts #td #props-<tab> #mybets #modelbets #models on /index.html (NFL) and /nba/index.html (NBA).
 // (10/22: Bets holds My bets | Model bets; the Model bets types and the Player props tabs are the sub-tab bar above the bottom bar.)
+// 10/27 (owner: "New order for the bottom tab: Home -- Game Lines should be in here split by NFL and NBA, make it like Polymarket ... remove the football
+// and basketball switch" + "Home / Bets / Model. remove the model tabs in home and make it its own"): the bottom bar is Home · Bets · Model; Home is the
+// games list with NFL | NBA tabs as its title, Model the Models page with the same tabs; the ball switch, Lines and Props buttons and the Models bar are gone.
 (function () {
   const ICON = {
     bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
@@ -27,19 +30,14 @@
   const TYPES = { nfl: [["best", "Best Legs"], ["3", "3 Leg"], ["2", "2 Leg"], ["pp6", "6 Leg"], ["pp8", "8 Leg"], ["pp10", "10 Leg"]],
     nba: [["pp6", "6 Leg"], ["pp8", "8 Leg"], ["pp10", "10 Leg"], ["sgp4", "Same Game"]] };
   const OTHER = { nfl: "nba", nba: "nfl" };
-  // 10/21 night (owner): a white curved arrow on each side of the ball -- left one up, right one down (the switch)
-  const SWAP_ARROW = (id) => `<svg viewBox="0 0 16 26" aria-hidden="true"><defs><linearGradient id="${id}" x1="0" y1="26" x2="0" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ec3f9a"/><stop offset=".52" stop-color="#f0805a"/><stop offset="1" stop-color="#f6c560"/></linearGradient></defs><path d="M11.5 24C4.5 20.5 3.2 12 6.8 6.4" fill="none" stroke="url(#${id})" stroke-width="2.6" stroke-linecap="round"/><path d="M2.6 8.6L7.6 1.4L11 9.6Z" fill="url(#${id})"/></svg>`;   // each arrow fades pink -> orange -> yellow (the SLATEZZ colors), owner 10/21 night
   const REF_SVG = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>';
   const REFRESH_ON = (p) => p === "lines" || p === "td" || /^props/.test(p) || /^modelbets/.test(p);   // the pages the refresh button matters on
   // which bottom tab a page belongs to; the sub tabs a page shows
-  const tabOf = (p) => p === "home" ? "home" : p === "lines" ? "lines" : p === "td" || /^props/.test(p) ? "props" : p === "mybets" || /^modelbets/.test(p) || p === "record" ? "bets" : "";
+  const tabOf = (p) => p === "home" || p === "lines" ? "home" : p === "models" ? "model" : p === "mybets" || /^modelbets/.test(p) || p === "record" ? "bets" : "";
   const subsOf = (sp, p) => p === "td" || /^props-/.test(p) ? PROPS[sp].map(([id, l]) => [id, l]) : /^modelbets-/.test(p) ? TYPES[sp].map(([k, l]) => [`modelbets-${k}`, l]) : null;
-  // the same page on the other sport (the middle button); home goes to the other sport's Game Lines
-  const otherHash = (p, sp) => { const o = OTHER[sp], t = tabOf(p);
-    return t === "props" ? PROPS[o][0][0] : t === "bets" ? (/^modelbets/.test(p) ? `modelbets-${TYPES[o][0][0]}` : "mybets") : ["alerts", "models"].includes(p) ? p : "lines"; };
   const NFL_LOGO_FIX = { WSH: "wsh", WAS: "wsh", LA: "lar", LAR: "lar" };
   const Shell = {
-    sport: "nfl", panel: "home",
+    sport: "nfl", panel: "lines",
     nflLogo: (t) => (String(t || "").toUpperCase() === "KC" ? "/kc.png?v=1" : t ? `https://a.espncdn.com/i/teamlogos/nfl/500/${NFL_LOGO_FIX[t] || String(t).toLowerCase()}.png` : ""),
     nbaLogo: (t, teams) => (teams && teams[t] && teams[t].logo) || (t ? `https://a.espncdn.com/i/teamlogos/nba/500/${String(t).toLowerCase()}.png` : ""),
     img: (src) => (src ? `<img src="${src}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '<span class="nl"></span>'),
@@ -57,46 +55,28 @@
       if (!document.querySelectorAll) return;
       document.querySelectorAll("#bnav [data-b]").forEach((a) => a.classList.toggle("on", a.dataset.b === t));
       document.querySelectorAll("#tbar [data-pg]").forEach((a) => a.classList.toggle("on", a.dataset.pg === panel));
-      const subs = subsOf(sp, panel), sb = document.getElementById("sbar");
-      if (sb) { sb.innerHTML = subs ? subs.map(([id, l]) => `<a class="si${id === panel ? " on" : ""}" data-nav href="${URL_[sp]}#${id}">${l}</a>`).join("") : "";
-        const on = sb.querySelector && sb.querySelector(".si.on"); if (on && on.scrollIntoView && sb.scrollWidth > sb.clientWidth) { try { on.scrollIntoView({ block: "nearest", inline: "center" }); } catch {} } }
-      document.body.classList.toggle("sbar-on", !!subs);
+      // 10/27 (owner: "organize or fix these ... change the layout if you need to"): the Model bets types and the Player props tabs are chips under the
+      // page title (like the game page's), no longer a strip behind the bottom bar
+      const subs = subsOf(sp, panel), html = subs ? subs.map(([id, l]) => `<a class="gchip${id === panel ? " on" : ""}" data-nav href="${URL_[sp]}#${id}">${l}</a>`).join("") : "";
+      document.querySelectorAll(".phead").forEach((h) => { let c = h.querySelector(".phchips"); if (!c && html) { c = document.createElement("div"); c.className = "gchips phchips"; h.appendChild(c); } if (c) { c.innerHTML = html; c.style.display = html ? "" : "none"; } });
+      // the NFL | NBA row opens Home on the other sport
+      const same = panel === "home" ? "lines" : /^modelbets/.test(panel) ? "modelbets" : panel === "record" ? "mybets" : panel;
+      document.querySelectorAll(".lgt[data-sp]").forEach((a) => a.setAttribute("href", `${URL_[a.dataset.sp]}#${same}`));
       document.body.classList.toggle("ref-on", REFRESH_ON(panel));
-      const home = sp === "nfl" && panel === "home";
-      if (!home) Shell.choose(sp);
-      const bar = home ? (Shell.chosen() || sp) : sp; Shell.paintBar(bar, panel);
-      const sw = document.getElementById("bsport"); if (sw) sw.dataset.href = home ? `${URL_[OTHER[bar]]}#lines` : `${URL_[OTHER[sp]]}#${otherHash(panel, sp)}`;
-      document.body.classList.toggle("home-on", home); document.documentElement.classList.toggle("home-on", home);
-      const sh = document.getElementById("shead"); if (sh) sh.style.display = "none";   // 10/22: SLATEZZ lives in the pinned top bar on every page
+      Shell.choose(sp);   // Home and Model open on the sport last chosen
+      document.body.classList.toggle("tbar-on", panel === "lines");   // 10/27 (owner): the SLATEZZ bar is on Home only
     },
     counts: {},
     setCount(sp, id, n) { Shell.counts[`${sp}-${id}`] = n; const e = document.getElementById(`mcnt-${sp}-${id}`); if (!e) return; e.textContent = n > 9 ? "9+" : String(n || ""); e.style.display = n ? "flex" : "none"; },
-    // 10/23 (owner: "when I press home it switches back to nfl ... It should just stay on what I choose"): home lives on the NFL page, so its bars
-    // follow the sport last chosen (any NFL / NBA page remembers its sport); the alerts "read" mark is kept per sport
+    // the sport last chosen is kept per phone (a fresh start lands on its Home); the alerts "read" mark is kept per sport
     SPORT_KEY: "slz-sport", seenKey: (sp) => (sp === "nba" ? "alSeen:nba" : "alSeen"),
     chosen() { try { const v = localStorage.getItem(Shell.SPORT_KEY); return v === "nba" || v === "nfl" ? v : null; } catch { return null; } },
     choose(sp) { try { localStorage.setItem(Shell.SPORT_KEY, sp); } catch {} },
-    bar: null,
-    paintBar(bar, panel) {
-      const o = OTHER[bar], q = (s) => document.querySelector && document.querySelector(s);
-      if (Shell.bar !== bar) {
-        Shell.bar = bar;
-        const bell = q("#tbar .tib"); if (bell) { bell.setAttribute("href", `${URL_[bar]}#alerts`); const c = bell.querySelector(".tcnt"); if (c) { c.id = `mcnt-${bar}-alerts`; const n = Shell.counts[`${bar}-alerts`]; c.textContent = n > 9 ? "9+" : String(n || ""); c.style.display = n ? "flex" : "none"; } }
-        const set = (b, h) => { const a = q(`#bnav [data-b="${b}"]`); if (a) a.setAttribute("href", h); };
-        set("bets", `${URL_[bar]}#mybets`); set("lines", `${URL_[bar]}#lines`); set("props", `${URL_[bar]}#${PROPS[bar][0][0]}`);
-        const bs = q("#bsport"); if (bs) { bs.className = `bsport ${bar}`; bs.setAttribute("aria-label", `Switch to ${o.toUpperCase()}`); const im = bs.querySelector("img"); if (im) { im.src = `/ball-${bar}.png?v=1`; im.alt = bar.toUpperCase(); } }
-        if (bar === "nba" && bar !== Shell.sport) Shell.awayCount(bar);
-      }
-    },
-    // the chosen sport's unread alerts on home, when that sport's own page is not the one loaded
-    async awayCount(sp) {
-      if (typeof fetch !== "function") return;
-      try { const d = await (await fetch(sp === "nba" ? "/api/nba/alerts" : "/api/alerts", { cache: "no-store" })).json(); if (!d || !d.ok) return;
-        let seen = ""; try { const v = localStorage.getItem(Shell.seenKey(sp)); seen = v == null ? localStorage.getItem("alSeen") || "" : v; } catch {}
-        Shell.setCount(sp, "alerts", (d.alerts || []).filter((a) => a.t > seen).length); } catch {}
-    },
+    // the NFL | NBA tabs that title Home and Model (10/27): the same page on each sport, the one open in white
+    // (owner 10/27, Polymarket's phone app: the category row -- an icon over its name, the open one in a rounded square)
+    leagueTabs(sp, page) { return ["nfl", "nba"].map((x) => `<a class="lgt${x === sp ? " on" : ""}" data-sp="${x}" data-nav href="${URL_[x]}#${page}"><i><img src="/ball-${x}.png?v=1" alt=""></i><span>${x.toUpperCase()}</span></a>`).join(""); },
     open() {}, close() {},   // (the side menu is gone 10/22)
-    // the hash names the page ("#lines"); none = home on the NFL page, Game Lines on the NBA page
+    // the hash names the page ("#lines"); none = Home (the games list)
     hashPanel(valid, fallback) { const h = (location.hash || "").replace("#", ""); return valid.includes(h) ? h : fallback; },
     onRefreshed: null,
     async refresh() {
@@ -134,35 +114,31 @@
     // 10/22 (owner: "Every time I open the app can it land me on the home page" + "background for more than 2 [minutes] reset"; both sports):
     // a fresh start of the app (a new session: nothing in sessionStorage yet) opens on home; coming back after 2+ minutes in the background
     // lands on home and reloads everything; back sooner keeps the page. Switches inside the app (NFL <-> NBA) keep the session, so they never reset.
-    HOME: "/index.html", AWAY_MS: 120e3, resetting: false,
-    isHome() { return /^\/(index\.html)?$/.test(location.pathname) && (!location.hash || location.hash === "#" || location.hash === "#home"); },
+    AWAY_MS: 120e3, resetting: false,
+    home() { return `${URL_[Shell.chosen() || "nfl"]}#lines`; },   // Home = the games list of the sport last chosen
+    isHome() { return /^\/(nba\/)?(index\.html)?$/.test(location.pathname) && ["", "#", "#home", "#lines"].includes(location.hash || ""); },
     homeReset() {
       let ss = null; try { ss = window.sessionStorage; } catch {}
       if (!ss || typeof document === "undefined" || !document.addEventListener) return false;
       let fresh = false; try { fresh = !ss.getItem("slz-live"); ss.setItem("slz-live", "1"); } catch { return false; }
-      if (fresh && !Shell.isHome()) { Shell.resetting = true; location.replace(Shell.HOME); return true; }
+      if (fresh && !Shell.isHome()) { Shell.resetting = true; location.replace(Shell.home()); return true; }
       document.addEventListener("visibilitychange", () => { try {
         if (document.hidden) { ss.setItem("slz-away", String(Date.now())); return; }
         const t = Number(ss.getItem("slz-away") || 0); ss.removeItem("slz-away");
-        if (t && Date.now() - t >= Shell.AWAY_MS) { Shell.resetting = true; location.replace(Shell.HOME); }
+        if (t && Date.now() - t >= Shell.AWAY_MS) { Shell.resetting = true; location.replace(Shell.home()); }
       } catch {} });
       return false;
     },
     init(sport) {
       if (Shell.homeReset()) return;   // a fresh start on another page: home is loading instead
-      Shell.sport = sport; const sp = sport, o = OTHER[sp];
+      Shell.sport = sport; const sp = sport;
       const d = document.createElement("div");
-      d.innerHTML = `<header class="tbar" id="tbar"><a class="slatelogo sgrad" data-nav href="/index.html#home">SLATEZZ</a>` +
+      d.innerHTML = `<header class="tbar" id="tbar"><a class="slatelogo sgrad" data-nav href="${URL_[sp]}#lines">SLATEZZ</a>` +
         `<a class="tib" data-nav data-pg="alerts" href="${URL_[sp]}#alerts" aria-label="Alerts">${svg("bell", 28)}<b class="tcnt" id="mcnt-${sp}-alerts"></b></a></header>` +   // 10/21 night (owner): the bell at the top right
-        `<nav class="hmod" id="hmod" aria-label="Model analysis"><a data-nav href="/index.html#models">${svg("bars", 22)}<span>NFL</span></a><a data-nav href="/nba/index.html#models">${svg("bars", 22)}<span>NBA</span></a></nav>` +
-        `<nav class="sbar" id="sbar" aria-label="Tabs"></nav>` +
         `<nav class="bnav" id="bnav" aria-label="Main menu">` +
-        // 10/22 (owner): Home · Bets · [ball] · Lines · Props
-        `<a class="bi" data-nav data-b="home" href="/index.html#home">${svg("home", 22)}<span>Home</span></a>` +
-        `<a class="bi" data-nav data-b="bets" href="${URL_[sp]}#mybets">${svg("bets", 22)}<span>Bets</span></a>` +
-        `<button class="bsport ${sp}" id="bsport" aria-label="Switch to ${o.toUpperCase()}"><i class="barr up">${SWAP_ARROW("barrg1")}</i><img src="/ball-${sp}.png?v=1" alt="${sp.toUpperCase()}"><i class="barr dn">${SWAP_ARROW("barrg2")}</i></button>` +   // 10/21 night (owner): just the ball of the sport you are on (cut out of the owner's photos); a tap switches sport
-        `<a class="bi" data-nav data-b="lines" href="${URL_[sp]}#lines">${svg("grid", 22)}<span>Lines</span></a>` +
-        `<a class="bi" data-nav data-b="props" href="${URL_[sp]}#${PROPS[sp][0][0]}">${svg("props", 22)}<span>Props</span></a></nav>`;
+        `<a class="bi" data-nav data-b="home" href="${URL_[sp]}#lines" aria-label="Home">${svg("home", 23)}<span>Home</span></a>` +
+        `<a class="bi" data-nav data-b="bets" href="${URL_[sp]}#mybets" aria-label="Bets">${svg("bets", 23)}<span>Bets</span></a>` +
+        `<a class="bi" data-nav data-b="model" href="${URL_[sp]}#models" aria-label="Model">${svg("bars", 23)}<span>Model</span></a></nav>`;   // (owner 10/27: like Polymarket's phone app -- a floating pill, icons only, the open one in a round bubble)
       while (d.firstChild) document.body.appendChild(d.firstChild);
       if (document.body.classList) document.body.classList.add("bnav-on");
       // My bets | Model bets sit inside Bets, under its title in the pinned header (10/22, sketch L)
@@ -178,8 +154,8 @@
         // (10/21 night, owner: no time under it -- the refresh time shows in the message at the bottom right after a tap)
         box.appendChild(b); const tb = h.querySelector(".pt b"); if (tb && tb.after) tb.after(box); else h.appendChild(box);   // on the title's line, right after the title (owner 10/21 night)
       });
-      const bs = document.getElementById("bsport");
-      if (bs) bs.onclick = (e) => Shell.go(e.currentTarget.dataset.href || `${URL_[o]}#lines`);
+      // Home: the NFL | NBA row is the title (owner 10/27: on Home only -- Bets and Model follow the sport last picked there)
+      [["panel-lines", "lines"]].forEach(([id, pg]) => { const t = document.querySelector && document.querySelector(`#${id} .phead .pt b`); if (t) { t.className = "lgts"; t.innerHTML = Shell.leagueTabs(sp, pg); } });
       if (document.addEventListener) document.addEventListener("click", (e) => {
         const a = e.target.closest && e.target.closest("a[data-nav]"); if (!a) return;
         e.preventDefault(); Shell.go(a.getAttribute("href"));
@@ -202,6 +178,125 @@
       document.addEventListener("visibilitychange", () => { if (!document.hidden && !Shell.resetting) { if (Shell.stale) location.reload(); else Shell.buildCheck("visible"); } });
     },
   };
+  // GAME PAGE CHART (10/27, owner: "inside the card to look like theirs but catered to ours", sketch A claude.ai/artifact/5y2kVMTo7ru4xrJNdWr24q; both sports):
+  // each team's Polymarket US win price over time (moneyline history, /api/pricehist or /api/nba/pricehist), a line per team in
+  // its team colour with the current % at the end, 1D / 1W / 1M / ALL under it (LIVE while the game is on, redrawn every 30 s).
+  // o: { key, sport, away, home, start, live, title, ca, ch }. The chosen window is kept per phone (gRange); the data per game + window for the session.
+  const CH = { data: {}, timer: null, cur: null };
+  const lsG = (k, d) => { try { return localStorage.getItem(k) || d; } catch { return d; } };
+  const hexRgb = (h) => { const m = /^#?([0-9a-f]{6})$/i.exec(String(h || "")); const n = m ? parseInt(m[1], 16) : 0x888888; return [n >> 16, (n >> 8) & 255, n & 255]; };
+  const toHex = (c) => "#" + c.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("");
+  const lum = (c) => (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
+  // a team colour that reads on the black page: dark ones are lifted toward white; two near-equal colours -> the home line goes light gray
+  function chartColors(ca, ch) {
+    const lift = (h) => { let c = hexRgb(h); for (let i = 0; i < 8 && lum(c) < 0.42; i++) c = c.map((v) => v + (255 - v) * 0.18); return c; };
+    const a = lift(ca), h = lift(ch), d = Math.hypot(a[0] - h[0], a[1] - h[1], a[2] - h[2]);
+    return [toHex(a), d < 70 ? "#e4e4e8" : toHex(h)];
+  }
+  const chartRange = (o) => (o.live ? (CH.liveRange || "live") : lsG("gRange", "all"));
+  function chartSvg(o, pts, range, w) {
+    const H = 172, P = { l: 30, r: 58, t: 12, b: 20 };
+    if (!pts || pts.length < 2) return `<div class="gcempty">${pts ? "No price history yet." : "Loading…"}</div>`;
+    const [ca, ch] = chartColors(o.ca, o.ch), x0 = pts[0][0], x1 = pts[pts.length - 1][0];
+    const vals = pts.flatMap((p) => [p[1], p[2]]);
+    let lo = Math.max(0, Math.floor((Math.min(...vals) - 0.05) * 10) / 10), hi = Math.min(1, Math.ceil((Math.max(...vals) + 0.05) * 10) / 10); if (hi - lo < 0.2) { lo = Math.max(0, lo - 0.1); hi = Math.min(1, hi + 0.1); }
+    const X = (t) => P.l + ((t - x0) / (x1 - x0 || 1)) * (w - P.l - P.r), Y = (v) => P.t + ((hi - v) / (hi - lo)) * (H - P.t - P.b);
+    const path = (i) => pts.map((p, k) => (k ? `H${X(p[0]).toFixed(1)}V` : `M${X(p[0]).toFixed(1)},`) + Y(p[i]).toFixed(1)).join("");
+    let g = "";
+    const step = hi - lo > 0.5 ? 0.2 : 0.1;
+    for (let v = Math.ceil(lo / step - 1e-9) * step; v <= hi + 1e-9; v += step) g += `<line x1="${P.l}" x2="${w - P.r + 4}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" class="gl"/><text x="${P.l - 5}" y="${(Y(v) + 3).toFixed(1)}" class="ga" text-anchor="end">${Math.round(v * 100)}%</text>`;
+    const span = x1 - x0, short = span < 2 * 86400, n = 4, fmt = (t) => new Date(t * 1000).toLocaleString(undefined, short ? { hour: "numeric", minute: "2-digit" } : { month: "short", day: "numeric" });
+    for (let i = 0; i <= n; i++) { const t = x0 + (span * i) / n; g += `<text x="${X(t).toFixed(1)}" y="${H - 5}" class="ga" text-anchor="${i === 0 ? "start" : i === n ? "end" : "middle"}">${fmt(t)}</text>`; }
+    const last = pts[pts.length - 1]; let ya = Y(last[1]), yh = Y(last[2]);
+    if (Math.abs(ya - yh) < 30) { const mid = (ya + yh) / 2, up = ya <= yh ? -1 : 1; ya = mid + up * 15; yh = mid - up * 15; }
+    const lab = (v, y, col, code, cy) => `<circle cx="${X(x1).toFixed(1)}" cy="${cy.toFixed(1)}" r="3.2" fill="${col}"/><text x="${(X(x1) + 8).toFixed(1)}" y="${(y - 3).toFixed(1)}" fill="${col}" class="gn">${code}</text><text x="${(X(x1) + 8).toFixed(1)}" y="${(y + 12).toFixed(1)}" fill="${col}" class="gp">${Math.round(v * 100)}%</text>`;
+    return `<svg viewBox="0 0 ${w} ${H}" width="${w}" height="${H}" role="img" aria-label="${o.away} and ${o.home} win price over time">${g}<path d="${path(2)}" fill="none" stroke="${ch}" stroke-width="2"/><path d="${path(1)}" fill="none" stroke="${ca}" stroke-width="2"/>${lab(last[2], yh, ch, o.home, Y(last[2]))}${lab(last[1], ya, ca, o.away, Y(last[1]))}</svg>`;
+  }
+  const chartKey = (o, r) => `${o.key}|${r}`;
+  function chartFill(o) {
+    const el = document.getElementById("gcv"); if (!el || CH.cur !== o.key) return;
+    const r = chartRange(o), d = CH.data[chartKey(o, r)];
+    el.innerHTML = chartSvg(o, d ? d.pts : null, r, Math.max(280, Math.min(1000, Math.round(el.clientWidth || 360))));
+  }
+  // 10/27 (owner, Polymarket's game screen: "put [the game card] on top of the chart but blend it nicely together" / "remove this title"): our team
+  // card (no border, square bottom corners), then the chart on the same team-colour wash fading into the page, the windows and Polymarket's mark under it
+  // OTHER MARKETS (10/27, owner: Polymarket's game page -- halves, quarters, team totals, game / team props; "add everything else if it passes our 65%
+  // rule"): Polymarket US's prices from /api/gamemarkets (NBA /api/nba/gamemarkets). No tested model covers them yet, so there is no pick column; a pick
+  // goes here only once a model reaches 65% on one. Game Lines gets HALVES & QUARTERS (period chips) and TEAM TOTALS (team chips), GAME PROPS its own tab.
+  const MK = { data: {}, busy: {} }, PERL = { "1h": "1st Half", "2h": "2nd Half", q1: "1st Q", q2: "2nd Q", q3: "3rd Q", q4: "4th Q" }, TTL = { full: "Full game", "1h": "1st half", "2h": "2nd half" };
+  const mkKey = (o) => `${o.sport}|${o.key}`, cents = (x) => (x == null ? "—" : `${Math.round(x * 100)}¢`), sgn = (x) => (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x);
+  const lsS = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+  Shell.onMkt = null;
+  Shell.mktLoad = (o) => {
+    const k = mkKey(o), c = MK.data[k]; if ((c && Date.now() - c.t < 120e3) || MK.busy[k] || typeof fetch !== "function") return;
+    MK.busy[k] = true;
+    fetch(`/api/${o.sport === "nba" ? "nba/" : ""}gamemarkets?away=${encodeURIComponent(o.away)}&home=${encodeURIComponent(o.home)}&start=${encodeURIComponent(o.start)}`, { cache: "no-store" })
+      .then((r) => r.json()).then((d) => { MK.data[k] = { t: Date.now(), d: d && d.ok ? d : null }; }).catch(() => { MK.data[k] = { t: Date.now(), d: null }; })
+      .finally(() => { MK.busy[k] = false; if (typeof Shell.onMkt === "function") Shell.onMkt(o.key); });
+  };
+  const mkHead = (a, b, c) => `<div class="mkx mkh"><span>${a}</span><span>${b}</span><span>${c}</span></div>`;
+  const mkRow = (a, b, c) => `<div class="mkx"><span>${a}</span><span class="v">${b}</span><span class="v">${c}</span></div>`;
+  const chips = (attr, list, on) => `<div class="gchips">${list.map(([k, l]) => `<button class="gchip${k === on ? " on" : ""}" type="button" ${attr}="${k}">${l}</button>`).join("")}</div>`;
+  const pmh = '<img class="mkpm" src="/polymarket.png" alt="">';
+  // Game Lines extras: "" until loaded (the cards above show first), nothing when Polymarket lists none
+  Shell.mktLines = (o) => {
+    const c = MK.data[mkKey(o)]; Shell.mktLoad(o); const d = c && c.d; if (!d) return "";
+    let out = "";
+    const pk = Object.keys(PERL).filter((k) => d.periods && d.periods[k]);
+    if (pk.length) {
+      let per = lsG("gPer", "1h"); if (!pk.includes(per)) per = pk[0]; const P = d.periods[per];
+      out += `<div class="trow"><div class="sh">HALVES &amp; QUARTERS</div></div><div class="card mkc">${chips("data-gper", pk.map((k) => [k, PERL[k]]), per)}` +
+        (P.spread.length ? `<div class="mks">Spread</div>${mkHead(`${pmh}LINE`, o.away, o.home)}${P.spread.map((r) => mkRow(`${o.away} ${sgn(r.line)} · ${o.home} ${sgn(-r.line)}`, cents(r.aPrice), cents(r.hPrice))).join("")}` : "") +
+        (P.total.length ? `<div class="mks">Total</div>${mkHead(`${pmh}LINE`, "OVER", "UNDER")}${P.total.map((r) => mkRow(String(r.line), cents(r.over), cents(r.under))).join("")}` : "") +
+        (P.winner.length ? `<div class="mks">Winner</div>${mkHead(`${pmh}`, "YES", "")}${P.winner.map((r) => mkRow(r.label, cents(r.price), "")).join("")}` : "") + `</div>`;
+    }
+    const tt = d.teamTotals || {}, teams = [o.away, o.home].filter((t) => tt[t] && Object.keys(tt[t]).length);
+    if (teams.length) {
+      let tm = lsG("gTT", o.away); if (!teams.includes(tm)) tm = teams[0];
+      out += `<div class="trow"><div class="sh">TEAM TOTALS</div></div><div class="card mkc">${chips("data-gtt", teams.map((t) => [t, t]), tm)}` +
+        Object.keys(TTL).filter((k) => tt[tm][k]).map((k) => `<div class="mks">${TTL[k]}</div>${mkHead(`${pmh}LINE`, "OVER", "UNDER")}${tt[tm][k].map((r) => mkRow(`${tm} ${r.line}`, cents(r.over), cents(r.under))).join("")}`).join("") + `</div>`;
+    }
+    return out;
+  };
+  // GAME PROPS tab: Game | Team chips, each market group with its rows
+  Shell.mktProps = (o, none) => {
+    const c = MK.data[mkKey(o)]; Shell.mktLoad(o); if (!c) return '<div class="s dim" style="margin:12px 2px">Loading…</div>';
+    const d = c.d, pr = (d && d.props) || {}, has = (x) => x && Object.keys(x).length, kinds = [["game", "Game"], ["team", "Team"]].filter(([k]) => has(pr[k]));
+    if (!kinds.length) return none;
+    let kd = lsG("gPx", "game"); if (!kinds.some(([k]) => k === kd)) kd = kinds[0][0];
+    return chips("data-gpx", kinds, kd) + Object.entries(pr[kd]).map(([g, rows]) => `<div class="card mkc"><div class="mks">${g}</div>${mkHead(pmh, "YES", "NO")}${rows.map((r) => mkRow(r.label, cents(r.yes), cents(r.no))).join("")}</div>`).join("");
+  };
+  if (typeof document !== "undefined" && document.addEventListener) document.addEventListener("click", (e) => {
+    const b = e.target.closest && e.target.closest("[data-gper],[data-gtt],[data-gpx]"); if (!b) return;
+    if (b.dataset.gper) lsS("gPer", b.dataset.gper); else if (b.dataset.gtt) lsS("gTT", b.dataset.gtt); else lsS("gPx", b.dataset.gpx);
+    if (typeof Shell.onMkt === "function") Shell.onMkt(null);
+  });
+  Shell.chartBlock = (o) => {
+    CH.cur = o.key; const r = chartRange(o), keys = o.live ? ["live", "1d", "1w", "all"] : ["1d", "1w", "1m", "all"];
+    const btn = (k) => `<button type="button" class="${k === r ? "on" : ""}" data-grange="${k}">${k === "live" ? "LIVE" : k.toUpperCase()}</button>`;
+    const wash = `linear-gradient(90deg,${o.ca}40 0%,${o.ca}14 50%,${o.ch}14 50%,${o.ch}40 100%)`;
+    return `<div class="gchart" style="--gwash:${wash}"><div class="gcv" id="gcv"></div>` +
+      `<div class="grng"><span class="gpm"><img src="/polymarket.png" alt="">Polymarket${o.live ? ' · <span class="r">● LIVE</span>' : ""}</span><span class="gb">${keys.map(btn).join("")}</span></div></div>`;
+  };
+  Shell.chartLoad = async (o, force) => {
+    CH.cur = o.key; CH.o = o; chartFill(o);
+    const r = chartRange(o), k = chartKey(o, r), have = CH.data[k], age = have ? Date.now() - have.t : Infinity;
+    if (!force && age < (r === "live" ? 25e3 : 120e3)) return;
+    const url = `/api/${o.sport === "nba" ? "nba/" : ""}pricehist?away=${encodeURIComponent(o.away)}&home=${encodeURIComponent(o.home)}&start=${encodeURIComponent(o.start)}&range=${r}`;
+    try { const d = await (await fetch(url)).json(); CH.data[k] = { pts: d && d.ok ? d.pts : [], t: Date.now() }; } catch { if (!have) CH.data[k] = { pts: [], t: Date.now() }; }
+    chartFill(o);
+    clearTimeout(CH.timer);
+    if (typeof setTimeout === "function") CH.timer = setTimeout(() => { if (CH.cur === o.key && document.getElementById("gcv") && !document.hidden) Shell.chartLoad(CH.o); }, o.live ? 30e3 : 300e3);
+  };
+  Shell.chartStop = () => { CH.cur = null; clearTimeout(CH.timer); };
+  if (typeof document !== "undefined" && document.addEventListener) document.addEventListener("click", (e) => {
+    const b = e.target && e.target.closest && e.target.closest("[data-grange]"); if (!b || !CH.o) return;
+    const r = b.dataset.grange;
+    if (CH.o.live) CH.liveRange = r; else { try { localStorage.setItem("gRange", r); } catch {} }
+    const box = b.closest(".gchart"); if (box) box.querySelectorAll("[data-grange]").forEach((x) => x.classList.toggle("on", x === b));
+    Shell.chartLoad(CH.o);
+  });
+  if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("resize", () => { if (CH.o && CH.cur) chartFill(CH.o); });
   // 10/22 (owner): the one ⓘ next to a model header opens / closes the short box right under that header (both sports)
   if (typeof document !== "undefined" && document.addEventListener) document.addEventListener("click", (e) => {
     const b = e.target && e.target.closest && e.target.closest(".ibtn"); if (!b) return;
