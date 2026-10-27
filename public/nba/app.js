@@ -349,7 +349,7 @@ function renderDetail(g) {
   const body = GTAB === "props" ? gameChips() + gamePropsBody(g) : GTAB === "parlays" ? gameParlaysBody(g)
     : secRow("SPREAD &amp; ML", injPill(g, "inj")) + `<div class="grid">${marketCard(g, "spread", "inj")}</div>` + secRow("TOTALS") + `<div class="grid">${marketCard(g, "total")}</div>`;
   const co = chartOf(g);
-  $("detail").innerHTML = `${typeof Shell !== "undefined" && Shell.chartBlock ? Shell.chartBlock(co) : ""}${detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs()}${body}`;
+  $("detail").innerHTML = `${typeof Shell !== "undefined" && Shell.chartBlock ? Shell.chartTitle(co) + detailTop(g).replace('class="card dtop"', 'class="card dtop dblend"') + Shell.chartBlock(co) : detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs()}${body}`;
   if (typeof Shell !== "undefined" && Shell.chartLoad) Shell.chartLoad(co);
   $("back-btn").onclick = closeGame;
   setBg($("panel-lines").classList.contains("on") ? g : null);

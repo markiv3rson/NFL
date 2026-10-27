@@ -177,7 +177,7 @@
   };
   // GAME PAGE CHART (10/27, owner: "inside the card to look like theirs but catered to ours", sketch A claude.ai/artifact/5y2kVMTo7ru4xrJNdWr24q; both sports):
   // the game's title, then each team's Polymarket US win price over time (moneyline history, /api/pricehist or /api/nba/pricehist), a line per team in
-  // its team colour with the current % at the end, 1D / 1W / 1M / ALL under it (LIVE while the game is on, redrawn every 30 s); our team card follows.
+  // its team colour with the current % at the end, 1D / 1W / 1M / ALL under it (LIVE while the game is on, redrawn every 30 s).
   // o: { key, sport, away, home, start, live, title, ca, ch }. The chosen window is kept per phone (gRange); the data per game + window for the session.
   const CH = { data: {}, timer: null, cur: null };
   const lsG = (k, d) => { try { return localStorage.getItem(k) || d; } catch { return d; } };
@@ -215,11 +215,15 @@
     const r = chartRange(o), d = CH.data[chartKey(o, r)];
     el.innerHTML = chartSvg(o, d ? d.pts : null, r, Math.max(280, Math.min(1000, Math.round(el.clientWidth || 360))));
   }
+  // 10/27 (owner, Polymarket's game screen: "put [the game card] on top of the chart but blend it nicely together"): the title, then our team card
+  // (no border, square bottom corners), then the chart on the same team-colour wash fading into the page, the windows and Polymarket's mark under it
+  Shell.chartTitle = (o) => `<div class="gtitle">${o.title}</div>`;
   Shell.chartBlock = (o) => {
     CH.cur = o.key; const r = chartRange(o), keys = o.live ? ["live", "1d", "1w", "all"] : ["1d", "1w", "1m", "all"];
     const btn = (k) => `<button type="button" class="${k === r ? "on" : ""}" data-grange="${k}">${k === "live" ? "LIVE" : k.toUpperCase()}</button>`;
-    return `<div class="gchart"><div class="gt">${o.title}</div><div class="gsub"><img src="/polymarket.png" alt="">Polymarket</div><div class="gcv" id="gcv"></div>` +
-      `<div class="grng"><span>${o.live ? '<span class="r">● LIVE</span> · updates every 30 s' : ""}</span><span class="gb">${keys.map(btn).join("")}</span></div></div>`;
+    const wash = `linear-gradient(90deg,${o.ca}40 0%,${o.ca}14 50%,${o.ch}14 50%,${o.ch}40 100%)`;
+    return `<div class="gchart" style="--gwash:${wash}"><div class="gcv" id="gcv"></div>` +
+      `<div class="grng"><span class="gpm"><img src="/polymarket.png" alt="">Polymarket${o.live ? ' · <span class="r">● LIVE</span>' : ""}</span><span class="gb">${keys.map(btn).join("")}</span></div></div>`;
   };
   Shell.chartLoad = async (o, force) => {
     CH.cur = o.key; CH.o = o; chartFill(o);

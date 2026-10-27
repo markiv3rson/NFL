@@ -1368,7 +1368,7 @@ function gamePropsBody(g) {
   return picks.length ? `<div class="pgrid" style="margin-top:6px"><div class="par">${propHead(false)}${teamRows({ away: g.away, home: g.home, picks }, propRow)}</div></div>` : gNone("None for this game.");
 }
 function gameParlaysBody(g) { const b = sgpBox(g); return b ? b.replace('<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAYS</div>', "") : gNone(g.started || g.final ? "Same-game parlays close at kickoff; they are on Model bets with their results." : "No same-game parlay for this game."); }
-// the game page chart (10/27, owner's pick: open chart, sketch A): Polymarket US's moneyline history for both teams, drawn by the shared shell (Shell.chartBlock)
+// the game page chart (10/27, owner's pick: open chart, sketch A; later: the team card on top of it, blended): Polymarket US's moneyline history for both teams, drawn by the shared shell (Shell.chartBlock)
 const NICK = { ARI: "Cardinals", ATL: "Falcons", BAL: "Ravens", BUF: "Bills", CAR: "Panthers", CHI: "Bears", CIN: "Bengals", CLE: "Browns", DAL: "Cowboys", DEN: "Broncos", DET: "Lions", GB: "Packers", HOU: "Texans", IND: "Colts", JAX: "Jaguars", KC: "Chiefs", LA: "Rams", LAC: "Chargers", LV: "Raiders", MIA: "Dolphins", MIN: "Vikings", NE: "Patriots", NO: "Saints", NYG: "Giants", NYJ: "Jets", PHI: "Eagles", PIT: "Steelers", SEA: "Seahawks", SF: "49ers", TB: "Buccaneers", TEN: "Titans", WAS: "Commanders" };
 const chartOf = (g) => ({ key: g.key, sport: "nfl", away: g.away, home: g.home, start: g.kickoff, live: !!(g.started && !g.final),
   title: `${esc(g.away)} ${esc(NICK[g.away] || "")} vs ${esc(g.home)} ${esc(NICK[g.home] || "")}`, ca: TEAM_COLOR[g.away] || "#888888", ch: TEAM_COLOR[g.home] || "#888888" });
@@ -1378,7 +1378,7 @@ function renderDetail(g) {
   const early = g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : "";
   const body = GTAB === "props" ? gameChips() + gamePropsBody(g) : GTAB === "parlays" ? gameParlaysBody(g) : `${early}${gameCard(g, "x")}${totalCard(g, "x")}`;
   const co = chartOf(g);
-  $("detail").innerHTML = `${typeof Shell !== "undefined" && Shell.chartBlock ? Shell.chartBlock(co) : ""}${detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs()}${body}`;
+  $("detail").innerHTML = `${typeof Shell !== "undefined" && Shell.chartBlock ? Shell.chartTitle(co) + detailTop(g).replace('class="card dtop"', 'class="card dtop dblend"') + Shell.chartBlock(co) : detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs()}${body}`;
   if (typeof Shell !== "undefined" && Shell.chartLoad) Shell.chartLoad(co);
   $("back-btn").onclick = closeGame;
   if (g.final) ensureGrades();
