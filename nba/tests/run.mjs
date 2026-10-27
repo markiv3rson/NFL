@@ -306,6 +306,53 @@ ok(redisUrl({ UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://a:1", REDIS_URL: "redis
   const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
   ok(/Combo · \$\{e\.picks\.length\} picks/.test(app) && /\(e\.picks \|\| \[\]\)\.map\(\(p\) => legRow\(p, lk\)\)/.test(app) && /legTxt\(p\.result, `\$\{p\.team \? tlogo/.test(app), "NBA My bets lists a combo's legs (✓ / ✗, logo, green / red)");
   ok(/sc\.st === "in"/.test(app) && /● LIVE · \$\{esc\(liveSc\(lk\[0\]\)\.lbl/.test(app) && /const lk = settled \? \[\] : liveOf\(e\)/.test(app) && /\$\{betName\(e\)\}\$\{lv \? " " \+ lv\.trim\(\) : ""\}/.test(app) && /panel-record"\)\.classList\.contains\("on"\) && BETS\) renderBets\(\)/.test(app), "NBA My bets: an open bet in a live game says ● LIVE · quarter clock (no score), refreshed with the live scores"); }
+// 10/27 (owner: "Fix the player props ... Also fix the straight bets"): prop legs named and graded, totals carry their number, singles are bets
+{ const R = globalThis.__TEST_REDIS__, real = globalThis.fetch;
+  const ps = mb.propStat("astatc-nba-atl-hou-2026-10-26-pra-ametho-gte25");
+  ok(ps && ps.game === "ATL @ HOU" && ps.date === "2026-10-26" && ps.stat === "pra" && ps.code === "ametho" && ps.n === 25 && ps.line === 24.5 && ps.what === "25+ PRA" && mb.propStat("asc-nba-atl-hou-2026-10-26-pos-2pt5") === null, "NBA prop slug read (stat, code, N+ = line N - 0.5)", ps);
+  const L = [{ slug: "astatc-nba-atl-hou-2026-10-26-pra-ametho-gte25", eventSlug: "nba-atl-hou-2026-10-26", title: "ATL Hawks vs. HOU Rockets", outcome: "Yes", state: "COMBO_LEG_STATE_PENDING", team: { abbreviation: "hou" }, player: "Amen Thompson" },
+    { slug: "astatc-nba-min-cle-2026-10-26-reb-donmit-gte4", eventSlug: "nba-min-cle-2026-10-26", title: "MIN Timberwolves vs. CLE Cavaliers", outcome: "No", state: "", team: { abbreviation: "cle" } },
+    { slug: "tsc-nba-gs-den-2026-10-26-241pt5", eventSlug: "nba-gs-den-2026-10-26", title: "GS Warriors vs. DEN Nuggets", outcome: "Under", state: "" }];
+  const P = mb.comboPicks(mb.slimLegs(L));
+  ok(P[0].label === "Amen Thompson 25+ PRA" && P[0].kind === "prop" && P[0].team === "HOU" && P[0].game === "ATL @ HOU" && P[0].player === "Amen Thompson" && P[0].stat === "pra" && P[0].line === 24.5 && P[0].side === "over"
+    && P[1].label === "donmit under 4 Reb" && P[1].side === "under" && P[1].team === "CLE" && P[2].label === "Under 241.5" && P[2].kind === "total" && P[2].game === "GSW @ DEN", "NBA combo prop legs read the player + the bet (a nameless leg keeps its code until the name is found); an NBA total leg carries its number", P);
+  const box = { final: true, players: { "amen thompson": { pts: 18, reb: 9, ast: 4, pra: 31 }, "donovan mitchell": { pts: 30, reb: 3, ast: 5, pra: 38 } } };
+  ok(mb.markProp(P[0], box).result === "W" && mb.markProp(P[0], box).actual === 31 && mb.markProp({ ...P[1], player: "Donovan Mitchell" }, box).result === "W" && mb.markProp({ ...P[0], line: 34.5 }, box).result === "L"
+    && mb.markProp({ ...P[0], player: "Nobody Here" }, box).result === "P" && mb.markProp(P[0], { ...box, final: false }).result === null && mb.markProp({ ...P[0], result: "L" }, box).result === "L" && mb.markProp(P[2], box) === P[2],
+    "NBA prop legs graded from the box score: over / under, a player not in a final game's box = push, an unfinished game or a marked leg untouched");
+  const names = mb.usPlayerNames({ markets: [{ slug: "astatc-nba-atl-hou-2026-10-26-pra-ametho-gte25", titleShort: "Amen Thompson 25+ Pts + Reb + Ast", marketSides: [{ team: { abbreviation: "hou" } }] }, { slug: "asc-nba-atl-hou-2026-10-26-pos-2pt5", titleShort: "ATL +2.5" }] });
+  ok(names["astatc-nba-atl-hou-2026-10-26-pra-ametho-gte25"].name === "Amen Thompson" && names["astatc-nba-atl-hou-2026-10-26-pra-ametho-gte25"].team === "HOU" && Object.keys(names).length === 1, "Polymarket US event -> player name + team per prop market", names);
+  ok(mb.codeName("ametho", ["Amen Thompson", "Alperen Sengun", "Kevin Durant"]) === "Amen Thompson" && mb.codeName("donmit", ["Donovan Mitchell", "Dean Wade"]) === "Donovan Mitchell" && mb.codeName("jamhar", ["James Harden", "Jaylon Tyson"]) === "James Harden" && mb.codeName("zzz", ["Amen Thompson"]) === null, "player code -> name among the game's recorded names");
+  // nameLegs: the event names a leg's player (one gateway read, cached 7 days); a leg the event does not list falls back to the recorded prop names
+  globalThis.fetch = async (u) => (String(u).includes("gateway.polymarket.us/v1/events/slug/nba-atl-hou-2026-10-26") ? { ok: true, json: async () => ({ event: { markets: [{ slug: "astatc-nba-atl-hou-2026-10-26-pra-ametho-gte25", titleShort: "Amen Thompson 25+ Pts + Reb + Ast", marketSides: [{ team: { abbreviation: "hou" } }] }] } }) } : { ok: false, status: 404, json: async () => ({}) });
+  await R.set("nbaprops:2026-10-26:MIN @ CLE", JSON.stringify({ first: "t", t: "t", m: { "Donovan Mitchell|reb|3.5": [0.6, 0.5, 0.5, 0.6, "t"], "James Harden|reb|3.5": [0.6, 0.5, 0.5, 0.6, "t"] } }));
+  const L2 = mb.slimLegs(L.map((l) => ({ ...l, player: undefined })));
+  const changed = await mb.nameLegs(L2);
+  ok(changed && L2[0].player === "Amen Thompson" && L2[1].player === "Donovan Mitchell" && !L2[2].player && (await R.get("usnames:nba:nba-atl-hou-2026-10-26")) && mb.comboPicks(L2)[1].label === "Donovan Mitchell under 4 Reb", "nameLegs: names from the event (cached) or the recorded prop names; the total leg untouched", L2);
+  globalThis.fetch = real; await R.del("usnames:nba:nba-atl-hou-2026-10-26"); await R.del("nbaprops:2026-10-26:MIN @ CLE");
+  // singles: an "astatc-" market traded on its own is a bet (NFL's rule); the rest are combo legs
+  const sl = "astatc-nba-atl-hou-2026-10-26-pts-kevdur-gte25", acts = { activities: [{ type: "ACTIVITY_TYPE_TRADE", trade: { marketSlug: sl } }, { type: "ACTIVITY_TYPE_TRADE", trade: { marketSlug: "crossd-abc" } }] }, sing = mb.tradedSingles(acts);
+  ok(sing.has(sl) && sing.size === 1 && !mb.isComboLeg(sl, {}, sing) && mb.isComboLeg("astatc-nba-atl-hou-2026-10-26-pra-ametho-gte25", {}, sing) && mb.isComboLeg(sl) && mb.isComboLeg("x", { state: "COMBO_LEG_STATE_PENDING" }, sing) && !mb.isComboLeg("aec-nba-atl-hou-2026-10-26", {}, sing),
+    "NBA singles: an astatc- market traded on its own is a bet; other astatc- markets and anything marked COMBO_LEG stay legs", [...sing]);
+  const pr = mb.propOf(sl, { outcome: "Yes", subject: { name: "Kevin Durant 25+ points", image: "https://static.polymarket.us/images/teams/basketball/nba/hou/jerseys/7.png" } });
+  const pr2 = mb.propOf(sl, { outcome: "No" }, { name: "Kevin Durant", team: "HOU" });
+  ok(pr && pr.label === "Kevin Durant 25+ Pts" && pr.team === "HOU" && pr.game === "ATL @ HOU" && pr.date === "2026-10-26" && pr.kind === "prop" && pr.stat === "pts" && pr.line === 24.5 && pr.side === "over" && pr2.label === "Kevin Durant under 25 Pts" && pr2.side === "under" && pr2.team === "HOU",
+    "NBA single player bet: player + bet, team, game, date; the No side reads under", { pr, pr2 });
+  ok(mb.markProp(pr, { final: true, players: { "kevin durant": { pts: 27 } } }).result === "W" && mb.markProp(pr2, { final: true, players: { "kevin durant": { pts: 27 } } }).result === "L", "a single prop bet is graded from the box score too");
+  // loadMyBets: a settled combo's unmarked prop leg and total leg are graded from ESPN (one scoreboard + one summary read per game day)
+  const comp = { competitors: [{ homeAway: "away", team: { abbreviation: "ATL" } }, { homeAway: "home", team: { abbreviation: "HOU" } }], status: { type: { completed: true } } };
+  const summary = { header: { competitions: [comp] }, boxscore: { players: [{ statistics: [{ names: ["MIN", "PTS", "REB", "AST", "3PT", "STL", "BLK"], athletes: [{ athlete: { displayName: "Amen Thompson" }, stats: ["34", "18", "9", "4", "1-3", "2", "1"] }] }] }] } };
+  const sb = { events: [{ id: "401", status: { type: { completed: true, state: "post" } }, competitions: [{ ...comp, competitors: comp.competitors.map((c) => ({ ...c, score: c.homeAway === "away" ? "110" : "121" })) }] }] };
+  globalThis.fetch = async (u) => (/scoreboard\?dates=20261026/.test(String(u)) ? { ok: true, json: async () => sb } : /summary\?event=401/.test(String(u)) ? { ok: true, json: async () => summary } : { ok: false, status: 404, json: async () => ({}) });
+  await R.set("mybets:nba:ledger", JSON.stringify({ "crossd-p1": { id: "crossd-p1", title: "", cost: 7, shares: 36, legs: [L[0], { slug: "tsc-nba-atl-hou-2026-10-26-230pt5", eventSlug: "nba-atl-hou-2026-10-26", title: "ATL Hawks vs. HOU Rockets", outcome: "Over", state: "" }], closedAt: "2026-10-27T05:00:00Z", resolved: { win: true, pl: 29, t: "2026-10-27T04:00:00Z" } },
+    [sl]: { id: sl, title: "ATL Hawks vs. HOU Rockets", outcome: "Yes", cost: 5, shares: 10, single: true, prop: { ...pr, player: "Amen Thompson", stat: "pra", line: 24.5, label: "Amen Thompson 25+ PRA" } } }));
+  const out = await mb.loadMyBets();
+  const c1 = out.settled.find((e) => e.id === "crossd-p1"), s1 = out.open.find((e) => e.id === sl);
+  ok(c1 && c1.picks[0].result === "W" && c1.picks[0].actual === 31 && c1.picks[1].label === "Over 230.5" && c1.picks[1].result === "W" && s1 && s1.prop.result === "W", "loadMyBets: an unmarked prop leg graded from the box score, the total from the final score, an open single's prop graded too", { c1: c1 && c1.picks, s1: s1 && s1.prop });
+  globalThis.fetch = real; await R.del("mybets:nba:ledger");
+  const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
+  ok(/e\.prop \? `\$\{e\.prop\.result \? legMark\(e\.prop\.result\) \+ " " : ""\}\$\{e\.prop\.team \? tlogo\(e\.prop\.team\) : ""\}\$\{esc\(e\.prop\.label\)\}`/.test(app) && /rowsOf\(firstSingles\(j\.open\), false\)/.test(app) && /firstSingles = \(a\) => \[\.\.\.a\.filter\(isSingle\), \.\.\.a\.filter\(\(e\) => !isSingle\(e\)\)\]/.test(app) && !/stampFor|playStamps/.test(app),
+    "NBA My bets page: a single shows the player + bet with the logo and its mark, singles sit on top of the open list, no HIT / MISS stamp (10/27)"); }
 
 // ---------- sign-in (same as the NFL app: Basic login, then a 1-year "remember this phone" cookie of its own)
 if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (await import("typescript")).default, { writeFileSync, mkdtempSync } = await import("node:fs"), { tmpdir } = await import("node:os"), { join } = await import("node:path");

@@ -237,22 +237,16 @@
   .stat { background:var(--card); border:1px solid rgba(255,255,255,.28); border-radius:16px; padding:10px 8px; text-align:center; }
   .stat .k { font-size:10px; font-weight:800; letter-spacing:.06em; color:var(--faint); text-transform:none; } .stat .v { font-size:19px; font-weight:800; margin-top:2px; } .stat .k2 { font-size:10px; color:var(--faint); }
   .price-link { cursor:pointer; border-bottom:1px dotted var(--faint); }
-  /* 10/14 casino look, trimmed 10/18: HIT/MISS stamps on Bets, dollar amounts roll in */
+  /* 10/14 casino look, trimmed 10/18 and 10/27 (stamps gone): dollar amounts roll in */
   .pulse { --gl:.6; }   /* 10/18 (owner): no glow -- the green PICK no longer pulses */
   .reelpct { display:inline; }   /* the PICK % is plain text */
   .reelpct.money { display:inline-flex; vertical-align:text-top; } .reelpct.money .rd { display:inline-block; height:1.25em; overflow:hidden; }   /* 10/18 night (owner): only dollar amounts roll */
   .reelpct.money .rd > span { display:block; transition:transform 1.4s cubic-bezier(.2,.9,.2,1.04); } .reelpct.money .rd b { display:block; height:1.25em; line-height:1.25em; font-weight:inherit; }
   .betwrap { position:relative; }
-  .stamp { position:absolute; right:6px; top:50%; transform:translateY(-50%) rotate(-8deg); font-weight:900; font-size:18px; letter-spacing:.04em; line-height:1; padding:3px 9px;
-    border:2.5px solid currentColor; border-radius:8px; background:rgba(10,8,11,.82); pointer-events:none; white-space:nowrap; z-index:2; }
-  .stamp.hit { color:#ffcf4a; } .stamp.miss { color:var(--red); }
-  .stamp.go { animation:stampin .5s cubic-bezier(.2,1.6,.4,1) both; }
-  @keyframes stampin { from { transform:translateY(-50%) rotate(-8deg) scale(3); opacity:0; } to { transform:translateY(-50%) rotate(-8deg) scale(1); opacity:1; } }
-  canvas.coinfx { position:fixed; inset:0; width:100vw; height:100vh; pointer-events:none; z-index:9999; }
    @keyframes cdflip { 0% { transform:rotateX(0); } 50% { transform:rotateX(90deg); } 100% { transform:rotateX(0); } }
   @keyframes mreel { 50% { opacity:.4; } }
   .card.modelglow { border-color:rgba(255,255,255,.28); }   /* 10/18 (owner): no glow -- a model parlay card looks like any other card */
-  @media (prefers-reduced-motion: reduce) { .card.modelglow, .stamp.go { animation:none; } }
+  @media (prefers-reduced-motion: reduce) { .card.modelglow { animation:none; } }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Passion+One:wght@700&family=Share+Tech+Mono&display=swap">
 <link rel="stylesheet" href="/shell.css">

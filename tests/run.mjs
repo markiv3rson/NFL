@@ -120,7 +120,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ctx.window = ctx; ctx.addEventListener = () => {}; ctx.body = undefined;
   vm.createContext(ctx);
   vm.runInContext(readFileSync(new URL("../public/shell.js", import.meta.url), "utf8"), ctx);   // 10/17: the shared menu / header script loads first, as on the page
-  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={pickRes,tdNameEq,recTile,tdWeekGames,injLine,mktHome,tdPct,plural,pBlock,plPay,linkedPay,plTap,plShown,plKey,PLC,sgpBox,labParlays,renderLabList,logoLabel,tdTeam,legName,moreBox,slotOf,parlayPicks,parlayStrip,lineCheck,recLine,bestBets,injTag,weakLeg,kickLine,tdNoGap,tdHead,tdWeekLine,tdDrought,tdWarn,tdScoredRecent,tdCut,propLast,trackedRows,renderLines,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,earlyNote,leanCell,betRow,moveBits,winnersBox,winnerOf,tile,tdRow,gameCard,totalCard,detailTop,renderMine,gbgHtml,renderLab,renderModel,renderTd,betsSummary,cardRecBox,legPct,cardBody,betsAnalysis,keepOpenState,winnersBands,mSec,legFlipped,betSlots,openBySlot,straightPicks,sgpBox,glowOf,stampFor,betRow};", ctx);
+  vm.runInContext(readFileSync(new URL("../public/app.js", import.meta.url), "utf8") + "\n;globalThis.T={pickRes,tdNameEq,recTile,tdWeekGames,injLine,mktHome,tdPct,plural,pBlock,plPay,linkedPay,plTap,plShown,plKey,PLC,sgpBox,labParlays,renderLabList,logoLabel,tdTeam,legName,moreBox,slotOf,parlayPicks,parlayStrip,lineCheck,recLine,bestBets,injTag,weakLeg,kickLine,tdNoGap,tdHead,tdWeekLine,tdDrought,tdWarn,tdScoredRecent,tdCut,propLast,trackedRows,renderLines,firstTdRecord,tdPlayersWithDefense,tdByPosition,tdByDefense,tdGroupRow,earlyNote,leanCell,betRow,moveBits,winnersBox,winnerOf,tile,tdRow,gameCard,totalCard,detailTop,renderMine,gbgHtml,renderLab,renderModel,renderTd,betsSummary,cardRecBox,legPct,cardBody,betsAnalysis,keepOpenState,winnersBands,mSec,legFlipped,betSlots,openBySlot,straightPicks,sgpBox,glowOf,betRow,isSingle,singleGame};", ctx);
   const T = ctx.T;
   let g = { away: "DAL", home: "PHI", model: { homeMargin: 4.2, fix: {} }, poly: { spread: { homeSpread: -3.5 } } };
   g = { away: "A", home: "H", model: { total: 44.4, fix: { dome: 2.59, pace: 0.1, div: true } }, poly: { total: { line: 45.5 } } };
@@ -425,7 +425,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
     const two = ctx.T.betRow({ source: "account", title: "c", week: 6, cost: 5, toWin: 50, price: 0.1, result: "pending", picks: [{ label: "PIT +3.5", game: "PIT @ CLE" }, { label: "BUF ML", game: "BUF @ LV" }, { label: "J.Cook 1+ TD", game: "BUF @ LV", result: "W" }] });
     ok(/class="r lvb">● LIVE</.test(two) && !/wk 6/.test(two) && /PIT \+3\.5[\s\S]*· Q3 4:12/.test(two) && /BUF ML[\s\S]*· Q1 2:05/.test(two) && (two.match(/· Q1 2:05/g) || []).length === 1, "open combo, two live games: ● LIVE on the bet, each undecided leg its own clock", two);
     const fin = ctx.T.betRow({ source: "account", title: "c", week: 6, cost: 5, toWin: 50, price: 0.1, result: "pending", picks: [{ label: "SEA +2.5", game: "SEA @ DEN" }] });
-    ok(!/LIVE/.test(fin) && />open</.test(fin) && /wk 6/.test(fin), "a finished or unstarted game: still open and wk 6, no LIVE", fin);
+    ok(!/LIVE/.test(fin) && />open</.test(fin) && !/wk 6/.test(fin), "a finished or unstarted game: still open, no LIVE, no week tag (10/27)", fin);
     const won = ctx.T.betRow({ source: "account", title: "c", week: 6, cost: 5, toWin: 50, price: 0.1, result: "W", pl: 45, picks: [{ label: "PIT +3.5", game: "PIT @ CLE", result: "W" }] });
     ok(!/LIVE/.test(won), "a settled bet never says LIVE", won);
     const typed = ctx.T.betRow({ source: "preloaded", legs: [{ result: "pending", kind: "spread", team: "PIT", line: 3.5, game: "PIT @ CLE" }], result: "pending", cost: 5, toWin: 9, pl: null });
@@ -711,6 +711,19 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       resetGamesCache(); globalThis.fetch = async (u) => (String(u).includes("games.csv") ? { ok: true, text: async () => H + "2026,REG,5,2026-10-05,13:00,BAL,20,ATL,27,dome,X,Home,turf\n" } : { ok: false, status: 404, json: async () => ({}), text: async () => "" });
       const m2 = await markFromFinals([{ label: "ATL ML", game: "BAL @ ATL", kind: "ml", result: null }, { label: "BAL ML", game: "BAL @ ATL", kind: "ml", result: null }], 2026, 5);
       ok(m2[0].result === "W" && m2[1].result === "L", "crossd combos: moneyline legs graded from the final score", m2);
+      { // 10/27 (owner: "fix the player props"): yard / reception legs graded from the official stats (snap counts decide a no-show), 2+ TD legs from the scorer counts, the No side inverted
+        const oldUrl = process.env.MODEL_SERVICE_URL; process.env.MODEL_SERVICE_URL = "https://svc.test"; const { clearStatCache } = await import("../lib/props.js"); clearStatCache();
+        globalThis.fetch = async (u) => (String(u).includes("games.csv") ? { ok: true, text: async () => H + "2026,REG,5,2026-10-05,13:00,BAL,20,ATL,27,dome,X,Home,turf\n" }
+          : String(u).includes("/player-stats") ? { ok: true, json: async () => ({ ok: true, games: { "BAL @ ATL": { "drake london": { rec_yds: 77, rec: 6, rush_yds: 0 }, "lamar jackson": { pass_yds: 240, pass_cmp: 22, pass_att: 30, rush_yds: 41 } } }, snaps: { "BAL @ ATL": ["drake london", "lamar jackson", "zay flowers"] } }) }
+          : { ok: false, status: 404, json: async () => ({}), text: async () => "" });
+        await R.set("tdscorers:2026:5", JSON.stringify({ t: new Date().toISOString(), games: { "BAL @ ATL": ["D.London", "B.Robinson"] }, teams: null, counts: { "BAL @ ATL": { "D.London": 2, "B.Robinson": 1 } } }));
+        const m3 = await markFromFinals([{ label: "Drake London 70+ Rec Yds", game: "BAL @ ATL", kind: "prop", result: null }, { label: "Lamar Jackson 250+ Pass Yds", game: "BAL @ ATL", kind: "prop", result: null, player: "Lamar Jackson", stat: "pyd", n: 250, side: "over" },
+          { label: "Lamar Jackson under 250 Pass Yds", game: "BAL @ ATL", kind: "prop", result: null, player: "Lamar Jackson", stat: "pyd", n: 250, side: "under" }, { label: "Zay Flowers 50+ Rec Yds", game: "BAL @ ATL", kind: "prop", result: null },
+          { label: "Lamar Jackson 60+ Scrimmage Yds", game: "BAL @ ATL", kind: "prop", result: null }, { label: "Drake London 2+ TD", game: "BAL @ ATL", kind: "td", result: null }, { label: "Bijan Robinson 2+ TD", game: "BAL @ ATL", kind: "td", result: null },
+          { label: "Zay Flowers no TD", game: "BAL @ ATL", kind: "td", result: null }, { label: "Lamar Jackson 2+ Pass TD", game: "BAL @ ATL", kind: "prop", result: null }], 2026, 5);
+        ok(m3[0].result === "W" && m3[0].actual === 77 && m3[1].result === "L" && m3[2].result === "W" && m3[3].result === "L" && m3[3].actual === 0 && m3[4].result === "L" && m3[4].actual === 41 && m3[5].result === "W" && m3[6].result === "L" && m3[7].result === "W" && m3[8].result === null,
+          "10/27: prop legs graded from the week's official stats (a player with snaps but no touch = 0), scrimmage = rush + rec, 2+ TD from the counts, 'no TD' = the No side, a pass-TD leg waits for Polymarket", m3.map((x) => [x.label, x.result, x.actual]));
+        clearStatCache(); if (oldUrl === undefined) delete process.env.MODEL_SERVICE_URL; else process.env.MODEL_SERVICE_URL = oldUrl; await R.del("tdscorers:2026:5"); }
       globalThis.fetch = realFetch; resetGamesCache(); await R.del("combolegs:crossd-t2"); }
     await R.del("combolegs:caoc-t1"); }
   { // bets analysis: hand-worked numbers
@@ -1295,6 +1308,17 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
         "my bets: an astatc- market traded on its own is a single bet; other astatc- legs (and anything marked COMBO_LEG) stay combo legs", [...sing]);
       const pr = propOf(sl, meta), pr2 = propOf("astatc-nfl-nyg-was-2026-10-11-td-camska-gte2", { eventSlug: "nfl-nyg-was-2026-10-11", subject: { name: "Cam Skattebo", image: ".../football/nfl/nyg/jerseys/44.png" } });
       ok(pr && pr.label === "Terry McLaurin First TD" && pr.team === "WAS" && pr.game === "WAS @ SF" && pr.kind === "td" && pr2.label === "Cam Skattebo 2+ TD" && pr2.team === "NYG", "my bets: single player bet label, team and game", { pr, pr2 });
+      { // 10/27 (owner: "fix the straight bets"): Polymarket's subject.name now carries the stat ("CeeDee Lamb 1+ touchdowns") -> the page read "CeeDee Lamb 1+ touchdowns 1+ TD"
+        const { cleanLabel, propSpec } = await import("../lib/mybets.js");
+        const p3 = propOf("astatc-nfl-dal-phi-2026-10-26-td-ceelam-gte1", { eventSlug: "nfl-dal-phi-2026-10-26", outcome: "Yes", subject: { name: "CeeDee Lamb 1+ touchdowns", image: ".../football/nfl/dal/jerseys/88.png" } });
+        const p4 = propOf("astatc-nfl-gb-det-2026-10-25-pyd-jargof-gte250", { eventSlug: "nfl-gb-det-2026-10-25", outcome: "No", subject: { name: "Jared Goff 250+ passing yards", image: ".../football/nfl/det/jerseys/16.png" } });
+        ok(p3.label === "CeeDee Lamb 1+ TD" && p3.kind === "td" && p3.team === "DAL" && p4.label === "Jared Goff under 250 Pass Yds" && p4.kind === "prop" && p4.side === "under" && p4.stat === "pyd" && p4.n === 250,
+          "10/27: a single's name is cut at its N+; the No side reads 'under N'", { p3, p4 });
+        ok(cleanLabel("CeeDee Lamb 1+ touchdowns 1+ TD") === "CeeDee Lamb 1+ TD" && cleanLabel("Jared Goff 250+ Pass Yds") === "Jared Goff 250+ Pass Yds" && cleanLabel("Tee Higgins First TD") === "Tee Higgins First TD" && cleanLabel("Amon-Ra St. Brown 1+ touchdowns 1+ TD") === "Amon-Ra St. Brown 1+ TD",
+          "10/27: a saved doubled label reads right; other labels untouched");
+        const q1 = propSpec({ label: "Jared Goff 250+ Pass Yds", kind: "prop" }), q2 = propSpec(p4), q3 = propSpec({ label: "Kirk Cousins 22+ Completions" }), q4 = propSpec({ label: "Kirk Cousins 2+ Pass TD" });
+        ok(q1 && q1.key === "pass_yds" && q1.line === 249.5 && q1.side === "over" && q1.name === "Jared Goff" && q2 && q2.key === "pass_yds" && q2.side === "under" && q3 && q3.key === "pass_cmp" && q3.line === 21.5 && q4 === null,
+          "10/27: a prop leg's grading spec from its fields or its label (pass TD has no stats field -> not graded here)", { q1, q2, q3, q4 }); }
       const resA = { positionResolution: { marketSlug: sl, beforePosition: { netPosition: "94", cost: { value: "4.999" }, realized: { value: "0" }, marketMetadata: meta }, afterPosition: { realized: { value: "94" } } } };
       const rx = resolvedFrom(resA, sing);
       ok(rx && rx.win && Math.abs(rx.pl - (94 - 4.999)) < 1e-9 && resolvedFrom(resA) === null, "my bets: a single player bet's settlement is read (a combo leg's is not)", rx);
@@ -1339,8 +1363,23 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
         "model card (10/14 cleanup): pick + % + one reason stay on the card; record, line moved, cost and without-the-points sit behind a More tap"); }
     { // casino look (10/14): glow by strength, HIT/MISS stamps only on settled (not sold) bets, parlay card glows purple
       ok(ctx.T.glowOf(0.57) === 0.45 && ctx.T.glowOf(0.596) === 0.75 && ctx.T.glowOf(0.62) === 1, "casino: stronger green picks glow brighter");
-      ok(/stamp hit/.test(ctx.T.stampFor({ id: "a", result: "W" })) && /MISS/.test(ctx.T.stampFor({ id: "b", result: "L" })) && ctx.T.stampFor({ id: "c", result: "W", sold: { pl: 3 } }) === "" && ctx.T.stampFor({ id: "d", result: "pending" }) === "", "casino: HIT on a won bet, MISS on a lost one, nothing on open or cashed-out bets");
-      ok(/class="betwrap"[\s\S]*HIT!/.test(ctx.T.betRow({ source: "account", id: "x", result: "W", pl: 5, cost: 10, toWin: 15, week: 5, title: "t", legs: [] })), "casino: the stamp sits on the bet row");
+      { // 10/27 (owner: "Remove wk 7 and also remove that hit and miss pill tag"): no stamp, no week tag on a bet row, both pages
+        const won = ctx.T.betRow({ source: "account", id: "x", result: "W", pl: 5, cost: 10, toWin: 15, week: 5, title: "t", legs: [] });
+        ok(!/HIT!|MISS|class="stamp/.test(won) && !/wk 5/.test(won) && /class="g">Won</.test(won) && ctx.T.stampFor === undefined && !/playStamps|coinBurst|\.stamp\b/.test(readFileSync(new URL("../public/app.js", import.meta.url), "utf8")) && !/\.stamp \{|coinfx/.test(readFileSync(new URL("../public/index.html", import.meta.url), "utf8")),
+          "10/27: no HIT / MISS stamp and no wk tag on a bet row; the stamp code and styles are gone", won);
+        const nb = readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8"), nh = readFileSync(new URL("../public/nba/index.html", import.meta.url), "utf8");
+        ok(!/stampFor|playStamps|coinBurst/.test(nb) && !/\.stamp \{|coinfx/.test(nh), "10/27: NBA page the same (design = both sports)"); }
+      { // 10/27 (owner: "Fix the time unknown. And put the single bets at the top of the list first then the parlays")
+        vm.runInContext(`S = { games: [{ key: "DAL @ PHI", away: "DAL", home: "PHI", kickoff: "2026-10-27T00:15:00Z", td: [] }, { key: "KC @ SEA", away: "KC", home: "SEA", kickoff: "2026-10-25T20:25:00Z", td: [] }] }`, ctx);
+        const single = { source: "account", id: "astatc-nfl-dal-phi-2026-10-26-td-ceelam-gte1", result: "pending", cost: 9.99, toWin: 22, price: 0.45, prop: { label: "CeeDee Lamb 1+ TD", team: "DAL", game: "DAL @ PHI", kind: "td" } };
+        const ml = { source: "account", id: "aec-nfl-kc-sea-2026-10-25", title: "KC Chiefs vs. SEA Seahawks", outcome: "Seahawks", result: "pending", cost: 48, toWin: 80 };
+        const combo = { source: "account", id: "crossd-1", result: "pending", cost: 25, toWin: 200, picks: [{ label: "DAL -1.5", game: "DAL @ PHI" }, { label: "Over 38.5 · DAL @ PHI", game: "DAL @ PHI" }] };
+        const SG = vm.runInContext("S.games", ctx);
+        ok(ctx.T.isSingle(single) && ctx.T.isSingle(ml) && !ctx.T.isSingle(combo) && ctx.T.singleGame(single, SG).key === "DAL @ PHI" && ctx.T.singleGame(ml, SG).key === "KC @ SEA" && ctx.T.betSlots(single).length === 1 && ctx.T.betSlots(ml).length === 1 && ctx.T.betSlots(single)[0] === ctx.T.betSlots(combo)[0],
+          "10/27: a single bet finds its game (its prop, or its Polymarket id) and so its time slot", { s: ctx.T.betSlots(single), m: ctx.T.betSlots(ml) });
+        const html = ctx.T.openBySlot([combo, single, ml]);
+        ok(!/Time unknown/.test(html) && /Singles · /.test(html) && /Combos · /.test(html) && html.indexOf("CeeDee Lamb") < html.indexOf("Combos ·") && html.indexOf("Seahawks") < html.indexOf("Combos ·") && html.indexOf("Combos ·") < html.indexOf("DAL -1.5"),
+          "10/27: the open list = every single bet first (by kickoff slot), then the combos; nothing under Time unknown", html.slice(0, 300)); }
       ok(/class="pgrid"/.test(ctx.T.sgpBox({ key: "A @ B", sgp: { best: { legs: [{ label: "x", prob: .6 }, { label: "y", prob: .6 }], prob: .36 } } })), "game page: the same-game parlays are one plain list (10/15)"); }
     { const pp = { legs: [{ label: "A", prob: .6, price: .5 }, { label: "B", prob: .6, price: .4 }], prob: .36 };
       const h = ctx.T.sgpBox({ key: "A @ B", sgp: { best: pp } });
@@ -1371,7 +1410,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
       ok(sl(["PHI +7.5", "Darius Cooper 1+ TD", "Over 42.5 · PHI @ JAX"]).join() === "Early (London / international)" && sl(["CHI -1.5", "D'Andre Swift 1+ TD", "Under 46.5 · CHI @ GB"]).join() === "Morning (10 AM)"
         && sl(["Christian McCaffrey 1+ TD", "ATL -3.5"]).length === 2 && sl(["Jeremiyah Love 1+ TD"]).length === 0, "bets: legs matched to kickoff slots (team, game, TD name); same short name on two teams stays unknown");
       const h = ctx.T.openBySlot([{ picks: [{ label: "CHI -1.5" }], legs: [], cost: 5, toWin: 10, price: 0.5, title: "x", result: "pending" }, { picks: [{ label: "CHI -1.5" }, { label: "BAL +3.5" }], legs: [], cost: 5, toWin: 20, price: 0.25, title: "y", result: "pending" }]);
-      ok(/Open · Morning \(10 AM\)/.test(h) && /Open · Mixed times/.test(h) && !/more than one time slot/.test(h) && /Morning \(10 AM\) \+ Prime time/.test(h), "bets: open bets listed by time slot, mixed ones in their own list (no warning sentence, 10/15)"); }
+      ok(/Combos · Morning \(10 AM\)/.test(h) && /Combos · Mixed times/.test(h) && !/more than one time slot/.test(h) && /Morning \(10 AM\) \+ Prime time/.test(h), "bets: open combos listed by time slot, mixed ones in their own list (no warning sentence, 10/15; 'Combos ·' since the singles went first 10/27)"); }
     { vm.runInContext(`S = { games: [{ key: "CHI @ GB", away: "CHI", home: "GB", started: false, final: false, angles: [], combos: [{ pick: "Under 46.5", hit: 57, why: "wind" }, { pick: "GB +1.5", hit: 52, why: "x" }] }] }`, ctx);
       ok(ctx.T.legFlipped("Over 46.5 · CHI @ GB") && !ctx.T.legFlipped("Under 46.5 · CHI @ GB") && !ctx.T.legFlipped("CHI -1.5") && !ctx.T.legFlipped("Over 40.5 · NYG @ WAS"), "bets: a leg is flagged only when the app now has a 56%+ pick on the other side"); }
     const box = { innerHTML: "" }; const old = ctx.document.getElementById; ctx.document.getElementById = (id) => (id === "models" ? box : id === "export-btn" ? { onclick: null } : old(id));

@@ -456,7 +456,7 @@ function rollMoney(root) {
     setTimeout(() => { if (el.parentNode && el.replaceWith) el.replaceWith(document.createTextNode(v)); else el.textContent = v; }, 1700);   // back to plain text once it lands
   });
 }
-const SLOT_SKIP = ".reelpct,.stamp,.fclk,script,style,input,textarea,select,svg";
+const SLOT_SKIP = ".reelpct,.fclk,script,style,input,textarea,select,svg";
 function slotMoney(root, max = 120) {
   if (REDUCE || !root || typeof document === "undefined" || !document.createTreeWalker) return;
   const walk = document.createTreeWalker(root, 4), nodes = [];
@@ -471,24 +471,7 @@ function slotMoney(root, max = 120) {
   }
   rollMoney(root);
 }
-function coinBurst(el) {   // gold coins fly from a winning bet's stamp
-  if (REDUCE || !el || !el.getBoundingClientRect) return;
-  const e = el.getBoundingClientRect(), cv = document.createElement("canvas"); cv.className = "coinfx"; document.body.appendChild(cv);
-  const W = innerWidth, H = innerHeight, dpr = devicePixelRatio || 1; cv.width = W * dpr; cv.height = H * dpr; const cx = cv.getContext("2d"); cx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const P = Array.from({ length: 30 }, () => ({ x: e.left + e.width / 2, y: e.top + e.height / 2, vx: (Math.random() - .5) * 8, vy: -Math.random() * 7 - 2, s: 4 + Math.random() * 4 })); let t = 0;
-  (function f() { cx.clearRect(0, 0, W, H); P.forEach((q) => { q.x += q.vx; q.y += q.vy; q.vy += .35; cx.fillStyle = "#ffcf4a"; cx.beginPath(); cx.ellipse(q.x, q.y, q.s, q.s * Math.abs(Math.cos(t / 4 + q.s)), 0, 0, 7); cx.fill(); });
-    if (++t < 60) requestAnimationFrame(f); else cv.remove(); })();
-}
-// HIT / MISS stamps on settled bets (Bets tab only): the slam + coins play once per bet, the first time you see it settled
-function playStamps() {
-  try { if (!$("panel-record").classList.contains("on")) return; } catch { return; }
-  let seen = []; try { seen = JSON.parse(localStorage.getItem("stampSeen") || "[]"); } catch {}
-  const set = new Set(seen); let added = false;
-  document.querySelectorAll("#record-mine .stamp[data-sid]").forEach((st) => { const id = st.dataset.sid; if (set.has(id)) return;
-    set.add(id); added = true; st.classList.add("go"); if (st.classList.contains("hit")) setTimeout(() => coinBurst(st), 250); });
-  if (added) { try { localStorage.setItem("stampSeen", JSON.stringify([...set].slice(-500))); } catch {} }
-}
-const stampFor = (b) => (b.sold || (b.result !== "W" && b.result !== "L") ? "" : `<span class="stamp ${b.result === "W" ? "hit" : "miss"}" data-sid="${esc(String(b.id || ""))}">${b.result === "W" ? "HIT!" : "MISS"}</span>`);
+// 10/27 (owner): the HIT / MISS stamp and its coins are gone from the bet rows
 // 10/15 (owner): team logos next to team names in the Bets tab -- spread legs ("DEN +3.5"), totals ("Under 40.5 · SEA @ DEN") and touchdown legs
 // (the player's team, found from this week's touchdown lists; no logo when it can't be told).
 const normNm = (x) => String(x || "").toLowerCase().replace(/[^a-z\- ]/g, " ").replace(/\s+/g, " ").trim();
@@ -512,14 +495,14 @@ const liveSc = (k) => { const sc = k && LIVE_SC[k]; return sc && sc.st === "in" 
 function liveOf(legs) { const ks = [...new Set(legs.map((l) => l.game).filter((k) => liveSc(k)))]; return ks; }
 const liveHeadTxt = (ks) => (ks.length === 1 ? `<span class="r lvb">● LIVE · ${esc(liveSc(ks[0]).lbl || "")}</span>` : '<span class="r lvb">● LIVE</span>');
 const liveLegTxt = (ks, l, done) => (ks.length > 1 && !done && liveSc(l.game) ? ` <span class="r lvb">· ${esc(liveSc(l.game).lbl || "")}</span>` : "");
-function betRow(b) { return `<div class="betwrap">${betRowInner(b)}${stampFor(b)}</div>`; }
+function betRow(b) { return `<div class="betwrap">${betRowInner(b)}</div>`; }
 function betRowInner(b) {
   if (b.source === "account") {   // bet recorded automatically from your Polymarket account
     const lk = !b.sold && (!b.result || b.result === "pending") ? liveOf(b.picks || (b.prop ? [b.prop] : [])) : [];
     const st = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : legLost(b) ? '<span class="r">Lost</span>' : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Even" : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : (b.waiting ? '<span class="y">waiting for TD results</span>' : '<span class="dim">open</span>');
     const name = b.picks && b.picks.length ? `Combo · ${b.picks.length} picks` : b.prop ? `${tlogo(b.prop.team)}${esc(b.prop.label)}` : `${esc(b.title)}${b.outcome ? ` — ${esc(b.outcome)}` : ""}`;   // 10/19: single player bet
     const picks = b.picks && b.picks.length ? b.picks.map((p) => `<div class="s" style="padding:0 0 0 16px">${p.result ? RESMARK[p.result] + " " : "• "}${legTxt(p.result, logoLabel(p.label, p.team))}${liveLegTxt(lk, p, !!p.result)}${!p.result && legFlipped(p.label) ? ' <span class="y">⚠ app now picks the other side</span>' : ""}</div>`).join("") : "";
-    return `<div class="row"><span>${name} ${lk.length ? liveHeadTxt(lk) : `<span class="dim">wk ${b.week ?? "?"}</span>`}</span><span>${st}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
+    return `<div class="row"><span>${name}${lk.length ? " " + liveHeadTxt(lk) : ""}</span><span>${st}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
       `<div class="s" style="padding:0 0 ${picks ? 2 : 6}px 8px">${money(b.cost)}${b.price != null ? ` at ${betCents(b.price)}¢` : ""} · ${b.sold ? `sold early for ${money(Math.max(0, (b.cost || 0) + (b.pl || 0)))}` : legLost(b) ? `−${money(b.cost)}` : `pays ${money(b.toWin)} if it wins`}</div>` + (picks ? `<div style="padding-bottom:6px">${picks}</div>` : "");
   }
   const hit = b.legs.filter((l) => l.result === "W").length, lk = !b.sold && b.result === "pending" ? liveOf(b.legs) : [];
@@ -602,18 +585,31 @@ function legGame(label, games) {
   const hit = games.filter((g) => (g.td || []).some((r) => { const [a, ...b] = String(r.player).split("."); return b.join(".").toLowerCase() === last && (a || "")[0] === first; }));
   return hit.length === 1 ? hit[0] : null;   // two players with the same short name on different teams: unknown
 }
+const PM_CODE = { LAR: "LA", WSH: "WAS", JAC: "JAX", LVR: "LV" }, pmCode = (t) => PM_CODE[String(t || "").toUpperCase()] || String(t || "").toUpperCase();
+// 10/27 (owner: "Fix the time unknown"): a single bet's game comes from its prop ("DAL @ PHI") or its Polymarket id ("aec-nfl-kc-sea-2026-10-25")
+function singleGame(b, games) {
+  if (b.prop && b.prop.game) return games.find((x) => x.key === b.prop.game) || null;
+  const m = /^[a-z]+-nfl-([a-z]+)-([a-z]+)-\d{4}-\d\d-\d\d/.exec(String(b.id || "")); if (!m) return null;
+  return games.find((x) => x.key === `${pmCode(m[1])} @ ${pmCode(m[2])}`) || null;
+}
+const isSingle = (b) => !(b.picks && b.picks.length) && !(b.legs && b.legs.length);
 function betSlots(b) {
   const games = (S && S.games) || [], out = new Set();
   for (const p of b.picks || []) { const g = legGame(p.label, games), sl = kickSlot(g); if (sl) out.add(sl); }
   for (const l of b.legs || []) { const g = games.find((x) => x.key === l.game), sl = kickSlot(g); if (sl) out.add(sl); }
+  if (isSingle(b)) { const sl = kickSlot(singleGame(b, games)); if (sl) out.add(sl); }
   return [...out];
 }
+// 10/27 (owner: "put the single bets at the top of the list first then the parlays"): the open list = every single bet (by kickoff slot), then the combos
 function openBySlot(open) {
-  const groups = Object.fromEntries(BET_SLOTS.map((k) => [k, []])), mixed = [], other = [];
-  for (const b of open) { const sl = betSlots(b); if (sl.length === 1) groups[sl[0]].push(b); else if (sl.length > 1) mixed.push({ b, sl }); else other.push(b); }
-  return BET_SLOTS.filter((k) => groups[k].length).map((k) => `<div class="sec"><div class="sh">Open · ${k}</div>${groups[k].map(betRow).join("")}</div>`).join("") +
-    (mixed.length ? `<div class="sec"><div class="sh">Open · Mixed times</div>${mixed.map(({ b, sl }) => `<div class="s dim" style="margin-top:6px">${sl.sort((x, y) => BET_SLOTS.indexOf(x) - BET_SLOTS.indexOf(y)).join(" + ")}</div>${betRow(b)}`).join("")}</div>` : "") +
-    (other.length ? `<div class="sec"><div class="sh">Open · Time unknown</div>${other.map(betRow).join("")}</div>` : "");
+  const block = (list, word) => {
+    const groups = Object.fromEntries(BET_SLOTS.map((k) => [k, []])), mixed = [], other = [];
+    for (const b of list) { const sl = betSlots(b); if (sl.length === 1) groups[sl[0]].push(b); else if (sl.length > 1) mixed.push({ b, sl }); else other.push(b); }
+    return BET_SLOTS.filter((k) => groups[k].length).map((k) => `<div class="sec"><div class="sh">${word} · ${k}</div>${groups[k].map(betRow).join("")}</div>`).join("") +
+      (mixed.length ? `<div class="sec"><div class="sh">${word} · Mixed times</div>${mixed.map(({ b, sl }) => `<div class="s dim" style="margin-top:6px">${sl.sort((x, y) => BET_SLOTS.indexOf(x) - BET_SLOTS.indexOf(y)).join(" + ")}</div>${betRow(b)}`).join("")}</div>` : "") +
+      (other.length ? `<div class="sec"><div class="sh">${word} · Time unknown</div>${other.map(betRow).join("")}</div>` : "");
+  };
+  return block(open.filter(isSingle), "Singles") + block(open.filter((b) => !isSingle(b)), "Combos");
 }
 function renderMineNow() {
   if (!MB) { $("record-mine").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }
@@ -846,7 +842,7 @@ function kickLine(k) {
   const mv = (k.moved || []).map((m) => `${esc(m.game)} ${tm(m.was)} → ${tm(m.now)}`).join(" · ");
   return `${hm(k.t)} · ${plural(k.espnGames, "game")} from ESPN · ${mv ? `<span class="y">moved: ${mv}</span>` : "OK"}`;
 }
-function renderMine() { keepOpenState("record-mine", renderMineNow); playStamps(); }
+function renderMine() { keepOpenState("record-mine", renderMineNow); }
 function renderModel() { keepOpenState("models", renderModelNow); }
 function renderRecord() { renderMine(); renderModel(); }
 // "Updated" line at the top of Models and Bets, so you can tell the numbers are fresh (they reload every 2 minutes while you are on the tab).
@@ -1494,7 +1490,6 @@ function showPanel(name) {
   try { if (window.scrollTo) window.scrollTo(0, 0); } catch {}   // 10/14 (owner): every tab change starts at the top of the page
   if (name === "record" || name === "models") loadRecord();
   if (name === "record") applyBetsView();
-  if (name === "record") setTimeout(playStamps, 50);
   if (name === "props") { renderProps(); loadProps(); }   // 10/17 (owner): Props is its own page
   if (name === "td" && S && S.games) renderTd();   // 10/20 night: the Anytime TD page is drawn fresh when opened (the cut and the week feed)
   if (S && S.games) setBg(name === "lines" && DETAIL ? S.games.find((x) => x.key === DETAIL) : null);   // game background only on an open game page
