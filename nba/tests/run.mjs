@@ -351,7 +351,7 @@ ok(redisUrl({ UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://a:1", REDIS_URL: "redis
   ok(c1 && c1.picks[0].result === "W" && c1.picks[0].actual === 31 && c1.picks[1].label === "Over 230.5" && c1.picks[1].result === "W" && s1 && s1.prop.result === "W", "loadMyBets: an unmarked prop leg graded from the box score, the total from the final score, an open single's prop graded too", { c1: c1 && c1.picks, s1: s1 && s1.prop });
   globalThis.fetch = real; await R.del("mybets:nba:ledger");
   const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
-  ok(/e\.prop \? `\$\{e\.prop\.result \? legMark\(e\.prop\.result\) \+ " " : ""\}\$\{e\.prop\.team \? tlogo\(e\.prop\.team\) : ""\}\$\{esc\(e\.prop\.label\)\}`/.test(app) && /rowsOf\(firstSingles\(j\.open\), false\)/.test(app) && /firstSingles = \(a\) => \[\.\.\.a\.filter\(isSingle\), \.\.\.a\.filter\(\(e\) => !isSingle\(e\)\)\]/.test(app) && !/stampFor|playStamps/.test(app),
+  ok(/e\.prop \? `\$\{e\.prop\.result \? legMark\(e\.prop\.result\) \+ " " : ""\}\$\{e\.prop\.team \? tlogo\(e\.prop\.team\) : ""\}\$\{esc\(e\.prop\.label\)\}`/.test(app) && /rowsOf\(firstSingles\(openB\), false\)/.test(app) && /firstSingles = \(a\) => \[\.\.\.a\.filter\(isSingle\), \.\.\.a\.filter\(\(e\) => !isSingle\(e\)\)\]/.test(app) && !/stampFor|playStamps/.test(app),
     "NBA My bets page: a single shows the player + bet with the logo and its mark, singles sit on top of the open list, no HIT / MISS stamp (10/27)"); }
 
 // ---------- sign-in (same as the NFL app: Basic login, then a 1-year "remember this phone" cookie of its own)

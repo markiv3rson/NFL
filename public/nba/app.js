@@ -398,29 +398,41 @@ async function loadBets() {
 function renderBets() {
   const j = BETS; if (!j || !j.ok) { $("record-mine").innerHTML = topCard('<div class="s dim">Bets unavailable right now.</div>'); return; }
   $("upd-record").textContent = j.syncedAt ? "Synced " + hm(j.syncedAt) : j.keysSet ? "Not synced yet" : "Polymarket keys not set";
-  const rc = j.record || {};
   // 10/17 (owner): a Polymarket combo lists its legs under it like NFL's (✓ / ✗, team logo, won leg green, lost leg red)
   // 10/18 (owner, same as NFL): an open bet whose game is being played says ● LIVE · Q3 6:30 (no scores); with 2+ live games each undecided leg carries its clock
   const liveSc = (k) => { const sc = k && NBL[k]; return sc && sc.st === "in" ? sc : null; };
-  const liveOf = (e) => [...new Set((e.picks || []).map((p) => p.game).filter((k) => liveSc(k)))];
+  const liveOf = (e) => [...new Set((e.picks || []).map((p) => p.game).concat(e.prop && e.prop.game ? [e.prop.game] : []).filter((k) => liveSc(k)))];
+  const legLost = (e) => !e.sold && !e.resolved && (e.picks || []).some((p) => p && p.result === "L");   // same as NFL: a combo with a lost leg is done
   const legRow = (p, lk = []) => `<div class="s" style="padding:0 0 0 16px">${p.result ? legMark(p.result) + " " : "• "}${legTxt(p.result, `${p.team ? tlogo(p.team) : ""}${esc(p.label)}`)}${p.kind === "total" && p.game ? ` <span class="dim">${gameLogos(p.game)}</span>` : ""}${lk.length > 1 && !p.result && liveSc(p.game) ? ` <span class="r lvb">· ${esc(liveSc(p.game).lbl || "")}</span>` : ""}</div>`;
   const betName = (e) => (e.picks && e.picks.length ? `Combo · ${e.picks.length} picks` : e.prop ? `${e.prop.result ? legMark(e.prop.result) + " " : ""}${e.prop.team ? tlogo(e.prop.team) : ""}${esc(e.prop.label)}` : `${esc(e.title)}${e.outcome ? ` — ${esc(e.outcome)}` : ""}`);   // 10/27: a single player bet = the player + the bet
   const isSingle = (e) => !(e.picks && e.picks.length), firstSingles = (a) => [...a.filter(isSingle), ...a.filter((e) => !isSingle(e))];   // 10/27 (owner): singles on top, then the combos
+  // 10/27 (owner: "make everything consistent"): the rows read like NFL's -- right side open / Won +$ / Lost −$ / Sold, under it "$cost at N¢ · pays $X if it wins"
+  const state = (e, settled) => settled ? (e.result === "win" ? '<span class="g">Won</span>' : e.result === "loss" ? '<span class="r">Lost</span>' : `<span class="${e.pl >= 0 ? "g" : "r"}">Sold</span>`) + " " + cMoney(e.pl) : legLost(e) ? `<span class="r">Lost</span> ${cMoney(-(e.cost || 0))}` : '<span class="dim">open</span>';
+  const sub = (e, settled) => `${money(e.cost)}${e.price ? ` at ${betCents(e.price)}¢` : ""} · ${settled && e.result === "sold" ? `sold early for ${money(Math.max(0, (e.cost || 0) + (e.pl || 0)))}` : !settled && legLost(e) ? `−${money(e.cost)}` : `pays ${money(e.shares)} if it wins`}`;
   const rowsOf = (a, settled) => a.map((e) => { const lk = settled ? [] : liveOf(e), lv = lk.length === 1 ? `<span class="r lvb">● LIVE · ${esc(liveSc(lk[0]).lbl || "")}</span> ` : lk.length ? '<span class="r lvb">● LIVE</span> ' : "";
-    return `<div class="betwrap"><div class="row"><span>${betName(e)}${lv ? " " + lv.trim() : ""}</span><span>${settled ? (e.result === "win" ? '<span class="g">Won</span>' : e.result === "loss" ? '<span class="r">Lost</span>' : '<span class="y">Sold</span>') + " " + cMoney(e.pl) : e.value != null ? "$" + e.value.toFixed(2) : ""}</span></div>` +
-    `${(e.picks || []).map((p) => legRow(p, lk)).join("")}<div class="s" style="padding:0 0 6px 8px">${money(e.cost)}${e.price ? ` at ${betCents(e.price)}¢` : ""}${e.shares ? ` · ${e.shares} shares` : ""}</div></div>`; }).join("");
+    return `<div class="betwrap"><div class="row"><span>${betName(e)}${lv ? " " + lv.trim() : ""}</span><span>${state(e, settled)}</span></div>` +
+    `${(e.picks || []).map((p) => legRow(p, lk)).join("")}<div class="s" style="padding:0 0 6px 8px">${sub(e, settled)}</div></div>`; }).join("");
   const open = [...document.querySelectorAll("#record-mine .drop.open")].map((e) => e.id);
-  // 10/17 (owner: "make everything consistent"): a day drop-down like NFL's week drop-down; it picks which settled bets show (open bets always show)
-  const dayOf = (e) => { const t = e.closedAt || (e.resolved && e.resolved.t) || (e.sold && e.sold.t); return t ? new Date(t).toLocaleDateString("en-CA", { timeZone: "America/New_York" }) : null; };
-  const days = [...new Set((j.settled || []).map(dayOf).filter(Boolean))].sort();
-  const sel = MBDAY === "all" || days.includes(MBDAY) ? MBDAY : (days[days.length - 1] || "all");
-  const settled = (j.settled || []).filter((e) => sel === "all" || dayOf(e) === sel);
+  // 10/17 (owner: "make everything consistent"): a day drop-down like NFL's week drop-down.
+  // 10/27 (owner: "This pop up don't even work"): it picked only which SETTLED bets sat inside the closed Settled fold, so a tap changed nothing on screen. Now
+  // it works like NFL's week picker: the day's bets (open ones by their game day, settled ones by the day they closed), the record / profit / staked of
+  // that day, a past day lists its results open, "Season" = all. The default is today.
+  const etDay = (t) => (t ? new Date(t).toLocaleDateString("en-CA", { timeZone: "America/New_York" }) : null), today = etDay(new Date());
+  const dayOf = (e) => (e.result ? etDay(e.closedAt || (e.resolved && e.resolved.t) || (e.sold && e.sold.t)) : ((e.picks || []).map((p) => p.date).filter(Boolean).sort()[0] || (e.prop && e.prop.date) || etDay(e.firstSeen)));
+  const all = [...(j.open || []), ...(j.settled || [])];
+  const days = [...new Set(all.map(dayOf).filter(Boolean).concat([today]))].sort();
+  const sel = MBDAY === "all" || days.includes(MBDAY) ? MBDAY : today;
+  const shown = all.filter((e) => sel === "all" || dayOf(e) === sel), openB = shown.filter((e) => !e.result && !legLost(e)), done = shown.filter((e) => e.result || legLost(e));
+  const past = sel !== "all" && sel < today;
+  const w = done.filter((e) => e.result === "win").length, l = done.filter((e) => e.result === "loss" || (!e.result && legLost(e))).length, sold = done.filter((e) => e.result === "sold").length;
+  const pl = done.reduce((a, e) => a + (e.result ? e.pl : -(e.cost || 0)), 0), staked = done.reduce((a, e) => a + (e.cost || 0), 0), tot = w + l;
   const dayPick = `<div class="wksel"><select id="mb-day" aria-label="Day">${days.map((d) => `<option value="${d}"${sel === d ? " selected" : ""}>${dayName(d)}</option>`).join("")}<option value="all"${sel === "all" ? " selected" : ""}>Season</option></select></div>`;
-  $("record-mine").innerHTML = ddSlot($("record-mine"), dayPick) + topCard(`<div class="row"><span class="dim">Record</span><span class="${rc.pct >= 55 ? "g" : rc.pct >= 50 ? "y" : "r"}">${rc.w || 0}–${rc.l || 0}${rc.pct == null ? "" : ` · ${rc.pct}% won`}</span></div>` +
-    `<div class="row"><span class="dim">Profit</span><span class="${(rc.pl || 0) >= 0 ? "g" : "r"}">${(rc.pl || 0) >= 0 ? "+" : "−"}$${Math.abs(rc.pl || 0).toFixed(2)} · settled</span></div>` +
-    `<div class="row"><span class="dim">Staked</span><span>$${(rc.staked || 0).toFixed(2)} · settled</span></div>`) +
-    `<div class="card" style="margin-top:10px"><div class="sec"><div class="sh">Open</div>${(j.open || []).length ? rowsOf(firstSingles(j.open), false) : '<div class="s dim">None.</div>'}</div>` +
-    `<div class="fold" data-drop="settled"><span>Settled bets</span><span>▾</span></div><div class="drop" id="settled">${settled.length ? rowsOf(settled, true) : '<div class="s dim empty">None yet.</div>'}</div></div>` +
+  $("record-mine").innerHTML = ddSlot($("record-mine"), dayPick) + topCard((past ? `<div class="row"><span class="dim">Bets</span><span>${shown.length}</span></div>` : `<div class="row"><span class="dim">Open bets</span><span>${openB.length} · ${money(openB.reduce((a, e) => a + (e.cost || 0), 0))} staked</span></div>`) +
+    `<div class="row"><span class="dim">Record</span><span class="${tot ? (w / tot >= 0.5 ? "g" : "r") : "dim"}">${tot ? `${w}–${l}` : "—"}${sold ? ` <span class="dim">· ${sold} sold</span>` : ""}</span></div>` +
+    `<div class="row"><span class="dim">Profit</span><span>${cMoney(pl)} · ${sel === "all" ? "this season" : dayName(sel)}</span></div>` +
+    `<div class="row"><span class="dim">Staked</span><span>${money(staked)} · settled</span></div>`) +
+    `<div class="card" style="margin-top:10px">` + (past || !openB.length ? "" : `<div class="sec"><div class="sh">Open</div>${rowsOf(firstSingles(openB), false)}</div>`) +
+    `<div class="fold" data-drop="settled"><span>${past ? "Results" : "Settled bets"}</span><span>▾</span></div><div class="drop${past ? " open" : ""}" id="settled">${done.length ? rowsOf(done, true) : '<div class="s dim empty">None yet.</div>'}</div></div>` +
     `<div class="center"><button class="btn" id="sync-btn">↻ Sync account</button></div>`;
   for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
   const md = $("mb-day"); if (md && md.tagName === "SELECT") md.onchange = () => { MBDAY = md.value; renderBets(); };
