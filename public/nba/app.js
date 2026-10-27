@@ -11,7 +11,7 @@ const odds = (o) => (o == null ? "—" : (o > 0 ? "+" : "") + o);
 const toAm = (p) => { if (!(p > 0 && p < 1)) return null; return p >= 0.5 ? Math.round((-100 * p) / (1 - p)) : Math.round((100 * (1 - p)) / p); };
 const cents = (p) => (p > 0 && p < 1 ? Math.round(p * 100) + "¢" : "—");
 const money = (v) => (v == null ? "—" : (v < 0 ? "−" : "") + "$" + Math.abs(v).toFixed(2));
-const cMoney = (v) => (v == null ? "—" : `<span class="${v >= 0 ? "g" : "r"}">${v >= 0 ? "+" : "−"}$${Math.abs(v).toFixed(2)}</span>`);
+const cMoney = (v) => (v == null ? "—" : `<span class="${Math.abs(v) < 0.005 ? "" : v > 0 ? "g" : "r"}">${Math.abs(v) < 0.005 ? "$" : v > 0 ? "+$" : "−$"}${Math.abs(v).toFixed(2)}</span>`);   // zero reads "$0.00", no sign, no colour (same as NFL)
 const tm = (iso) => (!iso || isNaN(new Date(iso)) ? "TBD" : new Date(iso).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" }));
 const hm = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { weekday: "short", month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—");
 const dayName = (d) => (d ? new Date(d + "T12:00:00").toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric" }) : "—");
@@ -372,6 +372,7 @@ function renderProps() {
   const dsel = `<div class="wksel"><select id="props-day" aria-label="Day">${days.map((x) => `<option value="${x}"${x === d.date ? " selected" : ""}>${dayName(x)}</option>`).join("")}</select></div>`;
   const all = (d.games || []).map((g) => ({ ...g, picks: (g.picks || []).filter((p) => p.stat === PROPTAB) })).filter((g) => g.picks.length);
   const teams = [...new Set(all.flatMap((g) => g.picks.map((p) => p.team).filter(Boolean)))].sort();
+  if (PROPTEAM !== "all" && !teams.includes(PROPTEAM)) PROPTEAM = "all";   // 10/27: a team chosen on another day / tab with no rows here would leave "None yet." under a drop-down reading "All teams"
   const tsel = `<div class="wksel"><select id="props-team" aria-label="Team"><option value="all"${PROPTEAM === "all" ? " selected" : ""}>All teams</option>${teams.map((t) => `<option value="${esc(t)}"${PROPTEAM === t ? " selected" : ""}>${esc(t)}</option>`).join("")}</select></div>`;
   const games = all.map((g) => ({ ...g, picks: PROPTEAM === "all" ? g.picks : g.picks.filter((p) => p.team === PROPTEAM) })).filter((g) => g.picks.length);
   const rc = (d.record || {})[PROPTAB] || null;

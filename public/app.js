@@ -1254,6 +1254,7 @@ function renderProps() {
   const wk = `<div class="wksel"><select id="props-wk" aria-label="Week">${weeks.map((w) => `<option value="${w}"${sel === Number(w) ? " selected" : ""}>Week ${w}</option>`).join("")}</select></div>`;
   const all = (d.games || []).map((g) => ({ ...g, picks: (g.picks || []).filter((p) => p.stat === stat) })).filter((g) => g.picks.length);
   const teams = [...new Set(all.flatMap((g) => g.picks.map((p) => p.team).filter(Boolean)))].sort();
+  if (PROPTEAM !== "all" && !teams.includes(PROPTEAM)) PROPTEAM = "all";   // 10/27: a team chosen on another week / tab with no rows here would leave "None yet." under a drop-down reading "All teams"
   const games = all.map((g) => ({ ...g, picks: PROPTEAM === "all" ? g.picks : g.picks.filter((p) => p.team === PROPTEAM) })).filter((g) => g.picks.length);
   el.innerHTML = ddSlot(el, wk + teamSel(teams)) + recTile((d.records || {})[stat] || d.record) + (games.length ? `<div class="pgrid" style="margin-top:6px">${propBlocks(games, propRow)}</div>` : '<div class="s dim empty" style="margin-top:12px">None yet.</div>');
   const pw = $("props-wk"); if (pw && pw.tagName === "SELECT") pw.onchange = () => { PROPWEEK = Number(pw.value); loadProps(); };
@@ -1265,6 +1266,7 @@ function renderFirstTd(el) {
   if (!S || !S.games) { el.innerHTML = '<div class="s dim" style="margin-top:12px">Loading…</div>'; return; }
   const all = firstTdGames();
   const teams = [...new Set(all.flatMap((g) => g.picks.map((p) => p.team).filter(Boolean)))].sort();
+  if (PROPTEAM !== "all" && !teams.includes(PROPTEAM)) PROPTEAM = "all";
   const games = all.map((g) => ({ ...g, picks: PROPTEAM === "all" ? g.picks : g.picks.filter((p) => p.team === PROPTEAM) })).filter((g) => g.picks.length);
   const picks = (RES || []).map((r) => (r.td || []).filter((p) => p.ftd != null && p.played !== false).sort((a, b) => b.ftd - a.ftd)[0]).filter(Boolean), hit = picks.filter((p) => p.ftdHit).length;
   const rc = picks.length ? { w: hit, l: picks.length - hit, pct: Math.round((hit / picks.length) * 1000) / 10 } : null;

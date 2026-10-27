@@ -346,13 +346,26 @@ ok(redisUrl({ UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://a:1", REDIS_URL: "redis
   globalThis.fetch = async (u) => (/scoreboard\?dates=20261026/.test(String(u)) ? { ok: true, json: async () => sb } : /summary\?event=401/.test(String(u)) ? { ok: true, json: async () => summary } : { ok: false, status: 404, json: async () => ({}) });
   await R.set("mybets:nba:ledger", JSON.stringify({ "crossd-p1": { id: "crossd-p1", title: "", cost: 7, shares: 36, legs: [L[0], { slug: "tsc-nba-atl-hou-2026-10-26-230pt5", eventSlug: "nba-atl-hou-2026-10-26", title: "ATL Hawks vs. HOU Rockets", outcome: "Over", state: "" }], closedAt: "2026-10-27T05:00:00Z", resolved: { win: true, pl: 29, t: "2026-10-27T04:00:00Z" } },
     [sl]: { id: sl, title: "ATL Hawks vs. HOU Rockets", outcome: "Yes", cost: 5, shares: 10, single: true, prop: { ...pr, player: "Amen Thompson", stat: "pra", line: 24.5, label: "Amen Thompson 25+ PRA" } } }));
+  let sbReads = 0; const fx0 = globalThis.fetch; globalThis.fetch = async (u) => { if (/scoreboard\?dates=20261026/.test(String(u))) sbReads++; return fx0(u); };
   const out = await mb.loadMyBets();
   const c1 = out.settled.find((e) => e.id === "crossd-p1"), s1 = out.open.find((e) => e.id === sl);
   ok(c1 && c1.picks[0].result === "W" && c1.picks[0].actual === 31 && c1.picks[1].label === "Over 230.5" && c1.picks[1].result === "W" && s1 && s1.prop.result === "W", "loadMyBets: an unmarked prop leg graded from the box score, the total from the final score, an open single's prop graded too", { c1: c1 && c1.picks, s1: s1 && s1.prop });
+  // 10/27: ONE scoreboard read for the day (the promise is shared, not four reads at once), and the grades are written back to the ledger so the next load needs no ESPN at all
+  const led = JSON.parse(await R.get("mybets:nba:ledger"));
+  ok(sbReads === 2 && led["crossd-p1"].legs[0].result === "W" && led["crossd-p1"].legs[0].actual === 31 && led["crossd-p1"].legs[1].result === "W" && led[sl].prop.result === "W", "loadMyBets: the day's box score is read once per day (two days -> 2 reads, not one per leg) and the grades are saved on the ledger's legs", { sbReads, legs: led["crossd-p1"].legs.map((l) => [l.result, l.actual]), prop: led[sl].prop.result });
+  globalThis.fetch = async () => { throw new Error("ESPN down"); };
+  const out2 = await mb.loadMyBets(); const c2 = out2.settled.find((e) => e.id === "crossd-p1"), s2 = out2.open.find((e) => e.id === sl);
+  ok(c2 && c2.picks[0].result === "W" && c2.picks[0].actual === 31 && c2.picks[1].result === "W" && s2 && s2.prop.result === "W", "loadMyBets: with ESPN down the saved grades still show (nothing is re-read)");
+  // a resync carries the saved grades onto the fresh legs Polymarket sends (it already carried the names)
+  const fresh = mb.slimLegs([{ slug: L[0].slug, eventSlug: L[0].eventSlug, title: L[0].title, outcome: "Yes", state: "COMBO_LEG_STATE_PENDING", team: { abbreviation: "hou" } }]);
+  ok(!fresh[0].player && !fresh[0].result, "slimLegs: Polymarket's leg carries no name and no grade");
   globalThis.fetch = real; await R.del("mybets:nba:ledger");
   const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
   ok(/e\.prop \? `\$\{e\.prop\.result \? legMark\(e\.prop\.result\) \+ " " : ""\}\$\{e\.prop\.team \? tlogo\(e\.prop\.team\) : ""\}\$\{esc\(e\.prop\.label\)\}`/.test(app) && /rowsOf\(firstSingles\(openB\), false\)/.test(app) && /firstSingles = \(a\) => \[\.\.\.a\.filter\(isSingle\), \.\.\.a\.filter\(\(e\) => !isSingle\(e\)\)\]/.test(app) && !/stampFor|playStamps/.test(app),
-    "NBA My bets page: a single shows the player + bet with the logo and its mark, singles sit on top of the open list, no HIT / MISS stamp (10/27)"); }
+    "NBA My bets page: a single shows the player + bet with the logo and its mark, singles sit on top of the open list, no HIT / MISS stamp (10/27)");
+  ok(/const cMoney = \(v\) => \(v == null \? "—" : `<span class="\$\{Math\.abs\(v\) < 0\.005 \? "" : v > 0 \? "g" : "r"\}">\$\{Math\.abs\(v\) < 0\.005 \? "\$" : v > 0 \? "\+\$" : "−\$"\}/.test(app), "NBA page: a zero amount reads $0.00 with no sign and no colour, like the NFL page (10/27)");
+  ok(/if \(PROPTEAM !== "all" && !teams\.includes\(PROPTEAM\)\) PROPTEAM = "all";/.test(app) && /if \(PROPTEAM !== "all" && !teams\.includes\(PROPTEAM\)\) PROPTEAM = "all";/.test(readFileSync(new URL("../../public/app.js", import.meta.url), "utf8")),
+    "Player props, both sports: a team chosen on another day / week / tab with no rows here falls back to All teams instead of an empty list under a drop-down reading All teams (10/27)"); }
 
 // ---------- sign-in (same as the NFL app: Basic login, then a 1-year "remember this phone" cookie of its own)
 if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (await import("typescript")).default, { writeFileSync, mkdtempSync } = await import("node:fs"), { tmpdir } = await import("node:os"), { join } = await import("node:path");
