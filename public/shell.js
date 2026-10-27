@@ -31,7 +31,6 @@
     nba: [["pp6", "6 Leg"], ["pp8", "8 Leg"], ["pp10", "10 Leg"], ["sgp4", "Same Game"]] };
   const OTHER = { nfl: "nba", nba: "nfl" };
   const REF_SVG = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>';
-  const REFRESH_ON = (p) => p === "lines" || p === "td" || /^props/.test(p) || /^modelbets/.test(p);   // the pages the refresh button matters on
   // which bottom tab a page belongs to; the sub tabs a page shows
   const tabOf = (p) => p === "home" || p === "lines" ? "home" : p === "models" ? "model" : p === "mybets" || /^modelbets/.test(p) || p === "record" ? "bets" : "";
   const subsOf = (sp, p) => p === "td" || /^props-/.test(p) ? PROPS[sp].map(([id, l]) => [id, l]) : /^modelbets-/.test(p) ? TYPES[sp].map(([k, l]) => [`modelbets-${k}`, l]) : null;
@@ -62,7 +61,6 @@
       // the NFL | NBA row opens Home on the other sport
       const same = panel === "home" ? "lines" : /^modelbets/.test(panel) ? "modelbets" : panel === "record" ? "mybets" : panel;
       document.querySelectorAll(".lgt[data-sp]").forEach((a) => a.setAttribute("href", `${URL_[a.dataset.sp]}#${same}`));
-      document.body.classList.toggle("ref-on", REFRESH_ON(panel));
       Shell.choose(sp);   // Home and Model open on the sport last chosen
       document.body.classList.toggle("tbar-on", panel === "lines");   // 10/27 (owner): the SLATEZZ bar is on Home only
     },
@@ -134,26 +132,18 @@
       Shell.sport = sport; const sp = sport;
       const d = document.createElement("div");
       d.innerHTML = `<header class="tbar" id="tbar"><a class="slatelogo sgrad" data-nav href="${URL_[sp]}#lines">SLATEZZ</a>` +
-        `<a class="tib" data-nav data-pg="alerts" href="${URL_[sp]}#alerts" aria-label="Alerts">${svg("bell", 28)}<b class="tcnt" id="mcnt-${sp}-alerts"></b></a></header>` +   // 10/21 night (owner): the bell at the top right
+        `<span class="tright"><button class="mref" aria-label="Rerun both models">${REF_SVG}</button>` +   // 10/27 (owner): the refresh sits next to the bell, white
+        `<a class="tib" data-nav data-pg="alerts" href="${URL_[sp]}#alerts" aria-label="Alerts">${svg("bell", 28)}<b class="tcnt" id="mcnt-${sp}-alerts"></b></a></span></header>` +   // 10/21 night (owner): the bell at the top right
         `<nav class="bnav" id="bnav" aria-label="Main menu">` +
         `<a class="bi" data-nav data-b="home" href="${URL_[sp]}#lines" aria-label="Home">${svg("home", 23)}<span>Home</span></a>` +
         `<a class="bi" data-nav data-b="bets" href="${URL_[sp]}#mybets" aria-label="Bets">${svg("bets", 23)}<span>Bets</span></a>` +
         `<a class="bi" data-nav data-b="model" href="${URL_[sp]}#models" aria-label="Model">${svg("bars", 23)}<span>Model</span></a></nav>`;   // (owner 10/27: like Polymarket's phone app -- a floating pill, icons only, the open one in a round bubble)
       while (d.firstChild) document.body.appendChild(d.firstChild);
+      { const rb = document.querySelector && document.querySelector("#tbar .mref"); if (rb) rb.onclick = Shell.refresh; }
       if (document.body.classList) document.body.classList.add("bnav-on");
       // My bets | Model bets sit inside Bets, under its title in the pinned header (10/22, sketch L)
       const sw = document.getElementById("bets-sw"), rh = document.querySelector && document.querySelector("#panel-record .phead");
       if (sw && rh && rh.appendChild) { rh.appendChild(sw); sw.style.display = ""; }
-      // 10/21 night (owner): the refresh ring sits next to the page title on the pages it matters for (Lines, Player props, Model bets), and
-      // "Model Refresh: <time>" at the bottom right of that header
-      if (document.querySelectorAll) document.querySelectorAll(".panel .phead").forEach((h) => {
-        if (!h.querySelector(".pt") || h.querySelector(".mref")) return;
-        // right next to the title on its line, vertically centered with it: the refresh icon (owner 10/21 night)
-        const box = document.createElement("div"); box.className = "prefbox";
-        const b = document.createElement("button"); b.className = "mref"; b.setAttribute("aria-label", "Rerun both models"); b.innerHTML = REF_SVG; b.onclick = Shell.refresh;
-        // (10/21 night, owner: no time under it -- the refresh time shows in the message at the bottom right after a tap)
-        box.appendChild(b); const tb = h.querySelector(".pt b"); if (tb && tb.after) tb.after(box); else h.appendChild(box);   // on the title's line, right after the title (owner 10/21 night)
-      });
       // Home: the NFL | NBA row is the title (owner 10/27: on Home only -- Bets and Model follow the sport last picked there)
       [["panel-lines", "lines"]].forEach(([id, pg]) => { const t = document.querySelector && document.querySelector(`#${id} .phead .pt b`); if (t) { t.className = "lgts"; t.innerHTML = Shell.leagueTabs(sp, pg); } });
       if (document.addEventListener) document.addEventListener("click", (e) => {
