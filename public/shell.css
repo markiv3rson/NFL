@@ -248,13 +248,11 @@ body.bnav-on #panel-alerts .phead .pt b { font-size:clamp(22px,6.4vw,32px); }
 /* Home: the NFL | NBA row right under SLATEZZ (owner: "bring this closer together") */
 body.bnav-on.tbar-on .phead { padding-top:2px; }
 body.tbar-on .lgt { gap:1px; } .lgt i { width:40px; height:40px; } .lgt img { width:28px; height:28px; }
-/* the flat pages (Bets, Model, Alerts, Player props) sit on a darker photo so the rows read without boxes; Home keeps its light shade (tiles keep boxes) */
-html.lines-on body.bnav-on:not(.tbar-on) .pagewm::after { display:block !important; content:""; position:absolute; inset:0; background:rgba(5,5,9,.68); }
-@media (min-width:1100px) { html.lines-on body.bnav-on:not(.tbar-on)::after { filter:brightness(.36); } }
+/* the flat pages (My bets, Model bets, Models, Alerts, Player props) sit on a 35% shade so the rows read without boxes (owner 10/27 night: "I don't want anything dark"; was 68%);
+   Home keeps its light 10% shade (tiles keep boxes) */
+html.lines-on body.bnav-on:not(.tbar-on) .pagewm::after { display:block !important; content:""; position:absolute; inset:0; background:rgba(5,5,9,.35); }
+@media (min-width:1100px) { html.lines-on body.bnav-on:not(.tbar-on)::after { filter:brightness(.65); } }
 /* the type / tab chips go under My bets | Model bets */
 body.bnav-on .phead .phchips { order:4; flex:1 0 100%; justify-content:center; margin:2px 0 0; }
-/* the flat pages (Bets, Model, Alerts, Player props) sit on a darker photo so the rows read without boxes; Home keeps its light shade (its tiles keep boxes) */
-html.lines-on body.bnav-on:not(.tbar-on) .pagewm::after { display:block !important; content:""; position:absolute; inset:0; background:rgba(5,5,9,.68); }
-@media (min-width:1100px) { html.lines-on body.bnav-on:not(.tbar-on)::after { filter:brightness(.36); } }
 /* the type / tab chips go under My bets | Model bets */
 body.bnav-on .phead .phchips { order:4; flex:1 0 100%; justify-content:center; margin:2px 0 0; }
