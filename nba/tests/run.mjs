@@ -1004,6 +1004,11 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
     && !/teamSide|teammodel/.test(readFileSync(new URL("../lib/cardpick.js", import.meta.url), "utf8")),
     "NBA card: Model (Team) line under Model (team, line, sure %), fed by the service's team-numbers fit; data only -- the NBA card picker never reads it");
 }
+{ // 10/27 night research: a PRA Over's % = 0.8 x the model + 0.2 x the price (Polymarket underprices PRA); every other stat stays 0.4 / 0.6
+  const pr = await import("../lib/props.js");
+  ok(Math.abs(pr.effChance({ side: "over", stat: "pra", chance: 0.8, price: 0.6 }) - 0.76) < 1e-9 && Math.abs(pr.effChance({ side: "over", stat: "pts", chance: 0.8, price: 0.6 }) - 0.68) < 1e-9
+    && pr.effChance({ side: "under", stat: "pra", chance: 0.8, price: 0.6 }) === 0.8, "NBA props: PRA Overs blend 0.8 model, other stats 0.4, Unders the model's own %");
+}
 { // 10/20 (owner: "Player props", bar 62%): NBA prop picks, one row per player and stat, scoring saved per game, grading from ESPN's box score
   const pr = await import("../lib/props.js"), { parseBox } = await import("../lib/espn.js"), R = globalThis.__TEST_REDIS__;
   const rows = [{ name: "Jaylen Brown", team: "BOS", stat: "pts", line: 19.5, mu: 24.9, over: 0.73, under: 0.27 }, { name: "Jaylen Brown", team: "BOS", stat: "pts", line: 24.5, mu: 24.9, over: 0.5, under: 0.5 },
@@ -1156,7 +1161,7 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
       "Prop Parlays (10/22): per game from that game's spread / total / ML / props (spread and ML never both on one game: the stronger stays); a game short of a size gives its legs to one mixed parlay of that size", pp2.map((p) => [p.type, p.game, p.legs.map((l) => l.label)]));
     await R.hset(pr.K_NBAPROPRES("2027-01-01"), "X @ Y", JSON.stringify({ picks: Array.from({ length: 50 }, (_, i) => ({ name: `P${String.fromCharCode(97 + (i % 26))}${String.fromCharCode(97 + Math.floor(i / 26))}`, stat: "pts", side: "over", line: 20.5, chance: 0.82, price: 0.6, result: i < 35 ? "W" : "L" })) }));
     await R.set(pr.K_NBAPROPMODEL("2027-01-01", "X @ Y"), JSON.stringify({ rows: [] }));
-    const bands = await pr.propCalibration(now, true); await R.del(pr.K_NBAPROPRES("2027-01-01")); await R.del(pr.K_NBAPROPMODEL("2027-01-01", "X @ Y")); await R.del("nbapropcal");
+    const bands = await pr.propCalibration(now, true); await R.del(pr.K_NBAPROPRES("2027-01-01")); await R.del(pr.K_NBAPROPMODEL("2027-01-01", "X @ Y")); await R.del("nbapropcal2");
     const c = pr.calibrate(0.82, bands);
     const e = 0.4 * 0.82 + 0.6 * 0.6, ce = pr.calibrate(e, bands);   // 10/23: bands of the Over's blended % (0.688 -> the 65 band)
     ok(bands[65] && bands[65].n === 50 && Math.abs(bands[65].won - 0.7) < 1e-9 && Math.abs(ce - (e + (0.7 - e) * 50 / 150)) < 1e-6 && c === 0.82 && pr.calibrate(0.72, bands) === 0.72,
