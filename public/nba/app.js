@@ -621,6 +621,9 @@ function futuresRows() {
   return chips + sec.rows.filter((r) => (r.model || 0) >= 0.1 || (r.market || 0) >= 0.5).map((r) => `<div class="row"><span>${tlogo(r.team)}<b>${esc(r.team)}</b></span><span>model <b class="mod">${r.model}%</b>${sec.market ? ` · market <b class="mkt">${r.market == null ? "—" : r.market + "%"}</b>` : ""}</span></div>`).join("");
 }
 let FUTSEC = "champion";
+// 10/28 (owner: "If there's a time and date. Put it last"): a System line that starts with a date / time ("Mon, 10/26, 5:40 PM · ...") gets the date moved to its end
+const dateLast = (v) => { const one = (x) => { const m = /^((?:[A-Za-z]{3}, )?\d{1,2}\/\d{1,2},? \d{1,2}:\d{2}\s?[AP]M) · ([\s\S]+)$/.exec(x); return m ? `${m[2]} · ${m[1]}` : x; };
+  const s = String(v); return /<div/.test(s) ? s.replace(/(<div[^>]*>)([\s\S]*?)(<\/div>)/g, (_, a, b, c) => a + one(b) + c) : one(s); };
 function renderModels() {
   const j = MODELS; if (!j || !j.ok) { $("models").innerHTML = '<div class="s dim" style="margin-top:12px">Models unavailable right now.</div>'; return; }
   const r = j.report, rb = j.rebuild, rc = j.record || {}, mv = j.moves || {}, pl = j.parlays || {}, sy = j.system || null;
@@ -653,7 +656,7 @@ function renderModels() {
     ["Player prop lines recorded", sy.props && sy.props.days ? `${plural(sy.props.days, "game day")} · last ${when(sy.props.latest || sy.props.lastDay)}` : "none yet"],   // 10/20: nba/lib/props.js background recorder (nothing shown yet)
     ["Last rebuild", rb ? `${when(rb.at)} · ${rb.published ? "published" : `<span class="y">held: ${esc((rb.failed_checks || []).join("; "))}</span>`}` : "not yet"],
     ["Errors (last 2 days)", (sy.errors || []).length ? sy.errors.slice(0, 6).map((e) => `<div class="y">${when(e.t)} · ${esc(e.where)}: ${esc(e.msg)}</div>`).join("") : "none"],
-  ].map(([a, b]) => `<div class="row"${/<div/.test(String(b)) ? ' style="grid-column:1/-1"' : ""}><span class="dim">${a}</span><span>${b}</span></div>`).join("") : '<div class="s dim">Status unavailable.</div>';
+  ].map(([a, b]) => `<div class="row"${/<div/.test(String(b)) ? ' style="grid-column:1/-1"' : ""}><span class="dim">${a}</span><span>${dateLast(b)}</span></div>`).join("") : '<div class="s dim">Status unavailable.</div>';
   const sysBad = !sy || !sy.railway || !sy.railway.ok || (sy.errors || []).length > 0 || watch.length > 0;
   $("models").innerHTML = labStats(rc, j.clv) +
     mSec("m-line", "1 · Card picks", cardRows) +   // 10/19: same order as NFL -- card picks, winners, parlays first

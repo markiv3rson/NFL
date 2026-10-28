@@ -310,7 +310,13 @@
     const top = ph.getBoundingClientRect().bottom - pb * z;
     el.style.top = Math.max(0, top / z) + "px";
   }
-  Shell.pinTop = (el) => { if (!el) return; TOPS.add(el); topSize(el); if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => topSize(el)); };
+  let TOPRO = null;
+  Shell.pinTop = (el) => {
+    if (!el) return; TOPS.add(el); topSize(el); if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => topSize(el));
+    // re-measure whenever a page title changes size (fonts landing, the drop-downs filling in) -- a stale measure left the card too low
+    if (typeof ResizeObserver === "function" && !TOPRO) { TOPRO = new ResizeObserver(() => TOPS.forEach(topSize)); document.querySelectorAll(".phead").forEach((h) => TOPRO.observe(h)); }
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => TOPS.forEach(topSize));
+  };
   if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("resize", () => TOPS.forEach(topSize));
   if (typeof document !== "undefined" && document.addEventListener) document.addEventListener("click", (e) => {
     const b = e.target && e.target.closest && e.target.closest("[data-grange]"); if (!b || !CH.o) return;

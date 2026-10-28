@@ -804,7 +804,7 @@ function renderModelNow() {
     ["Model service (Railway)", st.railway ? (st.railway.ok ? `answering · ${st.railway.ms} ms` : `<span class="r">NOT answering${st.railway.code ? " (HTTP " + st.railway.code + ")" : st.railway.err ? " (" + esc(st.railway.err) + ")" : ""}</span>`) : "—"],
     ["Database used", st.usedMb != null ? `${st.usedMb.toFixed(1)} of ${st.capMb} MB` : "—"],
     ["Sportsbook credits left", st.creditWarning ? `<span class="y">${st.credits ?? "—"}</span>` : (st.credits ?? "—")],
-  ].map(([a, b]) => `<div class="row"${/<div/.test(String(b)) ? ' style="grid-column:1/-1"' : ""}><span class="dim">${a}</span><span>${b}</span></div>`).join("") +
+  ].map(([a, b]) => `<div class="row"${/<div/.test(String(b)) ? ' style="grid-column:1/-1"' : ""}><span class="dim">${a}</span><span>${dateLast(b)}</span></div>`).join("") +
     (st.creditWarning ? `<div class="s y">⚠ ${esc(st.creditWarning)}</div>` : "") +
     "" : "";
   GBG_RES = res; const games = gbgHtml();
@@ -846,6 +846,9 @@ function paint(html) {
 }
 function paintBox(el) { if (el) el.innerHTML = paint(el.innerHTML); }
 // What ESPN said about kickoff times on the last check (10/8): which games it moved, or why the check failed.
+// 10/28 (owner: "If there's a time and date. Put it last"): a System line that starts with a date / time ("Mon, 10/26, 5:40 PM · ...") gets the date moved to its end
+const dateLast = (v) => { const one = (x) => { const m = /^((?:[A-Za-z]{3}, )?\d{1,2}\/\d{1,2},? \d{1,2}:\d{2}\s?[AP]M) · ([\s\S]+)$/.exec(x); return m ? `${m[2]} · ${m[1]}` : x; };
+  const s = String(v); return /<div/.test(s) ? s.replace(/(<div[^>]*>)([\s\S]*?)(<\/div>)/g, (_, a, b, c) => a + one(b) + c) : one(s); };
 function kickLine(k) {
   if (!k) return '<span class="dim">not run yet</span>';
   if (!k.ok) return `<span class="r">${hm(k.t)} · failed: ${esc(k.error || "")}</span>`;
