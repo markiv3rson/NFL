@@ -144,7 +144,7 @@ for r in csv.DictReader(io.StringIO(get(f"https://github.com/nflverse/nflverse-d
     if r["season_type"] != "REG": continue
     w, t = int(r["week"]), FIX.get(r["team"], r["team"]); teams.add((w, t))
     td[(w, t, r["player_name"])] += sum(int(float(r.get(c) or 0)) for c in ("rushing_tds", "receiving_tds", "special_teams_tds"))
-    yd[(w, nn(r["player_display_name"]))] = {"rec_yds": float(r["receiving_yards"] or 0), "rec": float(r["receptions"] or 0), "pass_yds": float(r["passing_yards"] or 0), "rush_yds": float(r["rushing_yards"] or 0)}   # 10/20: receptions / passing props too; 10/27: rushing yards (the 10/26 rush Unders family)
+    yd[(w, nn(r["player_display_name"]))] = {"rec_yds": float(r["receiving_yards"] or 0), "rec": float(r["receptions"] or 0), "pass_yds": float(r["passing_yards"] or 0), "rush_yds": float(r["rushing_yards"] or 0), "scrim_yds": float(r["rushing_yards"] or 0) + float(r["receiving_yards"] or 0)}   # 10/20: receptions / passing props too; 10/27: rushing yards (the 10/26 rush Unders family); 10/28 night: scrimmage yards
 n = um = 0
 for r in res.values():
     for p in r.get("td") or []:

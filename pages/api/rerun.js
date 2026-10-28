@@ -11,7 +11,7 @@ import { alertsFromRerun } from "../../lib/alerts";
 import { windAtKickoff, venue, isNeutral } from "../../lib/wind";
 import { loadSnaps, qbFirstStart, sameName } from "../../lib/snaps";
 import { loadEspnInjuries, espnOutFor, espnQuestionableFor } from "../../lib/espn";
-import { propLinesFor, K_PROPMODEL } from "../../lib/props";
+import { propLinesFor, K_PROPMODEL, mergeModels } from "../../lib/props";
 import { recordTdJump } from "../../lib/tracked";
 export const config = { maxDuration: 300 };
 
@@ -160,9 +160,13 @@ async function rerunWeek(req, base, season, week, early) {
     if (!early) try {
       const withLines = (await Promise.all(tdIn.map(async (x) => ({ x, lines: await propLinesFor(season, week, x.key) })))).filter((q) => q.lines.length);
       if (withLines.length) {
-        const pr = await post(base, "/prop-probs", { games: withLines.map(({ x, lines }) => ({ away: x.away, home: x.home, spread: x.spread, total: x.total, outs: x.outs, lines })) }, []);
+        const body = { games: withLines.map(({ x, lines }) => ({ away: x.away, home: x.home, spread: x.spread, total: x.total, outs: x.outs, lines })) };
+        // 10/28 night: the second prop model (prop_model2.py) on the same lines -- rushing / scrimmage yards come from it, receiving yards /
+        // receptions rows show only when both agree (lib/props.js mergeModels); a 503 while it builds = the first model's rows alone
+        const [pr, pr2] = await Promise.all([post(base, "/prop-probs", body, []), post(base, "/prop-probs2", body, []).catch(() => null)]);
         if (pr && pr.ok) for (const r of pr.results || []) { const q = withLines.find((z) => z.x.key === r.game); if (!q || !Array.isArray(r.rows)) continue;
-          await setJSON(K_PROPMODEL(season, week, q.x.key), { runAt, rows: r.rows }); nProps++; }
+          const r2 = pr2 && pr2.ok ? (pr2.results || []).find((z) => z.game === r.game) : null;
+          await setJSON(K_PROPMODEL(season, week, q.x.key), { runAt, rows: mergeModels(r.rows, r2 ? r2.rows : null), ...(r2 ? { m2: pr2.built || true } : {}) }); nProps++; }
         else if (pr && !pr.building) errors.push(`props: ${String(pr.error || "no reply").slice(0, 120)}`);
       }
     } catch (e) { errors.push(`props: ${String(e.message || e).slice(0, 120)}`); }

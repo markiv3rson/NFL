@@ -288,6 +288,25 @@ def prop_probs():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
+# 10/28 night: the second prop model (prop_model2.py: rushing / scrimmage yards Unders come from it; receiving yards / receptions rows show only when
+# it agrees with prop_model). Fit once on 2023-2025 as tested (about a minute), built in the background when its file is missing.
+import prop_model2
+if os.environ.get("PROPS_ON_START", "1") == "1" and prop_model2.load_live() is None:
+    threading.Thread(target=lambda: (__import__("time").sleep(60), prop_model2.build_bg(lambda m: print(m, flush=True))), daemon=True).start()
+
+@app.route("/prop-probs2", methods=["POST"])
+def prop_probs2():
+    """body: as /prop-probs (stats rec_yds / rec / rush_yds / scrim_yds) -> {"ok", "built", "results": [{"game", "rows": [{name, team, stat, line, over, under}]}]}.
+    503 while the model is still being built."""
+    try:
+        if prop_model2.load_live() is None:
+            prop_model2.build_bg(lambda m: print(m, flush=True)); return jsonify({"ok": False, "error": "prop model 2 not built yet", "building": True}), 503
+        body = request.get_json(force=True) or {}
+        games = [{**g, "away": nv(g["away"]), "home": nv(g["home"])} for g in body.get("games", []) if g.get("spread") is not None and g.get("total") is not None]
+        return jsonify({"ok": True, "built": prop_model2._LIVE.get("built"), "results": prop_model2.chances_many(games)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 @app.route("/team-yards", methods=["POST"])
 def team_yards():
     """STACK shadow inputs (10/21): body {"games": [{"away","home","spread","total","outs"}]} -> each team's expected passing + rushing yards (py)
