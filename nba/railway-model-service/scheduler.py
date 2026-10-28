@@ -27,8 +27,8 @@ def _call(path, tries=3, timeout=280):
     if not site:
         print("[scheduler] SITE_URL not set", flush=True)
         return None
+    if path.startswith("/api/"): path = os.environ.get("SITE_API", "/api").strip().rstrip("/") + path[4:]   # merged site: /api/nba/... (10/28: once, before the retries -- inside the loop a retry asked /api/nba/nba/... and always failed)
     for attempt in range(1, tries + 1):
-        if path.startswith("/api/"): path = os.environ.get("SITE_API", "/api").strip().rstrip("/") + path[4:]   # merged site: /api/nba/...
         req = urllib.request.Request(site + path, headers={"Accept": "application/json", "User-Agent": "nba-scheduler/1.0"})
         if login:
             req.add_header("Authorization", "Basic " + base64.b64encode(login.encode()).decode())

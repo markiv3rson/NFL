@@ -702,7 +702,10 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   const st = await import("../lib/status.js"), now = Date.parse("2026-12-01T20:00:00Z"), base = { snap: { t: new Date(now).toISOString(), games: 0, modelOk: true }, railway: { ok: true }, pinnacle: new Date(now).toISOString(), now };
   ok(st.computeWatch({ ...base, backup: null }).some((x) => /No backup/.test(x)) && st.computeWatch({ ...base, backup: { t: new Date(now - 40 * 3600e3).toISOString(), where: "volume" } }).some((x) => /No backup/.test(x))
     && st.computeWatch({ ...base, backup: { t: new Date(now - 3600e3).toISOString(), where: "failed" } }).some((x) => /failed/.test(x)) && st.computeWatch({ ...base, backup: { t: new Date(now - 3600e3).toISOString(), where: "volume" } }).length === 0,
-    "watchdog: NBA backup missing / older than 36 h / failed is reported, a fresh one is silent");
+    "watchdog: NBA backup missing / older than 26 h / failed is reported, a fresh one is silent");
+  ok(st.computeWatch({ ...base, backup: { t: new Date(now - 27 * 3600e3).toISOString(), where: "volume" } }).some((x) => /No backup/.test(x)) && !st.computeWatch({ ...base, backup: { t: new Date(now - 20 * 3600e3).toISOString(), where: "volume" } }).some((x) => /No backup/.test(x)), "watchdog: one missed nightly backup (27 h) shows, last night's (20 h) does not");
+  { const sch = readFileSync(new URL("../railway-model-service/scheduler.py", import.meta.url), "utf8"), i = sch.indexOf("SITE_API"), j = sch.indexOf("for attempt in range(1, tries + 1):");
+    ok(i > 0 && j > i, "scheduler: /api -> /api/nba is rewritten once, before the retries (a retry asked /api/nba/nba/... and always failed)"); }
   const { getRedis } = await import("../lib/redis.js"); await getRedis().set("bk:test", "1"); await getRedis().rpush("bk:list", "a", "b");
   const h = (await import("../../pages/api/nba/backup.js")).default, call = async (q) => { let out = null; await h({ query: q }, { status: () => ({ json: (j) => { out = j; } }) }); return out; };
   let cur = "0", keys = {}, pages = 0; do { const pg = await call({ cursor: cur }); Object.assign(keys, pg.data); cur = String(pg.next); pages++; } while (cur !== "0" && pages < 50);
