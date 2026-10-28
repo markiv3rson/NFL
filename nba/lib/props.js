@@ -203,7 +203,9 @@ export const RECHECK_H = 6;
 // 10/26 (owner: "find anything that's wrong"): ESPN kept correcting box scores AFTER the one 6-h recheck (10/23 rows: Bane steals U2.5, Clingan
 // blocks U2.5, Holiday / Dunn / B.Miller rebounds -- 6 results flipped a day or more later), so a graded game is re-checked up to 3 times:
 // 6+ h after its grade, then every 20+ h (`rechecks`; an old row with `rechecked` counts as 1). Days stay in the re-check pass for 7 days.
-export const RECHECKS = 3, RECHECK_GAP_H = 20, RECHECK_DAYS = 7;
+// 10/28: ESPN corrected 10/23-25 boxes AGAIN after the 3rd look (Durant ast 6 -> 5, Davis PRA 29 -> 30, Wells reb 5 -> 7: 5 results flipped) -> a look
+// every 20+ h for the whole 7-day window (8 in all), not 3
+export const RECHECKS = 8, RECHECK_GAP_H = 20, RECHECK_DAYS = 7;
 export const recheckCount = (x) => x.rechecks ?? (x.rechecked ? 1 : 0);
 export const recheckDue = (x, now, gradedAt) => { const c = recheckCount(x); if (c >= RECHECKS) return false;
   const since = c ? Date.parse(x.checkedAt || x.rechecked || 0) : Date.parse(gradedAt || 0);
