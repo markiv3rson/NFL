@@ -12,14 +12,12 @@ class MemRedis {
   async del(...keys) { let n = 0; for (const k of keys.flat()) { if (this.m.delete(k)) n++; if (this.s.delete(k)) n++; } return n; }
   async smembers(k) { return [...(this.s.get(k) || [])]; }
 }
-// MERGED SITE (10/17): NBA keeps its OWN database. Only NBA_REDIS_URL is read -- never the NFL app's variables, so NBA can never
-// write into NFL's database. Not set yet -> the in-memory stand-in (NBA pages show empty until NBA_REDIS_URL is added in Vercel).
 // 10/28: the NBA Upstash database hit its free plan's 500,000 requests a month at 7:30 PM PT 10/27 and refused every write. NBA now lives in the
-// paid 250 MB Redis Cloud database it shares with NFL (NBA_DB_URL_REDIS_URL), every NBA key under "nba:" so no name can touch an NFL key.
-// NBA_REDIS_URL (its own database, no label) is only the fallback.
+// paid 250 MB Redis Cloud database it shares with NFL (NBA_DB_URL_REDIS_URL), every NBA key under "nba:" so no name can touch an NFL key. The old
+// Upstash database and its NBA_REDIS_URL setting were deleted by the owner the same day. No address -> the in-memory stand-in (tests, local runs).
 export const NBA_PREFIX = "nba:";
 const okUrl = (v) => (typeof v === "string" && /^rediss?:\/\//.test(v.trim()) ? v.trim() : null);
-export function redisUrl(env = process.env) { return okUrl(env.NBA_DB_URL_REDIS_URL) || okUrl(env.NBA_REDIS_URL); }
+export function redisUrl(env = process.env) { return okUrl(env.NBA_DB_URL_REDIS_URL); }
 export const sharedDb = (env = process.env) => !!okUrl(env.NBA_DB_URL_REDIS_URL);
 // ioredis puts keyPrefix on every key of every command, but NOT on a SCAN pattern, and SCAN hands back the full names: so SCAN gets the label added
 // to its pattern (and only ever sees NBA keys), the label is cut off the names it returns, and DBSIZE counts NBA keys only.
@@ -38,7 +36,7 @@ export function withPrefix(c, P = NBA_PREFIX) {
 export function getRedis() {
   if (globalThis.__TEST_REDIS__) return globalThis.__TEST_REDIS__;
   if (!client) { const url = redisUrl(), O = { maxRetriesPerRequest: 3, connectTimeout: 8000 };
-    client = !url ? new MemRedis() : sharedDb() ? withPrefix(new Redis(url, { ...O, keyPrefix: NBA_PREFIX })) : new Redis(url, O); }
+    client = !url ? new MemRedis() : withPrefix(new Redis(url, { ...O, keyPrefix: NBA_PREFIX })); }
   return client;
 }
 // 60-s copy of the page data, one per deployment (a preview build must never serve its page to the live site).

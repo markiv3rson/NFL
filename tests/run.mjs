@@ -1729,7 +1729,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(/fetch\("\/api\/rerun", \{ method: "POST" \}\)/.test(shell) && /fetch\("\/api\/nba\/snapshot"/.test(shell), "the menu's refresh reruns both models (NFL /api/rerun, NBA /api/nba/snapshot)");
   // NBA uses ONLY its own settings
   const nbaR = await import("../nba/lib/redis.js"), nbaM = readFileSync(new URL("../nba/lib/model.js", import.meta.url), "utf8"), nbaB = readFileSync(new URL("../nba/lib/books.js", import.meta.url), "utf8");
-  ok(nbaR.redisUrl({ UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://nfl:1", REDIS_URL: "redis://x:2" }) === null && nbaR.redisUrl({ NBA_REDIS_URL: "redis://nba:3" }) === "redis://nba:3", "NBA's database is its own (NBA_REDIS_URL); NFL's database variable is never read");
+  ok(nbaR.redisUrl({ UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://nfl:1", REDIS_URL: "redis://x:2" }) === null && nbaR.redisUrl({ NBA_DB_URL_REDIS_URL: "redis://db:3" }) === "redis://db:3", "NBA reads the shared database's own setting (its keys under nba:); no other database variable is read");
   ok(/NBA_MODEL_SERVICE_URL/.test(nbaM) && !/env\.MODEL_SERVICE_URL/.test(nbaM) && /NBA_ODDS_API_KEY/.test(nbaB) && !/env\.ODDS_API_KEY/.test(nbaB), "NBA's model service and odds key are its own settings");
   const nbaApp = readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8");
   ok(!/fetch\("\/api\/(?!nba\/)/.test(nbaApp), "the NBA page only calls /api/nba/... routes");
@@ -2169,9 +2169,13 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const mk = /Shell\.mktLines = \(o\) => \(o && o\.h1pick \? `[^`]*h1Line\(o\.h1pick\)[^`]*` : ""\);/.test(sh);
   ok(mk && !/Shell\.mktProps|Shell\.mktLoad|gamemarkets\?away|class="mkx/.test(sh) && !/"gprops"/.test(ap) && !/"gprops"/.test(readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8")) && !(await import("node:fs")).existsSync(new URL("../pages/api/gamemarkets.js", import.meta.url)),
     "game page: the 1H pick line only (no price lists, no Game Props tab, no /api/gamemarkets), both sports"); }
-{ // 10/28: both sports on one paid database (NBA_DB_URL_REDIS_URL); the old free one is only the fallback; the NFL backup leaves NBA's keys to NBA
+{ // 10/28: both sports on one paid database (NBA_DB_URL_REDIS_URL), no fallback (the old databases were deleted); the NFL backup leaves NBA's keys to NBA
   const { DB_URL } = await import("../lib/redis.js");
-  ok(DB_URL({ NBA_DB_URL_REDIS_URL: "redis://new", UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://old" }) === "redis://new" && DB_URL({ UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://old" }) === "redis://old", "NFL reads the shared database, the old one is the fallback");
+  ok(DB_URL({ NBA_DB_URL_REDIS_URL: "redis://new", UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://old" }) === "redis://new" && DB_URL({ UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://old" }) == null, "NFL reads the shared database only (the old one was deleted 10/28)");
   const bk = readFileSync(new URL("../pages/api/backup.js", import.meta.url), "utf8"); ok(/!k\.startsWith\("nba:"\)/.test(bk), "the NFL backup leaves NBA's keys to NBA's own backup"); }
+{ // 10/28 line-by-line check: the ⓘ texts quote the code's own numbers (ML PICK team-model rates, the 1H SPREAD rule)
+  const a = readFileSync(new URL("../public/app.js", import.meta.url), "utf8"), { TM_ML } = await import("../lib/cardpick.js"), h = await import("../lib/h1pick.js");
+  ok(a.includes(`favorites won ${TM_ML.fav.hit}% of ${TM_ML.fav.n}, underdogs priced ${TM_ML.dog.lo * 100}–50¢ won ${TM_ML.dog.hit}% of ${TM_ML.dog.n}`) && a.includes(`(${Math.round(h.H1_BAR * 100)}%+, ${Math.round(h.H1_CAP * 100)}¢ max)`),
+    "Models ⓘ: the ML PICK and 1H SPREAD texts carry the code's numbers"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);
