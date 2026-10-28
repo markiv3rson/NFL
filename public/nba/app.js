@@ -157,7 +157,7 @@ function tile(g) {
 function renderLines() {
   if (!S) { $("lines").innerHTML = '<div class="s dim center">Loading…</div>'; return; }
   if (DETAIL) { const g = S.games.find((x) => x.key === DETAIL); if (g) return renderDetail(g); DETAIL = null; }
-  setBg(null); linesBg(); document.body.classList.remove("game-on");
+  setBg(null); linesBg(); document.body.classList.remove("game-on"); if (typeof Shell !== "undefined" && Shell.unpinGame) Shell.unpinGame();
   $("detail").style.display = "none"; $("lines").style.display = "";
   $("lines").innerHTML = (S.games.length ? linesByDay() : '<div class="tiles"><div class="s dim">No NBA games on Polymarket right now.</div></div>');
 }
@@ -189,8 +189,8 @@ function detailTop(g) {
   const w = mktWin(g), ap = w ? Math.round(w.away * 100) : null, hr = ap == null ? null : 100 - ap;
   const st = g.inProgress ? '<span class="r">● LIVE</span>' : startsIn(g), dsc = scOf(g);   // 10/23 (owner, = NFL): a game being played shows its score + quarter clock
   const ca = teamColor(g.away), ch = teamColor(g.home), badge = g.preseason && !g.inProgress ? '<span class="chip c-amb">PRESEASON</span>' : "";
-  return `<div class="card dtop" style="background:linear-gradient(90deg,${ca}40 0%,${ca}14 50%,${ch}14 50%,${ch}40 100%),var(--card)"><img class="dwm l" src="${esc(logoUrl(g.away))}" alt="" onerror="this.style.display='none'"><img class="dwm r" src="${esc(logoUrl(g.home))}" alt="" onerror="this.style.display='none'"><div class="inner"><div class="nm"><span class="t">${tlogo(g.away)}${g.away}${recOf(g, g.away)}</span>` +
-    `<div class="mid">${badge}${dsc && (dsc.st === "in" || dsc.st === "post") ? `<div class="s2"><b>${dsc.a} – ${dsc.h}</b></div><div class="s3 r">${dsc.st === "post" ? "FINAL" : "● LIVE · " + esc(dsc.lbl)}</div>` : `<div class="s2">${tm(g.start)}</div><div class="s3">${st}</div>`}</div><span class="t hm">${g.home}${tlogo(g.home)}${recOf(g, g.home)}</span></div>` +
+  return `<div class="card dtop" style="background:linear-gradient(90deg,${ca}40 0%,${ca}14 50%,${ch}14 50%,${ch}40 100%),var(--card)"><img class="dwm l" src="${esc(logoUrl(g.away))}" alt="" onerror="this.style.display='none'"><img class="dwm r" src="${esc(logoUrl(g.home))}" alt="" onerror="this.style.display='none'"><div class="inner"><div class="nm"><span class="t">${g.away}${recOf(g, g.away)}</span>` +
+    `<div class="mid">${badge}${dsc && (dsc.st === "in" || dsc.st === "post") ? `<div class="s2"><b>${dsc.a} – ${dsc.h}</b></div><div class="s3 r">${dsc.st === "post" ? "FINAL" : "● LIVE · " + esc(dsc.lbl)}</div>` : `<div class="s2">${tm(g.start)}</div><div class="s3">${st}</div>`}</div><span class="t hm">${g.home}${recOf(g, g.home)}</span></div>` +
     (w && !isFinal(g) ? `<div class="wc"><div class="wl"><b class="mkt">${ap}%</b><span class="mkt">MARKET’S WIN CHANCE</span><span class="dim">${hr}%</span></div><div class="bar"><i style="width:${ap}%"></i></div></div>` : "") + `</div></div>`;
 }
 const row = (k, v, c, mt) => `<div class="prl${mt ? " mt" : ""}"><span class="s">${k}</span><span class="${c || ""}">${v}</span></div>`;
@@ -278,12 +278,6 @@ function tipLine(g, kind) {
   const ml = c.mlHome > 0 && c.mlHome < 1 ? (c.mlHome >= 0.5 ? `ML ${g.home} ${odds(toAm(c.mlHome))}` : `ML ${g.away} ${odds(toAm(1 - c.mlHome))}`) : null;
   return sp || ml ? `<div class="s dim" style="margin-top:6px">Tip-off: ${[sp, ml].filter(Boolean).join(" · ")}</div>` : "";
 }
-function bookBox(g, kind) {   // one line like NFL's: the spread + its price, the moneyline small under it; totals: the line, O / U prices under it
-  const B = g.books || {}, b = B[kind === "total" ? "total" : "spread"], m = B.ml;
-  if (kind === "total") return `<div><div class="k">SPORTSBOOK</div>${b ? `${b.line}<div class="s">O ${odds(b.over)} · U ${odds(b.under)}</div>` : dash}</div>`;
-  if (!b && !m) return `<div><div class="k">SPORTSBOOK</div>${dash}</div>`;
-  return `<div><div class="k">SPORTSBOOK</div>${b ? `${g.home} ${sgn(b.homeSpread)} ${odds(b.home)}` : ""}${m ? `<div class="s">ML ${g.home} ${odds(m.home)} / ${g.away} ${odds(m.away)}</div>` : ""}</div>`;
-}
 function mlPickLine(g) {   // the moneyline PICK under the spread lines (the market's chance, fee out)
   const k = g.ml; if (!k) return "";
   if (g.inProgress) { const L = g.locked && g.locked.ml && g.locked.ml.plain; if (!L) return "";
@@ -295,13 +289,22 @@ function mlPickLine(g) {   // the moneyline PICK under the spread lines (the mar
   const c = clsOf(pick.pct), tx = hitTxt(pick.pct, c);
   return `<div style="margin-top:4px"><b class="${c}" style="font-size:13px"><span class="lbw">ML pick:</span> ${esc(pick.label)} · ${tx}</b></div>`;
 }
+// 10/28 (owner's game-page sketch, design = both sports): SPORTSBOOK | POLYMARKET side by side with the same rows -- SPREAD (one team per line) then
+// MONEYLINE, OVER / UNDER on totals -- each sportsbook row on the line of its Polymarket row; no MARKET word (a blurred band in its place)
+const mkGrid = (cells) => `<div class="mk mk3">${cells.map((c) => `<div>${c}</div>`).join("")}</div>`;
 function marketCard(g, kind, id) {
-  const p = g.poly || {};
-  const poly = kind === "spread" ? (p.spread || p.ml ? (p.spread ? row("Spread", `${g.home} ${sgn(p.spread.homeSpread)} ${odds(toAm(p.spread.home))}`, "mkt") + row("", `${g.away} ${sgn(-p.spread.homeSpread)} ${odds(toAm(p.spread.away))}`, "mkt") : "")
-      + (p.ml ? row("Moneyline", `${g.home} ${odds(toAm(p.ml.home))}`, "mlc", !!p.spread) + row("", `${g.away} ${odds(toAm(p.ml.away))}`, "mlc") : "") : dash)
-    : (p.total ? row(`Over ${p.total.line}`, odds(toAm(p.total.over)), "mkt") + row(`Under ${p.total.line}`, odds(toAm(p.total.under)), "mkt") : dash);
+  const p = g.poly || {}, B = g.books || {};
+  const sp = (hs, ho, ao) => row("Spread", `${g.home} ${sgn(hs)} ${ho}`, "mkt") + row("", `${g.away} ${sgn(-hs)} ${ao}`, "mkt");
+  const ml = (ho, ao) => row("Moneyline", `${g.home} ${ho}`, "mlc") + row("", `${g.away} ${ao}`, "mlc");
+  const ou = (ln, o, u) => row(`Over ${ln}`, o, "mkt") + row(`Under ${ln}`, u, "mkt");
+  const cells = kind === "spread"
+    ? [`<div class="k">SPORTSBOOK</div>`, pmHead(g),
+      B.spread ? sp(B.spread.homeSpread, odds(B.spread.home), odds(B.spread.away)) : row("Spread", "—", "mkt"), p.spread ? sp(p.spread.homeSpread, odds(toAm(p.spread.home)), odds(toAm(p.spread.away))) : row("Spread", "—", "mkt"),
+      B.ml ? ml(odds(B.ml.home), odds(B.ml.away)) : row("Moneyline", "—", "mlc"), p.ml ? ml(odds(toAm(p.ml.home)), odds(toAm(p.ml.away))) : row("Moneyline", "—", "mlc")]
+    : [`<div class="k">SPORTSBOOK</div>`, pmHead(g),
+      B.total ? ou(B.total.line, odds(B.total.over), odds(B.total.under)) : row("Total", "—", "mkt"), p.total ? ou(p.total.line, odds(toAm(p.total.over)), odds(toAm(p.total.under))) : row("Total", "—", "mkt")];
   const info = kind === "spread" ? MODEL_INFO.spread.concat([["ML pick:", MODEL_INFO.ml[1][1]]]) : MODEL_INFO.total;
-  return `<div class="card"><div class="inner">${id ? injDrop(g, id) : ""}<div class="hd">MARKET</div><div class="mk">${bookBox(g, kind)}<div>${pmHead(g)}${poly}${tipLine(g, kind)}</div></div><div class="hd hm ihd">MODEL${IBTN}</div>${whyBox(g, kind, info)}${modelCell(g, kind)}</div></div>`;
+  return `<div class="card"><div class="inner">${id ? injDrop(g, id) : ""}<div class="bband"></div>${mkGrid(cells)}${tipLine(g, kind)}<div class="hd hm ihd">MODEL${IBTN}</div>${whyBox(g, kind, info)}${modelCell(g, kind)}</div></div>`;
 }
 // 10/17 (owner): the NBA photo behind every NBA page (a game page keeps its team colours)
 function linesBg() { const p = $("panel-lines"); document.documentElement.classList.toggle("lines-on", !(p && p.classList.contains("on") && DETAIL)); }
@@ -348,11 +351,14 @@ function renderDetail(g) {
   document.body.classList.add("game-on");   // 10/18 (owner, same as NFL): the game card is the header; ← Games under it
   const co = chartOf(g), mk = typeof Shell !== "undefined" && Shell.mktLines;   // 10/27: the other Polymarket markets (halves, quarters, team totals, game / team props)
   const body = GTAB === "props" ? gameChips() + gamePropsBody(g) : GTAB === "parlays" ? gameParlaysBody(g) : GTAB === "gprops" ? (mk ? Shell.mktProps(co, gNone("Polymarket lists no game or team props for this game yet.")) : "")
-    : secRow("SPREAD &amp; ML", injPill(g, "inj")) + `<div class="grid">${marketCard(g, "spread", "inj")}</div>` + secRow("TOTALS") + `<div class="grid">${marketCard(g, "total")}</div>` + (mk ? Shell.mktLines(co) : "");
-  $("detail").innerHTML = `${typeof Shell !== "undefined" && Shell.chartBlock ? detailTop(g).replace('class="card dtop"', 'class="card dtop dblend"') + Shell.chartBlock(co) : detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs()}${body}`;
+    : secRow("SPREAD &amp; ML", injPill(g, "inj")) + marketCard(g, "spread", "inj") + secRow("TOTALS") + marketCard(g, "total") + (mk ? Shell.mktLines(co) : "");
+  const was = $("detail").querySelector ? $("detail").querySelector(".grest") : null, keepY = was ? was.scrollTop : 0;
+  // 10/28 (owner, design = both sports): the team card, the chart, ← Games and the tabs stay put (.gtop); only the part under them scrolls (.grest, Shell.pinGame)
+  $("detail").innerHTML = `<div class="gtop">${typeof Shell !== "undefined" && Shell.chartBlock ? detailTop(g).replace('class="card dtop"', 'class="card dtop dblend"') + Shell.chartBlock(co) : detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs()}</div><div class="grest">${body}</div>`;
   if (typeof Shell !== "undefined" && Shell.chartLoad) Shell.chartLoad(co);
   $("back-btn").onclick = closeGame;
   setBg($("panel-lines").classList.contains("on") ? g : null);
+  if (typeof Shell !== "undefined" && Shell.pinGame) Shell.pinGame($("detail"), keepY);
 }
 function openGame(key) { LASTY = window.scrollY || 0; DETAIL = key; renderLines(); window.scrollTo(0, 0); setTimeout(() => slotMoney($("detail")), 60); }
 function closeGame() { if (typeof Shell !== "undefined" && Shell.chartStop) Shell.chartStop(); DETAIL = null; renderLines(); window.scrollTo(0, LASTY); }
@@ -371,7 +377,8 @@ function ticketRows() {   // 10/22 (owner: "Make all of this its own card ... No
       (P.length ? `<div class="drop" id="parlaydrop"><div class="card modelglow"><div class="inner">${P.map(bb).join("")}</div></div></div>` : "") };
 }
 // 10/27 (owner, = NFL): Profit as one big number on top, the record / open / stake line under it, then Best bets and the Parlay as plain rows
-const topCard = (rows, hero = "") => { const T = ticketRows(); return `${hero}<div class="card mbtop"><div class="sec">${T.rows}${rows}</div></div>${T.drops}`; };
+// 10/28 (owner): the profit and the top rows = one see-through card that stays put under the page title (.mbpin, Shell.pinTop)
+const topCard = (rows, hero = "") => { const T = ticketRows(); return `<div class="mbpin">${hero}<div class="card mbtop"><div class="sec">${T.rows}${rows}</div></div></div>${T.drops}`; };
 
 // ---------- Bets: My bets | Model bets
 let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
@@ -471,6 +478,7 @@ function renderBets() {
     `<div class="center"><button class="btn" id="sync-btn">↻ Sync account</button></div>`;
   for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
   const md = $("mb-day"); if (md && md.tagName === "SELECT") md.onchange = () => { MBDAY = md.value; renderBets(); };
+  if (typeof Shell !== "undefined" && Shell.pinTop && $("record-mine").querySelector) Shell.pinTop($("record-mine").querySelector(".mbpin"));
   $("sync-btn").onclick = async () => { toast("Syncing…", 0); try { const d = await (await fetch("/api/nba/mybets?sync=1", { cache: "no-store" })).json(); BETS = d; renderBets(); toast(d.sync && d.sync.ok ? `Synced ${d.sync.positions} positions.` : `Sync: ${(d.sync && d.sync.note) || "done"}`); } catch (e) { toast("Sync failed: " + e.message, 10000); } };
 }
 // Model bets: day drop-down at the top, the types are menu sub tabs, one list in tip-off order (lib/parlays.js)
