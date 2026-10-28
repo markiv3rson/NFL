@@ -1872,8 +1872,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
 }
 // ---------- 10/18 (owner): Game Lines tiles look like the game page's header card -- team colours, big logos, % in the middle, no date / time / starts-in
 { for (const f of ["../public/app.js", "../public/nba/app.js"]) { const a = readFileSync(new URL(f, import.meta.url), "utf8"), t = a.slice(a.indexOf("function tile(g)"), a.indexOf("\n}", a.indexOf("function tile(g)")));
-    ok(!/style="background:linear-gradient/.test(t) && !/class="wmk/.test(t) && !/const ca = /.test(t) && /class="tmid">\$\{mid2?\}/.test(t) && (f.includes("nba") ? /\$\{tlogo\(g\.away\)\}\$\{g\.away\}/ : /\$\{thelmet\(g\.away, "right"\)\}\$\{g\.away\}.*\$\{g\.home\}\$\{thelmet\(g\.home, "left"\)\}/).test(t) && !/const foot/.test(t) && !/class="ft"/.test(t) && /class="chip tmt">\$\{esc\((tm\(g\.kickoff\)|tipTime\(g\.start\))\)\}/.test(t),
-      `${f}: tile = plain card (no team colours, no faded logos -- owner 10/18 evening, sketch D), logo (NFL: helmet facing the middle, owner 10/28) + code + record each side, the % in the middle with the time + tag under it, no foot row`); }
+    ok(!/style="background:linear-gradient/.test(t) && !/class="wmk/.test(t) && !/const ca = /.test(t) && /class="tmid">\$\{mid2?\}/.test(t) && (f.includes("nba") ? /\$\{tlogo\(g\.away\)\}\$\{g\.away\}/ : /\$\{g\.away\}\$\{thelmet\(g\.away, "right"\)\}.*\$\{thelmet\(g\.home, "left"\)\}\$\{g\.home\}/).test(t) && !/const foot/.test(t) && !/class="ft"/.test(t) && /class="chip tmt">\$\{esc\((tm\(g\.kickoff\)|tipTime\(g\.start\))\)\}/.test(t),
+      `${f}: tile = plain card (no team colours, no faded logos -- owner 10/18 evening, sketch D), logo (NFL: helmet between the name and the middle, facing the middle, owner 10/28) + code + record each side, the % in the middle with the time + tag under it, no foot row`); }
   for (const f of ["../public/index.html", "../public/nba/index.html"]) { const h = readFileSync(new URL(f, import.meta.url), "utf8");
     ok(/\.tile \.t \{ font-size:24px/.test(h) && /\.tile \.tmid \{ text-align:center/.test(h), `${f}: tile names at the game-page size`); } }
 // ---------- 10/18 night (owner): no NEXT GAME strip anywhere but home; line moves inside the tile; slot headers with a dark edge; bigger page titles
@@ -2136,7 +2136,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const ref = JSON.parse(readFileSync(new URL("./h1_ref.json", import.meta.url), "utf8")); let worst = 0;
   for (const c of ref) { const m = h.h1Mean(c.x); worst = Math.max(worst, Math.abs(m - c.mean)); for (const [L, v] of Object.entries(c.cover)) worst = Math.max(worst, Math.abs(h.h1HomeCover(m, Number(L)) - v)); }
   ok(worst < 1e-3, "1H model + neighbours equal the Python fit on 6 reference games", worst);
-  ok(h.h1Qualifies(0.6, 0.55) && !h.h1Qualifies(0.57, 0.5) && !h.h1Qualifies(0.62, 0.61) && h.h1Qualifies(0.66, 0.61) && !h.h1Qualifies(0.8, 0.78) && !h.h1Qualifies(0.6, 0.6), "58% under 60c, 65% from 60c, 77c cap, priced under its chance");
+  ok(h.h1Qualifies(0.6, 0.55) && !h.h1Qualifies(0.57, 0.5) && h.h1Qualifies(0.597, 0.6) && h.h1Qualifies(0.62, 0.61) && h.h1Qualifies(0.58, 0.77) && !h.h1Qualifies(0.8, 0.78) && h.h1Qualifies(0.6, 0.65) && !h.h1Qualifies(0.6, null) && h.H1_BAR === 0.58 && h.H1_CAP === 0.77,
+    "1H rule (owner 10/28): 58%+ and 77c or less, the price never drops a side (IND +7.5 59.7% at 60c stays)");
   const x = h.h1Inputs({ week: 3, roof: "outdoors", div: true, homeRest: 7, awayRest: 6, nvSpread: 3, nvTotal: 44 }, { booksHomeSpread: -3.5, booksTotal: 45.5, wind: 12, outdoor: true });
   ok(x.hfav === 3.5 && x.tl === 45.5 && x.windo === 12 && x.domeF === 0 && x.div === 1 && x.early === 1 && x.rest_d === 1, "inputs: books first, wind outdoors, early weeks, rest", x);
   const xd = h.h1Inputs({ week: 9, roof: "dome", nvSpread: -2.5, nvTotal: 48 }, { wind: 20 }); ok(xd.hfav === -2.5 && xd.windo === 0 && xd.domeF === 1 && xd.early === 0, "a dome: no wind, the schedule's line when no books", xd);
@@ -2163,7 +2164,11 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const pp = readFileSync(new URL("../pages/api/pinnaclepull.js", import.meta.url), "utf8"), gr = readFileSync(new URL("../lib/grade.js", import.meta.url), "utf8"), wk = readFileSync(new URL("../lib/week.js", import.meta.url), "utf8");
   const sh = readFileSync(new URL("../public/shell.js", import.meta.url), "utf8"), ap = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   ok(/h1PickNow\(getRedis\(\), SEASON, g, pin, p, gm\)/.test(pp) && /recordGameMarkets\(getRedis\(\), SEASON, g, gm, t\)/.test(pp) && /gradeH1Week\(season, week, games, espnFirstHalves\)/.test(gr) && /G\.h1pick = \{/.test(wk), "the 15-min pull records the pick + every game-market price; grading and the slate read it");
-  ok(/per === "1h" && o\.h1pick \? h1Line\(o\.h1pick\)/.test(sh) && /h1pick: g\.h1pick \|\| null/.test(ap) && /h1Row\(\) \+/.test(ap), "game page 1st Half shows the Pick line; Models -> Card picks has the 1H SPREAD row"); }
+  ok(/h1pick: g\.h1pick \|\| null/.test(ap) && /h1Row\(\) \+/.test(ap), "Models -> Card picks has the 1H SPREAD row");
+  // 10/28 (owner: "do not put all of the market on here ... just choose our pick"): the game page shows the 1H pick alone, never a market's price list; no Game Props tab
+  const mk = /Shell\.mktLines = \(o\) => \(o && o\.h1pick \? `[^`]*h1Line\(o\.h1pick\)[^`]*` : ""\);/.test(sh);
+  ok(mk && !/Shell\.mktProps|Shell\.mktLoad|gamemarkets\?away|class="mkx/.test(sh) && !/"gprops"/.test(ap) && !/"gprops"/.test(readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8")) && !(await import("node:fs")).existsSync(new URL("../pages/api/gamemarkets.js", import.meta.url)),
+    "game page: the 1H pick line only (no price lists, no Game Props tab, no /api/gamemarkets), both sports"); }
 { // 10/28: both sports on one paid database (NBA_DB_URL_REDIS_URL); the old free one is only the fallback; the NFL backup leaves NBA's keys to NBA
   const { DB_URL } = await import("../lib/redis.js");
   ok(DB_URL({ NBA_DB_URL_REDIS_URL: "redis://new", UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://old" }) === "redis://new" && DB_URL({ UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://old" }) === "redis://old", "NFL reads the shared database, the old one is the fallback");

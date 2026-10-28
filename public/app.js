@@ -274,7 +274,7 @@ const LOGO_OVERRIDES = { WAS: "https://raw.githubusercontent.com/ajreinhard/data
 const logoUrl = (team) => (team ? LOGO_OVERRIDES[team] || `https://a.espncdn.com/i/teamlogos/nfl/500/${team}.png` : "");
 // Team logo next to team names on every card (game header + TD team headers). Same logo source as the TD rows.
 function tlogo(team) { return team ? `<img class="tlogo" src="${logoUrl(team)}" alt="" onerror="this.style.display='none'">` : ""; }
-// 10/28 (owner: "instead of the team logos put the helmets"): the Home tiles carry each team's helmet facing the middle (away faces right, home left; public/helmets/sm = the matchup helmets cropped, 96 px tall)
+// 10/28 (owner: "instead of the team logos put the helmets"; "put the helmets on the other side of their names"): the Home tiles carry each team's helmet between its name and the middle, facing the middle (away faces right, home left; public/helmets/sm = the matchup helmets cropped, 96 px tall)
 function thelmet(team, dir) { return team ? `<img class="thlm" src="/helmets/sm/${dir}/${team}.webp" alt="" onerror="this.onerror=null;this.src='${logoUrl(team)}'">` : ""; }
 const retPill = (r) => (r.returning ? (r.returningState === "practicing" ? ' <span class="pill p-g" style="padding:0 6px;font-size:10px">↩ RETURNING</span>' : ' <span class="pill p-y" style="padding:0 6px;font-size:10px">↩ WAS OUT · NOT PRACTICING</span>') : "");
 function tdNoGap(r) {
@@ -1024,7 +1024,6 @@ function liveHead(g, lv, kind) {
   return liveHas(lv, kind) ? "" : `<div class="s y">Lines paused.</div>${lockedNote(g, kind)}`;
 }
 const liveTail = (g, lv, kind) => (liveHas(lv, kind) ? lockedNote(g, kind) : "");
-if (typeof Shell !== "undefined") Shell.onMkt = (key) => { if (DETAIL && (key == null || key === DETAIL)) refreshDetail(); };   // 10/27: the other markets landed or a chip was tapped
 function refreshDetail() { const open = [...document.querySelectorAll(".drop.open")].map((e) => e.id).filter(Boolean); renderLines(); for (const id of open) { const e = $(id); if (e) e.classList.add("open"); } }
 const anyLive = () => !!(S && S.games && S.games.some((g) => g.started && !g.final));
 async function loadLive() {
@@ -1078,7 +1077,7 @@ function tile(g) {
   // 10/18 evening (owner, sketch D): NO big faded logos and NO team colours behind the tile -- a plain 55% dark card so the page picture shows through.
   const res = g.final && g.awayScore != null && g.homeScore != null ? nflRes(g, Number(g.awayScore), Number(g.homeScore)) : sc && sc.st === "post" ? nflRes(g, Number(sc.a), Number(sc.h)) : "";
   return `<button class="tile${g.started && !g.final ? " live" : ""}" data-game="${esc(g.key)}">` +
-    `<div class="in"><div class="nm"><span class="t">${thelmet(g.away, "right")}${g.away}${recOf(g, g.away)}</span><div class="tmid">${mid2}${res}${chips ? `<div class="s2">${chips}</div>` : ""}${moveLines(moveBits(g))}</div><span class="t hm">${g.home}${thelmet(g.home, "left")}${recOf(g, g.home)}</span></div>${g.final || sc || hp == null ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
+    `<div class="in"><div class="nm"><span class="t">${g.away}${thelmet(g.away, "right")}${recOf(g, g.away)}</span><div class="tmid">${mid2}${res}${chips ? `<div class="s2">${chips}</div>` : ""}${moveLines(moveBits(g))}</div><span class="t hm">${thelmet(g.home, "left")}${g.home}${recOf(g, g.home)}</span></div>${g.final || sc || hp == null ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
 }
 // Graded touchdown results for a finished game (same records the Models tab uses). Loaded once, only when a finished game page opens.
 let GRADES = null, GRADES_AT = 0;
@@ -1358,7 +1357,7 @@ function linesBg() { const on = (id) => { const p = $(id); return !!(p && p.clas
 // Game Lines = the spread & ML and totals cards as before; Player Props = THIS game's rows in the props-page look; Parlays = the same-game parlays. The choice is kept per phone.
 const lsGet = (k, d) => { try { return localStorage.getItem(k) || d; } catch { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
-const GTABS = [["lines", "Game Lines"], ["props", "Player Props"], ["gprops", "Game Props"], ["parlays", "Parlays"]];
+const GTABS = [["lines", "Game Lines"], ["props", "Player Props"], ["parlays", "Parlays"]];   // 10/28: GAME PROPS tab out -- only winning picks show, none of those markets has one
 let GTAB = lsGet("gTab", "lines"), GPROP = lsGet("gProp:nfl", "td");
 if (!GTABS.some(([k]) => k === GTAB)) GTAB = "lines";
 if (!PROP_TABS.some(([k]) => k === GPROP)) GPROP = "td";
@@ -1398,7 +1397,7 @@ function renderDetail(g) {
   document.body.classList.add("game-on");   // 10/18 (owner): on a game page the game card IS the header -- the NEXT GAME strip is hidden, ← Games sits under the card
   const early = g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : "";
   const co = chartOf(g), mk = typeof Shell !== "undefined" && Shell.mktLines;   // 10/27: the other Polymarket markets (halves, quarters, team totals, game / team props)
-  const body = GTAB === "props" ? gameChips() + gamePropsBody(g) : GTAB === "parlays" ? gameParlaysBody(g) : GTAB === "gprops" ? (mk ? Shell.mktProps(co, gNone("Polymarket lists no game or team props for this game yet.")) : "")
+  const body = GTAB === "props" ? gameChips() + gamePropsBody(g) : GTAB === "parlays" ? gameParlaysBody(g)
     : `${early}${gameCard(g, "x")}${totalCard(g, "x")}${mk ? Shell.mktLines(co) : ""}`;
   const was = $("detail").querySelector ? $("detail").querySelector(".grest") : null, keepY = was ? was.scrollTop : 0;
   // 10/28 (owner: "Do not make this part scroll ... DO NOT MAKE THE EXIT PAGE GAMES AND THE GAME SUB TABS MOVE"): the team card, the chart, ← Games and the tabs stay put (.gtop);
