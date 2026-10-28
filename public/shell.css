@@ -417,3 +417,14 @@ body.bnav-on .panel .ppr:not(.pph) .pp1 .pos { color:var(--fade) !important; fon
 body.bnav-on .panel .tdr .pp2t { color:#fff !important; font-weight:400 !important; -webkit-text-stroke:0; }
 body.bnav-on .panel .ppr:not(.pph) .pp2 { font-weight:400; }
 body.bnav-on #record-mine .betwrap > .row > span:first-child, body.bnav-on #record-mine .betwrap .row:first-child > span:first-child { text-transform:uppercase; }
+/* owner: "Make these one line" -- the red ✗ no TD … note always on ONE line; its column sizes to the note */
+body.bnav-on .panel .tdr .pp2 .wc, body.bnav-on .panel .tdr .pp2 { white-space:nowrap !important; }
+body.bnav-on .panel .tdr .pp2 .wc { font-size:10.5px; margin-left:0; }
+@media (max-width:599px) {
+  body.bnav-on .ppr.first.tdr, body.bnav-on .ppr.tdh { grid-template-columns:minmax(0,1fr) auto 36px 92px; column-gap:4px; }
+}
+@media (max-width:379px) { body.bnav-on .ppr.first.tdr, body.bnav-on .ppr.tdh { grid-template-columns:minmax(0,1fr) auto 32px 78px; } body.bnav-on .ppr.tdh .pp4 { font-size:9.5px !important; } }
+@media (min-width:380px) and (max-width:599px) { body.bnav-on .ppr.first.tdr, body.bnav-on .ppr.tdh { grid-template-columns:minmax(0,1fr) auto 40px 94px; } }
+body.bnav-on .panel .tdr .pp2 .wc { font-size:10px; }
+body.bnav-on .panel .ppr.tdh .pp4 { letter-spacing:0 !important; }
+@media (max-width:379px) { body.bnav-on .ppr.tdh .pp3 { font-size:9.5px !important; letter-spacing:0 !important; } body.bnav-on .ppr.tdh .pp4 .pm { margin-left:3px !important; } }
