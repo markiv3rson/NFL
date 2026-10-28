@@ -63,7 +63,10 @@ export function shotRule(g, tl) {
 // matched): spread 157-106 = 59.7% of 263 (Oct-Jan 58 / Jan-Apr 61), total 127-71 = 64.1% of 198 (61 / 67; Over 66-41, Under 61-30), with the
 // thresholds the live shadow tracker set on 10/14 before this test (books-vs-Polymarket "bgap": 14-8 live 10/20-23). Bigger gaps are bad reads
 // (-20 / -17 on a mismatched line) and give no rule; a 1-1.5 total gap is 51.8%. Needs a books pull from the last 6 hours (books pulled twice a day).
-export const BGAP_HIT = { spread: 59.7, total: 64.1 }, BGAP_PTS = { spread: { 1: 63.1, 2: 65.4, 3: 70.0 }, total: { 1: 65.2, 2: 66.7, 3: 68.2 } }, BGAP_N = { spread: 263, total: 198 }, BGAP_SP = [1, 4], BGAP_TOT = [2, 6], BGAP_FRESH_MS = 6 * 3600e3;
+// 10/27 night (research): that file's line is Polymarket's BUSIEST line, and on most spread rows its price already leaned to the books' side (53-60c);
+// the live card compares the books with the line nearest 50c. On rows priced 45-55c (the live case) the spread rule won 57.3% of 171 (55.0 / 59.3 by
+// half; +1 / +2 / +3 points 61.4 / 64.3 / 68.4) -- 59.7 ran 2.4 high; totals 64.8% of 91 there = the 64.1% kept.
+export const BGAP_HIT = { spread: 57.3, total: 64.1 }, BGAP_PTS = { spread: { 1: 61.4, 2: 64.3, 3: 68.4 }, total: { 1: 65.2, 2: 66.7, 3: 68.2 } }, BGAP_N = { spread: 171, total: 198 }, BGAP_SP = [1, 4], BGAP_TOT = [2, 6], BGAP_FRESH_MS = 6 * 3600e3;
 export function bookGapRule(g, kind, now = Date.now()) {
   const bk = g && g.books, px = g && g.poly; if (!bk || !px || !g.booksAt || !(now - Date.parse(g.booksAt) <= BGAP_FRESH_MS)) return null;
   if (kind === "spread") {
