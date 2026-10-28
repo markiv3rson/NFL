@@ -1872,8 +1872,8 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
 }
 // ---------- 10/18 (owner): Game Lines tiles look like the game page's header card -- team colours, big logos, % in the middle, no date / time / starts-in
 { for (const f of ["../public/app.js", "../public/nba/app.js"]) { const a = readFileSync(new URL(f, import.meta.url), "utf8"), t = a.slice(a.indexOf("function tile(g)"), a.indexOf("\n}", a.indexOf("function tile(g)")));
-    ok(!/style="background:linear-gradient/.test(t) && !/class="wmk/.test(t) && !/const ca = /.test(t) && /class="tmid">\$\{mid2?\}/.test(t) && /\$\{tlogo\(g\.away\)\}\$\{g\.away\}/.test(t) && !/const foot/.test(t) && !/class="ft"/.test(t) && /class="chip tmt">\$\{esc\((tm\(g\.kickoff\)|tipTime\(g\.start\))\)\}/.test(t),
-      `${f}: tile = plain card (no team colours, no faded logos -- owner 10/18 evening, sketch D), logo + code + record each side, the % in the middle with the time + tag under it, no foot row`); }
+    ok(!/style="background:linear-gradient/.test(t) && !/class="wmk/.test(t) && !/const ca = /.test(t) && /class="tmid">\$\{mid2?\}/.test(t) && (f.includes("nba") ? /\$\{tlogo\(g\.away\)\}\$\{g\.away\}/ : /\$\{thelmet\(g\.away, "right"\)\}\$\{g\.away\}.*\$\{g\.home\}\$\{thelmet\(g\.home, "left"\)\}/).test(t) && !/const foot/.test(t) && !/class="ft"/.test(t) && /class="chip tmt">\$\{esc\((tm\(g\.kickoff\)|tipTime\(g\.start\))\)\}/.test(t),
+      `${f}: tile = plain card (no team colours, no faded logos -- owner 10/18 evening, sketch D), logo (NFL: helmet facing the middle, owner 10/28) + code + record each side, the % in the middle with the time + tag under it, no foot row`); }
   for (const f of ["../public/index.html", "../public/nba/index.html"]) { const h = readFileSync(new URL(f, import.meta.url), "utf8");
     ok(/\.tile \.t \{ font-size:24px/.test(h) && /\.tile \.tmid \{ text-align:center/.test(h), `${f}: tile names at the game-page size`); } }
 // ---------- 10/18 night (owner): no NEXT GAME strip anywhere but home; line moves inside the tile; slot headers with a dark edge; bigger page titles

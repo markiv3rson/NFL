@@ -420,7 +420,7 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(!/panel-td|Anytime TD|panel-lab/i.test(html) && /id="al-read"/.test(html) && !/id="al-chips"/.test(html), "no Anytime-TD / Model Picks panel; Alerts has Mark all read; the kinds are menu sub tabs (no docked strip) chips");
   const nfl = readFileSync(new URL("../../public/index.html", import.meta.url), "utf8");
   if (nfl) { const sel = (h) => new Set([...h.slice(h.indexOf("<style>"), h.indexOf("</style>")).replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/(^|\})\s*([^{}]+)\{/g)].map((m) => m[2].trim()));
-    const miss = [...sel(nfl)].filter((x) => !sel(html).has(x) && !/tdr|\.td|scorers|\.sc\b|prow|pos\b|injb|gapstrip|labslot|wksel|\.stack|lines-on/.test(x));
+    const miss = [...sel(nfl)].filter((x) => !sel(html).has(x) && !/tdr|\.td|scorers|\.sc\b|prow|pos\b|injb|gapstrip|labslot|wksel|\.stack|lines-on|thlm/.test(x));   // thlm = the NFL helmets on the tiles (10/28)
     ok(miss.length === 0, "the stylesheet carries every rule of the NFL app's current look (only TD-page rules may differ)", miss.slice(0, 8)); } }
 
 // ---------- front end: the NFL app's card and layout, NBA only, no notes
