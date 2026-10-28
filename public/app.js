@@ -719,7 +719,7 @@ const MODEL_INFO = {
     ["Pick w/ points:", "same side, the fewest bought points (1–2) that won 56%+."], ["MORE list:", "every line within 2 points: points bought · history win % · Polymarket price."]],
 };
 const CARD_INFO = [["PICK:", "the card’s bet at Polymarket’s main line (a tested rule, else the model’s side), locked at kickoff."],
-  ["PICK w/ POINTS:", "the same side with the fewest bought points (1–2) that won 56%+."], ["1H SPREAD:", "the first-half model’s side on Polymarket’s first-half spread lines (58%+, 77¢ max), graded on the first-half score."],
+  ["PICK w/ POINTS:", "the same side with the fewest bought points (1–2) that won 56%+."], ["1H SPREAD:", "the first-half model’s side on Polymarket’s first-half spread lines (58%+ on 4 parts model + 6 parts price, 77¢ max), graded on the first-half score."],
   ["Line value:", "points better (+) or worse than the line at kickoff."]];
 const TRACK_INFO = [["Test picks,", "never shown on a card: recorded and graded live. One becomes a pick only after it holds 56%+ over about 100 games."],
   ["INJURY EARLY:", "a starter newly out; the healthy team at the line of that moment."], ["TD JUMP:", "a player’s TD chance up 10+ points between reruns; did he score?"],

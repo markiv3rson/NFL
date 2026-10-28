@@ -2142,8 +2142,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(x.hfav === 3.5 && x.tl === 45.5 && x.windo === 12 && x.domeF === 0 && x.div === 1 && x.early === 1 && x.rest_d === 1, "inputs: books first, wind outdoors, early weeks, rest", x);
   const xd = h.h1Inputs({ week: 9, roof: "dome", nvSpread: -2.5, nvTotal: 48 }, { wind: 20 }); ok(xd.hfav === -2.5 && xd.windo === 0 && xd.domeF === 1 && xd.early === 0, "a dome: no wind, the schedule's line when no books", xd);
   const mean = h.h1Mean(ref[0].x), rows = [{ line: 3.5, aPrice: 0.62, hPrice: 0.40 }, { line: 1.5, aPrice: 0.5, hPrice: 0.52 }], pk = h.h1Side(mean, rows, "AW", "HM");
-  const best = (() => { let b = null; for (const r of rows) { const ph = h.h1HomeCover(mean, -r.line); for (const s of [{ pc: ph, px: r.hPrice }, { pc: 1 - ph, px: r.aPrice }]) if (h.h1Qualifies(s.pc, s.px) && (!b || s.pc > b)) b = s.pc; } return b; })();
-  ok(best == null ? pk == null : pk && Math.abs(pk.pc - Math.round(best * 1000) / 1000) < 1e-9 && /^(AW|HM) [+-]\d/.test(pk.label) && / 1H$/.test(pk.label), "h1Side = the highest qualifying side, labeled with its 1H line", pk);
+  const best = (() => { let b = null; for (const r of rows) { const ph = h.h1HomeCover(mean, -r.line); for (const s of [{ pc: h.h1Shown(ph, r.hPrice), px: r.hPrice }, { pc: h.h1Shown(1 - ph, r.aPrice), px: r.aPrice }]) if (h.h1Qualifies(s.pc, s.px) && (!b || s.pc > b)) b = s.pc; } return b; })();
+  ok(best == null ? pk == null : pk && Math.abs(pk.pc - Math.round(best * 1000) / 1000) < 1e-9 && /^(AW|HM) [+-]\d/.test(pk.label) && / 1H$/.test(pk.label), "h1Side = the highest qualifying shown % (0.4 model + 0.6 price), labeled with its 1H line", pk);
+  ok(Math.abs(h.h1Shown(0.8, 0.7) - 0.74) < 1e-9 && h.H1_PRICE_W === 0.6, "1H shown % = 0.4 model + 0.6 price (10/28 night: the model alone ran 4-6 points high on its picks at US prices)");
   ok(h.h1Side(mean, [{ line: 3.5, aPrice: 0.9, hPrice: 0.9 }], "AW", "HM") == null, "nothing qualifies at 90c -> no pick");
   const G = { key: "AW @ HM", away: "AW", home: "HM", kickoff: "2099-10-01T17:00:00Z" }, r = getRedis();
   await tr.recordH1Pick(2095, 8, G, { team: "HM", line: -1.5, px: 0.5, pc: 0.61, label: "HM -1.5 1H" }, "t1");
@@ -2175,7 +2176,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const bk = readFileSync(new URL("../pages/api/backup.js", import.meta.url), "utf8"); ok(/!k\.startsWith\("nba:"\)/.test(bk), "the NFL backup leaves NBA's keys to NBA's own backup"); }
 { // 10/28 line-by-line check: the ⓘ texts quote the code's own numbers (ML PICK team-model rates, the 1H SPREAD rule)
   const a = readFileSync(new URL("../public/app.js", import.meta.url), "utf8"), { TM_ML } = await import("../lib/cardpick.js"), h = await import("../lib/h1pick.js");
-  ok(a.includes(`favorites won ${TM_ML.fav.hit}% of ${TM_ML.fav.n}, underdogs priced ${TM_ML.dog.lo * 100}–50¢ won ${TM_ML.dog.hit}% of ${TM_ML.dog.n}`) && a.includes(`(${Math.round(h.H1_BAR * 100)}%+, ${Math.round(h.H1_CAP * 100)}¢ max)`),
+  ok(a.includes(`favorites won ${TM_ML.fav.hit}% of ${TM_ML.fav.n}, underdogs priced ${TM_ML.dog.lo * 100}–50¢ won ${TM_ML.dog.hit}% of ${TM_ML.dog.n}`) && a.includes(`(${Math.round(h.H1_BAR * 100)}%+ on ${Math.round((1 - h.H1_PRICE_W) * 10)} parts model + ${Math.round(h.H1_PRICE_W * 10)} parts price, ${Math.round(h.H1_CAP * 100)}¢ max)`),
     "Models ⓘ: the ML PICK and 1H SPREAD texts carry the code's numbers"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);
