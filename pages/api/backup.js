@@ -11,7 +11,8 @@ export default async function handler(req, res) {
     const r = getRedis(), out = {};
     let cursor = String(req.query.cursor || "0"), size = 0, first = true;
     do {
-      const [next, keys] = await r.scan(cursor, "COUNT", 50); cursor = next; first = false;
+      const [next, all] = await r.scan(cursor, "COUNT", 50); cursor = next; first = false;
+      const keys = all.filter((k) => !k.startsWith("nba:"));   // 10/28: the shared database holds NBA too ("nba:" keys) -- NBA has its own nightly backup
       if (keys.length) {
         const types = await r.pipeline(keys.map((k) => ["type", k])).exec();
         const reads = await r.pipeline(keys.map((k, i) => {

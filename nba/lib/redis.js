@@ -1,4 +1,5 @@
 import Redis from "ioredis";
+import { switching } from "../../lib/dbswitch";
 let client;
 // With no Redis configured (a local run) the site still works: a small in-memory stand-in, nothing is kept between restarts.
 class MemRedis {
@@ -14,13 +15,34 @@ class MemRedis {
 }
 // MERGED SITE (10/17): NBA keeps its OWN database. Only NBA_REDIS_URL is read -- never the NFL app's variables, so NBA can never
 // write into NFL's database. Not set yet -> the in-memory stand-in (NBA pages show empty until NBA_REDIS_URL is added in Vercel).
-export function redisUrl(env = process.env) {
-  const v = env.NBA_REDIS_URL;
-  return typeof v === "string" && /^rediss?:\/\//.test(v.trim()) ? v.trim() : null;
+// 10/28: the NBA Upstash database hit its free plan's 500,000 requests a month at 7:30 PM PT 10/27 and refused every write. NBA now lives in the
+// paid 250 MB Redis Cloud database it shares with NFL (NBA_DB_URL_REDIS_URL), every NBA key under "nba:" so no name can touch an NFL key.
+// NBA_REDIS_URL (its own database, no label) is only the fallback.
+export const NBA_PREFIX = "nba:";
+const okUrl = (v) => (typeof v === "string" && /^rediss?:\/\//.test(v.trim()) ? v.trim() : null);
+export function redisUrl(env = process.env) { return okUrl(env.NBA_DB_URL_REDIS_URL) || okUrl(env.NBA_REDIS_URL); }
+export const sharedDb = (env = process.env) => !!okUrl(env.NBA_DB_URL_REDIS_URL);
+// ioredis puts keyPrefix on every key of every command, but NOT on a SCAN pattern, and SCAN hands back the full names: so SCAN gets the label added
+// to its pattern (and only ever sees NBA keys), the label is cut off the names it returns, and DBSIZE counts NBA keys only.
+export function withPrefix(c, P = NBA_PREFIX) {
+  const scan = c.scan.bind(c);
+  c.scan = async (cursor, ...args) => {
+    const a = [...args], i = a.findIndex((x) => String(x).toUpperCase() === "MATCH"), j = a.findIndex((x) => String(x).toUpperCase() === "COUNT");
+    if (i >= 0) a[i + 1] = P + a[i + 1]; else a.unshift("MATCH", P + "*");
+    if (j >= 0 && Number(a[j + 1]) < 1000) a[j + 1] = 1000;   // the shared database holds NFL's keys too: bigger pages, fewer calls
+    const [n, ks] = await scan(cursor, ...a);
+    return [n, ks.map((k) => (k.startsWith(P) ? k.slice(P.length) : k))];
+  };
+  c.dbsize = async () => { let cur = "0", n = 0; do { const [nx, ks] = await scan(cur, "MATCH", P + "*", "COUNT", 1000); cur = nx; n += ks.length; } while (cur !== "0"); return n; };
+  return c;
 }
 export function getRedis() {
   if (globalThis.__TEST_REDIS__) return globalThis.__TEST_REDIS__;
-  if (!client) { const url = redisUrl(); client = url ? new Redis(url, { maxRetriesPerRequest: 3, connectTimeout: 8000 }) : new MemRedis(); }
+  if (!client) { const url = redisUrl(), O = { maxRetriesPerRequest: 3, connectTimeout: 8000 }, old = okUrl(process.env.NBA_REDIS_URL);
+    if (!url) client = new MemRedis();
+    else if (!sharedDb()) client = new Redis(url, O);
+    else { const nu = withPrefix(new Redis(url, { ...O, keyPrefix: NBA_PREFIX }));   // the switch key is read under the label: nba:migrated:done
+      client = old && old !== url ? switching(new Redis(old, O), nu) : nu; } }
   return client;
 }
 // 60-s copy of the page data, one per deployment (a preview build must never serve its page to the live site).

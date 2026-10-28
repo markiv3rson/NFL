@@ -210,6 +210,13 @@ const mk = (away, home, over = {}) => ({ key: `${away} @ ${home}`, away, home, d
 ok(redisUrl({}) === null && redisUrl({ NBA_REDIS_URL: "not a url" }) === null, "no NBA Redis address -> in-memory stand-in");
 ok(redisUrl({ NBA_REDIS_URL: " rediss://default:pw@host:6379 " }) === "rediss://default:pw@host:6379", "merged site (10/17): NBA reads NBA_REDIS_URL");
 ok(redisUrl({ UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://a:1", REDIS_URL: "redis://b:2", KV_URL: "redis://c:3" }) === null, "the NFL database's variables are NEVER used by NBA (separate databases)");
+ok(redisUrl({ NBA_DB_URL_REDIS_URL: "redis://new:1", NBA_REDIS_URL: "redis://old:2" }) === "redis://new:1", "10/28: the shared paid database comes first, the old NBA one is only the fallback");
+{ const { withPrefix, sharedDb } = await import("../lib/redis.js"), RM = (await import("ioredis-mock")).default, m = new RM({ host: "shared-db", port: 7010 });
+  await m.set("nba:alerts", "1"); await m.set("nba:pick:2026-10-28:A @ B:ml", "2"); await m.set("alerts", "nfl"); await m.set("stack:2026:8", "nfl");
+  const w = withPrefix(m); let c = "0", ks = []; do { const [n, k] = await w.scan(c, "MATCH", "*", "COUNT", 50); c = n; ks.push(...k); } while (c !== "0");
+  let c2 = "0", ks2 = []; do { const [n, k] = await w.scan(c2, "MATCH", "pick:*"); c2 = n; ks2.push(...k); } while (c2 !== "0");
+  ok(ks.sort().join() === "alerts,pick:2026-10-28:A @ B:ml" && ks2.join() === "pick:2026-10-28:A @ B:ml" && (await w.dbsize()) === 2 && sharedDb({ NBA_DB_URL_REDIS_URL: "redis://x:1" }) && !sharedDb({ NBA_REDIS_URL: "redis://x:1" }),
+    "shared database: NBA's SCAN sees only its own nba: keys, names come back without the label, DBSIZE counts NBA only", { ks, ks2 }); }
 
 // ---------- closing-line recorder
 { const G = (over = {}) => ({ key: "OKC @ ATL", away: "OKC", home: "ATL", date: "2026-10-30", start: "2026-10-30T23:00:00Z", poly: { ml: { midAway: 0.26, midHome: 0.74 }, spread: { homeSpread: -8.5 }, total: { line: 223.5 } }, ...over });
