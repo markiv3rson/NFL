@@ -2178,5 +2178,14 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const d2 = new RedisMock({ host: "new-db2", port: 7003 }); await mg.writeRows(d2, [{ key: "alerts", type: "string", v: "x", ttl: null }], "nba:"); ok((await d2.get("nba:alerts")) === "x" && !(await d2.get("alerts")), "NBA rows land under nba:, never on an NFL name");
   ok(migrateKey("redis://a") !== migrateKey("redis://b") && migrateKey("redis://a").length === 24, "the copy route's key comes from the new database's address");
   const bk = readFileSync(new URL("../pages/api/backup.js", import.meta.url), "utf8"); ok(/!k\.startsWith\("nba:"\)/.test(bk), "the NFL backup leaves NBA's keys to NBA's own backup"); }
+{ // 10/28: the site keeps the OLD database until the copy flips the switch key in the NEW one, then moves over and never back
+  const { switching, SWITCH_KEY } = await import("../lib/dbswitch.js"), o = new RedisMock({ host: "sw-old", port: 7101 }), nw = new RedisMock({ host: "sw-new", port: 7102 }), c = switching(o, nw, SWITCH_KEY, 0);
+  await c.set("k", "1"); const before = [await o.get("k"), await nw.get("k")];
+  const p = c.pipeline(); p.set("p", "x"); await p.exec(); const pb = await o.get("p");
+  await nw.set(SWITCH_KEY, "now"); await c.set("k2", "2"); const after = [await o.get("k2"), await nw.get("k2")]; await nw.del(SWITCH_KEY); await c.set("k3", "3");
+  ok(before.join() === "1," && pb === "x" && after.join() === ",2" && (await nw.get("k3")) === "3" && c.onNew(), "switch: old database until the copy flips the key, then the new one for good (pipelines too)", { before, after });
+  const mg = await import("../lib/migrate.js"), d = new RedisMock({ host: "sw-dst", port: 7103 });
+  await mg.writeRows(d, [{ key: "L", type: "list", v: ["a", "b"], ttl: null }]); await d.rpush("L", "c"); await mg.writeRows(d, [{ key: "L", type: "list", v: ["a", "b", "x"], ttl: null }]);
+  ok((await d.lrange("L", 0, -1)).join() === "x,a,b,c", "second copy pass adds only list entries it lacks (no doubles)", await d.lrange("L", 0, -1)); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);
