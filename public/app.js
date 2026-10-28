@@ -720,18 +720,20 @@ const MODEL_INFO = {
 };
 const CARD_INFO = [["PICK:", "the card’s bet at Polymarket’s main line (a tested rule, else the model’s side), locked at kickoff."],
   ["PICK w/ POINTS:", "the same side with the fewest bought points (1–2) that won 56%+."], ["1H SPREAD:", "the first-half model’s side on Polymarket’s first-half spread lines (58%+ on 4 parts model + 6 parts price, 77¢ max), graded on the first-half score."],
+  ["GAME PROPS:", "game and team props where the 600 past games nearest this spread and total beat Polymarket’s price (70%+ on 8 parts history + 2 parts price, 6+ points over the price, 30–77¢), graded on Polymarket’s result."],
   ["Line value:", "points better (+) or worse than the line at kickoff."]];
 const TRACK_INFO = [["Test picks,", "never shown on a card: recorded and graded live. One becomes a pick only after it holds 56%+ over about 100 games."],
   ["INJURY EARLY:", "a starter newly out; the healthy team at the line of that moment."], ["TD JUMP:", "a player’s TD chance up 10+ points between reruns; did he score?"],
   ["STACK:", "everything the app knows in one model; confident = its top fifth."], ["WIDE:", "every situation flag on both teams in one boosted-tree model; confident = its top fifth."]];
-// 10/28: the 1H SPREAD pick's record (lib/tracked.js trackedSummary.h1spr)
-function h1Row() {
-  const h = TRACKED && TRACKED.h1spr; if (!h || !h.recorded) return tRow("1H SPREAD · PICK", "", ['<span class="dim">—</span>', '<span class="dim">—</span>', '<span class="dim">—</span>']);
+// 10/28: the 1H SPREAD pick's record (lib/tracked.js trackedSummary.h1spr); 10/28 night: the GAME PROPS pick's (trackedSummary.gprops)
+function pickRow(lab, h) {
+  if (!h || !h.recorded) return tRow(lab, "", ['<span class="dim">—</span>', '<span class="dim">—</span>', '<span class="dim">—</span>']);
   const sub = [h.said != null ? `said ${h.said}%` : "", h.pending ? `${h.pending} pending` : ""].filter(Boolean).join(" · ");
-  if (!h.n) return tRow("1H SPREAD · PICK", sub, ['<span class="dim">—</span>', '<span class="dim">—</span>', '<span class="dim">—</span>']);
+  if (!h.n) return tRow(lab, sub, ['<span class="dim">—</span>', '<span class="dim">—</span>', '<span class="dim">—</span>']);
   const pc = Math.round(100 * h.hit);
-  return tRow("1H SPREAD · PICK", sub, [`${h.w}–${h.l}`, `<b class="${pc >= 56 ? "g" : pc >= 50 ? "y" : "r"}">${pc}%</b>`, h.per100 != null ? `<span class="${h.per100 >= 0 ? "g" : "r"}">${h.per100 >= 0 ? "+" : "−"}$${Math.abs(Math.round(h.per100))}</span>` : '<span class="dim">—</span>']);
+  return tRow(lab, sub, [`${h.w}–${h.l}`, `<b class="${pc >= 56 ? "g" : pc >= 50 ? "y" : "r"}">${pc}%</b>`, h.per100 != null ? `<span class="${h.per100 >= 0 ? "g" : "r"}">${h.per100 >= 0 ? "+" : "−"}$${Math.abs(Math.round(h.per100))}</span>` : '<span class="dim">—</span>']);
 }
+const h1Row = () => pickRow("1H SPREAD · PICK", TRACKED && TRACKED.h1spr) + pickRow("GAME PROPS · PICK", TRACKED && TRACKED.gprops);
 function cardRecBox() {
   const R = (COMBOS && COMBOS.cardRec) || {};
   const row = (lab, k) => { const b = R[k]; if (!b || !(b.w + b.l)) return tRow(lab, "", ['<span class="dim">—</span>', '<span class="dim">—</span>', '<span class="dim">—</span>']);
@@ -1357,11 +1359,13 @@ function linesBg() { const on = (id) => { const p = $(id); return !!(p && p.clas
 // Game Lines = the spread & ML and totals cards as before; Player Props = THIS game's rows in the props-page look; Parlays = the same-game parlays. The choice is kept per phone.
 const lsGet = (k, d) => { try { return localStorage.getItem(k) || d; } catch { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
-const GTABS = [["lines", "Game Lines"], ["props", "Player Props"], ["parlays", "Parlays"]];   // 10/28: GAME PROPS tab out -- only winning picks show, none of those markets has one
+const GTABS = [["lines", "Game Lines"], ["props", "Player Props"], ["gprops", "Game Props"], ["parlays", "Parlays"]];   // 10/28 night: GAME PROPS only on a game with a GAME PROPS pick (tabsOf)
+const tabsOf = (g) => GTABS.filter(([k]) => k !== "gprops" || (g && g.gprops && g.gprops.length));
 let GTAB = lsGet("gTab", "lines"), GPROP = lsGet("gProp:nfl", "td");
 if (!GTABS.some(([k]) => k === GTAB)) GTAB = "lines";
 if (!PROP_TABS.some(([k]) => k === GPROP)) GPROP = "td";
-const gameTabs = () => `<div class="gtabs">${GTABS.map(([k, t]) => `<button class="gtab${GTAB === k ? " on" : ""}" type="button" data-gtab="${k}">${t}</button>`).join("")}</div>`;
+const gameTabs = (g) => { const ts = tabsOf(g), on = ts.some(([k]) => k === GTAB) ? GTAB : "lines";
+  return `<div class="gtabs">${ts.map(([k, t]) => `<button class="gtab${on === k ? " on" : ""}" type="button" data-gtab="${k}">${t}</button>`).join("")}</div>`; };
 const gameChips = () => `<div class="gchips">${PROP_TABS.map(([k, t]) => `<button class="gchip${GPROP === k ? " on" : ""}" type="button" data-gprop="${k}">${t}</button>`).join("")}</div>`;
 const gNone = (t) => `<div class="card" style="margin-top:10px"><div class="inner"><div class="s dim">${t}</div></div></div>`;
 let GPROPS = {}, GPROPS_LOADING = {};
@@ -1391,18 +1395,19 @@ function gamePropsBody(g) {
 }
 function gameParlaysBody(g) { const b = sgpBox(g); return b ? b.replace('<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAYS</div>', "") : gNone(g.started || g.final ? "Same-game parlays close at kickoff; they are on Model bets with their results." : "No same-game parlay for this game."); }
 // the game page chart (10/27, owner's pick: open chart, sketch A; later: the team card on top of it, blended): Polymarket US's moneyline history for both teams, drawn by the shared shell (Shell.chartBlock)
-const chartOf = (g) => ({ key: g.key, sport: "nfl", away: g.away, home: g.home, start: g.kickoff, live: !!(g.started && !g.final), ca: TEAM_COLOR[g.away] || "#888888", ch: TEAM_COLOR[g.home] || "#888888", h1pick: g.h1pick || null });   // 10/28: + the 1H SPREAD pick
+const chartOf = (g) => ({ key: g.key, sport: "nfl", away: g.away, home: g.home, start: g.kickoff, live: !!(g.started && !g.final), ca: TEAM_COLOR[g.away] || "#888888", ch: TEAM_COLOR[g.home] || "#888888", h1pick: g.h1pick || null, gprops: g.gprops || null });   // 10/28: + the 1H SPREAD pick; night: + the GAME PROPS picks
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = ""; linesBg();
   document.body.classList.add("game-on");   // 10/18 (owner): on a game page the game card IS the header -- the NEXT GAME strip is hidden, ← Games sits under the card
   const early = g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : "";
   const co = chartOf(g), mk = typeof Shell !== "undefined" && Shell.mktLines;   // 10/27: the other Polymarket markets (halves, quarters, team totals, game / team props)
-  const body = GTAB === "props" ? gameChips() + gamePropsBody(g) : GTAB === "parlays" ? gameParlaysBody(g)
+  const tab = tabsOf(g).some(([k]) => k === GTAB) ? GTAB : "lines";   // a game without a GAME PROPS pick shows Game Lines
+  const body = tab === "props" ? gameChips() + gamePropsBody(g) : tab === "parlays" ? gameParlaysBody(g) : tab === "gprops" ? Shell.gpLines(co)
     : `${early}${gameCard(g, "x")}${totalCard(g, "x")}${mk ? Shell.mktLines(co) : ""}`;
   const was = $("detail").querySelector ? $("detail").querySelector(".grest") : null, keepY = was ? was.scrollTop : 0;
   // 10/28 (owner: "Do not make this part scroll ... DO NOT MAKE THE EXIT PAGE GAMES AND THE GAME SUB TABS MOVE"): the team card, the chart, ← Games and the tabs stay put (.gtop);
   // only the part under them scrolls (.grest, its own scroll box sized by Shell.pinGame)
-  $("detail").innerHTML = `<div class="gtop">${typeof Shell !== "undefined" && Shell.chartBlock ? detailTop(g).replace('class="card dtop"', 'class="card dtop dblend"') + Shell.chartBlock(co) : detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs()}</div><div class="grest">${body}</div>`;
+  $("detail").innerHTML = `<div class="gtop">${typeof Shell !== "undefined" && Shell.chartBlock ? detailTop(g).replace('class="card dtop"', 'class="card dtop dblend"') + Shell.chartBlock(co) : detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs(g)}</div><div class="grest">${body}</div>`;
   if (typeof Shell !== "undefined" && Shell.chartLoad) Shell.chartLoad(co);
   $("back-btn").onclick = closeGame;
   if (g.final) ensureGrades();

@@ -135,6 +135,21 @@ try { const st = (await getJSONurl(`${SITE}/api/slate`)) || {}, m = st.status &&
     console.log(`${fail ? "FAIL" : "ok  "} ${"TOTAL MOVE".padEnd(20)} top 20% ${m.hit20}% (${m.n20}) · top 10% ${m.hit10}% (${m.n10}) · unseen seasons, rebuild ${String(m.builtAt || "").slice(0, 10)}`); }
   else console.log("     TOTAL MOVE: the site has no rebuild numbers yet (shows the built-in 57.6% / 61.3%)");
 } catch (e) { console.log(`     TOTAL MOVE: site not reachable (${String(e).slice(0, 60)})`); }
+// GAME PROPS (10/28 night, lib/gameprops.js): the app's own pick code on Polymarket US's 2026 wk1-7 game / team props (steady two-sided books in the 2 h
+// before kickoff, the prices you would have paid, Polymarket's settlement; railway-model-service/data/poly_us_gameprops.csv). No 2026 game made a pick.
+{ const G = await import("../lib/gameprops.js"), [h, ...rows] = parseCSV(readFileSync(new URL("../railway-model-service/data/poly_us_gameprops.csv", import.meta.url), "utf8")), ix = (k) => h.indexOf(k);
+  const by = {}; for (const c of rows) if (c.length === h.length) (by[`${c[ix("week")]}|${c[ix("away")]}|${c[ix("home")]}`] ||= []).push(c);
+  const picks = [];
+  for (const cs of Object.values(by)) { const cache = {}, best = {}, a = cs[0][ix("away")], hm = cs[0][ix("home")], hf = +cs[0][ix("hfav")], tl = +cs[0][ix("tl")];
+    for (const c of cs) { const lt = c[ix("long_team")], m = { slug: c[ix("slug")], sportsMarketType: c[ix("type")], question: c[ix("question")], marketSides: [{ long: true, team: lt ? { abbreviation: lt } : null }, { long: false }] };
+      const p = G.gpParse(m, a, hm); if (!p) continue; const ch = G.gpChance(p, hf, tl, cache), y = +c[ix("long_won")];
+      for (const [px, chs, won] of [[+c[ix("long_price")], ch, y], [+c[ix("short_price")], 1 - ch, 1 - y]]) { const sh = G.gpShown(chs, px);
+        if (G.gpQualifies(sh, px) && (!best[p.fam] || sh > best[p.fam].sh)) best[p.fam] = { sh, px, won, wk: +c[ix("week")] }; } }
+    for (const b of Object.values(best)) if (b.won !== 0.5) picks.push(b); }
+  const f = (xs) => { const w = xs.filter((x) => x.won === 1).length; return { w, l: xs.length - w, hit: pct(w, xs.length - w), said: xs.reduce((s, x) => s + x.sh, 0) / xs.length * 100, per: xs.reduce((s, x) => s + x.won / x.px - 1, 0) / xs.length * 100 }; };
+  const A = f(picks), B = f(picks.filter((x) => x.wk >= 4)), fail = A.hit < 56 || A.hit < A.said - 3;
+  if (fail) bad++;
+  console.log(`${fail ? "FAIL" : "ok  "} ${"GAME PROPS".padEnd(20)} ${A.w}-${A.l} = ${A.hit.toFixed(1)}% (said ${A.said.toFixed(1)}, ${A.per >= 0 ? "+" : ""}${A.per.toFixed(1)} per $100) Polymarket US 2026 wk1-7 · weeks 4-7 ${B.w}-${B.l} = ${B.hit.toFixed(1)}%`); }
 
 // Live record this season, from the site (each pick counted once, at the line it was first shown).
 try {

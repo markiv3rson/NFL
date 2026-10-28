@@ -2168,8 +2168,49 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(/h1pick: g\.h1pick \|\| null/.test(ap) && /h1Row\(\) \+/.test(ap), "Models -> Card picks has the 1H SPREAD row");
   // 10/28 (owner: "do not put all of the market on here ... just choose our pick"): the game page shows the 1H pick alone, never a market's price list; no Game Props tab
   const mk = /Shell\.mktLines = \(o\) => \(o && o\.h1pick \? `[^`]*h1Line\(o\.h1pick\)[^`]*` : ""\);/.test(sh);
-  ok(mk && !/Shell\.mktProps|Shell\.mktLoad|gamemarkets\?away|class="mkx/.test(sh) && !/"gprops"/.test(ap) && !/"gprops"/.test(readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8")) && !(await import("node:fs")).existsSync(new URL("../pages/api/gamemarkets.js", import.meta.url)),
-    "game page: the 1H pick line only (no price lists, no Game Props tab, no /api/gamemarkets), both sports"); }
+  ok(mk && !/Shell\.mktProps|Shell\.mktLoad|gamemarkets\?away|class="mkx/.test(sh) && !/"gprops"/.test(readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8")) && !(await import("node:fs")).existsSync(new URL("../pages/api/gamemarkets.js", import.meta.url)),
+    "game page: the 1H pick line only (no price lists, no /api/gamemarkets), both sports"); }
+{ // 10/28 night: the GAME PROPS pick (lib/gameprops.js) -- the history chance, the rule, the parse, the labels, recording, grading, the page
+  const G = await import("../lib/gameprops.js"), tr = await import("../lib/tracked.js"), { getRedis } = await import("../lib/redis.js"), r = getRedis();
+  const ref = JSON.parse(readFileSync(new URL("./gp_ref.json", import.meta.url), "utf8")); let worst = 0, fams = new Set();
+  for (const c of ref) { const p = G.gpParse(c.m, c.away, c.home); if (p) fams.add(p.fam); worst = Math.max(worst, p ? Math.abs(G.gpChance(p, c.hfav, c.tl) - c.chance) : 1); }
+  ok(worst <= 0.005 && fams.size === 21, "GAME PROPS chance = an independent Python re-implementation on 21 real markets, one per type (within 1 game of 600 at a tie)", { worst, n: fams.size });
+  ok(G.GP_BAR === 0.7 && G.GP_CAP === 0.77 && G.GP_MIN === 0.3 && G.GP_EDGE === 0.06 && G.GP_PRICE_W === 0.2, "GAME PROPS rule: 70%+, 30-77c, 6+ points over the price, shown = 0.8 history + 0.2 price");
+  ok(G.gpQualifies(0.70, 0.64) && !G.gpQualifies(0.69, 0.5) && !G.gpQualifies(0.75, 0.70) && G.gpQualifies(0.83, 0.77) && !G.gpQualifies(0.9, 0.78) && !G.gpQualifies(0.9, 0.29), "the rule's edges: 70% bar, 6-point edge, 77c cap, 30c floor");
+  ok(Math.abs(G.gpShown(0.9, 0.6) - 0.84) < 1e-9, "shown % = 0.8 history + 0.2 price");
+  const side = (d, long, team) => ({ description: d, long, team: team ? { abbreviation: team } : null });
+  const mk = (type, q, extra = {}) => ({ sportsMarketType: type, question: q, slug: extra.slug || "x", marketSides: extra.sides || [side("Yes", true, extra.team), side("No", false, extra.team)], bestAskQuote: { value: extra.ask ?? 0.6 }, bestBidQuote: { value: extra.bid ?? 0.58 } });
+  const P = (m) => G.gpParse(m, "SF", "LA");
+  ok(JSON.stringify(P(mk("football_game_total_pass_touchdowns", "Total Passing Touchdowns: Over 5.5"))) === JSON.stringify({ fam: "ptd_t", kind: "over", col: "ptd_t", line: 5.5 }), "parse: game total passing TDs");
+  ok(P(mk("football_team_total_defensive_special_teams_touchdowns", "Team Total Defensive/Special Teams Touchdowns: Over 0.5", { team: "lar" })).s === "h", "parse: a team prop finds its team (Polymarket's lar = the app's LA)");
+  ok(P(mk("football_game_race_to_points", "Race to 35 Points: San Francisco 49ers", { team: "sf" })).val === "a" && P(mk("football_game_race_to_points", "Race to 10 Points: San Francisco 49ers", { team: "sf" })) == null, "parse: race to points (only the tested races)");
+  ok(P({ ...mk("football_game_double_result", "Halftime / Full Time: SF 1H / Tie"), slug: "astatc-nfl-sf-lar-2026-09-10-htft-away-tie" }).ft === "tie" && P(mk("football_game_exact_margin", "Exact Margin of Victory: San Francisco by 19-24")).hi === 24 && P(mk("football_game_exact_margin", "Exact Margin of Victory: San Francisco by 25+")).hi === 999, "parse: half / full and exact margin");
+  ok(P(mk("football_team_full_game_spread", "x")) == null && P(mk("football_game_first_half_total", "x")) == null && P(mk("football_team_points_full_game_total", "x")) == null && P(mk("football_player_passing_yards", "x")) == null, "never parsed: main lines, halves / quarters, team totals, player props (no edge there)");
+  ok(JSON.stringify(G.gpPrices(mk("t", "q", { ask: 0.6, bid: 0.57 }))) === JSON.stringify({ pl: 0.6, ps: 0.43 }) && G.gpPrices(mk("t", "q", { ask: 0.6, bid: 0.5 })) == null && G.gpPrices(mk("t", "q", { ask: 0.995, bid: 0.9 })) == null && G.gpPrices({ ...mk("t", "q"), bestBidQuote: null }) == null, "prices: a real two-sided book only (98-106c), else no price");
+  const L = (m, long) => G.gpLabel(P(m), long, "SF", "LA");
+  ok(L(mk("football_game_total_pass_touchdowns", "Total Passing Touchdowns: Over 5.5"), false) === "Total passing TDs Under 5.5" && L(mk("football_team_total_defensive_special_teams_touchdowns", "Team Total Defensive/Special Teams Touchdowns: Over 0.5", { team: "lar" }), false) === "LA D/ST TD No"
+    && L(mk("football_game_overtime", "Overtime?: Over 0.5"), false) === "Overtime No" && L(mk("football_team_total_offensive_yards", "Team Total Offensive Yards: Over 350.5", { team: "sf" }), true) === "SF total yards Over 350.5", "labels in plain words");
+  const ev = { markets: [mk("football_game_total_pass_touchdowns", "Total Passing Touchdowns: Over 7.5", { slug: "a", ask: 0.40, bid: 0.37 }), mk("football_game_total_pass_touchdowns", "Total Passing Touchdowns: Over 6.5", { slug: "b", ask: 0.45, bid: 0.42 }), mk("football_game_overtime", "Overtime?: Over 0.5", { slug: "c", ask: 0.4, bid: 0.37 })] };
+  const pk = G.gpPicks(ev, "SF", "LA", 3, 44.5);
+  ok(pk.length === 2 && pk.every((x) => !x.long) && pk.find((x) => x.fam === "ptd_t").slug === "a" && pk.every((x) => G.gpQualifies(x.said, x.price)) && pk[0].said >= pk[1].said, "one pick per market type, the highest shown %, every one qualifying", pk);
+  const res = (o, c = true) => ({ closed: c, outcomePrices: o, marketSides: [{ long: false }, { long: true }] });
+  ok(G.gpResult(res('["0","1"]'), true) === "W" && G.gpResult(res('["0","1"]'), false) === "L" && G.gpResult(res('["0.5","0.5"]'), true) === "P" && G.gpResult(res('["0","1"]', false), true) == null && G.gpResult(null, true) == null, "graded by Polymarket's settlement in the sides' order (long side found, not the first one); open = not graded");
+  const g = { key: "SF @ LA", away: "SF", home: "LA", week: 8, kickoff: "2095-10-01T20:00:00Z", final: true };
+  await tr.recordGameProps(2095, 8, g, pk, "t1"); await tr.recordGameProps(2095, 8, g, pk.slice(0, 1), "t2");
+  let all = await r.hgetall("teaser:2095:8"); const gp = Object.keys(all).filter((f) => f.startsWith("SF @ LA|gp|"));
+  ok(gp.length === 1 && JSON.parse(all[gp[0]]).first.t === "t1" && JSON.parse(all[gp[0]]).t === "t2", "rewritten until kickoff (first sighting kept), a type that stops qualifying is taken out", gp);
+  const f0 = gp[0], slug0 = JSON.parse(all[f0]).slug;
+  const nG = await tr.gradeGamePropsWeek(2095, 8, [g], async () => ({ markets: [{ slug: slug0, closed: true, outcomePrices: '["0","1"]', marketSides: [{ long: true }, { long: false }] }] }));
+  all = await r.hgetall("teaser:2095:8"); ok(nG === 1 && JSON.parse(all[f0]).result === "W", "graded: we took the short side (No / Under) and it paid", JSON.parse(all[f0]));
+  await tr.recordGameProps(2095, 8, g, [], "t3"); ok(!!(await r.hget("teaser:2095:8", f0)), "a graded pick is never taken out");
+  const S = await tr.trackedSummary(2095); ok(S.gprops.w === 1 && S.gprops.l === 0 && S.gprops.recorded === 1, "Models summary: the GAME PROPS record", S.gprops);
+  await r.del("teaser:2095:8");
+  const pp = readFileSync(new URL("../pages/api/pinnaclepull.js", import.meta.url), "utf8"), gr = readFileSync(new URL("../lib/grade.js", import.meta.url), "utf8"), wk = readFileSync(new URL("../lib/week.js", import.meta.url), "utf8");
+  const sh = readFileSync(new URL("../public/shell.js", import.meta.url), "utf8"), ap = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  ok(/gamePropsNow\(SEASON, g, pin, p, ev\)/.test(pp) && /gradeGamePropsWeek\(season, week, games,/.test(gr) && /G\.gprops = gp/.test(wk), "the 15-min pull records the picks; grading and the slate read them");
+  ok(/tabsOf = \(g\) => GTABS\.filter\(\(\[k\]\) => k !== "gprops" \|\| \(g && g\.gprops && g\.gprops\.length\)\)/.test(ap) && /Shell\.gpLines = \(o\) => \(o && o\.gprops && o\.gprops\.length \?/.test(sh) && /pickRow\("GAME PROPS · PICK"/.test(ap),
+    "GAME PROPS tab only on a game with a pick, picks only; Models -> Card picks row");
+  ok(ap.includes(`(${Math.round(G.GP_BAR * 100)}%+ on ${Math.round((1 - G.GP_PRICE_W) * 10)} parts history + ${Math.round(G.GP_PRICE_W * 10)} parts price, ${Math.round(G.GP_EDGE * 100)}+ points over the price, ${Math.round(G.GP_MIN * 100)}–${Math.round(G.GP_CAP * 100)}¢)`), "Models ⓘ: the GAME PROPS text carries the code's numbers"); }
 { // 10/28: both sports on one paid database (NBA_DB_URL_REDIS_URL), no fallback (the old databases were deleted); the NFL backup leaves NBA's keys to NBA
   const { DB_URL } = await import("../lib/redis.js");
   ok(DB_URL({ NBA_DB_URL_REDIS_URL: "redis://new", UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://old" }) === "redis://new" && DB_URL({ UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://old" }) == null, "NFL reads the shared database only (the old one was deleted 10/28)");
