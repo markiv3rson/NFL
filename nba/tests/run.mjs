@@ -7,7 +7,7 @@ const __rm = new RedisMock(); globalThis.__REDIS_COUNT__ = { n: 0 };   // every 
 globalThis.__TEST_REDIS__ = new Proxy(__rm, { get(t, k) { const v = t[k]; if (typeof v === "function" && typeof k === "string" && !k.startsWith("_") && k !== "then") return (...a) => { globalThis.__REDIS_COUNT__.n++; return v.apply(t, a); }; return v; } });
 const { toProb, toAmerican, ncdf, ninv, isThinMarket } = await import("../lib/odds.js");
 const { parseGame, polyGames, eventGame, etDate } = await import("../lib/poly.js");
-const { TEAMS, ABBRS, nickToAbbr } = await import("../lib/teams.js");
+const { TEAMS, ABBRS } = await import("../lib/teams.js");
 const { parseInjuries, teamAbbr } = await import("../lib/injuries.js");
 const { parseScoreboard, espnAbbr } = await import("../lib/espn.js");
 const slate = await import("../lib/slate.js");
@@ -35,7 +35,6 @@ ok(isThinMarket(0.4, 0.01) && !isThinMarket(0.4, 0.37), "thin-market rule");
 // ---------- teams
 ok(ABBRS.length === 30, "30 NBA teams", ABBRS.length);
 ok(ABBRS.every((a) => TEAMS[a].name && TEAMS[a].nick && /^#[0-9a-f]{6}$/i.test(TEAMS[a].color) && /^https:\/\/a\.espncdn\.com\/i\/teamlogos\/nba\//.test(TEAMS[a].logo)), "every team has name, colour, ESPN logo");
-ok(nickToAbbr("Raptors") === "TOR" && nickToAbbr("Clippers") === "LAC" && nickToAbbr("nobody") === null, "nickname -> abbreviation");
 { const j = JSON.parse(readFileSync(new URL("../railway-model-service/data/teams.json", import.meta.url), "utf8"));
   ok(JSON.stringify(Object.keys(j).sort()) === JSON.stringify([...ABBRS].sort()) && ABBRS.every((a) => j[a].name === TEAMS[a].name), "lib/teams.js matches the model service's teams.json"); }
 

@@ -210,8 +210,8 @@
   // 10/27 (owner, Polymarket's game screen: "put [the game card] on top of the chart but blend it nicely together" / "remove this title"): our team
   // card (no border, square bottom corners), then the chart on the same team-colour wash fading into the page, the windows and Polymarket's mark under it
   // OTHER MARKETS (10/27, owner: Polymarket's game page -- halves, quarters, team totals, game / team props; "add everything else if it passes our 65%
-  // rule"): Polymarket US's prices from /api/gamemarkets (NBA /api/nba/gamemarkets). No tested model covers them yet, so there is no pick column; a pick
-  // goes here only once a model reaches 65% on one. Game Lines gets HALVES & QUARTERS (period chips) and TEAM TOTALS (team chips), GAME PROPS its own tab.
+  // rule"): Polymarket US's prices from /api/gamemarkets (NBA /api/nba/gamemarkets). 10/28: the NFL first-half spread is the one market with a tested
+  // pick (the "Pick:" line under the 1st Half spread rows); every other market failed its test and shows prices only. Game Lines gets HALVES & QUARTERS (period chips) and TEAM TOTALS (team chips), GAME PROPS its own tab.
   const MK = { data: {}, busy: {} }, PERL = { "1h": "1st Half", "2h": "2nd Half", q1: "1st Q", q2: "2nd Q", q3: "3rd Q", q4: "4th Q" }, TTL = { full: "Full game", "1h": "1st half", "2h": "2nd half" };
   const mkKey = (o) => `${o.sport}|${o.key}`, cents = (x) => (x == null ? "—" : `${Math.round(x * 100)}¢`), sgn = (x) => (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x);
   const lsS = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
@@ -228,14 +228,21 @@
   const chips = (attr, list, on) => `<div class="gchips">${list.map(([k, l]) => `<button class="gchip${k === on ? " on" : ""}" type="button" ${attr}="${k}">${l}</button>`).join("")}</div>`;
   const pmh = '<img class="mkpm" src="/polymarket.png" alt="">';
   // Game Lines extras: "" until loaded (the cards above show first), nothing when Polymarket lists none
+  // 10/28: the NFL 1H SPREAD pick (lib/h1pick.js), under the first-half spread rows: "Pick: CAR +3.5 1H · 66% · 57¢", ✓ / ✗ once graded
+  const h1Line = (k) => { const res = k.result === "W" ? ' <b class="g">✓</b>' : k.result === "L" ? ' <b class="r">✗</b>' : k.result === "P" ? ' <span class="dim">push</span>' : "";
+    return `<div class="s mkpick"><span class="lbw">Pick:</span> <b class="${k.said >= 56 ? "g" : k.said >= 53 ? "lg" : "y"}">${String(k.label).toUpperCase().replace(/[<>&"]/g, "")} · ${Math.floor(k.said)}%</b> <span class="mkp">· ${cents(k.price)}</span>${res}</div>`; };
   Shell.mktLines = (o) => {
-    const c = MK.data[mkKey(o)]; Shell.mktLoad(o); const d = c && c.d; if (!d) return "";
+    const c = MK.data[mkKey(o)]; Shell.mktLoad(o); const d = c && c.d;
+    const lone = o.h1pick ? `<div class="trow"><div class="sh">HALVES &amp; QUARTERS</div></div><div class="card mkc"><div class="mks">1st Half spread</div>${h1Line(o.h1pick)}</div>` : "";   // no first-half lines listed (yet / any more)
+    if (!d) return lone;
     let out = "";
     const pk = Object.keys(PERL).filter((k) => d.periods && d.periods[k]);
+    if (o.h1pick && !(d.periods && d.periods["1h"] && d.periods["1h"].spread.length)) out += lone;
     if (pk.length) {
       let per = lsG("gPer", "1h"); if (!pk.includes(per)) per = pk[0]; const P = d.periods[per];
       out += `<div class="trow"><div class="sh">HALVES &amp; QUARTERS</div></div><div class="card mkc">${chips("data-gper", pk.map((k) => [k, PERL[k]]), per)}` +
         (P.spread.length ? `<div class="mks">Spread</div>${mkHead(`${pmh}LINE`, o.away, o.home)}${P.spread.map((r) => mkRow(`${o.away} ${sgn(r.line)} · ${o.home} ${sgn(-r.line)}`, cents(r.aPrice), cents(r.hPrice))).join("")}` : "") +
+        (per === "1h" && o.h1pick ? h1Line(o.h1pick) : "") +
         (P.total.length ? `<div class="mks">Total</div>${mkHead(`${pmh}LINE`, "OVER", "UNDER")}${P.total.map((r) => mkRow(String(r.line), cents(r.over), cents(r.under))).join("")}` : "") +
         (P.winner.length ? `<div class="mks">Winner</div>${mkHead(`${pmh}`, "YES", "")}${P.winner.map((r) => mkRow(r.label, cents(r.price), "")).join("")}` : "") + `</div>`;
     }

@@ -42,7 +42,9 @@ export async function recordH1Shadows(games, now = Date.now(), getEvent = usEven
       const [away, home] = g.key.split(" @ "), k = key(g.date, g.key);
       let ev; try { ev = await getEvent(eventSlug("nba", away, home, g.start)); } catch { return; }
       if (!ev) return;
-      const P = parseGameMarkets(ev, "nba", away, home).periods["1h"], s = h1Side(g.poly.spread.homeSpread, P && P.spread, away, home);
+      const gm = parseGameMarkets(ev, "nba", away, home), P = gm.periods["1h"], s = h1Side(g.poly.spread.homeSpread, P && (P.spreadAll || P.spread), away, home);   // 10/28: every priced first-half line, not the 5 the page shows
+      { const pk = `gmpx:${g.date}:${g.key}`, o = await r.get(pk).catch(() => null), ft = o ? (JSON.parse(o).first || null) : null, t = new Date(now).toISOString();   // 10/28: every other game market's prices, first + latest
+        await r.set(pk, JSON.stringify({ first: ft || { t, gm }, last: { t, gm } }), "EX", 120 * 86400).catch(() => 0); }
       const old = await r.get(k).catch(() => null);
       if (!s) { if (old) { await r.del(k).catch(() => 0); await r.srem(LM_IDS, k).catch(() => 0); } return; }
       const first = old ? (JSON.parse(old).first || null) : { line: s.line, px: s.px, t: new Date(now).toISOString() };

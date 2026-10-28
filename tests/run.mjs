@@ -2131,5 +2131,38 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
 { // 10/28 (owner: "only add the logo next to their team name"): props / TD rows carry no logo, the team label does (Best TD picks keep theirs: no team label there)
   const a = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   ok(!/"•"\} \$\{tlogo\(p\.team/.test(a) && /• \$\{withGame \? tlogo\(r\.team\) : ""\}/.test(a) && (a.match(/class="pbl pteam">\$\{tlogo\(t\)\}/g) || []).length === 3, "NFL props / Anytime TD: the logo sits beside the team name, not on each player row"); }
+{ // 10/28: the NFL 1H SPREAD pick -- model equal to the Python fit, the props rules at 58%, record / rewrite / take out, grade on ESPN's first half, page + Models
+  const h = await import("../lib/h1pick.js"), tr = await import("../lib/tracked.js"), ef = await import("../lib/espnFinals.js"), { getRedis } = await import("../lib/redis.js");
+  const ref = JSON.parse(readFileSync(new URL("./h1_ref.json", import.meta.url), "utf8")); let worst = 0;
+  for (const c of ref) { const m = h.h1Mean(c.x); worst = Math.max(worst, Math.abs(m - c.mean)); for (const [L, v] of Object.entries(c.cover)) worst = Math.max(worst, Math.abs(h.h1HomeCover(m, Number(L)) - v)); }
+  ok(worst < 1e-3, "1H model + neighbours equal the Python fit on 6 reference games", worst);
+  ok(h.h1Qualifies(0.6, 0.55) && !h.h1Qualifies(0.57, 0.5) && !h.h1Qualifies(0.62, 0.61) && h.h1Qualifies(0.66, 0.61) && !h.h1Qualifies(0.8, 0.78) && !h.h1Qualifies(0.6, 0.6), "58% under 60c, 65% from 60c, 77c cap, priced under its chance");
+  const x = h.h1Inputs({ week: 3, roof: "outdoors", div: true, homeRest: 7, awayRest: 6, nvSpread: 3, nvTotal: 44 }, { booksHomeSpread: -3.5, booksTotal: 45.5, wind: 12, outdoor: true });
+  ok(x.hfav === 3.5 && x.tl === 45.5 && x.windo === 12 && x.domeF === 0 && x.div === 1 && x.early === 1 && x.rest_d === 1, "inputs: books first, wind outdoors, early weeks, rest", x);
+  const xd = h.h1Inputs({ week: 9, roof: "dome", nvSpread: -2.5, nvTotal: 48 }, { wind: 20 }); ok(xd.hfav === -2.5 && xd.windo === 0 && xd.domeF === 1 && xd.early === 0, "a dome: no wind, the schedule's line when no books", xd);
+  const mean = h.h1Mean(ref[0].x), rows = [{ line: 3.5, aPrice: 0.62, hPrice: 0.40 }, { line: 1.5, aPrice: 0.5, hPrice: 0.52 }], pk = h.h1Side(mean, rows, "AW", "HM");
+  const best = (() => { let b = null; for (const r of rows) { const ph = h.h1HomeCover(mean, -r.line); for (const s of [{ pc: ph, px: r.hPrice }, { pc: 1 - ph, px: r.aPrice }]) if (h.h1Qualifies(s.pc, s.px) && (!b || s.pc > b)) b = s.pc; } return b; })();
+  ok(best == null ? pk == null : pk && Math.abs(pk.pc - Math.round(best * 1000) / 1000) < 1e-9 && /^(AW|HM) [+-]\d/.test(pk.label) && / 1H$/.test(pk.label), "h1Side = the highest qualifying side, labeled with its 1H line", pk);
+  ok(h.h1Side(mean, [{ line: 3.5, aPrice: 0.9, hPrice: 0.9 }], "AW", "HM") == null, "nothing qualifies at 90c -> no pick");
+  const G = { key: "AW @ HM", away: "AW", home: "HM", kickoff: "2099-10-01T17:00:00Z" }, r = getRedis();
+  await tr.recordH1Pick(2095, 8, G, { team: "HM", line: -1.5, px: 0.5, pc: 0.61, label: "HM -1.5 1H" }, "t1");
+  await tr.recordH1Pick(2095, 8, G, { team: "AW", line: 2.5, px: 0.55, pc: 0.63, label: "AW +2.5 1H" }, "t2");
+  let o = JSON.parse(await r.hget("teaser:2095:8", "AW @ HM|h1spr"));
+  ok(o.team === "AW" && o.first.team === "HM" && o.t === "t2", "rewritten until kickoff, the first sighting kept", o);
+  await tr.recordH1Pick(2095, 8, G, null, "t3"); ok(!(await r.hget("teaser:2095:8", "AW @ HM|h1spr")), "a side that stops qualifying is taken out");
+  await tr.recordH1Pick(2095, 8, G, { team: "AW", line: 2.5, px: 0.55, pc: 0.63, label: "AW +2.5 1H" }, "t4");
+  const nG = await tr.gradeH1Week(2095, 8, [{ ...G, final: true }], async () => ({ "AW @ HM": { a: 9, h: 10 } }));
+  o = JSON.parse(await r.hget("teaser:2095:8", "AW @ HM|h1spr")); ok(nG === 1 && o.result === "W" && o.h1.h === 10, "graded on the first half: AW +2.5 with a 9-10 half wins (7-10 would lose)", o);
+  await tr.recordH1Pick(2095, 8, G, null, "t5"); ok(!!(await r.hget("teaser:2095:8", "AW @ HM|h1spr")), "a graded pick is never taken out");
+  const S = await tr.trackedSummary(2095); ok(S.h1spr.w === 1 && S.h1spr.l === 0 && S.h1spr.said === 63 && Math.abs(S.h1spr.per100 - (100 / 0.55 - 100)) < 0.2, "summary: record, said %, money per $100", S.h1spr);
+  await r.del("teaser:2095:8");
+  const sb = { events: [{ status: { type: { completed: true, state: "post" } }, competitions: [{ competitors: [
+    { homeAway: "home", team: { displayName: "Chicago Bears" }, linescores: [{ value: 7 }, { value: 13 }, { value: 0 }, { value: 3 }], score: "23" },
+    { homeAway: "away", team: { displayName: "New England Patriots" }, linescores: [{ value: 0 }, { value: 14 }, { value: 7 }, { value: 0 }], score: "21" }] }] }] };
+  ok(JSON.stringify(ef.firstHalvesFromScoreboard(sb)) === JSON.stringify({ "NE @ CHI": { a: 14, h: 20 } }), "ESPN first half = quarters 1 + 2", ef.firstHalvesFromScoreboard(sb));
+  const pp = readFileSync(new URL("../pages/api/pinnaclepull.js", import.meta.url), "utf8"), gr = readFileSync(new URL("../lib/grade.js", import.meta.url), "utf8"), wk = readFileSync(new URL("../lib/week.js", import.meta.url), "utf8");
+  const sh = readFileSync(new URL("../public/shell.js", import.meta.url), "utf8"), ap = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  ok(/h1PickNow\(getRedis\(\), SEASON, g, pin, p, gm\)/.test(pp) && /recordGameMarkets\(getRedis\(\), SEASON, g, gm, t\)/.test(pp) && /gradeH1Week\(season, week, games, espnFirstHalves\)/.test(gr) && /G\.h1pick = \{/.test(wk), "the 15-min pull records the pick + every game-market price; grading and the slate read it");
+  ok(/per === "1h" && o\.h1pick \? h1Line\(o\.h1pick\)/.test(sh) && /h1pick: g\.h1pick \|\| null/.test(ap) && /h1Row\(\) \+/.test(ap), "game page 1st Half shows the Pick line; Models -> Card picks has the 1H SPREAD row"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);
