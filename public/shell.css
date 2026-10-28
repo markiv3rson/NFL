@@ -442,5 +442,5 @@ body.bnav-on .phead { background:var(--glass) !important; -webkit-backdrop-filte
 }
 
 /* 10/28: the NFL 1H SPREAD pick line under the first-half spread rows (same size as the MODEL lines) */
-.mkc .mkpick { margin:6px 2px 2px; font-size:13px; }
+.mkc .mkpick { margin:6px 0 2px; font-size:13px; }
 .mkc .mkpick .mkp { color:#2e5cff; font-weight:800; }

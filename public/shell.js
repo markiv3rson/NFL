@@ -230,7 +230,7 @@
   // Game Lines extras: "" until loaded (the cards above show first), nothing when Polymarket lists none
   // 10/28: the NFL 1H SPREAD pick (lib/h1pick.js), under the first-half spread rows: "Pick: CAR +3.5 1H · 66% · 57¢", ✓ / ✗ once graded
   const h1Line = (k) => { const res = k.result === "W" ? ' <b class="g">✓</b>' : k.result === "L" ? ' <b class="r">✗</b>' : k.result === "P" ? ' <span class="dim">push</span>' : "";
-    return `<div class="s mkpick"><span class="lbw">Pick:</span> <b class="${k.said >= 56 ? "g" : k.said >= 53 ? "lg" : "y"}">${String(k.label).toUpperCase().replace(/[<>&"]/g, "")} · ${Math.floor(k.said)}%</b> <span class="mkp">${cents(k.price)}</span>${res}</div>`; };
+    return `<div class="s mkpick"><span class="lbw">Pick:</span> <b class="${k.said >= 56 ? "g" : k.said >= 53 ? "lg" : "y"}">${String(k.label).toUpperCase().replace(/[<>&"]/g, "")} · ${Math.floor(k.said)}%</b> <span class="mkp">· ${cents(k.price)}</span>${res}</div>`; };
   Shell.mktLines = (o) => {
     const c = MK.data[mkKey(o)]; Shell.mktLoad(o); const d = c && c.d;
     const lone = o.h1pick ? `<div class="trow"><div class="sh">HALVES &amp; QUARTERS</div></div><div class="card mkc"><div class="mks">1st Half spread</div>${h1Line(o.h1pick)}</div>` : "";   // no first-half lines listed (yet / any more)
