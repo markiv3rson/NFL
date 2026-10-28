@@ -24,7 +24,7 @@ _LOCK = threading.Lock()
 STATE = {"running": False}
 # Rebuild on deploy (the NFL app's idea, 10/16): the published build carries this tag; when the service starts with a build made by older
 # rebuild code (a different tag) it rebuilds right away instead of waiting for the morning build, so a merge that changes the model is live the same hour.
-BUILD_TAG = "2026-10-26 team-total row in the accuracy report"
+BUILD_TAG = "2026-10-28 2025-26 public-file lines replaced by the Kaggle closes where they differ"
 
 
 def needs_rebuild(status):

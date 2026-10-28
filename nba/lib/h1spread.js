@@ -1,10 +1,11 @@
 // 1H SPREAD (shadow only, 10/28; owner: "research the halves / quarters / team totals with the same rules as our props ... build it"). The first-half
 // margin from the full-game line (h1spread_data.js) against Polymarket US's first-half spread lines, under the props rules: a side counts when its
 // chance is 56%+ (priced under 60c) or 65%+ (from 60c), it is priced 77c or less and under its chance; one per game, the highest chance.
-// Test on Polymarket's real 2025-26 closes (last trade within 2 h of tip-off, 995 first-half spread lines, the history model fit on 2021-22..2024-25):
-// 72-48 = 60.0% (said 58.1, price 53c), Oct-Jan 60.0% / Jan-Apr 60.0%; the model's chances shuffled reach it 0.6% of the time, results drawn at the
-// market's own prices 6%; lines 1.5+ only 69-46 = 60.0% (59.1 / 61.2). Fragile: the same test with the neighbours' raw first-half margins (no smooth shift)
-// reads 55.7% of 174 -- one more reason it is a shadow, not a pick. The first-half totals / moneyline and every NFL half / quarter / team-total market failed the same test. Recorded at every
+// Test on Polymarket's real 2025-26 closes (last trade within 2 h of tip-off) with Polymarket's OWN full-game line at the same moment, the table
+// fit on 2021-22..2024-25 only: 50-33 = 60.2% (said 58.1, price 55c, +8.9 per $100); results drawn at the market's prices reach it 17% of the time
+// = NOT past luck; with the 2024-25 history lines cleaned 41-21 = 66.1% (p 0.06); Oct-Dec 48-61%, Jan-Apr 60-72%. The first claim (72-48 = 60.0%,
+// p 0.6%) was fit on the test season and read the history file's 2025-26 lines, which were wrong on ~320 games (fixed 10/28 in nba_data.fill_from_file).
+// The first-half totals / moneyline and every NFL half / quarter / team-total market failed the same test. Recorded at every
 // snapshot until tip-off (the last look counts; a side that stops qualifying is taken out), graded on ESPN's first-half score; never a pick until it
 // holds 56%+ over ~100 games live.
 import { H1 } from "./h1spread_data";

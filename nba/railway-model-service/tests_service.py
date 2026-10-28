@@ -442,6 +442,14 @@ _ab = {v: k for k, v in nd._abbr_to_name().items()}; _r0 = _gg.iloc[0]
 _bad = [{"date": str(_r0.date), "game": "x", "away": _ab[_r0.away], "home": _ab[_r0.home], "hs": 48.0, "tl": 1955.0, "mlHome": 0.995}]
 _fb = nd.fill_from_site_closes(_gg, _bad)
 ok(np.isnan(_fb.home_line.iloc[0]) and np.isnan(_fb.total_line.iloc[0]) and _fb.line_src.iloc[0] == "", "a corrupt Polymarket close (spread 48, total 1955, 99.5% moneyline) is not let into the line history")
+# a public-file line 3 points off the Kaggle close is replaced by it; one within 0.5 is kept
+_kf = pd.read_csv(os.path.join(os.path.dirname(os.path.abspath(nd.__file__)), "data", "kaggle_lines_2025_26.csv")).iloc[0]
+_kg = pd.DataFrame({"date": [pd.Timestamp(_kf.date_et).date()] * 2, "home": [nd._norm(_kf.home_team)] * 2, "away": [nd._norm(_kf.away_team)] * 2,
+                    "pts_h": [_kf.home_score] * 2, "pts_a": [_kf.away_score] * 2, "home_line": [-_kf.close_spread_home + 3, -_kf.close_spread_home + 0.5],
+                    "total_line": [_kf.close_total, _kf.close_total], "ml_home": [-110.0] * 2, "ml_away": [-110.0] * 2, "line_src": ["sbr", "sbr"]})
+_kr = nd.fill_from_file(_kg)
+ok(_kr.line_src.tolist() == ["kaggle_fix", "sbr"] and _kr.home_line.iloc[0] == -_kf.close_spread_home and _kr.home_line.iloc[1] == -_kf.close_spread_home + 0.5,
+   "a public-file line 1+ off the Kaggle close is replaced by the Kaggle close (2025-26 file went bad), a close one is kept", _kr[["home_line", "line_src"]].values.tolist())
 _fc = dr.freshness_checks({"fit_through": "2026-11-01"}, pd.DataFrame({"season_type": [2, 2], "status_type_name": ["STATUS_FINAL", "STATUS_SCHEDULED"], "game_date": [pd.Timestamp("2026-11-10").date(), pd.Timestamp("2026-11-20").date()]}))
 ok(len(_fc) == 1 and "finals through 2026-11-10" in _fc[0] and dr.freshness_checks({"fit_through": "2026-11-09"}, pd.DataFrame({"season_type": [2], "status_type_name": ["STATUS_FINAL"], "game_date": [pd.Timestamp("2026-11-10").date()]})) == [], "the rebuild is held when the schedule has finals the box scores never reached")
 _rows = []

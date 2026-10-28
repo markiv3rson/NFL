@@ -197,7 +197,7 @@ def fill_from_site_closes(g, closes):
 
 def fill_from_file(g):
     """Closing lines from data/kaggle_lines_2025_26.csv (public Kaggle 'nba-closing-lines-ats' files, 2024-25 and 2025-26 regular season;
-    the main line file stops 2026-01-07). Fills only games that still have no line. Rows get line_src = 'kaggle'; the opening spread /
+    the main line file stops 2026-01-07). Fills games that still have no line, and replaces a public-file line that is 1+ (spread) / 2+ (total) off the Kaggle close. Rows get line_src = 'kaggle'; the opening spread /
     total are kept as open_home_line / open_total_line for the line-move tests."""
     g = g.copy()
     if "line_src" not in g:
@@ -216,7 +216,14 @@ def fill_from_file(g):
     m = m[(m.home_score == m.pts_h) & (m.away_score == m.pts_a)]
     g.loc[m.index, "open_home_line"] = -m.open_spread_home
     g.loc[m.index, "open_total_line"] = m.open_total
+    # the public file's 2025-26 lines go bad from Nov 2025 (Dec 2025: 93 of 191 spreads off the Kaggle close by 1+, 42 by 3+; Polymarket's own
+    # close sits 1.5 from Kaggle and 6 from the public file on those games) -> where both exist and they differ by 1+ (spread) or 2+ (total),
+    # the Kaggle close replaces the public line (line_src 'kaggle_fix')
+    hl, tl = g.loc[m.index, "home_line"].values, g.loc[m.index, "total_line"].values
+    off = ((np.abs(hl + m.close_spread_home.values) >= 1) | (np.abs(tl - m.close_total.values) >= 2)) & ~np.isnan(hl) & ~np.isnan(tl)
+    fix = m.index[off & m.close_spread_home.notna().values & m.close_total.notna().values]
     need = m.index[g.loc[m.index, "home_line"].isna().values & g.loc[m.index, "total_line"].isna().values]
+    need = need.union(fix)
     mm = m.loc[need]
     g.loc[need, "home_line"] = -mm.close_spread_home
     g.loc[need, "total_line"] = mm.close_total
@@ -224,6 +231,7 @@ def fill_from_file(g):
     g.loc[need, "ml_home"] = np.where(p >= 0.5, -100 * p / (1 - p), 100 * (1 - p) / p)
     g.loc[need, "ml_away"] = np.where((1 - p) >= 0.5, -100 * (1 - p) / p, 100 * p / (1 - p))
     g.loc[need, "line_src"] = "kaggle"
+    g.loc[fix, "line_src"] = "kaggle_fix"
     return g
 
 
