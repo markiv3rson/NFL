@@ -1264,5 +1264,34 @@ const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "u
   await R.srem("pick:ids", "pick:2026-11-04:A @ B:modelpick|total", "pick:2026-11-04:A @ B:ptspick|spread");
 }
 
+{ // 10/28 1H SPREAD shadow: the first-half margin from the full-game line vs Polymarket's first-half spreads under the props rules
+  const h1 = await import("../lib/h1spread.js"), pn5 = await import("../lib/pinnacle.js"), rec5 = await import("../lib/record.js"), espn5 = await import("../lib/espn.js");
+  const c35 = h1.h1HomeCover(-6.5, -3.5), c05 = h1.h1HomeCover(-6.5, -1.5), cdog = h1.h1HomeCover(6.5, 3.5);
+  ok(c35 > 0.4 && c35 < 0.55 && c05 > c35 && c05 > 0.53 && cdog > 0.4 && cdog < 0.6 && h1.h1HomeCover(-6.5, -3) === null && h1.h1HomeCover(-6.5, 0.5) === null && h1.h1HomeCover(-30, -3.5) === null,
+    "1H cover: home -6.5 for the game covers -3.5 in the first half ~45-55%, -1.5 more often; whole-point lines, -0.5 / +0.5 and lines off the table give nothing", { c35, c05, cdog });
+  ok(h1.qualifies(0.57, 0.53) && !h1.qualifies(0.55, 0.50) && !h1.qualifies(0.62, 0.61) && h1.qualifies(0.66, 0.61) && !h1.qualifies(0.80, 0.78) && !h1.qualifies(0.57, 0.58),
+    "props rules: 56%+ under 60c, 65%+ from 60c, 77c cap, priced under the chance");
+  const rows = [{ line: 5.5, aPrice: 0.53, hPrice: 0.49 }, { line: 3.5, aPrice: 0.49, hPrice: 0.53 }];
+  const sd = h1.h1Side(-6.5, rows, "AAA", "BBB");
+  ok(sd && sd.team === "AAA" && sd.line > 0 && sd.pc >= 0.56 && sd.px < sd.pc, "h1Side: the side the history likes, priced under its chance (the away dog's first-half line here)", sd);
+  ok(h1.h1Side(-6.5, [{ line: 3.5, aPrice: 0.53, hPrice: 0.49 }], "AAA", "BBB") === null, "nothing when no side passes the rules");
+  const ev = { markets: [{ sportsMarketType: "basketball_team_first_half_spread", line: -3.5, bestAskQuote: { value: 0.50 }, bestBidQuote: { value: 0.48 },
+    marketSides: [{ long: true, description: "-5.50", team: { abbreviation: "BBB" } }, { long: false, description: "+5.50", team: { abbreviation: "AAA" } }] }] };
+  const g = { key: "AAA @ BBB", date: "2026-11-10", start: "2026-11-11T00:30:00Z", poly: { spread: { homeSpread: -6.5 } } }, t1 = Date.parse("2026-11-10T20:00:00Z");
+  const n1 = await h1.recordH1Shadows([g], t1, async () => ev), n2 = await h1.recordH1Shadows([g], Date.parse(g.start) + 1, async () => ev);
+  const saved = (await pn5.loadMoves()).find((m) => m.kind === "h1spr" && m.game === "AAA @ BBB");
+  ok(n1 === 1 && n2 === 0 && saved && saved.team === "AAA" && saved.line === 5.5 && saved.half === 1 && saved.first && saved.first.line === 5.5, "1H shadow saved before tip-off only, with the line, price and first sighting", saved);
+  const sb = espn5.parseScoreboard({ events: [{ competitions: [{ status: { type: { completed: true }, period: 4 }, competitors: [
+    { homeAway: "away", score: "100", team: { abbreviation: "BOS" }, linescores: [{ value: 25 }, { value: 30 }, { value: 20 }, { value: 25 }] },
+    { homeAway: "home", score: "104", team: { abbreviation: "NYK" }, linescores: [{ value: 28 }, { value: 29 }, { value: 22 }, { value: 25 }] }] }] }] });
+  ok(sb["BOS @ NYK"].h1.away === 55 && sb["BOS @ NYK"].h1.home === 57, "ESPN scoreboard: the first-half score from quarters 1 + 2", sb["BOS @ NYK"]);
+  await pn5.gradeMoves(async () => ({ "AAA @ BBB": { final: true, away: 90, home: 110, h1: { away: 52, home: 54 } } }), rec5.gradePick);
+  const gd = (await pn5.loadMoves()).find((m) => m.kind === "h1spr" && m.game === "AAA @ BBB");
+  ok(gd.result === "win" && pn5.summarizeMoves(await pn5.loadMoves()).h1spr.w >= 1, "graded on the FIRST-HALF score (AAA +5.5 lost the half by 2 = a win, though it lost the game by 20)", gd);
+  const snapSrc = readFileSync(new URL("../../pages/api/nba/snapshot.js", import.meta.url), "utf8"), appSrc = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
+  ok(/recordH1Shadows\(reg\)/.test(snapSrc) && /1H SPREAD · props rules", mv\.h1spr/.test(appSrc), "the snapshot records it; Models -> Shadow trackers shows its row"); }
+{ // 10/28 (owner: "only add the logo next to their team name"): props rows carry no logo, the team label does
+  const appSrc = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
+  ok(!/"•"\} \$\{tlogo\(p\.team/.test(appSrc) && /class="pbl pteam">\$\{tlogo\(t\)\}/.test(appSrc), "NBA props: no logo on a player row, the logo beside the team name"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`);
 process.exit(bad ? 1 : 0);

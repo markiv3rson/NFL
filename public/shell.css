@@ -428,3 +428,15 @@ body.bnav-on .panel .tdr .pp2 .wc { font-size:10.5px; margin-left:0; }
 body.bnav-on .panel .tdr .pp2 .wc { font-size:10px; }
 body.bnav-on .panel .ppr.tdh .pp4 { letter-spacing:0 !important; }
 @media (max-width:379px) { body.bnav-on .ppr.tdh .pp3 { font-size:9.5px !important; letter-spacing:0 !important; } body.bnav-on .ppr.tdh .pp4 .pm { margin-left:3px !important; } }
+/* 10/28 (owner: "Blur the headers background and make it see through"): the strip behind the phone's clock, the Home bar and every page-title band
+   are see-through glass -- a light dark tint over the page, blurred like the bottom bar; the title band fades out at its bottom edge, both sports */
+:root { --glass:rgba(11,11,16,.42); --glassf:blur(22px) saturate(1.3); }
+html body::before { background:var(--glass) !important; -webkit-backdrop-filter:var(--glassf); backdrop-filter:var(--glassf); }
+.tbar { background:var(--glass); -webkit-backdrop-filter:var(--glassf); backdrop-filter:var(--glassf); border-bottom-color:rgba(255,255,255,.08); }
+body.bnav-on .phead { background:var(--glass) !important; -webkit-backdrop-filter:var(--glassf); backdrop-filter:var(--glassf);
+  -webkit-mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 12px),transparent 100%); mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 12px),transparent 100%); }
+@media (min-width:1100px) {
+  body.bnav-on .phead { background:none !important; -webkit-backdrop-filter:none; backdrop-filter:none; -webkit-mask-image:none; mask-image:none; }
+  body.bnav-on .phead::before { background:var(--glass) !important; -webkit-backdrop-filter:var(--glassf); backdrop-filter:var(--glassf);
+    -webkit-mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 12px),transparent 100%); mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 12px),transparent 100%); }
+}
