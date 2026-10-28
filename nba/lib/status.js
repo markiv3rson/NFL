@@ -28,7 +28,7 @@ export async function railwayHealth(fetcher = fetch) {
 export function computeWatch({ snap, railway, pinnacle, espn = null, backup, now = Date.now() }) {
   const w = [], H = 3600e3;
   if (backup !== undefined) {   // nightly backup (10/17), same checks as the NFL watchdog
-    if (!backup || now - Date.parse(backup.t) > 36 * H) w.push("No backup in the last 36 h — check the Railway volume.");
+    if (!backup || now - Date.parse(backup.t) > 26 * H) w.push("No backup in the last 26 h (last night's 12:10 AM backup did not run) — check the Railway scheduler.");   // 10/28: 26 h, so one missed night shows (36 h hid it)
     else if (backup.where === "failed") w.push("Last night's backup failed — check the Railway logs.");
   }
   const hr = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", hour12: false }).format(now)) % 24;
