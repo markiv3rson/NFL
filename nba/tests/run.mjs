@@ -1300,5 +1300,29 @@ const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "u
 { // 10/28 (owner: "only add the logo next to their team name"): props rows carry no logo, the team label does
   const appSrc = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
   ok(!/"•"\} \$\{tlogo\(p\.team/.test(appSrc) && /class="pbl pteam">\$\{tlogo\(t\)\}/.test(appSrc), "NBA props: no logo on a player row, the logo beside the team name"); }
+{ // 10/28: the NBA database refused every write from 7:30 PM PT 10/27, silently -- the System list now tests a write and shows the error
+  const st = await import("../lib/status.js"), { getRedis } = await import("../lib/redis.js");
+  const good = await st.dbHealth(getRedis());
+  ok(good.writeOk === true && good.err === null, "database check: a working database reads 'saving'", good);
+  const full = { set: async () => { throw new Error("OOM command not allowed when used memory > 'maxmemory'."); }, get: async () => null, info: async () => "used_memory:31457280\r\nmaxmemory:31457280\r\nmaxmemory_policy:noeviction\r\n" };
+  const bad = await st.dbHealth(full);
+  ok(bad.writeOk === false && /OOM/.test(bad.err) && bad.usedMb === 30 && bad.capMb === 30 && bad.policy === "noeviction", "database check: a refused write keeps the database's own error and its memory", bad);
+  const w = st.computeWatch({ snap: { t: new Date().toISOString(), games: 0 }, railway: { ok: true }, pinnacle: null, backup: { t: new Date().toISOString(), where: "volume" }, db: bad });
+  ok(w.some((x) => /refusing writes \(OOM/.test(x)), "watchdog: a database refusing writes is the first warning", w);
+  ok(st.computeWatch({ snap: { t: new Date().toISOString(), games: 0 }, railway: { ok: true }, backup: { t: new Date().toISOString(), where: "volume" }, db: { writeOk: true, usedMb: 25, capMb: 30 } }).some((x) => /83% full/.test(x)), "watchdog: 80%+ full is reported");
+  const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
+  ok(/\["Database", sy\.db \?/.test(app), "Models -> System shows the Database row"); }
+{ // 10/28: old graded prop days shrink (model copy -> game names only, price ladder deleted); ungraded and recent days stay whole
+  const pr = await import("../lib/props.js"), { getRedis } = await import("../lib/redis.js"), r = getRedis(), now = Date.parse("2026-11-20T20:00:00Z");
+  await r.set("nbapropmodel:2026-11-05:AAA @ BBB", JSON.stringify({ runAt: "x", start: "s", away: "AAA", home: "BBB", rows: [{ name: "P", stat: "pts" }] }));
+  await r.set("nbaprops:2026-11-05:AAA @ BBB", JSON.stringify({ m: { a: 1 } })); await r.hset("nbapropres:2026-11-05", "AAA @ BBB", JSON.stringify({ picks: [] }));
+  await r.set("nbapropmodel:2026-11-05:CCC @ DDD", JSON.stringify({ away: "CCC", home: "DDD", rows: [1] })); await r.set("nbaprops:2026-11-05:CCC @ DDD", "{}");
+  await r.set("nbapropmodel:2026-11-18:EEE @ FFF", JSON.stringify({ away: "EEE", home: "FFF", rows: [1] })); await r.hset("nbapropres:2026-11-18", "EEE @ FFF", "{}");
+  const n = await pr.compactNbaProps(now), a = JSON.parse(await r.get("nbapropmodel:2026-11-05:AAA @ BBB"));
+  ok(n === 1 && a.stub && !a.rows && a.away === "AAA" && !(await r.get("nbaprops:2026-11-05:AAA @ BBB")) && JSON.parse(await r.get("nbapropmodel:2026-11-05:CCC @ DDD")).rows && (await r.get("nbaprops:2026-11-05:CCC @ DDD")) && JSON.parse(await r.get("nbapropmodel:2026-11-18:EEE @ FFF")).rows,
+    "props compaction: only graded days older than 8 days shrink", { n, a });
+  const days = await pr.nbaPropDays(); ok(days.includes("2026-11-05"), "a compacted day is still listed (the page and the records keep reading it)");
+  for (const k of ["nbapropmodel:2026-11-05:AAA @ BBB", "nbapropmodel:2026-11-05:CCC @ DDD", "nbaprops:2026-11-05:CCC @ DDD", "nbapropmodel:2026-11-18:EEE @ FFF", "nbapropres:2026-11-05", "nbapropres:2026-11-18"]) await r.del(k);
+  const gr = readFileSync(new URL("../../pages/api/nba/results/grade.js", import.meta.url), "utf8"); ok(/compactNbaProps\(\)/.test(gr), "the nightly grade run compacts"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`);
 process.exit(bad ? 1 : 0);

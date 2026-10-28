@@ -180,6 +180,24 @@ async function scanKeys(pattern) {
   return ks;
 }
 export async function nbaPropDays() { return [...new Set((await scanKeys("nbapropmodel:*")).map((k) => k.split(":")[1]))].sort(); }
+// 10/28: the NBA database (free plan) filled up with prop copies (~0.7 MB a game day, none expired). Once a day is fully graded and past the re-check
+// window, its model copies shrink to the game's names / time (the day list and the page still read them; the graded rows in nbapropres keep every
+// result) and its raw price ladders (nbaprops:) go -- the nightly backup on the Railway volume keeps them.
+export const COMPACT_DAYS = 8;   // RECHECK_DAYS (7) + 1
+export async function compactNbaProps(now = Date.now()) {
+  const r = getRedis(), today = etDate(new Date(now).toISOString()); let n = 0;
+  for (const d of await nbaPropDays()) {
+    if (Date.parse(today) - Date.parse(d) <= COMPACT_DAYS * 86400e3) continue;
+    const keys = await scanKeys(`nbapropmodel:${d}:*`), done = (await r.hgetall(K_NBAPROPRES(d)).catch(() => null)) || {};
+    for (const k of keys) {
+      const key = k.slice(`nbapropmodel:${d}:`.length), m = await getJSON(k).catch(() => null);
+      if (!m || m.stub || !done[key]) continue;   // not graded yet: leave it
+      await r.set(k, JSON.stringify({ stub: true, runAt: m.runAt || null, start: m.start || null, away: m.away, home: m.home }));
+      await r.del(K_NBAPROPS(d, key)); n++;
+    }
+  }
+  return n;
+}
 // Grade the picks of every game ESPN says is final on the given dates (default: the last 3 Eastern days). A DNP is a push.
 export const RECHECK_H = 6;
 // 10/26 (owner: "find anything that's wrong"): ESPN kept correcting box scores AFTER the one 6-h recheck (10/23 rows: Bane steals U2.5, Clingan

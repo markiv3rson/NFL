@@ -25,8 +25,10 @@ export async function railwayHealth(fetcher = fetch) {
 }
 // Watchdog (NFL app idea): plain-language list of anything stale or missing, so nothing fails silently. Pacific daytime = the scheduler's
 // window (snapshot every 30 min, 7 AM-9:30 PM); a gap there of 90+ minutes means the Railway scheduler is not reaching the site.
-export function computeWatch({ snap, railway, pinnacle, espn = null, backup, now = Date.now() }) {
+export function computeWatch({ snap, railway, pinnacle, espn = null, backup, db = null, now = Date.now() }) {
   const w = [], H = 3600e3;
+  if (db && db.writeOk === false) w.push(`The NBA database is refusing writes (${db.err || "no reason given"}): nothing new is saved -- lines, picks, closing lines, grades, backups.`);
+  else if (db && db.usedMb != null && db.capMb && db.usedMb >= 0.8 * db.capMb) w.push(`The NBA database is ${Math.round((100 * db.usedMb) / db.capMb)}% full (${db.usedMb} of ${db.capMb} MB).`);
   if (backup !== undefined) {   // nightly backup (10/17), same checks as the NFL watchdog
     if (!backup || now - Date.parse(backup.t) > 26 * H) w.push("No backup in the last 26 h (last night's 12:10 AM backup did not run) — check the Railway scheduler.");   // 10/28: 26 h, so one missed night shows (36 h hid it)
     else if (backup.where === "failed") w.push("Last night's backup failed — check the Railway logs.");
@@ -52,6 +54,17 @@ export function computeWatch({ snap, railway, pinnacle, espn = null, backup, now
   }
   return w;
 }
+// 10/28: the database itself. From 7:30 PM PT 10/27 every NBA write failed silently (each .set has a .catch), so nothing new was saved and the
+// page never said why. A small test write every time the System list loads, plus its memory use: a refused write shows its own error.
+export async function dbHealth(r = getRedis(), now = Date.now()) {
+  const out = { writeOk: null, err: null, usedMb: null, capMb: null, policy: null };
+  try { const v = new Date(now).toISOString(); await r.set("status:probe", v, "EX", 3600); out.writeOk = (await r.get("status:probe")) === v; if (!out.writeOk) out.err = "the test write did not stick"; }
+  catch (e) { out.writeOk = false; out.err = String((e && e.message) || e).slice(0, 160); }
+  try { const info = String(await r.info("memory")), num = (k) => { const m = info.match(new RegExp(`^${k}:(\\d+)`, "m")); return m ? Number(m[1]) : null; };
+    const u = num("used_memory"), mx = num("maxmemory"), pol = info.match(/^maxmemory_policy:(\S+)/m);
+    out.usedMb = u != null ? Math.round(u / 104857.6) / 10 : null; out.capMb = mx ? Math.round(mx / 104857.6) / 10 : null; out.policy = pol ? pol[1] : null; } catch {}
+  return out;
+}
 export async function getStatus({ now = Date.now(), fetcher = fetch } = {}) {
   const r = getRedis();
   const snap = jparse(await r.get(SNAP).catch(() => null));
@@ -70,5 +83,6 @@ export async function getStatus({ now = Date.now(), fetcher = fetch } = {}) {
     const last = [...days].sort().pop(); if (last) { let c2 = "0"; const ks = []; do { const [n, kk] = await r.scan(c2, "MATCH", `nbaprops:${last}:*`, "COUNT", 200); c2 = n; ks.push(...kk); } while (c2 !== "0");
       for (const k of ks) { const v = jparse(await r.get(k).catch(() => null)); if (v && v.t && (!latest || v.t > latest)) latest = v.t; } }
     return { days: days.size, lastDay: last || null, latest }; })().catch(() => null);
-  return { lastSnapshot: snap, errors: shown, railway, keys, pinnacle: pinOk, espn, backup, props, watch: computeWatch({ snap, railway, pinnacle: pinOk, espn, backup, now }) };
+  const db = await dbHealth(r, now).catch(() => null);
+  return { lastSnapshot: snap, errors: shown, railway, keys, pinnacle: pinOk, espn, backup, props, db, watch: computeWatch({ snap, railway, pinnacle: pinOk, espn, backup, db, now }) };
 }
