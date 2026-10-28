@@ -212,11 +212,14 @@
   // OTHER MARKETS (10/27 owner: "add everything else if it passes our 65% rule"; 10/28 3:50 AM "set the limit at 58%+"; 10/28 "why am i seeing
   // everything? only things that should show is the winning picks"): no price lists -- a game shows HALVES & QUARTERS only when the NFL 1H SPREAD
   // pick (lib/h1pick.js) has a side, with its % and price; ✓ / ✗ once graded. Every other half / quarter / team total / game prop failed its test
-  // (no pick can show), so they and the GAME PROPS tab are gone. Their prices are still saved every 15 min (gmpx:) for later tests.
+  // (no pick can show). Their prices are still saved every 15 min (gmpx:) for later tests. 10/28 night: the GAME PROPS tab is back with picks only (below).
   const cents = (x) => (x == null ? "—" : `${Math.round(x * 100)}¢`);
   const h1Line = (k) => { const res = k.result === "W" ? ' <b class="g">✓</b>' : k.result === "L" ? ' <b class="r">✗</b>' : k.result === "P" ? ' <span class="dim">push</span>' : "";
     return `<div class="s mkpick"><span class="lbw">Pick:</span> <b class="${k.said >= 56 ? "g" : k.said >= 53 ? "lg" : "y"}">${String(k.label).toUpperCase().replace(/[<>&"]/g, "")} · ${Math.floor(k.said)}%</b> <span class="mkp">· ${cents(k.price)}</span>${res}</div>`; };
   Shell.mktLines = (o) => (o && o.h1pick ? `<div class="trow"><div class="sh">HALVES &amp; QUARTERS</div></div><div class="card mkc"><div class="mks">1st Half spread</div>${h1Line(o.h1pick)}</div>` : "");
+  // GAME PROPS tab (10/28 night, owner: "only show our picks if there are any"): the NFL GAME PROPS picks (lib/gameprops.js) one line each, the tab
+  // only on a game that has one
+  Shell.gpLines = (o) => (o && o.gprops && o.gprops.length ? `<div class="trow"><div class="sh">GAME PROPS</div></div><div class="card mkc">${o.gprops.map(h1Line).join("")}</div>` : "");
   Shell.chartBlock = (o) => {
     CH.cur = o.key; const r = chartRange(o), keys = o.live ? ["live", "1d", "1w", "all"] : ["1d", "1w", "1m", "all"];
     const btn = (k) => `<button type="button" class="${k === r ? "on" : ""}" data-grange="${k}">${k === "live" ? "LIVE" : k.toUpperCase()}</button>`;

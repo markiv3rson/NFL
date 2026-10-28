@@ -7,7 +7,8 @@ import { getRedis } from "../../lib/redis";
 import { fetchEvents, gameLines, playerProps, gameEvent } from "../../lib/poly";
 import { parseGameMarkets } from "../../lib/gamemarkets";
 import { h1Mean, h1Inputs, h1Side } from "../../lib/h1pick";
-import { recordH1Pick } from "../../lib/tracked";
+import { gpPicks } from "../../lib/gameprops";
+import { recordH1Pick, recordGameProps } from "../../lib/tracked";
 import { windAtKickoff } from "../../lib/wind";
 import { recordProps } from "../../lib/props";
 import { getJSON, setJSON, pushCapped, K } from "../../lib/redis";
@@ -56,6 +57,14 @@ export async function h1PickNow(redis, season, g, pin, poly, gm) {
   await recordH1Pick(season, g.week, g, pk ? { ...pk, mean: Math.round(mean * 100) / 100 } : null, new Date().toISOString());
   return pk;
 }
+// the GAME PROPS pick (lib/gameprops.js) from the game's game / team prop markets at the current spread + total (books first, as the 1H pick);
+// recorded / rewritten until kickoff, a market type taken out when it stops qualifying
+export async function gamePropsNow(season, g, pin, poly, ev) {
+  const x = h1Inputs(g, { booksHomeSpread: pin && pin.hs != null ? pin.hs : null, booksTotal: pin && pin.tl != null ? pin.tl : null,
+    polyHomeSpread: poly && poly.spread ? poly.spread.homeSpread : null, polyTotal: poly && poly.total ? poly.total.line : null });
+  if (!x) return null;
+  const picks = gpPicks(ev, g.away, g.home, x.hfav, x.tl); await recordGameProps(season, g.week, g, picks, new Date().toISOString()); return picks;
+}
 export default async function handler(req, res) {
   const t = new Date().toISOString();
   try {
@@ -71,6 +80,7 @@ export default async function handler(req, res) {
         await recordProps(getRedis(), SEASON, g, pp.stats, t).catch(() => 0); }   // player stat props, first + latest price (10/17)
       const ev = await gameEvent(events, g.away, g.home).catch(() => null), gm = ev ? parseGameMarkets(ev, "nfl", g.away, g.home) : null;   // 10/28: the game's other markets
       if (gm) { await recordGameMarkets(getRedis(), SEASON, g, gm, t).catch(() => 0); await h1PickNow(getRedis(), SEASON, g, pin, p, gm).catch(() => null); }
+      if (ev) await gamePropsNow(SEASON, g, pin, p, ev).catch(() => null);   // 10/28 night: the GAME PROPS pick
       return { hs: p.spread ? p.spread.homeSpread : null, h: p.spread ? p.spread.home : null, tl: p.total ? p.total.line : null, o: p.total ? p.total.over : null }; };
     const n = await savePinnacle(getRedis(), SEASON, t, "pin30", polyFor); await pinnacleOk(getRedis());
     await getRedis().set("auto:last", JSON.stringify({ t, what: "Pinnacle pull (30 min)" })).catch(() => {});   // 10/14: the scheduler's liveness signal every 30 min (snapshots leave a 12-16 h overnight gap)

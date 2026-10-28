@@ -274,7 +274,7 @@ const LOGO_OVERRIDES = { WAS: "https://raw.githubusercontent.com/ajreinhard/data
 const logoUrl = (team) => (team ? LOGO_OVERRIDES[team] || `https://a.espncdn.com/i/teamlogos/nfl/500/${team}.png` : "");
 // Team logo next to team names on every card (game header + TD team headers). Same logo source as the TD rows.
 function tlogo(team) { return team ? `<img class="tlogo" src="${logoUrl(team)}" alt="" onerror="this.style.display='none'">` : ""; }
-// 10/28 (owner: "instead of the team logos put the helmets"; "put the helmets on the other side of their names"): the Home tiles carry each team's helmet between its name and the middle, facing the middle (away faces right, home left; public/helmets/sm = the matchup helmets cropped, 96 px tall)
+// 10/28 (owner: "instead of the team logos put the helmets"; 10/28 later: moved after the name, then back on the owner's word): the Home tiles carry each team's helmet on the outer side of its name, facing the middle (away faces right, home left; public/helmets/sm = the matchup helmets cropped, 96 px tall)
 function thelmet(team, dir) { return team ? `<img class="thlm" src="/helmets/sm/${dir}/${team}.webp" alt="" onerror="this.onerror=null;this.src='${logoUrl(team)}'">` : ""; }
 const retPill = (r) => (r.returning ? (r.returningState === "practicing" ? ' <span class="pill p-g" style="padding:0 6px;font-size:10px">↩ RETURNING</span>' : ' <span class="pill p-y" style="padding:0 6px;font-size:10px">↩ WAS OUT · NOT PRACTICING</span>') : "");
 function tdNoGap(r) {
@@ -713,25 +713,27 @@ function whyBox(g, kind, info) {
 }
 const MODEL_INFO = {
   spread: [["Model:", "the game model’s score guess. Data only."], ["Model (Team):", "team-stats model at Polymarket’s line; it becomes the PICK at 58%+ sure, but not once the line has moved 1+ point its way."],
-    ["Model (Stack):", "everything the app knows in one model. With no tested rule it names the PICK."], ["Pick:", "the bet at Polymarket’s main line, from a tested rule (LINE MOVE, TEAM MODEL, OVERSHOOT, INJURY, BOUNCE BACK), else the Stack model’s side. Green 56%+, light green 53–55%, yellow below."], ["OVERSHOOT:", "the line moved 1+ point toward a side the game model still likes by 2+; the other side won 57% (242 games 2014-25)."], ["ML pick:", "the favorite’s moneyline when the Stack model backs the favorite and is priced 50–70% (won 67.7–69.7% in 2022-25, priced 56–65%); or the team model’s side when it is 58%+ sure and the line moved 1+ point against it (favorites won 77%, underdogs priced 30–50¢ won 57%, 2014-25)."],
+    ["Model (Stack):", "everything the app knows in one model. With no tested rule it names the PICK."], ["Pick:", "the bet at Polymarket’s main line, from a tested rule (LINE MOVE, TEAM MODEL, OVERSHOOT, INJURY, BOUNCE BACK), else the Stack model’s side. Green 56%+, light green 53–55%, yellow below."], ["OVERSHOOT:", "the line moved 1+ point toward a side the game model still likes by 2+; the other side won 57% (242 games 2014-25)."], ["ML pick:", "the favorite’s moneyline when the Stack model backs the favorite and is priced 50–70% (won 67.7–69.7% in 2022-25, priced 56–65%); or the team model’s side when it is 58%+ sure and the line moved 1+ point against it (favorites won 88.9% of 18, underdogs priced 30–50¢ won 63.3% of 30, 2014-25)."],
     ["Pick w/ points:", "same side, the fewest bought points (1–2) that won 56%+."], ["MORE list:", "every line within 2 points: points bought · history win % · Polymarket price."]],
   total: [["Model:", "the game model’s total points guess. Data only."], ["Pick:", "Over or Under at Polymarket’s main total, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
     ["Pick w/ points:", "same side, the fewest bought points (1–2) that won 56%+."], ["MORE list:", "every line within 2 points: points bought · history win % · Polymarket price."]],
 };
 const CARD_INFO = [["PICK:", "the card’s bet at Polymarket’s main line (a tested rule, else the model’s side), locked at kickoff."],
-  ["PICK w/ POINTS:", "the same side with the fewest bought points (1–2) that won 56%+."], ["1H SPREAD:", "the first-half model’s side on Polymarket’s first-half spread lines (58%+ under 60¢, 65%+ from 60¢, 77¢ max, priced under its %), graded on the first-half score."],
+  ["PICK w/ POINTS:", "the same side with the fewest bought points (1–2) that won 56%+."], ["1H SPREAD:", "the first-half model’s side on Polymarket’s first-half spread lines (58%+ on the model’s chance less 11.4 points, 77¢ max, steady books), graded on the first-half score."],
+  ["GAME PROPS:", "game and team props where the 600 past games nearest this spread and total beat Polymarket’s price (70%+ on 8 parts history + 2 parts price, 6+ points over the price, 30–77¢), graded on Polymarket’s result."],
   ["Line value:", "points better (+) or worse than the line at kickoff."]];
 const TRACK_INFO = [["Test picks,", "never shown on a card: recorded and graded live. One becomes a pick only after it holds 56%+ over about 100 games."],
   ["INJURY EARLY:", "a starter newly out; the healthy team at the line of that moment."], ["TD JUMP:", "a player’s TD chance up 10+ points between reruns; did he score?"],
   ["STACK:", "everything the app knows in one model; confident = its top fifth."], ["WIDE:", "every situation flag on both teams in one boosted-tree model; confident = its top fifth."]];
-// 10/28: the 1H SPREAD pick's record (lib/tracked.js trackedSummary.h1spr)
-function h1Row() {
-  const h = TRACKED && TRACKED.h1spr; if (!h || !h.recorded) return tRow("1H SPREAD · PICK", "", ['<span class="dim">—</span>', '<span class="dim">—</span>', '<span class="dim">—</span>']);
+// 10/28: the 1H SPREAD pick's record (lib/tracked.js trackedSummary.h1spr); 10/28 night: the GAME PROPS pick's (trackedSummary.gprops)
+function pickRow(lab, h) {
+  if (!h || !h.recorded) return tRow(lab, "", ['<span class="dim">—</span>', '<span class="dim">—</span>', '<span class="dim">—</span>']);
   const sub = [h.said != null ? `said ${h.said}%` : "", h.pending ? `${h.pending} pending` : ""].filter(Boolean).join(" · ");
-  if (!h.n) return tRow("1H SPREAD · PICK", sub, ['<span class="dim">—</span>', '<span class="dim">—</span>', '<span class="dim">—</span>']);
+  if (!h.n) return tRow(lab, sub, ['<span class="dim">—</span>', '<span class="dim">—</span>', '<span class="dim">—</span>']);
   const pc = Math.round(100 * h.hit);
-  return tRow("1H SPREAD · PICK", sub, [`${h.w}–${h.l}`, `<b class="${pc >= 56 ? "g" : pc >= 50 ? "y" : "r"}">${pc}%</b>`, h.per100 != null ? `<span class="${h.per100 >= 0 ? "g" : "r"}">${h.per100 >= 0 ? "+" : "−"}$${Math.abs(Math.round(h.per100))}</span>` : '<span class="dim">—</span>']);
+  return tRow(lab, sub, [`${h.w}–${h.l}`, `<b class="${pc >= 56 ? "g" : pc >= 50 ? "y" : "r"}">${pc}%</b>`, h.per100 != null ? `<span class="${h.per100 >= 0 ? "g" : "r"}">${h.per100 >= 0 ? "+" : "−"}$${Math.abs(Math.round(h.per100))}</span>` : '<span class="dim">—</span>']);
 }
+const h1Row = () => pickRow("1H SPREAD · PICK", TRACKED && TRACKED.h1spr) + pickRow("GAME PROPS · PICK", TRACKED && TRACKED.gprops);
 function cardRecBox() {
   const R = (COMBOS && COMBOS.cardRec) || {};
   const row = (lab, k) => { const b = R[k]; if (!b || !(b.w + b.l)) return tRow(lab, "", ['<span class="dim">—</span>', '<span class="dim">—</span>', '<span class="dim">—</span>']);
@@ -1077,7 +1079,7 @@ function tile(g) {
   // 10/18 evening (owner, sketch D): NO big faded logos and NO team colours behind the tile -- a plain 55% dark card so the page picture shows through.
   const res = g.final && g.awayScore != null && g.homeScore != null ? nflRes(g, Number(g.awayScore), Number(g.homeScore)) : sc && sc.st === "post" ? nflRes(g, Number(sc.a), Number(sc.h)) : "";
   return `<button class="tile${g.started && !g.final ? " live" : ""}" data-game="${esc(g.key)}">` +
-    `<div class="in"><div class="nm"><span class="t">${g.away}${thelmet(g.away, "right")}${recOf(g, g.away)}</span><div class="tmid">${mid2}${res}${chips ? `<div class="s2">${chips}</div>` : ""}${moveLines(moveBits(g))}</div><span class="t hm">${thelmet(g.home, "left")}${g.home}${recOf(g, g.home)}</span></div>${g.final || sc || hp == null ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
+    `<div class="in"><div class="nm"><span class="t">${thelmet(g.away, "right")}${g.away}${recOf(g, g.away)}</span><div class="tmid">${mid2}${res}${chips ? `<div class="s2">${chips}</div>` : ""}${moveLines(moveBits(g))}</div><span class="t hm">${g.home}${thelmet(g.home, "left")}${recOf(g, g.home)}</span></div>${g.final || sc || hp == null ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
 }
 // Graded touchdown results for a finished game (same records the Models tab uses). Loaded once, only when a finished game page opens.
 let GRADES = null, GRADES_AT = 0;
@@ -1357,11 +1359,13 @@ function linesBg() { const on = (id) => { const p = $(id); return !!(p && p.clas
 // Game Lines = the spread & ML and totals cards as before; Player Props = THIS game's rows in the props-page look; Parlays = the same-game parlays. The choice is kept per phone.
 const lsGet = (k, d) => { try { return localStorage.getItem(k) || d; } catch { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
-const GTABS = [["lines", "Game Lines"], ["props", "Player Props"], ["parlays", "Parlays"]];   // 10/28: GAME PROPS tab out -- only winning picks show, none of those markets has one
+const GTABS = [["lines", "Game Lines"], ["props", "Player Props"], ["gprops", "Game Props"], ["parlays", "Parlays"]];   // 10/28 night: GAME PROPS only on a game with a GAME PROPS pick (tabsOf)
+const tabsOf = (g) => GTABS.filter(([k]) => k !== "gprops" || (g && g.gprops && g.gprops.length));
 let GTAB = lsGet("gTab", "lines"), GPROP = lsGet("gProp:nfl", "td");
 if (!GTABS.some(([k]) => k === GTAB)) GTAB = "lines";
 if (!PROP_TABS.some(([k]) => k === GPROP)) GPROP = "td";
-const gameTabs = () => `<div class="gtabs">${GTABS.map(([k, t]) => `<button class="gtab${GTAB === k ? " on" : ""}" type="button" data-gtab="${k}">${t}</button>`).join("")}</div>`;
+const gameTabs = (g) => { const ts = tabsOf(g), on = ts.some(([k]) => k === GTAB) ? GTAB : "lines";
+  return `<div class="gtabs">${ts.map(([k, t]) => `<button class="gtab${on === k ? " on" : ""}" type="button" data-gtab="${k}">${t}</button>`).join("")}</div>`; };
 const gameChips = () => `<div class="gchips">${PROP_TABS.map(([k, t]) => `<button class="gchip${GPROP === k ? " on" : ""}" type="button" data-gprop="${k}">${t}</button>`).join("")}</div>`;
 const gNone = (t) => `<div class="card" style="margin-top:10px"><div class="inner"><div class="s dim">${t}</div></div></div>`;
 let GPROPS = {}, GPROPS_LOADING = {};
@@ -1391,18 +1395,19 @@ function gamePropsBody(g) {
 }
 function gameParlaysBody(g) { const b = sgpBox(g); return b ? b.replace('<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAYS</div>', "") : gNone(g.started || g.final ? "Same-game parlays close at kickoff; they are on Model bets with their results." : "No same-game parlay for this game."); }
 // the game page chart (10/27, owner's pick: open chart, sketch A; later: the team card on top of it, blended): Polymarket US's moneyline history for both teams, drawn by the shared shell (Shell.chartBlock)
-const chartOf = (g) => ({ key: g.key, sport: "nfl", away: g.away, home: g.home, start: g.kickoff, live: !!(g.started && !g.final), ca: TEAM_COLOR[g.away] || "#888888", ch: TEAM_COLOR[g.home] || "#888888", h1pick: g.h1pick || null });   // 10/28: + the 1H SPREAD pick
+const chartOf = (g) => ({ key: g.key, sport: "nfl", away: g.away, home: g.home, start: g.kickoff, live: !!(g.started && !g.final), ca: TEAM_COLOR[g.away] || "#888888", ch: TEAM_COLOR[g.home] || "#888888", h1pick: g.h1pick || null, gprops: g.gprops || null });   // 10/28: + the 1H SPREAD pick; night: + the GAME PROPS picks
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = ""; linesBg();
   document.body.classList.add("game-on");   // 10/18 (owner): on a game page the game card IS the header -- the NEXT GAME strip is hidden, ← Games sits under the card
   const early = g.early && g.model ? `<div class="card" style="margin-top:10px"><div class="inner"><div class="s">${earlyNote(g)} Model's own line: <b>${esc(g.model.homeMargin >= 0 ? g.home + " -" + g.model.homeMargin.toFixed(1) : g.away + " -" + (-g.model.homeMargin).toFixed(1))}</b> · total <b>${g.model.total.toFixed(1)}</b>.</div></div></div>` : "";
   const co = chartOf(g), mk = typeof Shell !== "undefined" && Shell.mktLines;   // 10/27: the other Polymarket markets (halves, quarters, team totals, game / team props)
-  const body = GTAB === "props" ? gameChips() + gamePropsBody(g) : GTAB === "parlays" ? gameParlaysBody(g)
+  const tab = tabsOf(g).some(([k]) => k === GTAB) ? GTAB : "lines";   // a game without a GAME PROPS pick shows Game Lines
+  const body = tab === "props" ? gameChips() + gamePropsBody(g) : tab === "parlays" ? gameParlaysBody(g) : tab === "gprops" ? Shell.gpLines(co)
     : `${early}${gameCard(g, "x")}${totalCard(g, "x")}${mk ? Shell.mktLines(co) : ""}`;
   const was = $("detail").querySelector ? $("detail").querySelector(".grest") : null, keepY = was ? was.scrollTop : 0;
   // 10/28 (owner: "Do not make this part scroll ... DO NOT MAKE THE EXIT PAGE GAMES AND THE GAME SUB TABS MOVE"): the team card, the chart, ← Games and the tabs stay put (.gtop);
   // only the part under them scrolls (.grest, its own scroll box sized by Shell.pinGame)
-  $("detail").innerHTML = `<div class="gtop">${typeof Shell !== "undefined" && Shell.chartBlock ? detailTop(g).replace('class="card dtop"', 'class="card dtop dblend"') + Shell.chartBlock(co) : detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs()}</div><div class="grest">${body}</div>`;
+  $("detail").innerHTML = `<div class="gtop">${typeof Shell !== "undefined" && Shell.chartBlock ? detailTop(g).replace('class="card dtop"', 'class="card dtop dblend"') + Shell.chartBlock(co) : detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs(g)}</div><div class="grest">${body}</div>`;
   if (typeof Shell !== "undefined" && Shell.chartLoad) Shell.chartLoad(co);
   $("back-btn").onclick = closeGame;
   if (g.final) ensureGrades();

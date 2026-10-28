@@ -266,7 +266,7 @@ const CARD_INFO = [["PICK:", "the card’s bet at Polymarket’s main line, lock
 const SHADOW_INFO = [["Test picks,", "never shown on a card: recorded and graded live. One becomes a pick only after it holds 56%+ over about 100 games."],
   ["LINE MOVE:", "Pinnacle moved 3+ points; that side at the first number / at the number when seen."], ["INJURY:", "a star newly out; the healthy side at the open / when seen."],
   ["Gaps:", "Pinnacle or the sportsbooks 1+ point off Polymarket; their side at Polymarket’s number."],
-  ["1H SPREAD:", "the first-half margin from the full-game line vs Polymarket’s first-half spreads, props rules (56%+ under 60¢, 65%+ from 60¢, 77¢ cap); last look before tip-off."],
+  ["1H SPREAD:", "the first-half margin from the full-game line vs Polymarket’s first-half spreads, props rules (56%+ under 60¢, 65%+ from 60¢, 77¢ cap, priced under its %); last look before tip-off."],
   ["Props · 77¢+:", "prop rows at 65%+ the page hides because they cost 77¢ or more."], ["Props · star out:", "a 20+ ppg player out; his teammates’ points Over at the ~50¢ line."], ["Closing-line value:", "points gained vs the line at tip-off."]];
 // 10/23 (owner: "make all the layout consistent"): the NFL game page -- SPREAD & ML in one card (Polymarket spread + moneyline, the sportsbook line,
 // the model's spread lines, then the moneyline PICK), TOTALS in the other; POLYMARKET header with LIVE · 1s ago on its right; the tip-off line under it

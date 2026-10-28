@@ -224,11 +224,6 @@ body.bnav-on .phead .pt b.lgts { display:flex; flex:1 1 auto; justify-content:fl
    three-column list (what it is | Polymarket's price | the other side), prices in Polymarket's blue. Both sports. */
 #detail .card.mkc { padding-top:8px; }
 .mks { margin:10px 0 2px; font-size:12px; font-weight:800; letter-spacing:.04em; color:#e4e4e8; }
-.mkx { display:grid; grid-template-columns:minmax(0,1fr) 56px 56px; gap:10px; align-items:center; padding:5px 0; border-top:1px solid rgba(255,255,255,.07); font-size:13px; }
-.mkx > span:first-child { min-width:0; overflow-wrap:anywhere; }
-.mkx .v { text-align:center; color:#2e5cff; font-weight:800; font-variant-numeric:tabular-nums; }
-.mkx.mkh { border-top:0; padding:2px 0 1px; } .mkx.mkh span { font-size:8.5px; font-weight:700; letter-spacing:.04em; color:var(--faint,#7c8494); text-align:center; } .mkx.mkh span:first-child { text-align:left; display:flex; align-items:center; gap:4px; }
-.mkpm { width:11px; height:11px; }
 /* 10/27 (owner: "remove the card look and make it like the graph where it's just the background of everything" / "no card boxes in these pages too" /
    "organize or fix these ones too"): no boxes anywhere but the game tiles and the game's own team card -- sections sit on the page background with a thin
    line between them; Bets opens with Profit as one big number; Alerts are plain rows; Model's tiles and sections are flat rows. Both sports. */
@@ -289,11 +284,14 @@ body.bnav-on.game-on #detail .gtop .dtop { position:relative; top:0; }
 #detail .grest .tag, #detail .grest .gchip, #detail .grest .mks { text-transform:uppercase; }
 #detail .grest .gchip { color:var(--fade); }
 /* 10/28 (owner: "make the sub tabs easier to read in bold ... why does it look squished"): the game page tabs and their sub tabs (and every page's
-   chips) in the plain app font, bold (700, not the narrow display font / black 900 + outline that squeezed the letters), a size up, more letter room;
+   chips) in the plain app font (the narrow display font squeezed the letters), bold, a size up, more letter room;
    the unselected ones faded but readable, the selected one white with its pink line. Both sports. */
 #detail .gtab, #detail .grest .gchip, body.bnav-on .panel .gchip, body.bnav-on .phead .gchip { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif !important;
-  font-size:12px !important; font-weight:700 !important; letter-spacing:.06em !important; -webkit-text-stroke:0 !important; line-height:1.2 !important; color:var(--fade) !important; }
+  font-size:12px !important; font-weight:900 !important; letter-spacing:.06em !important; -webkit-text-stroke:.3px currentColor !important; line-height:1.2 !important; color:var(--fade) !important; }
 #detail .gtab.on, #detail .grest .gchip.on, body.bnav-on .panel .gchip.on, body.bnav-on .phead .gchip.on { color:#fff !important; }
+/* 10/28 (owner: "bold the game lines like the games above it and make games the same size as game lines"): the tabs carry ← Games' weight
+   (900 + the thin outline, in the plain font, not the narrow one), and ← Games takes the tabs' 12 px. Both sports. */
+#detail .back { font-size:12px !important; }
 /* 10/28 (owner: "make the sub tabs easier to read in bold ... why does it look squished"): the game page tabs and their sub tabs (and every page's
    chips) in the plain app font, bold (700, not the black 900 + outline that squeezed the letters), a size up, a little more letter room; the
    unselected ones faded but readable, the selected one white with its pink line. Both sports. */
@@ -306,7 +304,7 @@ body.bnav-on.game-on #detail .gtop .dtop { position:relative; top:0; }
 #detail .grest .hd.hm::after { content:""; position:absolute; left:0; right:0; bottom:0; height:6px; border-radius:3px; background:var(--pband); -webkit-backdrop-filter:blur(10px) saturate(1.3); backdrop-filter:blur(10px) saturate(1.3); }
 #detail .grest .hd.hm .ibtn { color:var(--violet,#b794ff); }
 /* everything else: 11 px, faded; coloured text keeps its colour; the model's answers regular weight */
-#detail .grest, #detail .grest .s, #detail .grest .mkt, #detail .grest .mlc, #detail .grest .modelcell, #detail .grest .lbw, #detail .grest .dim, #detail .grest .drow, #detail .grest .mkx, #detail .grest .ppr, #detail .grest .pbl, #detail .grest .ptb { font-size:11px; }
+#detail .grest, #detail .grest .s, #detail .grest .mkt, #detail .grest .mlc, #detail .grest .modelcell, #detail .grest .lbw, #detail .grest .dim, #detail .grest .drow, #detail .grest .ppr, #detail .grest .pbl, #detail .grest .ptb { font-size:11px; }
 #detail .grest .s, #detail .grest .mkt, #detail .grest .mlc, #detail .grest .modelcell, #detail .grest .lbw, #detail .grest .dim, #detail .grest summary { color:var(--fade); }
 #detail .grest .modelcell b { font-size:11px !important; font-weight:400; }
 #detail .grest .modelcell .g, #detail .grest .modelcell .lg, #detail .grest .modelcell .y, #detail .grest .modelcell .r { -webkit-text-stroke:0; }
@@ -323,17 +321,11 @@ body.bnav-on.game-on #detail .gtop .dtop { position:relative; top:0; }
 #detail .grest .card { margin-top:4px !important; padding-top:2px !important; padding-bottom:2px !important; }
 #detail .grest .card .hd:not(.hm) { margin-top:0 !important; margin-bottom:6px !important; }
 #detail .grest .gchips { margin:2px 0 4px; padding:0; }
-#detail .grest .mkx { border-top:0; }
 /* the bottom bar see-through and blurred (owner: "Make this see through but blurry") */
 .bnav { background:rgba(20,20,28,.28); -webkit-backdrop-filter:blur(14px) saturate(1.3); backdrop-filter:blur(14px) saturate(1.3); border:1px solid rgba(255,255,255,.14); }
 /* the scroll part fades in under the tabs instead of a hard cut */
 #detail .grest { -webkit-mask:linear-gradient(to bottom,transparent 0,#000 8px); mask:linear-gradient(to bottom,transparent 0,#000 8px); }
 /* other markets (halves, quarters, team totals, game props): the same rows -- 16 px lines, faded names, labels bold white, Polymarket blue prices regular weight */
-#detail .grest .mkx { padding:0; min-height:16px; line-height:16px; gap:10px; }
-#detail .grest .mkx > span:first-child { color:var(--fade); }
-#detail .grest .mkx .v { font-weight:400; }
-#detail .grest .mkx.mkh { margin-top:2px; } #detail .grest .mkx.mkh span { font-size:11px; font-weight:900; letter-spacing:.04em; color:#fff; -webkit-text-stroke:.3px currentColor; }
-#detail .grest .mkx.mkh .mkpm { width:14px; height:14px; }
 #detail .grest .mks { margin:8px 0 2px; }
 
 /* ===== 10/28 CLEAN LAYOUT on every page (owner: "make all these little corrections we made and make it consistent on every page"). Both sports.
@@ -354,8 +346,8 @@ body.bnav-on .panel .sec > .sh:first-child { position:static; margin-bottom:2px;
 body.bnav-on .panel .sec { position:relative; }
 /* every list row: 11 px; the name / label bold white capitals, the value faded; coloured text keeps its colour; no lines between rows */
 body.bnav-on .panel .row, body.bnav-on #models .row, body.bnav-on .panel .s, body.bnav-on .panel .drow, body.bnav-on .panel .ppr, body.bnav-on .panel .pbl, body.bnav-on .panel .ptb,
-body.bnav-on .panel .al .su, body.bnav-on .panel .mkx, body.bnav-on .mbhero .sub { font-size:11px !important; }
-body.bnav-on .panel .row, body.bnav-on #models .row, body.bnav-on .panel .drow, body.bnav-on .panel .bb, body.bnav-on .panel .ptb, body.bnav-on .panel .mkx, body.bnav-on .panel .pgrid > .par,
+body.bnav-on .panel .al .su, body.bnav-on .mbhero .sub { font-size:11px !important; }
+body.bnav-on .panel .row, body.bnav-on #models .row, body.bnav-on .panel .drow, body.bnav-on .panel .bb, body.bnav-on .panel .ptb, body.bnav-on .panel .pgrid > .par,
 html body .panel .card:not(.dtop) + .card:not(.dtop) { border-top:0 !important; border-bottom:0 !important; }
 body.bnav-on .panel .row, body.bnav-on #models .row { padding:2px 0 !important; line-height:16px; align-items:baseline; }
 body.bnav-on #models .row > span:first-child, body.bnav-on #models .row.trow > span:first-child, body.bnav-on .panel .mbtop .row > span:first-child, body.bnav-on .panel .sec > .row > span:first-child {
@@ -363,13 +355,12 @@ body.bnav-on #models .row > span:first-child, body.bnav-on #models .row.trow > s
 body.bnav-on #models .row > span:last-child, body.bnav-on #models .row.trow > span:not(:first-child), body.bnav-on .panel .mbtop .row > span:last-child, body.bnav-on .panel .sec > .row > span:last-child {
   font-size:11px !important; font-weight:400 !important; color:var(--fade); }
 body.bnav-on #models .row.trow .tsub { font-size:11px; font-weight:400; color:var(--fade); text-transform:none; -webkit-text-stroke:0; letter-spacing:0; }
-body.bnav-on #models .row.trow.th > span, body.bnav-on .panel .pph span, body.bnav-on .panel .ptb.pth span, body.bnav-on .panel .mkx.mkh span, body.bnav-on .panel .pteam, body.bnav-on .panel .pbh,
+body.bnav-on #models .row.trow.th > span, body.bnav-on .panel .pph span, body.bnav-on .panel .ptb.pth span, body.bnav-on .panel .pteam, body.bnav-on .panel .pbh,
 body.bnav-on .panel .stat .k, body.bnav-on .panel .al .kd > span:first-child {
   font-size:11px !important; font-weight:900 !important; letter-spacing:.04em !important; text-transform:uppercase; color:#fff !important; -webkit-text-stroke:.3px currentColor; }
 body.bnav-on .panel .ptb.pth .pt3, body.bnav-on .panel .pph .pp4 { color:#fff !important; }
 body.bnav-on .panel .s, body.bnav-on .panel .dim, body.bnav-on .panel .ptb .pt1, body.bnav-on .panel .ppr .pp1, body.bnav-on .panel .ppr .pp2, body.bnav-on .panel .pbl,
-body.bnav-on .panel .al .su, body.bnav-on .panel .mkx > span:first-child, body.bnav-on .mbhero .sub, body.bnav-on .panel .stat .k2 { color:var(--fade); }
-body.bnav-on .panel .mkx .v { font-weight:400; }
+body.bnav-on .panel .al .su, body.bnav-on .mbhero .sub, body.bnav-on .panel .stat .k2 { color:var(--fade); }
 /* the bets' and alerts' own titles: bold white, as written */
 body.bnav-on #record-mine .betwrap .row > span:first-child { font-size:11px !important; font-weight:900 !important; color:#fff !important; -webkit-text-stroke:.3px currentColor; text-transform:none; letter-spacing:.02em; }
 /* alerts (owner: "Only bold the title. Everything below it will have all the same consistent lettering"): the kind (LINE MOVE, INJURY) bold white; the line, the note, the game and the time 11 px faded, regular */

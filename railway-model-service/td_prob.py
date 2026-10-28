@@ -175,7 +175,7 @@ def add_backup(f, pg):
         rec |= np.array([L.get((t, w)) is not None and (L[(t, w)], w) not in played and p != L[(t, w)] for t, w, p in zip(f.team, f.week, f.pid)])
     return _mark_rec(f, pd.Series(rec, index=f.index))
 
-# Second-model inputs (10/9, idea_study.py / subset_study.py): opponent red-zone TD rate allowed to date, the team's run share
+# Second-model inputs (10/9, research scripts idea_study.py / subset_study.py, in git history): opponent red-zone TD rate allowed to date, the team's run share
 # inside the 5 to date, snap trend (last game minus last 3) and goal-line role (inside-5 carries vs all carries).
 GL_LG, RZ_K, GL_K = 0.55, 40, 10
 def _rz_def(p):
@@ -278,7 +278,7 @@ def add_flags(pg, season, prior):
     pg["depth_known"] = [int(v is not None) for v in dv]; pg["depth1"] = [0.5 if v is None else float(v) for v in dv]
     return pg
 # Opponent per-play defense (10/8): EPA allowed per run play (used for RBs) and per pass play (used for WR/TE), season to date, shrunk
-# toward 0 with 150 run / 200 pass plays. Walk-forward 2021-25 (td_signal_study.py): better than without in 4 of 5 seasons; the gain is
+# toward 0 with 150 run / 200 pass plays. Walk-forward 2021-25 (td_signal_study.py, in git history): better than without in 4 of 5 seasons; the gain is
 # small (~0.00001 Brier) but consistent, and it lets the model see how hard a defense is to run or throw on, not only its TDs allowed.
 DEF_SHRINK_RUN, DEF_SHRINK_PASS = 150, 200
 def def_epa_todate(pbp):
@@ -542,7 +542,7 @@ def is_out_name(short, outs):
 # inside-5 carries, rushing TDs, plus team implied points and the opponent's rush TDs allowed per game (shrunk 4 games to 0.55).
 # Walk-forward (train the 3 seasons before, test the next): Brier 2022 0.1243 vs 0.1341 flat, 2023 0.1288 vs 0.1415, 2024 0.1242 vs
 # 0.1362, 2025 0.1207 vs 0.1313 (4 of 4 better); said 13.4/24.1/36.3% vs 12.7/29.3/41.1% scored. Coefficients fit on 2023-25 starters
-# (qb_study.py reproduces them). The chance assumes he starts; Out/Doubtful QBs are skipped for the next QB with starts.
+# (qb_study.py in git history reproduces them). The chance assumes he starts; Out/Doubtful QBs are skipped for the next QB with starts.
 QB_F = ['r_car', 'r_rz', 'r_i5', 'r_rtd', 'imp', 'o_rush']
 # 10/8: QBs with no previous NFL season (rookies, first-time starters) are blended with an average starter's per-start rushing (3 starts'
 # worth, QB_LG from 2023-25) instead of trusting one or two starts. Walk-forward 2022-25: better overall in 3 of 4 seasons (2025 slightly

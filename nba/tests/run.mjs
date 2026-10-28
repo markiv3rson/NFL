@@ -208,9 +208,9 @@ const mk = (away, home, over = {}) => ({ key: `${away} @ ${home}`, away, home, d
 
 // ---------- which environment variable holds the Redis address
 ok(redisUrl({}) === null && redisUrl({ NBA_REDIS_URL: "not a url" }) === null, "no NBA Redis address -> in-memory stand-in");
-ok(redisUrl({ NBA_REDIS_URL: " rediss://default:pw@host:6379 " }) === "rediss://default:pw@host:6379", "merged site (10/17): NBA reads NBA_REDIS_URL");
+ok(redisUrl({ NBA_DB_URL_REDIS_URL: " rediss://default:pw@host:6379 " }) === "rediss://default:pw@host:6379" && redisUrl({ NBA_REDIS_URL: "redis://old:2" }) === null, "10/28: NBA reads only the shared database's NBA_DB_URL_REDIS_URL (the old NBA_REDIS_URL database was deleted)");
 ok(redisUrl({ UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://a:1", REDIS_URL: "redis://b:2", KV_URL: "redis://c:3" }) === null, "the NFL database's variables are NEVER used by NBA (separate databases)");
-ok(redisUrl({ NBA_DB_URL_REDIS_URL: "redis://new:1", NBA_REDIS_URL: "redis://old:2" }) === "redis://new:1", "10/28: the shared paid database comes first, the old NBA one is only the fallback");
+
 { const { withPrefix, sharedDb } = await import("../lib/redis.js"), RM = (await import("ioredis-mock")).default, m = new RM({ host: "shared-db", port: 7010 });
   await m.set("nba:alerts", "1"); await m.set("nba:pick:2026-10-28:A @ B:ml", "2"); await m.set("alerts", "nfl"); await m.set("stack:2026:8", "nfl");
   const w = withPrefix(m); let c = "0", ks = []; do { const [n, k] = await w.scan(c, "MATCH", "*", "COUNT", 50); c = n; ks.push(...k); } while (c !== "0");
