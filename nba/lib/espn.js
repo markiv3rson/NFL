@@ -53,11 +53,14 @@ export async function boxFor(dateYMD, { timeoutMs = 15000 } = {}) {
   const d = String(dateYMD).replace(/-/g, ""), base = process.env.ESPN_NBA_BASE || "https://site.api.espn.com/apis/site/v2/sports/basketball/nba";
   const sb = await fetch(`${base}/scoreboard?dates=${d}`, { headers: { Accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(timeoutMs) });
   if (!sb.ok) throw new Error(`${sb.status} on scoreboard`);
-  const out = {};
-  for (const ev of ((await sb.json()).events) || []) {
-    const st = ev.status && ev.status.type; if (!st || !st.completed) continue;
+  // 10/28: the games' summaries are fetched together, not one after another -- with 8 re-checks over 7 days the nightly grade reads up to 7 days of
+  // boxes, and one-by-one calls (~0.3 s each, ~10 games a day) could run past the route's 60 s
+  const out = {}, done = (((await sb.json()).events) || []).filter((ev) => ev.status && ev.status.type && ev.status.type.completed);
+  await Promise.all(done.map(async (ev) => {
     try { const r = await fetch(`${base}/summary?event=${ev.id}`, { headers: { Accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(timeoutMs) });
-      if (!r.ok) continue; const b = parseBox(await r.json()); if (b) out[b.key] = b; } catch {}
-  }
+      if (!r.ok) return; const b = parseBox(await r.json()); if (b) out[b.key] = b; } catch {}
+  }));
   return out;
 }
+// 10/28: one read of a day's box scores serves both the prop rows and the parlays' prop legs in the same run
+export const sharedBox = (fetchBox = boxFor) => { const seen = {}; return (d) => (seen[d] = seen[d] || fetchBox(d).catch((e) => { delete seen[d]; throw e; })); };

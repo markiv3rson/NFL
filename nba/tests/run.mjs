@@ -1085,14 +1085,31 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
     const g6 = await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2027-01-04T10:00:00Z"), fetchBox: async () => { throw new Error("no fourth look"); } });
     const r6 = JSON.parse(await R.hget(pr.K_NBAPROPRES("2026-12-30"), "BOS @ DET"));
     ok(g4 === 1 && r4.rechecks === 2 && r4.picks.find((p) => p.name === "Cade Cunningham").result === "L" && g5 === 1 && g6 === 0 && r6.rechecks === 3 && r6.fixed === 3 && pr.recheckCount({ rechecked: "x" }) === 1 && pr.RECHECKS === 8 && !pr.recheckDue({ rechecks: 8, checkedAt: "2000-01-01T00:00:00Z" }, Date.now(), "2000-01-01T00:00:00Z"),
-      "NBA props re-check: looks 6 h after the grade, then every 20 h (a failed look writes nothing), each correction re-grades the rows; an old `rechecked` row counts as 1", { g4, g5, g6, r6 }); }
+      "NBA props re-check: looks 6 h after the grade, then every 20 h (a failed look writes nothing), each correction re-grades the rows; an old `rechecked` row counts as 1", { g4, g5, g6, r6 }); 
+  // 10/28: ?do=regradeprops forces a look now (ESPN fixed 10/23-25 boxes after the rows' last look): not due by the clock, still re-graded, counted
+  { const R0 = JSON.parse(await R.hget(pr.K_NBAPROPRES("2026-12-30"), "BOS @ DET"));
+    const nf = await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse(R0.checkedAt) + 3600e3, fetchBox: async () => { throw new Error("not due"); } });
+    const gf = await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse(R0.checkedAt) + 3600e3, fetchBox: async () => box2, force: true });
+    const R1 = JSON.parse(await R.hget(pr.K_NBAPROPRES("2026-12-30"), "BOS @ DET"));
+    ok(nf === 0 && gf === 1 && R1.rechecks === R0.rechecks + 1 && R1.picks.find((p) => p.name === "Cade Cunningham").result === "L" && pr.recheckDue({ rechecks: 8, checkedAt: new Date().toISOString() }, Date.now(), null, true),
+      "NBA props forced re-check (10/28): a row looked at 1 h ago is not due by the clock, but a forced look re-grades it now and counts", { nf, gf, R1 }); }
+  }
+  // 10/28: one box read per day shared by props + parlays; a failed read is retried next time; boxFor asks for the games' summaries together
+  { const es28 = await import("../lib/espn.js"); let calls = 0; const sb = es28.sharedBox(async (d) => { calls++; if (d === "bad" && calls < 3) throw new Error("x"); return { d }; });
+    const a1 = await sb("2026-10-23"), a2 = await sb("2026-10-23"); let e1 = null; try { await sb("bad"); } catch (e) { e1 = e; } const a3 = await sb("bad");
+    const of = globalThis.fetch; let open = 0, peak = 0;
+    globalThis.fetch = async (u) => { if (/scoreboard/.test(u)) return { ok: true, json: async () => ({ events: [1, 2, 3, 4].map((i) => ({ id: String(i), status: { type: { completed: i !== 4 } } })) }) };
+      open++; peak = Math.max(peak, open); await new Promise((r) => setTimeout(r, 20)); open--; const id = u.match(/event=(\d)/)[1];
+      return { ok: true, json: async () => ({ header: { competitions: [{ status: { type: { completed: true } }, competitors: [{ homeAway: "away", team: { abbreviation: ["BOS", "MIA", "LAL", "DAL"][id - 1] } }, { homeAway: "home", team: { abbreviation: ["NY", "ORL", "GS", "IND"][id - 1] } }] }] }, boxscore: { players: [] } }) }; };
+    let bx; try { bx = await es28.boxFor("2026-10-23"); } finally { globalThis.fetch = of; }
+    ok(a1 === a2 && calls >= 2 && e1 && a3.d === "bad" && Object.keys(bx).length === 3 && peak === 3, "NBA box scores (10/28): one read per day shared in a run, a failed read retried; the finished games' summaries fetched together (unfinished left out)", { calls, peak, keys: Object.keys(bx) }); }
   // ESPN box parse (the real summary shape): 3PT "1-3" = 1 made, a DNP is left out, the key from the header
   const b = parseBox({ header: { competitions: [{ status: { type: { completed: true } }, competitors: [{ homeAway: "away", team: { abbreviation: "MIA" } }, { homeAway: "home", team: { abbreviation: "ORL" } }] }] },
     boxscore: { players: [{ team: { abbreviation: "MIA" }, statistics: [{ names: ["MIN", "PTS", "FG", "3PT", "FT", "REB", "AST", "TO", "STL", "BLK", "OREB", "DREB", "PF", "+/-"], athletes: [{ athlete: { displayName: "Andrew Wiggins Jr." }, stats: ["15", "13", "4-7", "1-3", "4-5", "2", "1", "0", "2", "0", "0", "2", "2", "-1"] }, { athlete: { displayName: "Nobody Played" }, didNotPlay: true, stats: [] }] }] }] } });
   ok(b && b.key === "MIA @ ORL" && b.final && Object.keys(b.players).length === 1 && b.players["andrew wiggins"].pts === 13 && b.players["andrew wiggins"]["3pm"] === 1 && b.players["andrew wiggins"].pra === 16 && b.players["andrew wiggins"].stl === 2, "ESPN box: player stats by normalized name (Jr. dropped), threes from '1-3', a DNP left out", b);
   for (const k of await R.keys("nbaprop*2026-12-30*")) await R.del(k);
   const api = readFileSync(new URL("../../pages/api/nba/props.js", import.meta.url), "utf8"), snap = readFileSync(new URL("../../pages/api/nba/snapshot.js", import.meta.url), "utf8"), gr = readFileSync(new URL("../../pages/api/nba/results/grade.js", import.meta.url), "utf8");
-  ok(/nbaPropsForDay\(date\)/.test(api) && /scoreNbaProps\(data\.games\)/.test(snap) && /gradeNbaProps\(\)/.test(gr), "NBA props: /api/nba/props serves the day; the snapshot scores; the grade run grades");
+  ok(/nbaPropsForDay\(date\)/.test(api) && /scoreNbaProps\(data\.games\)/.test(snap) && /gradeNbaProps\(\{ fetchBox: box \}\)/.test(gr) && /gradeParlays\(finalsFor, box\)/.test(gr) && /const box = sharedBox\(\)/.test(gr), "NBA props: /api/nba/props serves the day; the snapshot scores; the grade run grades (props and parlay legs share one box read per day, 10/28)");
   const ap = readFileSync(new URL("../../nba/railway-model-service/app.py", import.meta.url), "utf8"), sch = readFileSync(new URL("../../nba/railway-model-service/scheduler.py", import.meta.url), "utf8");
   ok(/@app\.route\("\/prop-probs", methods=\["POST"\]\)/.test(ap) && /nba_prop_model\.chances_many/.test(ap) && /PROPS_ON_START/.test(ap) && /jobs\.append\(\("props", _props\)\)/.test(sch), "NBA service: /prop-probs route, background build when missing, daily 4:20 AM refit"); }
 { // 10/21 (owner): Props Parlays 6 / 8 / 10 legs ($5), the 65% bar, the 77c+ and star-out shadow trackers
@@ -1142,6 +1159,11 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
     await pl.gradeParlays(async () => ({}), async () => box, Date.now() + 28 * 3600e3); const g9 = JSON.parse(await R.get(k));
     ok(g8.rechecks === 1 && g8.legs.find((l) => l.name === "Foxtrot").result === "W" && g9.rechecks === 2 && g9.legs.find((l) => l.name === "Foxtrot").result === "L" && g9.result === "L" && g9.ret === -5,
       "Props Parlays re-check (10/26): not again within 20 h; the next look re-grades the legs again (a correction back to 4 pts loses the parlay)", { g8, g9 }); }
+  { const g9 = JSON.parse(await R.get(k)), corr = async () => ({ ...box, "BOS @ NYK": { final: true, players: { ...players2, foxtrot: { pts: 30 } } }, "LAL @ GSW": { final: true, players: { ...players2, foxtrot: { pts: 30 } } } });
+    await pl.gradeParlays(async () => ({}), corr, Date.now() + 29 * 3600e3, { date: "1999-01-01", force: true }); const gA = JSON.parse(await R.get(k));
+    await pl.gradeParlays(async () => ({}), corr, Date.now() + 29 * 3600e3, { force: true }); const gB = JSON.parse(await R.get(k));
+    ok(gA.rechecks === g9.rechecks && gB.rechecks === g9.rechecks + 1 && gB.legs.find((l) => l.name === "Foxtrot").result === "W" && gB.result === "W",
+      "Props Parlays forced re-check (10/28): another day's force leaves it alone; a forced look 1 h after the last re-grades the legs now (Foxtrot 30 pts = W, the parlay wins)", { gA, gB }); }
   ok(!g1.rechecked && g1.result === "L" && g2.rechecked && g2.fixed >= 1 && fx.result === "W" && fx.actual === 30 && g2.result === (g2.legs.some((l) => l.result === "L") ? "L" : "W") && (g2.result !== "W" || g2.ret > 0),
     "Props Parlays re-check (10/23): not before 6 h; then the prop legs are re-graded from the corrected box (Foxtrot 4 -> 30 pts = W) and the parlay result / money follow", g2);
   await R.del(k); await R.srem("parlay:ids", k);

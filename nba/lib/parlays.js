@@ -152,8 +152,8 @@ export function gradeLeg(l, away, home, f) {
 // the prop rows were re-checked once 6+ h after grading (props.js RECHECK_H) but the SAME legs inside the parlays were not -- a decided parlay with
 // prop legs is now re-graded once too (`rechecked`), its result and money follow the corrected legs.
 // 10/26: up to 3 times (6 h after the grade, then every 20 h), the same schedule as the prop rows (props.js recheckDue)
-const parlayRecheckDue = (p, now) => p.result && Array.isArray(p.legs) && p.legs.some((l) => l.market === "prop")
-  && recheckDue(p, now, p.gradedAt || new Date(Date.parse(p.date + "T12:00:00Z") + 30 * 3600e3).toISOString())
+const parlayRecheckDue = (p, now, force = false) => p.result && Array.isArray(p.legs) && p.legs.some((l) => l.market === "prop")
+  && recheckDue(p, now, p.gradedAt || new Date(Date.parse(p.date + "T12:00:00Z") + 30 * 3600e3).toISOString(), force)
   && now - Date.parse(p.date + "T12:00:00Z") <= (RECHECK_DAYS + 1) * 86400e3;
 function settle(p) {
   const res = p.legs.map((l) => l.result); let out = null;
@@ -163,11 +163,11 @@ function settle(p) {
   p.result = out; p.ret = out === "W" ? (pay != null ? Math.round(p.stake * (pay - 1) * 100) / 100 : null) : out === "L" ? -p.stake : 0;
   return true;
 }
-export async function gradeParlays(fetchFinals, fetchBox = boxFor, now = Date.now()) {
+export async function gradeParlays(fetchFinals, fetchBox = boxFor, now = Date.now(), { force = false, date = null } = {}) {
   const r = getRedis(), byDate = {}, again = {}; let n = 0;
   for (const p of await loadParlays()) {
     if (!p.result && Array.isArray(p.legs)) (byDate[p.date] = byDate[p.date] || []).push(p);
-    else if (parlayRecheckDue(p, now)) (again[p.date] = again[p.date] || []).push(p);
+    else if ((!date || p.date === date) && parlayRecheckDue(p, now, force)) (again[p.date] = again[p.date] || []).push(p);
   }
   for (const [date, list] of Object.entries(again)) {
     let box; try { box = await fetchBox(date); } catch { continue; }
