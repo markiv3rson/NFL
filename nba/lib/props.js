@@ -207,12 +207,13 @@ export const RECHECK_H = 6;
 // every 20+ h for the whole 7-day window (8 in all), not 3
 export const RECHECKS = 8, RECHECK_GAP_H = 20, RECHECK_DAYS = 7;
 export const recheckCount = (x) => x.rechecks ?? (x.rechecked ? 1 : 0);
-export const recheckDue = (x, now, gradedAt) => { const c = recheckCount(x); if (c >= RECHECKS) return false;
+// force (admin ?do=regradeprops, 10/28): look again now, whatever the count / gap -- ESPN fixed 10/23-25 boxes after the rows' last look
+export const recheckDue = (x, now, gradedAt, force = false) => { if (force) return true; const c = recheckCount(x); if (c >= RECHECKS) return false;
   const since = c ? Date.parse(x.checkedAt || x.rechecked || 0) : Date.parse(gradedAt || 0);
   return now - since >= (c ? RECHECK_GAP_H : RECHECK_H) * 3600e3; };
 export const gradeProp = (p, b) => { const s = b.players[normName(p.name)], v = s ? Number(s[p.stat] ?? 0) : null;
   return { actual: v, played: !!s, result: v == null ? "P" : (p.side === "over" ? v > p.line : v < p.line) ? "W" : "L" }; };
-export async function gradeNbaProps({ dates = null, now = Date.now(), fetchBox = boxFor } = {}) {
+export async function gradeNbaProps({ dates = null, now = Date.now(), fetchBox = boxFor, force = false } = {}) {
   const r = getRedis(), today = etDate(new Date(now).toISOString());
   const days = dates || (await nbaPropDays()).filter((d) => d <= today && Date.parse(today) - Date.parse(d) <= RECHECK_DAYS * 86400e3);
   let n = 0;
@@ -221,7 +222,7 @@ export async function gradeNbaProps({ dates = null, now = Date.now(), fetchBox =
     const done = await r.hgetall(rk).catch(() => ({})) || {}, left = keys.filter((k) => !done[k]);
     // 10/21 review: ESPN corrects box scores after the final (OKC @ SAS 10/20: J.McCain 3 -> 2 rebounds, A.Caruso 7 -> 6 rebounds / 2 -> 1 steals,
     // which flipped a graded Under 2.5 from L to W) -- a graded game is looked at ONCE more, 6+ hours after its grade, and its saved rows re-graded.
-    const again = keys.filter((k) => { if (!done[k]) return false; let x; try { x = JSON.parse(done[k]); } catch { return false; } return recheckDue(x, now, x.t); });
+    const again = keys.filter((k) => { if (!done[k]) return false; let x; try { x = JSON.parse(done[k]); } catch { return false; } return recheckDue(x, now, x.t, force); });
     if (!left.length && !again.length) continue;
     let box; try { box = await fetchBox(d); } catch { continue; }
     for (const key of again) {
