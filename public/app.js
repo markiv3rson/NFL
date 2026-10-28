@@ -130,7 +130,7 @@ function leanCell(g, kind) {
   // One answer per card (10/9): the model's number, then the ONE pick the decision layer chose for this market (best tested win rate,
   // 56%+), and why. When the pick goes against the model, it says so in plain words. No pick -> "No pick".
   const m = g.model; if (!m || m.homeMargin == null || m.total == null) return wrap(dash);
-  const adj = injLine(g, kind), isTot = (x) => /^(Over|Under)\b/.test(x);
+  const isTot = (x) => /^(Over|Under)\b/.test(x);   // 10/28 (owner: "Remove the lines and injury warnings"): the red Injuries line under the model is gone (injLine stays for the reason box data)
   // Upgraded model (10/9) when the slate has it: the game model corrected with everything else known before kickoff.
   const U = g.modelUp, LN = g.lineNow || {}, mm = U ? U.margin : m.homeMargin, mt = U ? U.total : m.total;
   const mline = kind === "total" ? `<span class="lbw">Model:</span> <b class="mod">${mt.toFixed(1)}</b>` : `<span class="lbw">Model:</span> <b class="mod">${mm >= 0 ? g.home : g.away} by ${Math.abs(mm).toFixed(1)}</b>`;
@@ -177,7 +177,6 @@ function leanCell(g, kind) {
   const MLc = kind === "spread" ? (!g.started && !g.final ? g.card && g.card.ml && g.card.ml.plain : g.lockedPicks && g.lockedPicks.ml) : null;
   const mlLine = MLc ? `<div style="margin-top:4px"><b class="${clsOf(MLc.hit)}" style="font-size:13px;white-space:nowrap"><span class="lbw">ML pick:</span> ${esc(MLc.pick)} · ${hitTxt(MLc.hit, clsOf(MLc.hit))}</b>${MLc.result === "W" ? ' · <span class="g">W</span>' : MLc.result === "L" ? ' · <span class="r">L</span>' : MLc.result === "P" ? " · push" : ""}</div>` : "";
   return wrap(`<div class="s">${mline}</div>${tline}${sline}` + body + mlLine + 
-    (adj ? `<div class="s r" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">${injBadgeFor(g)}${esc(adj)}</div>` : "") +
     (p && p.warn && !g.final ? `<div class="s y">${esc(p.warn)}</div>` : ""));   // e.g. QB change the model can't see
 }
 // 10/16 (owner): a finished card turns GREEN when the PICK locked at kickoff won, red when it lost ("won" / "lost" / "" when there was no pick)
@@ -234,17 +233,23 @@ function moveBits(g) {
   return bits;
 }
 const moveLines = (bits) => (bits.length ? `<div class="mvt">${bits.map((b) => `<span>${esc(b)}</span>`).join("")}</div>` : "");
+// 10/28 (owner's sketch, "make it consistent"): SPORTSBOOK | POLYMARKET side by side with the SAME rows -- SPREAD (one team per line) then
+// MONEYLINE on the spread card, OVER / UNDER on the totals card -- each sportsbook row on the same line as its Polymarket row (grid cells in
+// pairs); no MARKET word (a blurred band in its place), no fair line
+const mrow = (k, v, c) => `<div class="prl"><span class="s">${k}</span><span class="${c}">${v}</span></div>`;
+const mkGrid = (cells) => `<div class="mk mk3">${cells.map((c) => `<div>${c}</div>`).join("")}</div>`;
 function gameCard(g, i) {
   {
     const lv = liveFor(g), p = (lv && lv.poly) || g.poly || {}, b = g.books || {};   // live numbers for a game in progress; model and kickoff line stay locked
-    const row = (k, v, mt, c) => `<div class="prl${mt ? " mt" : ""}"><span class="s">${k}</span><span class="${c || ""}">${v}</span></div>`;
-    const poly = liveHead(g, lv) + (p.spread || p.ml ?
-      (p.spread ? row("Spread", `${g.home} ${sgn(p.spread.homeSpread)} ${odds(toAmerican(p.spread.home))}`, false, "mkt") + row("", `${g.away} ${sgn(-p.spread.homeSpread)} ${odds(toAmerican(p.spread.away))}`, false, "mkt") : "") +
-      (p.ml ? row("Moneyline", `${g.home} ${odds(toAmerican(p.ml.home))}`, !!p.spread, "mlc") + row("", `${g.away} ${odds(toAmerican(p.ml.away))}`, false, "mlc") : "") : dash) + liveTail(g, lv);
-    return secRow("SPREAD &amp; ML", headPills(g, "l" + i)) + `<div class="card${g.final ? " fin " + finClass(g, "spread") : ""}" style="margin-top:10px"><div class="inner">${headDrops(g, "l" + i)}<div class="hd">MARKET</div><div class="mk">` +
-      `<div><div class="k">SPORTSBOOK</div>${b.spread ? `${g.home} ${sgn(b.spread.homeSpread)} ${odds(b.spread.home.odds)}<div class="s">fair ${g.home} ${odds(toAmerican(b.spread.home.fair))} / ${g.away} ${odds(toAmerican(b.spread.away.fair))}</div>` : dash}</div>` +
-      `<div>${pmHead(g, lv)}${poly}</div>` +
-      `</div><div class="hd hm ihd">MODEL${IBTN}</div>${whyBox(g, "spread", MODEL_INFO.spread)}` + leanCell(g, "spread") +
+    const sp = (hs, ho, ao) => mrow("Spread", `${g.home} ${sgn(hs)} ${ho}`, "mkt") + mrow("", `${g.away} ${sgn(-hs)} ${ao}`, "mkt");
+    const ml = (ho, ao) => mrow("Moneyline", `${g.home} ${ho}`, "mlc") + mrow("", `${g.away} ${ao}`, "mlc");
+    const bSp = b.spread ? sp(b.spread.homeSpread, odds(b.spread.home.odds), odds(b.spread.away.odds)) : mrow("Spread", "—", "mkt");
+    const bMl = b.ml && b.ml.home && b.ml.away ? ml(odds(b.ml.home.odds), odds(b.ml.away.odds)) : mrow("Moneyline", "—", "mlc");
+    const pSp = p.spread ? sp(p.spread.homeSpread, odds(toAmerican(p.spread.home)), odds(toAmerican(p.spread.away))) : mrow("Spread", "—", "mkt");
+    const pMl = p.ml ? ml(odds(toAmerican(p.ml.home)), odds(toAmerican(p.ml.away))) : mrow("Moneyline", "—", "mlc");
+    return secRow("SPREAD &amp; ML", headPills(g, "l" + i)) + `<div class="card${g.final ? " fin " + finClass(g, "spread") : ""}" style="margin-top:10px"><div class="inner">${headDrops(g, "l" + i)}<div class="bband"></div>` +
+      mkGrid([`<div class="k">SPORTSBOOK</div>`, pmHead(g, lv), bSp, pSp, bMl, pMl]) + liveHead(g, lv) + liveTail(g, lv) +
+      `<div class="hd hm ihd">MODEL${IBTN}</div>${whyBox(g, "spread", MODEL_INFO.spread)}` + leanCell(g, "spread") +
       `</div>${cover(g, "spread")}</div>`;
   }
 }
@@ -252,15 +257,12 @@ function gameCard(g, i) {
 function totalCard(g, i) {
   {
     const lv = liveFor(g), p = (lv && lv.poly) || g.poly || {}, b = g.books || {};
-    const row = (k, v) => `<div class="prl"><span class="s">${k}</span><span class="mkt">${v}</span></div>`;
-    const poly = liveHead(g, lv, "total") + (p.total ? row(`Over ${p.total.line}`, odds(toAmerican(p.total.over))) + row(`Under ${p.total.line}`, odds(toAmerican(p.total.under))) : dash) + liveTail(g, lv, "total");
-    // Tested angle (10/1): outdoor games with 12+ mph wind went Under the closing total 56.1% of the time, 2007-25 (786 games), and it
-    // beat break-even in all three periods (53.7 / 58.1 / 56.7%). The slope is real too: each mph takes ~0.18 pts off what the line allows for.
-    // Model first (10/6): when the model leans Over, the angle is left off the card (the model already counts the wind); it is still tracked in Models.
-    return secRow("TOTALS", headPills(g, "t" + i, true)) + `<div class="card${g.final ? " fin " + finClass(g, "total") : ""}" style="margin-top:10px"><div class="inner">${headDrops(g, "t" + i, true)}<div class="hd">MARKET</div><div class="mk">` +
-      `<div><div class="k">SPORTSBOOK</div>${b.total ? `${b.total.line}<div class="s">O ${odds(b.total.over.odds)} · U ${odds(b.total.under.odds)}</div>` : dash}</div>` +
-      `<div>${pmHead(g, lv, "total")}${poly}</div>` +
-      `</div><div class="hd hm ihd">MODEL${IBTN}</div>${whyBox(g, "total", MODEL_INFO.total)}` + leanCell(g, "total") +
+    const ou = (ln, o, u) => mrow(`Over ${ln}`, o, "mkt") + mrow(`Under ${ln}`, u, "mkt");
+    const bT = b.total ? ou(b.total.line, odds(b.total.over.odds), odds(b.total.under.odds)) : mrow("Total", "—", "mkt");
+    const pT = p.total ? ou(p.total.line, odds(toAmerican(p.total.over)), odds(toAmerican(p.total.under))) : mrow("Total", "—", "mkt");
+    return secRow("TOTALS", headPills(g, "t" + i, true)) + `<div class="card${g.final ? " fin " + finClass(g, "total") : ""}" style="margin-top:10px"><div class="inner">${headDrops(g, "t" + i, true)}<div class="bband"></div>` +
+      mkGrid([`<div class="k">SPORTSBOOK</div>`, pmHead(g, lv, "total"), bT, pT]) + liveHead(g, lv, "total") + liveTail(g, lv, "total") +
+      `<div class="hd hm ihd">MODEL${IBTN}</div>${whyBox(g, "total", MODEL_INFO.total)}` + leanCell(g, "total") +
       `</div>${cover(g, "total")}</div>`;
   }
 }
@@ -621,12 +623,14 @@ function renderMineNow() {
   // open bets and stake on one line under it; then Best bets, Parlay of the week, Return · CLV as plain rows
   const hero = `<div class="mbhero"><span class="lbl">Profit · ${sel === "all" ? "this season" : "Week " + sel}</span><b>${cMoney(s.pl)}</b>` +
     `<span class="sub"><span class="${recCls}">${tot ? `${s.wins}–${s.losses}` : "0–0"}</span> · ${past ? `${shown.length} bet${shown.length === 1 ? "" : "s"}` : `${nOpen} open · ${money(s.openCost)} staked`}</span></div>`;
-  const top = hero + `<div class="card mbtop"><div class="sec">${T.rows}` +
+  // 10/28 (owner: "Don't make this part scroll up and make it into a card with like 20% opacity"): the profit, its line and the top rows are one see-through
+  // card that stays put under the page title (.mbpin, Shell.pinTop); the lists they open sit under it
+  const top = `<div class="mbpin">` + hero + `<div class="card mbtop"><div class="sec">${T.rows}` +
     `<div class="row"><span class="dim">Return · CLV</span><span>${cPct(s.roi)} · ${cPct(s.avgClv)}</span></div>` +
     (() => { const sc = MB.summary && MB.summary.settleCheck; if (!sc || !(sc.agree + sc.disagree)) return "";
       return sc.disagree ? `<div class="s y">⚠ Settlement mismatch on ${sc.disagree} combo${sc.disagree === 1 ? "" : "s"}</div>`
         : ""; })() +
-    `</div></div>` + T.drops;
+    `</div></div></div>` + T.drops;
   $("record-mine").innerHTML = ddSlot($("record-mine"), wkChips) + top + `<div class="card" style="margin-top:10px">` +
     (past || !open.length ? "" : openBySlot(open) +
     `<div class="sec"><div class="sh">Expected returns</div>` +
@@ -639,6 +643,7 @@ function renderMineNow() {
     `</div>` +
     `<div class="center"><button class="btn" id="sync-btn">↻ Sync account</button></div>`;
   $("sync-btn").onclick = () => loadRecord(true);
+  if (typeof Shell !== "undefined" && Shell.pinTop && $("record-mine").querySelector) Shell.pinTop($("record-mine").querySelector(".mbpin"));
   const mw = $("mb-wk"); if (mw) mw.onchange = () => { MBWEEK = mw.value === "all" ? "all" : Number(mw.value); renderMine(); };
 }
 // 10/18 (owner): a Results page under Bets was built and deleted the same day; RESULT lines are no longer saved (CLEANUP 10/18).
@@ -799,7 +804,7 @@ function renderModelNow() {
     ["Model service (Railway)", st.railway ? (st.railway.ok ? `answering · ${st.railway.ms} ms` : `<span class="r">NOT answering${st.railway.code ? " (HTTP " + st.railway.code + ")" : st.railway.err ? " (" + esc(st.railway.err) + ")" : ""}</span>`) : "—"],
     ["Database used", st.usedMb != null ? `${st.usedMb.toFixed(1)} of ${st.capMb} MB` : "—"],
     ["Sportsbook credits left", st.creditWarning ? `<span class="y">${st.credits ?? "—"}</span>` : (st.credits ?? "—")],
-  ].map(([a, b]) => `<div class="row"${/<div/.test(String(b)) ? ' style="grid-column:1/-1"' : ""}><span class="dim">${a}</span><span>${b}</span></div>`).join("") +
+  ].map(([a, b]) => `<div class="row"${/<div/.test(String(b)) ? ' style="grid-column:1/-1"' : ""}><span class="dim">${a}</span><span>${dateLast(b)}</span></div>`).join("") +
     (st.creditWarning ? `<div class="s y">⚠ ${esc(st.creditWarning)}</div>` : "") +
     "" : "";
   GBG_RES = res; const games = gbgHtml();
@@ -841,6 +846,9 @@ function paint(html) {
 }
 function paintBox(el) { if (el) el.innerHTML = paint(el.innerHTML); }
 // What ESPN said about kickoff times on the last check (10/8): which games it moved, or why the check failed.
+// 10/28 (owner: "If there's a time and date. Put it last"): a System line that starts with a date / time ("Mon, 10/26, 5:40 PM · ...") gets the date moved to its end
+const dateLast = (v) => { const one = (x) => { const m = /^((?:[A-Za-z]{3}, )?\d{1,2}\/\d{1,2},? \d{1,2}:\d{2}\s?[AP]M) · ([\s\S]+)$/.exec(x); return m ? `${m[2]} · ${m[1]}` : x; };
+  const s = String(v); return /<div/.test(s) ? s.replace(/(<div[^>]*>)([\s\S]*?)(<\/div>)/g, (_, a, b, c) => a + one(b) + c) : one(s); };
 function kickLine(k) {
   if (!k) return '<span class="dim">not run yet</span>';
   if (!k.ok) return `<span class="r">${hm(k.t)} · failed: ${esc(k.error || "")}</span>`;
@@ -1087,7 +1095,7 @@ function detailTop(g) {
   const hp = mktHome(g), ap = hp == null ? null : Math.round(100 - hp), hr = ap == null ? null : 100 - ap;
   const st = g.final ? `Final ${g.awayScore != null && g.homeScore != null ? `${g.awayScore}–${g.homeScore}` : ""}` : g.started ? '<span class="r">● LIVE</span>' : startsIn(g);
   const ca = TEAM_COLOR[g.away] || "#444", ch = TEAM_COLOR[g.home] || "#444";
-  return `<div class="card dtop" style="background:linear-gradient(90deg,${ca}40 0%,${ca}14 50%,${ch}14 50%,${ch}40 100%),var(--card)"><img class="dwm l" src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img class="dwm r" src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'"><div class="inner"><div class="nm"><span class="t">${tlogo(g.away)}${g.away}${recOf(g, g.away)}</span><div class="mid">${g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : ""}${dsc ? `<div class="s2"><b>${dsc.a} – ${dsc.h}</b></div><div class="s3 r">${dsc.st === "post" ? "FINAL" : "● LIVE · " + esc(dsc.lbl)}</div>` : `<div class="s2">${tm(g.kickoff)}</div><div class="s3">${st}</div>`}</div><span class="t hm">${g.home}${tlogo(g.home)}${recOf(g, g.home)}</span></div>` +
+  return `<div class="card dtop" style="background:linear-gradient(90deg,${ca}40 0%,${ca}14 50%,${ch}14 50%,${ch}40 100%),var(--card)"><img class="dwm l" src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img class="dwm r" src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'"><div class="inner"><div class="nm"><span class="t">${g.away}${recOf(g, g.away)}</span><div class="mid">${g.badge ? `<span class="chip c-amb">${esc(g.badge)}</span>` : ""}${dsc ? `<div class="s2"><b>${dsc.a} – ${dsc.h}</b></div><div class="s3 r">${dsc.st === "post" ? "FINAL" : "● LIVE · " + esc(dsc.lbl)}</div>` : `<div class="s2">${tm(g.kickoff)}</div><div class="s3">${st}</div>`}</div><span class="t hm">${g.home}${recOf(g, g.home)}</span></div>` +
     (hp == null || g.final ? "" : `<div class="wc"><div class="wl"><b class="mkt">${ap}%</b><span class="mkt">MARKET’S WIN CHANCE</span><span class="dim">${hr}%</span></div><div class="bar"><i style="width:${ap}%"></i></div></div>`) + `</div></div>`;
 }
 // page background on a game page only: team colors in halves with the split logos (away left, home right)
@@ -1097,7 +1105,9 @@ function setBg(g) {
   const k = g.away + g.home; if (el.dataset.k === k) return; el.dataset.k = k;
   const ca = TEAM_COLOR[g.away] || "#444", ch = TEAM_COLOR[g.home] || "#444";
   el.style.background = `linear-gradient(90deg, ${ca}3d 0%, ${ca}1f 50%, ${ch}1f 50%, ${ch}3d 100%)`;
-  el.innerHTML = `<img src="${logoUrl(g.away)}" alt="" onerror="this.style.display='none'"><img src="${logoUrl(g.home)}" alt="" onerror="this.style.display='none'">`;
+  // 10/28 (owner: "add the helmets here in the background instead of the logo"): each team's helmet (perthirtysix's matchup helmets, public/helmets),
+  // the away helmet facing right on the left, the home one facing left on the right; centered between the pinned top and the bottom of the screen (pinGame)
+  el.innerHTML = `<img class="hlm" src="/helmets/right/${g.away}.webp" alt="" onerror="this.src='${logoUrl(g.away)}'"><img class="hlm" src="/helmets/left/${g.home}.webp" alt="" onerror="this.src='${logoUrl(g.home)}'">`;
 }
 // 10/15 (owner): every parlay is the same block, in one column, like the Bets list:
 //   [logo] ARI @ [logo] LA · 67%              [P] PL: 1.7x · $20 → $33   (blue)
@@ -1379,15 +1389,19 @@ function renderDetail(g) {
   const co = chartOf(g), mk = typeof Shell !== "undefined" && Shell.mktLines;   // 10/27: the other Polymarket markets (halves, quarters, team totals, game / team props)
   const body = GTAB === "props" ? gameChips() + gamePropsBody(g) : GTAB === "parlays" ? gameParlaysBody(g) : GTAB === "gprops" ? (mk ? Shell.mktProps(co, gNone("Polymarket lists no game or team props for this game yet.")) : "")
     : `${early}${gameCard(g, "x")}${totalCard(g, "x")}${mk ? Shell.mktLines(co) : ""}`;
-  $("detail").innerHTML = `${typeof Shell !== "undefined" && Shell.chartBlock ? detailTop(g).replace('class="card dtop"', 'class="card dtop dblend"') + Shell.chartBlock(co) : detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs()}${body}`;
+  const was = $("detail").querySelector ? $("detail").querySelector(".grest") : null, keepY = was ? was.scrollTop : 0;
+  // 10/28 (owner: "Do not make this part scroll ... DO NOT MAKE THE EXIT PAGE GAMES AND THE GAME SUB TABS MOVE"): the team card, the chart, ← Games and the tabs stay put (.gtop);
+  // only the part under them scrolls (.grest, its own scroll box sized by Shell.pinGame)
+  $("detail").innerHTML = `<div class="gtop">${typeof Shell !== "undefined" && Shell.chartBlock ? detailTop(g).replace('class="card dtop"', 'class="card dtop dblend"') + Shell.chartBlock(co) : detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs()}</div><div class="grest">${body}</div>`;
   if (typeof Shell !== "undefined" && Shell.chartLoad) Shell.chartLoad(co);
   $("back-btn").onclick = closeGame;
   if (g.final) ensureGrades();
   setBg($("panel-lines").classList.contains("on") ? g : null);   // 10/14 fix: the background redraw ran while another tab was showing (SEA/DEN logos on Models)
+  if (typeof Shell !== "undefined" && Shell.pinGame) Shell.pinGame($("detail"), keepY);
 }
 function renderLines() {
   if (DETAIL) { const g = S.games.find((x) => x.key === DETAIL); if (g) return renderDetail(g); DETAIL = null; }
-  setBg(null); linesBg(); document.body.classList.remove("game-on");
+  setBg(null); linesBg(); document.body.classList.remove("game-on"); if (typeof Shell !== "undefined" && Shell.unpinGame) Shell.unpinGame();
   $("detail").style.display = "none"; $("lines").style.display = "";
   $("lines").innerHTML = linesBySlot();
 }

@@ -51,6 +51,7 @@
     // countdown text: "1d 1h 7m", "2h 14m", "26m", "45s"
     setActive(panel) {
       Shell.panel = panel; const sp = Shell.sport, t = tabOf(panel);
+      if (typeof setTimeout === "function") setTimeout(() => { if (TOPS) TOPS.forEach(topSize); }, 60);
       if (!document.querySelectorAll) return;
       document.querySelectorAll("#bnav [data-b]").forEach((a) => a.classList.toggle("on", a.dataset.b === t));
       document.querySelectorAll("#tbar [data-pg]").forEach((a) => a.classList.toggle("on", a.dataset.pg === panel));
@@ -183,7 +184,7 @@
   }
   const chartRange = (o) => (o.live ? (CH.liveRange || "live") : lsG("gRange", "all"));
   function chartSvg(o, pts, range, w) {
-    const H = 172, P = { l: 30, r: 58, t: 12, b: 20 };
+    const H = 84, P = { l: 30, r: 58, t: 12, b: 20 };   // 10/28 (owner: compact the part that does not move): 172 -> 84 px
     if (!pts || pts.length < 2) return `<div class="gcempty">${pts ? "No price history yet." : "Loading…"}</div>`;
     const [ca, ch] = chartColors(o.ca, o.ch), x0 = pts[0][0], x1 = pts[pts.length - 1][0];
     const vals = pts.flatMap((p) => [p[1], p[2]]);
@@ -277,6 +278,46 @@
     if (typeof setTimeout === "function") CH.timer = setTimeout(() => { if (CH.cur === o.key && document.getElementById("gcv") && !document.hidden) Shell.chartLoad(CH.o); }, o.live ? 30e3 : 300e3);
   };
   Shell.chartStop = () => { CH.cur = null; clearTimeout(CH.timer); };
+  // 10/28 (owner: "Do not make this part scroll ... DO NOT MAKE THE EXIT PAGE GAMES AND THE GAME SUB TABS MOVE"): on a game page the top part (.gtop: team
+  // card, chart, ← Games, tabs) stays put and only .grest scrolls, sized to the screen under it; the page background (helmets / logos) is centered in
+  // the space between the bottom of .gtop and the bottom of the screen. Both sports.
+  const PIN = { el: null, ro: null };
+  function pinSize() {
+    const d = PIN.el; if (!d || !d.isConnected) return; const rest = d.querySelector(".grest"); if (!rest) return;
+    const z = parseFloat(getComputedStyle(document.body).getPropertyValue("--z")) || 1, y = rest.getBoundingClientRect().top;
+    rest.style.height = Math.max(120, (window.innerHeight - y) / z) + "px";
+    const bg = document.getElementById("bgwm"); if (bg) bg.style.paddingTop = Math.max(0, y) + "px";
+  }
+  Shell.pinGame = (d, y) => {
+    if (!d || typeof document === "undefined") return;
+    document.documentElement.classList.add("gpin"); PIN.el = d; if (window.scrollTo) window.scrollTo(0, 0); pinSize();
+    const r = d.querySelector(".grest"); if (r && y) r.scrollTop = y;
+    if (typeof ResizeObserver === "function") { if (PIN.ro) PIN.ro.disconnect(); PIN.ro = new ResizeObserver(() => pinSize()); const t = d.querySelector(".gtop"); if (t) PIN.ro.observe(t); }
+  };
+  Shell.unpinGame = () => {
+    if (typeof document === "undefined") return;
+    document.documentElement.classList.remove("gpin"); PIN.el = null; if (PIN.ro) { PIN.ro.disconnect(); PIN.ro = null; }
+    const bg = document.getElementById("bgwm"); if (bg) bg.style.paddingTop = "";
+  };
+  if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("resize", () => pinSize());
+  // 10/28 (owner, My bets: "Don't make this part scroll up"): a block that stays put right under the page's pinned title (position:sticky, its top = where
+  // the title's solid band ends)
+  var TOPS = new Set();   // var: setActive (above) reads it
+  function topSize(el) {
+    if (!el || !el.isConnected) { TOPS.delete(el); return; }
+    const panel = el.closest(".panel"), ph = panel && panel.querySelector(".phead"); if (!ph || !ph.offsetParent) return;
+    const z = parseFloat(getComputedStyle(document.body).getPropertyValue("--z")) || 1, pb = parseFloat(getComputedStyle(ph).paddingBottom) || 0;
+    const top = ph.getBoundingClientRect().bottom - pb * z;
+    el.style.top = Math.max(0, top / z) + "px";
+  }
+  let TOPRO = null;
+  Shell.pinTop = (el) => {
+    if (!el) return; TOPS.add(el); topSize(el); if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => topSize(el));
+    // re-measure whenever a page title changes size (fonts landing, the drop-downs filling in) -- a stale measure left the card too low
+    if (typeof ResizeObserver === "function" && !TOPRO) { TOPRO = new ResizeObserver(() => TOPS.forEach(topSize)); document.querySelectorAll(".phead").forEach((h) => TOPRO.observe(h)); }
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => TOPS.forEach(topSize));
+  };
+  if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("resize", () => TOPS.forEach(topSize));
   if (typeof document !== "undefined" && document.addEventListener) document.addEventListener("click", (e) => {
     const b = e.target && e.target.closest && e.target.closest("[data-grange]"); if (!b || !CH.o) return;
     const r = b.dataset.grange;

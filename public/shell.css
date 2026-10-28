@@ -256,3 +256,175 @@ html.lines-on body.bnav-on:not(.tbar-on) .pagewm::after { display:block !importa
 body.bnav-on .phead .phchips { order:4; flex:1 0 100%; justify-content:center; margin:2px 0 0; }
 /* the type / tab chips go under My bets | Model bets */
 body.bnav-on .phead .phchips { order:4; flex:1 0 100%; justify-content:center; margin:2px 0 0; }
+
+/* ===== 10/28 CLEAN LAYOUT (owner, after the game-page sketches: "This is how clean and organized I want it ... consistent on every page"). Both sports.
+   One style everywhere: text 11 px; titles / labels bold, white, capitals (Passion One tabs, system font elsewhere); every other letter and number
+   faded like an unopened tab (rgba(228,228,232,.66)); coloured text keeps its colour; model answers regular weight; no hard lines -- a soft
+   see-through blurred band (.bband) splits sections; MODEL's band and ⓘ purple; tight, equal gaps. ===== */
+:root { --fade:rgba(228,228,232,.66); --bband:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.10) 12%,rgba(255,255,255,.10) 88%,rgba(255,255,255,0));
+  --pband:linear-gradient(90deg,rgba(183,148,255,0),rgba(183,148,255,.16) 12%,rgba(183,148,255,.16) 88%,rgba(183,148,255,0)); }
+.bband { position:relative; height:6px; margin:4px 0 8px; border-radius:3px; background:var(--bband); -webkit-backdrop-filter:blur(10px) saturate(1.3); backdrop-filter:blur(10px) saturate(1.3); }
+/* -- game page: the top part stays put, only .grest scrolls (Shell.pinGame) -- */
+html.gpin, html.gpin body { overflow:hidden; overscroll-behavior:none; }
+html.gpin body.bnav-on .wrap { padding-bottom:0; }
+#detail .grest { overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; padding:0 2px calc(env(safe-area-inset-bottom,0px) + var(--bnh) + 28px); margin:0 -2px; }
+#detail .grest::-webkit-scrollbar { display:none; } #detail .grest { scrollbar-width:none; }
+body.bnav-on.game-on #detail .gtop .dtop { position:relative; top:0; }
+#bgwm .hlm { opacity:.22; }
+/* the compact top (owner: "Yellow line 1 gets compacted to line 2 ... I still have it to look the same") */
+#detail .dtop .inner { padding-top:5px; padding-bottom:6px; }
+#detail .dtop .t { font-size:20px; } #detail .dtop .s2 { font-size:11px; margin-top:0; } #detail .dtop .s3 { font-size:10px; } #detail .dtop .nm { line-height:1.15; }
+#detail .dtop .wc { margin-top:5px; } #detail .dtop .wl { font-size:11px; margin-bottom:3px; } #detail .dtop .wl span:nth-child(2) { font-size:9px; }
+#detail .dtop .bar, #detail .dtop .bar i { height:5px; }
+#detail .dtop .dwm { height:110px; margin-top:-55px; }
+.gchart { padding:2px 12px 0; margin-bottom:0; } .gchart .gcv { min-height:84px; } .gchart .gcempty { height:84px; }
+.gchart .grng { font-size:10.5px; margin-top:0; }
+#detail .back { margin-top:0; padding-top:0; padding-bottom:2px; }
+.gtabs { margin:2px 2px 0; justify-content:space-between; gap:0; }
+.gtab { padding:1px 0 4px; }
+/* labels: bold white capitals, one size */
+#detail .back, .gtab, #detail .grest .sh, #detail .grest .tag, #detail .grest .k, #detail .grest .k.pmk > span:first-child, #detail .grest .prl > .s, #detail .grest .gchip, #detail .grest .mks, #detail .grest .hd {
+  font-size:11px !important; font-weight:900 !important; letter-spacing:.04em !important; -webkit-text-stroke:.3px currentColor; }
+#detail .back, #detail .grest .sh, #detail .grest .tag, #detail .grest .k, #detail .grest .prl > .s, #detail .grest .gchip.on, #detail .grest .mks, #detail .grest .hd:not(.hm) { color:#fff !important; }
+#detail .grest .tag, #detail .grest .gchip, #detail .grest .mks { text-transform:uppercase; }
+#detail .grest .gchip { color:var(--fade); }
+#detail .grest .tag { padding:0; line-height:16px; min-height:0; }
+#detail .grest .hd.hm { color:var(--violet,#b794ff) !important; border-bottom:0; position:relative; padding-bottom:10px; margin-top:12px; }
+#detail .grest .hd.hm::after { content:""; position:absolute; left:0; right:0; bottom:0; height:6px; border-radius:3px; background:var(--pband); -webkit-backdrop-filter:blur(10px) saturate(1.3); backdrop-filter:blur(10px) saturate(1.3); }
+#detail .grest .hd.hm .ibtn { color:var(--violet,#b794ff); }
+/* everything else: 11 px, faded; coloured text keeps its colour; the model's answers regular weight */
+#detail .grest, #detail .grest .s, #detail .grest .mkt, #detail .grest .mlc, #detail .grest .modelcell, #detail .grest .lbw, #detail .grest .dim, #detail .grest .drow, #detail .grest .mkx, #detail .grest .ppr, #detail .grest .pbl, #detail .grest .ptb { font-size:11px; }
+#detail .grest .s, #detail .grest .mkt, #detail .grest .mlc, #detail .grest .modelcell, #detail .grest .lbw, #detail .grest .dim, #detail .grest summary { color:var(--fade); }
+#detail .grest .modelcell b { font-size:11px !important; font-weight:400; }
+#detail .grest .modelcell .g, #detail .grest .modelcell .lg, #detail .grest .modelcell .y, #detail .grest .modelcell .r { -webkit-text-stroke:0; }
+/* the market: SPORTSBOOK | POLYMARKET, every row 16 px, each sportsbook row on the line of its Polymarket row */
+#detail .mk.mk3 { grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:14px; row-gap:6px; align-items:start; margin-top:0; }
+#detail .mk.mk3 > div, #detail .mk.mk3 > div * { line-height:16px; }
+#detail .mk.mk3 .k, #detail .mk.mk3 .k.pmk { height:16px; margin:0; flex-wrap:nowrap; align-items:center; }
+#detail .mk.mk3 .k.pmk .pm, #detail .mk.mk3 .k.pmk .pm img { width:14px; height:14px; margin-top:-1px; margin-bottom:-1px; }
+#detail .mk.mk3 .prl { height:16px; margin:0; align-items:center; }
+/* sections: a blurred band over each title, tight gaps */
+#detail .grest .trow { position:relative; border-top:0; padding-top:8px; margin-top:10px; }
+#detail .grest .trow::before { content:""; position:absolute; left:0; right:0; top:-3px; height:6px; border-radius:3px; background:var(--bband); -webkit-backdrop-filter:blur(10px) saturate(1.3); backdrop-filter:blur(10px) saturate(1.3); }
+#detail .grest > .trow:first-child { margin-top:6px; }
+#detail .grest .card { margin-top:4px !important; padding-top:2px !important; padding-bottom:2px !important; }
+#detail .grest .card .hd:not(.hm) { margin-top:0 !important; margin-bottom:6px !important; }
+#detail .grest .gchips { margin:2px 0 4px; padding:0; }
+#detail .grest .mkx { border-top:0; }
+/* the bottom bar see-through and blurred (owner: "Make this see through but blurry") */
+.bnav { background:rgba(20,20,28,.28); -webkit-backdrop-filter:blur(14px) saturate(1.3); backdrop-filter:blur(14px) saturate(1.3); border:1px solid rgba(255,255,255,.14); }
+/* the scroll part fades in under the tabs instead of a hard cut */
+#detail .grest { -webkit-mask:linear-gradient(to bottom,transparent 0,#000 8px); mask:linear-gradient(to bottom,transparent 0,#000 8px); }
+/* other markets (halves, quarters, team totals, game props): the same rows -- 16 px lines, faded names, labels bold white, Polymarket blue prices regular weight */
+#detail .grest .mkx { padding:0; min-height:16px; line-height:16px; gap:10px; }
+#detail .grest .mkx > span:first-child { color:var(--fade); }
+#detail .grest .mkx .v { font-weight:400; }
+#detail .grest .mkx.mkh { margin-top:2px; } #detail .grest .mkx.mkh span { font-size:11px; font-weight:900; letter-spacing:.04em; color:#fff; -webkit-text-stroke:.3px currentColor; }
+#detail .grest .mkx.mkh .mkpm { width:14px; height:14px; }
+#detail .grest .mks { margin:8px 0 2px; }
+
+/* ===== 10/28 CLEAN LAYOUT on every page (owner: "make all these little corrections we made and make it consistent on every page"). Both sports.
+   Kept as they were: the page titles, the game tiles, the big numbers (Profit, the stat tiles' records). ===== */
+/* section titles: 11 px bold white capitals with the blurred band over them, no hard lines */
+body.bnav-on .panel .labslot, body.bnav-on .panel .sh, body.bnav-on .panel .fold, body.bnav-on #models .fold, body.bnav-on .panel .mks, .mbhero .lbl {
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif !important; font-size:11px !important; font-weight:900 !important; letter-spacing:.04em !important;
+  text-transform:uppercase; color:#fff !important; -webkit-text-stroke:.3px currentColor; }
+body.bnav-on .panel .labslot { text-align:left; justify-content:flex-start; margin:14px 2px 2px; padding-top:8px; position:relative; border:0 !important; }
+body.bnav-on .panel .labslot .lst { font-size:11px !important; font-weight:400 !important; color:var(--fade) !important; -webkit-text-stroke:0; text-transform:none; }
+body.bnav-on .panel .labslot::before, body.bnav-on .panel .fold::before, body.bnav-on .panel .sec > .sh:first-child::before {
+  content:""; position:absolute; left:0; right:0; top:-3px; height:6px; border-radius:3px; background:var(--bband); -webkit-backdrop-filter:blur(10px) saturate(1.3); backdrop-filter:blur(10px) saturate(1.3); pointer-events:none; }
+html body.bnav-on .panel .fold, html body.bnav-on #models .fold, html.lines-on body.bnav-on #models .fold, html.lines-on body.bnav-on .panel .fold { position:relative; border:0 !important; padding-top:12px !important; padding-bottom:6px !important; }
+body.bnav-on .panel .fold *, body.bnav-on #models .fold * { font-size:11px !important; }
+body.bnav-on #record-mine .betwrap, body.bnav-on #record-mine .betwrap * { font-size:11px !important; }
+body.bnav-on .panel .sec { position:relative; border-top:0 !important; padding-top:8px; }
+body.bnav-on .panel .sec > .sh:first-child { position:static; margin-bottom:2px; }
+body.bnav-on .panel .sec { position:relative; }
+/* every list row: 11 px; the name / label bold white capitals, the value faded; coloured text keeps its colour; no lines between rows */
+body.bnav-on .panel .row, body.bnav-on #models .row, body.bnav-on .panel .s, body.bnav-on .panel .drow, body.bnav-on .panel .ppr, body.bnav-on .panel .pbl, body.bnav-on .panel .ptb,
+body.bnav-on .panel .al .su, body.bnav-on .panel .mkx, body.bnav-on .mbhero .sub { font-size:11px !important; }
+body.bnav-on .panel .row, body.bnav-on #models .row, body.bnav-on .panel .drow, body.bnav-on .panel .bb, body.bnav-on .panel .ptb, body.bnav-on .panel .mkx, body.bnav-on .panel .pgrid > .par,
+html body .panel .card:not(.dtop) + .card:not(.dtop) { border-top:0 !important; border-bottom:0 !important; }
+body.bnav-on .panel .row, body.bnav-on #models .row { padding:2px 0 !important; line-height:16px; align-items:baseline; }
+body.bnav-on #models .row > span:first-child, body.bnav-on #models .row.trow > span:first-child, body.bnav-on .panel .mbtop .row > span:first-child, body.bnav-on .panel .sec > .row > span:first-child {
+  font-size:11px !important; font-weight:900 !important; letter-spacing:.04em; text-transform:uppercase; color:#fff !important; -webkit-text-stroke:.3px currentColor; }
+body.bnav-on #models .row > span:last-child, body.bnav-on #models .row.trow > span:not(:first-child), body.bnav-on .panel .mbtop .row > span:last-child, body.bnav-on .panel .sec > .row > span:last-child {
+  font-size:11px !important; font-weight:400 !important; color:var(--fade); }
+body.bnav-on #models .row.trow .tsub { font-size:11px; font-weight:400; color:var(--fade); text-transform:none; -webkit-text-stroke:0; letter-spacing:0; }
+body.bnav-on #models .row.trow.th > span, body.bnav-on .panel .pph span, body.bnav-on .panel .ptb.pth span, body.bnav-on .panel .mkx.mkh span, body.bnav-on .panel .pteam, body.bnav-on .panel .pbh,
+body.bnav-on .panel .stat .k, body.bnav-on .panel .al .kd > span:first-child {
+  font-size:11px !important; font-weight:900 !important; letter-spacing:.04em !important; text-transform:uppercase; color:#fff !important; -webkit-text-stroke:.3px currentColor; }
+body.bnav-on .panel .ptb.pth .pt3, body.bnav-on .panel .pph .pp4 { color:#fff !important; }
+body.bnav-on .panel .s, body.bnav-on .panel .dim, body.bnav-on .panel .ptb .pt1, body.bnav-on .panel .ppr .pp1, body.bnav-on .panel .ppr .pp2, body.bnav-on .panel .pbl,
+body.bnav-on .panel .al .su, body.bnav-on .panel .mkx > span:first-child, body.bnav-on .mbhero .sub, body.bnav-on .panel .stat .k2 { color:var(--fade); }
+body.bnav-on .panel .mkx .v { font-weight:400; }
+/* the bets' and alerts' own titles: bold white, as written */
+body.bnav-on #record-mine .betwrap .row > span:first-child { font-size:11px !important; font-weight:900 !important; color:#fff !important; -webkit-text-stroke:.3px currentColor; text-transform:none; letter-spacing:.02em; }
+/* alerts (owner: "Only bold the title. Everything below it will have all the same consistent lettering"): the kind (LINE MOVE, INJURY) bold white; the line, the note, the game and the time 11 px faded, regular */
+body.bnav-on .panel .al .ti, body.bnav-on .panel .al .su, body.bnav-on .panel .al .algame, body.bnav-on .panel .al .kd > span:not(:first-child) { font-size:11px !important; font-weight:400 !important; color:var(--fade) !important; -webkit-text-stroke:0; letter-spacing:0; text-transform:none; }
+body.bnav-on #record-mine .betwrap .row > span:last-child { font-size:11px !important; }
+/* tabs / chips under a title: one size, capitals */
+body.bnav-on .panel .gchip, body.bnav-on .phead .gchip { font-size:11px !important; font-weight:900 !important; letter-spacing:.04em; text-transform:uppercase; -webkit-text-stroke:.3px currentColor; }
+/* My bets: the profit + top rows are ONE see-through card that stays put under the title (owner: "Don't make this part scroll up ... a card with like 20% opacity") */
+.mbpin { position:sticky; z-index:40; margin:6px 0 8px; padding:10px 12px 8px; border-radius:16px; background:rgba(20,20,28,.2); border:1px solid rgba(255,255,255,.14);
+  -webkit-backdrop-filter:blur(24px) saturate(1.3); backdrop-filter:blur(24px) saturate(1.3); }   /* the rows scrolling under it blur away */
+.mbpin .mbhero { margin:0 0 6px; }
+html body .panel .mbpin .card.mbtop { margin:0 !important; padding:0 !important; }
+.mbpin .mbtop .sec { padding-top:0 !important; }
+/* the stat tiles (Models: Moneyline, Spread picks, Total picks, Line value; the RECORD tiles): each in a see-through card, all in one row */
+html body .panel .stat, html.lines-on body .panel .stat { background:rgba(20,20,28,.2) !important; border:1px solid rgba(255,255,255,.14) !important; border-radius:14px !important;
+  -webkit-backdrop-filter:blur(14px) saturate(1.3) !important; backdrop-filter:blur(14px) saturate(1.3) !important; padding:8px 4px !important; }
+#models .stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
+#models .stats > .stat { min-width:0; grid-column:auto !important; }
+#models .stat .v { font-size:17px; } body.bnav-on #models .stat .k { white-space:nowrap; font-size:9.5px !important; letter-spacing:0 !important; } #models .stat .k2 { font-size:10px; line-height:1.25; }
+body.bnav-on .phead .gchip, body.bnav-on .panel .gchip { text-decoration:none !important; }
+/* column heads that must fit their column (props / TD tables): same bold white capitals, no extra letter spacing */
+body.bnav-on .panel .pph span, body.bnav-on .panel .ptb.pth span { letter-spacing:0 !important; }
+body.bnav-on .panel .pph .pp4 { white-space:nowrap; }
+/* the model's % and Polymarket's price in the tables: regular weight, their colours kept */
+body.bnav-on .panel .ppr:not(.pph) .pp3, body.bnav-on .panel .ppr:not(.pph) .pp4, body.bnav-on .panel .tdr .mp em, body.bnav-on .panel .ptb:not(.pth) .pt2, body.bnav-on .panel .ptb:not(.pth) .pt3, body.bnav-on .panel .ppr:not(.pph) .pp5 { font-weight:400 !important; font-size:11px !important; }
+/* alerts: plain rows, the same gaps as the other lists */
+body.bnav-on .panel .al { padding:8px 2px; margin-top:0; }
+body.bnav-on .panel .al .kd { font-size:11px; }
+body.bnav-on .panel .al .algame { font-size:11px; font-weight:400; color:var(--fade); }
+body.bnav-on .panel .plb { font-size:11px; }
+/* the table heads (PLAYER · LAST · MODEL · [logo] POLYMARKET): bold white, the logo kept; the Polymarket column wide enough for its bold head */
+body.bnav-on .panel .pph .pp4 { display:flex; align-items:center; justify-content:center; gap:3px; overflow:visible; }
+body.bnav-on .panel .pph .pp4 .pm, body.bnav-on .panel .pph .pp4 .pm img { width:13px !important; height:13px !important; margin:0 !important; flex:none; }
+@media (max-width:599px) {
+  body.bnav-on .ppr { grid-template-columns:minmax(0,1fr) 72px 44px 96px; }
+  body.bnav-on .ppr.first { grid-template-columns:minmax(0,1fr) 44px 96px; }
+  body.bnav-on .ppr.first.tdr, body.bnav-on .ppr.tdh { grid-template-columns:minmax(0,1fr) 88px 44px 96px; }
+}
+/* 10/28 (owner: "Why is there so much gaps. Fix all the big gaps throughout the app"): one small gap everywhere -- the title band's fade 12 px (was 30),
+   blocks right under it, 10 px over a section title, 4 px inside a block */
+body.bnav-on .phead { padding-bottom:12px; margin-bottom:-4px; background:linear-gradient(to bottom,#0b0b10 0,#0b0b10 calc(100% - 12px),rgba(11,11,16,0) 100%); }
+@media (min-width:1100px) { body.bnav-on .phead::before { background:linear-gradient(to bottom,#0b0b10 0,#0b0b10 calc(100% - 12px),rgba(11,11,16,0) 100%); } }
+body.bnav-on .panel .stats { margin-top:2px !important; }
+body.bnav-on .panel .labslot { margin-top:10px; padding-bottom:0; }
+body.bnav-on .panel .pgrid { margin-top:0 !important; }
+html body.bnav-on .panel .pgrid > .par { padding:4px 2px !important; }
+body.bnav-on .panel .pbh { margin-bottom:2px; }
+body.bnav-on .panel .pph { margin-top:2px; }
+body.bnav-on .panel .pteam { margin-top:4px; }
+body.bnav-on .panel .al { padding:6px 2px; }
+.mbpin { margin:2px 0 6px; }
+body.bnav-on .panel .card:not(.dtop) { margin-top:4px !important; }
+body.bnav-on .panel .sec { padding-bottom:4px; }
+/* 10/28 (owner: "bold the name and not the position"): in every player row the player's name (and the game under it on Best TD picks) bold white; the position
+   and the line under the name small, faded, regular. Bet titles in capitals (owner: "Capitalize these"). */
+body.bnav-on .panel .ppr:not(.pph) .pp1 { color:#fff !important; font-weight:400 !important; -webkit-text-stroke:0; }   /* owner: "Do not bold the name ... Just make the names white" */
+body.bnav-on .panel .ppr:not(.pph) .pp1 .pos { color:var(--fade) !important; font-weight:400 !important; -webkit-text-stroke:0; font-size:11px !important; }
+body.bnav-on .panel .tdr .pp2t { color:#fff !important; font-weight:400 !important; -webkit-text-stroke:0; }
+body.bnav-on .panel .ppr:not(.pph) .pp2 { font-weight:400; }
+body.bnav-on #record-mine .betwrap > .row > span:first-child, body.bnav-on #record-mine .betwrap .row:first-child > span:first-child { text-transform:uppercase; }
+/* owner: "Make these one line" -- the red ✗ no TD … note always on ONE line; its column sizes to the note */
+body.bnav-on .panel .tdr .pp2 .wc, body.bnav-on .panel .tdr .pp2 { white-space:nowrap !important; }
+body.bnav-on .panel .tdr .pp2 .wc { font-size:10.5px; margin-left:0; }
+@media (max-width:599px) {
+  body.bnav-on .ppr.first.tdr, body.bnav-on .ppr.tdh { grid-template-columns:minmax(0,1fr) auto 36px 92px; column-gap:4px; }
+}
+@media (max-width:379px) { body.bnav-on .ppr.first.tdr, body.bnav-on .ppr.tdh { grid-template-columns:minmax(0,1fr) auto 32px 78px; } body.bnav-on .ppr.tdh .pp4 { font-size:9.5px !important; } }
+@media (min-width:380px) and (max-width:599px) { body.bnav-on .ppr.first.tdr, body.bnav-on .ppr.tdh { grid-template-columns:minmax(0,1fr) auto 40px 94px; } }
+body.bnav-on .panel .tdr .pp2 .wc { font-size:10px; }
+body.bnav-on .panel .ppr.tdh .pp4 { letter-spacing:0 !important; }
+@media (max-width:379px) { body.bnav-on .ppr.tdh .pp3 { font-size:9.5px !important; letter-spacing:0 !important; } body.bnav-on .ppr.tdh .pp4 .pm { margin-left:3px !important; } }
