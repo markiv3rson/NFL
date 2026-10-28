@@ -12,6 +12,7 @@ const { twoPlus, firstTdShares, applyCalibration, buildCalibration } = await imp
 const { setJSON } = await import("../lib/redis.js");
 
 let bad = 0, n = 0;
+const h1ShownNoPrice = (h) => h.h1Shown(0.7, 0.2) === h.h1Shown(0.7, 0.9);
 const ok = (c, msg, v) => { n++; if (!c) { bad++; console.log("FAIL", msg, v === undefined ? "" : JSON.stringify(v)); } };
 const near = (a, b, t = 1e-3) => Math.abs(a - b) < t;
 
@@ -2142,9 +2143,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(x.hfav === 3.5 && x.tl === 45.5 && x.windo === 12 && x.domeF === 0 && x.div === 1 && x.early === 1 && x.rest_d === 1, "inputs: books first, wind outdoors, early weeks, rest", x);
   const xd = h.h1Inputs({ week: 9, roof: "dome", nvSpread: -2.5, nvTotal: 48 }, { wind: 20 }); ok(xd.hfav === -2.5 && xd.windo === 0 && xd.domeF === 1 && xd.early === 0, "a dome: no wind, the schedule's line when no books", xd);
   const mean = h.h1Mean(ref[0].x), rows = [{ line: 3.5, aPrice: 0.62, hPrice: 0.40 }, { line: 1.5, aPrice: 0.5, hPrice: 0.52 }], pk = h.h1Side(mean, rows, "AW", "HM");
-  const best = (() => { let b = null; for (const r of rows) { const ph = h.h1HomeCover(mean, -r.line); for (const s of [{ pc: h.h1Shown(ph, r.hPrice), px: r.hPrice }, { pc: h.h1Shown(1 - ph, r.aPrice), px: r.aPrice }]) if (h.h1Qualifies(s.pc, s.px) && (!b || s.pc > b)) b = s.pc; } return b; })();
-  ok(best == null ? pk == null : pk && Math.abs(pk.pc - Math.round(best * 1000) / 1000) < 1e-9 && /^(AW|HM) [+-]\d/.test(pk.label) && / 1H$/.test(pk.label), "h1Side = the highest qualifying shown % (0.4 model + 0.6 price), labeled with its 1H line", pk);
-  ok(Math.abs(h.h1Shown(0.8, 0.7) - 0.74) < 1e-9 && h.H1_PRICE_W === 0.6, "1H shown % = 0.4 model + 0.6 price (10/28 night: the model alone ran 4-6 points high on its picks at US prices)");
+  const best = (() => { let b = null; for (const r of rows) { if (!h.h1Steady(r)) continue; const ph = h.h1HomeCover(mean, -r.line); for (const s of [{ pc: h.h1Shown(ph), px: r.hPrice }, { pc: h.h1Shown(1 - ph), px: r.aPrice }]) if (h.h1Qualifies(s.pc, s.px) && (!b || s.pc > b)) b = s.pc; } return b; })();
+  ok(best == null ? pk == null : pk && Math.abs(pk.pc - Math.round(best * 1000) / 1000) < 1e-9 && /^(AW|HM) [+-]\d/.test(pk.label) && / 1H$/.test(pk.label), "h1Side = the highest qualifying shown % (the model's own, the price only caps), labeled with its 1H line", pk);
+  ok(Math.abs(h.h1Shown(0.8) - 0.686) < 1e-9 && h.H1_US_OFF === 0.114 && h1ShownNoPrice(h), "1H shown % = the model - 11.4 points (10/28 evening: it ran 11.4 high on Polymarket US's steady books); the price never moves it");
+  ok(h.h1Side(mean, [{ line: 30, aPrice: 0.75, hPrice: 0.99 }], "AW", "HM") == null && h.h1Side(mean, [{ line: 30, aPrice: 0.75, hPrice: 0.27 }], "AW", "HM").team === "AW", "a 1c-bid book (75c next to 99c) is no price; the same line on a steady book is a pick");
   ok(h.h1Side(mean, [{ line: 3.5, aPrice: 0.9, hPrice: 0.9 }], "AW", "HM") == null, "nothing qualifies at 90c -> no pick");
   const G = { key: "AW @ HM", away: "AW", home: "HM", kickoff: "2099-10-01T17:00:00Z" }, r = getRedis();
   await tr.recordH1Pick(2095, 8, G, { team: "HM", line: -1.5, px: 0.5, pc: 0.61, label: "HM -1.5 1H" }, "t1");
@@ -2156,6 +2158,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const nG = await tr.gradeH1Week(2095, 8, [{ ...G, final: true }], async () => ({ "AW @ HM": { a: 9, h: 10 } }));
   o = JSON.parse(await r.hget("teaser:2095:8", "AW @ HM|h1spr")); ok(nG === 1 && o.result === "W" && o.h1.h === 10, "graded on the first half: AW +2.5 with a 9-10 half wins (7-10 would lose)", o);
   await tr.recordH1Pick(2095, 8, G, null, "t5"); ok(!!(await r.hget("teaser:2095:8", "AW @ HM|h1spr")), "a graded pick is never taken out");
+  { const Gs = { key: "SO @ ON", away: "SO", home: "ON", kickoff: new Date(Date.now() + 30 * 60e3).toISOString() };
+    await tr.recordH1Pick(2095, 8, Gs, { team: "SO", line: 2.5, px: 0.55, pc: 0.63, label: "SO +2.5 1H" }, "t6"); await tr.recordH1Pick(2095, 8, Gs, null, "t7");
+    ok(!!(await r.hget("teaser:2095:8", "SO @ ON|h1spr")) && tr.lastHour(Gs) && !tr.lastHour(G), "a pick seen in the hour before kickoff stays when the book blanks"); await r.hdel("teaser:2095:8", "SO @ ON|h1spr"); }
   const S = await tr.trackedSummary(2095); ok(S.h1spr.w === 1 && S.h1spr.l === 0 && S.h1spr.said === 63 && Math.abs(S.h1spr.per100 - (100 / 0.55 - 100)) < 0.2, "summary: record, said %, money per $100", S.h1spr);
   await r.del("teaser:2095:8");
   const sb = { events: [{ status: { type: { completed: true, state: "post" } }, competitions: [{ competitors: [
@@ -2203,6 +2208,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const nG = await tr.gradeGamePropsWeek(2095, 8, [g], async () => ({ markets: [{ slug: slug0, closed: true, outcomePrices: '["0","1"]', marketSides: [{ long: true }, { long: false }] }] }));
   all = await r.hgetall("teaser:2095:8"); ok(nG === 1 && JSON.parse(all[f0]).result === "W", "graded: we took the short side (No / Under) and it paid", JSON.parse(all[f0]));
   await tr.recordGameProps(2095, 8, g, [], "t3"); ok(!!(await r.hget("teaser:2095:8", f0)), "a graded pick is never taken out");
+  { const gk = { ...g, key: "SK @ OK", kickoff: new Date(Date.now() + 20 * 60e3).toISOString(), final: false };
+    await tr.recordGameProps(2095, 8, gk, pk.slice(0, 1), "t4"); await tr.recordGameProps(2095, 8, gk, [], "t5");
+    const kf = Object.keys(await r.hgetall("teaser:2095:8")).filter((f) => f.startsWith("SK @ OK|gp|"));
+    ok(kf.length === 1, "a GAME PROPS pick seen in the hour before kickoff stays when the book blanks"); for (const f of kf) await r.hdel("teaser:2095:8", f); }
   const S = await tr.trackedSummary(2095); ok(S.gprops.w === 1 && S.gprops.l === 0 && S.gprops.recorded === 1, "Models summary: the GAME PROPS record", S.gprops);
   await r.del("teaser:2095:8");
   const pp = readFileSync(new URL("../pages/api/pinnaclepull.js", import.meta.url), "utf8"), gr = readFileSync(new URL("../lib/grade.js", import.meta.url), "utf8"), wk = readFileSync(new URL("../lib/week.js", import.meta.url), "utf8");
@@ -2217,7 +2226,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const bk = readFileSync(new URL("../pages/api/backup.js", import.meta.url), "utf8"); ok(/!k\.startsWith\("nba:"\)/.test(bk), "the NFL backup leaves NBA's keys to NBA's own backup"); }
 { // 10/28 line-by-line check: the ⓘ texts quote the code's own numbers (ML PICK team-model rates, the 1H SPREAD rule)
   const a = readFileSync(new URL("../public/app.js", import.meta.url), "utf8"), { TM_ML } = await import("../lib/cardpick.js"), h = await import("../lib/h1pick.js");
-  ok(a.includes(`favorites won ${TM_ML.fav.hit}% of ${TM_ML.fav.n}, underdogs priced ${TM_ML.dog.lo * 100}–50¢ won ${TM_ML.dog.hit}% of ${TM_ML.dog.n}`) && a.includes(`(${Math.round(h.H1_BAR * 100)}%+ on ${Math.round((1 - h.H1_PRICE_W) * 10)} parts model + ${Math.round(h.H1_PRICE_W * 10)} parts price, ${Math.round(h.H1_CAP * 100)}¢ max)`),
+  ok(a.includes(`favorites won ${TM_ML.fav.hit}% of ${TM_ML.fav.n}, underdogs priced ${TM_ML.dog.lo * 100}–50¢ won ${TM_ML.dog.hit}% of ${TM_ML.dog.n}`) && a.includes(`(${Math.round(h.H1_BAR * 100)}%+ on the model’s chance less ${Math.round(h.H1_US_OFF * 1000) / 10} points, ${Math.round(h.H1_CAP * 100)}¢ max, steady books)`),
     "Models ⓘ: the ML PICK and 1H SPREAD texts carry the code's numbers"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);
