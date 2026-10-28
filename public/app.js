@@ -274,7 +274,7 @@ const LOGO_OVERRIDES = { WAS: "https://raw.githubusercontent.com/ajreinhard/data
 const logoUrl = (team) => (team ? LOGO_OVERRIDES[team] || `https://a.espncdn.com/i/teamlogos/nfl/500/${team}.png` : "");
 // Team logo next to team names on every card (game header + TD team headers). Same logo source as the TD rows.
 function tlogo(team) { return team ? `<img class="tlogo" src="${logoUrl(team)}" alt="" onerror="this.style.display='none'">` : ""; }
-// 10/28 (owner: "instead of the team logos put the helmets"; "put the helmets on the other side of their names"): the Home tiles carry each team's helmet between its name and the middle, facing the middle (away faces right, home left; public/helmets/sm = the matchup helmets cropped, 96 px tall)
+// 10/28 (owner: "instead of the team logos put the helmets"; 10/28 later: moved after the name, then back on the owner's word): the Home tiles carry each team's helmet on the outer side of its name, facing the middle (away faces right, home left; public/helmets/sm = the matchup helmets cropped, 96 px tall)
 function thelmet(team, dir) { return team ? `<img class="thlm" src="/helmets/sm/${dir}/${team}.webp" alt="" onerror="this.onerror=null;this.src='${logoUrl(team)}'">` : ""; }
 const retPill = (r) => (r.returning ? (r.returningState === "practicing" ? ' <span class="pill p-g" style="padding:0 6px;font-size:10px">↩ RETURNING</span>' : ' <span class="pill p-y" style="padding:0 6px;font-size:10px">↩ WAS OUT · NOT PRACTICING</span>') : "");
 function tdNoGap(r) {
@@ -1077,7 +1077,7 @@ function tile(g) {
   // 10/18 evening (owner, sketch D): NO big faded logos and NO team colours behind the tile -- a plain 55% dark card so the page picture shows through.
   const res = g.final && g.awayScore != null && g.homeScore != null ? nflRes(g, Number(g.awayScore), Number(g.homeScore)) : sc && sc.st === "post" ? nflRes(g, Number(sc.a), Number(sc.h)) : "";
   return `<button class="tile${g.started && !g.final ? " live" : ""}" data-game="${esc(g.key)}">` +
-    `<div class="in"><div class="nm"><span class="t">${g.away}${thelmet(g.away, "right")}${recOf(g, g.away)}</span><div class="tmid">${mid2}${res}${chips ? `<div class="s2">${chips}</div>` : ""}${moveLines(moveBits(g))}</div><span class="t hm">${thelmet(g.home, "left")}${g.home}${recOf(g, g.home)}</span></div>${g.final || sc || hp == null ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
+    `<div class="in"><div class="nm"><span class="t">${thelmet(g.away, "right")}${g.away}${recOf(g, g.away)}</span><div class="tmid">${mid2}${res}${chips ? `<div class="s2">${chips}</div>` : ""}${moveLines(moveBits(g))}</div><span class="t hm">${g.home}${thelmet(g.home, "left")}${recOf(g, g.home)}</span></div>${g.final || sc || hp == null ? "" : `<div class="bar"><i style="width:${ap}%"></i></div>`}</div></button>`;
 }
 // Graded touchdown results for a finished game (same records the Models tab uses). Loaded once, only when a finished game page opens.
 let GRADES = null, GRADES_AT = 0;

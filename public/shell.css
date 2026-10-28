@@ -289,11 +289,14 @@ body.bnav-on.game-on #detail .gtop .dtop { position:relative; top:0; }
 #detail .grest .tag, #detail .grest .gchip, #detail .grest .mks { text-transform:uppercase; }
 #detail .grest .gchip { color:var(--fade); }
 /* 10/28 (owner: "make the sub tabs easier to read in bold ... why does it look squished"): the game page tabs and their sub tabs (and every page's
-   chips) in the plain app font, bold (700, not the narrow display font / black 900 + outline that squeezed the letters), a size up, more letter room;
+   chips) in the plain app font (the narrow display font squeezed the letters), bold, a size up, more letter room;
    the unselected ones faded but readable, the selected one white with its pink line. Both sports. */
 #detail .gtab, #detail .grest .gchip, body.bnav-on .panel .gchip, body.bnav-on .phead .gchip { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif !important;
-  font-size:12px !important; font-weight:700 !important; letter-spacing:.06em !important; -webkit-text-stroke:0 !important; line-height:1.2 !important; color:var(--fade) !important; }
+  font-size:12px !important; font-weight:900 !important; letter-spacing:.06em !important; -webkit-text-stroke:.3px currentColor !important; line-height:1.2 !important; color:var(--fade) !important; }
 #detail .gtab.on, #detail .grest .gchip.on, body.bnav-on .panel .gchip.on, body.bnav-on .phead .gchip.on { color:#fff !important; }
+/* 10/28 (owner: "bold the game lines like the games above it and make games the same size as game lines"): the tabs carry ← Games' weight
+   (900 + the thin outline, in the plain font, not the narrow one), and ← Games takes the tabs' 12 px. Both sports. */
+#detail .back { font-size:12px !important; }
 /* 10/28 (owner: "make the sub tabs easier to read in bold ... why does it look squished"): the game page tabs and their sub tabs (and every page's
    chips) in the plain app font, bold (700, not the black 900 + outline that squeezed the letters), a size up, a little more letter room; the
    unselected ones faded but readable, the selected one white with its pink line. Both sports. */
