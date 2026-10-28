@@ -57,7 +57,7 @@ Databases: NFL Redis Cloud free plan (30 MB; `UPSTASH_REDIS_REST_URL_REDIS_URL`)
 - **Shadows (recorded + graded, never picks)**: INJURY EARLY, STACK, WIDE, TD JUMP (Models -> Tracked angles).
 
 ### NBA (details in `nba/CLAUDE.md`)
-Card rules LINE MOVE (open 67.9 / after 56.3), BOOK GAP (spread 59.7, total 64.1), FATIGUE, ATS REGRESSION, SHOT QUALITY; ML PICK = market chance 56%+; props Overs only (Unders not buyable), 65%+ on the 0.4 model / 0.6 price blend, priced 60-77c and 2+ points under, no +2.5-dog-team Overs; Prop Parlays 6 / 8 / 10, Same Game 4; 1H SPREAD shadow; 7 angle shadows.
+Card rules LINE MOVE (open 67.9 / after 56.3), BOOK GAP (spread 59.7, total 64.1), FATIGUE, ATS REGRESSION, SHOT QUALITY; ML PICK = market chance 56%+; props Overs only (Unders not buyable), 65%+ on the 0.4 model / 0.6 price blend (PRA 0.8 model: Polymarket underprices PRA, 78.7% of 357 at 65c), priced 60-77c and 2+ points under, no +2.5-dog-team Overs; Prop Parlays 6 / 8 / 10, Same Game 4; 1H SPREAD shadow; 7 angle shadows.
 
 ## DATA AND JOBS
 
@@ -76,9 +76,9 @@ Card rules LINE MOVE (open 67.9 / after 56.3), BOOK GAP (spread 59.7, total 64.1
 
 - **Game model / spreads**: the closing line beats every game model tried (ridge any strength, GBM, Poisson, Elo, 538, EPA ratings, NGS, QBR, PFR, special teams, success rate, market-implied ratings, kernel line tables); situation / pair grids are noise as a whole (PBO 76%, 0 of 1,748 survive FDR); the wide all-flags model finds the card's own rules only; betting splits (MGM, Action Network) no edge; timing (bet early vs Sunday) no difference.
 - **Totals**: wind / weather (post-game data cut), key totals, early-season Under, division / primetime Unders, every Over/Under form rule.
-- **Game markets (10/28)**: 1H totals 49%, team totals (lose in the judging period), quarter spreads / totals, 1H / quarter moneyline, 2H spreads / totals (9-18 traded markets), exact margin, BTS, safety, two-point; team touchdowns read 6-0 on 18 traded markets (1 in the judging period) — too few, re-test at 60+.
+- **Game markets (10/28)**: 1H totals 49%, team totals (lose in the judging period), quarter spreads / totals, 1H / quarter moneyline, 2H spreads / totals (9-18 traded markets), exact margin, BTS, safety, two-point; team touchdowns read 6-0 on 18 traded markets (1 in the judging period) — too few, re-test at 60+. Research 10/27 night (real two-sided books vs 2014-25 games with the same spread / total): every half / quarter / team-total family sits ON the history rate; the one-sided asks (first score, first TD team, race to points, safety, two-point, team TDs, quarter BTS) are priced 2-16 points ABOVE history — never a buy.
 - **TD model**: rebuilds (per position, Poisson, deeper trees, blends), opponent defense splits, NGS, recency weighting, weather, team residuals, calibration layers, a first-TD calibration — none beat the current model walk-forward.
-- **Props**: NFL price drift, hot / cold form, top target out (market adjusts), Unders on receptions (fail on real lines); NBA back-to-back rebounds, star-out Unders, blocks, hot / cold.
+- **Props**: NFL TD opening price as an input (worse), NFL price drift, hot / cold form, top target out (market adjusts), Unders on receptions (fail on real lines); NBA back-to-back rebounds, star-out Unders, blocks, hot / cold.
 - **Moneyline**: the market's fee-out price is calibrated; no stack or model beats it except the two ML PICK rules.
 
 ## REMOVED FOR GOOD

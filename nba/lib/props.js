@@ -96,7 +96,12 @@ export const DOG_CUT = 2.5;
 export const MIN_GAP = 0.02;
 // PRA is left out: it has no real-line market to test on and its live rows priced within 2 points went 11-0 (points 4-7, the rest 6-2).
 export const GAP_FREE = new Set(["pra"]);
-export const effChance = (p) => (p.side === "over" && p.price > 0 && p.price < 1 ? OVER_W * p.chance + (1 - OVER_W) * p.price : p.chance);
+// 10/27 night (research): Polymarket underprices PRA. Live graded PRA Overs on real books (two-sided, ask - bid 5c or less) 10/20-26: priced 65.4c, won
+// 78.7% of 357, the model said 78.2%; the best weight day by day (each day fit on the days before) 0.8, Brier 0.1784 at 0.4 -> 0.1701 (points / rebounds /
+// assists / steals stay at 0.4: their gain is 0.002 or less, points worse). So a PRA Over's % = 0.8 x the model + 0.2 x the price.
+export const OVER_W_STAT = { pra: 0.8 };
+const overW = (stat) => OVER_W_STAT[stat] ?? OVER_W;
+export const effChance = (p) => (p.side === "over" && p.price > 0 && p.price < 1 ? overW(p.stat) * p.chance + (1 - overW(p.stat)) * p.price : p.chance);
 // 10/23 (owner: "check all calibration and wording and numbering"): with the calibration bands passed in, a row must ALSO be priced under its
 // calibrated % (the number the page shows), so no row reads a % under its own price. Live graded rows 10/20-22: calibrated % over the price 52-25
 // (67.5%, +0.2 per $100), at or under it 27-16 (62.8%, -12.2). The bands themselves are fit on the rows without this test (propCalibration).
@@ -302,7 +307,7 @@ export async function propShadows(dates) {
 export const CAL_K = 100;
 export const calBand = (c) => Math.min(95, Math.floor(c * 20 + 1e-9) * 5);
 export async function propCalibration(now = Date.now(), fresh = false) {
-  const r = getRedis(), old = fresh ? null : await getJSON("nbapropcal").catch(() => null);
+  const r = getRedis(), old = fresh ? null : await getJSON("nbapropcal2").catch(() => null);
   if (old && old.bands && now - Date.parse(old.t) < 3 * 3600e3) return old.bands;
   const bands = {};
   for (const d of await nbaPropDays()) { const h = await r.hgetall(K_NBAPROPRES(d)).catch(() => null); if (!h) continue;
@@ -310,7 +315,7 @@ export async function propCalibration(now = Date.now(), fresh = false) {
       for (const p of onePerPlayer(x.picks || [])) { if (p.result !== "W" && p.result !== "L") continue; const b = (bands[calBand(p.chance)] = bands[calBand(p.chance)] || { n: 0, said: 0, won: 0 });
         b.n++; b.said += p.chance; if (p.result === "W") b.won++; } } }
   for (const b of Object.values(bands)) { b.said = b.said / b.n; b.won = b.won / b.n; }
-  await setJSON("nbapropcal", { t: new Date(now).toISOString(), bands }).catch(() => {});
+  await setJSON("nbapropcal2", { t: new Date(now).toISOString(), bands }).catch(() => {});
   return bands;
 }
 export function calibrate(chance, bands) {
