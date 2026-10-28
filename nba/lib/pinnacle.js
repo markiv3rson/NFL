@@ -142,7 +142,8 @@ export async function gradeMoves(fetchFinals, grade) {
       const f = finals[m.game];
       if (!f || !f.final) { if (staleDate(date)) { const { _k, ...row } = m; row.result = "void"; await r.set(_k, JSON.stringify(row)).catch(() => {}); n++; } continue; }   // postponed / moved: closed out, not pending forever
       const [away, home] = m.game.split(" @ ");
-      const { _k, ...row } = m; row.result = grade(row, away, home, f); if (row.nowLine != null) row.resultNow = grade({ ...row, line: row.nowLine }, away, home, f); row.final = { away: f.away, home: f.home };
+      if (m.half && !f.h1) { const { _k, ...row } = m; row.result = "void"; await r.set(_k, JSON.stringify(row)).catch(() => {}); n++; continue; }   // a 1H row with no first-half score: closed out
+      const { _k, ...row } = m; row.result = grade(row, away, home, m.half ? { ...f, away: f.h1.away, home: f.h1.home } : f); if (row.nowLine != null) row.resultNow = grade({ ...row, line: row.nowLine }, away, home, f); row.final = { away: f.away, home: f.home };
       await r.set(_k, JSON.stringify(row)); n++;
     }
   }
@@ -234,7 +235,7 @@ export async function recordBookGaps(games, booksAt, now = Date.now()) {
 //   Totals (same scan, 2011-26 closes vs the service's walk-forward total; uneven by season, so shadows only):
 //   mtotlate   the model's total 8+ points off the line, from March 1 on (season day 130+): its side 57.0% of 481 (Over 58, Under 56; 2024 59% of 123, the rest 50-62)
 //   mtotstar   the model's total 8+ UNDER the line with a star out on either team: Under 60.2% of 256 (2025 40% of 15, the rest 53-69)
-export const ANGLE_SHADOWS = { tired: [55.2, 1024], dogvtired: [56.2, 365], restvstar: [56.0, 425], restfav: [57.6, 311], restlate: [59.7, 196], mtotlate: [57.0, 481], mtotstar: [60.2, 256] };
+export const ANGLE_SHADOWS = { tired: [55.2, 1024], dogvtired: [56.2, 365], restvstar: [56.0, 425], restfav: [57.6, 311], restlate: [59.7, 196], mtotlate: [57.0, 481], mtotstar: [60.2, 256], h1spr: [60.0, 120] };   // h1spr = lib/h1spread.js (recorded there, graded here on the first-half score)
 const lateSeason = (date) => { const md = String(date || "").slice(5); return md >= "02-15" && md <= "04-30"; };
 export function angleSides(g) {
   const c = g && g.context, so = g && g.starOut, px = g && g.poly && g.poly.spread; if (!c || !c.home || !c.away || !px || px.homeSpread == null) return [];
