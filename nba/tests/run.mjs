@@ -1084,8 +1084,8 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
     const g5 = await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2027-01-02T10:00:00Z"), fetchBox: async () => fixedBox });
     const g6 = await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2027-01-04T10:00:00Z"), fetchBox: async () => { throw new Error("no fourth look"); } });
     const r6 = JSON.parse(await R.hget(pr.K_NBAPROPRES("2026-12-30"), "BOS @ DET"));
-    ok(g4 === 1 && r4.rechecks === 2 && r4.picks.find((p) => p.name === "Cade Cunningham").result === "L" && g5 === 1 && g6 === 0 && r6.rechecks === 3 && r6.fixed === 3 && pr.recheckCount({ rechecked: "x" }) === 1,
-      "NBA props re-check (10/26): up to 3 looks (6 h, then every 20 h), each correction re-grades the rows, then never a 4th; an old `rechecked` row counts as 1", { g4, g5, g6, r6 }); }
+    ok(g4 === 1 && r4.rechecks === 2 && r4.picks.find((p) => p.name === "Cade Cunningham").result === "L" && g5 === 1 && g6 === 0 && r6.rechecks === 3 && r6.fixed === 3 && pr.recheckCount({ rechecked: "x" }) === 1 && pr.RECHECKS === 8 && !pr.recheckDue({ rechecks: 8, checkedAt: "2000-01-01T00:00:00Z" }, Date.now(), "2000-01-01T00:00:00Z"),
+      "NBA props re-check: looks 6 h after the grade, then every 20 h (a failed look writes nothing), each correction re-grades the rows; an old `rechecked` row counts as 1", { g4, g5, g6, r6 }); }
   // ESPN box parse (the real summary shape): 3PT "1-3" = 1 made, a DNP is left out, the key from the header
   const b = parseBox({ header: { competitions: [{ status: { type: { completed: true } }, competitors: [{ homeAway: "away", team: { abbreviation: "MIA" } }, { homeAway: "home", team: { abbreviation: "ORL" } }] }] },
     boxscore: { players: [{ team: { abbreviation: "MIA" }, statistics: [{ names: ["MIN", "PTS", "FG", "3PT", "FT", "REB", "AST", "TO", "STL", "BLK", "OREB", "DREB", "PF", "+/-"], athletes: [{ athlete: { displayName: "Andrew Wiggins Jr." }, stats: ["15", "13", "4-7", "1-3", "4-5", "2", "1", "0", "2", "0", "0", "2", "2", "-1"] }, { athlete: { displayName: "Nobody Played" }, didNotPlay: true, stats: [] }] }] }] } });
