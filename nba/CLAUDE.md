@@ -7,6 +7,7 @@ Season number = the year the season ENDS (2027 = 2026-27).
 
 - Site: `nba/lib/*`, routes `pages/api/nba/*` (every route is `/api/nba/...`), pages `public/nba/index.html` + `public/nba/app.js`, tests `nba/tests/*` (`npm run test:nba`).
 - Model service (Railway): `nba/railway-model-service/` — `nba_data.py` (data + cleaning + the site's closes via `/api/nba/closes`), `nba_injuries.py`, `nba_features.py`, `fair_line.py`, `fit_model.py` (numbers + accuracy report), `live.py` (tonight's games, line table), `team_side.py` (team model, data only), `nba_prop_model.py` (props, teammates-out input v2), `season_sim.py` (futures), `daily_rebuild.py` + `scheduler.py`, `app.py`.
+- Database (10/28): the paid Redis Cloud database shared with NFL (`NBA_DB_URL_REDIS_URL`), every NBA key under `nba:`; `NBA_REDIS_URL` (the old Upstash, out of requests 10/27) is only the fallback.
 - Settings (combined Vercel project): `NBA_REDIS_URL`, `NBA_MODEL_SERVICE_URL`, `NBA_MODEL_SERVICE_TOKEN`, `NBA_ODDS_API_KEY` — NBA never reads NFL's database, service or odds key. Railway NBA service: root `/nba/railway-model-service`, config `/nba/railway-model-service/railway.json`, `SITE_URL`, `SITE_API=/api/nba`, `SITE_LOGIN`, `MODEL_DIR` + `NBA_CACHE` on a volume.
 - Jobs (Pacific): rebuild 5:15 AM (ESPN's box files land ~4:30 AM), prop refit 5:35, futures 5:55, catch-up 8:15 when yesterday's box is missing; site snapshot every 30 min 7 AM-9:30 PM + 3 min before each tip; grading 11:45 PM (props re-graded up to 3 looks for ESPN corrections); backup 12:10 AM.
 

@@ -2164,5 +2164,19 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const sh = readFileSync(new URL("../public/shell.js", import.meta.url), "utf8"), ap = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   ok(/h1PickNow\(getRedis\(\), SEASON, g, pin, p, gm\)/.test(pp) && /recordGameMarkets\(getRedis\(\), SEASON, g, gm, t\)/.test(pp) && /gradeH1Week\(season, week, games, espnFirstHalves\)/.test(gr) && /G\.h1pick = \{/.test(wk), "the 15-min pull records the pick + every game-market price; grading and the slate read it");
   ok(/per === "1h" && o\.h1pick \? h1Line\(o\.h1pick\)/.test(sh) && /h1pick: g\.h1pick \|\| null/.test(ap) && /h1Row\(\) \+/.test(ap), "game page 1st Half shows the Pick line; Models -> Card picks has the 1H SPREAD row"); }
+{ // 10/28: both sports moved to one paid database; the one-time copy only ADDS what is missing (never overwrites a write made after the switch)
+  const { DB_URL } = await import("../lib/redis.js"), mg = await import("../lib/migrate.js"), { migrateKey } = await import("../pages/api/migrate.js");
+  ok(DB_URL({ NBA_DB_URL_REDIS_URL: "redis://new", UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://old" }) === "redis://new" && DB_URL({ UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://old" }) === "redis://old", "NFL reads the new shared database, the old one is the fallback");
+  const src = new RedisMock({ host: "old-db", port: 7001 }), dst = new RedisMock({ host: "new-db", port: 7002 });
+  await src.set("a", "old", "PX", 600000); await src.set("b", "old"); await src.rpush("hist", "1", "2"); await src.hset("teaser:2026:8", "X|stack", "s", "X|wide", "w"); await src.sadd("ids", "p", "q");
+  await dst.set("b", "new"); await dst.rpush("hist", "3"); await dst.hset("teaser:2026:8", "X|h1spr", "h", "X|stack", "newer");
+  let c = "0", tot = {}; do { const { next, rows } = await mg.readPage(src, c); c = next; const w = await mg.writeRows(dst, rows); for (const [k, v] of Object.entries(w)) tot[k] = (tot[k] || 0) + v; } while (c !== "0");
+  const h = await dst.hgetall("teaser:2026:8"), ttl = await dst.pttl("a");
+  ok((await dst.get("a")) === "old" && ttl > 0 && ttl <= 600000 && (await dst.get("b")) === "new" && (await dst.lrange("hist", 0, -1)).join() === "1,2,3"
+    && h["X|h1spr"] === "h" && h["X|stack"] === "newer" && h["X|wide"] === "w" && (await dst.smembers("ids")).sort().join() === "p,q",
+    "copy: missing keys added with their time to live, newer strings / hash fields kept, old list entries go in front", { tot, h });
+  const d2 = new RedisMock({ host: "new-db2", port: 7003 }); await mg.writeRows(d2, [{ key: "alerts", type: "string", v: "x", ttl: null }], "nba:"); ok((await d2.get("nba:alerts")) === "x" && !(await d2.get("alerts")), "NBA rows land under nba:, never on an NFL name");
+  ok(migrateKey("redis://a") !== migrateKey("redis://b") && migrateKey("redis://a").length === 24, "the copy route's key comes from the new database's address");
+  const bk = readFileSync(new URL("../pages/api/backup.js", import.meta.url), "utf8"); ok(/!k\.startsWith\("nba:"\)/.test(bk), "the NFL backup leaves NBA's keys to NBA's own backup"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);
