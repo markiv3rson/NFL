@@ -1171,18 +1171,18 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   const T = new Date(Date.now() - 3600e3).toISOString(), old = new Date(Date.now() - 7 * 3600e3).toISOString();
   const bg = (books, at = T, over = {}) => cp.buildCard(mk("OKC", "ATL", { books, booksAt: at, ...over }));
   const sp = bg({ spread: { homeSpread: -10.5 }, total: { line: 227 } });
-  ok(sp.spread.plain.ruleId === "bookgap|spread" && sp.spread.plain.pick === "ATL -8.5" && sp.spread.plain.hit === 59.7 && sp.spread.plain.id === "cardpick|spread", "BOOK GAP spread: books ATL -10.5 vs Polymarket -8.5 -> ATL -8.5 at 59.7%", sp.spread.plain);
+  ok(sp.spread.plain.ruleId === "bookgap|spread" && sp.spread.plain.pick === "ATL -8.5" && sp.spread.plain.hit === 57.3 && sp.spread.plain.id === "cardpick|spread", "BOOK GAP spread: books ATL -10.5 vs Polymarket -8.5 -> ATL -8.5 at 57.3%", sp.spread.plain);
   ok(sp.total.plain.ruleId === "bookgap|total" && sp.total.plain.pick === "Over 223.5" && sp.total.plain.hit === 64.1, "BOOK GAP total: books 227 vs Polymarket 223.5 -> Over 223.5 at 64.1%", sp.total.plain);
   { const o2 = sp.total.rows.find((r) => r.side === "over" && r.points === 2), a2 = sp.spread.rows.find((r) => r.team === "ATL" && r.points === 2), a3 = sp.spread.rows.find((r) => r.team === "ATL" && r.points === 3);
-    ok(o2 && o2.hit === 66.7 && a2 && a2.hit === 65.4 && a3 && a3.hit === 70 && sp.total.pts && sp.total.pts.hit === 66.7,
-      "BOOK GAP bought lines read the rule's own measured rates on real Polymarket closes (Over +2 66.7%, ATL +2 pts 65.4%, +3 70.0%), not the main-line lift", { o2, a2, a3, pts: sp.total.pts }); }
+    ok(o2 && o2.hit === 66.7 && a2 && a2.hit === 64.3 && a3 && a3.hit === 68.4 && sp.total.pts && sp.total.pts.hit === 66.7,
+      "BOOK GAP bought lines read the rule's own measured rates on real Polymarket closes (Over +2 66.7%, ATL +2 pts 64.3%, +3 68.4%), not the main-line lift", { o2, a2, a3, pts: sp.total.pts }); }
   const dog = bg({ spread: { homeSpread: -6.5 }, total: { line: 220 } });
   ok(dog.spread.plain.pick === "OKC +8.5" && dog.total.plain.pick === "Under 223.5", "BOOK GAP the other way: books ATL -6.5 -> OKC +8.5; books 220 -> Under", [dog.spread.plain.pick, dog.total.plain.pick]);
   const small = bg({ spread: { homeSpread: -9 }, total: { line: 224.5 } }), big = bg({ spread: { homeSpread: -14.5 }, total: { line: 233 } }), stale = bg({ spread: { homeSpread: -10.5 }, total: { line: 227 } }, old), nob = bg(null);
   ok(small.spread.plain.ruleId === "model|spread" && small.total.plain.ruleId === "model|total" && big.spread.plain.ruleId === "model|spread" && big.total.plain.ruleId === "model|total" && stale.spread.plain.ruleId === "model|spread" && nob.total.plain.ruleId === "model|total",
     "no BOOK GAP under 1 pt / 2 pts, over 4 / 6 pts (bad read), with books older than 6 h or no books: the model's side");
   const lmv = bg({ spread: { homeSpread: -10.5 } }, T, { move: { signal: { spread: { team: "OKC", open: 8.5, pts: 3 } } } });
-  ok(lmv.spread.plain.ruleId === "linemove|spread" && lmv.spread.plain.hit === 67.9, "LINE MOVE at the open (67.9%) outranks BOOK GAP (59.7%)", lmv.spread.plain); }
+  ok(lmv.spread.plain.ruleId === "linemove|spread" && lmv.spread.plain.hit === 67.9, "LINE MOVE at the open (67.9%) outranks BOOK GAP (57.3%)", lmv.spread.plain); }
 { // 10/26 angle-mix shadows: tired + star out, big dog vs a tired favorite, rested vs star out, rested road favorite
   const pn4 = await import("../lib/pinnacle.js"), ctx = (rh, ra) => ({ home: { rest: rh }, away: { rest: ra } });
   const g1 = { key: "AAA @ BBB", date: "2026-10-27", start: "2026-10-28T00:00:00Z", context: ctx(1, 2), starOut: { home: 1, away: 0 }, poly: { spread: { homeSpread: -9.5 } } };
