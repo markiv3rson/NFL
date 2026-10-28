@@ -273,4 +273,3 @@ export const TEAMS = {
  }
 };
 export const ABBRS = Object.keys(TEAMS);
-export const nickToAbbr = (nick) => ABBRS.find((a) => TEAMS[a].nick.toLowerCase() === String(nick || "").toLowerCase()) || null;

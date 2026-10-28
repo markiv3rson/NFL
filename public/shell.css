@@ -440,3 +440,7 @@ body.bnav-on .phead { background:var(--glass) !important; -webkit-backdrop-filte
   body.bnav-on .phead::before { background:var(--glass) !important; -webkit-backdrop-filter:var(--glassf); backdrop-filter:var(--glassf);
     -webkit-mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 12px),transparent 100%); mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 12px),transparent 100%); }
 }
+
+/* 10/28: the NFL 1H SPREAD pick line under the first-half spread rows (same size as the MODEL lines) */
+.mkc .mkpick { margin:6px 0 2px; font-size:13px; }
+.mkc .mkpick .mkp { color:#2e5cff; font-weight:800; }
