@@ -135,6 +135,19 @@ try { const st = (await getJSONurl(`${SITE}/api/slate`)) || {}, m = st.status &&
     console.log(`${fail ? "FAIL" : "ok  "} ${"TOTAL MOVE".padEnd(20)} top 20% ${m.hit20}% (${m.n20}) · top 10% ${m.hit10}% (${m.n10}) · unseen seasons, rebuild ${String(m.builtAt || "").slice(0, 10)}`); }
   else console.log("     TOTAL MOVE: the site has no rebuild numbers yet (shows the built-in 57.6% / 61.3%)");
 } catch (e) { console.log(`     TOTAL MOVE: site not reachable (${String(e).slice(0, 60)})`); }
+// PASSING TDs cross-check (10/28 night, lib/gameprops.js ptdCross): the app's own code on the 2026 wk1-7 game passing-TD markets + the QBs'
+// passing-TD ladders, prices 2 h before kickoff on real two-sided books (railway-model-service/data/poly_us_ptd_cross.csv)
+{ const G = await import("../lib/gameprops.js"), [h, ...rows] = parseCSV(readFileSync(new URL("../railway-model-service/data/poly_us_ptd_cross.csv", import.meta.url), "utf8")), ix = (k) => h.indexOf(k);
+  const by = {}; for (const c of rows) if (c.length === h.length) (by[c[ix("event")]] ||= []).push(c);
+  const out = [];
+  for (const [ev, cs] of Object.entries(by)) {
+    const markets = cs.map((c) => ({ slug: c[ix("slug")], sportsMarketType: c[ix("type")], question: c[ix("question")], bestAskQuote: { value: +c[ix("long_price")] }, bestBidQuote: { value: 1 - +c[ix("short_price")] }, y: c[ix("long_won")], wk: +c[ix("week")] }));
+    const [, a, hm] = ev.split("-"), x = G.ptdCross({ markets }, a.toUpperCase(), hm.toUpperCase()); if (!x) continue;
+    const m = markets.find((z) => z.slug === x.slug); if (m.y === "" || m.y === "0.5") continue;
+    out.push({ won: x.long ? +m.y : 1 - +m.y, px: x.price, sh: x.said, wk: m.wk }); }
+  const w = out.filter((x) => x.won === 1).length, said = out.reduce((s, x) => s + x.sh, 0) / out.length * 100, B = out.filter((x) => x.wk >= 4), wb = B.filter((x) => x.won === 1).length;
+  const hit = pct(w, out.length - w), fail = hit < 56 || hit < said - 3; if (fail) bad++;
+  console.log(`${fail ? "FAIL" : "ok  "} ${"PASSING TDs".padEnd(20)} ${w}-${out.length - w} = ${hit.toFixed(1)}% (said ${said.toFixed(1)}, ${(out.reduce((s, x) => s + x.won / x.px - 1, 0) / out.length * 100).toFixed(1)} per $100) Polymarket US 2026 wk1-7, one per game · weeks 4-7 ${wb}-${B.length - wb}`); }
 // GAME PROPS (10/28 night, lib/gameprops.js): the app's own pick code on Polymarket US's 2026 wk1-7 game / team props (steady two-sided books in the 2 h
 // before kickoff, the prices you would have paid, Polymarket's settlement; railway-model-service/data/poly_us_gameprops.csv). No 2026 game made a pick.
 { const G = await import("../lib/gameprops.js"), [h, ...rows] = parseCSV(readFileSync(new URL("../railway-model-service/data/poly_us_gameprops.csv", import.meta.url), "utf8")), ix = (k) => h.indexOf(k);

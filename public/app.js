@@ -721,6 +721,7 @@ const MODEL_INFO = {
 const CARD_INFO = [["PICK:", "the card’s bet at Polymarket’s main line (a tested rule, else the model’s side), locked at kickoff."],
   ["PICK w/ POINTS:", "the same side with the fewest bought points (1–2) that won 56%+."], ["1H SPREAD:", "the first-half model’s side on Polymarket’s first-half spread lines (58%+ on the model’s chance less 11.4 points, 77¢ max, steady books), graded on the first-half score."],
   ["GAME PROPS:", "game and team props where the 600 past games nearest this spread and total beat Polymarket’s price (70%+ on 8 parts history + 2 parts price, 6+ points over the price, 30–77¢), graded on Polymarket’s result."],
+  ["PASSING TDs:", "the game’s total passing TDs where the two QBs’ own passing-TD prices disagree with it by 8+ points: the side the QBs point to (30–77¢, one per game), graded on Polymarket’s result."],
   ["Line value:", "points better (+) or worse than the line at kickoff."]];
 const TRACK_INFO = [["Test picks,", "never shown on a card: recorded and graded live. One becomes a pick only after it holds 56%+ over about 100 games."],
   ["INJURY EARLY:", "a starter newly out; the healthy team at the line of that moment."], ["TD JUMP:", "a player’s TD chance up 10+ points between reruns; did he score?"],
@@ -733,7 +734,7 @@ function pickRow(lab, h) {
   const pc = Math.round(100 * h.hit);
   return tRow(lab, sub, [`${h.w}–${h.l}`, `<b class="${pc >= 56 ? "g" : pc >= 50 ? "y" : "r"}">${pc}%</b>`, h.per100 != null ? `<span class="${h.per100 >= 0 ? "g" : "r"}">${h.per100 >= 0 ? "+" : "−"}$${Math.abs(Math.round(h.per100))}</span>` : '<span class="dim">—</span>']);
 }
-const h1Row = () => pickRow("1H SPREAD · PICK", TRACKED && TRACKED.h1spr) + pickRow("GAME PROPS · PICK", TRACKED && TRACKED.gprops);
+const h1Row = () => pickRow("1H SPREAD · PICK", TRACKED && TRACKED.h1spr) + pickRow("GAME PROPS · PICK", TRACKED && TRACKED.gprops) + pickRow("PASSING TDs · PICK", TRACKED && TRACKED.ptdqb);
 function cardRecBox() {
   const R = (COMBOS && COMBOS.cardRec) || {};
   const row = (lab, k) => { const b = R[k]; if (!b || !(b.w + b.l)) return tRow(lab, "", ['<span class="dim">—</span>', '<span class="dim">—</span>', '<span class="dim">—</span>']);
@@ -1244,6 +1245,7 @@ function applyBetsView() {
 let PROPS = null, PROPWEEK = null, PROPTAB = "recyds", PROPTEAM = "all";
 const PROP_TABS = [["td", "Anytime TD"], ["first", "First TD"], ["recyds", "Rec Yds"], ["rec", "Receptions"], ["rushyds", "Rush Yds"]];
 const PROP_STAT = { recyds: "rec_yds", rec: "rec", passyds: "pass_yds", rushyds: "rush_yds" };
+const tabStats = (st) => (st === "rush_yds" ? ["rush_yds", "scrim_yds"] : [st]);   // 10/28 night: scrimmage-yards Unders ride the Rush Yds tab
 const propTabLabel = (k) => (PROP_TABS.find(([t]) => t === k) || [, "Rec Yds"])[1];
 async function loadProps() {
   try { const d = await (await fetch(`/api/props${PROPWEEK ? `?week=${PROPWEEK}` : ""}`, { cache: "no-store" })).json(); if (d && d.ok) { PROPS = d; renderProps(); } } catch {}
@@ -1257,7 +1259,7 @@ const teamSel = (teams) => `<div class="wksel"><select id="props-team" aria-labe
 const propLast = (p, tag) => { const l = p.last; if (!l) return '<span class="pp5 dim">—</span>';
   if (l.line == null) return `<span class="pp5 dim">${l.actual != null ? Math.round(l.actual * 10) / 10 : "—"}</span>`;
   return `<span class="pp5 ${l.result === "W" ? "g" : "r"}">${l.side === "over" ? "O" : "U"} ${l.line} ${l.result === "W" ? "✓" : "✗"}${l.actual != null ? ` <span class="dim">${Math.round(l.actual * 10) / 10}</span>` : ""}</span>`; };
-const propRow = (p) => `<div class="pbl ppr${p.first ? " first" : ""}${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${esc(p.name)}</span><span class="pp2">${p.first ? "First TD" : `${p.stat === "rec" ? "Rec " : p.stat === "pass_yds" ? "Pass Yds " : p.stat === "rush_yds" ? "Rush Yds " : ""}${p.side === "over" ? "Over" : "Under"} ${p.line}`}</span>${p.first ? "" : propLast(p)}<span class="pp3 mod">${Math.round((p.cal ?? p.chance) * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
+const propRow = (p) => `<div class="pbl ppr${p.first ? " first" : ""}${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${esc(p.name)}</span><span class="pp2">${p.first ? "First TD" : `${p.stat === "rec" ? "Rec " : p.stat === "pass_yds" ? "Pass Yds " : p.stat === "rush_yds" ? "Rush Yds " : p.stat === "scrim_yds" ? "Scrim Yds " : ""}${p.side === "over" ? "Over" : "Under"} ${p.line}`}</span>${p.first ? "" : propLast(p)}<span class="pp3 mod">${Math.round((p.cal ?? p.chance) * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
 // 10/20 night (owner): the POLYMARKET head carries the Polymarket logo on every props page (both sports); the First TD tab has NO LAST WK column (nothing to grade there)
 const propHead = (first) => `<div class="pbl ppr pph${first ? " first" : ""}"><span class="pp1">PLAYER</span><span class="pp2">LINE</span>${first ? "" : '<span class="pp5">LAST WK</span>'}<span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
 // the rows of one game, split by team (away first, then home, then anyone with no team), each team with its small label (owner: "separate them by teams")
@@ -1281,7 +1283,7 @@ function renderProps() {
   const d = PROPS; if (!d) { el.innerHTML = '<div class="s dim" style="margin-top:12px">Loading…</div>'; return; }
   const stat = PROP_STAT[PROPTAB] || "rec_yds", weeks = d.weeks && d.weeks.length ? d.weeks : [d.week], sel = Number(d.week);
   const wk = `<div class="wksel"><select id="props-wk" aria-label="Week">${weeks.map((w) => `<option value="${w}"${sel === Number(w) ? " selected" : ""}>Week ${w}</option>`).join("")}</select></div>`;
-  const all = (d.games || []).map((g) => ({ ...g, picks: (g.picks || []).filter((p) => p.stat === stat) })).filter((g) => g.picks.length);
+  const all = (d.games || []).map((g) => ({ ...g, picks: (g.picks || []).filter((p) => tabStats(stat).includes(p.stat)) })).filter((g) => g.picks.length);
   const teams = [...new Set(all.flatMap((g) => g.picks.map((p) => p.team).filter(Boolean)))].sort();
   if (PROPTEAM !== "all" && !teams.includes(PROPTEAM)) PROPTEAM = "all";   // 10/27: a team chosen on another week / tab with no rows here would leave "None yet." under a drop-down reading "All teams"
   const games = all.map((g) => ({ ...g, picks: PROPTEAM === "all" ? g.picks : g.picks.filter((p) => p.team === PROPTEAM) })).filter((g) => g.picks.length);
@@ -1390,7 +1392,7 @@ function gamePropsBody(g) {
   const wk = Number(g.week || (S && S.week)), c = GPROPS[wk];
   if (!c || Date.now() - c.t > 5 * 60e3) loadGameProps(wk);
   if (!c) return gNone("Loading…");
-  const pg = (c.d.games || []).find((x) => x.game === g.key), stat = PROP_STAT[GPROP] || "rec_yds", picks = pg ? (pg.picks || []).filter((p) => p.stat === stat) : [];
+  const pg = (c.d.games || []).find((x) => x.game === g.key), stat = PROP_STAT[GPROP] || "rec_yds", picks = pg ? (pg.picks || []).filter((p) => tabStats(stat).includes(p.stat)) : [];
   return picks.length ? `<div class="pgrid" style="margin-top:6px"><div class="par">${propHead(false)}${teamRows({ away: g.away, home: g.home, picks }, propRow)}</div></div>` : gNone("None for this game.");
 }
 function gameParlaysBody(g) { const b = sgpBox(g); return b ? b.replace('<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAYS</div>', "") : gNone(g.started || g.final ? "Same-game parlays close at kickoff; they are on Model bets with their results." : "No same-game parlay for this game."); }

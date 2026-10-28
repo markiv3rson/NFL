@@ -173,4 +173,21 @@ _ns5["_stat_games_cached"] = lambda season: pd.DataFrame([dict(team="ATL", week=
 _a = _ns5["_active_pids"]({"ATL", "SF", "NYG"})
 ok(_a == {"ATL": {"qb2", "wr1"}, "SF": {"x"}} and "if len(r) and t in act: r = r[r.pid.isin(act[t])]" in _psrc,
    "STACK team yards: only players who played the team's last game count (the hurt starter qb1 and rb1, last seen weeks 1 / 4, are out)")
+# 10/28 night: the second prop model's live scoring (prop_model2.chances_many) on a stub model + stub logs: the inputs it builds, who it skips
+import prop_model2 as _pm2
+_seen = []
+class _Stub:
+    def predict_proba(self, X): _seen.append(X.copy()); return np.c_[1 - X.X.values / 100, X.X.values / 100]
+_P = pd.DataFrame([dict(player_id="p1", nk=_pm2.norm("Bijan Robinson"), player_display_name="Bijan Robinson", team="ATL", position="RB", season=2026, week=w, rushing_yards=y, carries=c, receiving_yards=0, targets=1, receptions=0, scrim=y)
+                   for w, y, c in [(1, 80, 18), (2, 60, 15), (3, 100, 20), (4, 40, 12)]] +
+                  [dict(player_id="p2", nk=_pm2.norm("Two Games"), player_display_name="Two Games", team="ATL", position="RB", season=2026, week=w, rushing_yards=10, carries=3, receiving_yards=0, targets=0, receptions=0, scrim=10) for w in (3, 4)])
+_old = (_pm2.load_live, _pm2.logs); _pm2.load_live = lambda: {"models": {"rush_yds": _Stub()}}; _pm2.logs = lambda seasons, fresh_cur=True: _P
+try:
+    _r = _pm2.chances_many([{"away": "ATL", "home": "NO", "spread": 3.0, "total": 46.0, "outs": [], "lines": [{"name": "Bijan Robinson", "stat": "rush_yds", "line": 69.5}, {"name": "Two Games", "stat": "rush_yds", "line": 9.5}, {"name": "Nobody", "stat": "rush_yds", "line": 9.5}, {"name": "Bijan Robinson", "stat": "pass_yds", "line": 1.5}]}])
+    _x = _seen[0].iloc[0]; _row = _r[0]["rows"]
+    ok(len(_row) == 1 and _row[0]["over"] == 0.7 and abs(_row[0]["under"] - 0.3) < 1e-9 and _row[0]["team"] == "ATL" and abs(_x.m3 - (60 + 100 + 40) / 3) < 1e-9 and abs(_x.m8 - 70) < 1e-9 and _x.n == 4 and _x.home == 0 and abs(_x.imp - (46 / 2 - 3 / 2)) < 1e-9 and _x.X == 70 and abs(_x.xr - 70 / 71) < 1e-9,
+       "prop model 2: inputs from the player's games so far (last 3 / last 8 / 4 games), his team's implied points (away: 23 - 1.5), X = line + 0.5; under-3-game players, unknown names and other stats skipped")
+    _r2 = _pm2.chances_many([{"away": "ATL", "home": "NO", "spread": 3.0, "total": 46.0, "outs": ["Bijan Robinson"], "lines": [{"name": "Bijan Robinson", "stat": "rush_yds", "line": 69.5}]}])
+    ok(_r2[0]["rows"] == [] and _pm2.norm("Ja'Marr Chase Jr.") == "jamarrchase", "prop model 2: an Out player gets no row; names match the research's key")
+finally: _pm2.load_live, _pm2.logs = _old
 print(f"service checks: {'FAILED ' + str(bad) if bad else 'all passed'}"); sys.exit(1 if bad else 0)
