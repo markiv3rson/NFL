@@ -312,7 +312,7 @@ function linesBg() { const p = $("panel-lines"); document.documentElement.classL
 // GAME PAGE TABS (10/27, owner; design = both sports, same as NFL): GAME LINES · PLAYER PROPS · PARLAYS under the game card, the prop kinds as plain-text sub tabs
 const lsGet = (k, d) => { try { return localStorage.getItem(k) || d; } catch { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
-const GTABS = [["lines", "Game Lines"], ["props", "Player Props"], ["gprops", "Game Props"], ["parlays", "Parlays"]];
+const GTABS = [["lines", "Game Lines"], ["props", "Player Props"], ["parlays", "Parlays"]];   // 10/28: GAME PROPS tab out -- only winning picks show, none of those markets has one
 const GPROP_TABS = [["pts", "Points"], ["reb", "Rebounds"], ["ast", "Assists"], ["pra", "PRA"], ["stl", "Steals"], ["blk", "Blocks"]];
 let GTAB = lsGet("gTab", "lines"), GPROP = lsGet("gProp:nba", "pts");
 if (!GTABS.some(([k]) => k === GTAB)) GTAB = "lines";
@@ -322,7 +322,6 @@ const gameChips = () => `<div class="gchips">${GPROP_TABS.map(([k, t]) => `<butt
 const gNone = (t) => `<div class="card" style="margin-top:10px"><div class="inner"><div class="s dim">${t}</div></div></div>`;
 const etDay = (iso) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
 let GPROPS = {}, GPROPS_LOADING = {};
-if (typeof Shell !== "undefined") Shell.onMkt = (key) => { if (DETAIL && (key == null || key === DETAIL)) refreshDetail(); };   // 10/27: the other markets landed or a chip was tapped
 function refreshDetail() { const open = [...document.querySelectorAll(".drop.open")].map((e) => e.id).filter(Boolean); renderLines(); for (const id of open) { const e = $(id); if (e) e.classList.add("open"); } }
 function loadGameProps(day) {
   if (GPROPS_LOADING[day]) return; GPROPS_LOADING[day] = true;
@@ -351,7 +350,7 @@ function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = ""; linesBg();
   document.body.classList.add("game-on");   // 10/18 (owner, same as NFL): the game card is the header; ← Games under it
   const co = chartOf(g), mk = typeof Shell !== "undefined" && Shell.mktLines;   // 10/27: the other Polymarket markets (halves, quarters, team totals, game / team props)
-  const body = GTAB === "props" ? gameChips() + gamePropsBody(g) : GTAB === "parlays" ? gameParlaysBody(g) : GTAB === "gprops" ? (mk ? Shell.mktProps(co, gNone("Polymarket lists no game or team props for this game yet.")) : "")
+  const body = GTAB === "props" ? gameChips() + gamePropsBody(g) : GTAB === "parlays" ? gameParlaysBody(g)
     : secRow("SPREAD &amp; ML", injPill(g, "inj")) + marketCard(g, "spread", "inj") + secRow("TOTALS") + marketCard(g, "total") + (mk ? Shell.mktLines(co) : "");
   const was = $("detail").querySelector ? $("detail").querySelector(".grest") : null, keepY = was ? was.scrollTop : 0;
   // 10/28 (owner, design = both sports): the team card, the chart, ← Games and the tabs stay put (.gtop); only the part under them scrolls (.grest, Shell.pinGame)

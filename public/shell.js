@@ -209,64 +209,14 @@
   }
   // 10/27 (owner, Polymarket's game screen: "put [the game card] on top of the chart but blend it nicely together" / "remove this title"): our team
   // card (no border, square bottom corners), then the chart on the same team-colour wash fading into the page, the windows and Polymarket's mark under it
-  // OTHER MARKETS (10/27, owner: Polymarket's game page -- halves, quarters, team totals, game / team props; "add everything else if it passes our 65%
-  // rule"): Polymarket US's prices from /api/gamemarkets (NBA /api/nba/gamemarkets). 10/28: the NFL first-half spread is the one market with a tested
-  // pick (the "Pick:" line under the 1st Half spread rows); every other market failed its test and shows prices only. Game Lines gets HALVES & QUARTERS (period chips) and TEAM TOTALS (team chips), GAME PROPS its own tab.
-  const MK = { data: {}, busy: {} }, PERL = { "1h": "1st Half", "2h": "2nd Half", q1: "1st Q", q2: "2nd Q", q3: "3rd Q", q4: "4th Q" }, TTL = { full: "Full game", "1h": "1st half", "2h": "2nd half" };
-  const mkKey = (o) => `${o.sport}|${o.key}`, cents = (x) => (x == null ? "—" : `${Math.round(x * 100)}¢`), sgn = (x) => (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x);
-  const lsS = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
-  Shell.onMkt = null;
-  Shell.mktLoad = (o) => {
-    const k = mkKey(o), c = MK.data[k]; if ((c && Date.now() - c.t < 120e3) || MK.busy[k] || typeof fetch !== "function") return;
-    MK.busy[k] = true;
-    fetch(`/api/${o.sport === "nba" ? "nba/" : ""}gamemarkets?away=${encodeURIComponent(o.away)}&home=${encodeURIComponent(o.home)}&start=${encodeURIComponent(o.start)}`, { cache: "no-store" })
-      .then((r) => r.json()).then((d) => { MK.data[k] = { t: Date.now(), d: d && d.ok ? d : null }; }).catch(() => { MK.data[k] = { t: Date.now(), d: null }; })
-      .finally(() => { MK.busy[k] = false; if (typeof Shell.onMkt === "function") Shell.onMkt(o.key); });
-  };
-  const mkHead = (a, b, c) => `<div class="mkx mkh"><span>${a}</span><span>${b}</span><span>${c}</span></div>`;
-  const mkRow = (a, b, c) => `<div class="mkx"><span>${a}</span><span class="v">${b}</span><span class="v">${c}</span></div>`;
-  const chips = (attr, list, on) => `<div class="gchips">${list.map(([k, l]) => `<button class="gchip${k === on ? " on" : ""}" type="button" ${attr}="${k}">${l}</button>`).join("")}</div>`;
-  const pmh = '<img class="mkpm" src="/polymarket.png" alt="">';
-  // Game Lines extras: "" until loaded (the cards above show first), nothing when Polymarket lists none
-  // 10/28: the NFL 1H SPREAD pick (lib/h1pick.js), under the first-half spread rows: "Pick: CAR +3.5 1H · 66% · 57¢", ✓ / ✗ once graded
+  // OTHER MARKETS (10/27 owner: "add everything else if it passes our 65% rule"; 10/28 3:50 AM "set the limit at 58%+"; 10/28 "why am i seeing
+  // everything? only things that should show is the winning picks"): no price lists -- a game shows HALVES & QUARTERS only when the NFL 1H SPREAD
+  // pick (lib/h1pick.js) has a side, with its % and price; ✓ / ✗ once graded. Every other half / quarter / team total / game prop failed its test
+  // (no pick can show), so they and the GAME PROPS tab are gone. Their prices are still saved every 15 min (gmpx:) for later tests.
+  const cents = (x) => (x == null ? "—" : `${Math.round(x * 100)}¢`);
   const h1Line = (k) => { const res = k.result === "W" ? ' <b class="g">✓</b>' : k.result === "L" ? ' <b class="r">✗</b>' : k.result === "P" ? ' <span class="dim">push</span>' : "";
     return `<div class="s mkpick"><span class="lbw">Pick:</span> <b class="${k.said >= 56 ? "g" : k.said >= 53 ? "lg" : "y"}">${String(k.label).toUpperCase().replace(/[<>&"]/g, "")} · ${Math.floor(k.said)}%</b> <span class="mkp">· ${cents(k.price)}</span>${res}</div>`; };
-  Shell.mktLines = (o) => {
-    const c = MK.data[mkKey(o)]; Shell.mktLoad(o); const d = c && c.d;
-    const lone = o.h1pick ? `<div class="trow"><div class="sh">HALVES &amp; QUARTERS</div></div><div class="card mkc"><div class="mks">1st Half spread</div>${h1Line(o.h1pick)}</div>` : "";   // no first-half lines listed (yet / any more)
-    if (!d) return lone;
-    let out = "";
-    const pk = Object.keys(PERL).filter((k) => d.periods && d.periods[k]);
-    if (o.h1pick && !(d.periods && d.periods["1h"] && d.periods["1h"].spread.length)) out += lone;
-    if (pk.length) {
-      let per = lsG("gPer", "1h"); if (!pk.includes(per)) per = pk[0]; const P = d.periods[per];
-      out += `<div class="trow"><div class="sh">HALVES &amp; QUARTERS</div></div><div class="card mkc">${chips("data-gper", pk.map((k) => [k, PERL[k]]), per)}` +
-        (P.spread.length ? `<div class="mks">Spread</div>${mkHead(`${pmh}LINE`, o.away, o.home)}${P.spread.map((r) => mkRow(`${o.away} ${sgn(r.line)} · ${o.home} ${sgn(-r.line)}`, cents(r.aPrice), cents(r.hPrice))).join("")}` : "") +
-        (per === "1h" && o.h1pick ? h1Line(o.h1pick) : "") +
-        (P.total.length ? `<div class="mks">Total</div>${mkHead(`${pmh}LINE`, "OVER", "UNDER")}${P.total.map((r) => mkRow(String(r.line), cents(r.over), cents(r.under))).join("")}` : "") +
-        (P.winner.length ? `<div class="mks">Winner</div>${mkHead(`${pmh}`, "YES", "")}${P.winner.map((r) => mkRow(r.label, cents(r.price), "")).join("")}` : "") + `</div>`;
-    }
-    const tt = d.teamTotals || {}, teams = [o.away, o.home].filter((t) => tt[t] && Object.keys(tt[t]).length);
-    if (teams.length) {
-      let tm = lsG("gTT", o.away); if (!teams.includes(tm)) tm = teams[0];
-      out += `<div class="trow"><div class="sh">TEAM TOTALS</div></div><div class="card mkc">${chips("data-gtt", teams.map((t) => [t, t]), tm)}` +
-        Object.keys(TTL).filter((k) => tt[tm][k]).map((k) => `<div class="mks">${TTL[k]}</div>${mkHead(`${pmh}LINE`, "OVER", "UNDER")}${tt[tm][k].map((r) => mkRow(`${tm} ${r.line}`, cents(r.over), cents(r.under))).join("")}`).join("") + `</div>`;
-    }
-    return out;
-  };
-  // GAME PROPS tab: Game | Team chips, each market group with its rows
-  Shell.mktProps = (o, none) => {
-    const c = MK.data[mkKey(o)]; Shell.mktLoad(o); if (!c) return '<div class="s dim" style="margin:12px 2px">Loading…</div>';
-    const d = c.d, pr = (d && d.props) || {}, has = (x) => x && Object.keys(x).length, kinds = [["game", "Game"], ["team", "Team"]].filter(([k]) => has(pr[k]));
-    if (!kinds.length) return none;
-    let kd = lsG("gPx", "game"); if (!kinds.some(([k]) => k === kd)) kd = kinds[0][0];
-    return chips("data-gpx", kinds, kd) + Object.entries(pr[kd]).map(([g, rows]) => `<div class="card mkc"><div class="mks">${g}</div>${mkHead(pmh, "YES", "NO")}${rows.map((r) => mkRow(r.label, cents(r.yes), cents(r.no))).join("")}</div>`).join("");
-  };
-  if (typeof document !== "undefined" && document.addEventListener) document.addEventListener("click", (e) => {
-    const b = e.target.closest && e.target.closest("[data-gper],[data-gtt],[data-gpx]"); if (!b) return;
-    if (b.dataset.gper) lsS("gPer", b.dataset.gper); else if (b.dataset.gtt) lsS("gTT", b.dataset.gtt); else lsS("gPx", b.dataset.gpx);
-    if (typeof Shell.onMkt === "function") Shell.onMkt(null);
-  });
+  Shell.mktLines = (o) => (o && o.h1pick ? `<div class="trow"><div class="sh">HALVES &amp; QUARTERS</div></div><div class="card mkc"><div class="mks">1st Half spread</div>${h1Line(o.h1pick)}</div>` : "");
   Shell.chartBlock = (o) => {
     CH.cur = o.key; const r = chartRange(o), keys = o.live ? ["live", "1d", "1w", "all"] : ["1d", "1w", "1m", "all"];
     const btn = (k) => `<button type="button" class="${k === r ? "on" : ""}" data-grange="${k}">${k === "live" ? "LIVE" : k.toUpperCase()}</button>`;
