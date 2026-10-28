@@ -1,5 +1,4 @@
 import Redis from "ioredis";
-import { switching } from "../../lib/dbswitch";
 let client;
 // With no Redis configured (a local run) the site still works: a small in-memory stand-in, nothing is kept between restarts.
 class MemRedis {
@@ -38,11 +37,8 @@ export function withPrefix(c, P = NBA_PREFIX) {
 }
 export function getRedis() {
   if (globalThis.__TEST_REDIS__) return globalThis.__TEST_REDIS__;
-  if (!client) { const url = redisUrl(), O = { maxRetriesPerRequest: 3, connectTimeout: 8000 }, old = okUrl(process.env.NBA_REDIS_URL);
-    if (!url) client = new MemRedis();
-    else if (!sharedDb()) client = new Redis(url, O);
-    else { const nu = withPrefix(new Redis(url, { ...O, keyPrefix: NBA_PREFIX }));   // the switch key is read under the label: nba:migrated:done
-      client = old && old !== url ? switching(new Redis(old, O), nu) : nu; } }
+  if (!client) { const url = redisUrl(), O = { maxRetriesPerRequest: 3, connectTimeout: 8000 };
+    client = !url ? new MemRedis() : sharedDb() ? withPrefix(new Redis(url, { ...O, keyPrefix: NBA_PREFIX })) : new Redis(url, O); }
   return client;
 }
 // 60-s copy of the page data, one per deployment (a preview build must never serve its page to the live site).
