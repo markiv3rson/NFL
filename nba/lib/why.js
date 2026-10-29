@@ -3,7 +3,7 @@
 // PICK and the ones that did not (and why), Pinnacle's and Polymarket's moves, the sportsbooks vs Polymarket, rest / fatigue, ATS form, shot quality,
 // the model vs the line, injuries with points per game, and the moneyline pick. Every line is [label, words, mark]: +1 = for the PICK's side,
 // -1 = against it, 0 = neither. Display only.
-import { MODEL_HIT, MOVE_HIT, ATS_HIT, ATS_MAX, ATS_MIN_N, SHOT_COLD, SHOT_SQ, BGAP_SP, BGAP_TOT, BGAP_FRESH_MS, PTS_BAR } from "./cardpick";
+import { MODEL_HIT, MOVE_HIT, ATS_HIT, ATS_MAX, ATS_MIN_N, SHOT_COLD, SHOT_SQ, BGAP_SP, BGAP_TOT, bgapFresh, PTS_BAR } from "./cardpick";
 const sg = (x) => (x > 0 ? "+" : "") + x;
 const r1 = (x) => Math.round(Number(x) * 10) / 10;
 const fin = (x) => x != null && x !== "" && isFinite(Number(x));
@@ -21,7 +21,7 @@ export function gameWhy(g, now = Date.now()) {
   const px = g.poly || {}, hs = px.spread && fin(px.spread.homeSpread) ? Number(px.spread.homeSpread) : null, tl = px.total && fin(px.total.line) ? Number(px.total.line) : null;
   const P = C.spread && C.spread.plain, pickTeam = P ? P.team : null, forTeam = (t) => (pickTeam ? (t === pickTeam ? 1 : -1) : 0);
   const T = C.total && C.total.plain, pickSide = T ? T.side : null, forSide = (s) => (pickSide ? (s === pickSide ? 1 : -1) : 0);
-  const mv = g.move || {}, sig = mv.signal || {}, bk = g.books || null, bkFresh = !!(g.booksAt && now - Date.parse(g.booksAt) <= BGAP_FRESH_MS);
+  const mv = g.move || {}, sig = mv.signal || {}, bk = g.books || null, bkFresh = bgapFresh(g);
   // ---- spread
   if (P) out.spread.push(["Pick:", `${P.pick} · ${r1(P.hit)}% · ${RULE_WORDS[P.ruleId] || P.ruleId || "the card"}${P.ruleId === "linemove|spread" ? (P.atOpen ? ` (Polymarket still at Pinnacle's opening number: ${MOVE_HIT.spreadOpen}%)` : ` (after the move: ${MOVE_HIT.spreadClose}%)`) : ""}${P.why && !/^model/.test(P.ruleId || "") ? ` — ${P.why}` : ""}`, 1]);
   else if (hs != null) out.spread.push(["Pick:", "none yet on this line", 0]);
@@ -30,7 +30,7 @@ export function gameWhy(g, now = Date.now()) {
     out.spread.push(["Polymarket line:", `opened ${H} ${sg(Number(mv.spread.open))} → now ${sg(Number(mv.spread.now))}: moved ${Math.abs(r1(d))} toward ${d < 0 ? H : A}${pickTeam ? ` · ${pickTeam} ${gain > 0 ? "gets" : "gives up"} ${Math.abs(r1(gain))}` : ""}`, gain >= 1 ? 1 : gain <= -1 ? -1 : 0]); }
   else if (hs != null) out.spread.push(["Polymarket line:", `${H} ${sg(hs)}, unchanged since first seen`, 0]);
   if (bk && bk.spread && fin(bk.spread.homeSpread) && hs != null) { const B = Number(bk.spread.homeSpread), gap = Math.abs(B - hs); let note = "";
-    if (gap === 0) note = " · the same number"; else if (gap < BGAP_SP[0]) note = " · under 1 point apart, no BOOK GAP"; else if (gap > BGAP_SP[1]) note = " · over 4 points apart: a bad read, no rule"; else note = bkFresh ? ` · ${r1(gap)} off → BOOK GAP${P && P.ruleId === "bookgap|spread" ? "" : " (a stronger rule named the side)"}` : ` · ${r1(gap)} off, but the books are older than 6 h, so BOOK GAP is off`;
+    if (gap === 0) note = " · the same number"; else if (gap < BGAP_SP[0]) note = " · under 1 point apart, no BOOK GAP"; else if (gap > BGAP_SP[1]) note = " · over 4 points apart: a bad read, no rule"; else note = bkFresh ? ` · ${r1(gap)} off → BOOK GAP${P && P.ruleId === "bookgap|spread" ? "" : " (a stronger rule named the side)"}` : ` · ${r1(gap)} off, but the books were not pulled in the 90 minutes before tip-off, so BOOK GAP is off`;
     out.spread.push(["Sportsbooks:", `${H} ${sg(B)}${g.booksAt ? ` (pulled ${ptTime(g.booksAt)})` : ""} vs Polymarket ${sg(hs)}${note}`, gap === 0 ? 0 : forTeam(B < hs ? H : A)]); }
   { const f = g.fatigue || {}, bits = [];
     if (fin(ch.rest) && fin(ca.rest)) bits.push(`${H} ${ch.rest} day${Number(ch.rest) === 1 ? "" : "s"} rest, ${A} ${ca.rest}`);
@@ -58,7 +58,7 @@ export function gameWhy(g, now = Date.now()) {
     out.total.push(["Polymarket total:", `opened ${mv.total.open} → now ${mv.total.now}: ${d > 0 ? "up" : "down"} ${Math.abs(r1(d))}${pickSide ? ` · a ${better ? "better" : "worse"} number for the ${pickSide === "over" ? "Over" : "Under"}` : ""}`, better == null ? 0 : better ? 1 : -1]); }
   else if (tl != null) out.total.push(["Polymarket total:", `${tl}, unchanged since first seen`, 0]);
   if (bk && bk.total && fin(bk.total.line) && tl != null) { const B = Number(bk.total.line), gap = Math.abs(B - tl); let note = "";
-    if (gap === 0) note = " · the same number"; else if (gap < BGAP_TOT[0]) note = " · under 2 points apart, no BOOK GAP"; else if (gap > BGAP_TOT[1]) note = " · over 6 apart: a bad read, no rule"; else note = bkFresh ? ` · ${r1(gap)} off → BOOK GAP${T && T.ruleId === "bookgap|total" ? "" : " (a stronger rule named the side)"}` : ` · ${r1(gap)} off, but the books are older than 6 h, so BOOK GAP is off`;
+    if (gap === 0) note = " · the same number"; else if (gap < BGAP_TOT[0]) note = " · under 2 points apart, no BOOK GAP"; else if (gap > BGAP_TOT[1]) note = " · over 6 apart: a bad read, no rule"; else note = bkFresh ? ` · ${r1(gap)} off → BOOK GAP${T && T.ruleId === "bookgap|total" ? "" : " (a stronger rule named the side)"}` : ` · ${r1(gap)} off, but the books were not pulled in the 90 minutes before tip-off, so BOOK GAP is off`;
     out.total.push(["Sportsbooks:", `${B}${g.booksAt ? ` (pulled ${ptTime(g.booksAt)})` : ""} vs Polymarket ${tl}${note}`, gap === 0 ? 0 : forSide(B > tl ? "over" : "under")]); }
   { const hl = ch.sq_l20, al = ca.sq_l20, hx = ch.sq_x10, ax = ca.sq_x10, cmu = ch.sq_cold_mu, smu = ch.sq_mu;
     if (fin(hl) && fin(al) && fin(cmu) && tl != null) { const cold = Number(hl) + Number(al) - Number(cmu), sq = fin(hx) && fin(ax) && fin(smu) ? (Number(hx) + Number(ax)) / 2 - tl - Number(smu) : null, fires = cold <= SHOT_COLD || (sq != null && sq >= SHOT_SQ);

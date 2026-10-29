@@ -74,7 +74,7 @@ Database (10/28): ONE paid Redis Cloud database for both sports (250 MB, $6/mont
 - **Shadows (recorded + graded, never picks)**: INJURY EARLY, STACK, WIDE, TD JUMP (Models -> Tracked angles).
 
 ### NBA (details in `nba/CLAUDE.md`)
-Card rules LINE MOVE (open 67.9 / after 56.3), BOOK GAP (spread 57.3 on near-50c lines, total 64.1), FATIGUE, ATS REGRESSION, SHOT QUALITY; ML PICK = market chance 56%+; props Overs only (Unders not buyable), 65%+ on the 0.4 model / 0.6 price blend (PRA 0.8 model: Polymarket underprices PRA, 78.7% of 357 at 65c), priced 60-77c and 2+ points under, no +2.5-dog-team Overs; Prop Parlays 6 / 8 / 10, Same Game 4; 1H SPREAD shadow; 7 angle shadows.
+Card rules LINE MOVE (open 67.9 / after 56.3), BOOK GAP (spread 57.3 on near-50c lines, total 64.1; only on books pulled within 90 min of tip, 10/29), FATIGUE, ATS REGRESSION, SHOT QUALITY; ML PICK = market chance 56%+; props Overs only (Unders not buyable), 65%+ on the 0.4 model / 0.6 price blend (PRA 0.8 model: Polymarket underprices PRA, 78.7% of 357 at 65c), priced 60-77c and 2+ points under, no +2.5-dog-team Overs; Prop Parlays 6 / 8 / 10, Same Game 4; 1H SPREAD shadow; 7 angle shadows.
 
 ## DATA AND JOBS
 
