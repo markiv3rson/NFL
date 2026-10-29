@@ -567,7 +567,8 @@ function betsSummary(shown) {
 }
 // Open bets by kickoff time (10/10): every leg is matched to its game (team code, "· AWAY @ HOME", or a TD player's name); a bet whose
 // legs fall in more than one slot goes in its own "Mixed times" list with a warning (it isn't settled until its last game ends).
-const BET_SLOTS = ["Early (London / international)", "Morning (10 AM)", "Afternoon (1 PM)", "Prime time"];
+// 10/29 (owner: consistent everywhere): the same slot names as Home and Model bets
+const BET_SLOTS = ["EARLY", "10 AM GAMES", "1 PM GAMES", "PRIME TIME"];
 function kickSlot(g) {
   if (!g || !g.kickoff) return null;
   if (/TNF|SNF|MNF/.test(g.badge || "")) return BET_SLOTS[3];
@@ -603,10 +604,10 @@ function openBySlot(open) {
     const groups = Object.fromEntries(BET_SLOTS.map((k) => [k, []])), mixed = [], other = [], head = (k) => (word ? `${word} · ${k}` : k);
     for (const b of list) { const sl = betSlots(b); if (sl.length === 1) groups[sl[0]].push(b); else if (sl.length > 1) mixed.push({ b, sl }); else other.push(b); }
     return BET_SLOTS.filter((k) => groups[k].length).map((k) => `<div class="sec"><div class="sh">${head(k)}</div>${groups[k].map(betRow).join("")}</div>`).join("") +
-      (mixed.length ? `<div class="sec"><div class="sh">${head("Mixed times")}</div>${mixed.map(({ b, sl }) => `<div class="s dim" style="margin-top:6px">${sl.sort((x, y) => BET_SLOTS.indexOf(x) - BET_SLOTS.indexOf(y)).join(" + ")}</div>${betRow(b)}`).join("")}</div>` : "") +
-      (other.length ? `<div class="sec"><div class="sh">${head("Time unknown")}</div>${other.map(betRow).join("")}</div>` : "");
+      (mixed.length ? `<div class="sec"><div class="sh">${head("MIXED TIMES")}</div>${mixed.map(({ b, sl }) => `<div class="s dim" style="margin-top:6px">${sl.sort((x, y) => BET_SLOTS.indexOf(x) - BET_SLOTS.indexOf(y)).join(" + ")}</div>${betRow(b)}`).join("")}</div>` : "") +
+      (other.length ? `<div class="sec"><div class="sh">${head("TIME UNKNOWN")}</div>${other.map(betRow).join("")}</div>` : "");
   };
-  return block(open.filter(isSingle), "Singles") + block(open.filter((b) => !isSingle(b)), "");
+  return block(open.filter(isSingle), "SINGLES") + block(open.filter((b) => !isSingle(b)), "");
 }
 function renderMineNow() {
   if (!MB) { $("record-mine").innerHTML = '<div class="card" style="margin-top:10px"><div class="s">Loading…</div></div>'; return; }

@@ -467,3 +467,6 @@ body.bnav-on .panel .pph .lvb { color:var(--red) !important; -webkit-text-stroke
    columns as wide as the other Model bets tables' */
 #lab .ppr.first.tdr, #lab .ppr.first.tdh { grid-template-columns:minmax(0,1fr) 96px 42px 84px !important; column-gap:4px; }
 @media (min-width:600px) { #lab .ppr.first.tdr, #lab .ppr.first.tdh { grid-template-columns:minmax(0,1.4fr) minmax(0,1.2fr) 70px 110px !important; column-gap:16px; } }
+/* 10/29 (owner: NFL and NBA the same, everything organized): a finished tile's pick line wraps inside the middle; the team names never break or drop out of line (both sports) */
+.tile .nm > .t { flex:0 0 auto; white-space:nowrap; }
+.tile .nm > .tmid { flex:1 1 auto; min-width:0; }

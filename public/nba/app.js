@@ -459,6 +459,14 @@ function renderBets() {
   const rowsOf = (a, settled) => a.map((e) => { const lk = settled ? [] : liveOf(e), lv = lk.length === 1 ? `<span class="r lvb">● LIVE · ${esc(liveSc(lk[0]).lbl || "")}</span> ` : lk.length ? '<span class="r lvb">● LIVE</span> ' : "";
     return `<div class="betwrap"><div class="row"><span>${betName(e)}${lv ? " " + lv.trim() : ""}</span><span>${state(e, settled)}</span></div>` +
     `${(e.picks || []).map((p) => legRow(p, lk)).join("")}<div class="s" style="padding:0 0 6px 8px">${sub(e, settled)}</div></div>`; }).join("");
+  // 10/29 (owner: NFL and NBA the same): open bets under tip-off slot headers like NFL's -- the singles first ("SINGLES · NIGHT GAMES"), then the parlays by slot
+  const SLOTS = ["EARLY GAMES", "NIGHT GAMES", "LATE GAMES"], gameOf = (k) => k && S && (S.games || []).find((g) => g.key === k);
+  const slotsOf = (e) => [...new Set([...(e.picks || []).map((p) => p.game), e.prop && e.prop.game, e.pick && e.pick.game].map(gameOf).filter((g) => g && g.start).map((g) => nbaSlot(g.start)))];
+  const openBySlot = (list) => { const block = (xs, word) => { const head = (k) => (word ? `${word} · ${k}` : k), groups = Object.fromEntries(SLOTS.map((k) => [k, []])), mixed = [], other = [];
+      for (const e of xs) { const sl = slotsOf(e); if (sl.length === 1) groups[sl[0]].push(e); else if (sl.length > 1) mixed.push(e); else other.push(e); }
+      return SLOTS.filter((k) => groups[k].length).map((k) => `<div class="sec"><div class="sh">${head(k)}</div>${rowsOf(groups[k], false)}</div>`).join("") +
+        (mixed.length ? `<div class="sec"><div class="sh">${head("MIXED TIMES")}</div>${rowsOf(mixed, false)}</div>` : "") + (other.length ? `<div class="sec"><div class="sh">${head("TIME UNKNOWN")}</div>${rowsOf(other, false)}</div>` : ""); };
+    return block(list.filter(isSingle), "SINGLES") + block(list.filter((e) => !isSingle(e)), ""); };
   const open = [...document.querySelectorAll("#record-mine .drop.open")].map((e) => e.id);
   // 10/17 (owner: "make everything consistent"): a day drop-down like NFL's week drop-down.
   // 10/27 (owner: "This pop up don't even work"): it picked only which SETTLED bets sat inside the closed Settled fold, so a tap changed nothing on screen. Now
@@ -477,7 +485,7 @@ function renderBets() {
   $("record-mine").innerHTML = ddSlot($("record-mine"), dayPick) + topCard(`<div class="row"><span class="dim">Staked</span><span>${money(staked)} · settled</span></div>`,
     `<div class="mbhero"><span class="lbl">Profit · ${sel === "all" ? "this season" : dayName(sel)}</span><b>${cMoney(pl)}</b>` +
     `<span class="sub"><span class="${tot ? (w / tot >= 0.5 ? "g" : "r") : "dim"}">${tot ? `${w}–${l}` : "0–0"}</span>${sold ? ` · ${sold} sold` : ""} · ${past ? `${shown.length} bet${shown.length === 1 ? "" : "s"}` : `${openB.length} open · ${money(openB.reduce((a, e) => a + (e.cost || 0), 0))} staked`}</span></div>`) +
-    `<div class="card" style="margin-top:10px">` + (past || !openB.length ? "" : `<div class="sec"><div class="sh">Open</div>${rowsOf(firstSingles(openB), false)}</div>`) +
+    `<div class="card" style="margin-top:10px">` + (past || !openB.length ? "" : openBySlot(openB)) +
     `<div class="fold" data-drop="settled"><span>${past ? "Results" : "Settled bets"}</span><span>▾</span></div><div class="drop${past ? " open" : ""}" id="settled">${done.length ? rowsOf(done, true) : '<div class="s dim empty">None yet.</div>'}</div></div>` +
     `<div class="center"><button class="btn" id="sync-btn">↻ Sync account</button></div>`;
   for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
