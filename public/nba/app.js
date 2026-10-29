@@ -604,12 +604,12 @@ const pickSplit = (t) => { const s = String(t || ""); let m = /^([A-Z]{2,4}) (ML
   m = /^(.*?)\s*\b(Over|Under) (\d+(?:\.\d+)?)(?: 1H)?$/.exec(s); if (m) return [m[1], `${m[2][0]} ${m[3]}`, null];
   m = /^(.*?):? (Yes|No)$/.exec(s); if (m) return [m[1], m[2], null]; return [s, "", null]; };
 const pickTr = (x) => { const r = normRes(x.result), h = Number(x.hit), c = h >= 56 ? "g" : h >= 53 ? "lg" : "y"; const [who, pk, tm] = pickSplit(x.pick);
-  return `<div class="pbl ppr pk${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) + " " : ""}${tm ? tlogo(tm) : ""}${esc(who)}</span><span class="pp2">${pk ? numCol(pk, c) || esc(pk) : ""}</span>` +
+  return `<div class="pbl ppr pk${x.gl ? " pgl" : ""}${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) + " " : ""}${tm ? tlogo(tm) : ""}${esc(who)}</span><span class="pp2">${pk ? numCol(pk, c) || esc(pk) : ""}${x.kind === "w/ points" ? ' <span class="wpt">w/ points</span>' : ""}</span>` +
     `<span class="pp3 mod">${isFinite(h) ? `${h >= 56 ? Math.round(h) : Math.floor(h)}%` : "—"}</span><span class="pp4">${x.price > 0 && x.price < 1 ? `${Math.round(x.price * 100)}¢` : "—"}</span></div>`; };
 const LAB_BODY = {
-  lines: (g) => { const L = g.lines || {}, row = (x, kind) => (x && x.pick ? { pick: x.pick, kind, hit: x.hit, price: x.price, result: x.result } : null);
+  lines: (g) => { const L = g.lines || {}, row = (x, kind) => (x && x.pick ? { gl: true, pick: x.pick, kind, hit: x.hit, price: x.price, result: x.result } : null);
     const rows = [row(L.ml, ""), row(L.spread, ""), row(L.total, ""), row(L.spread && L.spread.pts && L.spread.pts.pick !== L.spread.pick ? L.spread.pts : null, "w/ points"), row(L.total && L.total.pts && L.total.pts.pick !== L.total.pick ? L.total.pts : null, "w/ points")].filter(Boolean);
-    return rows.length ? pickHead(gameNameN(g)) + rows.map(pickTr).join("") : ""; },
+    return rows.length ? pickHead(gameNameN(g)).replace('pph pk"', 'pph pk pgl"') + rows.map(pickTr).join("") : ""; },
   props: (g) => { const c = GPROPS[g.date], pg = c && c.d ? (c.d.games || []).find((x) => x.game === g.key) : null, picks = ((pg && pg.picks) || []).filter((p) => p.stat === MBPROP);
     const part = (t) => { const rs = picks.filter((p) => (p.team || "") === t); return rs.map(npRow).join(""); };
     return picks.length ? npHead(gameNameN(g)) + [...new Set([g.away, g.home, ...picks.map((p) => p.team || "")])].map(part).join("") : ""; },
