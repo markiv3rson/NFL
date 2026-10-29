@@ -463,5 +463,7 @@ body.bnav-on .panel .pph .lvb { color:var(--red) !important; -webkit-text-stroke
 #lab .ppr.first .pp2 { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 @media (min-width:600px) { #lab .ppr.first { grid-template-columns:minmax(0,1.4fr) minmax(0,1.2fr) 70px 110px !important; column-gap:16px; } }
 #lab .ppr.first.pph .pp2 { display:block !important; visibility:visible !important; }
-/* 10/29 (owner: "Separate the normal lines and the w/ points lines"): the w/ points picks start under a thin line, both sports */
-#lab .ppr.first.sep { margin-top:6px; padding-top:6px; border-top:1px solid rgba(255,255,255,.18); }
+/* 10/29 (owner, Model bets Anytime TD: the Polymarket logo sat on top of MODEL and POLYMARKET ran off the screen): the TD table's MODEL and POLYMARKET
+   columns as wide as the other Model bets tables' */
+#lab .ppr.first.tdr, #lab .ppr.first.tdh { grid-template-columns:minmax(0,1fr) 96px 42px 84px !important; column-gap:4px; }
+@media (min-width:600px) { #lab .ppr.first.tdr, #lab .ppr.first.tdh { grid-template-columns:minmax(0,1.4fr) minmax(0,1.2fr) 70px 110px !important; column-gap:16px; } }
