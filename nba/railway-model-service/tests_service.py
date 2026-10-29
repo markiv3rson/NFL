@@ -1,3 +1,4 @@
+import os
 #!/usr/bin/env python3
 """Automated checks for the NBA model service (run: python3 railway-model-service/tests_service.py, or npm test).
 No network: small made-up leagues stand in for the real data. "Pass" means the code does what it was written to do —
@@ -355,7 +356,9 @@ at = lambda s: [x for x, _ in scheduler.due(dt.datetime.strptime(s, "%Y-%m-%d %H
 ok(at("2026-10-22 05:15") == ["rebuild"] and at("2026-10-22 05:15") == [] and at("2026-10-22 04:00") == [], "rebuild at 5:15 AM PT (after ESPN's 4:30 AM files), once")
 ok(at("2026-10-22 05:35") == ["props"] and at("2026-10-22 05:55") == ["futures"] and at("2026-10-22 08:15") == ["catchup"], "prop refit 5:35, futures 5:55, catch-up reload 8:15 AM PT")
 ok(at("2026-10-22 07:00") == ["snapshot"] and at("2026-10-22 10:30") == ["snapshot"] and at("2026-10-22 21:30") == ["snapshot"] and at("2026-10-22 22:00") == [] and at("2026-10-22 06:30") == [], "snapshots (closing lines) every 30 min, 7 AM - 9:30 PM")
+import tempfile as _tf; scheduler.BACKUP_DIR = _tf.mkdtemp(); open(os.path.join(scheduler.BACKUP_DIR, "backup-2026-10-22.json"), "w").write("{}")
 ok(at("2026-10-22 08:20") == ["sync"] and at("2026-10-22 23:45") == ["grade"], "bet sync hourly at :20, grading nightly")
+ok(at("2026-10-23 08:20") == ["backup-catchup", "sync"], "10/29: a night with no backup file is made up at 8:20 AM")
 
 # closing-line snapshot 3 minutes before each tip-off (two games at the same tip = one snapshot; none outside tonight)
 PTz = lambda s: dt.datetime.strptime(s, "%Y-%m-%d %H:%M").replace(tzinfo=PT)

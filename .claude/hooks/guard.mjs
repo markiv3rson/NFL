@@ -88,7 +88,7 @@ if (mode === "pre") {
       if (files.length) { try { execSync("npm run test:site && npm run test:nba", { cwd: PROJ, stdio: ["ignore", "pipe", "pipe"], timeout: 300e3 }); }
         catch (e) { block(`rules 6 / 11 / 12 / 15: the tests fail, nothing is pushed.\n${String((e.stdout || "") + (e.stderr || "")).split("\n").filter((l) => /FAIL|failed|Error/.test(l)).slice(0, 15).join("\n")}`); } }
       // rules 8 / 10: a change to the pages is saved only when every page of both sports passes the look check (phone + computer)
-      if (files.some((f) => /^public\//.test(f) || f === "tests/lookcheck.mjs")) { try { execSync("node tests/lookcheck.mjs", { cwd: PROJ, stdio: ["ignore", "pipe", "pipe"], timeout: 900e3 }); }
+      if (files.some((f) => /^public\//.test(f) || f === "tests/lookcheck.mjs")) { try { execSync("node tests/lookcheck.mjs", { cwd: PROJ, stdio: ["ignore", "pipe", "pipe"], timeout: 1500e3 }); }
         catch (e) { block(`rules 8 / 10: the look check fails (pages differ NFL vs NBA, wrap, overlap or run off the screen), nothing is pushed.\n${String(e.stdout || "").split("\n").slice(0, 25).join("\n")}`); } }
     }
   }

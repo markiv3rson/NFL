@@ -734,13 +734,13 @@ function pickRow(lab, h) {
   const sub = [h.said != null ? `said ${h.said}%` : "", h.pending ? `${h.pending} pending` : ""].filter(Boolean).join(" · ");
   if (!h.n) return tRow(lab, sub, ['<span class="dim">—</span>', '<span class="dim">—</span>', '<span class="dim">—</span>']);
   const pc = Math.round(100 * h.hit);
-  return tRow(lab, sub, [`${h.w}–${h.l}`, `<b class="${pc >= 56 ? "g" : pc >= 50 ? "y" : "r"}">${pc}%</b>`, h.per100 != null ? `<span class="${h.per100 >= 0 ? "g" : "r"}">${h.per100 >= 0 ? "+" : "−"}$${Math.abs(Math.round(h.per100))}</span>` : '<span class="dim">—</span>']);
+  return tRow(lab, sub, [`${h.w}–${h.l}`, `<b class="${clsOf(pc)}">${pc}%</b>`, h.per100 != null ? `<span class="${h.per100 >= 0 ? "g" : "r"}">${h.per100 >= 0 ? "+" : "−"}$${Math.abs(Math.round(h.per100))}</span>` : '<span class="dim">—</span>']);
 }
 const h1Row = () => pickRow("1H SPREAD · PICK", TRACKED && TRACKED.h1spr) + pickRow("GAME PROPS · PICK", TRACKED && TRACKED.gprops) + pickRow("PASSING TDs · PICK", TRACKED && TRACKED.ptdqb);
 function cardRecBox() {
   const R = (COMBOS && COMBOS.cardRec) || {};
   const row = (lab, k) => { const b = R[k]; if (!b || !(b.w + b.l)) return tRow(lab, "", ['<span class="dim">—</span>', '<span class="dim">—</span>', '<span class="dim">—</span>']);
-    const pc = Math.round((100 * b.w) / (b.w + b.l)); return tRow(lab, "", [`${b.w}–${b.l}`, `<b class="${pc >= 56 ? "g" : pc >= 50 ? "y" : "r"}">${pc}%</b>`, b.stk ? `<span class="${b.ret >= 0 ? "g" : "r"}">${b.ret >= 0 ? "+" : "−"}$${Math.abs(Math.round((b.ret / b.stk) * 100))}</span>` : '<span class="dim">—</span>']); };
+    const pc = Math.round((100 * b.w) / (b.w + b.l)); return tRow(lab, "", [`${b.w}–${b.l}`, `<b class="${clsOf(pc)}">${pc}%</b>`, b.stk ? `<span class="${b.ret >= 0 ? "g" : "r"}">${b.ret >= 0 ? "+" : "−"}$${Math.abs(Math.round((b.ret / b.stk) * 100))}</span>` : '<span class="dim">—</span>']); };
   const V = (COMBOS && COMBOS.card && COMBOS.card.clv) || {};
   const lv = (lab, x) => { if (!x || !x.n) return ""; const av = x.sum / x.n;
     return tRow(lab, "", [`<b class="${av > 0.05 ? "g" : av < -0.05 ? "r" : "dim"}">${av > 0 ? "+" : av < 0 ? "−" : ""}${Math.abs(av).toFixed(2)}</b>`, x.beat, x.n - x.beat - x.same, x.same]); };
@@ -999,7 +999,7 @@ function renderLab() {
       live.map(([k, label]) => `<span>${esc(label)}${tag(k)}</span><span style="text-align:right">${now(k)}</span><span class="dim" style="text-align:right">${hist(k)}</span>`).join("") + `</div>` : ""; }).join("");
   // 10/17 (owner: "are you learning from it"): every graded leg this season by kind, and which kind lost the parlays
   const LK = [["td", "TD"], ["spread", "Spread"], ["ml", "Moneyline"], ["over", "Over"], ["under", "Under"]], lg = PAPER.legs || {}, kl = PAPER.killers || {};
-  const legRows = LK.filter(([k]) => lg[k] && lg[k].w + lg[k].l).map(([k, lab]) => { const x = lg[k], n = x.w + x.l, pct = Math.round((x.w / n) * 100); return `<span>${lab} legs</span><span style="text-align:right">${x.w}–${x.l} · <span class="${pct >= 56 ? "g" : pct >= 50 ? "y" : "r"}">${pct}%</span></span><span class="dim" style="text-align:right">${kl[k] ? `lost ${kl[k]} parlay${kl[k] === 1 ? "" : "s"}` : "—"}</span>`; }).join("");
+  const legRows = LK.filter(([k]) => lg[k] && lg[k].w + lg[k].l).map(([k, lab]) => { const x = lg[k], n = x.w + x.l, pct = Math.round((x.w / n) * 100); return `<span>${lab} legs</span><span style="text-align:right">${x.w}–${x.l} · <span class="${clsOf(pct)}">${pct}%</span></span><span class="dim" style="text-align:right">${kl[k] ? `lost ${kl[k]} parlay${kl[k] === 1 ? "" : "s"}` : "—"}</span>`; }).join("");
   const legBlock = legRows ? `<div class="dim" style="font-size:11px;letter-spacing:.06em;margin:0 0 4px">LEGS · THIS SEASON</div><div style="${grid};margin-bottom:12px">${legRows}</div>` : "";
   LAB_SB = `${legBlock}${rows}`;   // 10/15 (owner): lives in the Models tab, closed until you open it
   renderLabList();

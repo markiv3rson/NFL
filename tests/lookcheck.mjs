@@ -40,8 +40,12 @@ const PAGES = [
   ["nfl", "game-parlays", "", [".tile", '[data-gtab="parlays"]']], ["nba", "game-parlays", "", [".tile", '[data-gtab="parlays"]']],
   ["nfl", "props-2", "props-recyds", null], ["nba", "props-2", "props-reb", null], ["nfl", "props-first", "props-first", null],
   ["nfl", "mybets-settled", "mybets", ['[data-drop="settled"]']], ["nba", "mybets-settled", "mybets", ['[data-drop="settled"]']],
+  ["nfl", "props-3", "props-rec", null], ["nfl", "props-4", "props-rushyds", null], ["nba", "props-3", "props-ast", null], ["nba", "props-4", "props-pra", null],
+  ["nba", "props-5", "props-stl", null], ["nba", "props-6", "props-blk", null],
+  ["nfl", "modelbets-td", "modelbets-props", ['[data-mbprop="td"]']], ["nfl", "modelbets-first", "modelbets-props", ['[data-mbprop="first"]']],
+  ["nfl", "modelbets-recyds", "modelbets-props", ['[data-mbprop="recyds"]']], ["nba", "modelbets-reb", "modelbets-props", ['[data-mbprop="reb"]']],
 ];
-const WIDTHS = [390, 1440];   // phone (every check) and computer (off the screen / wraps / cut / overlap)
+const WIDTHS = [390, 430, 375, 1440];   // phone (every check), the owner's iPhone 15 Pro Max (430), a small phone (375) and computer (off the screen / wraps / cut / overlap)
 // one-line pieces (never wrap, never cut)
 const ONE_LINE = [".tile .nm > .t", ".sh", ".gchip", ".pph > span", ".ppr .pp3", ".ppr .pp4", ".stat .k", ".mbhero .lbl", ".pbn"];
 // kinds of text compared NFL vs NBA
@@ -65,7 +69,9 @@ await ctx.route("**/*", async (route) => {
 });
 
 const fails = [], styles = {};
+const ONLY = process.env.ONLY ? new RegExp(process.env.ONLY) : null;   // ONLY=regex runs just the pages whose "sport name" matches (a quick rerun)
 for (const W of WIDTHS) for (const [sp, name, hash, click] of PAGES) {
+  if (ONLY && !ONLY.test(`${sp} ${name}`)) continue;
   const page = await ctx.newPage(), errs = [];
   await page.setViewportSize({ width: W, height: W > 600 ? 900 : 844 });
   page.on("pageerror", (e) => errs.push(String(e).split("\n")[0]));
@@ -91,7 +97,7 @@ for (const W of WIDTHS) for (const [sp, name, hash, click] of PAGES) {
       out.style[k] = { size: cs.fontSize, weight: cs.fontWeight, caps: cs.textTransform, font: cs.fontFamily.split(",")[0].trim(), colour: cs.color, sample: lbl(e) }; }
     return out;
   }, { ONE_LINE, KINDS });
-  const tag = `${sp.toUpperCase()} ${name}${W > 600 ? " (computer)" : ""}`;
+  const tag = `${sp.toUpperCase()} ${name}${W === 390 ? "" : ` (${W} px)`}`;
   if (errs.length) fails.push(`${tag}: page error ${errs[0]}`);
   if (r.over) fails.push(`${tag}: runs off the screen (sideways scroll)`);
   for (const w of [...new Set(r.wrap)]) fails.push(`${tag}: wraps onto 2 lines -- ${w}`);
@@ -106,4 +112,4 @@ for (const [name, s] of Object.entries(styles)) { if (!s.nfl || !s.nba) continue
     if (diff.length) fails.push(`${name}: ${k} differs NFL vs NBA -- ${diff.map((f) => `${f} ${a[f]} vs ${b[f]}`).join(", ")} ("${a.sample}" / "${b.sample}")`); } }
 await browser.close();
 if (fails.length) { console.log(fails.join("\n")); console.log(`LOOK CHECK FAILED: ${fails.length}`); process.exit(1); }
-console.log(`look check passed: ${PAGES.length} pages, both sports, phone (390 px) and computer (1440 px)`);
+console.log(`look check passed: ${PAGES.length} pages x ${WIDTHS.length} widths (${WIDTHS.join(" / ")} px), both sports`);

@@ -159,6 +159,9 @@ def due(now, last, tips=None):
         jobs.append(("props", _props))
     if h == 8 and m == 15:
         jobs.append(("catchup", _catchup))
+    # 10/29: the 12:10 AM backup was missed 10/28 and 10/29 (status:backup still 10/27) -- a night with no backup file is made up at 8:20 AM
+    if h == 8 and m == 20 and not os.path.exists(os.path.join(BACKUP_DIR, f"backup-{now:%Y-%m-%d}.json")):
+        jobs.append(("backup-catchup", _backup))
     if 7 <= h <= 21 and m in (0, 30):
         jobs.append(("snapshot", lambda: _call("/api/snapshot?src=cron")))
     for tip in tips or []:                      # the real closing line: one snapshot 3 minutes before each distinct tip-off
