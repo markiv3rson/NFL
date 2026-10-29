@@ -15,6 +15,11 @@ export default async function handler(req, res) {
     await markSnapshot({ games: data.games.length, modelOk: data.modelOk, picks: data.bestBets.length, books: data.booksPull || null });
     if (data.modelOk === false) await logError("model", data.modelError || "model service did not answer");   // null = nothing to send (no game had lines)
     if (data.booksPull && data.booksPull.note && !data.booksPull.pulled) await logError("books", data.booksPull.note);
+    // 10/29 (owner: "check tonight that the books pulls happen before each tip-off wave"): the closing snapshot 3 minutes before a tip names any game
+    // whose books are not from the 90 minutes before its tip (BOOK GAP is off for it) -- it lands on Models -> System
+    { const bt = Date.parse(data.books && data.books.t), now = Date.parse(data.now) || Date.now();
+      const late = data.games.filter((g) => !g.preseason && !g.inProgress && Date.parse(g.start) > now && Date.parse(g.start) - now <= 10 * 60e3 && !(isFinite(bt) && bt <= Date.parse(g.start) && Date.parse(g.start) - bt <= 90 * 60e3));
+      if (late.length) await logError("books", `no books pull in the 90 minutes before tip-off for ${late.map((g) => g.key).join(", ")} -- BOOK GAP is off for ${late.length === 1 ? "it" : "them"}`); }
     // 10/20 (owner: Player props): the NBA prop model scores every recorded line of each game not yet tipped (last copy before tip-off = the locked one)
     let props = null; try { props = await scoreNbaProps(data.games); if (props.error && !props.building) await logError("props", props.error); } catch (e) { await logError("props", e); }
     // Pinnacle's free feed (opening lines + history for LINE MOVE) comes AFTER the page data is saved, so a slow or blocked feed can never cost the
