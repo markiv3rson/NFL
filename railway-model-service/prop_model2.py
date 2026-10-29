@@ -2,7 +2,8 @@
 """
 prop_model2.py -- the SECOND player-prop model (10/28 night; owner: "build ... 1, 2, 3, 4, and 5. Build now and then merge now").
 
-What it is: P(stat >= X) straight from a boosted-tree classifier, one per family (receiving yards, receptions, rushing yards, scrimmage yards),
+What it is: P(stat >= X) straight from a boosted-tree classifier, one per family (receiving yards, receptions, rushing yards, scrimmage yards;
+10/29: + rushing attempts, passing TDs, anytime TD),
 fit on the 2023-2025 regular seasons ONLY (nflverse weekly player stats + the schedule's spread / total). Inputs for a player-game, all from
 BEFORE that game: his last-3 / last-8 average of the stat, its spread over the last 8, his volume (targets or carries, last 3 / last 8), how
 many games he has, his position, his team's implied points (spread + total), home -- and X itself (also X over his recent average). Each
@@ -20,7 +21,7 @@ import season as _season
 
 CACHE = os.path.expanduser("~/.nfl_cache")
 MODEL_DIR = os.environ.get("MODEL_DIR", "/data")
-MODEL_FILE = os.path.join(MODEL_DIR if os.path.isdir(MODEL_DIR) else CACHE, "prop_model2_v1.pkl")
+MODEL_FILE = os.path.join(MODEL_DIR if os.path.isdir(MODEL_DIR) else CACHE, "prop_model2_v2.pkl")   # 10/29: v2 = + rush_att / pass_td / atd (v1 had four families)
 STATS_URL = "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_{y}.csv"
 GAMES_URL = "https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv"
 TRAIN = (2023, 2024, 2025)
@@ -30,6 +31,12 @@ FAM = {
     "rec": ("receptions", "targets", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]),
     "rush_yds": ("rushing_yards", "carries", [1, 3, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 70, 75, 80, 90, 100, 110, 120, 125, 130, 140, 150]),
     "scrim_yds": ("scrim", "carries", [30, 35, 40, 45, 50, 60, 70, 75, 80, 85, 90, 100, 110, 120, 130, 140, 150, 160]),
+    # 10/29 (owner: "build now" on the props test): rushing attempts, QB passing TDs, anytime TD (tds = rushing + receiving + special-teams TDs),
+    # the same method and inputs as tested -- Polymarket US 2026 wk1-7 under the page's rules (75%+, 50-82c, priced under its %, one per player):
+    # rushing-attempts Unders 19-4, passing-TD Overs 21-7, anytime TD No (1+ TD Under) 159-52 (scratchpad us/propmodel.py, us/props_band.py)
+    "rush_att": ("carries", "carries", [4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]),
+    "pass_td": ("passing_tds", "attempts", [1, 2, 3, 4, 5]),
+    "atd": ("tds", "carries", [1, 2, 3]),
 }
 POS = {"QB": 0, "RB": 1, "WR": 2, "TE": 3}
 FC = ["m3", "m8", "sd8", "v3", "v8", "n", "pos", "imp", "home"]
@@ -59,6 +66,7 @@ def logs(seasons, fresh_cur=True):
         except Exception: pass
     P = pd.concat(parts, ignore_index=True); P = P[P.season_type == "REG"].copy()
     P["scrim"] = P.rushing_yards.fillna(0) + P.receiving_yards.fillna(0)
+    P["tds"] = P.rushing_tds.fillna(0) + P.receiving_tds.fillna(0) + P.special_teams_tds.fillna(0)
     G = _csv(GAMES_URL, "nfldata_games.csv", 6 * 3600); G = G[G.game_type == "REG"][["game_id", "home_team", "spread_line", "total_line"]]
     P = P.merge(G, on="game_id", how="left")
     P["team"] = P.team.replace(TEAM); P["home"] = (P.team == P.home_team.replace(TEAM)).astype(int)

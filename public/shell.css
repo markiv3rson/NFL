@@ -576,3 +576,12 @@ img.phlm { width:16px; height:16px; object-fit:contain; vertical-align:-3px; mar
 /* 10/29 (owner: "Make it to a square like the fucking others. Why is it stretched across?"): a Model bets record tile is always the width of one tile in
    the row of 4 (SPREAD · TOTAL · ML · W/ POINTS), also when the tab has only 1 or 2 tiles (STEALS, REBOUNDS, 1H SPREAD, ANYTIME TD, GAME PROPS ...), both sports */
 #lab .stats.mbrec > .stat { flex:0 0 calc((100% - 18px) / 4) !important; max-width:calc((100% - 18px) / 4) !important; }
+/* 10/29 (props build, look check): a props table with "U 18.5 att" / "U 80.5 scrim" rows (the NFL Rush Yds tab) gets a wider pick column so they stay on
+   one line (the 40 px column cut them to "U 18…"); every other table keeps its widths. The stat word after the line is smaller and faded */
+:is(body, #lab) .ppr .pp2 .pu { font-size:9px; color:var(--fade); margin-left:2px; }
+:is(body, #lab) .pgrid:has(.pu) .ppr:not(.first):not(.pk) { grid-template-columns:minmax(0,1fr) 62px 76px 44px 92px !important; }
+@media (max-width:599px) { :is(body, #lab) .pgrid:has(.pu) .ppr:not(.first):not(.pk) { grid-template-columns:minmax(0,1fr) 54px 60px 38px 80px !important; } }
+@media (max-width:379px) { :is(body, #lab) .ppr:not(.pph) .pp5 { font-size:9px !important; letter-spacing:-.01em; } }   /* 10/29: "U 109.5 ✓ 40" in the LAST column fits at 375 px */
+@media (max-width:379px) { :is(body, #lab) .pgrid:has(.pu) .ppr:not(.first):not(.pk) { grid-template-columns:minmax(0,1fr) 53px 57px 36px 80px !important; column-gap:5px !important; } }
+/* 10/29 (owner: "make it slide left and right"): the tab / chip rows take a sideways swipe themselves (both sports) */
+.gchips, .gtabs { touch-action:manipulation; overscroll-behavior-x:contain; pointer-events:auto; }

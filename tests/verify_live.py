@@ -21,6 +21,7 @@ def get(url, raw=False):
         try:
             with urllib.request.urlopen(url, timeout=60) as r:
                 b = r.read()
+            if not raw: json.loads(b)   # 10/29: a page that is not JSON (a cold start's error page) is retried too -- section 6 once read "could not check"
             break
         except Exception:
             if i == 2: raise
@@ -144,7 +145,8 @@ for r in csv.DictReader(io.StringIO(get(f"https://github.com/nflverse/nflverse-d
     if r["season_type"] != "REG": continue
     w, t = int(r["week"]), FIX.get(r["team"], r["team"]); teams.add((w, t))
     td[(w, t, r["player_name"])] += sum(int(float(r.get(c) or 0)) for c in ("rushing_tds", "receiving_tds", "special_teams_tds"))
-    yd[(w, nn(r["player_display_name"]))] = {"rec_yds": float(r["receiving_yards"] or 0), "rec": float(r["receptions"] or 0), "pass_yds": float(r["passing_yards"] or 0), "rush_yds": float(r["rushing_yards"] or 0), "scrim_yds": float(r["rushing_yards"] or 0) + float(r["receiving_yards"] or 0)}   # 10/20: receptions / passing props too; 10/27: rushing yards (the 10/26 rush Unders family); 10/28 night: scrimmage yards
+    yd[(w, nn(r["player_display_name"]))] = {"rec_yds": float(r["receiving_yards"] or 0), "rec": float(r["receptions"] or 0), "pass_yds": float(r["passing_yards"] or 0), "rush_yds": float(r["rushing_yards"] or 0), "scrim_yds": float(r["rushing_yards"] or 0) + float(r["receiving_yards"] or 0),
+        "rush_att": float(r["carries"] or 0), "pass_td": float(r["passing_tds"] or 0), "atd": float(sum(int(float(r.get(c) or 0)) for c in ("rushing_tds", "receiving_tds", "special_teams_tds")))}   # 10/29: rushing attempts, passing TDs, anytime TD (No TD rows)   # 10/20: receptions / passing props too; 10/27: rushing yards (the 10/26 rush Unders family); 10/28 night: scrimmage yards
 n = um = 0
 for r in res.values():
     for p in r.get("td") or []:

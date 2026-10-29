@@ -432,15 +432,29 @@ def chances(team, opp, imp, tm_margin, total, home, lines, outs=()):
 
 
 def week_stats(season, week):
-    """Official stats of one finished week for grading: { "AWAY @ HOME": { "<normalized full name>": { pass_yds, ..., long_rec } } }.
-    A player who did not play has no entry (Polymarket settles that as Under)."""
+    """Official stats of one finished week for grading: { "AWAY @ HOME": { "<normalized full name>": { pass_yds, ..., long_rec, rush_att, pass_td, atd } } }.
+    A player who did not play has no entry (Polymarket settles that as Under).
+    10/29: + rush_att (carries, kneel-downs included as in the official stats: 99.9% of 2026 player-weeks equal nflverse's carries), pass_td
+    (the passer's TD passes) and atd (rushing, receiving and special-teams return TDs by the player who crossed the goal line, defensive TDs out --
+    the /td-scorers rule the Anytime TD grading uses); a player whose only line is a return TD gets a row of his own."""
     x = _stat_games_cached(season); x = x[x.week == int(week)]
     nm = _names_now(); out = {}
     for r in x.itertuples():
         n = nm.get(r.pid)
         if not n: continue
         key = f"{r.away_team} @ {r.home_team}"
-        out.setdefault(key, {})[n] = {s: float(getattr(r, s)) for s in STATS}
+        out.setdefault(key, {})[n] = {**{s: float(getattr(r, s)) for s in STATS}, "rush_att": float(r.car), "pass_td": 0.0, "atd": 0.0}
+    p = td_prob.fetch_pbp(season); p = p[(p.season_type == "REG") & (p.week == int(week)) & (p.two_point_attempt.fillna(0) != 1)]
+    keys = p.drop_duplicates("game_id").set_index("game_id").apply(lambda g: f"{g.away_team} @ {g.home_team}", axis=1).to_dict()
+    zero = {**{s: 0.0 for s in STATS}, "rush_att": 0.0, "pass_td": 0.0, "atd": 0.0}
+    pt = p[(p.pass_touchdown == 1) & p.passer_player_id.notna()].groupby(["game_id", "passer_player_id"]).size()
+    t = p[(p.touchdown == 1) & p.td_player_id.notna()]
+    t = t[~((t.td_team != t.posteam) & t.play_type.isin(["pass", "run", "qb_kneel", "qb_spike", "no_play"]))]
+    for col, ser in (("pass_td", pt), ("atd", t.groupby(["game_id", "td_player_id"]).size())):
+        for (gid, pid), v in ser.items():
+            n = nm.get(pid); key = keys.get(gid)
+            if not n or not key: continue
+            out.setdefault(key, {}).setdefault(n, dict(zero))[col] = float(v)
     return out
 
 
