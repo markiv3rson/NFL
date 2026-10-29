@@ -258,13 +258,13 @@ function whyBox(g, kind, info) {
 const MODEL_INFO = {
   spread: [["Model:", "the game model’s score guess. Data only."], ["Model (Team):", "team-stats model at Polymarket’s line. Data only on NBA, never the pick."],
     ["Pick:", "the bet at Polymarket’s main line, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
-    ["Pick w/ points:", "the fewest bought points from 5 to 10: on a tested rule’s team; with no rule, on the team whose line wins more."], ["MORE list:", "the lines that won 56%+, both teams: points bought · history win % · Polymarket price."]],
+    ["Pick w/ points:", "the fewest bought points from 5 to 10 the model gives 72%+ at 82¢ or less (none: the highest % at 82¢ or less); on a tested rule’s team, with no rule the team whose line wins more."], ["MORE list:", "the lines that won 56%+, both teams: points bought · history win % · Polymarket price."]],
   total: [["Model:", "the game model’s total points guess. Data only."], ["Pick:", "Over or Under at Polymarket’s main total, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
-    ["Pick w/ points:", "same side, the fewest bought points from 5 to 10."], ["MORE list:", "the lines that won 56%+, Over and Under: points bought · history win % · Polymarket price."]],
+    ["Pick w/ points:", "same side, the fewest bought points from 5 to 10 the model gives 70%+ at 82¢ or less (none: the highest % at 82¢ or less)."], ["MORE list:", "the lines that won 56%+, Over and Under: points bought · history win % · Polymarket price."]],
   ml: [["Model:", "the model’s own chance each team wins."], ["PICK:", "the market’s favorite and its chance with Polymarket’s fee taken out."]],
 };
 const CARD_INFO = [["PICK:", "the card’s bet at Polymarket’s main line, locked at tip-off."], ["LINE MOVE / BOOK GAP / FATIGUE / ATS REGRESSION / SHOT QUALITY:", "the tested rules that named a PICK."],
-  ["PICK w/ POINTS:", "the fewest bought points from 5 to 10: the PICK’s side; a spread with no tested rule takes the team whose line wins more; none on the model-side total."], ["MODEL SIDE:", "no rule fired; the model’s side (about 50%)."],
+  ["PICK w/ POINTS:", "the fewest bought points from 5 to 10 the model gives 72%+ (totals 70%+) at 82¢ or less: the PICK’s side; a spread with no tested rule takes the team whose line wins more; none on the model-side total."], ["MODEL SIDE:", "no rule fired; the model’s side (about 50%)."],
   ["MONEYLINE:", "the market’s favorite to win."], ["GREEN 56%+:", "every pick shown green; “said” = the average % shown."], ["PRESEASON TEST:", "preseason games, not in the season record."]];
 const SHADOW_INFO = [["Test picks,", "never shown on a card: recorded and graded live. One becomes a pick only after it holds 56%+ over about 100 games."],
   ["LINE MOVE:", "Pinnacle moved 3+ points; that side at the first number / at the number when seen."], ["INJURY:", "a star newly out; the healthy side at the open / when seen."],

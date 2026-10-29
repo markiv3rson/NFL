@@ -15,6 +15,12 @@ export const PTS_BAR = 56, MAX_LIST = 7;
 // (the service's history, any side, nothing fitted): +5 won 67.9 / 66.5 / 66.1% on spreads 2008-16 / 2017-23 / 2024-26 (10/29 night: the 59.9 / 59.8 /
 // 58.2 first quoted here read the home line with the wrong sign; the service's own table was always right) and 61.7 / 61.0 / 61.1% on totals; the app's own 2026-27 PICKs re-graded at +5: spreads 73-39 (65.2%), totals 49-40 (55.1%; +5.5 59.0%). The model-side total still has none.
 export const PTS_MIN = 5, PTS_MAX = 10;
+// 10/29 late (owner: "72% and up for the model, Polymarket ... cap it at 82"): PICK w/ POINTS = the fewest points from 5 to 10 whose shown % is 72+
+// (totals 70+: even +10 wins ~71% on NBA totals) priced 82c or less; none reaching it -> the highest % priced 82c or less. Each season's line table
+// from earlier seasons, 2016-27 (price ~ the line's own % + 2c): no-rule spreads 67.8 -> 71.1% (5.2 -> 6.3 points; 2025-27 66.8 -> 69.1, with the
+// table from the last 3 seasons 71.0 -- the service's table, live.py RECENT_SEASONS), LINE MOVE spreads 70.2 -> 72.6% (5.1 -> 6.2).
+// PTS_KEEP: a rule's lift over the table counts half on lines 5+ points out (the NFL replay: k 0.53 spreads, 0.44 totals).
+export const PTS_TARGET = { spread: 72, total: 70 }, PTS_CAP = 0.82, PTS_KEEP = 0.5;
 // the model's own side at the main line: honest rate on games the fit never saw (official-report injury basis, 2025-26). 10/17 pass: updated to the
 // 10/17 rebuild's own report (trained 2022-24, tested 2025-26, 2,462 games: spread side 49.4%, total side 50.4%; it was 50.3 / 50.5 on 1,783 games)
 export const MODEL_HIT = { spread: 49.4, total: 50.4 }, MODEL_N = 2462;
@@ -92,11 +98,17 @@ function finishRows(rows) {                                                     
   return rows.filter((r) => r.points <= MAX_LIST)
     .sort((x, y) => x.points - y.points || (y.first ? 1 : 0) - (x.first ? 1 : 0) || y.hit - x.hit).map(({ first, ...r }) => r);
 }
-function pickPts(rows) {   // 10/29: the fewest points from PTS_MIN to PTS_MAX (the highest % among equals); none listed in that range -> none
-  const b = rows.filter((r) => r.points >= PTS_MIN && r.points <= PTS_MAX); if (!b.length) return null;
+function pickPts(rows, target = PTS_TARGET.spread) {   // 10/29 late: the fewest points 5-10 reading TARGET+ at 82c or less (the highest % among equals); none -> the highest % at 82c or less
+  const ok = rows.filter((r) => r.points >= PTS_MIN && r.points <= PTS_MAX && r.price > 0 && r.price <= PTS_CAP); if (!ok.length) return null;
+  const b = ok.filter((r) => r.hit >= target); if (!b.length) return ok.reduce((a, r) => (r.hit > a.hit || (r.hit === a.hit && r.points < a.points) ? r : a));
   const m = Math.min(...b.map((r) => r.points)); return b.filter((r) => r.points === m).sort((x, y) => y.hit - x.hit)[0];
 }
 const noFirst = ({ first, ...r }) => r;
+// two teams' PICK w/ POINTS lines (model-side spread): the one reaching the target wins; both -> the fewer points, then the higher %; neither -> the higher %
+export function betterPts(a, b, target = PTS_TARGET.spread) {
+  if (!a || !b) return a || b; const ta = a.hit >= target, tb = b.hit >= target;
+  if (ta !== tb) return ta ? a : b; if (ta && a.points !== b.points) return a.points < b.points ? a : b; return b.hit > a.hit ? b : a;
+}
 const priced = (p) => (typeof p === "number" && p > 0 && p < 1 ? p : null);
 const near = (a, b) => a != null && b != null && Math.abs(a - b) <= 0.5;
 
@@ -122,7 +134,7 @@ function boundRows(raw, plain, mine, ratio = false) {
   const p = r1(plain.hit), q = r1(100 - plain.hit), ph = plain.ptsHit;
   const up = (r) => (ratio && lift && base < 100 ? r1(100 - ((100 - r.hist) * (100 - plain.hit)) / (100 - base)) : r1(r.hist + lift));
   return raw.map((r) => { const own = mine(r), floor = own ? p : q;
-    const hit = r.points === 0 ? floor : own && ph && r.points > 0 ? Math.max(ptsRate(ph, plain.hit, r.points), floor) : Math.max(own ? up(r) : r1(r.hist - lift), floor);
+    const hit = r.points === 0 ? floor : own && ph && r.points > 0 ? Math.max(ptsRate(ph, plain.hit, r.points), floor) : Math.max(own ? (r.points >= PTS_MIN ? r1(r.hist + PTS_KEEP * (up(r) - r.hist)) : up(r)) : r1(r.hist - lift), floor);
     return { ...r, hit }; });
 }
 function spreadPart(g) {
@@ -157,7 +169,7 @@ function spreadPart(g) {
   // 3-4.5 underdog +3.6 at +5, 5-6.5 underdog +2.7) and in 2025-27 +1.3. Totals (Over vs Under by total size, 35 of 66) do not hold: the PICK's side stays.
   const all = boundRows(raw, plain, (r) => r.team === plain.team, true).map(({ hist, ...r }) => r), rows = finishRows(all);
   const own = pickPts(plain ? all.filter((r) => r.team === plain.team) : all), oth = plain && plain.id === "modelpick|spread" ? pickPts(all.filter((r) => r.team !== plain.team)) : null;
-  const b = oth && (!own || oth.hit > own.hit) ? { ...oth, alt: true } : own, pts = b ? { id: "ptspick|spread", kind: "spread", ...noFirst(b), ruleId: plain ? plain.ruleId : null } : null;
+  const b = betterPts(own, oth) === oth && oth ? { ...oth, alt: true } : own, pts = b ? { id: "ptspick|spread", kind: "spread", ...noFirst(b), ruleId: plain ? plain.ruleId : null } : null;
   if (!plain && !rows.length) return null;
   return { kind: "spread", plain, pts, rows };
 }
@@ -186,7 +198,7 @@ function totalPart(g) {
   // 2,462 unseen games), so points bought on its side are the plain table's rate with no edge, and live they went 18-21 (46.2%, -23 per $100,
   // 10/20-26). A rule's total (BOOK GAP / TOTAL MOVE / SHOT QUALITY) keeps its PICK w/ POINTS; the MORE list still shows every line.
   const modelSide = !!plain && plain.id === "modelpick|total";
-  const b = modelSide ? null : pickPts(plain ? all.filter((r) => r.side === plain.side) : all), pts = b ? { id: "ptspick|total", kind: "total", ...noFirst(b), ruleId: plain ? plain.ruleId : null } : null;   // same side as the PICK (10/19)
+  const b = modelSide ? null : pickPts(plain ? all.filter((r) => r.side === plain.side) : all, PTS_TARGET.total), pts = b ? { id: "ptspick|total", kind: "total", ...noFirst(b), ruleId: plain ? plain.ruleId : null } : null;   // same side as the PICK (10/19)
   if (!plain && !rows.length) return null;
   return { kind: "total", plain, pts, rows };
 }

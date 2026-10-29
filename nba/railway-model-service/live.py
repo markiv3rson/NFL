@@ -56,6 +56,8 @@ def tier(pct):
     return "pick" if pct >= PICK_AT else "lean"
 
 
+RECENT_SEASONS = 3
+
 class Engine:
     def __init__(self, coefs=None, table=None):
         self.coefs = coefs or _load("model_coefs.json")
@@ -92,7 +94,9 @@ class Engine:
         sched = nf.schedule_index(sch)        # rest / travel for tonight come from the schedule (see _ctx)
         reg = sch[sch.season_type == 2] if sch is not None and len(sch) else None
         season_start = str(pd.to_datetime(reg.game_date).min().date()) if reg is not None and len(reg) else None
-        h = g[(g.season_type == 2) & g.home_line.notna()]
+        # 10/29 late: the spread table from the last RECENT_SEASONS completed seasons + this one -- the 2008-onward table read bought NBA lines high in
+        # 2025-27 (no-rule PICK w/ POINTS said 73.2, won 69.1; from the last 3 seasons 71.0, earlier seasons unchanged 71.5)
+        h = g[(g.season_type == 2) & g.home_line.notna() & (g.season >= cs_ - RECENT_SEASONS)]
         hist_side = pd.concat([pd.DataFrame({"line": h.home_line.values, "m": h.margin.values}),
                                pd.DataFrame({"line": -h.home_line.values, "m": -h.margin.values})], ignore_index=True)
         t = g[(g.season_type == 2) & g.total_line.notna()]
