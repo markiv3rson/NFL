@@ -1348,12 +1348,12 @@ const liveTag = (g) => { const b = LIVE_BOX[g.key]; return b && !b.final ? ` <sp
 // under it) · MODEL (the % in its win-rate colour) · POLYMARKET (the price); ✓ / ✗ in front and the row green / red once graded, the live state after the pick
 // 10/29 (owner: "why is this not in 1 line"): the game's name sits on its column-heading line (where PLAYER / PICK was), not on a line of its own
 const gameName = (g) => (g ? `<span class="pbn">${gameLogos(g.key || g.game)}${typeof liveTag === "function" && g.key ? liveTag(g) : g.started && !g.final ? ' <span class="lvb">● LIVE</span>' : ""}</span>` : "PICK");
-const pickHead = (nm = "PICK") => `<div class="pbl ppr pph first"><span class="pp1">${nm}</span><span class="pp2">BET</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
+const pickHead = (nm = "PICK") => `<div class="pbl ppr pph first"><span class="pp1">${nm}</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
 // 10/29 (owner: "Color code the numbers of the actual pick" / "I SAID THE NUMBER" / "to our models picks"): only the pick's number (the -3.5, the 213.5;
 // a moneyline's "ML") in the card picks' win-rate colours (green 56%+, light green 53-55%, yellow below); the MODEL % stays purple
 const numCol = (t, c) => { const m = /^(.*?)([+-]?\d+(?:\.\d+)?|\bML\b)(.*)$/.exec(String(t || "")); return m ? `${esc(m[1])}<span class="${c}">${esc(m[2])}</span>${esc(m[3])}` : ""; };
 const pickTr = (x) => { const r = normRes(x.result) || (x.live && x.live.res) || null, h = Number(x.hit), c = h >= 56 ? "g" : h >= 53 ? "lg" : "y";
-  return `<div class="pbl ppr first${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) : "•"} ${numCol(x.pick, c) || esc(x.pick)}${r ? "" : liveBit(x.live && !x.live.res ? x.live : null)}</span><span class="pp2">${numCol(x.pick, c) ? esc(x.kind) : numCol(x.kind, c) || esc(x.kind)}</span>` +
+  return `<div class="pbl ppr first${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) : "•"} ${numCol(x.pick, c) || esc(x.pick)}${r ? "" : liveBit(x.live && !x.live.res ? x.live : null)}</span>` +
     `<span class="pp3 mod">${isFinite(h) ? `${h >= 56 ? Math.round(h) : Math.floor(h)}%` : "—"}</span><span class="pp4">${x.price > 0 && x.price < 1 ? `${Math.round(x.price * 100)}¢` : "—"}</span></div>`; };
 const pickTable = (rows, g) => (rows.length ? pickHead(gameName(g)) + rows.map(pickTr).join("") : "");
 // a GAME PROPS label -> the market (on top) and the side (under it): "Total touchdowns Under 5.5" -> ["Total touchdowns", "Under 5.5"]
@@ -1378,17 +1378,16 @@ function firstBlock(g) {
     picks = [g.away, g.home].map((t) => rows.find((r) => r.team === t)).filter(Boolean).map((r) => ({ name: r.player, team: r.team, chance: r.first / 100, price: r.firstPrice ?? null, first: true })); }
   // 10/29 (owner: "I just need the names here remove first ... and the team names. Only add the logo next to their names"): one row per team's pick --
   // logo + name · MODEL · POLYMARKET, no team header lines, no "First TD" column
-  const row = (p) => { const r = p.result; return `<div class="pbl ppr first${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) : "•"} ${tlogo(p.team)}${esc(p.name)}</span><span class="pp2"></span>` +
+  const row = (p) => { const r = p.result; return `<div class="pbl ppr first${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) : "•"} ${tlogo(p.team)}${esc(p.name)}</span>` +
     `<span class="pp3 mod">${Math.round(p.chance * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`; };
-  return picks.length ? `<div class="pbl ppr pph first"><span class="pp1">${gameName(g)}</span><span class="pp2"></span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>${[g.away, g.home].flatMap((t) => picks.filter((p) => p.team === t)).map(row).join("")}` : "";
+  return picks.length ? `<div class="pbl ppr pph first"><span class="pp1">${gameName(g)}</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>${[g.away, g.home].flatMap((t) => picks.filter((p) => p.team === t)).map(row).join("")}` : "";
 }
-// 10/29 (owner: "remove moneyline spread and total ... I should only see w/ points in that row"): on Game Lines the BET column says only "w/ points", on a PICK w/ POINTS line
 const LAB_BODY = {
   lines: (g) => { const L = g.lines || {}, row = (x, kind) => (x && x.pick ? { pick: x.pick, kind, hit: x.hit, price: x.price, result: x.result, live: normRes(x.result) ? null : liveMark(g, { kind: "line", label: x.pick }) } : null);
     return pickTable([row(L.ml, ""), row(L.spread, ""), row(L.total, ""), row(L.spread && L.spread.pts && L.spread.pts.pick !== L.spread.pick ? L.spread.pts : null, "w/ points"), row(L.total && L.total.pts && L.total.pts.pick !== L.total.pick ? L.total.pts : null, "w/ points")].filter(Boolean), g); },
   halves: (g) => { const k = g.h1pick; return k && k.label ? pickTable([{ pick: k.label, kind: "1st Half spread", hit: k.said, price: k.price, result: k.result, live: k.result ? null : liveMark(g, { kind: "h1", team: k.team, line: k.line }) }], g) : ""; },
   gprops: (g) => pickTable((g.gprops || []).map((k) => { const [mk, side] = gpSplit(k.label);
-    return { pick: mk, kind: k.fam === "ptd_qb" ? `${side} · passing TDs pick` : side, hit: k.said, price: k.price, result: k.result, live: k.result ? null : liveMark(g, { kind: "gp", cond: k.cond, long: k.long !== false }) }; }), g),
+    return { pick: k.label, kind: k.fam === "ptd_qb" ? `${side} · passing TDs pick` : side, hit: k.said, price: k.price, result: k.result, live: k.result ? null : liveMark(g, { kind: "gp", cond: k.cond, long: k.long !== false }) }; }), g),
   props: (g) => { const c = GPROPS[Number(g.week)], pg = c && c.d ? (c.d.games || []).find((x) => x.game === g.key) : null;
     if (MBPROP === "td") return tdBlock(g);
     if (MBPROP === "first") return firstBlock(g);   // 10/29 (owner: the game page's layout): Anytime TD = the game page's rows

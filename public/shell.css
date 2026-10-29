@@ -483,3 +483,11 @@ body.bnav-on .panel .pph .lvb { color:var(--red) !important; -webkit-text-stroke
 @media (max-width:599px) { #lab .ppr:not(.first) { grid-template-columns:minmax(0,1fr) 72px 40px 86px !important; } }
 #lab .pph .pbn { font-size:12px; gap:2px; } #lab .pph .pbn .tlogo { width:12px; height:12px; margin-right:2px; }
 @media (max-width:389px) { #lab .ppr:not(.first) { grid-template-columns:minmax(0,1fr) 60px 40px 84px !important; column-gap:5px; } }
+/* 10/29 (owner, sketch approved): the NFL / NBA switch floats by itself at the bottom right of every screen, football on top, a little bigger, the one not selected see-through (both sports) */
+.lgfloat { position:fixed; right:max(14px, env(safe-area-inset-right,0px)); bottom:calc(env(safe-area-inset-bottom,0px) + 78px); z-index:121; display:flex; flex-direction:column; gap:10px; }
+.lgfloat .lgt { min-width:0; gap:3px; font-size:13px; }
+.lgfloat .lgt i { width:52px; height:52px; border-radius:15px; } .lgfloat .lgt img { width:36px; height:36px; }
+.lgfloat .lgt:not(.on) { opacity:.45; }
+/* 10/29 (owner: "Who told you to add that? ... Remove it"): no BET column -- Model bets pick tables are PICK · MODEL · POLYMARKET (both sports) */
+#lab .ppr.first:not(.tdr):not(.tdh) { grid-template-columns:minmax(0,1fr) 40px 86px !important; grid-template-areas:"n m p" !important; }
+@media (min-width:600px) { #lab .ppr.first:not(.tdr):not(.tdh) { grid-template-columns:minmax(0,1fr) 70px 110px !important; } }

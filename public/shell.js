@@ -138,13 +138,14 @@
       if (Shell.homeReset()) return;   // a fresh start on another page: home is loading instead
       Shell.sport = sport; const sp = sport;
       const d = document.createElement("div");
-      d.innerHTML = `<header class="tbar" id="tbar"><a class="slatelogo sgrad" data-nav href="${URL_[sp]}#lines">SLATEZZ</a><span class="lgts tlg">${Shell.leagueTabs(sp, "lines")}</span>` +   // 10/27 (owner): the NFL | NBA switch right next to SLATEZZ
+      d.innerHTML = `<header class="tbar" id="tbar"><a class="slatelogo sgrad" data-nav href="${URL_[sp]}#lines">SLATEZZ</a>` +
         `<span class="tright"><button class="mref" aria-label="Rerun both models">${REF_SVG}</button>` +   // 10/27 (owner): the refresh sits next to the bell, white
         `<a class="tib" data-nav data-pg="alerts" href="${URL_[sp]}#alerts" aria-label="Alerts">${svg("bell", 28)}<b class="tcnt" id="mcnt-${sp}-alerts"></b></a></span></header>` +   // 10/21 night (owner): the bell at the top right
         `<nav class="bnav" id="bnav" aria-label="Main menu">` +
         `<a class="bi" data-nav data-b="home" href="${URL_[sp]}#lines" aria-label="Home">${svg("home", 23)}<span>Home</span></a>` +
         `<a class="bi" data-nav data-b="bets" href="${URL_[sp]}#mybets" aria-label="Bets">${svg("bets", 23)}<span>Bets</span></a>` +
-        `<a class="bi" data-nav data-b="model" href="${URL_[sp]}#models" aria-label="Model">${svg("bars", 23)}<span>Model</span></a></nav>`;   // (owner 10/27: like Polymarket's phone app -- a floating pill, icons only, the open one in a round bubble)
+        `<a class="bi" data-nav data-b="model" href="${URL_[sp]}#models" aria-label="Model">${svg("bars", 23)}<span>Model</span></a></nav>` +
+        `<div class="lgfloat" id="lgfloat">${Shell.leagueTabs(sp, "lines")}</div>`;   // 10/29 (owner: "move the nfl and nba buttons to the bottom right ... apply it to every screen like the bottom tabs ... just floating by itself", "a little bigger", the one not selected a little see-through)   // (owner 10/27: like Polymarket's phone app -- a floating pill, icons only, the open one in a round bubble)
       while (d.firstChild) document.body.appendChild(d.firstChild);
       { const rb = document.querySelector && document.querySelector("#tbar .mref"); if (rb) rb.onclick = Shell.refresh; }
       if (document.body.classList) document.body.classList.add("bnav-on");
