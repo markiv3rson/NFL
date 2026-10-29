@@ -665,11 +665,12 @@ function labStats(rc, clv) {
 const tHead = (h, cls = "") => `<div class="row trow th t${h.length} ${cls}"><span></span>${h.map((x) => `<span>${x}</span>`).join("")}</div>`;
 const tRow = (lab, sub, cells, cls = "") => `<div class="row trow t${cells.length} ${cls}"><span>${lab}${sub ? `<i class="tsub">${sub}</i>` : ""}</span>${cells.map((c) => `<span>${c}</span>`).join("")}</div>`;
 const recRow = (lab, e, said = false) => (e ? tRow(lab, [said && e.said != null ? `said ${e.said}%` : "", e.pending ? `${e.pending} pending` : "", !(e.w + e.l) && !e.pending ? "waiting" : ""].filter(Boolean).join(" · "),
-  [e.w + e.l ? `${e.w}–${e.l}${e.push ? "–" + e.push : ""}` : '<span class="dim">—</span>', e.w + e.l ? `<b>${e.pct}%</b>` : '<span class="dim">—</span>', e.per100 != null ? `<span class="${e.per100 >= 0 ? "g" : "r"}">${e.per100 >= 0 ? "+" : "−"}$${Math.abs(e.per100)}</span>` : '<span class="dim">—</span>']) : "");
+  [e.w + e.l ? `${e.w}–${e.l}${e.push ? "–" + e.push : ""}` : '<span class="dim">—</span>', e.w + e.l ? `<b class="${clsOf(e.pct)}">${e.pct}%</b>` : '<span class="dim">—</span>', e.per100 != null ? `<span class="${e.per100 >= 0 ? "g" : "r"}">${e.per100 >= 0 ? "+" : "−"}$${Math.abs(e.per100)}</span>` : '<span class="dim">—</span>']) : "");
 const REC_HEAD = tHead(["RECORD", "WIN %", "PER $100"]);
+// 10/29 (rule 11): records take the one win-rate colour rule (green 56%+, light green 53-55%, yellow below)
 function paint(html) {
   return html.replace(/>([^<>]+)</g, (all, t) => ">" + t
-    .replace(/(^|[^\d/.])(\d{1,4})–(\d{1,4})(?![\d/%])/g, (m, pre, w, l) => { const n = +w + +l; if (!n) return m; const r = +w / n; return `${pre}<b class="${r >= 0.55 ? "g" : r >= 0.5 ? "y" : "r"}">${w}–${l}</b>`; })
+    .replace(/(^|[^\d/.])(\d{1,4})–(\d{1,4})(?![\d/%])/g, (m, pre, w, l) => { const n = +w + +l; if (!n) return m; const r = +w / n; return `${pre}<b class="${clsOf(r * 100)}">${w}–${l}</b>`; })
     .replace(/\b(OK|all clear|saved|answering|published|none)\b/g, '<span class="g">$1</span>') + "<");
 }
 function winnersBox() {
