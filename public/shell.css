@@ -566,8 +566,13 @@ body .row.brow .nms { display:none; }
 @media (max-width:379px) { :is(body, #lab) .ppr:not(.first):not(.pk) { grid-template-columns:minmax(0,1fr) 36px 54px 36px 80px !important; column-gap:6px !important; } }
 /* the small helmet everywhere it stands for a team in a line of text (My bets names and legs, props rows) */
 img.phlm { width:16px; height:16px; object-fit:contain; vertical-align:-3px; margin:0 4px 0 0; }
-/* 10/29 (owner: "ONLY PUT W/ POINTS NEXT TO THEIR PICK"): Game Lines' pick column is wide enough for "+10.5 w/ points" on one line, both sports */
-:is(body, #lab) .ppr.pk.pgl { grid-template-columns:minmax(0,1fr) 104px 44px 92px !important; }
-:is(body, #lab) .ppr.pk .wpt { color:var(--fade); font-size:10px; }
-@media (max-width:599px) { :is(body, #lab) .ppr.pk.pgl { grid-template-columns:minmax(0,1fr) 92px 42px 84px !important; column-gap:6px !important; } }
-@media (max-width:379px) { :is(body, #lab) .ppr.pk.pgl { grid-template-columns:minmax(0,1fr) 88px 38px 80px !important; column-gap:5px !important; } }
+/* 10/29 (owner: "ONLY PUT W/ POINTS NEXT TO THEIR PICK"): Game Lines' "w/ points" after the pick, faded, both sports */
+:is(body, #lab) .ppr .wpt { color:var(--fade); font-size:10px; }
+/* 10/29 (owner's 6:48 PM screenshot): Model bets Game Lines -- the pick on one line · BET ("w/ points" on a w/ points line only) · MODEL · POLYMARKET, both sports */
+:is(body, #lab) .ppr.first.glr:not(.tdr):not(.tdh) { grid-template-columns:minmax(0,1fr) 64px 44px 92px !important; grid-template-areas:"n line m p" !important; }
+:is(body, #lab) .ppr.first.glr:not(.tdr):not(.tdh) .pp2 { grid-area:line !important; display:block !important; visibility:visible !important; white-space:nowrap; text-align:left; }
+@media (max-width:599px) { :is(body, #lab) .ppr.first.glr:not(.tdr):not(.tdh) { grid-template-columns:minmax(0,1fr) 60px 42px 84px !important; column-gap:8px !important; } }
+@media (max-width:379px) { :is(body, #lab) .ppr.first.glr:not(.tdr):not(.tdh) { grid-template-columns:minmax(0,1fr) 56px 38px 80px !important; column-gap:6px !important; } }
+/* 10/29 (owner: "Make it to a square like the fucking others. Why is it stretched across?"): a Model bets record tile is always the width of one tile in
+   the row of 4 (SPREAD · TOTAL · ML · W/ POINTS), also when the tab has only 1 or 2 tiles (STEALS, REBOUNDS, 1H SPREAD, ANYTIME TD, GAME PROPS ...), both sports */
+#lab .stats.mbrec > .stat { flex:0 0 calc((100% - 18px) / 4) !important; max-width:calc((100% - 18px) / 4) !important; }
