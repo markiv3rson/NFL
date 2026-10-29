@@ -7,6 +7,8 @@ import { staleDate } from "./pinnacle";
 import { finalsFor } from "./espn";
 const KEY = (date, game, id) => `pick:${date}:${game}:${id}`;
 const IDS = "pick:ids";
+// 10/29 (owner: "start fresh and record all of our picks starting today ... only for model bets"): the Model bets record tiles count from this day on
+export const MB_FROM = "2026-10-29";
 export const pickRows = (g) => {
   const rows = [], test = !!g.preseason, base = (id, market, x) => ({ date: g.date, game: g.key, id, market, label: x.label || x.pick, team: x.team || null, side: x.side || null, line: x.line ?? null,
     pct: x.pct ?? x.hit, tier: test ? "test" : "pick", ruleId: x.ruleId || null, points: x.points || 0, price: x.price > 0 && x.price < 1 ? x.price : null, ...(x.alt ? { alt: true } : {}), savedAt: new Date().toISOString() });

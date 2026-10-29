@@ -1560,7 +1560,7 @@ const gNone = (t) => `<div class="card" style="margin-top:10px"><div class="inne
 let GPROPS = {}, GPROPS_LOADING = {};
 function loadGameProps(week) {
   if (GPROPS_LOADING[week]) return; GPROPS_LOADING[week] = true;
-  fetch(`/api/props?week=${week}`, { cache: "no-store" }).then((r) => r.json()).then((d) => { GPROPS[week] = { d: d && d.ok ? d : { games: [] }, t: Date.now() }; })
+  fetch(`/api/props?week=${week}&fresh=1`, { cache: "no-store" }).then((r) => r.json()).then((d) => { GPROPS[week] = { d: d && d.ok ? d : { games: [] }, t: Date.now() }; })
     .catch(() => { GPROPS[week] = { d: { games: [] }, t: Date.now() - 4 * 60e3 }; }).finally(() => { GPROPS_LOADING[week] = false; if (labOn()) renderLabList(); else if (DETAIL && GTAB === "props") refreshDetail(); });
 }
 function gamePropsBody(g) {

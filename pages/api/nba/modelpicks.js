@@ -1,7 +1,7 @@
 // Model bets pick tabs (10/28 late, owner: "Remove all the sub tabs under models bets and I need sub tabs for all the models picks in the card"; design =
 // both sports): one day's SAVED card picks (spread / total PICK + PICK w/ POINTS, the ML PICK; the same choice as the card shows after tip-off,
 // lib/record.js lockedFor) with W / L once graded, and each game's tip-off from ESPN's scoreboard. The page uses the live slate for the days it carries.
-import { loadPicks } from "../../../nba/lib/record";
+import { loadPicks, MB_FROM } from "../../../nba/lib/record";
 import { finalsFor } from "../../../nba/lib/espn";
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
@@ -19,8 +19,9 @@ export default async function handler(req, res) {
     const games = keys.map((key) => { const [away, home] = key.split(" @ "), f = fin[key] || {};
       return { key, away, home, date, start: f.start || null, final: !!f.final, awayScore: f.away ?? null, homeScore: f.home ?? null, locked: by[key] || null }; });
     // 10/29 (owner: "records at the top of every tab in models bets"): the season's W-L of the same picks (every saved day; pushes count neither way)
+    // 10/29 (owner: "start fresh ... only for model bets"): counted from 10/29 on (MB_FROM); every older day stays saved, graded and in the day drop-down
     const R = { spread: { w: 0, l: 0 }, spreadPts: { w: 0, l: 0 }, total: { w: 0, l: 0 }, totalPts: { w: 0, l: 0 }, ml: { w: 0, l: 0 } }, seen = {};
-    for (const p of all) { const id = String(p.id || p.market), k = `${p.date}|${p.game}|${p.market}`;
+    for (const p of all) { if (!(p.date >= MB_FROM)) continue; const id = String(p.id || p.market), k = `${p.date}|${p.game}|${p.market}`;
       const slot = id === "ml" ? "ml" : /^ptspick\|/.test(id) ? `${p.market}Pts` : /^cardpick\|/.test(id) ? p.market : /^modelpick\|/.test(id) ? p.market : null; if (!slot || !R[slot]) continue;
       if (/^modelpick\|/.test(id) && all.some((x) => x.date === p.date && x.game === p.game && String(x.id) === `cardpick|${p.market}`)) continue;   // the card shows the rule pick
       const sk = `${k}|${slot}`; if (seen[sk]) continue; seen[sk] = 1;

@@ -328,7 +328,7 @@ let GPROPS = {}, GPROPS_LOADING = {};
 function refreshDetail() { const open = [...document.querySelectorAll(".drop.open")].map((e) => e.id).filter(Boolean); renderLines(); for (const id of open) { const e = $(id); if (e) e.classList.add("open"); } }
 function loadGameProps(day) {
   if (GPROPS_LOADING[day]) return; GPROPS_LOADING[day] = true;
-  fetch(`/api/nba/props?date=${day}`, { cache: "no-store" }).then((r) => r.json()).then((d) => { GPROPS[day] = { d: d && d.ok ? d : { games: [] }, t: Date.now() }; })
+  fetch(`/api/nba/props?date=${day}&fresh=1`, { cache: "no-store" }).then((r) => r.json()).then((d) => { GPROPS[day] = { d: d && d.ok ? d : { games: [] }, t: Date.now() }; })
     .catch(() => { GPROPS[day] = { d: { games: [] }, t: Date.now() - 4 * 60e3 }; }).finally(() => { GPROPS_LOADING[day] = false; if (BETSVIEW === "model") renderLabList(); if (DETAIL && GTAB === "props") refreshDetail(); });
 }
 // one NBA props row (the props page look; the Model bets Player Props tab uses it too)
