@@ -54,9 +54,10 @@ export default async function handler(req, res) {
       const td = rs && Array.isArray(rs.td) ? rs.td.filter((p) => p.fair >= BEST_TD && p.played !== false).map((p) => ({ player: p.player, team: p.team, fair: p.fair, price: p.ask ?? null, scored: typeof p.scored === "boolean" ? p.scored : null })) : [];
       return { key: g.key, away: g.away, home: g.home, kickoff: g.kickoff, week, started: started(g), final: !!g.final, awayScore: g.awayScore ?? null, homeScore: g.homeScore ?? null,
         lines: L, h1pick: h1 && h1.team ? h1Out(h1) : null, gprops: gp, td,
-        // 10/29: the game page's Anytime TD list of a played game -- each team's 3 likeliest scorers, graded
+        // 10/29: Model bets -> Anytime TD of a played game -- each team's 12 likeliest, graded; the page drops anyone with no TD in his 4 games before
+        // that week and shows the top 3 left (owner: "give me the next person up")
         ftdTop: ftdTopOf(g, rs, teaser || {}),
-        tdTop: rs && Array.isArray(rs.td) ? [g.away, g.home].flatMap((t) => rs.td.filter((p) => p.team === t && p.played !== false).sort((a, b) => b.fair - a.fair).slice(0, 3)).map((p) => ({ player: p.player, team: p.team, fair: p.fair, price: p.ask ?? null, scored: typeof p.scored === "boolean" ? p.scored : null })) : [] };
+        tdTop: rs && Array.isArray(rs.td) ? [g.away, g.home].flatMap((t) => rs.td.filter((p) => p.team === t && p.played !== false).sort((a, b) => b.fair - a.fair).slice(0, 12)).map((p) => ({ player: p.player, team: p.team, fair: p.fair, price: p.ask ?? null, scored: typeof p.scored === "boolean" ? p.scored : null })) : [] };
     });
     const weeks = []; for (let w = 1; w <= dw.week; w++) weeks.push(w);
     res.status(200).json({ ok: true, season, week, weeks, games: out, ...(req.query.rec ? { records: await seasonRecords(r, season, weeks) } : {}) });
