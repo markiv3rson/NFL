@@ -196,9 +196,10 @@ const mk = (away, home, over = {}) => ({ key: `${away} @ ${home}`, away, home, d
   const sp = await pl.loadParlays(); ok(sp.length === 1 && sp.every((p) => p.date === "2026-10-12" && p.game === "OKC @ ATL"), "a parlay is saved before tip-off", sp.length);
   await pl.recordParlays("2026-10-12", [], s1.games, t0 + 30e3); ok((await pl.loadParlays()).length === 0, "a saved parlay the build no longer makes leaves the record before tip-off");
   await pl.recordParlays("2026-10-12", [globalThis.__NBA_SGP__], s1.games, t0 + 31e3);
-  // the first sighting stands: same game again with a different pct does not overwrite
+  // 10/29 night: the ML PICK follows the card until tip-off (the first sighting kept under first:)
   model.games[0].ml.pick.pct = 99; await slate.buildSlate({ now: t0 + 60e3, events, injuries: { teams: {}, t: "x" }, model });
-  ok((await rec.loadPicks()).find((p) => p.id === "ml").pct === 74, "first sighting of a pick stands");
+  { const mlNow = (await rec.loadPicks()).find((p) => p.id === "ml"), { getRedis: grr } = await import("../lib/redis.js"), fk = (await grr().keys("first:*")).find((k) => /:ml$/.test(k));
+    ok(mlNow.pct !== 74 && fk && JSON.parse(await grr().get(fk)).pct === 74, "the ML PICK follows the card until tip-off; the first sighting is kept under first:", { pct: mlNow.pct, fk }); }
   // after tip-off nothing new is recorded
   const before = (await rec.loadPicks()).length; model.games[0].lines.push({ market: "total", side: "over", line: 219.5, points: 4, hist: 70, n: 4000, price: 0.7, label: "Over 219.5" });
   await slate.buildSlate({ now: Date.parse("2026-10-12T23:30:00Z"), events, injuries: { teams: {}, t: "x" }, model });
@@ -845,7 +846,7 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   C.n = 0; await rec.lockedFor("2026-12-22", "BOS @ NYK"); ok(C.n === 1, "after tip-off the card's saved picks come in one Redis command", C.n);
   const base = mk("BOS", "NYK", { key: "BOS @ NYK", date: "2026-12-24", start: "2026-12-25T00:00:00Z" }), g = { ...base, card: cp.buildCard(base) };
   C.n = 0; const n1 = await rec.recordPicks([g], Date.parse("2026-12-24T14:00:00Z")); ok(n1 >= 3 && C.n === 2 * n1 + 1, `a new pick costs 2 commands (save + index), plus one one-side check per game: ${n1} picks -> ${C.n}`);
-  C.n = 0; const n2 = await rec.recordPicks([g], Date.parse("2026-12-24T15:00:00Z")); ok(n2 === 0 && C.n === n1 + 1, "a repeat snapshot costs one command per pick (+ one one-side check per game) and saves nothing (first sighting stands)", C.n);
+  C.n = 0; const n2 = await rec.recordPicks([g], Date.parse("2026-12-24T15:00:00Z")); ok(n2 === 0 && C.n === 1, "a repeat snapshot of an unchanged card costs one command per game (the read) and saves nothing", C.n);
   const { getRedis: gr } = await import("../lib/redis.js"); const { mgetAll } = await import("../lib/redis.js");
   await R.set("mg:a", "1"); await R.set("mg:b", "2"); const vals = await mgetAll(gr(), ["mg:a", "mg:zz", "mg:b"]); ok(vals[0] === "1" && vals[1] === null && vals[2] === "2", "batch read keeps order and gives null for a missing key", vals); }
 
@@ -981,12 +982,14 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   await R.set(K("ptspick|spread"), JSON.stringify({ date: D, game: G, id: "ptspick|spread", market: "spread", team: "BOS", line: 1.5, label: "BOS +1.5" }));
   await rec.recordPicks([g2], Date.parse("2026-12-30T15:00:00Z"));
   ok(!(await R.get(K("ptspick|spread"))) && !(await R.smembers("pick:ids")).includes(K("ptspick|spread")), "record (10/20): with no one-side line on the card the opposite one leaves the record");
-  // the card's PICK flips to BOS later (the saved PICK DET +1.5 stands): its BOS PICK w/ POINTS is never saved, on any build -- no save / remove churn,
-  // and the removed: copy keeps the FIRST replaced row
+  // 10/29 night: the card's model-side PICK flips to BOS later -> the saved model PICK follows it (DET +1.5 kept under first:) and its BOS PICK w/ POINTS
+  // is saved; a repeat snapshot changes nothing (no churn) and the removed: copy keeps the FIRST replaced row
   const g3 = { ...g, card: { spread: { plain: { id: "modelpick|spread", team: "BOS", line: -1.5, pick: "BOS -1.5", hit: 49.4 }, pts: { id: "ptspick|spread", team: "BOS", line: 0.5, pick: "BOS +0.5", hit: 55.1, points: 2 } } } };
-  for (const t of ["2026-12-30T16:00:00Z", "2026-12-30T17:00:00Z"]) await rec.recordPicks([g3], Date.parse(t));
-  ok(!(await R.get(K("ptspick|spread"))) && JSON.parse(await R.get(`removed:${K("ptspick|spread")}`)).label === "BOS +1.5" && JSON.parse(await R.get(K("modelpick|spread"))).label === "DET +1.5",
-    "record (10/20): a PICK w/ POINTS on the other side of the SAVED PICK is never saved (no churn); the removed: copy keeps the first row");
+  const nFlip = [];
+  for (const t of ["2026-12-30T16:00:00Z", "2026-12-30T17:00:00Z"]) nFlip.push(await rec.recordPicks([g3], Date.parse(t)));
+  ok(JSON.parse(await R.get(K("ptspick|spread"))).label === "BOS +0.5" && JSON.parse(await R.get(`removed:${K("ptspick|spread")}`)).label === "BOS +1.5" && JSON.parse(await R.get(K("modelpick|spread"))).label === "BOS -1.5"
+    && JSON.parse(await R.get(`first:${K("modelpick|spread")}`)).label === "DET +1.5" && nFlip[1] === 0,
+    "record (10/29 night): the model-side PICK follows the card until tip-off (first sighting kept under first:), its PICK w/ POINTS with it; no churn; removed: keeps the first row", nFlip);
   // 10/26 night: a ptspick|total saved under a model-side total before the change leaves the record before tip-off (kept under removed:); a rule total's buy stays
   await R.set(K("modelpick|total"), JSON.stringify({ date: D, game: G, id: "modelpick|total", market: "total", side: "under", line: 230.5, label: "Under 230.5" }));
   await R.set(K("ptspick|total"), JSON.stringify({ date: D, game: G, id: "ptspick|total", market: "total", side: "under", line: 232.5, label: "Under 232.5", points: 2 })); await R.sadd("pick:ids", K("ptspick|total"));
@@ -1000,14 +1003,14 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   await rec.recordPicks([gR], Date.parse("2026-12-30T18:30:00Z"));
   ok(JSON.parse(await R.get(K("ptspick|total"))).label === "Under 232.5" && !(await R.get(`removed:${K("ptspick|total")}`)), "record (10/26 night): a rule total's PICK w/ POINTS stays");
   { // 10/29 late (owner: "make sure it saves the new rule"): a PICK w/ POINTS saved under the old fewest-points rule is re-saved once before tip-off
-    await R.set(K("ptspick|total"), JSON.stringify({ date: D, game: G, id: "ptspick|total", market: "total", side: "under", line: 235.5, label: "Under 235.5", points: 5 }));
+    await R.set(K("ptspick|total"), JSON.stringify({ date: D, game: G, id: "ptspick|total", market: "total", side: "under", line: 235.5, label: "Under 235.5", points: 5 })); await R.del(`first:${K("ptspick|total")}`);
     const gN = { ...gR, card: { total: { ...gR.card.total, pts: { id: "ptspick|total", side: "under", line: 238.5, pick: "Under 238.5", hit: 72.4, points: 8 } } } };
     await rec.recordPicks([gN], Date.parse("2026-12-30T18:40:00Z"));
     const now1 = JSON.parse(await R.get(K("ptspick|total"))), was = JSON.parse(await R.get(`removed:${K("ptspick|total")}`) || "null");
     await rec.recordPicks([{ ...gN, card: { total: { ...gN.card.total, pts: { ...gN.card.total.pts, line: 239.5, pick: "Under 239.5", points: 9 } } } }], Date.parse("2026-12-30T18:50:00Z"));
     const now2 = JSON.parse(await R.get(K("ptspick|total")));
-    ok(now1.label === "Under 238.5" && now1.r72 === true && was && was.label === "Under 235.5" && /old fewest-points rule/.test(was.why) && now2.label === "Under 238.5",
-      "record (10/29 late): an old-rule PICK w/ POINTS is re-saved with the card's 72% line before tip-off (old row kept under removed:); after that the first new-rule sighting stands", { now1, was, now2 }); }
+    ok(now1.label === "Under 238.5" && now1.r72 === true && was && was.label === "Under 235.5" && /old fewest-points rule/.test(was.why) && now2.label === "Under 239.5" && JSON.parse(await R.get(`first:${K("ptspick|total")}`)).label === "Under 238.5",
+      "record (10/29 late): an old-rule PICK w/ POINTS is re-saved with the card's 72% line before tip-off (old row kept under removed:); after that it follows the card until tip-off (10/29 night, earlier copy under first:)", { now1, was, now2 }); }
   for (const k of await R.keys(`*pick:${D}*`)) await R.del(k); }
 { // 10/20 review: sportsbook lines only while current (36 h): opening night showed the 10/14 pull as today's
   const { booksCurrent } = await import("../lib/slate.js"), now = Date.parse("2026-10-20T02:00:00Z");

@@ -1899,6 +1899,12 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { const bands = { 70: { n: 100, said: 0.72, won: 0.62 } }, row = { name: "K", stat: "rec_yds", side: "under", line: 20.5, chance: 0.72, price: 0.55 };
     const c = pr.onePerPlayer([row], bands), raw = pr.onePerPlayer([row]);
     ok(raw.length === 1 && c.length === 0, "props (10/29 night recheck): the family bar holds on the calibrated (shown) % -- 72% calibrating under 70 is not shown on a 70%+ list", { raw, c }); }
+  { const rows = pr.withTdModel([{ name: "Trey McBride", team: "ARI", stat: "atd", line: 0.5, over: 0.2, under: 0.8 }, { name: "James Cook", team: "BUF", stat: "atd", line: 0.5, over: 0.2, under: 0.8 }, { name: "James Cook", team: "BUF", stat: "rec", line: 2.5, over: 0.2, under: 0.8 }],
+      { away: [{ name: "T.McBride", fair: 41.4 }], home: [{ name: "J.Cook", fair: 63.1 }] }, "ARI", "BUF");
+    const noTd = (name, tdm) => ({ name, stat: "atd", side: "under", line: 0.5, chance: 0.82, price: 0.64, bid: 0.47, ...(tdm != null ? { tdm } : {}) });
+    const c = pr.onePerPlayer([noTd("Trey McBride", rows[0].tdm), noTd("James Cook", rows[1].tdm)]);
+    ok(rows[0].tdm === 41.4 && rows[1].tdm === 63.1 && rows[2].tdm == null && c.length === 1 && c[0].name === "Trey McBride",
+      "props (10/29 night recheck): a No TD row carries the TD model's chance and is not shown for a Best TD pick (58%+ blended with the Yes book: Cook 63.1 -> 59.0)", { rows, c }); }
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8"), h = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
   ok(/class="pbl ppr/.test(app) && /pp1[\s\S]*pp2[\s\S]*pp3[\s\S]*pp4/.test(app) && /\.ppr \{ display:grid; grid-template-columns:minmax\(0,3fr\) minmax\(max-content,1fr\)/.test(h) && /onePerPlayer\(picks, bands\)/.test(readFileSync(new URL("../lib/props.js", import.meta.url), "utf8")), "props page rows are columns: player | line | win % | price; the server list and the record use onePerPlayer"); }
 // ---------- 10/20 (owner): Polymarket cents are GREEN (money) on the TD rows + head and the props rows + head, both sports
@@ -2309,7 +2315,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   await tr.recordGameProps(2095, 9, g, [x, { fam: "ptd_t", slug: "s2", long: false, label: "Total passing TDs Under 5.5", said: 0.85, hist: 0.9, price: 0.8 }], "t1");
   const S = await tr.trackedSummary(2095); ok(S.ptdqb.recorded === 1 && S.gprops.recorded === 1, "Models: the passing-TDs pick has its own record row, not inside GAME PROPS", { p: S.ptdqb, g: S.gprops }); await r.del("teaser:2095:9");
   const ap = readFileSync(new URL("../public/app.js", import.meta.url), "utf8"), rr = readFileSync(new URL("../pages/api/rerun.js", import.meta.url), "utf8");
-  ok(ap.includes(`disagree with it by ${Math.round(G.PTDX_GAP * 100)}+ points`) && /pickRow\("PASSING TDs · PICK", TRACKED && TRACKED\.ptdqb\)/.test(ap) && /post\(base, "\/prop-probs2", body, \[\]\)/.test(rr) && /rows: mergeModels\(r\.rows, r2 \? r2\.rows : null\)/.test(rr),
+  ok(ap.includes(`disagree with it by ${Math.round(G.PTDX_GAP * 100)}+ points`) && /pickRow\("PASSING TDs · PICK", TRACKED && TRACKED\.ptdqb\)/.test(ap) && /post\(base, "\/prop-probs2", body, \[\]\)/.test(rr) && /rows: withTdModel\(mergeModels\(r\.rows, r2 \? r2\.rows : null\)/.test(rr),
     "Models ⓘ + row for PASSING TDs; the rerun asks both prop models and saves them merged"); }
 { // 10/28: both sports on one paid database (NBA_DB_URL_REDIS_URL), no fallback (the old databases were deleted); the NFL backup leaves NBA's keys to NBA
   const { DB_URL } = await import("../lib/redis.js");

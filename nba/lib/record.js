@@ -1,4 +1,5 @@
-// Pick tracking and grading. Every pick the card shows is saved the first time it is seen (before tip-off) and graded after the game,
+// Pick tracking and grading. Every pick the card shows is saved before tip-off (a tested rule's PICK at first sighting, the rest as the card shows
+// them at the last snapshot before tip-off, 10/29 night) and graded after the game,
 // with the Polymarket price it was shown at (so the Models tab can show W-L AND money per $100). Win rate is the judge, never price.
 // Ids: ml (the moneyline PICK = the market's win chance), cardpick|spread / cardpick|total (a tested rule's side at Polymarket's line),
 // modelpick|spread / modelpick|total (no rule: the model's side), ptspick|spread / ptspick|total (PICK w/ POINTS). Preseason rows are tier "test".
@@ -22,41 +23,49 @@ export const pickRows = (g) => {
 };
 // the side of a pick: the team on a spread, Over / Under on a total
 const sideOf = (x) => (x ? (x.market === "total" ? x.side : x.team) : null);
+// 10/29 night recheck: the ML PICK, the model-side PICK and the PICK w/ POINTS follow the card until tip-off (the last snapshot, 3 min before tip, is the
+// one graded and shown after tip-off, as the NFL card's kickoff copy). They were the first sighting -- often the day-early line: 10/30's picks saved on
+// 10/29 read MIA -3.5 / HOU -5.5 / BOS -11.5 while the cards showed MIA -7.5 / DAL +5.5 / CHI +13.5, so the card flipped at tip-off and the record graded
+// a pick the page had stopped showing. Their tested rates come from closing lines. A tested rule's PICK (cardpick) keeps its first sighting (LINE MOVE
+// is measured at the open). Every replaced row stays under first:<key> (the first sighting, written once).
+const FOLLOW = /^(ml|modelpick\|(spread|total)|ptspick\|(spread|total))$/;
+const sameRow = (a, b) => a.label === b.label && Number(a.pct) === Number(b.pct) && Number(a.points || 0) === Number(b.points || 0) && !!a.alt === !!b.alt;
 export async function recordPicks(games, now = Date.now()) {
   const r = getRedis(); let n = 0;
   for (const g of games) {
     if (g.start && now >= Date.parse(g.start)) continue;       // only picks seen before tip-off count
     const rows = pickRows(g);
-    // 10/20 review (one side per game, 10/19): the saved PICK of each market (first sighting stands) decides the side; a PICK w/ POINTS on the
-    // OTHER side is never saved, and one saved before the one-side rule went live (BOS @ DET opening night: PICK DET +1.5, PICK w/ POINTS BOS +1.5,
-    // a sure loser either way) is replaced before tip-off by the card's line on the PICK's side, or leaves the record when the card has none.
+    // 10/20 review (one side per game, 10/19): the saved PICK of each market decides the side; a PICK w/ POINTS on the OTHER side is never saved, and
+    // one saved on the other side is replaced before tip-off by the card's line on the PICK's side, or leaves the record when the card has none.
     // Nothing is deleted: the first replaced row is kept under removed:<key> (written once).
-    const ks = ["spread", "total"].flatMap((k) => [`ptspick|${k}`, `cardpick|${k}`, `modelpick|${k}`].map((id) => KEY(g.date, g.key, id)));
-    const v = ((await r.mget(...ks).catch(() => null)) || []).map(jparse);   // one command per game
-    const pickOf = (k) => { const i = k === "spread" ? 0 : 3; return v[i + 1] || v[i + 2] || rows.find((x) => x.market === k && /^(cardpick|modelpick)\|/.test(x.id)) || null; };
+    const ids = ["ml", ...["spread", "total"].flatMap((k) => [`ptspick|${k}`, `cardpick|${k}`, `modelpick|${k}`])], cur = {};
+    const vals = ((await r.mget(...ids.map((id) => KEY(g.date, g.key, id))).catch(() => null)) || []).map(jparse);   // one command per game
+    ids.forEach((id, i) => { cur[id] = vals[i] || null; });
+    const pickOf = (k) => cur[`cardpick|${k}`] || rows.find((x) => x.market === k && /^(cardpick|modelpick)\|/.test(x.id)) || cur[`modelpick|${k}`] || null;
     for (const row of rows) {
       // 10/29 night: a model-side spread's PICK w/ POINTS may sit on the other team on purpose (alt: the team whose 5-10 point line wins more)
       if (/^ptspick\|/.test(row.id) && !row.alt) { const pk = pickOf(row.market); if (pk && sideOf(pk) !== sideOf(row)) continue; }
       if (isStubPick(row)) continue;   // 10/26: a placeholder line (a side at 0.9+) is never saved as a pick
-      const key = KEY(row.date, row.game, row.id);
+      const key = KEY(row.date, row.game, row.id), old = cur[row.id];
+      if (!old) { if (!(await r.set(key, JSON.stringify(row), "NX"))) continue; await r.sadd(IDS, key); cur[row.id] = row; n++; continue; }   // new (NX: one command)
       // 10/29 late (owner: "make sure it saves the new rule"): a PICK w/ POINTS saved before the 72% / 82c rule went live (no r72 mark) is re-saved
       // once with the card's line before tip-off; the old row stays under removed:<key> (written once). Only games not started reach this loop.
-      const old = /^ptspick\|/.test(row.id) ? v[row.market === "spread" ? 0 : 3] : null;
-      if (old && !old.r72 && (old.label !== row.label || Number(old.points) !== Number(row.points))) {   // the same line under both rules: kept as saved
+      if (/^ptspick\|/.test(row.id) && !old.r72 && (old.label !== row.label || Number(old.points) !== Number(row.points))) {   // the same line under both rules: kept as saved
         await r.set(`removed:${key}`, JSON.stringify({ ...old, removedAt: new Date(now).toISOString(), why: "PICK w/ POINTS saved under the old fewest-points rule (10/29 late: 72% / 82c)" }), "NX");
-        await r.set(key, JSON.stringify(row)); await r.sadd(IDS, key); n++; continue;
+        await r.set(key, JSON.stringify(row)); await r.sadd(IDS, key); cur[row.id] = row; n++; continue;
       }
-      if (!(await r.set(key, JSON.stringify(row), "NX"))) continue;   // the first sighting stands (NX: saved only when new, one command)
-      await r.sadd(IDS, key); n++;
+      if (!FOLLOW.test(row.id) || sameRow(old, row)) continue;   // a rule's PICK: the first sighting stands; an unchanged pick costs nothing
+      await r.set(`first:${key}`, JSON.stringify(old), "NX");
+      await r.set(key, JSON.stringify({ ...row, firstSavedAt: old.firstSavedAt || old.savedAt || null })); cur[row.id] = row; n++;
     }
-    for (const [i, k] of ["spread", "total"].entries()) {
-      const pk = ks[i * 3], old = v[i * 3], pick = v[i * 3 + 1] || v[i * 3 + 2];
+    for (const k of ["spread", "total"]) {
+      const pk = KEY(g.date, g.key, `ptspick|${k}`), old = cur[`ptspick|${k}`], pick = cur[`cardpick|${k}`] || cur[`modelpick|${k}`];
       // 10/26 night: the card no longer buys points on the model-side TOTAL, so a saved ptspick|total under a modelpick|total (saved before the change) leaves the record before tip-off too
       const noneNow = !!old && !!pick && k === "total" && pick.id === "modelpick|total" && !rows.some((x) => x.id === "ptspick|total");
       if (!old || !pick || ((sideOf(old) === sideOf(pick) || old.alt) && !noneNow)) continue;
-      const cur = rows.find((x) => x.id === `ptspick|${k}` && sideOf(x) === sideOf(pick));
+      const repl = rows.find((x) => x.id === `ptspick|${k}` && sideOf(x) === sideOf(pick));
       await r.set(`removed:${pk}`, JSON.stringify({ ...old, removedAt: new Date(now).toISOString(), why: noneNow ? "no PICK w/ POINTS on the model-side total (10/26)" : "PICK w/ POINTS on the other side of the PICK" }), "NX");
-      if (cur) await r.set(pk, JSON.stringify(cur)); else { await r.del(pk); await r.srem(IDS, pk); }
+      if (repl) await r.set(pk, JSON.stringify(repl)); else { await r.del(pk); await r.srem(IDS, pk); }
       n++;
     }
   }
@@ -150,7 +159,7 @@ export function clvSummary(picks, closes) {
   return { n, avg: n ? Math.round((sum / n) * 100) / 100 : null, beat, same, worse: n - beat - same, beatPct: n ? Math.round((beat / n) * 1000) / 10 : null };
 }
 
-// After tip-off the card shows the picks that were saved before it (first sighting), with W / L once graded.
+// After tip-off the card shows the picks saved before it (a rule's first sighting, the rest as at the last snapshot before tip-off), with W / L once graded.
 const LOCK_IDS = ["ml", "cardpick|spread", "modelpick|spread", "ptspick|spread", "cardpick|total", "modelpick|total", "ptspick|total"];
 export async function lockedFor(date, game) {
   const r = getRedis(), out = {};
