@@ -55,7 +55,7 @@
       if (typeof setTimeout === "function") setTimeout(() => { if (TOPS) TOPS.forEach(topSize); }, 60);
       if (!document.querySelectorAll) return;
       document.querySelectorAll("#bnav [data-b]").forEach((a) => a.classList.toggle("on", a.dataset.b === t));
-      document.querySelectorAll("#tbar [data-pg]").forEach((a) => a.classList.toggle("on", a.dataset.pg === panel));
+      document.querySelectorAll("#lgfloat [data-pg]").forEach((a) => a.classList.toggle("on", a.dataset.pg === panel));
       // 10/27 (owner: "organize or fix these ... change the layout if you need to"): the Model bets types and the Player props tabs are chips under the
       // page title (like the game page's), no longer a strip behind the bottom bar
       const subs = subsOf(sp, panel), html = subs ? subs.map(([id, l]) => `<a class="gchip${id === panel ? " on" : ""}" data-nav href="${URL_[sp]}#${id}">${l}</a>`).join("") : "";
@@ -72,7 +72,7 @@
         if (TOPS) { TOPS.forEach(topSize); if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => TOPS.forEach(topSize)); if (typeof setTimeout === "function") setTimeout(() => TOPS.forEach(topSize), 350); } }
     },
     counts: {},
-    setCount(sp, id, n) { Shell.counts[`${sp}-${id}`] = n; const e = document.getElementById(`mcnt-${sp}-${id}`); if (!e) return; e.textContent = n > 9 ? "9+" : String(n || ""); e.style.display = n ? "flex" : "none"; },
+    setCount(sp, id, n) { Shell.counts[`${sp}-${id}`] = n; const e = document.getElementById(`mcnt-${sp}-${id}`); if (!e) return; e.textContent = n > 9 ? "9+" : String(n || 0); },   // 10/29: the number always sits on the bell's red circle (0 when nothing is new)
     // the sport last chosen is kept per phone (a fresh start lands on its Home); the alerts "read" mark is kept per sport
     SPORT_KEY: "slz-sport", seenKey: (sp) => (sp === "nba" ? "alSeen:nba" : "alSeen"),
     chosen() { try { const v = localStorage.getItem(Shell.SPORT_KEY); return v === "nba" || v === "nfl" ? v : null; } catch { return null; } },
@@ -138,16 +138,17 @@
       if (Shell.homeReset()) return;   // a fresh start on another page: home is loading instead
       Shell.sport = sport; const sp = sport;
       const d = document.createElement("div");
-      d.innerHTML = `<header class="tbar" id="tbar"><a class="slatelogo sgrad" data-nav href="${URL_[sp]}#lines">SLATEZZ</a>` +
-        `<span class="tright"><button class="mref" aria-label="Rerun both models">${REF_SVG}</button>` +   // 10/27 (owner): the refresh sits next to the bell, white
-        `<a class="tib" data-nav data-pg="alerts" href="${URL_[sp]}#alerts" aria-label="Alerts">${svg("bell", 28)}<b class="tcnt" id="mcnt-${sp}-alerts"></b></a></span></header>` +   // 10/21 night (owner): the bell at the top right
+      // 10/29 (owner: "Put the bell above nfl and put the model refresh on the bottom ... and put the header SLATEZZ BIG AND CENTER IN THE MIDDLE"; the bell = the owner's
+      // yellow bell picture, its red circle carrying the unread number): the top bar is SLATEZZ alone, centered; bell · NFL · NBA · refresh float at the bottom right
+      d.innerHTML = `<header class="tbar" id="tbar"><a class="slatelogo sgrad" data-nav href="${URL_[sp]}#lines">SLATEZZ</a></header>` +
         `<nav class="bnav" id="bnav" aria-label="Main menu">` +
         `<a class="bi" data-nav data-b="home" href="${URL_[sp]}#lines" aria-label="Home">${svg("home", 23)}<span>Home</span></a>` +
         `<a class="bi" data-nav data-b="bets" href="${URL_[sp]}#mybets" aria-label="Bets">${svg("bets", 23)}<span>Bets</span></a>` +
         `<a class="bi" data-nav data-b="model" href="${URL_[sp]}#models" aria-label="Model">${svg("bars", 23)}<span>Model</span></a></nav>` +
-        `<div class="lgfloat" id="lgfloat">${Shell.leagueTabs(sp, "lines")}</div>`;   // 10/29 (owner: "move the nfl and nba buttons to the bottom right ... apply it to every screen like the bottom tabs ... just floating by itself", "a little bigger", the one not selected a little see-through)   // (owner 10/27: like Polymarket's phone app -- a floating pill, icons only, the open one in a round bubble)
+        `<div class="lgfloat" id="lgfloat"><a class="tib" data-nav data-pg="alerts" href="${URL_[sp]}#alerts" aria-label="Alerts"><img class="bellimg" src="/bell.png?v=2" alt=""><b class="tcnt" id="mcnt-${sp}-alerts">0</b></a>` +
+        `${Shell.leagueTabs(sp, "lines")}<button class="mref" aria-label="Rerun both models">${REF_SVG}</button></div>`;   // 10/29 (owner: "move the nfl and nba buttons to the bottom right ... apply it to every screen like the bottom tabs ... just floating by itself", "a little bigger", the one not selected a little see-through)
       while (d.firstChild) document.body.appendChild(d.firstChild);
-      { const rb = document.querySelector && document.querySelector("#tbar .mref"); if (rb) rb.onclick = Shell.refresh; }
+      { const rb = document.querySelector && document.querySelector("#lgfloat .mref"); if (rb) rb.onclick = Shell.refresh; }
       if (document.body.classList) document.body.classList.add("bnav-on");
       // My bets | Model bets sit inside Bets, under its title in the pinned header (10/22, sketch L)
       const sw = document.getElementById("bets-sw"), rh = document.querySelector && document.querySelector("#panel-record .phead");
