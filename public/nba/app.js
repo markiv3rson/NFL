@@ -574,20 +574,23 @@ function labGames(day) {
   });
   const c = MPICKS[day]; return c && c.d ? (c.d.games || []).map((g) => ({ ...g, lines: { spread: lockedPick(g.locked && g.locked.spread), total: lockedPick(g.locked && g.locked.total), ml: lockedPick(g.locked && g.locked.ml) } })) : [];
 }
-const npHead = () => `<div class="pbl ppr pph"><span class="pp1">PLAYER</span><span class="pp2">LINE</span><span class="pp5">LAST</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
+const npHead = (nm = "PLAYER") => `<div class="pbl ppr pph"><span class="pp1">${nm}</span><span class="pp2">LINE</span><span class="pp5">LAST</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
 // 10/29 (owner: "Make this into a table format"; design = both sports): the Game Lines tab as a table like Player Props -- PICK (the bet, its kind under it) ·
 // MODEL (the % in its win-rate colour) · POLYMARKET; ✓ / ✗ and the row green / red once graded
-const pickHead = () => `<div class="pbl ppr pph first"><span class="pp1">PICK</span><span class="pp2">BET</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
+// 10/29 (owner: "why is this not in 1 line"; design = both sports): the game's name sits on its column-heading line (where PLAYER / PICK was)
+const gameNameN = (g) => { const live = S && (S.dates || []).includes(g.date), sc = live ? scOf((S.games || []).find((x) => x.key === g.key) || g) : null;
+  return `<span class="pbn">${gameLogos(g.key)}${sc && sc.st === "in" ? ' <span class="lvb">● LIVE</span>' : ""}</span>`; };
+const pickHead = (nm = "PICK") => `<div class="pbl ppr pph first"><span class="pp1">${nm}</span><span class="pp2"></span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
 const pickTr = (x) => { const r = normRes(x.result), h = Number(x.hit), c = h >= 56 ? "g" : h >= 53 ? "lg" : "y";
   return `<div class="pbl ppr first${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) : "•"} ${esc(x.pick)}</span><span class="pp2">${esc(x.kind)}</span>` +
     `<span class="pp3 mod">${isFinite(h) ? `${h >= 56 ? Math.round(h) : Math.floor(h)}%` : "—"}</span><span class="pp4">${x.price > 0 && x.price < 1 ? `${Math.round(x.price * 100)}¢` : "—"}</span></div>`; };
 const LAB_BODY = {
   lines: (g) => { const L = g.lines || {}, row = (x, kind) => (x && x.pick ? { pick: x.pick, kind, hit: x.hit, price: x.price, result: x.result } : null);
     const rows = [row(L.spread, "Spread"), row(L.spread && L.spread.pts, "Spread · w/ points"), row(L.ml, "Moneyline"), row(L.total, "Total"), row(L.total && L.total.pts, "Total · w/ points")].filter(Boolean);
-    return rows.length ? pickHead() + rows.map(pickTr).join("") : ""; },
+    return rows.length ? pickHead(gameNameN(g)) + rows.map(pickTr).join("") : ""; },
   props: (g) => { const c = GPROPS[g.date], pg = c && c.d ? (c.d.games || []).find((x) => x.game === g.key) : null, picks = ((pg && pg.picks) || []).filter((p) => p.stat === MBPROP);
     const part = (t) => { const rs = picks.filter((p) => (p.team || "") === t); return rs.length ? `${t ? `<div class="pbl pteam">${tlogo(t)}${esc(t)}</div>` : ""}${rs.map(npRow).join("")}` : ""; };
-    return picks.length ? npHead() + [...new Set([g.away, g.home, ...picks.map((p) => p.team || "")])].map(part).join("") : ""; },
+    return picks.length ? npHead(gameNameN(g)) + [...new Set([g.away, g.home, ...picks.map((p) => p.team || "")])].map(part).join("") : ""; },
 };
 // RECORDS (10/29, owner: "I need records at the top of every tab in models bets"; design = both sports): the season's W-L of the tab's picks (/api/nba/modelpicks
 // records, props from /api/nba/props) and the day on screen under it; the colour is the win rate. Pushes count neither way.
@@ -617,8 +620,7 @@ function renderLabList() {
   const xs = games.map((g) => ({ g, html: body(g) })).filter((x) => x.html);
   const slotTimes = {}; for (const { g } of xs) if (g.start) { const sl = nbaSlot(g.start), tt = tipTime(g.start); (slotTimes[sl] = slotTimes[sl] || []).includes(tt) || slotTimes[sl].push(tt); }
   let lastSlot = null; const blocks = xs.map(({ g, html }) => { const sl = g.start ? nbaSlot(g.start) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
-    const sc = live ? scOf((S.games || []).find((x) => x.key === g.key) || g) : null, lv = sc && sc.st === "in" ? ' <span class="lvb">● LIVE</span>' : "";   // ESPN says it is being played
-    return h + `<div class="par"><div class="pbh"><span class="pbn">${gameLogos(g.key)}${lv}</span></div>${html}</div>`; });
+    return h + `<div class="par">${html}</div>`; });
   $("lab").innerHTML = ddSlot($("lab"), chips) + (LABTYPE === "props" ? mbChips() : "") + `<div class="stats mbrec">${labRecords(games, sel).join("")}</div>` + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : `<div class="s dim empty" style="margin-top:12px">${waiting ? "Loading…" : "None yet."}</div>`);
   const lw = $("lab-wk"); if (lw && lw.tagName === "SELECT") lw.onchange = () => { LABDAY = lw.value; renderLabList(); };
 }

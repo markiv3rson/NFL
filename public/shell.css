@@ -454,3 +454,5 @@ body.bnav-on .phead { background:var(--glass) !important; -webkit-backdrop-filte
 /* 10/29 (owner: "records at the top of every tab in models bets"): the Model bets record tiles, the Models tiles' look -- up to 4 across, a single tile centered. Both sports. */
 #lab .stats.mbrec { display:flex; justify-content:center; gap:6px; margin:8px 0 4px !important; }
 #lab .stats.mbrec > .stat { flex:1 1 0; min-width:0; max-width:240px; }
+/* 10/29: Model bets -- the game's name sits on the heading line; its LIVE mark keeps its red there */
+body.bnav-on .panel .pph .lvb { color:var(--red) !important; -webkit-text-stroke:0; }
