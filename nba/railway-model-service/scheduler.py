@@ -8,7 +8,7 @@ Scheduler (runs inside the Railway service, 24/7). Pacific time.
   Every 30 min, 7 AM - 9:30 PM:  the site's /api/snapshot (Polymarket lines + model; saves each game's last pre-tip line = its closing line)
   3 minutes before every tip-off:  one more /api/snapshot, so each game's saved closing line is the real last line, not up to 30 minutes old
   Hourly at :20, 6 AM - 11 PM:  sync the Polymarket account (my bets)
-  Nightly 11:45 PM:    grade finished games' picks (/api/results/grade)
+  Nightly 11:45 PM:    grade finished games' picks (/api/results/grade); again at 1:45 PM (10/29: the props' re-check of ESPN's corrected boxes)
   Nightly 12:10 AM:    back up the NBA database (/api/backup, paged) to a file on the volume, last 30 nights kept (10/17)
 Env: SITE_URL (the NBA site), SITE_LOGIN ("user:password" if the site has a login), VERCEL_BYPASS (only if Deployment Protection is on),
      SITE_API (10/17, merged site: "/api/nba" when SITE_URL is the combined NFL + NBA site; default "/api" = the old stand-alone NBA site).
@@ -171,6 +171,10 @@ def due(now, last, tips=None):
         jobs.append(("sync", lambda: _call("/api/mybets?sync=1")))
     if h == 23 and m == 45:
         jobs.append(("grade", lambda: _call("/api/results/grade")))
+    # 10/29 night recheck: the props' 6-h re-check had no run to ride (grading was nightly only, so ESPN's box corrections waited ~24 h: 12 rows of
+    # 10/28 still read the old box 10/29 evening) -- a second grade pass at 1:45 PM PT re-checks last night's games the same day (only final games grade)
+    if h == 13 and m == 45:
+        jobs.append(("grade-pm", lambda: _call("/api/results/grade")))
     if h == 0 and m == 10:
         jobs.append(("backup", _backup))
     return [(n, f) for n, f in jobs if last.get(n) != key and not last.__setitem__(n, key)]

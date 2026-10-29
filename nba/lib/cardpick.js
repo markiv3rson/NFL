@@ -134,7 +134,10 @@ function boundRows(raw, plain, mine, ratio = false) {
   const p = r1(plain.hit), q = r1(100 - plain.hit), ph = plain.ptsHit;
   const up = (r) => (ratio && lift && base < 100 ? r1(100 - ((100 - r.hist) * (100 - plain.hit)) / (100 - base)) : r1(r.hist + lift));
   return raw.map((r) => { const own = mine(r), floor = own ? p : q;
-    const hit = r.points === 0 ? floor : own && ph && r.points > 0 ? Math.max(ptsRate(ph, plain.hit, r.points), floor) : Math.max(own ? (r.points >= PTS_MIN ? r1(r.hist + PTS_KEEP * (up(r) - r.hist)) : up(r)) : r1(r.hist - lift), floor);
+    // 10/29 night recheck: BOOK GAP's measured rates stop at 3 points; past 3 the line reads the larger of that 3-point rate and the table + half the
+    // lift (a +8 BOOK GAP line read 68.4%, the 3-point rate, where the table alone said ~76% -- the 72% rule could never fire on it)
+    const lifted = r.points >= PTS_MIN ? r1(r.hist + PTS_KEEP * (up(r) - r.hist)) : up(r);
+    const hit = r.points === 0 ? floor : own && ph && r.points > 0 ? Math.max(r.points > 3 ? Math.max(ptsRate(ph, plain.hit, r.points), lifted) : ptsRate(ph, plain.hit, r.points), floor) : Math.max(own ? lifted : r1(r.hist - lift), floor);
     return { ...r, hit }; });
 }
 function spreadPart(g) {

@@ -115,6 +115,7 @@ export function onePerPlayer(picks, bands = null) {
     if (CUT_SIDES.has(`${p.stat}|${p.side}`) || (CUT_UNDERS && p.side === "under")) continue;
     if (p.side === "over" && typeof p.tsp === "number" && p.tsp >= DOG_CUT) continue;
     if (bands) p.cal = calibrate(p.chance, bands);
+    if (p.cal != null && p.cal < NBA_PROP_BAR - 1e-9) continue;   // 10/29 night recheck (the NFL fix): the bar is met on the shown, calibrated % too
     if (!GAP_FREE.has(p.stat) && p.price > (p.cal ?? p.chance) - MIN_GAP + 1e-9) continue;   // 10/23 night: priced at least 2 points under the shown %
     const k = `${normName(p.name)}|${p.stat}`, o = best.get(k);
     if (!o || p.chance > o.chance) best.set(k, p);
