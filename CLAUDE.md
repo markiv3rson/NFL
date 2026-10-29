@@ -6,8 +6,6 @@ NBA details: `nba/CLAUDE.md`. Where this file and an older note disagree, this f
 
 ## THE OWNER'S RULES (always, in this order)
 
-**List these 18 rules to the owner at the start of every job.**
-
 **TALKING**
 1. **Answer first.** Answer every question, short and plain, then stop and wait. A question is never a "go". No sorry, no long explanations, never repeat what was already said.
 2. **No questions or options after "build now".** Decide every detail yourself from this chat, these notes and the data. Don't list weak spots: fix them. Only ask before deleting something or changing a layout the owner didn't name (rule 5).
