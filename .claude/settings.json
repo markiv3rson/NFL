@@ -6,6 +6,32 @@
           {
             "type": "command",
             "command": "awk '/^## THE OWNER.S RULES/{on=1} /^## OWNER.S STANDING DECISIONS/{on=0} on' \"$CLAUDE_PROJECT_DIR/CLAUDE.md\""
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.mjs\" prompt"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash|AskUserQuestion|mcp__github__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.mjs\" pre",
+            "timeout": 400
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.mjs\" stop"
           }
         ]
       }
