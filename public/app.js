@@ -145,8 +145,8 @@ function leanCell(g, kind) {
   let body = "";
   const LP = (g.started || g.final) && g.lockedPicks ? g.lockedPicks[kind === "total" ? "total" : "spread"] : null;
   if (LP) {   // 10/13: after kickoff, the pick that was locked in at kickoff and how it did
-    const cls = LP.hit >= 56 ? "g" : LP.hit >= 53 ? "lg" : "y", pc = cls === "g" ? Math.round(LP.hit) : Math.floor(LP.hit), rs = LP.result === "W" ? ' · <span class="g">W</span>' : LP.result === "L" ? ' · <span class="r">L</span>' : LP.result === "P" ? " · push" : "";
-    const lp = LP.pts, lrs = lp ? (lp.result === "W" ? ' · <span class="g">W</span>' : lp.result === "L" ? ' · <span class="r">L</span>' : lp.result === "P" ? " · push" : "") : "";
+    const cls = LP.hit >= 56 ? "g" : LP.hit >= 53 ? "lg" : "y", pc = cls === "g" ? Math.round(LP.hit) : Math.floor(LP.hit), rs = LP.result === "W" ? ' · <span class="g">W</span>' : LP.result === "L" ? ' · <span class="r">L</span>' : LP.result === "P" ? " · push" : liveBit(liveMark(g, { kind: "line", label: LP.pick }));   // 10/28 late: live grading
+    const lp = LP.pts, lrs = lp ? (lp.result === "W" ? ' · <span class="g">W</span>' : lp.result === "L" ? ' · <span class="r">L</span>' : lp.result === "P" ? " · push" : liveBit(liveMark(g, { kind: "line", label: lp.pick }))) : "";
     body = `<div style="margin-top:6px"><b class="${cls}" style="font-size:16px"><span class="lbw">Pick:</span> ${esc(LP.pick)} · ${pc}%</b>${rs}</div>` + (lp ? `<div style="margin-top:4px"><b><span class="lbw">Pick w/ points:</span> ${esc(lp.pick)} · ${lp.hit >= 56 ? Math.round(lp.hit) : Math.floor(lp.hit)}%</b>${lrs}</div>` : "");
   }
   else if (!g.final && CC) body = cardBody(g, kind, CC);
@@ -175,7 +175,7 @@ function leanCell(g, kind) {
   // opinion, never as a pick.
   // 10/23 night: the moneyline PICK (the favorite when STACK's spread side is the favorite), before kickoff from the card, after it the locked one with W / L
   const MLc = kind === "spread" ? (!g.started && !g.final ? g.card && g.card.ml && g.card.ml.plain : g.lockedPicks && g.lockedPicks.ml) : null;
-  const mlLine = MLc ? `<div style="margin-top:4px"><b class="${clsOf(MLc.hit)}" style="font-size:13px;white-space:nowrap"><span class="lbw">ML pick:</span> ${esc(MLc.pick)} · ${hitTxt(MLc.hit, clsOf(MLc.hit))}</b>${MLc.result === "W" ? ' · <span class="g">W</span>' : MLc.result === "L" ? ' · <span class="r">L</span>' : MLc.result === "P" ? " · push" : ""}</div>` : "";
+  const mlLine = MLc ? `<div style="margin-top:4px"><b class="${clsOf(MLc.hit)}" style="font-size:13px;white-space:nowrap"><span class="lbw">ML pick:</span> ${esc(MLc.pick)} · ${hitTxt(MLc.hit, clsOf(MLc.hit))}</b>${MLc.result === "W" ? ' · <span class="g">W</span>' : MLc.result === "L" ? ' · <span class="r">L</span>' : MLc.result === "P" ? " · push" : g.started ? liveBit(liveMark(g, { kind: "line", label: MLc.pick })) : ""}</div>` : "";
   return wrap(`<div class="s">${mline}</div>${tline}${sline}` + body + mlLine + 
     (p && p.warn && !g.final ? `<div class="s y">${esc(p.warn)}</div>` : ""));   // e.g. QB change the model can't see
 }
@@ -845,7 +845,7 @@ function renderModelNow() {
       (() => { const pl = tdPlayersWithDefense(res); return `<div class="s" style="margin-top:8px"><b>By position</b></div>` + tdByPosition(pl) + `<div class="s" style="margin-top:8px"><b>By opponent defense</b></div>` + tdByDefense(pl); })() +
       `<div class="s" style="margin-top:8px"><b>Vs Polymarket</b></div>` + (vsMkt || '<div class="s empty">None yet.</div>')) +
     mSec("m-ang", "5 · Tracked angles", pickLabBox()) +
-    mSec("m-sys", "6 · System", wcRows + stRows, (wc.watch || []).length, !stOk) +
+    mSec("m-sys", "6 · System", wcRows + stRows, (wc.watch || []).length + (stOk ? 0 : 1)) +   // 10/28 late (owner: "Keep system close when I open this tab"): never opens by itself, the ⚠ count says it
     `<div class="center"><button class="btn" id="export-btn">Export data</button></div>`;
   paintBox($("models"));
   $("export-btn").onclick = () => (window.location.href = "/api/results/export");
@@ -877,8 +877,7 @@ function stampUpdated() { const t = new Date().toLocaleTimeString(undefined, { h
 async function loadRecord(sync = false) {
   if (sync) toast("Syncing…", 0);
   try {
-    const [mb, rl, mbt] = await Promise.all([fetch(`/api/mybets${sync ? "?sync=1" : ""}`, { cache: "no-store" }).then((r) => r.json()), fetch("/api/results/list", { cache: "no-store" }).then((r) => r.json()), fetch("/api/modelbets", { cache: "no-store" }).then((r) => r.json()).catch(() => null)]);
-    if (mbt && mbt.ok) MODELBETS = mbt;
+    const [mb, rl] = await Promise.all([fetch(`/api/mybets${sync ? "?sync=1" : ""}`, { cache: "no-store" }).then((r) => r.json()), fetch("/api/results/list", { cache: "no-store" }).then((r) => r.json())]);
     if (!mb.ok) throw new Error(mb.error); stampUpdated(); MB = mb; RES = rl.ok ? rl.results : []; PAPER = rl.ok ? rl.paper : null; TRACKED = rl.ok ? rl.tracked || null : null; COMBOS = rl.ok ? rl.combos || null : null; renderLab();
     renderRecord();
     if (sync && mb.sync) toast(mb.sync.ok ? `Synced ${mb.sync.positions} positions.` : `Sync: ${mb.sync.note}`);
@@ -1220,12 +1219,14 @@ function sgpBox(g) {
   const blocks = [["2 legs", x.best], ["3 legs", x.three], ["Spread + total", x.st]].map(([t, p]) => pBlock(esc(t), p, false)).join("");   // 10/26 night: no Upset
   return blocks ? `<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAYS</div><div class="pgrid" style="margin-top:6px">${blocks}</div>` : "";
 }
-// Model bets: the parlay types are menu sub tabs (Over/Under, Best Legs, 3 Leg, 2 Leg, Upset; 10/19: 3 legs at most, the 4-leg tabs are gone), the week a drop-down;
-// each shows only its parlays, one column, in kickoff order. The current week comes from the live slate (results from the saved copies once a game starts); past weeks from /api/modelbets.
-const FOUR_NAMES = { best_2: "2 best green picks", best_3: "3 best green picks", td_likely_2: "2 most likely TD scorers", td_likely_3: "3 most likely TD scorers", pp6: "Player props · 6 legs", pp8: "Player props · 8 legs", pp10: "Player props · 10 legs" };
-// 10/17 (owner): Over/Under first, then the parlays in this order and with these names
-const LAB_TABS = [["best", "Best Legs"], ["3", "3 Leg"], ["2", "2 Leg"], ["pp6", "6 Leg"], ["pp8", "8 Leg"], ["pp10", "10 Leg"]];   // 10/26 night (owner): the Upset tab is gone (1 of 16 live; old rows stay on the scoreboard)   // 10/21 night: + Player props parlays 6 / 8 / 10 legs   // 10/20 night (owner): Over/Under and Spread + Total tabs removed ("not needed"); the Spread + Total parlays are still saved and graded   // 10/17 parlay lab: Upset; 10/19 (owner: "three max ... cut all the four legs"): 4 Leg, 4 Leg (My Style), Different Game Parlays gone
-let MODELBETS = null, LABTYPE = "best", LABWEEK = null;
+// MODEL BETS (10/28 late, owner: "Remove all the sub tabs under models bets and I need sub tabs for all the models picks in the card. SubTab 1. All Game Line
+// Picks for all games split by their time. SubTab 2. All Halves and [quarters] ... Do this for player props and game props also" / "I don't want no parlays in
+// there no more" / "The sub tabs should look the same as the card layout"): four pick tabs, no parlays. Each = every game's picks of that kind under the
+// kickoff-time headers, in the game page's own look (Game Lines / Halves & Quarters / Game Props = the card's Pick lines; Player Props = the props rows + the
+// Best TD picks). This week before kickoff from the live slate, after kickoff the copies locked at kickoff; past weeks /api/modelpicks + /api/props.
+// ✓ / ✗ once graded; while a game is on (and until its official grade) the live state from ESPN's box score (liveMark, /api/livebox).
+const LAB_TABS = [["lines", "Game Lines"], ["halves", "Halves & Quarters"], ["props", "Player Props"], ["gprops", "Game Props"]];
+let LABTYPE = "lines", LABWEEK = null, MPICKS = {}, LIVE_BOX = {}, LIVE_BOX_T = 0;
 // 10/15 (owner): ONE Bets tab -- My bets on the left (the list as before), Model bets on the right (the model's parlays). The choice is remembered.
 let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
 // 10/21 night (owner): a page's drop-downs go to the right of its title (Shell.dd); without the shell (tests) they stay on top of the block
@@ -1259,7 +1260,8 @@ const teamSel = (teams) => `<div class="wksel"><select id="props-team" aria-labe
 const propLast = (p, tag) => { const l = p.last; if (!l) return '<span class="pp5 dim">—</span>';
   if (l.line == null) return `<span class="pp5 dim">${l.actual != null ? Math.round(l.actual * 10) / 10 : "—"}</span>`;
   return `<span class="pp5 ${l.result === "W" ? "g" : "r"}">${l.side === "over" ? "O" : "U"} ${l.line} ${l.result === "W" ? "✓" : "✗"}${l.actual != null ? ` <span class="dim">${Math.round(l.actual * 10) / 10}</span>` : ""}</span>`; };
-const propRow = (p) => `<div class="pbl ppr${p.first ? " first" : ""}${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${esc(p.name)}</span><span class="pp2">${p.first ? "First TD" : `${p.stat === "rec" ? "Rec " : p.stat === "pass_yds" ? "Pass Yds " : p.stat === "rush_yds" ? "Rush Yds " : p.stat === "scrim_yds" ? "Scrim Yds " : ""}${p.side === "over" ? "Over" : "Under"} ${p.line}`}</span>${p.first ? "" : propLast(p)}<span class="pp3 mod">${Math.round((p.cal ?? p.chance) * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
+const propRow = (p) => { const r = p.result || (p.live && p.live.res) || null; return `<div class="pbl ppr${p.first ? " first" : ""}${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) : "•"} ${esc(p.name)}${p.result ? "" : liveBit(p.live && !p.live.res ? p.live : null)}</span><span class="pp2">${p.first ? "First TD" : p.stat === "td" ? "Anytime TD" : `${p.full && p.stat === "rec_yds" ? "Rec Yds " : p.stat === "rec" ? "Rec " : p.stat === "pass_yds" ? "Pass Yds " : p.stat === "rush_yds" ? "Rush Yds " : p.stat === "scrim_yds" ? "Scrim Yds " : ""}${p.side === "over" ? "Over" : "Under"} ${p.line}`}</span>${p.first ? "" : propLast(p)}<span class="pp3 mod">${Math.round((p.cal ?? p.chance) * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>` };
+// 10/28 late: + the Best TD picks ("Anytime TD"), the live state (the stat so far after the name, ✓ / ✗ the moment it can no longer change), p.full = every stat named (Model bets mixes them)
 // 10/20 night (owner): the POLYMARKET head carries the Polymarket logo on every props page (both sports); the First TD tab has NO LAST WK column (nothing to grade there)
 const propHead = (first) => `<div class="pbl ppr pph${first ? " first" : ""}"><span class="pp1">PLAYER</span><span class="pp2">LINE</span>${first ? "" : '<span class="pp5">LAST WK</span>'}<span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
 // the rows of one game, split by team (away first, then home, then anyone with no team), each team with its small label (owner: "separate them by teams")
@@ -1307,52 +1309,118 @@ function renderFirstTd(el) {
   const ps = $("props-team"); if (ps && ps.tagName === "SELECT") ps.onchange = () => { PROPTEAM = ps.value; renderProps(); };
   if (!RES && !renderFirstTd.loading) { renderFirstTd.loading = true; loadRecord().catch(() => {}).finally(() => { renderFirstTd.loading = false; if (PROPTAB === "first") renderProps(); }); }
 }
-// Over/Under (10/17, owner: option C; 10/19 the PICK w/ POINTS row left -- it stays on the card under MORE): each game's total PICK at Polymarket's main line, stacked by game under the
-// kickoff headers. Before kickoff from the card, after kickoff the picks locked at kickoff with W / L. This week only (the slate carries them).
-function ouLegs(g) {
-  if (g.started || g.final) { const L = g.lockedPicks && g.lockedPicks.total; if (!L) return [];
-    return [{ label: L.pick, prob: L.hit / 100, result: L.result || null, price: L.price }].filter((l) => l.label); }
-  const C = cardOf(g, "total"); if (!C) return [];
-  return C.plain ? [{ label: C.plain.pick, prob: C.plain.hit / 100, price: C.plain.price }] : [];   // 10/19 (owner): PICK w/ POINTS only on the card, under MORE
-}
-function ouBlock(title, legs) {   // same block look as a parlay; every line is its own bet: line · win % · Polymarket price, ✓ / ✗ once graded
-  const line = (l) => `<div class="pbl">${legMark(l.result)} ${legTxt(l.result, `${esc(l.label)}${l.bought && l.points ? ` · ${l.points} pt${l.points === 1 ? "" : "s"}` : ""} · <span class="mod">${legPct({ kind: "total", ...l })}%</span>${l.price > 0 && l.price < 1 ? ` · ${Math.round(l.price * 100)}¢` : ""}`)}</div>`;
-  return `<div class="par"><div class="pbh"><span class="pbn">${title}</span></div>${legs.map(line).join("")}</div>`;
-}
-function labParlays(week, type) {
-  if (type === "ou") return S && Number(week) === Number(S.week) ? ((S && S.games) || []).map((g) => ({ p: { legs: ouLegs(g) }, game: g.key, kick: g.kickoff, title: gameLogos(g.key), ou: true })).filter((x) => x.p.legs.length) : [];
-  const rec = (MODELBETS && MODELBETS.weeks && MODELBETS.weeks[week] && MODELBETS.weeks[week][type]) || [];
-  if (!(S && Number(week) === Number(S.week))) return rec.map((p) => ({ p, game: p.game, kick: p.kickoff, title: p.game ? gameLogos(p.game) : esc(FOUR_NAMES[p.strategy] || p.strategy), across: !p.game }));
-  const pick = { 2: (g) => g.sgp.best, 3: (g) => g.sgp.three, st: (g) => g.sgp.st };
-  if (/^pp\d+$/.test(type)) {   // Player props parlays (10/21 night): the week's saved copy once it exists (the one graded), the live build before that
-    const saved = MODELBETS && Array.isArray(MODELBETS.saved) && MODELBETS.saved.includes(Number(week));
-    return (saved ? rec : ((S && S.propParlays) || []).filter((p) => p && p.strategy === type && Array.isArray(p.legs))).map((p) => ({ p, game: null, kick: null, title: esc(FOUR_NAMES[p.strategy] || p.strategy), across: true })); }
-  if (type === "best") {   // Best Legs (10/19): once the week's copy is saved (Saturday morning) only it shows -- the one graded; the live build before that
-    const saved = MODELBETS && Array.isArray(MODELBETS.saved) && MODELBETS.saved.includes(Number(week));
-    return (saved ? rec : ((S && S.bestLegs) || []).filter((p) => p && Array.isArray(p.legs))).map((p) => ({ p, game: null, kick: null, title: esc(FOUR_NAMES[p.strategy] || p.strategy), across: true })); }
-  const out = [];
-  for (const g of (S && S.games) || []) { const live = g.sgp && typeof g.sgp === "object" && !g.started && !g.final ? pick[type](g) : null;
-    if (live && Array.isArray(live.legs)) out.push({ p: live, game: g.key, kick: g.kickoff, title: gameLogos(g.key), across: false });
-    else { const r = (g.carry ? ((MODELBETS && MODELBETS.weeks && MODELBETS.weeks[g.week] && MODELBETS.weeks[g.week][type]) || []) : rec).filter((x) => x.game === g.key).pop(); if (r) out.push({ p: r, game: g.key, kick: g.kickoff || r.kickoff, title: gameLogos(g.key), across: false }); } }
-  return out;
-}
 // Time slot of a kickoff for the Model bets headers (your clock): Sunday before 9 = EARLY (London), before noon = 10 AM, before 4 PM = 1 PM, the rest and every weeknight = PRIME TIME
 function labSlot(kick) {   // same cutoffs as the Bets tab's kickSlot (Pacific clock): before 9 EARLY, before noon 10 AM, before 5 PM 1 PM, the rest and every weeknight PRIME TIME
   const d = new Date(kick), fmt = (o) => new Intl.DateTimeFormat("en-US", { ...o, timeZone: "America/Los_Angeles" }).format(d), h = Number(fmt({ hour: "numeric", hourCycle: "h23" })), day = fmt({ weekday: "short" }).toUpperCase();
   if (!/SUN|SAT/.test(day)) return `PRIME TIME · ${day}`;
   return h < 9 ? "EARLY" : h < 12 ? "10 AM GAMES" : h < 17 ? "1 PM GAMES" : `PRIME TIME · ${day}`; }
+const isCurWk = (wk) => !!(S && Number(wk) === Number(S.week));
+function loadModelPicks(wk) {
+  if (loadModelPicks[wk]) return; loadModelPicks[wk] = true;
+  fetch(`/api/modelpicks?week=${wk}`, { cache: "no-store" }).then((r) => r.json()).then((d) => { MPICKS[wk] = { d: d && d.ok ? d : null, t: Date.now() }; })
+    .catch(() => { MPICKS[wk] = { d: null, t: Date.now() }; }).finally(() => { loadModelPicks[wk] = false; if (labOn()) renderLabList(); });
+}
+const labOn = () => BETSVIEW === "model" && !!$("panel-record") && $("panel-record").classList.contains("on");
+// the Best TD picks of a game (55%+, the Anytime TD page's own rule) as prop rows
+const tdPicksOf = (g) => (g.td || []).filter((r) => r.fair != null && usable(r) && r.fair >= BEST_TD).map((r) => ({ player: r.player, team: r.team, fair: r.fair, price: r.price ?? null, scored: null }));
+// the week's games with their picks: { key, away, home, kickoff, started, final, lines: { spread, total, ml } (each { pick, hit, price, result, pts }), h1pick, gprops, td }
+function labGames(wk) {
+  const saved = (k) => { const c = MPICKS[k]; return c && c.d ? c.d.games || [] : []; };
+  if (!isCurWk(wk)) return saved(wk);
+  return ((S && S.games) || []).map((g) => {
+    const sv = saved(g.week || S.week).find((x) => x.key === g.key) || {}, pre = !g.started && !g.final;
+    const card = (k) => { const C = cardOf(g, k); return C && C.plain ? { pick: C.plain.pick, hit: C.plain.hit, price: C.plain.price, pts: C.pts ? { pick: C.pts.pick, hit: C.pts.hit, price: C.pts.price } : null } : null; };
+    const mlc = g.card && g.card.ml && okPick(g.card.ml.plain) ? g.card.ml.plain : null;
+    const lines = pre ? { spread: card("spread"), total: card("total"), ml: mlc ? { pick: mlc.pick, hit: mlc.hit, price: okN(mlc.price) ? mlc.price : null } : null } : g.lockedPicks || sv.lines || {};
+    return { key: g.key, away: g.away, home: g.home, kickoff: g.kickoff, week: g.week || S.week, started: !!g.started, final: !!g.final, lines,
+      h1pick: g.h1pick || sv.h1pick || null, gprops: (g.gprops && g.gprops.length ? g.gprops : sv.gprops) || [], td: !pre && sv.td && sv.td.length ? sv.td : tdPicksOf(g) };
+  });
+}
+// one Pick line in the card's look (public/shell.js Shell.pickLine)
+const mpLine = (k) => Shell.pickLine(k);
+const liveTag = (g) => { const b = LIVE_BOX[g.key]; return b && !b.final ? ` <span class="lvb">● LIVE · ${esc(b.lbl || "")}</span>` : !b && g.started && !g.final ? ' <span class="lvb">● LIVE</span>' : ""; };
+const LAB_BODY = {
+  lines: (g) => { const L = g.lines || {}, ln = (lb, x, title) => (x && x.pick ? `${title ? `<div class="mks">${title}</div>` : ""}` + mpLine({ lb, label: x.pick, said: x.hit, price: x.price, result: normRes(x.result), live: normRes(x.result) ? null : liveMark(g, { kind: "line", label: x.pick }) }) : "");
+    const sp = ln("Pick:", L.spread, "Spread &amp; ML") + ln("Pick w/ points:", L.spread && L.spread.pts) + ln("ML pick:", L.ml, L.spread && L.spread.pick ? "" : "Spread &amp; ML"), to = ln("Pick:", L.total, "Totals") + ln("Pick w/ points:", L.total && L.total.pts);
+    return sp + to ? `<div class="mkc">${sp}${to}</div>` : ""; },
+  halves: (g) => { const k = g.h1pick; return k && k.label ? `<div class="mkc"><div class="mks">1st Half spread</div>${mpLine({ ...k, live: k.result ? null : liveMark(g, { kind: "h1", team: k.team, line: k.line }) })}</div>` : ""; },
+  gprops: (g) => ((g.gprops || []).length ? `<div class="mkc">${g.gprops.map((k) => mpLine({ ...k, live: k.result ? null : liveMark(g, { kind: "gp", cond: k.cond, long: k.long !== false }) })).join("")}</div>` : ""),
+  props: (g) => { const c = GPROPS[Number(g.week)], pg = c && c.d ? (c.d.games || []).find((x) => x.game === g.key) : null;
+    const picks = [...((pg && pg.picks) || []), ...(g.td || []).map((t) => ({ name: t.player, team: t.team, stat: "td", side: "over", line: 0.5, chance: t.fair / 100, cal: tdPct(t.fair) / 100, price: t.price, result: t.scored === true ? "W" : t.scored === false ? "L" : null }))]
+      .map((p) => ({ ...p, full: true, live: p.result ? null : liveMark(g, { kind: p.stat === "td" ? "td" : "prop", name: p.name, team: p.team, stat: p.stat, side: p.side, line: p.line }) }));
+    return picks.length ? `${propHead(false)}${teamRows({ away: g.away, home: g.home, picks }, propRow)}` : ""; },
+};
 function renderLabList() {
   if (!$("lab")) return;
-  const weeks = [...new Set([...Object.keys((MODELBETS && MODELBETS.weeks) || {}).map(Number), ...(S && S.week != null ? [Number(S.week)] : [])])].sort((a, b) => b - a), sel = LABWEEK || (S && S.week) || weeks[0];
-  const chips = `<div class="wksel"><select id="lab-wk" aria-label="Week">${[...weeks].reverse().map((w) => `<option value="${w}"${Number(sel) === w ? " selected" : ""}>Week ${w}</option>`).join("")}</select></div>`;   // 10/17 (owner): a drop-down from the first recorded week
-  const xs = labParlays(sel, LABTYPE).sort((a, b) => (new Date(a.kick || 0) - new Date(b.kick || 0)) || 0).filter((x) => x.p && Array.isArray(x.p.legs));
-  // 10/16 (owner): a header between the time slots (early / 10 AM / 1 PM / prime time); the blocks themselves are unchanged
-  // header = the slot + the real kickoff times in it (owner 10/16: "put the right time on there"), e.g. "1 PM GAMES · Sun 1:05 PM · Sun 1:25 PM"
-  const slotTimes = {}; for (const x of xs) if (x.kick) { const sl = labSlot(x.kick), tt = tm(x.kick); (slotTimes[sl] = slotTimes[sl] || []).includes(tt) || slotTimes[sl].push(tt); }
-  let lastSlot = null; const blocks = xs.map((x) => { const sl = x.kick ? labSlot(x.kick) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl; return h + (x.ou ? ouBlock(x.title, x.p.legs) : pBlock(x.title, x.p, x.across)); });
-  $("lab").innerHTML = ddSlot($("lab"), chips) + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim empty" style="margin-top:12px">None yet.</div>');
+  const cur = S && S.week != null ? Number(S.week) : null, sel = Number(LABWEEK || cur || 1), weeks = []; for (let w = cur || sel; w >= 1; w--) weeks.push(w);
+  const chips = `<div class="wksel"><select id="lab-wk" aria-label="Week">${[...weeks].reverse().map((w) => `<option value="${w}"${sel === w ? " selected" : ""}>Week ${w}</option>`).join("")}</select></div>`;
+  const wks = isCurWk(sel) ? [...new Set(((S && S.games) || []).map((g) => Number(g.week || S.week)))] : [sel];
+  for (const w of wks) { const c = MPICKS[w]; if (!c || Date.now() - c.t > (isCurWk(w) ? 120e3 : 30 * 60e3)) loadModelPicks(w); }
+  if (LABTYPE === "props") for (const w of new Set([sel, ...wks])) { const c = GPROPS[w]; if (!c || Date.now() - c.t > 5 * 60e3) loadGameProps(w); }
+  const waiting = (!isCurWk(sel) && !MPICKS[sel]) || (LABTYPE === "props" && !GPROPS[sel]);
+  const games = labGames(sel).sort((a, b) => new Date(a.kickoff || 0) - new Date(b.kickoff || 0)), body = LAB_BODY[LABTYPE] || LAB_BODY.lines;
+  const xs = games.map((g) => ({ g, html: body(g) })).filter((x) => x.html);
+  const slotTimes = {}; for (const { g } of xs) if (g.kickoff) { const sl = labSlot(g.kickoff), tt = tm(g.kickoff); (slotTimes[sl] = slotTimes[sl] || []).includes(tt) || slotTimes[sl].push(tt); }
+  let lastSlot = null; const blocks = xs.map(({ g, html }) => { const sl = g.kickoff ? (g.week && cur && Number(g.week) !== sel ? `WEEK ${g.week} · ` : "") + labSlot(g.kickoff) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${(slotTimes[labSlot(g.kickoff)] || []).map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
+    return h + `<div class="par"><div class="pbh c"><span class="pbn">${gameLogos(g.key)}${liveTag(g)}</span></div>${html}</div>`; });
+  $("lab").innerHTML = ddSlot($("lab"), chips) + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : `<div class="s dim empty" style="margin-top:12px">${waiting ? "Loading…" : "None yet."}</div>`);
   const lw = $("lab-wk"); if (lw && lw.tagName === "SELECT") lw.onchange = () => { LABWEEK = Number(lw.value); renderLabList(); };
+  kickBox();
 }
+// ---------- live grading (10/28 late, owner: "Can you do live grading?"): ESPN's live box score of the games of the last 12 hours (lib/livebox.js) -> each
+// pick's live state: { res: "W" / "L" / "P" } once it can no longer change (an Over reached, an Under passed, a TD scored, a first score, halftime for the 1H
+// pick, the final whistle), else { now: "win" / "lose", txt: the live number }. Display only -- the records still come from the official grading.
+const boxWanted = () => !!(S && (S.games || []).some((g) => g.started && g.kickoff && Date.now() - Date.parse(g.kickoff) < 12 * 3600e3));
+async function loadLiveBox() {
+  if ((typeof document !== "undefined" && document.hidden) || loadLiveBox.busy) return; const lab = labOn(); if (!lab && !DETAIL) return;
+  loadLiveBox.busy = true;
+  try { const d = await (await fetch("/api/livebox", { cache: "no-store" })).json(); if (d && d.ok) { LIVE_BOX = d.games || {}; LIVE_BOX_T = Date.now(); if (labOn()) renderLabList(); else if (DETAIL) refreshDetail(); } } catch {}
+  finally { loadLiveBox.busy = false; }
+}
+function boxLoop() { clearTimeout(boxLoop._h); if (!boxWanted()) { boxLoop._on = false; return; } boxLoop._on = true; loadLiveBox().finally(() => { boxLoop._h = setTimeout(boxLoop, 30000); }); }
+// a page that shows picks (Model bets, a game page) pulls the live box score at once when the last pull is 30+ s old, and keeps the 30-s loop going
+const kickBox = () => { if (!boxWanted()) return; if (!boxLoop._on) boxLoop(); else if (Date.now() - LIVE_BOX_T > 30e3) loadLiveBox(); };
+const boxPlayer = (b, name, team) => (b.pl || []).find((p) => (!team || !p.t || p.t === team) && tdNameEq(p.n, name)) || null;
+const STAT_LIVE = { rec_yds: (p) => p.recYds, rec: (p) => p.rec, rush_yds: (p) => p.rushYds, scrim_yds: (p) => p.rushYds + p.recYds };
+function liveMark(g, x) {
+  const b = g && LIVE_BOX[g.key]; if (!b || !x) return null;
+  const fin = !!b.final, mv = (r) => (r === "W" ? "win" : r === "L" ? "lose" : null);
+  if (x.kind === "line") { const r = pickRes(x.label, g.away, g.home, b.a, b.h); return !r ? null : fin ? { res: r } : { now: mv(r) }; }
+  if (x.kind === "h1") { const cur = b.h1 || (b.per <= 2 ? { a: b.a, h: b.h } : null); if (!cur || x.team == null) return null;
+    const m = (x.team === g.home ? cur.h - cur.a : cur.a - cur.h) + Number(x.line), r = m > 0 ? "W" : m < 0 ? "L" : "P"; return b.h1 ? { res: r } : { now: mv(r) }; }
+  if (x.kind === "td") { const p = boxPlayer(b, x.name, x.team); if (p && p.recTd + p.rushTd > 0) return { res: "W" }; return fin ? (p ? { res: "L" } : null) : { now: "lose", txt: "0 TD" }; }
+  if (x.kind === "prop") { const f = STAT_LIVE[x.stat]; if (!f) return null; const p = boxPlayer(b, x.name, x.team), v = p ? f(p) : 0, L = Number(x.line), over = x.side === "over", txt = String(v);   // the number alone (it sits next to the player's name; the line under it names the stat)
+    if (v > L) return { res: over ? "W" : "L", txt }; if (fin) return p ? { res: over ? "L" : "W", txt } : null;   // never in the box score at the end: the official grade decides (no snap = push)
+    return { now: over ? "lose" : "win", txt }; }
+  if (x.kind === "gp") return x.cond ? gpLive(x.cond, x.long, b, fin) : null;
+  return null;
+}
+// a GAME PROPS condition (lib/gameprops.js gpParse) on the live box score, for the side we took (long = Yes / Over)
+function gpLive(c, long, b, fin) {
+  const sp = b.sp || [], cnt = (f) => sp.filter(f).length, dec = (yes) => (yes === long ? "W" : "L"), now = (yes) => ({ now: yes === long ? "win" : "lose" });
+  const over = (v, line) => (v == null ? null : v > line ? { res: dec(true), txt: String(v) } : fin ? { res: dec(false), txt: String(v) } : { ...now(false), txt: String(v) });
+  const res3 = (m) => (m > 0 ? "home" : m < 0 ? "away" : "tie");
+  switch (c.kind) {
+    case "over": {
+      if (c.col === "tie") return fin ? { res: dec(b.a === b.h) } : now(b.a === b.h);
+      if (c.col === "ot") return b.per >= 5 ? { res: dec(true) } : fin ? { res: dec(false) } : now(false);
+      const f = { td_t: (x) => x.ty === "td", ptd_t: (x) => x.ty === "td" && x.how === "pass", rtd_t: (x) => x.ty === "td" && x.how === "rush", dst_t: (x) => x.ty === "td" && x.how === "dst", twopt: (x) => x.two, safety: (x) => x.ty === "sf" }[c.col];
+      return f ? over(cnt(f), c.line) : null; }
+    case "tstat": { const k = c.s, f = { td: (x) => x.t === k && x.ty === "td", fg: (x) => x.t === k && x.ty === "fg", dst: (x) => x.t === k && x.ty === "td" && x.how === "dst" }[c.stat];
+      return over(f ? cnt(f) : c.stat === "yds" && b.yds ? b.yds[k] : null, c.line); }
+    case "cat": {
+      if (c.col === "first_score" || c.col === "first_td") { const f = sp.find((x) => c.col === "first_score" || x.ty === "td"); return f ? { res: dec(f.t === c.val) } : fin ? { res: dec(c.val === "none") } : null; }
+      const N = Number(String(c.col).replace(/^race/, "")); if (!N) return null;
+      const f = sp.find((x) => x.a >= N || x.h >= N); if (!f) return fin ? { res: dec(false) } : now(false);
+      return f.a >= N && f.h >= N ? null : { res: dec((f.a >= N ? "a" : "h") === c.val) }; }
+    case "htft": { if (b.h1 && res3(b.h1.h - b.h1.a) !== c.h1) return { res: dec(false) }; return fin && b.h1 ? { res: dec(res3(b.h - b.a) === c.ft) } : null; }
+    case "margin": { if (!fin) return null; const mg = (c.s === "h" ? 1 : -1) * (b.h - b.a); return { res: dec(mg >= c.lo && mg <= c.hi) }; }
+    case "margtie": return fin ? { res: dec(b.a === b.h) } : null;
+  }
+  return null;
+}
+// the live bit after a pick on the game card / a props row: "· winning" / "· 22 yds" (green / red), or the W / L once it can no longer change
+const liveBit = (l) => (!l ? "" : l.res ? (l.res === "W" ? ' · <span class="g">W</span>' : l.res === "L" ? ' · <span class="r">L</span>' : " · push") : l.now ? ` <span class="lvx ${l.now === "win" ? "g" : "r"}">· ${esc(l.txt || (l.now === "win" ? "winning" : "losing"))}</span>` : "");
 // 10/17 (owner): the NFL logo photo behind every NFL page but home (home keeps the Raiders photo); a game page keeps its team colours
 function linesBg() { const on = (id) => { const p = $(id); return !!(p && p.classList.contains("on")); };
   document.documentElement.classList.toggle("lines-on", !(on("panel-lines") && DETAIL)); }
@@ -1373,8 +1441,8 @@ const gNone = (t) => `<div class="card" style="margin-top:10px"><div class="inne
 let GPROPS = {}, GPROPS_LOADING = {};
 function loadGameProps(week) {
   if (GPROPS_LOADING[week]) return; GPROPS_LOADING[week] = true;
-  fetch(`/api/props?week=${week}`, { cache: "no-store" }).then((r) => r.json()).then((d) => { if (d && d.ok) GPROPS[week] = { d, t: Date.now() }; })
-    .catch(() => {}).finally(() => { GPROPS_LOADING[week] = false; if (DETAIL && GTAB === "props") refreshDetail(); });
+  fetch(`/api/props?week=${week}`, { cache: "no-store" }).then((r) => r.json()).then((d) => { GPROPS[week] = { d: d && d.ok ? d : { games: [] }, t: Date.now() }; })
+    .catch(() => { GPROPS[week] = { d: { games: [] }, t: Date.now() - 4 * 60e3 }; }).finally(() => { GPROPS_LOADING[week] = false; if (labOn()) renderLabList(); else if (DETAIL && GTAB === "props") refreshDetail(); });
 }
 function gamePropsBody(g) {
   if (GPROP === "td") {
@@ -1392,12 +1460,14 @@ function gamePropsBody(g) {
   const wk = Number(g.week || (S && S.week)), c = GPROPS[wk];
   if (!c || Date.now() - c.t > 5 * 60e3) loadGameProps(wk);
   if (!c) return gNone("Loading…");
-  const pg = (c.d.games || []).find((x) => x.game === g.key), stat = PROP_STAT[GPROP] || "rec_yds", picks = pg ? (pg.picks || []).filter((p) => tabStats(stat).includes(p.stat)) : [];
+  const pg = (c.d.games || []).find((x) => x.game === g.key), stat = PROP_STAT[GPROP] || "rec_yds", picks = pg ? (pg.picks || []).filter((p) => tabStats(stat).includes(p.stat))
+    .map((p) => ({ ...p, live: p.result ? null : liveMark(g, { kind: "prop", name: p.name, team: p.team, stat: p.stat, side: p.side, line: p.line }) })) : [];   // 10/28 late: live grading
   return picks.length ? `<div class="pgrid" style="margin-top:6px"><div class="par">${propHead(false)}${teamRows({ away: g.away, home: g.home, picks }, propRow)}</div></div>` : gNone("None for this game.");
 }
 function gameParlaysBody(g) { const b = sgpBox(g); return b ? b.replace('<div class="sh" style="margin:16px 2px 0">SAME-GAME PARLAYS</div>', "") : gNone(g.started || g.final ? "Same-game parlays close at kickoff; they are on Model bets with their results." : "No same-game parlay for this game."); }
 // the game page chart (10/27, owner's pick: open chart, sketch A; later: the team card on top of it, blended): Polymarket US's moneyline history for both teams, drawn by the shared shell (Shell.chartBlock)
-const chartOf = (g) => ({ key: g.key, sport: "nfl", away: g.away, home: g.home, start: g.kickoff, live: !!(g.started && !g.final), ca: TEAM_COLOR[g.away] || "#888888", ch: TEAM_COLOR[g.home] || "#888888", h1pick: g.h1pick || null, gprops: g.gprops || null });   // 10/28: + the 1H SPREAD pick; night: + the GAME PROPS picks
+const chartOf = (g) => ({ key: g.key, sport: "nfl", away: g.away, home: g.home, start: g.kickoff, live: !!(g.started && !g.final), ca: TEAM_COLOR[g.away] || "#888888", ch: TEAM_COLOR[g.home] || "#888888", h1pick: g.h1pick ? { ...g.h1pick, live: g.h1pick.result ? null : liveMark(g, { kind: "h1", team: g.h1pick.team, line: g.h1pick.line }) } : null,
+  gprops: g.gprops ? g.gprops.map((k) => ({ ...k, live: k.result ? null : liveMark(g, { kind: "gp", cond: k.cond, long: k.long !== false }) })) : null });   // 10/28 late: + the live state   // 10/28: + the 1H SPREAD pick; night: + the GAME PROPS picks
 function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = ""; linesBg();
   document.body.classList.add("game-on");   // 10/18 (owner): on a game page the game card IS the header -- the NEXT GAME strip is hidden, ← Games sits under the card
@@ -1429,7 +1499,7 @@ function linesBySlot() {
   for (const g of [...S.games].sort(order)) { const sl = (g.carry ? `WEEK ${g.week} · ` : "") + (g.kickoff ? labSlot(g.kickoff) : "GAMES"); if (!by[sl]) { by[sl] = []; slots.push(sl); } by[sl].push(g); }   // 10/19: the Monday game left from last week keeps its week in its header
   return slots.map((sl) => `<div class="sh labslot">${sl}</div><div class="tiles stack">${by[sl].map(tile).join("")}</div>`).join("");   // 10/18 (owner): just the slot name -- the time sits on each tile
 }
-function openGame(key) { LASTY = (typeof window !== "undefined" && window.scrollY) || 0; DETAIL = key; renderLines(); if (window.scrollTo) window.scrollTo(0, 0); setTimeout(() => slotMoney($("detail")), 60); const g = S.games.find((x) => x.key === key); if (g && g.started && !g.final) liveLoop(); }
+function openGame(key) { LASTY = (typeof window !== "undefined" && window.scrollY) || 0; DETAIL = key; renderLines(); if (window.scrollTo) window.scrollTo(0, 0); setTimeout(() => slotMoney($("detail")), 60); const g = S.games.find((x) => x.key === key); if (g && g.started && !g.final) liveLoop(); kickBox(); }
 function closeGame() { if (typeof Shell !== "undefined" && Shell.chartStop) Shell.chartStop(); DETAIL = null; renderLines(); if (window.scrollTo) window.scrollTo(0, LASTY); }
 // the next game that has not started: refreshes the slate once when it kicks off
 function tickCd() {

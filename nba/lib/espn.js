@@ -14,7 +14,7 @@ export function parseScoreboard(json) {
     // 10/28: the first-half score (quarters 1 + 2) for the 1H SPREAD shadow; null until both quarters are in
     const half = (x) => { const q = (x.linescores || []).slice(0, 2).map((l) => Number(l && l.value)); return q.length === 2 && q.every(isFinite) ? q[0] + q[1] : null; };
     const ha = half(away), hh = half(home);
-    out[`${a} @ ${h}`] = { away: Number(away.score), home: Number(home.score), final: !!st.completed, state: st.state || null, period, ot: period != null && period > 4, h1: ha != null && hh != null ? { away: ha, home: hh } : null };
+    out[`${a} @ ${h}`] = { away: Number(away.score), home: Number(home.score), start: ev.date || c.date || null, final: !!st.completed, state: st.state || null, period, ot: period != null && period > 4, h1: ha != null && hh != null ? { away: ha, home: hh } : null };
   }
   return out;
 }
