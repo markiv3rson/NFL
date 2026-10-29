@@ -1,20 +1,19 @@
 // The Model card's two answers (the NFL app's card, 10/15, applied to NBA data):
 //   PICK            -- the side a TESTED rule likes, at Polymarket's own line, with its win rate; no rule -> the model's side at the main line,
 //                      shown at the model's honest history (regular season 2025-26, 1,783 games, each game predicted before it was played)
-//   PICK w/ POINTS  -- 2 points is the first buy (owner 10/16): the fewest points (2+) that reach 56% on EITHER team; none reaching it -> the highest
-//                      (10/19: on the PICK's side; 10/26 night: never on the model-side TOTAL, a coin flip whose bought points went 18-21 live)
-//                      win rate within 2 points. A 1-point line is listed but never chosen: on unseen seasons (2008-26, each left out) the 1-point
-//                      buys the old rule chose said 56.5% and won 53.7% (1,570 games); the same games at 2 points won 54.8%.
+//   PICK w/ POINTS  -- 10/29 (owner: "+5 - +10"): the fewest points from 5 to 10 on the PICK's side (PTS_MIN); never on the model-side TOTAL (10/26
+//                      night, a coin flip whose bought points went 18-21 live). 10/16-10/28: the fewest points (2+) that reached 56%, within 2 points.
 //   rows            -- every line you could buy (both teams; Over AND Under): Polymarket's main line ("main") and every alternate up to 7 points from
 //                      it (owner 10/16: "check buying 2 3 4 5 6 7 points"), each with its historical win rate given a main line like this one
-//                      (railway-model-service live._lines) and its price. PICK w/ POINTS still comes from the lines within 2 points, except a 2.5-3.5
-//                      point line that beats the best line within 2 points by 3+ win points; deeper lines are shown, never the pick (each point bought
-//                      costs about what it wins: history +3.6 win points per point on spreads near the line, +2.2 on totals; Pinnacle's own chance
-//                      matches that history within half a point and you pay ~2 points of vig on top, measured 10/16 on 240 alternate lines).
+//                      (railway-model-service live._lines) and its price. The page's MORE list shows only the lines that win (56%+), 10/29.
 // Win rate decides, price is only shown (owner 10/15). Colors on the page: green 56%+, light green 53-55%, yellow below.
 const r1 = (x) => Math.round(x * 10) / 10;
 const sg = (x) => (x > 0 ? "+" : "") + x;
-export const PTS_BAR = 56, FAR_GAIN = 3, MIN_BUY = 2, RULE_POINTS = 2, MAX_BUY = 3.5, MAX_LIST = 7;
+export const PTS_BAR = 56, MAX_LIST = 7;
+// 10/29 (owner: "+5 - +10", both sports): PICK w/ POINTS buys 5 to 10 points on the PICK's side -- the fewest listed, never past 10. Closing lines
+// (the service's history, any side, nothing fitted): +5 won 59.9 / 59.8 / 58.2% on spreads 2008-16 / 2017-23 / 2024-26 and 61.7 / 61.0 / 61.1% on
+// totals; the app's own 2026-27 PICKs re-graded at +5: spreads 73-39 (65.2%), totals 49-40 (55.1%; +5.5 59.0%). The model-side total still has none.
+export const PTS_MIN = 5, PTS_MAX = 10;
 // the model's own side at the main line: honest rate on games the fit never saw (official-report injury basis, 2025-26). 10/17 pass: updated to the
 // 10/17 rebuild's own report (trained 2022-24, tested 2025-26, 2,462 games: spread side 49.4%, total side 50.4%; it was 50.3 / 50.5 on 1,783 games)
 export const MODEL_HIT = { spread: 49.4, total: 50.4 }, MODEL_N = 2462;
@@ -92,15 +91,11 @@ function finishRows(rows) {                                                     
   return rows.filter((r) => r.points <= MAX_LIST)
     .sort((x, y) => x.points - y.points || (y.first ? 1 : 0) - (x.first ? 1 : 0) || y.hit - x.hit).map(({ first, ...r }) => r);
 }
-function pickPts(rows) {
-  const near = rows.filter((r) => r.points <= RULE_POINTS), top = Math.max(0, ...near.map((r) => r.hit));
-  const far = rows.filter((r) => r.points > RULE_POINTS && r.points <= MAX_BUY && r.hit >= top + FAR_GAIN);   // a 2.5-3.5 point line only when it clearly wins more
-  if (far.length) return far.slice().sort((x, y) => y.hit - x.hit)[0];
-  const b = near.filter((r) => r.points >= MIN_BUY); if (!b.length) return null;        // 2 points first: a 1-point line is never the buy
-  const ok = b.filter((r) => r.hit >= PTS_BAR);
-  if (ok.length) { const m = Math.min(...ok.map((r) => r.points)); return ok.filter((r) => r.points === m).sort((x, y) => y.hit - x.hit)[0]; }
-  return b.slice().sort((x, y) => y.hit - x.hit || x.points - y.points)[0];
+function pickPts(rows) {   // 10/29: the fewest points from PTS_MIN to PTS_MAX (the highest % among equals); none listed in that range -> none
+  const b = rows.filter((r) => r.points >= PTS_MIN && r.points <= PTS_MAX); if (!b.length) return null;
+  const m = Math.min(...b.map((r) => r.points)); return b.filter((r) => r.points === m).sort((x, y) => y.hit - x.hit)[0];
 }
+const noFirst = ({ first, ...r }) => r;
 const priced = (p) => (typeof p === "number" && p > 0 && p < 1 ? p : null);
 const near = (a, b) => a != null && b != null && Math.abs(a - b) <= 0.5;
 
@@ -151,7 +146,7 @@ function spreadPart(g) {
   }
   // 10/19 (owner: "why is your decision making wrong" -- the NFL one-side rule of 10/18): PICK w/ POINTS sits on the PICK's team; BOS @ DET read PICK DET +1.5 and
   // PICK w/ POINTS BOS +1.5, a guaranteed loser on one of the two. With no PICK it may still use either side.
-  const rows = finishRows(boundRows(raw, plain, (r) => r.team === plain.team).map(({ hist, ...r }) => r)), b = pickPts(plain ? rows.filter((r) => r.team === plain.team) : rows), pts = b ? { id: "ptspick|spread", kind: "spread", ...b, ruleId: plain ? plain.ruleId : null } : null;
+  const all = boundRows(raw, plain, (r) => r.team === plain.team).map(({ hist, ...r }) => r), rows = finishRows(all), b = pickPts(plain ? all.filter((r) => r.team === plain.team) : all), pts = b ? { id: "ptspick|spread", kind: "spread", ...noFirst(b), ruleId: plain ? plain.ruleId : null } : null;
   if (!plain && !rows.length) return null;
   return { kind: "spread", plain, pts, rows };
 }
@@ -175,12 +170,12 @@ function totalPart(g) {
     const first = !!plain && x.side === plain.side;
     raw.push({ side: x.side, line: x.line, points: x.points, hit: r1(x.hist), hist: x.hist, n: x.n, price: priced(x.price), pick: x.label || `${nm(x.side)} ${x.line}`, first });
   }
-  const rows = finishRows(boundRows(raw, plain, (r) => r.side === plain.side).map(({ hist, ...r }) => r));
+  const all = boundRows(raw, plain, (r) => r.side === plain.side).map(({ hist, ...r }) => r), rows = finishRows(all);
   // 10/26 night (owner: "I want all 3"): NO PICK w/ POINTS on the model-side total. The model's total is a coin flip (MODEL_HIT.total 50.4% on
   // 2,462 unseen games), so points bought on its side are the plain table's rate with no edge, and live they went 18-21 (46.2%, -23 per $100,
   // 10/20-26). A rule's total (BOOK GAP / TOTAL MOVE / SHOT QUALITY) keeps its PICK w/ POINTS; the MORE list still shows every line.
   const modelSide = !!plain && plain.id === "modelpick|total";
-  const b = modelSide ? null : pickPts(plain ? rows.filter((r) => r.side === plain.side) : rows), pts = b ? { id: "ptspick|total", kind: "total", ...b, ruleId: plain ? plain.ruleId : null } : null;   // same side as the PICK (10/19)
+  const b = modelSide ? null : pickPts(plain ? all.filter((r) => r.side === plain.side) : all), pts = b ? { id: "ptspick|total", kind: "total", ...noFirst(b), ruleId: plain ? plain.ruleId : null } : null;   // same side as the PICK (10/19)
   if (!plain && !rows.length) return null;
   return { kind: "total", plain, pts, rows };
 }
