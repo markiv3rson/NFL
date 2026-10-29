@@ -488,7 +488,9 @@ function logoLabel(label, team = null) {
   m = L.match(/^([A-Z]{2,4}) ML$/); if (m) return `${tlogo(m[1])}${esc(L)}`;
   m = L.match(/^(.*?)(\b[A-Z]{2,4}\b) @ ([A-Z]{2,4})\b(.*)$/); if (m) return `${esc(m[1])}${tlogo(m[2])}${esc(m[2])} @ ${tlogo(m[3])}${esc(m[3])}${esc(m[4])}`;
   m = L.match(/^(.+?) \d\+ TD(.*)$/); if (m) { const tm0 = team || tdTeam(m[1]); return `${tlogo(tm0)}${esc(L)}`; }
-  return esc(L);
+  // 10/29 (owner: "Helmets are missing in some of these graded picks"): every other player leg ("Jared Goff 250+ Pass Yds", "Kenneth Walker 60+ Rush Yds")
+  // carries its team too
+  return team ? `${tlogo(team)}${esc(L)}` : esc(L);
 }
 // 10/18 (owner: "just put live and the quarter time"): an open bet whose game is being played says ● LIVE · Q3 8:42 (no scores).
 // It sits where "wk 6" was (owner 10/18); one live game -> the clock is there; two or more -> ● LIVE there and each undecided leg of a live game carries its own clock.
