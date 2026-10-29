@@ -582,11 +582,11 @@ const gameNameN = (g) => { const live = S && (S.dates || []).includes(g.date), s
   return `<span class="pbn">${gameLogos(g.key)}${sc && sc.st === "in" ? ' <span class="lvb">● LIVE</span>' : ""}</span>`; };
 const pickHead = (nm = "PICK") => `<div class="pbl ppr pph first"><span class="pp1">${nm}</span><span class="pp2"></span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
 const pickTr = (x) => { const r = normRes(x.result), h = Number(x.hit), c = h >= 56 ? "g" : h >= 53 ? "lg" : "y";
-  return `<div class="pbl ppr first${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) : "•"} ${esc(x.pick)}</span><span class="pp2">${esc(x.kind)}</span>` +
+  return `<div class="pbl ppr first${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) : "•"} <span class="${c}">${esc(x.pick)}</span></span><span class="pp2">${esc(x.kind)}</span>` +
     `<span class="pp3 mod">${isFinite(h) ? `${h >= 56 ? Math.round(h) : Math.floor(h)}%` : "—"}</span><span class="pp4">${x.price > 0 && x.price < 1 ? `${Math.round(x.price * 100)}¢` : "—"}</span></div>`; };
 const LAB_BODY = {
   lines: (g) => { const L = g.lines || {}, row = (x, kind) => (x && x.pick ? { pick: x.pick, kind, hit: x.hit, price: x.price, result: x.result } : null);
-    const rows = [row(L.spread, "Spread"), row(L.spread && L.spread.pts, "Spread · w/ points"), row(L.ml, "Moneyline"), row(L.total, "Total"), row(L.total && L.total.pts, "Total · w/ points")].filter(Boolean);
+    const rows = [row(L.spread, "Spread"), row(L.spread && L.spread.pts && L.spread.pts.pick !== L.spread.pick ? L.spread.pts : null, "Spread · w/ points"), row(L.ml, "Moneyline"), row(L.total, "Total"), row(L.total && L.total.pts && L.total.pts.pick !== L.total.pick ? L.total.pts : null, "Total · w/ points")].filter(Boolean);
     return rows.length ? pickHead(gameNameN(g)) + rows.map(pickTr).join("") : ""; },
   props: (g) => { const c = GPROPS[g.date], pg = c && c.d ? (c.d.games || []).find((x) => x.game === g.key) : null, picks = ((pg && pg.picks) || []).filter((p) => p.stat === MBPROP);
     const part = (t) => { const rs = picks.filter((p) => (p.team || "") === t); return rs.length ? `${t ? `<div class="pbl pteam">${tlogo(t)}${esc(t)}</div>` : ""}${rs.map(npRow).join("")}` : ""; };
