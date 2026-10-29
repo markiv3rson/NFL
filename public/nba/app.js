@@ -489,6 +489,9 @@ function renderBets() {
 const PTYPES = { sgp: "Same game · 2 legs", best4: "Parlay · top picks", pp6: "Prop Parlays · 6 legs", pp8: "Prop Parlays · 8 legs", pp10: "Prop Parlays · 10 legs", sgp4: "Same Game · 4 legs" };   // 10/21 (owner): Prop Parlays, $5 each   // 10/19 review: bought lines (sgp_pts, not built since 10/19) off the scoreboard   // 10/19: 3 legs at most, the 4 biggest favorites (fav4) is no longer built
 const LAB_TABS = [["lines", "Game Lines"], ["props", "Player Props"]];
 let LABTYPE = "lines", LABDAY = null, MPICKS = {};
+// 10/29 (owner: "Player props need a sub tab for the others. Keep everything separated"; design = both sports): Player Props has its own stat chips (the game page's)
+let MBPROP = (() => { try { const v = localStorage.getItem("mbProp:nba"); return ["pts", "reb", "ast", "pra", "stl", "blk"].includes(v) ? v : "pts"; } catch { return "pts"; } })();
+const mbChips = () => `<div class="gchips mbchips">${GPROP_TABS.map(([k, t]) => `<button class="gchip${MBPROP === k ? " on" : ""}" type="button" data-mbprop="${k}">${t}</button>`).join("")}</div>`;
 const plText = (x, st) => `PL: ${x >= 10 ? Math.round(x) : x.toFixed(1)}x<span class="plw"> · $${st} → </span><span class="g">$${Math.round(st * x)}</span>`;
 const plPay = (p) => {
   if (!p || !p.legs || !p.legs.length || !p.legs.every((l) => l.price > 0 && l.price < 1)) return "PL: —";
@@ -569,20 +572,38 @@ function labGames(day) {
   });
   const c = MPICKS[day]; return c && c.d ? (c.d.games || []).map((g) => ({ ...g, lines: { spread: lockedPick(g.locked && g.locked.spread), total: lockedPick(g.locked && g.locked.total), ml: lockedPick(g.locked && g.locked.ml) } })) : [];
 }
-const mpLine = (k) => Shell.pickLine(k);
 const npHead = () => `<div class="pbl ppr pph"><span class="pp1">PLAYER</span><span class="pp2">LINE</span><span class="pp5">LAST</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
+// 10/29 (owner: "Make this into a table format"; design = both sports): the Game Lines tab as a table like Player Props -- PICK (the bet, its kind under it) ·
+// MODEL (the % in its win-rate colour) · POLYMARKET; ✓ / ✗ and the row green / red once graded
+const pickHead = () => `<div class="pbl ppr pph first"><span class="pp1">PICK</span><span class="pp2">BET</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
+const pickTr = (x) => { const r = normRes(x.result), h = Number(x.hit), c = h >= 56 ? "g" : h >= 53 ? "lg" : "y";
+  return `<div class="pbl ppr first${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) : "•"} ${esc(x.pick)}</span><span class="pp2">${esc(x.kind)}</span>` +
+    `<span class="pp3 ${c}">${isFinite(h) ? `${h >= 56 ? Math.round(h) : Math.floor(h)}%` : "—"}</span><span class="pp4">${x.price > 0 && x.price < 1 ? `${Math.round(x.price * 100)}¢` : "—"}</span></div>`; };
 const LAB_BODY = {
-  lines: (g) => { const L = g.lines || {}, ln = (lb, x, title) => (x && x.pick ? `${title ? `<div class="mks">${title}</div>` : ""}` + mpLine({ lb, label: x.pick, said: x.hit, price: x.price, result: normRes(x.result) }) : "");
-    const sp = ln("Pick:", L.spread, "Spread &amp; ML") + ln("Pick w/ points:", L.spread && L.spread.pts) + ln("ML pick:", L.ml, L.spread && L.spread.pick ? "" : "Spread &amp; ML"), to = ln("Pick:", L.total, "Totals") + ln("Pick w/ points:", L.total && L.total.pts);
-    return sp + to ? `<div class="mkc">${sp}${to}</div>` : ""; },
-  props: (g) => { const c = GPROPS[g.date], pg = c && c.d ? (c.d.games || []).find((x) => x.game === g.key) : null, picks = (pg && pg.picks) || [];
+  lines: (g) => { const L = g.lines || {}, row = (x, kind) => (x && x.pick ? { pick: x.pick, kind, hit: x.hit, price: x.price, result: x.result } : null);
+    const rows = [row(L.spread, "Spread"), row(L.spread && L.spread.pts, "Spread · w/ points"), row(L.ml, "Moneyline"), row(L.total, "Total"), row(L.total && L.total.pts, "Total · w/ points")].filter(Boolean);
+    return rows.length ? pickHead() + rows.map(pickTr).join("") : ""; },
+  props: (g) => { const c = GPROPS[g.date], pg = c && c.d ? (c.d.games || []).find((x) => x.game === g.key) : null, picks = ((pg && pg.picks) || []).filter((p) => p.stat === MBPROP);
     const part = (t) => { const rs = picks.filter((p) => (p.team || "") === t); return rs.length ? `${t ? `<div class="pbl pteam">${tlogo(t)}${esc(t)}</div>` : ""}${rs.map(npRow).join("")}` : ""; };
     return picks.length ? npHead() + [...new Set([g.away, g.home, ...picks.map((p) => p.team || "")])].map(part).join("") : ""; },
 };
+// RECORDS (10/29, owner: "I need records at the top of every tab in models bets"; design = both sports): the season's W-L of the tab's picks (/api/nba/modelpicks
+// records, props from /api/nba/props) and the day on screen under it; the colour is the win rate. Pushes count neither way.
+const wl = (xs) => { const r = { w: 0, l: 0 }; for (const x of xs) { const v = normRes(x); if (v === "W") r.w++; else if (v === "L") r.l++; } return r; };
+const recTileMb = (label, season, day) => { const n = season ? season.w + season.l : 0, pc = n ? (100 * season.w) / n : null, c = pc == null ? "" : pc >= 56 ? "g" : pc >= 53 ? "lg" : "y";
+  return `<div class="stat"><div class="k">${label}</div><div class="v ${c}">${season ? `${season.w}–${season.l}` : "…"}</div><div class="k2">${pc == null ? "—" : `${pc >= 56 ? Math.round(pc) : Math.floor(pc)}% won`}${day && day.w + day.l ? ` · day ${day.w}–${day.l}` : ""}</div></div>`; };
+function labRecords(games, sel) {
+  const R = MPICKS[""] && MPICKS[""].d ? MPICKS[""].d.records || null : null, L = (f) => games.map((x) => f(x.lines || {})).filter(Boolean);
+  if (LABTYPE === "lines") return [recTileMb("SPREAD PICKS", R && R.spread, wl(L((l) => l.spread && l.spread.result))), recTileMb("TOTAL PICKS", R && R.total, wl(L((l) => l.total && l.total.result))),
+    recTileMb("ML PICKS", R && R.ml, wl(L((l) => l.ml && l.ml.result))), recTileMb("W/ POINTS", R ? { w: R.spreadPts.w + R.totalPts.w, l: R.spreadPts.l + R.totalPts.l } : null, wl([...L((l) => l.spread && l.spread.pts && l.spread.pts.result), ...L((l) => l.total && l.total.pts && l.total.pts.result)]))];
+  const c = GPROPS[sel], rc = c && c.d && c.d.record ? c.d.record[MBPROP] : null, lab = (GPROP_TABS.find(([k]) => k === MBPROP) || [, ""])[1].toUpperCase();
+  const day = wl(games.flatMap((x) => { const pg = c && c.d ? (c.d.games || []).find((y) => y.game === x.key) : null; return ((pg && pg.picks) || []).filter((p) => p.stat === MBPROP).map((p) => p.result); }));
+  return [recTileMb(lab, rc ? { w: rc.w || 0, l: rc.l || 0 } : c ? { w: 0, l: 0 } : null, day)];
+}
 function renderLabList() {
   if (!$("lab")) return;
   const saved = MPICKS[""] && MPICKS[""].d ? MPICKS[""].d.days || [] : [];
-  if (!MPICKS[""]) loadModelPicks("");
+  if (!MPICKS[""] || Date.now() - MPICKS[""].t > 5 * 60e3) loadModelPicks("");
   const days = [...new Set([...saved, ...((S && S.dates) || [])])].sort().reverse();
   const sel = LABDAY && days.includes(LABDAY) ? LABDAY : (S && S.dates && S.dates[0]) || days[0] || null;
   const chips = `<div class="wksel"><select id="lab-wk" aria-label="Day">${[...days].reverse().map((d) => `<option value="${esc(d)}"${sel === d ? " selected" : ""}>${dayName(d)}</option>`).join("")}</select></div>`;   // 10/17 (owner): a drop-down, first recorded day first
@@ -596,7 +617,7 @@ function renderLabList() {
   let lastSlot = null; const blocks = xs.map(({ g, html }) => { const sl = g.start ? nbaSlot(g.start) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
     const sc = live ? scOf((S.games || []).find((x) => x.key === g.key) || g) : null, lv = sc && sc.st === "in" ? ' <span class="lvb">● LIVE</span>' : "";   // ESPN says it is being played
     return h + `<div class="par"><div class="pbh c"><span class="pbn">${gameLogos(g.key)}${lv}</span></div>${html}</div>`; });
-  $("lab").innerHTML = ddSlot($("lab"), chips) + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : `<div class="s dim empty" style="margin-top:12px">${waiting ? "Loading…" : "None yet."}</div>`);
+  $("lab").innerHTML = ddSlot($("lab"), chips) + (LABTYPE === "props" ? mbChips() : "") + `<div class="stats mbrec">${labRecords(games, sel).join("")}</div>` + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : `<div class="s dim empty" style="margin-top:12px">${waiting ? "Loading…" : "None yet."}</div>`);
   const lw = $("lab-wk"); if (lw && lw.tagName === "SELECT") lw.onchange = () => { LABDAY = lw.value; renderLabList(); };
 }
 
@@ -770,6 +791,7 @@ $("al-read").onclick = () => { ALPREV = ALERTS.length ? ALERTS[0].t : ""; render
 document.addEventListener("click", (e) => {
   const d = e.target.closest("[data-drop]"); if (d) { const el = $(d.dataset.drop); if (el) el.classList.toggle("open"); return; }
   const gtb = e.target.closest("[data-gtab]"); if (gtb) { GTAB = gtb.dataset.gtab; lsSet("gTab", GTAB); refreshDetail(); return; }   // 10/27: game page tabs
+  const mbp = e.target.closest("[data-mbprop]"); if (mbp) { MBPROP = mbp.dataset.mbprop; lsSet("mbProp:nba", MBPROP); renderLabList(); return; }   // Model bets -> Player Props stat chips
   const gpr = e.target.closest("[data-gprop]"); if (gpr) { GPROP = gpr.dataset.gprop; lsSet("gProp:nba", GPROP); refreshDetail(); return; }
   const gt = e.target.closest("[data-game]"); if (gt) { if (!$("panel-lines").classList.contains("on")) showPanel("lines"); openGame(gt.dataset.game); return; }
   const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k && S && S.games.some((x) => x.key === k)) { showPanel("lines"); openGame(k); } return; }

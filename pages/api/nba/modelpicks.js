@@ -18,6 +18,13 @@ export default async function handler(req, res) {
     const keys = [...new Set([...Object.keys(by), ...Object.keys(fin)])];
     const games = keys.map((key) => { const [away, home] = key.split(" @ "), f = fin[key] || {};
       return { key, away, home, date, start: f.start || null, final: !!f.final, awayScore: f.away ?? null, homeScore: f.home ?? null, locked: by[key] || null }; });
-    res.status(200).json({ ok: true, date, days, games });
+    // 10/29 (owner: "records at the top of every tab in models bets"): the season's W-L of the same picks (every saved day; pushes count neither way)
+    const R = { spread: { w: 0, l: 0 }, spreadPts: { w: 0, l: 0 }, total: { w: 0, l: 0 }, totalPts: { w: 0, l: 0 }, ml: { w: 0, l: 0 } }, seen = {};
+    for (const p of all) { const id = String(p.id || p.market), k = `${p.date}|${p.game}|${p.market}`;
+      const slot = id === "ml" ? "ml" : /^ptspick\|/.test(id) ? `${p.market}Pts` : /^cardpick\|/.test(id) ? p.market : /^modelpick\|/.test(id) ? p.market : null; if (!slot || !R[slot]) continue;
+      if (/^modelpick\|/.test(id) && all.some((x) => x.date === p.date && x.game === p.game && String(x.id) === `cardpick|${p.market}`)) continue;   // the card shows the rule pick
+      const sk = `${k}|${slot}`; if (seen[sk]) continue; seen[sk] = 1;
+      if (p.result === "win") R[slot].w++; else if (p.result === "loss") R[slot].l++; }
+    res.status(200).json({ ok: true, date, days, games, records: R });
   } catch (e) { res.status(200).json({ ok: false, error: String(e).slice(0, 200) }); }
 }

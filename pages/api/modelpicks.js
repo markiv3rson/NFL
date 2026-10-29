@@ -8,6 +8,29 @@ import { SEASON, displayWeek, loadGames, started } from "../../lib/games";
 import { lockedPicksFrom, gpOut, h1Out } from "../../lib/week";
 import { tkey } from "../../lib/tracked";
 const BEST_TD = 55;
+// 10/29 (owner: "I need records at the top of every tab in models bets ... the record of the picks on there winning and losing"): the season's W-L of
+// exactly the picks these tabs show (the same locked card picks, 1H / GAME PROPS / PASSING TDs picks and Best TD picks), every week so far.
+// Pushes count neither way. Cached 5 minutes.
+const REC_KEYS = ["spread", "spreadPts", "total", "totalPts", "ml", "h1", "gp", "ptd", "td"];
+async function seasonRecords(r, season, weeks) {
+  const ck = `modelpicks:rec:${season}`, hit = jparse(await r.get(ck).catch(() => null)); if (hit) return hit;
+  const R = Object.fromEntries(REC_KEYS.map((k) => [k, { w: 0, l: 0 }])), add = (k, res) => { if (res === "W" || res === true) R[k].w++; else if (res === "L" || res === false) R[k].l++; };
+  for (const week of weeks) {
+    const games = await loadGames(season, week).catch(() => []); if (!games.length) continue;
+    const [locked, teaser, resRaw] = await Promise.all([r.hgetall(`stack:${season}:${week}`).catch(() => ({})), r.hgetall(tkey(season, week)).catch(() => ({})), r.mget(games.map((g) => K.res(season, week, g.key))).catch(() => [])]);
+    games.forEach((g, i) => {
+      if (started(g)) { const L = lockedPicksFrom(locked || {}, g.key);
+        if (L.spread) { add("spread", L.spread.result); if (L.spread.pts) add("spreadPts", L.spread.pts.result); }
+        if (L.total) { add("total", L.total.result); if (L.total.pts) add("totalPts", L.total.pts.result); }
+        if (L.ml) add("ml", L.ml.result); }
+      const h1 = jparse((teaser || {})[`${g.key}|h1spr`]); if (h1 && h1.team) add("h1", h1.result);
+      for (const [f, v] of Object.entries(teaser || {})) if (f.startsWith(`${g.key}|gp|`)) { const x = jparse(v); if (x && x.label) add(x.fam === "ptd_qb" ? "ptd" : "gp", x.result); }
+      const rs = jparse((resRaw || [])[i]); for (const p of (rs && rs.td) || []) if (p.fair >= BEST_TD && p.played !== false) add("td", typeof p.scored === "boolean" ? p.scored : null);
+    });
+  }
+  await r.set(ck, JSON.stringify(R), "EX", 300).catch(() => {});
+  return R;
+}
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   try {
@@ -23,6 +46,6 @@ export default async function handler(req, res) {
         lines: L, h1pick: h1 && h1.team ? h1Out(h1) : null, gprops: gp, td };
     });
     const weeks = []; for (let w = 1; w <= dw.week; w++) weeks.push(w);
-    res.status(200).json({ ok: true, season, week, weeks, games: out });
+    res.status(200).json({ ok: true, season, week, weeks, games: out, ...(req.query.rec ? { records: await seasonRecords(r, season, weeks) } : {}) });
   } catch (e) { res.status(200).json({ ok: false, error: String(e).slice(0, 200) }); }
 }
