@@ -429,7 +429,7 @@ function renderProps() {
   let lastSlot = null;
   const blocks = games.map((g) => { const sl = g.start ? nbaSlot(g.start) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
     // 10/20 night (owner): a game being played says LIVE on its props block -- its rows are the copy locked at tip-off (a started game is never re-scored), graded from the box score
-    return h + `<div class="par"><div class="pbh c"><span class="pbn">${gameLogos(g.game)}${g.start && !g.final && Date.parse(g.start) <= Date.now() ? ' <span class="lvb">● LIVE</span>' : ""}</span></div>${head}${teamRows(g)}</div>`; });
+    return h + `<div class="par"><div class="pbh"><span class="pbn">${gameLogos(g.game)}${g.start && !g.final && Date.parse(g.start) <= Date.now() ? ' <span class="lvb">● LIVE</span>' : ""}</span></div>${head}${teamRows(g)}</div>`; });
   el.innerHTML = ddSlot(el, dsel + tsel) + tile + (games.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim empty" style="margin-top:12px">None yet.</div>');
   const pd = $("props-day"); if (pd && pd.tagName === "SELECT") pd.onchange = () => { PROPDAY = pd.value; loadProps(); };
   const ps = $("props-team"); if (ps && ps.tagName === "SELECT") ps.onchange = () => { PROPTEAM = ps.value; renderProps(); };
@@ -580,7 +580,7 @@ const npHead = () => `<div class="pbl ppr pph"><span class="pp1">PLAYER</span><s
 const pickHead = () => `<div class="pbl ppr pph first"><span class="pp1">PICK</span><span class="pp2">BET</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
 const pickTr = (x) => { const r = normRes(x.result), h = Number(x.hit), c = h >= 56 ? "g" : h >= 53 ? "lg" : "y";
   return `<div class="pbl ppr first${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) : "•"} ${esc(x.pick)}</span><span class="pp2">${esc(x.kind)}</span>` +
-    `<span class="pp3 ${c}">${isFinite(h) ? `${h >= 56 ? Math.round(h) : Math.floor(h)}%` : "—"}</span><span class="pp4">${x.price > 0 && x.price < 1 ? `${Math.round(x.price * 100)}¢` : "—"}</span></div>`; };
+    `<span class="pp3 mod">${isFinite(h) ? `${h >= 56 ? Math.round(h) : Math.floor(h)}%` : "—"}</span><span class="pp4">${x.price > 0 && x.price < 1 ? `${Math.round(x.price * 100)}¢` : "—"}</span></div>`; };
 const LAB_BODY = {
   lines: (g) => { const L = g.lines || {}, row = (x, kind) => (x && x.pick ? { pick: x.pick, kind, hit: x.hit, price: x.price, result: x.result } : null);
     const rows = [row(L.spread, "Spread"), row(L.spread && L.spread.pts, "Spread · w/ points"), row(L.ml, "Moneyline"), row(L.total, "Total"), row(L.total && L.total.pts, "Total · w/ points")].filter(Boolean);
@@ -618,7 +618,7 @@ function renderLabList() {
   const slotTimes = {}; for (const { g } of xs) if (g.start) { const sl = nbaSlot(g.start), tt = tipTime(g.start); (slotTimes[sl] = slotTimes[sl] || []).includes(tt) || slotTimes[sl].push(tt); }
   let lastSlot = null; const blocks = xs.map(({ g, html }) => { const sl = g.start ? nbaSlot(g.start) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
     const sc = live ? scOf((S.games || []).find((x) => x.key === g.key) || g) : null, lv = sc && sc.st === "in" ? ' <span class="lvb">● LIVE</span>' : "";   // ESPN says it is being played
-    return h + `<div class="par"><div class="pbh c"><span class="pbn">${gameLogos(g.key)}${lv}</span></div>${html}</div>`; });
+    return h + `<div class="par"><div class="pbh"><span class="pbn">${gameLogos(g.key)}${lv}</span></div>${html}</div>`; });
   $("lab").innerHTML = ddSlot($("lab"), chips) + (LABTYPE === "props" ? mbChips() : "") + `<div class="stats mbrec">${labRecords(games, sel).join("")}</div>` + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : `<div class="s dim empty" style="margin-top:12px">${waiting ? "Loading…" : "None yet."}</div>`);
   const lw = $("lab-wk"); if (lw && lw.tagName === "SELECT") lw.onchange = () => { LABDAY = lw.value; renderLabList(); };
 }
