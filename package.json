@@ -11,7 +11,8 @@
     "test:site": "node --import ./tests/register.mjs tests/run.mjs",
     "test:nba": "node --import ./nba/tests/register.mjs nba/tests/run.mjs",
     "test:nba-service": "python3 nba/railway-model-service/tests_service.py",
-    "verify": "python3 tests/verify_live.py"
+    "verify": "python3 tests/verify_live.py",
+    "test:look": "node tests/lookcheck.mjs"
   },
   "dependencies": {
     "ioredis": "^5.4.1",

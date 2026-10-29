@@ -21,7 +21,7 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.mjs\" pre",
-            "timeout": 400
+            "timeout": 1200
           }
         ]
       }

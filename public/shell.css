@@ -470,3 +470,9 @@ body.bnav-on .panel .pph .lvb { color:var(--red) !important; -webkit-text-stroke
 /* 10/29 (owner: NFL and NBA the same, everything organized): a finished tile's pick line wraps inside the middle; the team names never break or drop out of line (both sports) */
 .tile .nm > .t { flex:0 0 auto; white-space:nowrap; }
 .tile .nm > .tmid { flex:1 1 auto; min-width:0; }
+/* 10/29 (look check): the game name on a Model bets column heading ("CAR @ GB" with both logos) fits its column on a phone -- small logos, a wider first column (both sports) */
+#lab .pph .pbn .tlogo { width:14px; height:14px; margin:0 3px 0 0; vertical-align:-2px; }
+#lab .ppr.first:not(.tdr):not(.tdh) { grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr) 40px 86px !important; }
+@media (min-width:600px) { #lab .ppr.first:not(.tdr):not(.tdh) { grid-template-columns:minmax(0,1.4fr) minmax(0,1.2fr) 70px 110px !important; } }
+/* 10/29 (look check): a record tile's label stays on one line (both sports) */
+.stats .stat .k { white-space:nowrap; letter-spacing:.02em; }

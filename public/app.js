@@ -410,7 +410,7 @@ function renderTd() {
   // 10/21 night (owner's sketch): a record tile on top like the First TD page -- the Best TD picks (55%+ at kickoff) graded this season
   const picks = (RES || []).flatMap((r) => (r.td || []).filter((p) => p.fair >= BEST_TD && p.played !== false && typeof p.scored === "boolean")), hit = picks.filter((p) => p.scored).length;
   const rc = !RES && !renderTd.tried ? undefined : picks.length ? { w: hit, l: picks.length - hit, pct: Math.round((hit / picks.length) * 1000) / 10 } : null;
-  $("td").innerHTML = recTile(rc, "BEST TD PICKS RECORD") + tdBody();
+  $("td").innerHTML = recTile(rc, "RECORD") + tdBody();
   if (!RES && !renderTd.tried) { renderTd.tried = true; loadRecord().catch(() => {}).finally(() => { if (RES && S && S.games) renderTd(); }); }   // one load for the tile; a failed load leaves 0–0
 }
 // ---------- Record: Mine ----------
