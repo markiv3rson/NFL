@@ -300,7 +300,7 @@ function practTag(r) {
 }
 // 10/20 night (owner's sketch): ONE line per player, nothing to open -- [logo] name pos / game · #N on team | SNAP | 2+ TD | MODEL (purple) | PM (far right)
 function tdRow(x, withGame) {
-  const r = x.r, snap = r.snap && r.snap.pct != null ? `${Math.round(r.snap.pct)}%` : "—", two = r.two != null ? `${Math.round(r.two)}%` : "—", warn = tdWarn(r, TDW);
+  const r = x.r, snap = r.snap && r.snap.pct != null ? `${Math.round(r.snap.pct)}%` : "—", two = r.two != null ? `${Math.round(r.two)}%` : "—", warn = tdWarn(r, TDW, x.asOf);
   // 10/21 night (owner: "Make it like the first td layout"): the First TD page's row -- bullet, small logo, name (+ position / injury tags), MODEL % (purple) and the Polymarket cents
   // on the right; a tap opens SNAP · 2+ TD, then the week marks on their own line. 10/22 (owner: "remove the word Anytime TD ... replace it with the no touchdown"): the middle holds only
   // the red caution (Best TD picks add their game before it) -- centered in its own column on a computer, under the name on a phone.
@@ -352,7 +352,8 @@ function tdWeekGames(data, team, player) {
   return out;
 }
 // Played games in a row without a TD, counted back from his last played game (byes skipped); null before the feed arrives
-function tdDrought(data, team, player) { const gs = tdWeekGames(data, team, player); if (!gs) return null; let k = 0; for (const g of gs.filter((x) => !x.bye && !x.out)) k = g.n > 0 ? 0 : k + 1; return k; }
+// asOf (Model bets -> Anytime TD only): count only the weeks before that week, so a past week is judged by what was known then
+function tdDrought(data, team, player, asOf) { const gs = tdWeekGames(data, team, player); if (!gs) return null; let k = 0; for (const g of gs.filter((x) => !x.bye && !x.out && !(asOf && x.w >= asOf))) k = g.n > 0 ? 0 : k + 1; return k; }
 function tdWeekLine(data, team, player) {
   const gs = tdWeekGames(data, team, player); if (!gs) return '<span class="dim">loading…</span>';
   const parts = gs.map((g) => g.bye ? `<span class="dim">W${g.w} bye</span>` : g.out ? `<span class="dim">W${g.w} out</span>` : g.n > 0 ? `<b class="g">W${g.w} ✓${g.n > 1 ? g.n : ""}</b>` : `<span class="r">W${g.w} –</span>`), drought = tdDrought(data, team, player);
@@ -363,9 +364,9 @@ function tdWeekLine(data, team, player) {
 // or 3 4 5 6 7 games"; SUPERSEDES the 10/21 "scored in his last 2 or off" cut): the page lists the TD_POOL (5 since the owner's later 10/27 ask) likeliest scorers per team, nobody is cut for a
 // drought; a player who did not score last game carries the red note with the count -- "✗ no TD last game", "✗ no TD last 2 games", "... last 5 games" (a player
 // with no TD this season counts every game he played). The page is still drawn only once the week feed is in. Model lists, parlays and grading unchanged.
-const TD_WARN = 1, TD_POOL = 5;   // 10/27 later (owner: "for anytime td's show me the top 5 players on each team")
+const TD_WARN = 1, TD_POOL = 5, TD_RECENT = 3, TD_PICK_BAR = 50;   // Model bets -> Anytime TD: #1 per team among players with a TD in their last 3 games, model 50%+ (owner 10/29)   // 10/27 later (owner: "for anytime td's show me the top 5 players on each team")
 // the note text for a row, or null (scored last game, no feed yet, or no played games)
-function tdWarn(r, data) { if (data == null || !r) return null; const d = tdDrought(data, r.team, r.player); return d == null || d < TD_WARN ? null : d === 1 ? "✗ no TD last game" : `✗ no TD last ${d} games`; }
+function tdWarn(r, data, asOf) { if (data == null || !r) return null; const d = tdDrought(data, r.team, r.player, asOf); return d == null || d < TD_WARN ? null : d === 1 ? "✗ no TD last game" : `✗ no TD last ${d} games`; }
 async function loadTdWeeks() {
   if (TDW && Date.now() - TDW_AT < 600000) return TDW;
   if (!TDW_LOADING) TDW_LOADING = fetch("/api/tdweeks", { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.ok) { TDW = j; TDW_AT = Date.now(); } return TDW; }).catch(() => TDW).finally(() => { TDW_LOADING = null; });
@@ -1347,7 +1348,7 @@ function labGames(wk) {
     const mlc = g.card && g.card.ml && okPick(g.card.ml.plain) ? g.card.ml.plain : null;
     const lines = pre ? { spread: card("spread"), total: card("total"), ml: mlc ? { pick: mlc.pick, hit: mlc.hit, price: okN(mlc.price) ? mlc.price : null } : null } : g.lockedPicks || sv.lines || {};
     return { key: g.key, away: g.away, home: g.home, kickoff: g.kickoff, week: g.week || S.week, started: !!g.started, final: !!g.final, lines,
-      h1pick: g.h1pick || sv.h1pick || null, gprops: (g.gprops && g.gprops.length ? g.gprops : sv.gprops) || [], td: !pre && sv.td && sv.td.length ? sv.td : tdPicksOf(g), tdAll: g.td || [], tdTop: sv.tdTop || [], ftdTop: sv.ftdTop || [] };
+      h1pick: g.h1pick || sv.h1pick || null, gprops: (g.gprops && g.gprops.length ? g.gprops : sv.gprops) || [], td: !pre && sv.td && sv.td.length ? sv.td : tdPicksOf(g), tdAll: g.td || [], tdTop: sv.tdTop || [], tdPicks: sv.tdPicks || null, ftdTop: sv.ftdTop || [] };
   });
 }
 
@@ -1375,13 +1376,20 @@ const gpSplit = (lb) => { const m = /^(.*?) ((?:Over|Under) [\d.]+|Yes|No)$/.exe
 // Anytime TD in Model bets (10/29, owner, the game page's Player Props screenshots: "Do you not see the layout of everything"): the game page's Anytime TD
 // rows -- the 3 likeliest scorers per team (owner: "For anytime TD only show top 3 of each team"), position, the red "no TD last N games" note, MODEL · POLYMARKET; ✓ / ✗ once graded (past weeks: the graded list)
 function tdBlock(g) {
-  const graded = new Map((g.tdTop || []).filter((t) => typeof t.scored === "boolean").map((t) => [`${t.team}|${t.player}`, t.scored]));
-  const src = g.tdAll && g.tdAll.length ? g.tdAll : (g.tdTop || []).map((t) => ({ player: t.player, team: t.team, fair: t.fair, price: t.price ?? null }));
-  const rows = src.filter((r) => r.fair != null && usable(r)).sort((a, b) => b.fair - a.fair), per = {};
-  const pool = rows.filter((r) => { const n = per[r.team] || 0; if (n >= 3) return false; per[r.team] = n + 1; return true; });   // owner 10/29: "only show top 3 of each team"
-  const row = (r) => { const sc = graded.get(`${r.team}|${r.player}`), h = tdRow({ r, g }); return sc == null ? h : h.replace('<span class="pp1">', `<span class="pp1">${legMark(sc ? "W" : "L")} `); };
-  const part = (t) => { const rs = pool.filter((r) => r.team === t); return rs.map(row).join(""); };
-  return pool.length ? `<div class="tdl">${tdHead(gameName(g))}${part(g.away)}${part(g.home)}</div>` : "";
+  // 10/29 (owner: "#1 on each team"): per team ONE pick -- among the players who scored in at least one of their last 3 played games (byes / games he sat
+  // out skipped, counted up to this game's week), the model's likeliest, kept only at 50%+ (the model's own %). Tested walk-forward 2022-26 weeks 5+:
+  // ~8 picks a week scored 61.8% (2026: 65%). A game that has started shows its saved, graded picks (/api/modelpicks tdPicks).
+  let picks;
+  if ((g.started || !(g.tdAll && g.tdAll.length)) && g.tdPicks) picks = g.tdPicks.map((t) => ({ player: t.player, team: t.team, fair: t.model, price: t.price ?? null, scored: t.scored }));
+  else {
+    if (!TDW) return "";
+    const asOf = Number(g.week) || null, val = (r) => (r.model != null ? r.model : r.fair);
+    picks = [g.away, g.home].map((t) => (g.tdAll || []).filter((r) => r.team === t && r.fair != null && usable(r) && (tdDrought(TDW, r.team, r.player, asOf) ?? 0) < TD_RECENT)
+      .sort((a, b) => val(b) - val(a))[0]).filter((r) => r && val(r) >= TD_PICK_BAR).map((r) => ({ ...r, fair: val(r) }));
+  }
+  const asOf = Number(g.week) || null;
+  const row = (r) => { const h = tdRow({ r, g, asOf }); return typeof r.scored !== "boolean" ? h : h.replace('<span class="pp1">', `<span class="pp1">${legMark(r.scored ? "W" : "L")} `); };
+  return picks.length ? `<div class="tdl">${tdHead(gameName(g))}${picks.map(row).join("")}</div>` : "";
 }
 // First TD in Model bets (10/29, owner: "PUT 1 on each team. And have it recorded and graded"): each team's likeliest first scorer (the First TD tab's
 // number + Polymarket's first-TD price), the game page's First TD rows; a played game's from its graded results (✓ = he scored the game's first TD)
@@ -1437,7 +1445,7 @@ function labRecords(games, sel) {
   if (LABTYPE === "gprops") { const gp = games.flatMap((x) => x.gprops || []);
     return [recTileMb("GAME PROPS", g("gp"), wl(gp.filter((k) => k.fam !== "ptd_qb").map((k) => k.result))), recTileMb("PASSING TDs", g("ptd"), wl(gp.filter((k) => k.fam === "ptd_qb").map((k) => k.result)))]; }
   const lab = (MB_PROPS.find(([k]) => k === MBPROP) || [, ""])[1].toUpperCase();
-  if (MBPROP === "td") return [recTileMb(lab, g("td"), wl(games.flatMap((x) => (x.td || []).map((t) => t.scored))))];
+  if (MBPROP === "td") return [recTileMb(lab, g("tdp"), wl(games.flatMap((x) => (x.tdPicks || []).map((t) => t.scored))))];
   if (MBPROP === "first") return [recTileMb(lab, g("ftd"), wl(games.flatMap((x) => (x.ftdTop || []).map((t) => t.hit))))];
   const st = PROP_STAT[MBPROP] || "rec_yds", c = GPROPS[sel], rc = c && c.d && c.d.records ? c.d.records[st] : null, want = tabStats(st);
   const wk = wl(games.flatMap((x) => { const pg = c && c.d ? (c.d.games || []).find((y) => y.game === x.key) : null; return ((pg && pg.picks) || []).filter((p) => want.includes(p.stat)).map((p) => p.result); }));
@@ -1446,6 +1454,7 @@ function labRecords(games, sel) {
 function renderLabList() {
   if (!$("lab")) return;
   loadModelRecs();
+  if (LABTYPE === "props" && MBPROP === "td" && !TDW) loadTdWeeks().then((d) => { if (d && LABTYPE === "props" && MBPROP === "td") renderLabList(); });   // the last-3-games TD check needs the week feed
   const cur = S && S.week != null ? Number(S.week) : null, sel = Number(LABWEEK || cur || 1), weeks = []; for (let w = cur || sel; w >= 1; w--) weeks.push(w);
   const chips = `<div class="wksel"><select id="lab-wk" aria-label="Week">${[...weeks].reverse().map((w) => `<option value="${w}"${sel === w ? " selected" : ""}>Week ${w}</option>`).join("")}</select></div>`;
   const wks = isCurWk(sel) ? [...new Set(((S && S.games) || []).map((g) => Number(g.week || S.week)))] : [sel];

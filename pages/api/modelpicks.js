@@ -8,13 +8,35 @@ import { SEASON, displayWeek, loadGames, started } from "../../lib/games";
 import { lockedPicksFrom, gpOut, h1Out } from "../../lib/week";
 import { tkey } from "../../lib/tracked";
 const BEST_TD = 58;   // 10/29 (owner): the page's Best TD bar
+// Model bets -> Anytime TD (10/29, owner: "#1 on each team"): per team, the players who scored in at least one of their last 3 played games (earlier weeks'
+// graded results), the model's likeliest of them, kept only at 50%+ (the model's own %, else the shown %). Tested walk-forward 2022-26 weeks 5+: ~8 picks a
+// week scored 61.8% (2026: 65%); the old top-3 list 35.5%.
+const TDP_BAR = 50, TDP_RECENT = 3;
+const tdVal = (p) => (p.model != null ? p.model : p.fair);
+const tdKey = (team, player) => `${team}|${player}`;
+// TD history before a week: team|player -> [true/false per played game], oldest first
+async function tdHistory(r, season, upto) {
+  const H = new Map();
+  for (let w = 1; w < upto; w++) {
+    const games = await loadGames(season, w).catch(() => []); if (!games.length) continue;
+    const raw = await r.mget(games.map((g) => K.res(season, w, g.key))).catch(() => []);
+    for (const x of raw || []) { const rs = jparse(x); for (const p of (rs && rs.td) || []) if (p.played !== false && typeof p.scored === "boolean") { const k = tdKey(p.team, p.player); if (!H.has(k)) H.set(k, []); H.get(k).push(p.scored); } }
+  }
+  return H;
+}
+// played games in a row without a TD (counted back from his last one) under 3 = he scored in at least one of his last 3
+const recent = (H, p) => { const a = H.get(tdKey(p.team, p.player)) || []; let k = 0; for (let i = a.length - 1; i >= 0 && !a[i]; i--) k++; return k < TDP_RECENT; };
+const tdPicksOf = (g, rs, H) => !rs || !Array.isArray(rs.td) ? [] : [g.away, g.home].map((t) => {
+  const p = rs.td.filter((x) => x.team === t && x.played !== false && recent(H, x)).sort((a, b) => tdVal(b) - tdVal(a))[0];
+  return p && tdVal(p) >= TDP_BAR ? { player: p.player, team: t, fair: p.fair, model: tdVal(p), price: p.ask ?? null, scored: typeof p.scored === "boolean" ? p.scored : null } : null; }).filter(Boolean);
 // 10/29 (owner: "I need records at the top of every tab in models bets ... the record of the picks on there winning and losing"): the season's W-L of
 // exactly the picks these tabs show (the same locked card picks, 1H / GAME PROPS / PASSING TDs picks and Best TD picks), every week so far.
 // Pushes count neither way. Cached 5 minutes.
-const REC_KEYS = ["spread", "spreadPts", "total", "totalPts", "ml", "h1", "gp", "ptd", "td", "ftd"];
+const REC_KEYS = ["spread", "spreadPts", "total", "totalPts", "ml", "h1", "gp", "ptd", "td", "ftd", "tdp"];
 async function seasonRecords(r, season, weeks) {
-  const ck = `modelpicks:rec:${season}`, hit = jparse(await r.get(ck).catch(() => null)); if (hit) return hit;
+  const ck = `modelpicks:rec2:${season}`, hit = jparse(await r.get(ck).catch(() => null)); if (hit) return hit;
   const R = Object.fromEntries(REC_KEYS.map((k) => [k, { w: 0, l: 0 }])), add = (k, res) => { if (res === "W" || res === true) R[k].w++; else if (res === "L" || res === false) R[k].l++; };
+  const H = new Map();   // the TD history so far (weeks before the one being counted)
   for (const week of weeks) {
     const games = await loadGames(season, week).catch(() => []); if (!games.length) continue;
     const [locked, teaser, resRaw] = await Promise.all([r.hgetall(`stack:${season}:${week}`).catch(() => ({})), r.hgetall(tkey(season, week)).catch(() => ({})), r.mget(games.map((g) => K.res(season, week, g.key))).catch(() => [])]);
@@ -27,7 +49,9 @@ async function seasonRecords(r, season, weeks) {
       for (const [f, v] of Object.entries(teaser || {})) if (f.startsWith(`${g.key}|gp|`)) { const x = jparse(v); if (x && x.label) add(x.fam === "ptd_qb" ? "ptd" : "gp", x.result); }
       const rs = jparse((resRaw || [])[i]); for (const p of (rs && rs.td) || []) if (p.fair >= BEST_TD && p.played !== false) add("td", typeof p.scored === "boolean" ? p.scored : null);
       for (const p of ftdTopOf(g, rs, teaser || {})) add("ftd", p.hit);
+      for (const p of tdPicksOf(g, rs, H)) add("tdp", p.scored);
     });
+    for (const x of resRaw || []) { const rs = jparse(x); for (const p of (rs && rs.td) || []) if (p.played !== false && typeof p.scored === "boolean") { const k = tdKey(p.team, p.player); if (!H.has(k)) H.set(k, []); H.get(k).push(p.scored); } }
   }
   await r.set(ck, JSON.stringify(R), "EX", 300).catch(() => {});
   return R;
@@ -48,15 +72,17 @@ export default async function handler(req, res) {
     const games = await loadGames(season, week);
     const [locked, teaser, resRaw] = await Promise.all([r.hgetall(`stack:${season}:${week}`).catch(() => ({})), r.hgetall(tkey(season, week)).catch(() => ({})),
       games.length ? r.mget(games.map((g) => K.res(season, week, g.key))).catch(() => []) : []]);
+    const H = await tdHistory(r, season, week);
     const out = games.map((g, i) => {
       const L = started(g) ? lockedPicksFrom(locked || {}, g.key) : {}, h1 = jparse((teaser || {})[`${g.key}|h1spr`]), rs = jparse((resRaw || [])[i]);
       const gp = Object.entries(teaser || {}).filter(([f]) => f.startsWith(`${g.key}|gp|`)).map(([, v]) => jparse(v)).filter((x) => x && x.label).map(gpOut).sort((a, b) => b.said - a.said);
       const td = rs && Array.isArray(rs.td) ? rs.td.filter((p) => p.fair >= BEST_TD && p.played !== false).map((p) => ({ player: p.player, team: p.team, fair: p.fair, price: p.ask ?? null, scored: typeof p.scored === "boolean" ? p.scored : null })) : [];
       return { key: g.key, away: g.away, home: g.home, kickoff: g.kickoff, week, started: started(g), final: !!g.final, awayScore: g.awayScore ?? null, homeScore: g.homeScore ?? null,
         lines: L, h1pick: h1 && h1.team ? h1Out(h1) : null, gprops: gp, td,
-        // 10/29: the game page's Anytime TD list of a played game -- each team's 3 likeliest scorers, graded
-        ftdTop: ftdTopOf(g, rs, teaser || {}),
-        tdTop: rs && Array.isArray(rs.td) ? [g.away, g.home].flatMap((t) => rs.td.filter((p) => p.team === t && p.played !== false).sort((a, b) => b.fair - a.fair).slice(0, 3)).map((p) => ({ player: p.player, team: p.team, fair: p.fair, price: p.ask ?? null, scored: typeof p.scored === "boolean" ? p.scored : null })) : [] };
+        // 10/29: Model bets -> Anytime TD of a played game -- each team's 12 likeliest, graded; the page drops anyone with no TD in his 3 games before
+        // that week and shows the top 4 left (owner: "give me the next person up")
+        ftdTop: ftdTopOf(g, rs, teaser || {}), tdPicks: tdPicksOf(g, rs, H),
+        tdTop: rs && Array.isArray(rs.td) ? [g.away, g.home].flatMap((t) => rs.td.filter((p) => p.team === t && p.played !== false).sort((a, b) => b.fair - a.fair).slice(0, 12)).map((p) => ({ player: p.player, team: p.team, fair: p.fair, price: p.ask ?? null, scored: typeof p.scored === "boolean" ? p.scored : null })) : [] };
     });
     const weeks = []; for (let w = 1; w <= dw.week; w++) weeks.push(w);
     res.status(200).json({ ok: true, season, week, weeks, games: out, ...(req.query.rec ? { records: await seasonRecords(r, season, weeks) } : {}) });
