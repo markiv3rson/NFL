@@ -279,7 +279,7 @@ function thelmet(team, dir) { return team ? `<img class="thlm" src="/helmets/sm/
 // 10/29 (owner: "Remove the X and in the circle put the team helmets there instead" / "Make everything in 1 line ... Easy to read"): a player row carries his
 // team's small helmet where the dot was (no team title lines); on a phone the name is shortened (J.Coker) so the row stays one line
 function phelm(team) { return team ? `<img class="phlm" src="/helmets/sm/right/${team}.webp" alt="" onerror="this.onerror=null;this.src='${logoUrl(team)}'">` : ""; }
-const pnm = (n) => { const t = String(n || ""), m = /^(\S)\S*\s+(.+)$/.exec(t); const sh = m && m[1] + "." + (!/\s/.test(m[2]) && m[2].length > 13 ? m[2].split("-")[0] : m[2]); return m ? `<span class="nmf">${esc(t)}</span><span class="nms">${esc(sh)}</span>` : esc(t); };   // a long double name keeps its first half (N.Alexander)
+const pnm = (n) => { const t = String(n || ""), m = /^(\S)\S*\s+(.+)$/.exec(t.replace(/\s+(Jr|Sr|II|III|IV|V)\.?$/i, "")); const sh = m && m[1] + "." + (!/\s/.test(m[2]) && m[2].length > 13 ? m[2].split("-")[0] : m[2]); return m ? `<span class="nmf">${esc(t)}</span><span class="nms">${esc(sh)}</span>` : esc(t); };   // a long double name keeps its first half (N.Alexander); 10/29: the short name drops Jr. / III (M.Washington Jr. was cut on a phone)
 const retPill = (r) => (r.returning ? (r.returningState === "practicing" ? ' <span class="pill p-g" style="padding:0 6px;font-size:10px">↩ RETURNING</span>' : ' <span class="pill p-y" style="padding:0 6px;font-size:10px">↩ WAS OUT · NOT PRACTICING</span>') : "");
 function tdNoGap(r) {
   if (!r || r.fair == null || !(r.bid > 0) || !(r.price > 0) || r.stale || r.thin || r.price - r.bid > Math.min(0.05, 0.4 * r.price)) return null;
@@ -1251,7 +1251,7 @@ function sgpBox(g) {
 const LAB_TABS = [["lines", "Game Lines"], ["halves", "Halves & Quarters"], ["props", "Player Props"], ["gprops", "Game Props"]];
 let LABTYPE = "lines", LABWEEK = null, MPICKS = {}, LIVE_BOX = {}, LIVE_BOX_T = 0;
 // 10/29 (owner: "Player props need a sub tab for the others. Keep everything separated"): Player Props has its own stat chips -- the game page's, without First TD (not a pick)
-const MB_PROPS = [["td", "Anytime TD"], ["first", "First TD"], ["recyds", "Rec Yds"], ["rec", "Receptions"], ["rushyds", "Rush Yds"]];
+const MB_PROPS = [["td", "Anytime TD"], ["notd", "No TD"], ["first", "First TD"], ["recyds", "Rec Yds"], ["rec", "Rec"], ["rushyds", "Rush Yds"], ["passtd", "Pass TD"]];   // 10/29 (owner): + No TD, Pass TD; "put REC ... not the entire word"
 let MBPROP = MB_PROPS[0][0];
 const mbChips = () => `<div class="gchips mbchips">${MB_PROPS.map(([k, t]) => `<button class="gchip${MBPROP === k ? " on" : ""}" type="button" data-mbprop="${k}">${t}</button>`).join("")}</div>`;
 // 10/15 (owner): ONE Bets tab -- My bets on the left (the list as before), Model bets on the right (the model's parlays). The choice is remembered.
@@ -1271,9 +1271,9 @@ function applyBetsView() {
 // Pass Yds (/api/props: the side the model gives 65%+ in a family that passed the real-line test, one row per player and stat, its highest %).
 // Rows sit under the kickoff headers, game by game; a team drop-down filters them; RECORD tile = this tab's graded rows; ✓ / ✗ green / red once graded.
 let PROPS = null, PROPWEEK = null, PROPTAB = "recyds", PROPTEAM = "all";
-const PROP_TABS = [["td", "Anytime TD"], ["first", "First TD"], ["recyds", "Rec Yds"], ["rec", "Receptions"], ["rushyds", "Rush Yds"]];
-const PROP_STAT = { recyds: "rec_yds", rec: "rec", passyds: "pass_yds", rushyds: "rush_yds" };
-const tabStats = (st) => (st === "rush_yds" ? ["rush_yds", "scrim_yds"] : [st]);   // 10/28 night: scrimmage-yards Unders ride the Rush Yds tab
+const PROP_TABS = [["td", "Anytime TD"], ["notd", "No TD"], ["first", "First TD"], ["recyds", "Rec Yds"], ["rec", "Rec"], ["rushyds", "Rush Yds"], ["passtd", "Pass TD"]];
+const PROP_STAT = { recyds: "rec_yds", rec: "rec", passyds: "pass_yds", rushyds: "rush_yds", notd: "atd", passtd: "pass_td" };   // 10/29: No TD = the anytime TD "No" rows (atd Under 0.5), Pass TD = the QBs' passing-TD Overs
+const tabStats = (st) => (st === "rush_yds" ? ["rush_yds", "scrim_yds", "rush_att"] : [st]);   // 10/28 night: scrimmage-yards Unders ride the Rush Yds tab; 10/29: rushing-attempts Unders too ("U 14.5 att")
 const propTabLabel = (k) => (PROP_TABS.find(([t]) => t === k) || [, "Rec Yds"])[1];
 async function loadProps() {
   try { const d = await (await fetch(`/api/props${PROPWEEK ? `?week=${PROPWEEK}` : ""}`, { cache: "no-store" })).json(); if (d && d.ok) { PROPS = d; renderProps(); } } catch {}
@@ -1287,7 +1287,7 @@ const teamSel = (teams) => `<div class="wksel"><select id="props-team" aria-labe
 const propLast = (p, tag) => { const l = p.last; if (!l) return '<span class="pp5 dim">—</span>';
   if (l.line == null) return `<span class="pp5 dim">${l.actual != null ? Math.round(l.actual * 10) / 10 : "—"}</span>`;
   return `<span class="pp5 ${l.result === "W" ? "g" : "r"}">${l.side === "over" ? "O" : "U"} ${l.line} ${l.result === "W" ? "✓" : "✗"}${l.actual != null ? ` <span class="dim">${Math.round(l.actual * 10) / 10}</span>` : ""}</span>`; };
-const propRow = (p) => { const r = p.result || (p.live && p.live.res) || null; return `<div class="pbl ppr${p.first ? " first" : ""}${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) + " " : ""}${phelm(p.team)}${pnm(p.name)}${p.result ? "" : liveBit(p.live && !p.live.res ? p.live : null)}</span><span class="pp2">${p.first || p.stat === "td" ? "" : `${p.side === "over" ? "O" : "U"} ${p.line}${p.stat === "scrim_yds" ? " scrim" : ""}`}</span>${p.first ? "" : propLast(p)}<span class="pp3 mod">${Math.round((p.cal ?? p.chance) * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>` };
+const propRow = (p) => { const r = p.result || (p.live && p.live.res) || null; return `<div class="pbl ppr${p.first ? " first" : ""}${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) + " " : ""}${phelm(p.team)}${pnm(p.name)}${p.result ? "" : liveBit(p.live && !p.live.res ? p.live : null)}</span><span class="pp2">${p.first || p.stat === "td" || p.stat === "atd" ? "" : `${p.side === "over" ? "O" : "U"} ${p.line}${p.stat === "scrim_yds" ? '<span class="pu">scrim</span>' : p.stat === "rush_att" ? '<span class="pu">att</span>' : ""}`}</span>${p.first ? "" : propLast(p)}<span class="pp3 mod">${Math.round((p.cal ?? p.chance) * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>` };
 // 10/28 late: + the Best TD picks ("Anytime TD"), the live state (the stat so far after the name, ✓ / ✗ the moment it can no longer change), p.full = every stat named (Model bets mixes them)
 // 10/20 night (owner): the POLYMARKET head carries the Polymarket logo on every props page (both sports); the First TD tab has NO LAST WK column (nothing to grade there)
 const propHead = (first, nm = "PLAYER") => `<div class="pbl ppr pph${first ? " first" : ""}"><span class="pp1">${nm}</span><span class="pp2"></span>${first ? "" : '<span class="pp5">LAST WK</span>'}<span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
@@ -1497,14 +1497,14 @@ function boxLoop() { clearTimeout(boxLoop._h); if (!boxWanted()) { boxLoop._on =
 // a page that shows picks (Model bets, a game page) pulls the live box score at once when the last pull is 30+ s old, and keeps the 30-s loop going
 const kickBox = () => { if (!boxWanted()) return; if (!boxLoop._on) boxLoop(); else if (Date.now() - LIVE_BOX_T > 30e3) loadLiveBox(); };
 const boxPlayer = (b, name, team) => (b.pl || []).find((p) => (!team || !p.t || p.t === team) && tdNameEq(p.n, name)) || null;
-const STAT_LIVE = { rec_yds: (p) => p.recYds, rec: (p) => p.rec, rush_yds: (p) => p.rushYds, scrim_yds: (p) => p.rushYds + p.recYds };
+const STAT_LIVE = { rec_yds: (p) => p.recYds, rec: (p) => p.rec, rush_yds: (p) => p.rushYds, scrim_yds: (p) => p.rushYds + p.recYds, rush_att: (p) => p.car || 0, pass_td: (p) => p.passTd || 0, atd: (p) => p.recTd + p.rushTd + (p.retTd || 0) };   // 10/29: + rushing attempts, passing TDs, TDs (No TD rows)
 function liveMark(g, x) {
   const b = g && LIVE_BOX[g.key]; if (!b || !x) return null;
   const fin = !!b.final, mv = (r) => (r === "W" ? "win" : r === "L" ? "lose" : null);
   if (x.kind === "line") { const r = pickRes(x.label, g.away, g.home, b.a, b.h); return !r ? null : fin ? { res: r } : { now: mv(r) }; }
   if (x.kind === "h1") { const cur = b.h1 || (b.per <= 2 ? { a: b.a, h: b.h } : null); if (!cur || x.team == null) return null;
     const m = (x.team === g.home ? cur.h - cur.a : cur.a - cur.h) + Number(x.line), r = m > 0 ? "W" : m < 0 ? "L" : "P"; return b.h1 ? { res: r } : { now: mv(r) }; }
-  if (x.kind === "td") { const p = boxPlayer(b, x.name, x.team); if (p && p.recTd + p.rushTd > 0) return { res: "W" }; return fin ? (p ? { res: "L" } : null) : { now: "lose", txt: "0 TD" }; }
+  if (x.kind === "td") { const p = boxPlayer(b, x.name, x.team); if (p && p.recTd + p.rushTd + (p.retTd || 0) > 0) return { res: "W" }; return fin ? (p ? { res: "L" } : null) : { now: "lose", txt: "0 TD" }; }   // 10/29: a return TD counts (Polymarket's anytime rule, the official grading)
   if (x.kind === "prop") { const f = STAT_LIVE[x.stat]; if (!f) return null; const p = boxPlayer(b, x.name, x.team), v = p ? f(p) : 0, L = Number(x.line), over = x.side === "over", txt = String(v);   // the number alone (it sits next to the player's name; the line under it names the stat)
     if (v > L) return { res: over ? "W" : "L", txt }; if (fin) return p ? { res: over ? "L" : "W", txt } : null;   // never in the box score at the end: the official grade decides (no snap = push)
     return { now: over ? "lose" : "win", txt }; }

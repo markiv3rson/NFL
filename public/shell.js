@@ -23,7 +23,7 @@
   // on top (SLATEZZ, the bell, Models, the refresh ring) and a bar at the bottom: Home · Lines · [NFL / NBA] · Props · Bets; the round button in the
   // middle switches the sport. Pages with sub tabs (Player props, Model bets) get their tabs in a bar right above it. Both sports.
   // 10/20 (owner: "rename it player props and have the sub tabs ... ANYTIME TD should be a sub tab under props"): the stat tabs, one page each
-  const PROPS = { nfl: [["td", "Anytime TD"], ["props-first", "First TD"], ["props-recyds", "Rec Yds"], ["props-rec", "Receptions"], ["props-rushyds", "Rush Yds"]],
+  const PROPS = { nfl: [["td", "Anytime TD"], ["props-notd", "No TD"], ["props-first", "First TD"], ["props-recyds", "Rec Yds"], ["props-rec", "Rec"], ["props-rushyds", "Rush Yds"], ["props-passtd", "Pass TD"]],   // 10/29: + No TD, Pass TD, "Rec"
     nba: [["props-pts", "Points"], ["props-reb", "Rebounds"], ["props-ast", "Assists"], ["props-pra", "PRA"], ["props-stl", "Steals"], ["props-blk", "Blocks"]] };
   const URL_ = { nfl: "/index.html", nba: "/nba/index.html" };
   // the Model bets tabs
@@ -308,5 +308,35 @@
   // 10/28 late: a page opened straight from a link (…#models) starts at its top: the browser's own jump to the element named like the page (the Models
   // list has id="models") left the four tiles hidden under the pinned title. Both sports.
   if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("load", () => { try { const h = location.hash.slice(1); if (h && document.getElementById(h) && !document.documentElement.classList.contains("gpin")) window.scrollTo(0, 0); } catch {} });
+  // 10/29 (owner, the Model bets tab rows: "make it slide left and right"): every tab / chip row slides with a finger (or a mouse drag on a computer)
+  // and stays where it was slid. The pages redraw their rows (a data load, the 30-s live pull), which threw a row back to its start mid-swipe and
+  // cut the swipe off (the finger's element was gone); each row's position is kept by its kind and put back on the redrawn row, and a swipe goes on
+  // on the new row. The rows in the pinned title (pointer-events:none, the rows auto) get the drag even where an iPhone gives the swipe to the page.
+  // A drag never counts as a tap on a tab. Both sports.
+  if (typeof document !== "undefined" && document.addEventListener && typeof MutationObserver !== "undefined") {
+    const SEL = ".gchips, .gtabs", pos = {};
+    const keyOf = (r) => { const c = r.firstElementChild; return `${r.className}|${c ? [...c.attributes].map((a) => a.name).filter((n) => /^data-|^href$/.test(n)).join(",") : ""}`; };
+    const rowOf = (t) => (t && t.closest ? t.closest(SEL) : null);
+    let row = null, key = "", x0 = 0, y0 = 0, s0 = 0, moved = false, endAt = 0;
+    const start = (t, x, y) => { const r = rowOf(t); row = r && r.scrollWidth > r.clientWidth + 1 ? r : null; key = row ? keyOf(row) : ""; x0 = x; y0 = y; s0 = row ? row.scrollLeft : 0; moved = false; };
+    const move = (x, y, e) => { if (!row) return; const dx = x - x0, dy = y - y0;
+      if (!moved && Math.abs(dx) < 6) return; if (!moved && Math.abs(dy) > Math.abs(dx)) { row = null; return; }
+      if (!row.isConnected) row = [...document.querySelectorAll(SEL)].find((r) => r.offsetParent && keyOf(r) === key) || null;
+      if (!row) return;
+      moved = true; row.scrollLeft = s0 - dx; pos[key] = row.scrollLeft; if (e && e.cancelable) e.preventDefault(); };
+    const tmove = (e) => { const p = e.touches[0]; move(p.clientX, p.clientY, e); }, tend = () => { row = null; endAt = Date.now(); };
+    document.addEventListener("touchstart", (e) => { const p = e.touches[0]; start(e.target, p.clientX, p.clientY);
+      if (row) { e.target.addEventListener("touchmove", tmove, { passive: false }); e.target.addEventListener("touchend", tend, { passive: true, once: true }); } }, { passive: true });
+    document.addEventListener("touchmove", (e) => { if (rowOf(e.target)) return; tmove(e); }, { passive: false });
+    document.addEventListener("touchend", tend, { passive: true });
+    document.addEventListener("mousedown", (e) => { if (e.button === 0) start(e.target, e.clientX, e.clientY); });
+    document.addEventListener("mousemove", (e) => move(e.clientX, e.clientY, null));
+    document.addEventListener("mouseup", tend);
+    document.addEventListener("click", (e) => { if (moved && Date.now() - endAt < 400 && rowOf(e.target)) { e.stopPropagation(); e.preventDefault(); } moved = false; }, true);
+    document.addEventListener("scroll", (e) => { const r = e.target; if (r && r.matches && r.matches(SEL)) pos[keyOf(r)] = r.scrollLeft; }, true);
+    new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) { if (n.nodeType !== 1) continue;
+      for (const r of [n.matches(SEL) ? n : null, ...n.querySelectorAll(SEL)].filter(Boolean)) { const k = keyOf(r); if (pos[k]) r.scrollLeft = pos[k]; } } })
+      .observe(document.documentElement, { childList: true, subtree: true });
+  }
   window.Shell = Shell;
 })();
