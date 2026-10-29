@@ -26,7 +26,7 @@ async function seasonRecords(r, season, weeks) {
       const h1 = jparse((teaser || {})[`${g.key}|h1spr`]); if (h1 && h1.team) add("h1", h1.result);
       for (const [f, v] of Object.entries(teaser || {})) if (f.startsWith(`${g.key}|gp|`)) { const x = jparse(v); if (x && x.label) add(x.fam === "ptd_qb" ? "ptd" : "gp", x.result); }
       const rs = jparse((resRaw || [])[i]); for (const p of (rs && rs.td) || []) if (p.fair >= BEST_TD && p.played !== false) add("td", typeof p.scored === "boolean" ? p.scored : null);
-      for (const p of ftdTopOf(g, rs)) add("ftd", p.hit);
+      for (const p of ftdTopOf(g, rs, teaser || {})) add("ftd", p.hit);
     });
   }
   await r.set(ck, JSON.stringify(R), "EX", 300).catch(() => {});
@@ -34,8 +34,13 @@ async function seasonRecords(r, season, weeks) {
 }
 // 10/29 (owner: First TD "PUT 1 on each team. And have it recorded and graded"): each team's likeliest first scorer by the share saved at grading (the
 // First TD tab's number at kickoff), with Polymarket's first-TD price and whether he scored the game's first TD
-const ftdTopOf = (g, rs) => (rs && Array.isArray(rs.td) ? [g.away, g.home].map((t) => rs.td.filter((p) => p.team === t && p.ftd != null && p.played !== false).sort((a, b) => b.ftd - a.ftd)[0]).filter(Boolean)
-  .map((p) => ({ player: p.player, team: p.team, ftd: p.ftd, price: p.firstAsk ?? null, hit: typeof p.ftdHit === "boolean" ? p.ftdHit : null })) : []);
+// The SAVED pick (lib/tracked.js recordFirstTd, from 10/29) when there is one, else -- weeks before it was saved -- the same pick read from the graded results.
+const ftdTopOf = (g, rs, teaser = {}) => [g.away, g.home].map((t) => {
+  const sv = jparse(teaser[`${g.key}|ftd|${t}`]), rows = rs && Array.isArray(rs.td) ? rs.td : [];
+  if (sv && sv.player) { const p = rows.find((x) => x.team === t && x.player === sv.player);
+    return { player: sv.player, team: t, ftd: sv.ftd, price: sv.price ?? null, hit: p && typeof p.ftdHit === "boolean" ? p.ftdHit : p && p.played === false ? null : rows.length && rs.td.some((x) => typeof x.ftdHit === "boolean") ? false : null }; }
+  const p = rows.filter((x) => x.team === t && x.ftd != null && x.played !== false).sort((a, b) => b.ftd - a.ftd)[0];
+  return p ? { player: p.player, team: t, ftd: p.ftd, price: p.firstAsk ?? null, hit: typeof p.ftdHit === "boolean" ? p.ftdHit : null } : null; }).filter(Boolean);
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   try {
@@ -50,7 +55,7 @@ export default async function handler(req, res) {
       return { key: g.key, away: g.away, home: g.home, kickoff: g.kickoff, week, started: started(g), final: !!g.final, awayScore: g.awayScore ?? null, homeScore: g.homeScore ?? null,
         lines: L, h1pick: h1 && h1.team ? h1Out(h1) : null, gprops: gp, td,
         // 10/29: the game page's Anytime TD list of a played game -- each team's 3 likeliest scorers, graded
-        ftdTop: ftdTopOf(g, rs),
+        ftdTop: ftdTopOf(g, rs, teaser || {}),
         tdTop: rs && Array.isArray(rs.td) ? [g.away, g.home].flatMap((t) => rs.td.filter((p) => p.team === t && p.played !== false).sort((a, b) => b.fair - a.fair).slice(0, 3)).map((p) => ({ player: p.player, team: p.team, fair: p.fair, price: p.ask ?? null, scored: typeof p.scored === "boolean" ? p.scored : null })) : [] };
     });
     const weeks = []; for (let w = 1; w <= dw.week; w++) weeks.push(w);
