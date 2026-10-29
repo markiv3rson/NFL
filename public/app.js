@@ -396,7 +396,7 @@ function tdBody() {
     if (g.kickoff) { const tt = tm(g.kickoff); times[sl].includes(tt) || times[sl].push(tt); } }
   const gameCard = (g) => { const xs = shown.filter((x) => x.g.key === g.key); if (!xs.length) return "";
     const teamPart = (t) => { const rs = xs.filter((x) => x.r.team === t); return rs.length ? `<div class="pbl pteam">${tlogo(t)}${esc(t)}</div>${rs.map((x) => tdRow(x)).join("")}` : ""; };
-    return `<div class="par"><div class="pbh c"><span class="pbn">${gameLogos(g.key)}</span></div>${tdHead()}${teamPart(g.away)}${teamPart(g.home)}</div>`; };
+    return `<div class="par"><div class="pbh"><span class="pbn">${gameLogos(g.key)}</span></div>${tdHead()}${teamPart(g.away)}${teamPart(g.home)}</div>`; };
   const list = slots.map((sl) => { const cards = by[sl].map(gameCard).join(""); if (!cards) return ""; const open = tdSlotOpen(sl);
     return `<div class="sh labslot tdtog${open ? " open" : ""}" data-slot="${esc(sl)}">${sl}${times[sl].length ? ` <span class="lst">· ${times[sl].map(esc).join(" · ")}</span>` : ""}<i class="car">▾</i></div><div class="pgrid tdl${open ? "" : " closed"}">${cards}</div>`; }).join("");
   return bestBox + moveBox + list;
@@ -494,9 +494,10 @@ const liveLegTxt = (ks, l, done) => (ks.length > 1 && !done && liveSc(l.game) ? 
 function betRow(b) { return `<div class="betwrap">${betRowInner(b)}</div>`; }
 function betRowInner(b) {
   if (b.source === "account") {   // bet recorded automatically from your Polymarket account
-    const lk = !b.sold && (!b.result || b.result === "pending") ? liveOf(b.picks || (b.prop ? [b.prop] : [])) : [];
+    const lk = !b.sold && (!b.result || b.result === "pending") ? liveOf(b.picks || (b.prop ? [b.prop] : b.pick ? [b.pick] : [])) : [];
     const st = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : legLost(b) ? '<span class="r">Lost</span>' : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Even" : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : (b.waiting ? '<span class="y">waiting for TD results</span>' : '<span class="dim">open</span>');
-    const name = b.picks && b.picks.length ? `${b.picks.length} picks` : b.prop ? `${tlogo(b.prop.team)}${esc(b.prop.label)}` : `${esc(b.title)}${b.outcome ? ` — ${esc(b.outcome)}` : ""}`;   // 10/19: single player bet
+    const name = b.picks && b.picks.length ? `${b.picks.length} picks` : b.prop ? `${tlogo(b.prop.team)}${esc(b.prop.label)}` : b.pick ? `${b.pick.result ? RESMARK[b.pick.result] + " " : ""}${legTxt(b.pick.result, logoLabel(b.pick.label, b.pick.team))}`   // 10/29: a straight team bet reads like a leg (the side you hold)
+      : `${esc(b.title)}${b.outcome ? ` — ${esc(b.outcome)}` : ""}`;   // 10/19: single player bet
     const picks = b.picks && b.picks.length ? b.picks.map((p) => `<div class="s" style="padding:0 0 0 16px">${p.result ? RESMARK[p.result] + " " : "• "}${legTxt(p.result, logoLabel(p.label, p.team))}${liveLegTxt(lk, p, !!p.result)}${!p.result && legFlipped(p.label) ? ' <span class="y">⚠ app now picks the other side</span>' : ""}</div>`).join("") : "";
     return `<div class="row"><span>${name}${lk.length ? " " + liveHeadTxt(lk) : ""}</span><span>${st}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
       `<div class="s" style="padding:0 0 ${picks ? 2 : 6}px 8px">${money(b.cost)}${b.price != null ? ` at ${betCents(b.price)}¢` : ""} · ${b.sold ? `sold early for ${money(Math.max(0, (b.cost || 0) + (b.pl || 0)))}` : legLost(b) ? `−${money(b.cost)}` : `pays ${money(b.toWin)} if it wins`}</div>` + (picks ? `<div style="padding-bottom:6px">${picks}</div>` : "");
@@ -1228,7 +1229,7 @@ function sgpBox(g) {
 const LAB_TABS = [["lines", "Game Lines"], ["halves", "Halves & Quarters"], ["props", "Player Props"], ["gprops", "Game Props"]];
 let LABTYPE = "lines", LABWEEK = null, MPICKS = {}, LIVE_BOX = {}, LIVE_BOX_T = 0;
 // 10/29 (owner: "Player props need a sub tab for the others. Keep everything separated"): Player Props has its own stat chips -- the game page's, without First TD (not a pick)
-const MB_PROPS = [["td", "Anytime TD"], ["recyds", "Rec Yds"], ["rec", "Receptions"], ["rushyds", "Rush Yds"]];
+const MB_PROPS = [["td", "Anytime TD"], ["first", "First TD"], ["recyds", "Rec Yds"], ["rec", "Receptions"], ["rushyds", "Rush Yds"]];
 let MBPROP = (() => { try { const v = localStorage.getItem("mbProp:nfl"); return MB_PROPS.some(([k]) => k === v) ? v : "td"; } catch { return "td"; } })();
 const mbChips = () => `<div class="gchips mbchips">${MB_PROPS.map(([k, t]) => `<button class="gchip${MBPROP === k ? " on" : ""}" type="button" data-mbprop="${k}">${t}</button>`).join("")}</div>`;
 // 10/15 (owner): ONE Bets tab -- My bets on the left (the list as before), Model bets on the right (the model's parlays). The choice is remembered.
@@ -1280,7 +1281,7 @@ function propBlocks(games, row, first) {
   let lastSlot = null;
   return gs.map((g) => { const sl = g.kickoff ? labSlot(g.kickoff) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
     // 10/20 night (owner): a game being played says LIVE on its props block -- its rows are the copy locked at kickoff (the rerun never re-scores a started game), graded at the final
-    return h + `<div class="par"><div class="pbh c"><span class="pbn">${gameLogos(g.game)}${g.started && !g.final ? ' <span class="lvb">● LIVE</span>' : ""}</span></div>${g.head || ""}${propHead(!!first)}${teamRows(g, row)}</div>`; }).join("");
+    return h + `<div class="par"><div class="pbh"><span class="pbn">${gameLogos(g.game)}${g.started && !g.final ? ' <span class="lvb">● LIVE</span>' : ""}</span></div>${g.head || ""}${propHead(!!first)}${teamRows(g, row)}</div>`; }).join("");
 }
 function renderProps() {
   const el = $("props"); if (!el) return;
@@ -1337,7 +1338,7 @@ function labGames(wk) {
     const mlc = g.card && g.card.ml && okPick(g.card.ml.plain) ? g.card.ml.plain : null;
     const lines = pre ? { spread: card("spread"), total: card("total"), ml: mlc ? { pick: mlc.pick, hit: mlc.hit, price: okN(mlc.price) ? mlc.price : null } : null } : g.lockedPicks || sv.lines || {};
     return { key: g.key, away: g.away, home: g.home, kickoff: g.kickoff, week: g.week || S.week, started: !!g.started, final: !!g.final, lines,
-      h1pick: g.h1pick || sv.h1pick || null, gprops: (g.gprops && g.gprops.length ? g.gprops : sv.gprops) || [], td: !pre && sv.td && sv.td.length ? sv.td : tdPicksOf(g) };
+      h1pick: g.h1pick || sv.h1pick || null, gprops: (g.gprops && g.gprops.length ? g.gprops : sv.gprops) || [], td: !pre && sv.td && sv.td.length ? sv.td : tdPicksOf(g), tdAll: g.td || [], tdTop: sv.tdTop || [], ftdTop: sv.ftdTop || [] };
   });
 }
 
@@ -1347,10 +1348,30 @@ const liveTag = (g) => { const b = LIVE_BOX[g.key]; return b && !b.final ? ` <sp
 const pickHead = () => `<div class="pbl ppr pph first"><span class="pp1">PICK</span><span class="pp2">BET</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
 const pickTr = (x) => { const r = normRes(x.result) || (x.live && x.live.res) || null, h = Number(x.hit), c = h >= 56 ? "g" : h >= 53 ? "lg" : "y";
   return `<div class="pbl ppr first${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) : "•"} ${esc(x.pick)}${r ? "" : liveBit(x.live && !x.live.res ? x.live : null)}</span><span class="pp2">${esc(x.kind)}</span>` +
-    `<span class="pp3 ${c}">${isFinite(h) ? `${h >= 56 ? Math.round(h) : Math.floor(h)}%` : "—"}</span><span class="pp4">${x.price > 0 && x.price < 1 ? `${Math.round(x.price * 100)}¢` : "—"}</span></div>`; };
+    `<span class="pp3 mod">${isFinite(h) ? `${h >= 56 ? Math.round(h) : Math.floor(h)}%` : "—"}</span><span class="pp4">${x.price > 0 && x.price < 1 ? `${Math.round(x.price * 100)}¢` : "—"}</span></div>`; };
 const pickTable = (rows) => (rows.length ? pickHead() + rows.map(pickTr).join("") : "");
 // a GAME PROPS label -> the market (on top) and the side (under it): "Total touchdowns Under 5.5" -> ["Total touchdowns", "Under 5.5"]
 const gpSplit = (lb) => { const m = /^(.*?) ((?:Over|Under) [\d.]+|Yes|No)$/.exec(String(lb || "")); return m ? [m[1], m[2]] : [String(lb || ""), ""]; };
+// Anytime TD in Model bets (10/29, owner, the game page's Player Props screenshots: "Do you not see the layout of everything"): the game page's Anytime TD
+// rows -- the 3 likeliest scorers per team (owner: "For anytime TD only show top 3 of each team"), position, the red "no TD last N games" note, MODEL · POLYMARKET; ✓ / ✗ once graded (past weeks: the graded list)
+function tdBlock(g) {
+  const graded = new Map((g.tdTop || []).filter((t) => typeof t.scored === "boolean").map((t) => [`${t.team}|${t.player}`, t.scored]));
+  const src = g.tdAll && g.tdAll.length ? g.tdAll : (g.tdTop || []).map((t) => ({ player: t.player, team: t.team, fair: t.fair, price: t.price ?? null }));
+  const rows = src.filter((r) => r.fair != null && usable(r)).sort((a, b) => b.fair - a.fair), per = {};
+  const pool = rows.filter((r) => { const n = per[r.team] || 0; if (n >= 3) return false; per[r.team] = n + 1; return true; });   // owner 10/29: "only show top 3 of each team"
+  const row = (r) => { const sc = graded.get(`${r.team}|${r.player}`), h = tdRow({ r, g }); return sc == null ? h : h.replace('<span class="pp1">• ', `<span class="pp1">${legMark(sc ? "W" : "L")} `); };
+  const part = (t) => { const rs = pool.filter((r) => r.team === t); return rs.length ? `<div class="pbl pteam">${tlogo(t)}${esc(t)}</div>${rs.map(row).join("")}` : ""; };
+  return pool.length ? `<div class="tdl">${tdHead()}${part(g.away)}${part(g.home)}</div>` : "";
+}
+// First TD in Model bets (10/29, owner: "PUT 1 on each team. And have it recorded and graded"): each team's likeliest first scorer (the First TD tab's
+// number + Polymarket's first-TD price), the game page's First TD rows; a played game's from its graded results (✓ = he scored the game's first TD)
+function firstBlock(g) {
+  let picks = [];
+  if (g.ftdTop && g.ftdTop.length && (g.started || !(g.tdAll && g.tdAll.length))) picks = g.ftdTop.map((x) => ({ name: x.player, team: x.team, chance: x.ftd / 100, price: x.price ?? null, first: true, result: x.hit === true ? "W" : x.hit === false ? "L" : null }));
+  else { const rows = (g.tdAll || []).filter((r) => r.first != null && usable(r) && !/^(out|doubtful)$/i.test(r.injury || "")).sort((a, b) => b.first - a.first);
+    picks = [g.away, g.home].map((t) => rows.find((r) => r.team === t)).filter(Boolean).map((r) => ({ name: r.player, team: r.team, chance: r.first / 100, price: r.firstPrice ?? null, first: true })); }
+  return picks.length ? `${propHead(true)}${teamRows({ away: g.away, home: g.home, picks }, propRow)}` : "";
+}
 const LAB_BODY = {
   lines: (g) => { const L = g.lines || {}, row = (x, kind) => (x && x.pick ? { pick: x.pick, kind, hit: x.hit, price: x.price, result: x.result, live: normRes(x.result) ? null : liveMark(g, { kind: "line", label: x.pick }) } : null);
     return pickTable([row(L.spread, "Spread"), row(L.spread && L.spread.pts, "Spread · w/ points"), row(L.ml, "Moneyline"), row(L.total, "Total"), row(L.total && L.total.pts, "Total · w/ points")].filter(Boolean)); },
@@ -1358,7 +1379,9 @@ const LAB_BODY = {
   gprops: (g) => pickTable((g.gprops || []).map((k) => { const [mk, side] = gpSplit(k.label);
     return { pick: mk, kind: k.fam === "ptd_qb" ? `${side} · passing TDs pick` : side, hit: k.said, price: k.price, result: k.result, live: k.result ? null : liveMark(g, { kind: "gp", cond: k.cond, long: k.long !== false }) }; })),
   props: (g) => { const c = GPROPS[Number(g.week)], pg = c && c.d ? (c.d.games || []).find((x) => x.game === g.key) : null;
-    const want = MBPROP === "td" ? ["td"] : tabStats(PROP_STAT[MBPROP] || "rec_yds");
+    if (MBPROP === "td") return tdBlock(g);
+    if (MBPROP === "first") return firstBlock(g);   // 10/29 (owner: the game page's layout): Anytime TD = the game page's rows
+    const want = tabStats(PROP_STAT[MBPROP] || "rec_yds");
     const picks = [...((pg && pg.picks) || []), ...(g.td || []).map((t) => ({ name: t.player, team: t.team, stat: "td", side: "over", line: 0.5, chance: t.fair / 100, cal: tdPct(t.fair) / 100, price: t.price, result: t.scored === true ? "W" : t.scored === false ? "L" : null }))]
       .filter((p) => want.includes(p.stat)).map((p) => ({ ...p, full: true, live: p.result ? null : liveMark(g, { kind: p.stat === "td" ? "td" : "prop", name: p.name, team: p.team, stat: p.stat, side: p.side, line: p.line }) }));
     return picks.length ? `${propHead(false)}${teamRows({ away: g.away, home: g.home, picks }, propRow)}` : ""; },
@@ -1377,13 +1400,14 @@ const recTileMb = (label, season, week) => { const n = season ? season.w + seaso
   return `<div class="stat"><div class="k">${label}</div><div class="v ${c}">${season ? `${season.w}–${season.l}` : "…"}</div><div class="k2">${pc == null ? "—" : `${pc >= 56 ? Math.round(pc) : Math.floor(pc)}% won`}${week && week.w + week.l ? ` · wk ${week.w}–${week.l}` : ""}</div></div>`; };
 function labRecords(games, sel) {
   const R = MPRECS || null, g = (k) => (R ? R[k] : null), L = (f) => games.map((x) => f(x.lines || {})).filter(Boolean);
-  if (LABTYPE === "lines") return [recTileMb("SPREAD PICKS", g("spread"), wl(L((l) => l.spread && l.spread.result))), recTileMb("TOTAL PICKS", g("total"), wl(L((l) => l.total && l.total.result))),
-    recTileMb("ML PICKS", g("ml"), wl(L((l) => l.ml && l.ml.result))), recTileMb("W/ POINTS", R ? { w: R.spreadPts.w + R.totalPts.w, l: R.spreadPts.l + R.totalPts.l } : null, wl([...L((l) => l.spread && l.spread.pts && l.spread.pts.result), ...L((l) => l.total && l.total.pts && l.total.pts.result)]))];
+  if (LABTYPE === "lines") return [recTileMb("SPREAD", g("spread"), wl(L((l) => l.spread && l.spread.result))), recTileMb("TOTAL", g("total"), wl(L((l) => l.total && l.total.result))),
+    recTileMb("ML", g("ml"), wl(L((l) => l.ml && l.ml.result))), recTileMb("W/ POINTS", R ? { w: R.spreadPts.w + R.totalPts.w, l: R.spreadPts.l + R.totalPts.l } : null, wl([...L((l) => l.spread && l.spread.pts && l.spread.pts.result), ...L((l) => l.total && l.total.pts && l.total.pts.result)]))];
   if (LABTYPE === "halves") return [recTileMb("1H SPREAD", g("h1"), wl(games.map((x) => x.h1pick && x.h1pick.result)))];
   if (LABTYPE === "gprops") { const gp = games.flatMap((x) => x.gprops || []);
     return [recTileMb("GAME PROPS", g("gp"), wl(gp.filter((k) => k.fam !== "ptd_qb").map((k) => k.result))), recTileMb("PASSING TDs", g("ptd"), wl(gp.filter((k) => k.fam === "ptd_qb").map((k) => k.result)))]; }
   const lab = (MB_PROPS.find(([k]) => k === MBPROP) || [, ""])[1].toUpperCase();
   if (MBPROP === "td") return [recTileMb(lab, g("td"), wl(games.flatMap((x) => (x.td || []).map((t) => t.scored))))];
+  if (MBPROP === "first") return [recTileMb(lab, g("ftd"), wl(games.flatMap((x) => (x.ftdTop || []).map((t) => t.hit))))];
   const st = PROP_STAT[MBPROP] || "rec_yds", c = GPROPS[sel], rc = c && c.d && c.d.records ? c.d.records[st] : null, want = tabStats(st);
   const wk = wl(games.flatMap((x) => { const pg = c && c.d ? (c.d.games || []).find((y) => y.game === x.key) : null; return ((pg && pg.picks) || []).filter((p) => want.includes(p.stat)).map((p) => p.result); }));
   return [recTileMb(lab, rc ? { w: rc.w || 0, l: rc.l || 0 } : c ? { w: 0, l: 0 } : null, wk)];
@@ -1401,7 +1425,7 @@ function renderLabList() {
   const xs = games.map((g) => ({ g, html: body(g) })).filter((x) => x.html);
   const slotTimes = {}; for (const { g } of xs) if (g.kickoff) { const sl = labSlot(g.kickoff), tt = tm(g.kickoff); (slotTimes[sl] = slotTimes[sl] || []).includes(tt) || slotTimes[sl].push(tt); }
   let lastSlot = null; const blocks = xs.map(({ g, html }) => { const sl = g.kickoff ? (g.week && cur && Number(g.week) !== sel ? `WEEK ${g.week} · ` : "") + labSlot(g.kickoff) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${(slotTimes[labSlot(g.kickoff)] || []).map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
-    return h + `<div class="par"><div class="pbh c"><span class="pbn">${gameLogos(g.key)}${liveTag(g)}</span></div>${html}</div>`; });
+    return h + `<div class="par"><div class="pbh"><span class="pbn">${gameLogos(g.key)}${liveTag(g)}</span></div>${html}</div>`; });
   $("lab").innerHTML = ddSlot($("lab"), chips) + (LABTYPE === "props" ? mbChips() : "") + `<div class="stats mbrec">${labRecords(games, sel).join("")}</div>` + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : `<div class="s dim empty" style="margin-top:12px">${waiting ? "Loading…" : "None yet."}</div>`);
   const lw = $("lab-wk"); if (lw && lw.tagName === "SELECT") lw.onchange = () => { LABWEEK = Number(lw.value); renderLabList(); };
   kickBox();

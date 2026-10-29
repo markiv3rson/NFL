@@ -1353,5 +1353,12 @@ const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "u
   const days = await pr.nbaPropDays(); ok(days.includes("2026-11-05"), "a compacted day is still listed (the page and the records keep reading it)");
   for (const k of ["nbapropmodel:2026-11-05:AAA @ BBB", "nbapropmodel:2026-11-05:CCC @ DDD", "nbaprops:2026-11-05:CCC @ DDD", "nbapropmodel:2026-11-18:EEE @ FFF", "nbapropres:2026-11-05", "nbapropres:2026-11-18"]) await r.del(k);
   const gr = readFileSync(new URL("../../pages/api/nba/results/grade.js", import.meta.url), "utf8"); ok(/compactNbaProps\(\)/.test(gr), "the nightly grade run compacts"); }
+{ // 10/29: NBA straight bets as legs, a bet on the market's other side with its price / payout and graded from its own leg
+  const mb = await import("../lib/mybets.js");
+  const o = mb.summarizeLedger({ a: { id: "asc-nba-den-no-2026-10-28-neg-4pt5", title: "DEN Nuggets vs. NO Pelicans", outcome: "+4.50", cost: 5.1255, shares: -10, firstSeen: "2026-10-28T20:00:00Z" },
+    b: { id: "asc-nba-gs-min-2026-10-28-pos-2pt5", cost: 4.3176, shares: 8, short: true, resolved: { win: true, pl: 3.68, t: "2026-10-29T05:00:00Z" }, pickResult: "L", closedAt: "2026-10-29T05:00:00Z" } });
+  const A = o.open[0], B = o.settled[0];
+  ok(A.pick.label === "NOP +4.5" && A.shares === 10 && Math.abs(A.price - 0.51255) < 1e-9 && B.pick.label === "MIN -2.5" && B.result === "loss" && Math.abs(B.pl + 4.3176) < 1e-9 && o.record.l === 1,
+    "NBA straight bets: the side held as a leg (NOP +4.5), shares positive with the price, a settled other-side bet graded from its own leg", { A, B }); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`);
 process.exit(bad ? 1 : 0);

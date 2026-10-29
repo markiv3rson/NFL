@@ -11,7 +11,7 @@ const BEST_TD = 55;
 // 10/29 (owner: "I need records at the top of every tab in models bets ... the record of the picks on there winning and losing"): the season's W-L of
 // exactly the picks these tabs show (the same locked card picks, 1H / GAME PROPS / PASSING TDs picks and Best TD picks), every week so far.
 // Pushes count neither way. Cached 5 minutes.
-const REC_KEYS = ["spread", "spreadPts", "total", "totalPts", "ml", "h1", "gp", "ptd", "td"];
+const REC_KEYS = ["spread", "spreadPts", "total", "totalPts", "ml", "h1", "gp", "ptd", "td", "ftd"];
 async function seasonRecords(r, season, weeks) {
   const ck = `modelpicks:rec:${season}`, hit = jparse(await r.get(ck).catch(() => null)); if (hit) return hit;
   const R = Object.fromEntries(REC_KEYS.map((k) => [k, { w: 0, l: 0 }])), add = (k, res) => { if (res === "W" || res === true) R[k].w++; else if (res === "L" || res === false) R[k].l++; };
@@ -26,11 +26,21 @@ async function seasonRecords(r, season, weeks) {
       const h1 = jparse((teaser || {})[`${g.key}|h1spr`]); if (h1 && h1.team) add("h1", h1.result);
       for (const [f, v] of Object.entries(teaser || {})) if (f.startsWith(`${g.key}|gp|`)) { const x = jparse(v); if (x && x.label) add(x.fam === "ptd_qb" ? "ptd" : "gp", x.result); }
       const rs = jparse((resRaw || [])[i]); for (const p of (rs && rs.td) || []) if (p.fair >= BEST_TD && p.played !== false) add("td", typeof p.scored === "boolean" ? p.scored : null);
+      for (const p of ftdTopOf(g, rs, teaser || {})) add("ftd", p.hit);
     });
   }
   await r.set(ck, JSON.stringify(R), "EX", 300).catch(() => {});
   return R;
 }
+// 10/29 (owner: First TD "PUT 1 on each team. And have it recorded and graded"): each team's likeliest first scorer by the share saved at grading (the
+// First TD tab's number at kickoff), with Polymarket's first-TD price and whether he scored the game's first TD
+// The SAVED pick (lib/tracked.js recordFirstTd, from 10/29) when there is one, else -- weeks before it was saved -- the same pick read from the graded results.
+const ftdTopOf = (g, rs, teaser = {}) => [g.away, g.home].map((t) => {
+  const sv = jparse(teaser[`${g.key}|ftd|${t}`]), rows = rs && Array.isArray(rs.td) ? rs.td : [];
+  if (sv && sv.player) { const p = rows.find((x) => x.team === t && x.player === sv.player);
+    return { player: sv.player, team: t, ftd: sv.ftd, price: sv.price ?? null, hit: p && typeof p.ftdHit === "boolean" ? p.ftdHit : p && p.played === false ? null : rows.length && rs.td.some((x) => typeof x.ftdHit === "boolean") ? false : null }; }
+  const p = rows.filter((x) => x.team === t && x.ftd != null && x.played !== false).sort((a, b) => b.ftd - a.ftd)[0];
+  return p ? { player: p.player, team: t, ftd: p.ftd, price: p.firstAsk ?? null, hit: typeof p.ftdHit === "boolean" ? p.ftdHit : null } : null; }).filter(Boolean);
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   try {
@@ -43,7 +53,10 @@ export default async function handler(req, res) {
       const gp = Object.entries(teaser || {}).filter(([f]) => f.startsWith(`${g.key}|gp|`)).map(([, v]) => jparse(v)).filter((x) => x && x.label).map(gpOut).sort((a, b) => b.said - a.said);
       const td = rs && Array.isArray(rs.td) ? rs.td.filter((p) => p.fair >= BEST_TD && p.played !== false).map((p) => ({ player: p.player, team: p.team, fair: p.fair, price: p.ask ?? null, scored: typeof p.scored === "boolean" ? p.scored : null })) : [];
       return { key: g.key, away: g.away, home: g.home, kickoff: g.kickoff, week, started: started(g), final: !!g.final, awayScore: g.awayScore ?? null, homeScore: g.homeScore ?? null,
-        lines: L, h1pick: h1 && h1.team ? h1Out(h1) : null, gprops: gp, td };
+        lines: L, h1pick: h1 && h1.team ? h1Out(h1) : null, gprops: gp, td,
+        // 10/29: the game page's Anytime TD list of a played game -- each team's 3 likeliest scorers, graded
+        ftdTop: ftdTopOf(g, rs, teaser || {}),
+        tdTop: rs && Array.isArray(rs.td) ? [g.away, g.home].flatMap((t) => rs.td.filter((p) => p.team === t && p.played !== false).sort((a, b) => b.fair - a.fair).slice(0, 3)).map((p) => ({ player: p.player, team: p.team, fair: p.fair, price: p.ask ?? null, scored: typeof p.scored === "boolean" ? p.scored : null })) : [] };
     });
     const weeks = []; for (let w = 1; w <= dw.week; w++) weeks.push(w);
     res.status(200).json({ ok: true, season, week, weeks, games: out, ...(req.query.rec ? { records: await seasonRecords(r, season, weeks) } : {}) });

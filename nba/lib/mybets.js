@@ -10,6 +10,7 @@ import { TEAMS } from "./teams";
 import { finalsFor, boxFor } from "./espn";
 import { normName } from "./props";
 import { etDate } from "./poly";
+import { teamSingle, sideOf } from "../../lib/sides";
 
 const KEY = { synced: "mybets:nba:synced", raw: "mybets:nba:raw", ledger: "mybets:nba:ledger" };
 
@@ -132,11 +133,12 @@ export function markProp(p, box) {
 
 export function resolvedFrom(a) {
   const r = a && a.positionResolution; if (!r || !r.marketSlug || !r.beforePosition || !r.afterPosition) return null;
-  const b = r.beforePosition, f = r.afterPosition, shares = Number(b.netPosition), cost = Number(b.cost && b.cost.value);
+  // 10/29: a NEGATIVE position is a bet on the market's other side (lib/sides.js) -- it was skipped, so such a bet never got its result
+  const b = r.beforePosition, f = r.afterPosition, { shares, short } = sideOf(b.netPosition), cost = Number(b.cost && b.cost.value);
   const delta = Number(f.realized && f.realized.value) - Number(b.realized && b.realized.value);
   if (![shares, cost, delta].every(Number.isFinite) || !(shares > 0) || !(cost >= 0)) return null;
   const win = delta > 0.005;
-  return { slug: r.marketSlug, win, shares, cost, pl: win ? shares - cost : -cost, t: r.updateTime || null,
+  return { slug: r.marketSlug, win, shares, cost, pl: win ? shares - cost : -cost, t: r.updateTime || null, ...(short ? { short: true } : {}),
     title: (b.marketMetadata && b.marketMetadata.title) || r.marketSlug, outcome: b.marketMetadata && b.marketMetadata.outcome, meta: b.marketMetadata };
 }
 export function soldFrom(a) {
@@ -172,7 +174,8 @@ export async function syncAccount() {
   for (const p of list) {
     seen.add(p.id);
     const e = ledger[p.id] || { id: p.id, title: p.title, outcome: p.outcome, firstSeen: t };
-    Object.assign(e, { cost: p.cost, shares: p.shares, value: p.value, realized: p.realized, expired: p.expired, lastSeen: t });
+    const sd = sideOf(p.shares);   // 10/29: shares kept positive, the side in `short` (a bet on the market's other side read as "pays -$10", no price)
+    Object.assign(e, { cost: p.cost, shares: sd.shares, value: p.value, realized: p.realized, expired: p.expired, lastSeen: t }); if (sd.short) e.short = true; else delete e.short;
     if (p.legs && p.legs.length) {   // the names found before ride along (Polymarket's legs never carry them); new prop legs get theirs now
       const old = new Map((e.legs || []).filter((l) => l && (l.player || l.result)).map((l) => [l.slug, l]));
       for (const l of p.legs) { const o = old.get(l.slug); if (!o) continue; if (!l.player && o.player) l.player = o.player; if (o.result && !l.result) { l.result = o.result; if (o.actual != null) l.actual = o.actual; } }   // 10/27: the names AND the grades found before ride along
@@ -188,7 +191,7 @@ export async function syncAccount() {
   for (const a of (res && res.activities) || []) {
     const x = resolvedFrom(a); if (!x || !(x.cost > 0) || isComboLeg(x.slug, x.meta, singles)) continue;
     if (!isNba(x.slug, x.meta) && !(isAcctCombo(x.slug) && ledger[x.slug])) continue;   // a combo counts once it was seen open with NBA legs
-    const e = ledger[x.slug] || (ledger[x.slug] = { id: x.slug, title: x.title, outcome: x.outcome, firstSeen: x.t || t, cost: x.cost, shares: x.shares, price: x.shares > 0 ? x.cost / x.shares : null });
+    const e = ledger[x.slug] || (ledger[x.slug] = { id: x.slug, title: x.title, outcome: x.outcome, firstSeen: x.t || t, cost: x.cost, shares: x.shares, price: x.shares > 0 ? x.cost / x.shares : null, ...(x.short ? { short: true } : {}) });
     if (singles.has(x.slug) && !e.prop) { e.single = true; e.prop = propOf(x.slug, x.meta, (await usNamesFor(x.meta && x.meta.eventSlug).catch(() => ({})))[x.slug]) || null; }
     if (!e.resolved) resolved++;
     e.resolved = { win: x.win, pl: x.pl, t: x.t }; e.closedAt = e.closedAt || x.t || t;
@@ -208,9 +211,21 @@ export async function syncAccount() {
 
 // What the Bets tab shows: open bets, settled / sold bets, and the record.
 export function summarizeLedger(ledger) {
-  const rows = Object.values(ledger || {}).map((e) => (e.legs && e.legs.length ? { ...e, picks: comboPicks(e.legs) } : { ...e }));
+  const rows = Object.values(ledger || {}).map((e0) => { const e = { ...e0 };
+    if (e.shares < 0) { e.shares = -e.shares; e.short = true; }   // saved before 10/29 with a negative count
+    if (!(e.price > 0) && e.shares > 0 && e.cost > 0) e.price = e.cost / e.shares;
+    if (e.legs && e.legs.length) e.picks = comboPicks(e.legs);
+    else if (!e.prop) { const pk = teamSingle(e.id, !!e.short, usTeam); if (pk) e.pick = { ...pk, ...(e.pickResult ? { result: e.pickResult } : {}) }; }   // 10/29: a straight team bet = one leg
+    return e; });
+  return tally(rows);
+}
+// open / settled lists and the record (10/29: a straight bet on the market's other side takes its win / loss from its own graded leg -- Polymarket's
+// settlement numbers read from the market's YES side)
+export function tally(rows) {
   const open = rows.filter((e) => !e.closedAt && !e.resolved && !e.sold);
-  const done = rows.filter((e) => e.resolved || e.sold).map((e) => ({ ...e, pl: e.resolved ? e.resolved.pl : e.sold.pl, result: e.resolved ? (e.resolved.win ? "win" : "loss") : "sold" }));
+  const done = rows.filter((e) => e.resolved || e.sold).map((e) => { const leg = e.short && e.resolved && e.pick && (e.pick.result === "W" || e.pick.result === "L") ? e.pick.result : null;
+    const win = leg ? leg === "W" : e.resolved ? e.resolved.win : null;
+    return { ...e, pl: e.resolved ? (leg ? (win ? e.shares - e.cost : -e.cost) : e.resolved.pl) : e.sold.pl, result: e.resolved ? (win ? "win" : "loss") : "sold" }; });
   const w = done.filter((e) => e.result === "win").length, l = done.filter((e) => e.result === "loss").length;
   const staked = done.reduce((s, e) => s + (e.cost || 0), 0), pl = done.reduce((s, e) => s + e.pl, 0);
   return { open, settled: done.sort((a, b) => String((b.resolved || b.sold).t || "").localeCompare(String((a.resolved || a.sold).t || ""))),
@@ -223,6 +238,7 @@ export async function loadMyBets() {
   for (const e of Object.values(ledger)) { if (!e || !e.legs || !e.legs.some((l) => l && /^astatc-nba-/.test(l.slug || "") && !l.player)) continue;
     if (await nameLegs(e.legs).catch(() => false)) dirty = true; }
   if (dirty) await setJSON(KEY.ledger, ledger).catch(() => {});
+  let regrade = false;
   const out = summarizeLedger(ledger), finals = {}, boxes = {}, today = etDate(new Date().toISOString());
   // 10/27: the promise is memoized (not the value), so a combo's four legs on one day share ONE ESPN read instead of four at once
   const fin = (d) => (finals[d] = finals[d] || finalsFor(d).catch(() => null));
@@ -236,10 +252,12 @@ export async function loadMyBets() {
     if (todo.length) e.picks = await Promise.all(e.picks.map(async (p) => (p.result || !p.date || p.date > today ? p
       : p.kind === "prop" ? markProp(p, ((await box(p.date)) || {})[p.game]) : markLeg(p, ((await fin(p.date)) || {})[p.game]))));
     if (e.prop && !e.prop.result && e.prop.date && e.prop.date <= today) e.prop = markProp(e.prop, ((await box(e.prop.date)) || {})[e.prop.game]);
+    if (e.pick && !e.pick.result && e.pick.date && e.pick.date <= today) e.pick = markLeg(e.pick, ((await fin(e.pick.date)) || {})[e.pick.game]);   // 10/29: a straight team bet's leg
     const L = ledger[e.id];
+    if (L && e.pick && e.pick.result && !L.pickResult) { L.pickResult = e.pick.result; dirty = true; regrade = true; }
     if (L && L.legs && e.picks) e.picks.forEach((p, i) => { const l = L.legs[i]; if (l && p.result && !l.result && !/WON|LOST/.test(l.state || "")) { l.result = p.result; if (p.actual != null) l.actual = p.actual; dirty = true; } });
     if (L && L.prop && e.prop && e.prop.result && !L.prop.result) { L.prop = e.prop; dirty = true; }
   }
   if (dirty) await setJSON(KEY.ledger, ledger).catch(() => {});
-  return { syncedAt: synced ? synced.t : null, ...out };
+  return { syncedAt: synced ? synced.t : null, ...(regrade ? summarizeLedger(ledger) : out) };
 }
