@@ -999,6 +999,15 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   const gR = { key: G, date: D, start: "2026-12-31T00:00:00Z", card: { total: { plain: { id: "cardpick|total", ruleId: "bookgap|total", side: "under", line: 230.5, pick: "Under 230.5", hit: 64.1 }, pts: { id: "ptspick|total", side: "under", line: 232.5, pick: "Under 232.5", hit: 66.7, points: 2 } } } };
   await rec.recordPicks([gR], Date.parse("2026-12-30T18:30:00Z"));
   ok(JSON.parse(await R.get(K("ptspick|total"))).label === "Under 232.5" && !(await R.get(`removed:${K("ptspick|total")}`)), "record (10/26 night): a rule total's PICK w/ POINTS stays");
+  { // 10/29 late (owner: "make sure it saves the new rule"): a PICK w/ POINTS saved under the old fewest-points rule is re-saved once before tip-off
+    await R.set(K("ptspick|total"), JSON.stringify({ date: D, game: G, id: "ptspick|total", market: "total", side: "under", line: 235.5, label: "Under 235.5", points: 5 }));
+    const gN = { ...gR, card: { total: { ...gR.card.total, pts: { id: "ptspick|total", side: "under", line: 238.5, pick: "Under 238.5", hit: 72.4, points: 8 } } } };
+    await rec.recordPicks([gN], Date.parse("2026-12-30T18:40:00Z"));
+    const now1 = JSON.parse(await R.get(K("ptspick|total"))), was = JSON.parse(await R.get(`removed:${K("ptspick|total")}`) || "null");
+    await rec.recordPicks([{ ...gN, card: { total: { ...gN.card.total, pts: { ...gN.card.total.pts, line: 239.5, pick: "Under 239.5", points: 9 } } } }], Date.parse("2026-12-30T18:50:00Z"));
+    const now2 = JSON.parse(await R.get(K("ptspick|total")));
+    ok(now1.label === "Under 238.5" && now1.r72 === true && was && was.label === "Under 235.5" && /old fewest-points rule/.test(was.why) && now2.label === "Under 238.5",
+      "record (10/29 late): an old-rule PICK w/ POINTS is re-saved with the card's 72% line before tip-off (old row kept under removed:); after that the first new-rule sighting stands", { now1, was, now2 }); }
   for (const k of await R.keys(`*pick:${D}*`)) await R.del(k); }
 { // 10/20 review: sportsbook lines only while current (36 h): opening night showed the 10/14 pull as today's
   const { booksCurrent } = await import("../lib/slate.js"), now = Date.parse("2026-10-20T02:00:00Z");
