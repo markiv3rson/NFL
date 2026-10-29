@@ -210,11 +210,11 @@ function cardBody(g, kind, C) {
   let l2;
   if (p) { const c2 = clsOf(p.hit); l2 = `<b class="${TEST ? "" : c2}" style="font-size:13px${TEST ? ";color:#b9a8ff" : ""}"><span class="lbw">${TEST ? "Test" : "Pick"} w/ points:</span> ${esc(p.pick)} · ${hitTxt(p.hit, c2)}</b>`; }
   else l2 = `<span class="dim" style="font-size:13px"><span class="lbw">Pick w/ points:</span> none</span>`;
-  const grp = (r) => r.team || (r.side === "over" ? "Over" : "Under"), first = x ? x.team || (x.side === "over" ? "Over" : "Under") : null;
+  const grp = (r) => r.team || (r.side === "over" ? "Over" : "Under"), first = x ? x.team || (x.side === "over" ? "Over" : "Under") : null, side0 = p && p.alt ? grp(p) : first;
   // 10/29 (owner: "only show one row that this is pick with points under more ... only show me the rest of the options if it wins"): under MORE the
   // PICK w/ POINTS line, then only the other lines that win (56%+) -- never the PICK or the PICK w/ POINTS line a second time (both sports)
-  const won = C.rows.filter((r) => r.hit >= 56 && !(p && r.pick === p.pick) && !(x && r.pick === x.pick) && (!first || grp(r) === first));   // on the PICK's side only (the card never names both teams)
-  const names = [...new Set(won.map(grp))].sort((a, b) => (a === first ? -1 : 0) - (b === first ? -1 : 0));
+  const won = C.rows.filter((r) => r.hit >= 56 && !(p && r.pick === p.pick) && !(x && r.pick === x.pick) && (!side0 || grp(r) === side0));   // on the PICK's side only; 10/29 night: a PICK w/ POINTS on the other team (no tested rule) takes the list with it
+  const names = [...new Set(won.map(grp))].sort((a, b) => (a === side0 ? -1 : 0) - (b === side0 ? -1 : 0));
   const rows = names.map((nm, i) => `<div style="margin-top:${i ? 8 : 2}px">` + won.filter((r) => grp(r) === nm).map((r) => { const pk = !!(p && r.pick === p.pick);
     return `<div class="s${pk && !TEST ? " g" : ""}" style="margin-top:2px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.pick)} · ${ptsWord(r.points)} · ${hitTxt(r.hit, clsOf(r.hit))} · ${Math.round(r.price * 100)}¢</div>`; }).join("") + "</div>").join("");
   return `<div style="margin-top:6px">${l1}</div>${why}` + moreBox(`<div style="margin-top:4px">${l2}</div>` + (rows ? `<div style="margin-top:6px">${rows}</div>` : ""));
@@ -258,13 +258,13 @@ function whyBox(g, kind, info) {
 const MODEL_INFO = {
   spread: [["Model:", "the game model’s score guess. Data only."], ["Model (Team):", "team-stats model at Polymarket’s line. Data only on NBA, never the pick."],
     ["Pick:", "the bet at Polymarket’s main line, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
-    ["Pick w/ points:", "same side, the fewest bought points from 5 to 10."], ["MORE list:", "the lines that won 56%+, both teams: points bought · history win % · Polymarket price."]],
+    ["Pick w/ points:", "the fewest bought points from 5 to 10: on a tested rule’s team; with no rule, on the team whose line wins more."], ["MORE list:", "the lines that won 56%+, both teams: points bought · history win % · Polymarket price."]],
   total: [["Model:", "the game model’s total points guess. Data only."], ["Pick:", "Over or Under at Polymarket’s main total, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
     ["Pick w/ points:", "same side, the fewest bought points from 5 to 10."], ["MORE list:", "the lines that won 56%+, Over and Under: points bought · history win % · Polymarket price."]],
   ml: [["Model:", "the model’s own chance each team wins."], ["PICK:", "the market’s favorite and its chance with Polymarket’s fee taken out."]],
 };
 const CARD_INFO = [["PICK:", "the card’s bet at Polymarket’s main line, locked at tip-off."], ["LINE MOVE / BOOK GAP / FATIGUE / ATS REGRESSION / SHOT QUALITY:", "the tested rules that named a PICK."],
-  ["PICK w/ POINTS:", "the same side with the fewest bought points from 5 to 10; none on the model-side total."], ["MODEL SIDE:", "no rule fired; the model’s side (about 50%)."],
+  ["PICK w/ POINTS:", "the fewest bought points from 5 to 10: the PICK’s side; a spread with no tested rule takes the team whose line wins more; none on the model-side total."], ["MODEL SIDE:", "no rule fired; the model’s side (about 50%)."],
   ["MONEYLINE:", "the market’s favorite to win."], ["GREEN 56%+:", "every pick shown green; “said” = the average % shown."], ["PRESEASON TEST:", "preseason games, not in the season record."]];
 const SHADOW_INFO = [["Test picks,", "never shown on a card: recorded and graded live. One becomes a pick only after it holds 56%+ over about 100 games."],
   ["LINE MOVE:", "Pinnacle moved 3+ points; that side at the first number / at the number when seen."], ["INJURY:", "a star newly out; the healthy side at the open / when seen."],

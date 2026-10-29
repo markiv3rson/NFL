@@ -1,7 +1,8 @@
 // The Model card's two answers (the NFL app's card, 10/15, applied to NBA data):
 //   PICK            -- the side a TESTED rule likes, at Polymarket's own line, with its win rate; no rule -> the model's side at the main line,
 //                      shown at the model's honest history (regular season 2025-26, 1,783 games, each game predicted before it was played)
-//   PICK w/ POINTS  -- 10/29 (owner: "+5 - +10"): the fewest points from 5 to 10 on the PICK's side (PTS_MIN); never on the model-side TOTAL (10/26
+//   PICK w/ POINTS  -- 10/29 (owner: "+5 - +10"): the fewest points from 5 to 10 on the PICK's side (PTS_MIN; 10/29 night: a model-side SPREAD takes the team
+//                      whose 5-10 point line wins more, spreadPart); never on the model-side TOTAL (10/26
 //                      night, a coin flip whose bought points went 18-21 live). 10/16-10/28: the fewest points (2+) that reached 56%, within 2 points.
 //   rows            -- every line you could buy (both teams; Over AND Under): Polymarket's main line ("main") and every alternate up to 7 points from
 //                      it (owner 10/16: "check buying 2 3 4 5 6 7 points"), each with its historical win rate given a main line like this one
@@ -11,8 +12,8 @@ const r1 = (x) => Math.round(x * 10) / 10;
 const sg = (x) => (x > 0 ? "+" : "") + x;
 export const PTS_BAR = 56, MAX_LIST = 7;
 // 10/29 (owner: "+5 - +10", both sports): PICK w/ POINTS buys 5 to 10 points on the PICK's side -- the fewest listed, never past 10. Closing lines
-// (the service's history, any side, nothing fitted): +5 won 59.9 / 59.8 / 58.2% on spreads 2008-16 / 2017-23 / 2024-26 and 61.7 / 61.0 / 61.1% on
-// totals; the app's own 2026-27 PICKs re-graded at +5: spreads 73-39 (65.2%), totals 49-40 (55.1%; +5.5 59.0%). The model-side total still has none.
+// (the service's history, any side, nothing fitted): +5 won 67.9 / 66.5 / 66.1% on spreads 2008-16 / 2017-23 / 2024-26 (10/29 night: the 59.9 / 59.8 /
+// 58.2 first quoted here read the home line with the wrong sign; the service's own table was always right) and 61.7 / 61.0 / 61.1% on totals; the app's own 2026-27 PICKs re-graded at +5: spreads 73-39 (65.2%), totals 49-40 (55.1%; +5.5 59.0%). The model-side total still has none.
 export const PTS_MIN = 5, PTS_MAX = 10;
 // the model's own side at the main line: honest rate on games the fit never saw (official-report injury basis, 2025-26). 10/17 pass: updated to the
 // 10/17 rebuild's own report (trained 2022-24, tested 2025-26, 2,462 games: spread side 49.4%, total side 50.4%; it was 50.3 / 50.5 on 1,783 games)
@@ -150,7 +151,13 @@ function spreadPart(g) {
   }
   // 10/19 (owner: "why is your decision making wrong" -- the NFL one-side rule of 10/18): PICK w/ POINTS sits on the PICK's team; BOS @ DET read PICK DET +1.5 and
   // PICK w/ POINTS BOS +1.5, a guaranteed loser on one of the two. With no PICK it may still use either side.
-  const all = boundRows(raw, plain, (r) => r.team === plain.team, true).map(({ hist, ...r }) => r), rows = finishRows(all), b = pickPts(plain ? all.filter((r) => r.team === plain.team) : all), pts = b ? { id: "ptspick|spread", kind: "spread", ...noFirst(b), ruleId: plain ? plain.ruleId : null } : null;
+  // 10/29 night (owner: "situational when you should buy this much number against the team"; the NFL card's rule): with NO tested rule (the model's side),
+  // PICK w/ POINTS goes on the team whose fewest 5-10 point line reads the higher win % (the line table by spread size); a rule PICK keeps its team.
+  // Favorite vs underdog at the same points, the side chosen on 2008-16 also won more on 2017-24 in 49 of 66 spread-size x points cells (+1.8 points;
+  // 3-4.5 underdog +3.6 at +5, 5-6.5 underdog +2.7) and in 2025-27 +1.3. Totals (Over vs Under by total size, 35 of 66) do not hold: the PICK's side stays.
+  const all = boundRows(raw, plain, (r) => r.team === plain.team, true).map(({ hist, ...r }) => r), rows = finishRows(all);
+  const own = pickPts(plain ? all.filter((r) => r.team === plain.team) : all), oth = plain && plain.id === "modelpick|spread" ? pickPts(all.filter((r) => r.team !== plain.team)) : null;
+  const b = oth && (!own || oth.hit > own.hit) ? { ...oth, alt: true } : own, pts = b ? { id: "ptspick|spread", kind: "spread", ...noFirst(b), ruleId: plain ? plain.ruleId : null } : null;
   if (!plain && !rows.length) return null;
   return { kind: "spread", plain, pts, rows };
 }
