@@ -459,10 +459,11 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(bks.booksDue(night, T("2026-11-10T15:00:00Z")).slot === "am", "books: 7 AM pull on a game day");
   ok(bks.booksDue(night, T("2026-11-10T19:59:00Z")).slot === "am", "books: still the morning pull until 3 hours before the first tip");
   ok(bks.booksDue(night, T("2026-11-10T21:00:00Z")) === null, "books: inside 3 hours of the first tip the morning pull waits for the pre-tip pull (one paid pull, not two)");
-  ok(bks.booksDue(night, T("2026-11-10T22:00:00Z")).slot === "pre", "books: pull 1 hour before the first tip-off");
-  { const d = bks.booksDue(night, T("2026-11-10T23:01:00Z")); ok(!d || d.slot !== "pre", "books: no pre-game pull once the first game has started"); }
+  { const d = bks.booksDue(night, T("2026-11-10T22:00:00Z")); ok(d.slot === "tip" && d.markets === "spreads,totals", "books (10/29): a spreads + totals pull within the hour before a tip-off", d); }
+  ok(bks.booksDue(night, T("2026-11-10T22:30:00Z"), "2026-11-10T22:00:00Z") === null, "books: no second pull for the same tip-off once a fresh one exists");
+  { const d = bks.booksDue(night, T("2026-11-11T01:30:00Z"), "2026-11-10T22:00:00Z"); ok(d && d.slot === "tip" && d.id === "tip:2026-11-11T02:00:00Z", "books: the next tip-off wave gets its own pull", d); }
   { const mat = [{ key: "M", start: "2026-12-25T17:00:00Z" }, { key: "N", start: "2026-12-26T01:00:00Z" }];   // Christmas: first tip 9 AM Pacific
-    ok(bks.booksDue(mat, T("2026-12-25T15:00:00Z")) === null && bks.booksDue(mat, T("2026-12-25T16:00:00Z")).slot === "pre", "books: a matinee day gets the pre-tip pull only, no separate 7 AM pull"); }
+    ok(bks.booksDue(mat, T("2026-12-25T15:00:00Z")) === null && bks.booksDue(mat, T("2026-12-25T16:00:00Z")).slot === "tip", "books: a matinee day gets the pre-tip pull only, no separate 7 AM pull"); }
   ok(bks.booksDue([{ key: "X", start: "2026-11-12T03:00:00Z" }], T("2026-11-10T15:30:00Z")) === null, "books: no 7 AM pull on a day without games");
   ok(bks.booksDue(night, T("2026-11-11T05:00:00Z")) === null, "books: nothing once every game has started");
 
@@ -475,9 +476,11 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   const r2 = await bks.pullBooksIfDue(night, { now: d1 + 600e3, apiKey: "SECRET123", fetcher: fake(sample) });
   ok(!r2.pulled && calls === 1, "books: a slot is only pulled once (no second spend)", r2);
   const r3 = await bks.pullBooksIfDue(night, { now: T("2026-11-10T22:05:00Z"), apiKey: "SECRET123", fetcher: fake(sample, 200, "345") });
-  ok(r3.pulled && r3.slot === "pre" && calls === 2, "books: the pre-tip pull is its own slot", r3);
+  ok(r3.pulled && r3.slot === "tip" && calls === 2 && /markets=spreads%2Ctotals/.test(lastUrl), "books: the pre-tip pull is its own slot (spreads + totals, 2 credits)", r3);
   const stored = await bks.loadBooks();
-  ok(stored && stored.remaining === 345 && stored.games["OKC @ ATL"] && stored.slot === "pre", "books: last pull is kept for the page", stored && stored.slot);
+  ok(stored && stored.remaining === 345 && stored.games["OKC @ ATL"] && stored.slot === "tip" && stored.games["OKC @ ATL"].ml, "books: last pull is kept for the page (the morning moneyline kept)", stored && stored.slot);
+  { let n = 0; const seq = async () => { n++; return n === 1 ? { ok: false, status: 502, json: async () => ({}), headers: { get: () => null } } : { ok: true, status: 200, json: async () => sample, headers: { get: () => "300" } }; };
+    const b = await bks.fetchBooks("K", seq, "spreads,totals", 0); ok(n === 2 && b.remaining === 300 && b.games["OKC @ ATL"], "books (10/29): a 502 is asked once more before giving up", { n }); }
   const night2 = [{ key: "Q @ R", start: "2026-11-12T01:00:00Z" }];
   const bad = await bks.pullBooksIfDue(night2, { now: T("2026-11-11T16:00:00Z"), apiKey: "SECRET123", fetcher: fake([], 401) });
   ok(!bad.pulled && /401/.test(bad.note) && !/SECRET123/.test(bad.note), "books: a failed pull says why and never prints the key", bad);
@@ -1199,8 +1202,8 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
       "prop calibration (10/22): a leg's chance moves toward what its 5-point band really won, shrunk by 100 graded rows (82% band won 70% of 50 -> 78%); a band with no graded rows keeps the model's %", { bands, c }); }
   for (const g of G) { await R.del(pr.K_NBAPROPMODEL(D, g.key)); await R.del(pr.K_NBAPROPS(D, g.key)); }
   { // BOOK GAP (10/24): books 1-4 pts (spread) / 2-6 pts (total) off Polymarket's main line, books pulled in the last 6 h -> the books' side at Polymarket's number
-  const T = new Date(Date.now() - 3600e3).toISOString(), old = new Date(Date.now() - 7 * 3600e3).toISOString();
-  const bg = (books, at = T, over = {}) => cp.buildCard(mk("OKC", "ATL", { books, booksAt: at, ...over }));
+  const T = new Date(Date.now() - 1800e3).toISOString(), old = new Date(Date.now() - 7 * 3600e3).toISOString(), tip = new Date(Date.now() + 1800e3).toISOString();
+  const bg = (books, at = T, over = {}) => cp.buildCard(mk("OKC", "ATL", { books, booksAt: at, start: tip, ...over }));
   const sp = bg({ spread: { homeSpread: -10.5 }, total: { line: 227 } });
   ok(sp.spread.plain.ruleId === "bookgap|spread" && sp.spread.plain.pick === "ATL -8.5" && sp.spread.plain.hit === 57.3 && sp.spread.plain.id === "cardpick|spread", "BOOK GAP spread: books ATL -10.5 vs Polymarket -8.5 -> ATL -8.5 at 57.3%", sp.spread.plain);
   ok(sp.total.plain.ruleId === "bookgap|total" && sp.total.plain.pick === "Over 223.5" && sp.total.plain.hit === 64.1, "BOOK GAP total: books 227 vs Polymarket 223.5 -> Over 223.5 at 64.1%", sp.total.plain);
@@ -1211,7 +1214,7 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(dog.spread.plain.pick === "OKC +8.5" && dog.total.plain.pick === "Under 223.5", "BOOK GAP the other way: books ATL -6.5 -> OKC +8.5; books 220 -> Under", [dog.spread.plain.pick, dog.total.plain.pick]);
   const small = bg({ spread: { homeSpread: -9 }, total: { line: 224.5 } }), big = bg({ spread: { homeSpread: -14.5 }, total: { line: 233 } }), stale = bg({ spread: { homeSpread: -10.5 }, total: { line: 227 } }, old), nob = bg(null);
   ok(small.spread.plain.ruleId === "model|spread" && small.total.plain.ruleId === "model|total" && big.spread.plain.ruleId === "model|spread" && big.total.plain.ruleId === "model|total" && stale.spread.plain.ruleId === "model|spread" && nob.total.plain.ruleId === "model|total",
-    "no BOOK GAP under 1 pt / 2 pts, over 4 / 6 pts (bad read), with books older than 6 h or no books: the model's side");
+    "no BOOK GAP under 1 pt / 2 pts, over 4 / 6 pts (bad read), with books not pulled in the 90 minutes before tip-off (10/29) or no books: the model's side");
   const lmv = bg({ spread: { homeSpread: -10.5 } }, T, { move: { signal: { spread: { team: "OKC", open: 8.5, pts: 3 } } } });
   ok(lmv.spread.plain.ruleId === "linemove|spread" && lmv.spread.plain.hit === 67.9, "LINE MOVE at the open (67.9%) outranks BOOK GAP (57.3%)", lmv.spread.plain); }
 { // 10/26 angle-mix shadows: tired + star out, big dog vs a tired favorite, rested vs star out, rested road favorite
@@ -1239,7 +1242,7 @@ const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "u
   const g = { home: "DET", away: "BOS", poly: { spread: { homeSpread: -1.5, home: 0.52, away: 0.48 }, total: { line: 229.5, over: 0.5, under: 0.5 }, ml: { midHome: 0.56, midAway: 0.44 } },
     card: { spread: { plain: { team: "DET", pick: "DET -1.5", hit: 67.9, ruleId: "linemove|spread", why: "LINE MOVE 3", atOpen: true } }, total: { plain: { side: "over", pick: "Over 229.5", hit: 55.2, ruleId: "shotq|total", why: "SHOT QUALITY" } } },
     move: { spread: { open: -3.5, now: -1.5 }, total: { open: 231.5, now: 229.5 }, signal: { spread: { team: "DET", pts: 3, open: -1.5 }, total: { side: "under", pts: 3, open: 232.5 } } },
-    books: { spread: { homeSpread: -3.5 }, total: { line: 232.5 } }, booksAt: "2026-10-26T21:00:00Z", fatigue: { away: { ot: false, far: true } },
+    books: { spread: { homeSpread: -3.5 }, total: { line: 232.5 } }, booksAt: "2026-10-26T21:00:00Z", start: "2026-10-26T22:00:00Z", fatigue: { away: { ot: false, far: true } },
     context: { home: { rest: 3, trav_km: 0, sq_l20: -4.1, sq_x10: 242, sq_gp: 12, sq_cold_mu: 0.4, sq_mu: 1.2 }, away: { rest: 1, trav_km: 1900, ats_pct: 0.3, ats_n: 24, sq_l20: -3.4, sq_x10: 238 } },
     model: { margin: 2.4, total: 233.1, marketWinPct: 56, teamSide: { team: "DET", line: -1.5, pct: 52.1 }, injuryShift: -0.8 }, injuries: { home: [], away: [{ name: "Jayson Tatum", status: "Out", ppg: 26.8 }, { name: "Al Horford", status: "Questionable", ppg: 9.1 }] }, starOut: { home: 0, away: 1 },
     ml: { pick: { label: "DET ML", pct: 56, tier: "pick", team: "DET" } } };

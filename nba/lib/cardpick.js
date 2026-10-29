@@ -66,9 +66,15 @@ export function shotRule(g, tl) {
 // 10/27 night (research): that file's line is Polymarket's BUSIEST line, and on most spread rows its price already leaned to the books' side (53-60c);
 // the live card compares the books with the line nearest 50c. On rows priced 45-55c (the live case) the spread rule won 57.3% of 171 (55.0 / 59.3 by
 // half; +1 / +2 / +3 points 61.4 / 64.3 / 68.4) -- 59.7 ran 2.4 high; totals 64.8% of 91 there = the 64.1% kept.
-export const BGAP_HIT = { spread: 57.3, total: 64.1 }, BGAP_PTS = { spread: { 1: 61.4, 2: 64.3, 3: 68.4 }, total: { 1: 65.2, 2: 66.7, 3: 68.2 } }, BGAP_N = { spread: 171, total: 198 }, BGAP_SP = [1, 4], BGAP_TOT = [2, 6], BGAP_FRESH_MS = 6 * 3600e3;
-export function bookGapRule(g, kind, now = Date.now()) {
-  const bk = g && g.books, px = g && g.poly; if (!bk || !px || !g.booksAt || !(now - Date.parse(g.booksAt) <= BGAP_FRESH_MS)) return null;
+// 10/29 recheck (owner: "retest the book gap"): live the rule went 14-18 (spread 9-10, total 5-8) because the live card compared Polymarket with a books
+// pull up to 6 HOURS old (7 AM / 1 h before the first tip) while the test above used the books' CLOSING line. The same 603 games with the books' OPENING
+// line (the stale case): spread 134-158 = 45.9%, total 104-117 = 47.1%, and none of 290 gap / side options holds on the later half; with the books'
+// closing line it holds on the later half (spread 1-4 pts 97-64 = 60.2%, total 2-6 pts 75-37 = 67.0%). So the rule counts only on a books line pulled
+// within 90 minutes before the game's own tip (lib/books.js pulls spreads + totals before every tip-off wave).
+export const BGAP_HIT = { spread: 57.3, total: 64.1 }, BGAP_PTS = { spread: { 1: 61.4, 2: 64.3, 3: 68.4 }, total: { 1: 65.2, 2: 66.7, 3: 68.2 } }, BGAP_N = { spread: 171, total: 198 }, BGAP_SP = [1, 4], BGAP_TOT = [2, 6], BGAP_TIP_MS = 90 * 60e3;
+export const bgapFresh = (g) => { const b = Date.parse(g && g.booksAt), tip = Date.parse(g && g.start); return isFinite(b) && isFinite(tip) && b <= tip && tip - b <= BGAP_TIP_MS; };
+export function bookGapRule(g, kind) {
+  const bk = g && g.books, px = g && g.poly; if (!bk || !px || !bgapFresh(g)) return null;
   if (kind === "spread") {
     const b = bk.spread && Number(bk.spread.homeSpread), p = px.spread && Number(px.spread.homeSpread);
     if (!isFinite(b) || !isFinite(p)) return null;
@@ -129,7 +135,7 @@ function spreadPart(g) {
     const t = sig.team, line = t === g.home ? hs : -hs, atOpen = near(line, sig.open);
     lm = { team: t, hit: atOpen ? MOVE_HIT.spreadOpen : MOVE_HIT.spreadClose, n: MOVE_N, why: `LINE MOVE ${sig.pts}`, ruleId: "linemove|spread", atOpen };
   }
-  const rule = [lm, bookGapRule(g, "spread", g.now), fat ? { ...fat, ruleId: "fatigue|spread" } : null, atsRule(g)].filter(Boolean).sort((a, b) => b.hit - a.hit)[0] || null;   // several rules: the higher tested rate names the side
+  const rule = [lm, bookGapRule(g, "spread"), fat ? { ...fat, ruleId: "fatigue|spread" } : null, atsRule(g)].filter(Boolean).sort((a, b) => b.hit - a.hit)[0] || null;   // several rules: the higher tested rate names the side
   if (rule) {
     team = rule.team; const line = team === g.home ? hs : -hs;
     plain = { id: "cardpick|spread", ruleId: rule.ruleId, kind: "spread", team, line, pick: `${team} ${sg(line)}`, hit: rule.hit, n: rule.n, price: priced(team === g.home ? ps.home : ps.away), why: rule.why, ...(rule.atOpen != null ? { atOpen: rule.atOpen } : {}), ...(rule.ptsHit ? { ptsHit: rule.ptsHit } : {}) };
@@ -157,7 +163,7 @@ function totalPart(g) {
   let plain = null;
   const lm = sig && sig.side && near(tl, sig.open)                                   // LINE MOVE on totals holds only while Polymarket still has the opening number
     ? { side: sig.side, hit: MOVE_HIT.totalOpen, n: MOVE_N_T, why: `TOTAL MOVE ${sig.pts}`, ruleId: "linemove|total", atOpen: true } : null;
-  const rule = [lm, bookGapRule(g, "total", g.now), shotRule(g, tl)].filter(Boolean).sort((a, b) => b.hit - a.hit)[0] || null;   // several rules: the higher tested rate names the side
+  const rule = [lm, bookGapRule(g, "total"), shotRule(g, tl)].filter(Boolean).sort((a, b) => b.hit - a.hit)[0] || null;   // several rules: the higher tested rate names the side
   if (rule) {
     plain = { id: "cardpick|total", ruleId: rule.ruleId, kind: "total", side: rule.side, line: tl, pick: `${nm(rule.side)} ${tl}`, hit: rule.hit, n: rule.n, price: priced(rule.side === "over" ? pt.over : pt.under), why: rule.why, ...(rule.atOpen != null ? { atOpen: rule.atOpen } : {}), ...(rule.ptsHit ? { ptsHit: rule.ptsHit } : {}) };
   } else if (m && isFinite(m.total)) {                                              // no rule: the model's total against the main total (a tie goes Under)

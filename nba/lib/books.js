@@ -1,6 +1,7 @@
 // Sportsbook consensus (The Odds API), NBA only. Shown next to Polymarket on each game; the model and the picks do not use it.
-// One pull = moneyline + spread + total, US books = 3 credits. Pulled twice a day, not on every snapshot (the free plan is small
-// and shared with the NFL app): 7 AM Pacific on a day with games, and 1 hour before the first tip-off of the night.
+// One pull = moneyline + spread + total, US books = 3 credits, at 7 AM Pacific on a day with games. 10/29 (BOOK GAP retest): before every tip-off wave
+// (a game tipping within the hour whose books are older than 75 minutes before its tip) a spreads + totals pull (2 credits) -- the rule only holds on
+// a books line taken close to tip-off. ~3-4 waves a night: about 300 credits a month of the 500.
 import { TEAMS } from "./teams";
 import { toProb, toAmerican } from "./odds";
 import { getRedis, jparse } from "./redis";
@@ -41,9 +42,11 @@ export function parseBooks(events) {
   return out;
 }
 
-export async function fetchBooks(apiKey, fetcher = fetch) {
-  const q = new URLSearchParams({ apiKey, regions: "us", markets: "h2h,spreads,totals", oddsFormat: "american" });
-  const r = await fetcher(`${URL_()}?${q}`, { cache: "no-store", signal: AbortSignal.timeout(25000) });
+export async function fetchBooks(apiKey, fetcher = fetch, markets = "h2h,spreads,totals", wait = 5000) {
+  const q = new URLSearchParams({ apiKey, regions: "us", markets, oddsFormat: "american" });
+  const ask = () => fetcher(`${URL_()}?${q}`, { cache: "no-store", signal: AbortSignal.timeout(25000) });
+  let r = await ask();
+  if (r.status >= 500) { await new Promise((ok) => setTimeout(ok, wait)); r = await ask(); }   // 10/29: a 5xx (no credits spent) is asked once more, like NFL
   if (!r.ok) throw new Error(`Odds API answered ${r.status}`);   // the address holds the key, so it is never put in the message
   const events = await r.json();
   if (!Array.isArray(events)) throw new Error("Odds API reply was not a list of games");
@@ -56,13 +59,14 @@ const ptHour = (ms) => Number(new Intl.DateTimeFormat("en-US", { timeZone: "Amer
 
 // Which pull (if any) is due right now. Games = the slate's games (start = ISO time).
 //   "am"  : 7 AM Pacific or later, on a day (Pacific) that has a game, once a day.
-//   "pre" : from 1 hour before the first tip-off of the night until tip-off, once per night.
-export function booksDue(games, now = Date.now()) {
+//   "tip" : a game tips within the next hour and the last pull is older than 75 minutes before its tip (spreads + totals only), once per tip-off.
+export function booksDue(games, now = Date.now(), lastT = null) {
   const open = games.filter((g) => Date.parse(g.start) > now).sort((a, b) => a.start.localeCompare(b.start));
   if (!open.length) return null;
   const night = ptDate(Date.parse(open[0].start));
   const tip = Math.min(...games.filter((g) => ptDate(Date.parse(g.start)) === night).map((g) => Date.parse(g.start)));   // the night's FIRST tip-off, even if it has passed
-  if (now >= tip - 3600e3 && now < tip) return { slot: "pre", id: `pre:${night}` };
+  const next = Date.parse(open[0].start), lt = Date.parse(lastT || 0) || 0, last = lt <= now ? lt : 0;
+  if (next - now <= 3600e3 && last < next - 75 * 60e3) return { slot: "tip", id: `tip:${open[0].start}`, markets: "spreads,totals" };
   if (ptHour(now) >= 7 && now < tip - 3 * 3600e3 && games.some((g) => ptDate(Date.parse(g.start)) === ptDate(now))) return { slot: "am", id: `am:${ptDate(now)}` };   // within 3 h of the first tip the pre-tip pull is the day's pull (a matinee day pays once, not twice)
   return null;
 }
@@ -71,14 +75,16 @@ export function booksDue(games, now = Date.now()) {
 // a failed pull gives the slot back so the next snapshot retries.
 export async function pullBooksIfDue(games, { now = Date.now(), apiKey = process.env.NBA_ODDS_API_KEY   /* merged site: NBA's own Odds API setting, NFL credits are never used */, fetcher = fetch, force = false } = {}) {
   // force = a person asked for a pull right now (signed-in /api/snapshot?books=now): runs outside the two daily slots, costs ~3 credits
-  const due = force ? { slot: "manual", id: `manual:${now}` } : booksDue(games, now);
+  const r = getRedis(), prev = force ? null : jparse(await r.get(BOOKS_KEY).catch(() => null));
+  const due = force ? { slot: "manual", id: `manual:${now}` } : booksDue(games, now, prev && prev.t);
   if (!due) return { pulled: false, note: null };
   if (!apiKey) return { pulled: false, note: "NBA_ODDS_API_KEY not set" };
-  const r = getRedis(), flag = `books:pull:${due.id}`;
+  const flag = `books:pull:${due.id}`;
   const claimed = await r.set(flag, new Date(now).toISOString(), "EX", 36 * 3600, "NX").catch(() => null);
   if (!claimed) return { pulled: false, note: null };
   try {
-    const b = await fetchBooks(apiKey, fetcher);
+    const b = await fetchBooks(apiKey, fetcher, due.markets);
+    if (due.markets && prev && prev.games) for (const [k, g] of Object.entries(b.games)) if (!g.ml && prev.games[k] && prev.games[k].ml) g.ml = prev.games[k].ml;   // a tip pull has no moneyline: the morning one stays on the game page
     await r.set(BOOKS_KEY, JSON.stringify({ t: new Date(now).toISOString(), slot: due.slot, games: b.games, remaining: b.remaining }));
     return { pulled: true, slot: due.slot, remaining: b.remaining, games: Object.keys(b.games).length, note: `credits left ${b.remaining}` };
   } catch (e) {
