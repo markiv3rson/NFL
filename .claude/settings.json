@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "awk '/^## THE OWNER.S RULES/{on=1} /^## OWNER.S STANDING DECISIONS/{on=0} on' \"$CLAUDE_PROJECT_DIR/CLAUDE.md\""
+          }
+        ]
+      }
+    ]
+  }
+}
