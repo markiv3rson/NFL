@@ -2171,15 +2171,15 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const ref = JSON.parse(readFileSync(new URL("./h1_ref.json", import.meta.url), "utf8")); let worst = 0;
   for (const c of ref) { const m = h.h1Mean(c.x); worst = Math.max(worst, Math.abs(m - c.mean)); for (const [L, v] of Object.entries(c.cover)) worst = Math.max(worst, Math.abs(h.h1HomeCover(m, Number(L)) - v)); }
   ok(worst < 1e-3, "1H model + neighbours equal the Python fit on 6 reference games", worst);
-  ok(h.h1Qualifies(0.6, 0.55) && !h.h1Qualifies(0.57, 0.5) && h.h1Qualifies(0.597, 0.6) && h.h1Qualifies(0.62, 0.61) && h.h1Qualifies(0.58, 0.77) && !h.h1Qualifies(0.8, 0.78) && h.h1Qualifies(0.6, 0.65) && !h.h1Qualifies(0.6, null) && h.H1_BAR === 0.58 && h.H1_CAP === 0.77,
-    "1H rule (owner 10/28): 58%+ and 77c or less, the price never drops a side (IND +7.5 59.7% at 60c stays)");
+  ok(h.h1Qualifies(0.76, 0.74) && h.h1Qualifies(0.79, 0.77) && !h.h1Qualifies(0.75, 0.74) && !h.h1Qualifies(0.8, 0.69) && !h.h1Qualifies(0.9, 0.78) && !h.h1Qualifies(0.8, null) && h.H1_BAR === 0.58 && h.H1_CAP === 0.77 && h.H1_FLOOR === 0.7 && h.H1_OVER === 0.02,
+    "1H rule (10/29 recheck): priced 70-77c and the model's chance 2+ points above the price (weeks 1-3 6-0, unseen weeks 4-7 6-0)");
   const x = h.h1Inputs({ week: 3, roof: "outdoors", div: true, homeRest: 7, awayRest: 6, nvSpread: 3, nvTotal: 44 }, { booksHomeSpread: -3.5, booksTotal: 45.5, wind: 12, outdoor: true });
   ok(x.hfav === 3.5 && x.tl === 45.5 && x.windo === 12 && x.domeF === 0 && x.div === 1 && x.early === 1 && x.rest_d === 1, "inputs: books first, wind outdoors, early weeks, rest", x);
   const xd = h.h1Inputs({ week: 9, roof: "dome", nvSpread: -2.5, nvTotal: 48 }, { wind: 20 }); ok(xd.hfav === -2.5 && xd.windo === 0 && xd.domeF === 1 && xd.early === 0, "a dome: no wind, the schedule's line when no books", xd);
   const mean = h.h1Mean(ref[0].x), rows = [{ line: 3.5, aPrice: 0.62, hPrice: 0.40 }, { line: 1.5, aPrice: 0.5, hPrice: 0.52 }], pk = h.h1Side(mean, rows, "AW", "HM");
   const best = (() => { let b = null; for (const r of rows) { if (!h.h1Steady(r)) continue; const ph = h.h1HomeCover(mean, -r.line); for (const s of [{ pc: h.h1Shown(ph), px: r.hPrice }, { pc: h.h1Shown(1 - ph), px: r.aPrice }]) if (h.h1Qualifies(s.pc, s.px) && (!b || s.pc > b)) b = s.pc; } return b; })();
   ok(best == null ? pk == null : pk && Math.abs(pk.pc - Math.round(best * 1000) / 1000) < 1e-9 && /^(AW|HM) [+-]\d/.test(pk.label) && / 1H$/.test(pk.label), "h1Side = the highest qualifying shown % (the model's own, the price only caps), labeled with its 1H line", pk);
-  ok(Math.abs(h.h1Shown(0.8) - 0.686) < 1e-9 && h.H1_US_OFF === 0.114 && h1ShownNoPrice(h), "1H shown % = the model - 11.4 points (10/28 evening: it ran 11.4 high on Polymarket US's steady books); the price never moves it");
+  ok(h.h1Shown(0.8) === 0.8 && h.H1_US_OFF === undefined && h1ShownNoPrice(h), "1H shown % = the model's own chance (10/29: the 11.4-point offset was measured in-sample; on the new rule's picks the model ran low)");
   ok(h.h1Side(mean, [{ line: 30, aPrice: 0.75, hPrice: 0.99 }], "AW", "HM") == null && h.h1Side(mean, [{ line: 30, aPrice: 0.75, hPrice: 0.27 }], "AW", "HM").team === "AW", "a 1c-bid book (75c next to 99c) is no price; the same line on a steady book is a pick");
   ok(h.h1Side(mean, [{ line: 3.5, aPrice: 0.9, hPrice: 0.9 }], "AW", "HM") == null, "nothing qualifies at 90c -> no pick");
   const G = { key: "AW @ HM", away: "AW", home: "HM", kickoff: "2099-10-01T17:00:00Z" }, r = getRedis();
@@ -2299,7 +2299,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const bk = readFileSync(new URL("../pages/api/backup.js", import.meta.url), "utf8"); ok(/!k\.startsWith\("nba:"\)/.test(bk), "the NFL backup leaves NBA's keys to NBA's own backup"); }
 { // 10/28 line-by-line check: the ⓘ texts quote the code's own numbers (ML PICK team-model rates, the 1H SPREAD rule)
   const a = readFileSync(new URL("../public/app.js", import.meta.url), "utf8"), { TM_ML } = await import("../lib/cardpick.js"), h = await import("../lib/h1pick.js");
-  ok(a.includes(`favorites won ${TM_ML.fav.hit}% of ${TM_ML.fav.n}, underdogs priced ${TM_ML.dog.lo * 100}–50¢ won ${TM_ML.dog.hit}% of ${TM_ML.dog.n}`) && a.includes(`(${Math.round(h.H1_BAR * 100)}%+ on the model’s chance less ${Math.round(h.H1_US_OFF * 1000) / 10} points, ${Math.round(h.H1_CAP * 100)}¢ max, steady books)`),
+  ok(a.includes(`favorites won ${TM_ML.fav.hit}% of ${TM_ML.fav.n}, underdogs priced ${TM_ML.dog.lo * 100}–50¢ won ${TM_ML.dog.hit}% of ${TM_ML.dog.n}`) && a.includes(`(the model’s chance ${Math.round(h.H1_OVER * 100)}+ points over a ${Math.round(h.H1_FLOOR * 100)}–${Math.round(h.H1_CAP * 100)}¢ price, steady books)`),
     "Models ⓘ: the ML PICK and 1H SPREAD texts carry the code's numbers"); }
 { // 10/28 late: live grading facts from ESPN's game summary (lib/livebox.js) + the saved picks of a week (pages/api/modelpicks.js pieces)
   const LB = await import("../lib/livebox.js"), W = await import("../lib/week.js");
