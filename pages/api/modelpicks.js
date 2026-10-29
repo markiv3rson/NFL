@@ -4,7 +4,7 @@
 // (teaser:<s>:<w>) and its Best TD picks (55%+, from the graded results). The page uses the live slate for the week on screen before kickoff
 // and this for every game that has started and every past week. Player prop picks come from /api/props. Read-only.
 import { getRedis, jparse, K } from "../../lib/redis";
-import { SEASON, displayWeek, loadGames, started } from "../../lib/games";
+import { MB_FROM_WEEK, SEASON, displayWeek, loadGames, started } from "../../lib/games";
 import { lockedPicksFrom, gpOut, h1Out } from "../../lib/week";
 import { tkey } from "../../lib/tracked";
 const BEST_TD = 58;   // 10/29 (owner): the page's Best TD bar
@@ -32,9 +32,11 @@ const tdPicksOf = (g, rs, H) => !rs || !Array.isArray(rs.td) ? [] : [g.away, g.h
 // 10/29 (owner: "I need records at the top of every tab in models bets ... the record of the picks on there winning and losing"): the season's W-L of
 // exactly the picks these tabs show (the same locked card picks, 1H / GAME PROPS / PASSING TDs picks and Best TD picks), every week so far.
 // Pushes count neither way. Cached 5 minutes.
+// 10/29 (owner: "I wanna start fresh and record all of our picks starting today ... This will only be for model bets"): the Model bets tiles count from
+// week 8 (Thursday 10/29 on); weeks 1-7 stay saved and graded (the week drop-down still shows them), other pages keep the whole season.
 const REC_KEYS = ["spread", "spreadPts", "total", "totalPts", "ml", "h1", "gp", "ptd", "td", "ftd", "tdp"];
 async function seasonRecords(r, season, weeks) {
-  const ck = `modelpicks:rec3:${season}`, hit = jparse(await r.get(ck).catch(() => null)); if (hit) return hit;
+  const ck = `modelpicks:rec4:${season}`, hit = jparse(await r.get(ck).catch(() => null)); if (hit) return hit;
   const R = Object.fromEntries(REC_KEYS.map((k) => [k, { w: 0, l: 0 }])), add = (k, res) => { if (res === "W" || res === true) R[k].w++; else if (res === "L" || res === false) R[k].l++; };
   const H = new Map();   // the TD history so far (weeks before the one being counted)
   for (const week of weeks) {
@@ -85,6 +87,6 @@ export default async function handler(req, res) {
         tdTop: rs && Array.isArray(rs.td) ? [g.away, g.home].flatMap((t) => rs.td.filter((p) => p.team === t && p.played !== false).sort((a, b) => b.fair - a.fair).slice(0, 12)).map((p) => ({ player: p.player, team: p.team, fair: p.fair, price: p.ask ?? null, scored: typeof p.scored === "boolean" ? p.scored : null })) : [] };
     });
     const weeks = []; for (let w = 1; w <= dw.week; w++) weeks.push(w);
-    res.status(200).json({ ok: true, season, week, weeks, games: out, ...(req.query.rec ? { records: await seasonRecords(r, season, weeks) } : {}) });
+    res.status(200).json({ ok: true, season, week, weeks, games: out, ...(req.query.rec ? { records: await seasonRecords(r, season, weeks.filter((w) => w >= MB_FROM_WEEK)) } : {}) });
   } catch (e) { res.status(200).json({ ok: false, error: String(e).slice(0, 200) }); }
 }

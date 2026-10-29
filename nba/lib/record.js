@@ -7,9 +7,11 @@ import { staleDate } from "./pinnacle";
 import { finalsFor } from "./espn";
 const KEY = (date, game, id) => `pick:${date}:${game}:${id}`;
 const IDS = "pick:ids";
+// 10/29 (owner: "start fresh and record all of our picks starting today ... only for model bets"): the Model bets record tiles count from this day on
+export const MB_FROM = "2026-10-29";
 export const pickRows = (g) => {
   const rows = [], test = !!g.preseason, base = (id, market, x) => ({ date: g.date, game: g.key, id, market, label: x.label || x.pick, team: x.team || null, side: x.side || null, line: x.line ?? null,
-    pct: x.pct ?? x.hit, tier: test ? "test" : "pick", ruleId: x.ruleId || null, points: x.points || 0, price: x.price > 0 && x.price < 1 ? x.price : null, savedAt: new Date().toISOString() });
+    pct: x.pct ?? x.hit, tier: test ? "test" : "pick", ruleId: x.ruleId || null, points: x.points || 0, price: x.price > 0 && x.price < 1 ? x.price : null, ...(x.alt ? { alt: true } : {}), savedAt: new Date().toISOString() });
   const ml = g.ml && g.ml.pick;
   if (ml && (ml.tier === "pick" || ml.tier === "lean" || ml.tier === "test") && ml.team) rows.push(base("ml", "ml", { ...ml, price: g.priceFor ? g.priceFor("ml", ml) : ml.price, pct: ml.pct }));
   const card = g.card; if (!card) return rows;
@@ -33,7 +35,8 @@ export async function recordPicks(games, now = Date.now()) {
     const v = ((await r.mget(...ks).catch(() => null)) || []).map(jparse);   // one command per game
     const pickOf = (k) => { const i = k === "spread" ? 0 : 3; return v[i + 1] || v[i + 2] || rows.find((x) => x.market === k && /^(cardpick|modelpick)\|/.test(x.id)) || null; };
     for (const row of rows) {
-      if (/^ptspick\|/.test(row.id)) { const pk = pickOf(row.market); if (pk && sideOf(pk) !== sideOf(row)) continue; }
+      // 10/29 night: a model-side spread's PICK w/ POINTS may sit on the other team on purpose (alt: the team whose 5-10 point line wins more)
+      if (/^ptspick\|/.test(row.id) && !row.alt) { const pk = pickOf(row.market); if (pk && sideOf(pk) !== sideOf(row)) continue; }
       if (isStubPick(row)) continue;   // 10/26: a placeholder line (a side at 0.9+) is never saved as a pick
       const key = KEY(row.date, row.game, row.id);
       if (!(await r.set(key, JSON.stringify(row), "NX"))) continue;   // the first sighting stands (NX: saved only when new, one command)
@@ -43,7 +46,7 @@ export async function recordPicks(games, now = Date.now()) {
       const pk = ks[i * 3], old = v[i * 3], pick = v[i * 3 + 1] || v[i * 3 + 2];
       // 10/26 night: the card no longer buys points on the model-side TOTAL, so a saved ptspick|total under a modelpick|total (saved before the change) leaves the record before tip-off too
       const noneNow = !!old && !!pick && k === "total" && pick.id === "modelpick|total" && !rows.some((x) => x.id === "ptspick|total");
-      if (!old || !pick || (sideOf(old) === sideOf(pick) && !noneNow)) continue;
+      if (!old || !pick || ((sideOf(old) === sideOf(pick) || old.alt) && !noneNow)) continue;
       const cur = rows.find((x) => x.id === `ptspick|${k}` && sideOf(x) === sideOf(pick));
       await r.set(`removed:${pk}`, JSON.stringify({ ...old, removedAt: new Date(now).toISOString(), why: noneNow ? "no PICK w/ POINTS on the model-side total (10/26)" : "PICK w/ POINTS on the other side of the PICK" }), "NX");
       if (cur) await r.set(pk, JSON.stringify(cur)); else { await r.del(pk); await r.srem(IDS, pk); }
