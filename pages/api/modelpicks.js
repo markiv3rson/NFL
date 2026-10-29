@@ -7,7 +7,7 @@ import { getRedis, jparse, K } from "../../lib/redis";
 import { SEASON, displayWeek, loadGames, started } from "../../lib/games";
 import { lockedPicksFrom, gpOut, h1Out } from "../../lib/week";
 import { tkey } from "../../lib/tracked";
-const BEST_TD = 55;
+const BEST_TD = 58;   // 10/29 (owner): the page's Best TD bar
 // 10/29 (owner: "I need records at the top of every tab in models bets ... the record of the picks on there winning and losing"): the season's W-L of
 // exactly the picks these tabs show (the same locked card picks, 1H / GAME PROPS / PASSING TDs picks and Best TD picks), every week so far.
 // Pushes count neither way. Cached 5 minutes.

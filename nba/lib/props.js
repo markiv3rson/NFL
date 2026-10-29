@@ -22,8 +22,8 @@ const STAT = { basketball_player_points: "pts", basketball_player_rebounds: "reb
   basketball_player_points_assists_rebounds: "pra", basketball_player_pts_reb_ast: "pra" };
 // 10/21 (owner: "Anything below 65 gets cut" -> option B, NBA only): opening night the 62-64% rows went 6-6 while 65%+ went 114-30, and last
 // season's real lines had the 62-65 band at 51-63%. Rows saved under the old 62% bar drop out of the page and the record (onePerPlayer).
-export const NBA_PROP_BAR = 0.65;
-export const MAX_PRICE = 0.77;   // 10/20 (owner: "cut 77+"): a row priced 77c or more is not shown and not counted (both sports)
+export const NBA_PROP_BAR = 0.70;   // 10/29 (owner's table): 70%+ (was 65)
+export const MAX_PRICE = 0.82;   // 10/29 (owner: "set the player props cap to 82"; 10/20 it was "cut 77+"): a row priced 82c or more is not shown and not counted (both sports)
 export const NBA_STATS = [["pts", "Points"], ["reb", "Rebounds"], ["ast", "Assists"], ["pra", "PRA"], ["3pm", "Threes"], ["stl", "Steals"], ["blk", "Blocks"]];
 const q = (x) => { const v = Number(x && typeof x === "object" ? x.value : x); return v > 0 && v < 1 ? Math.round(v * 1000) / 1000 : null; };
 export const K_NBAPROPS = (date, key) => `nbaprops:${date}:${key}`;
