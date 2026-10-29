@@ -47,13 +47,13 @@ const PAGES = [
 ];
 const WIDTHS = [390, 430, 375, 1440];   // phone (every check), the owner's iPhone 15 Pro Max (430), a small phone (375) and computer (off the screen / wraps / cut / overlap)
 // one-line pieces (never wrap, never cut)
-const ONE_LINE = [".tile .nm > .t", ".sh", ".gchip", ".pph > span", ".ppr .pp3", ".ppr .pp4", ".stat .k", ".mbhero .lbl", ".pbn"];
+const ONE_LINE = [".tile .nm > .t", ".sh", ".ppr:not(.pph):not(.tdr) .pp1", ".row.brow > .bnm", ".gchip", ".pph > span", ".ppr .pp3", ".ppr .pp4", ".stat .k", ".mbhero .lbl", ".pbn"];
 // kinds of text compared NFL vs NBA
 const KINDS = { "page title": ".phead h1, .phead .ttl, h1", "slot header": ".sh", "tab chip": ".gchip", "column heading": ".pph > span", "pick cell": ".ppr .pp1", "model %": ".ppr .pp3", "price": ".ppr .pp4",
   "tile team": ".tile .nm > .t", "tile middle": ".tile .mid", "record tile label": ".stat .k", "record tile number": ".stat .v", "row": ".card .row > span:first-child", "profit": ".mbhero b", "fold": ".fold > span:first-child", "game tab": ".gtab", "game team": "#detail .t" };
 
 const browser = await pw.chromium.launch(exe ? { executablePath: exe } : {});
-const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, timezoneId: "America/Los_Angeles", locale: "en-US" });
+async function newCtx() { const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, timezoneId: "America/Los_Angeles", locale: "en-US" });
 await ctx.route("**/*", async (route) => {
   const u = new URL(route.request().url());
   if (u.hostname !== "look.test") return /\.(png|jpe?g|webp|svg|gif)$/i.test(u.pathname) || route.request().resourceType() === "image" ? route.fulfill({ body: PNG, contentType: "image/png" }) : route.abort();
@@ -66,12 +66,13 @@ await ctx.route("**/*", async (route) => {
   }
   if (p === "/") p = "/index.html";
   try { return route.fulfill({ body: readFileSync(join(PUB, decodeURIComponent(p))), contentType: type(p) }); } catch { return route.fulfill({ status: 404, body: "" }); }
-});
+}); return ctx; }
 
 const fails = [], styles = {};
 const ONLY = process.env.ONLY ? new RegExp(process.env.ONLY) : null;   // ONLY=regex runs just the pages whose "sport name" matches (a quick rerun)
-for (const W of WIDTHS) for (const [sp, name, hash, click] of PAGES) {
-  if (ONLY && !ONLY.test(`${sp} ${name}`)) continue;
+// 10/29 (owner: "Do not take 11 minutes"): the pages run 8 at a time (each in its own tab), ~2 minutes for the whole set
+const JOBS = WIDTHS.flatMap((W) => PAGES.filter(([sp, name]) => !ONLY || ONLY.test(`${sp} ${name}`)).map((p) => [W, ...p]));
+async function checkPage(ctx, [W, sp, name, hash, click]) {
   const page = await ctx.newPage(), errs = [];
   await page.setViewportSize({ width: W, height: W > 600 ? 900 : 844 });
   page.on("pageerror", (e) => errs.push(String(e).split("\n")[0]));
@@ -84,7 +85,7 @@ for (const W of WIDTHS) for (const [sp, name, hash, click] of PAGES) {
     const vis = (e) => { const b = e.getBoundingClientRect(); const cs = getComputedStyle(e); return b.width > 0 && b.height > 0 && cs.visibility !== "hidden" && cs.display !== "none" && e.textContent.trim() !== ""; };
     const lines = (e) => { const tops = [...e.querySelectorAll("*"), e].flatMap((n) => [...n.childNodes].filter((c) => c.nodeType === 3 && c.textContent.trim() && !c.parentElement.closest(".rec")).flatMap((c) => { const rg = document.createRange(); rg.selectNodeContents(c); return [...rg.getClientRects()]; })).filter((x) => x.width > 1 && x.height > 4).map((x) => Math.round(x.top + x.height / 2)); const u = []; for (const t of tops.sort((a, b) => a - b)) if (!u.length || t - u[u.length - 1] > 6) u.push(t); return u.length; };
     const lbl = (e) => e.textContent.replace(/\s+/g, " ").trim().slice(0, 40);
-    const out = { over: document.documentElement.scrollWidth > innerWidth + 1, wrap: [], cut: [], overlap: [], style: {} };
+    const out = { over: document.documentElement.scrollWidth > innerWidth + 1, wrap: [], cut: [], overlap: [], tight: [], offc: [], style: {} };
     for (const s of ONE_LINE) for (const e of document.querySelectorAll(s)) { if (!vis(e)) continue;
       if (lines(e) > 1) out.wrap.push(`${s} "${lbl(e)}"`);
       const cs = getComputedStyle(e); if (cs.overflow !== "visible" && e.scrollWidth > e.clientWidth + 1) out.cut.push(`${s} "${lbl(e)}"`); }
@@ -92,7 +93,14 @@ for (const W of WIDTHS) for (const [sp, name, hash, click] of PAGES) {
       const cells = [...row.children].filter((c) => /^pp\d/.test(c.className.split(" ")[0] || "") && vis(c)).map((c) => { const rg = document.createRange(); rg.selectNodeContents(c); const rs = [...rg.getClientRects()].filter((x) => x.width > 1); const cb = c.getBoundingClientRect(), clip = getComputedStyle(c).overflow !== "visible";   // a cell that cuts its text with … only shows what fits in its box
         return { c, l: Math.max(Math.min(...rs.map((x) => x.left)), clip ? cb.left : -1e9), r: Math.min(Math.max(...rs.map((x) => x.right)), clip ? cb.right : 1e9), t: Math.min(...rs.map((x) => x.top)), b: Math.max(...rs.map((x) => x.bottom)) }; }).filter((x) => isFinite(x.l));
       for (let i = 0; i < cells.length; i++) for (let j = i + 1; j < cells.length; j++) { const a = cells[i], b = cells[j];
-        if (a.l < b.r - 1 && b.l < a.r - 1 && a.t < b.b - 1 && b.t < a.b - 1) out.overlap.push(`"${lbl(a.c)}" / "${lbl(b.c)}" in "${lbl(row)}"`); } }
+        if (a.l < b.r - 1 && b.l < a.r - 1 && a.t < b.b - 1 && b.t < a.b - 1) out.overlap.push(`"${lbl(a.c)}" / "${lbl(b.c)}" in "${lbl(row)}"`);
+        else if (a.t < b.b - 1 && b.t < a.b - 1 && Math.max(b.l - a.r, a.l - b.r) < 4) out.tight.push(`"${lbl(a.c)}" / "${lbl(b.c)}" in "${lbl(row)}"`); } }
+    // 10/29 (owner: "fix the spacing for polymarket and model percentage"): each value centered under its column heading (within 8 px)
+    const mid = (c) => { const rg = document.createRange(); rg.selectNodeContents(c); const rs = [...rg.getClientRects()].filter((x) => x.width > 1); return rs.length ? (Math.min(...rs.map((x) => x.left)) + Math.max(...rs.map((x) => x.right))) / 2 : null; };
+    for (const h of document.querySelectorAll(".ppr.pph")) { if (!vis(h)) continue;
+      for (let row = h.nextElementSibling; row && row.classList.contains("ppr") && !row.classList.contains("pph"); row = row.nextElementSibling) { if (!vis(row)) continue;
+        for (const k of ["pp3", "pp4", "pp5"]) { const hc = h.querySelector(`:scope > .${k}`), vc = row.querySelector(`:scope > .${k}`); if (!hc || !vc || !vis(hc) || !vis(vc)) continue;
+          const a = mid(hc), b = mid(vc); if (a != null && b != null && Math.abs(a - b) > 8) out.offc.push(`${lbl(hc)} "${lbl(vc)}" (${Math.round(b - a)} px)`); } } }
     for (const [k, s] of Object.entries(KINDS)) { const e = [...document.querySelectorAll(s)].find(vis); if (!e) continue; const cs = getComputedStyle(e);
       out.style[k] = { size: cs.fontSize, weight: cs.fontWeight, caps: cs.textTransform, font: cs.fontFamily.split(",")[0].trim(), colour: cs.color, sample: lbl(e) }; }
     return out;
@@ -103,9 +111,12 @@ for (const W of WIDTHS) for (const [sp, name, hash, click] of PAGES) {
   for (const w of [...new Set(r.wrap)]) fails.push(`${tag}: wraps onto 2 lines -- ${w}`);
   for (const w of [...new Set(r.cut)]) fails.push(`${tag}: cut off -- ${w}`);
   for (const w of [...new Set(r.overlap)]) fails.push(`${tag}: columns overlap -- ${w}`);
+  for (const w of [...new Set(r.tight)]) fails.push(`${tag}: columns touch -- ${w}`);
+  for (const w of [...new Set(r.offc)]) fails.push(`${tag}: not under its heading -- ${w}`);
   if (W === 390) (styles[name] = styles[name] || {})[sp] = r.style;
   await page.close();
 }
+{ let next = 0; const N = Number(process.env.LOOK_TABS || 8); await Promise.all(Array.from({ length: N }, async () => { const ctx = await newCtx(); while (next < JOBS.length) await checkPage(ctx, JOBS[next++]); await ctx.close(); })); }
 for (const [name, s] of Object.entries(styles)) { if (!s.nfl || !s.nba) continue;
   for (const k of Object.keys(s.nfl)) { const a = s.nfl[k], b = s.nba[k]; if (!b) continue;
     const diff = ["size", "weight", "caps", "font", ...(/record tile number|pick cell|tile middle|profit/.test(k) ? [] : ["colour"])].filter((f) => a[f] !== b[f]);   // those colours come from the win rate / result, not the design

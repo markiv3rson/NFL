@@ -276,6 +276,10 @@ const logoUrl = (team) => (team ? LOGO_OVERRIDES[team] || `https://a.espncdn.com
 function tlogo(team) { return team ? `<img class="tlogo" src="${logoUrl(team)}" alt="" onerror="this.style.display='none'">` : ""; }
 // 10/28 (owner: "instead of the team logos put the helmets"; 10/28 later: moved after the name, then back on the owner's word): the Home tiles carry each team's helmet on the outer side of its name, facing the middle (away faces right, home left; public/helmets/sm = the matchup helmets cropped, 96 px tall)
 function thelmet(team, dir) { return team ? `<img class="thlm" src="/helmets/sm/${dir}/${team}.webp" alt="" onerror="this.onerror=null;this.src='${logoUrl(team)}'">` : ""; }
+// 10/29 (owner: "Remove the X and in the circle put the team helmets there instead" / "Make everything in 1 line ... Easy to read"): a player row carries his
+// team's small helmet where the dot was (no team title lines); on a phone the name is shortened (J.Coker) so the row stays one line
+function phelm(team) { return team ? `<img class="phlm" src="/helmets/sm/right/${team}.webp" alt="" onerror="this.onerror=null;this.src='${logoUrl(team)}'">` : ""; }
+const pnm = (n) => { const t = String(n || ""), m = /^(\S)\S*\s+(.+)$/.exec(t); const sh = m && m[1] + "." + (!/\s/.test(m[2]) && m[2].length > 13 ? m[2].split("-")[0] : m[2]); return m ? `<span class="nmf">${esc(t)}</span><span class="nms">${esc(sh)}</span>` : esc(t); };   // a long double name keeps its first half (N.Alexander)
 const retPill = (r) => (r.returning ? (r.returningState === "practicing" ? ' <span class="pill p-g" style="padding:0 6px;font-size:10px">↩ RETURNING</span>' : ' <span class="pill p-y" style="padding:0 6px;font-size:10px">↩ WAS OUT · NOT PRACTICING</span>') : "");
 function tdNoGap(r) {
   if (!r || r.fair == null || !(r.bid > 0) || !(r.price > 0) || r.stale || r.thin || r.price - r.bid > Math.min(0.05, 0.4 * r.price)) return null;
@@ -300,7 +304,7 @@ function tdRow(x, withGame) {
   // 10/21 night (owner: "Make it like the first td layout"): the First TD page's row -- bullet, small logo, name (+ position / injury tags), MODEL % (purple) and the Polymarket cents
   // on the right; a tap opens SNAP · 2+ TD, then the week marks on their own line. 10/22 (owner: "remove the word Anytime TD ... replace it with the no touchdown"): the middle holds only
   // the red caution (Best TD picks add their game before it) -- centered in its own column on a computer, under the name on a phone.
-  return `<div class="pbl ppr first tdr" data-tdw="${esc(r.team)}|${esc(r.player)}"><span class="pp1">• ${withGame ? tlogo(r.team) : ""}${esc(r.player)}<span class="pos">${esc(r.pos || "")}</span>${injTag(r) || practTag(r)}${retPill(r)}</span>` +
+  return `<div class="pbl ppr first tdr" data-tdw="${esc(r.team)}|${esc(r.player)}"><span class="pp1">${phelm(r.team)}${esc(r.player)}<span class="pos">${esc(r.pos || "")}</span>${injTag(r) || practTag(r)}${retPill(r)}</span>` +
     `<span class="pp2">${withGame && r.game ? `<span class="pp2t">${esc(r.game)}</span>` : ""}${warn ? `<span class="wc r">${warn}</span>` : ""}</span><span class="pp3 mod">${tdPct(r.fair)}%</span><span class="pp4">${r.price != null ? Math.round(r.price * 100) + "¢" : "—"}${tdNoGap(r) != null ? ` <span class="y nogap" title="No · ${tdNoGap(r)} under">⚠</span>` : ""}</span>` +
     `<div class="tdwk"><div class="st"><b>SNAP</b> ${snap} <span class="dim">·</span> <b>2+ TD</b> ${two}</div><div class="wk"></div></div></div>`;
 }
@@ -395,7 +399,7 @@ function tdBody() {
   for (const g of gs) { const sl = (g.carry ? `WEEK ${g.week} · ` : "") + (g.kickoff ? labSlot(g.kickoff) : "GAMES"); if (!by[sl]) { by[sl] = []; slots.push(sl); times[sl] = []; } by[sl].push(g);
     if (g.kickoff) { const tt = tm(g.kickoff); times[sl].includes(tt) || times[sl].push(tt); } }
   const gameCard = (g) => { const xs = shown.filter((x) => x.g.key === g.key); if (!xs.length) return "";
-    const teamPart = (t) => { const rs = xs.filter((x) => x.r.team === t); return rs.length ? `<div class="pbl pteam">${tlogo(t)}${esc(t)}</div>${rs.map((x) => tdRow(x)).join("")}` : ""; };
+    const teamPart = (t) => { const rs = xs.filter((x) => x.r.team === t); return rs.map((x) => tdRow(x)).join(""); };
     return `<div class="par"><div class="pbh"><span class="pbn">${gameLogos(g.key)}</span></div>${tdHead()}${teamPart(g.away)}${teamPart(g.home)}</div>`; };
   const list = slots.map((sl) => { const cards = by[sl].map(gameCard).join(""); if (!cards) return ""; const open = tdSlotOpen(sl);
     return `<div class="sh labslot tdtog${open ? " open" : ""}" data-slot="${esc(sl)}">${sl}${times[sl].length ? ` <span class="lst">· ${times[sl].map(esc).join(" · ")}</span>` : ""}<i class="car">▾</i></div><div class="pgrid tdl${open ? "" : " closed"}">${cards}</div>`; }).join("");
@@ -491,16 +495,20 @@ const liveSc = (k) => { const sc = k && LIVE_SC[k]; return sc && sc.st === "in" 
 function liveOf(legs) { const ks = [...new Set(legs.map((l) => l.game).filter((k) => liveSc(k)))]; return ks; }
 const liveHeadTxt = (ks) => (ks.length === 1 ? `<span class="r lvb">● LIVE · ${esc(liveSc(ks[0]).lbl || "")}</span>` : '<span class="r lvb">● LIVE</span>');
 const liveLegTxt = (ks, l, done) => (ks.length > 1 && !done && liveSc(l.game) ? ` <span class="r lvb">· ${esc(liveSc(l.game).lbl || "")}</span>` : "");
+// 10/29 (owner, My bets: "No logos on this page. Use the team helmets"): every team logo on My bets becomes the team's small helmet
+const helmetize = (h) => String(h).replace(/<img class="tlogo" src="([^"]*)"[^>]*>/g, (m, src) => { const t = Object.keys(LOGO_OVERRIDES).find((k) => LOGO_OVERRIDES[k] === src) || (/\/nfl\/500\/([A-Z]{2,4})\.png$/.exec(src) || [])[1]; return t ? phelm(t) : m; });
 function betRow(b) { return `<div class="betwrap">${betRowInner(b)}</div>`; }
 function betRowInner(b) {
   if (b.source === "account") {   // bet recorded automatically from your Polymarket account
     const lk = !b.sold && (!b.result || b.result === "pending") ? liveOf(b.picks || (b.prop ? [b.prop] : b.pick ? [b.pick] : [])) : [];
     const st = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : legLost(b) ? '<span class="r">Lost</span>' : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Even" : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : (b.waiting ? '<span class="y">waiting for TD results</span>' : '<span class="dim">open</span>');
-    const name = b.picks && b.picks.length ? `${b.picks.length} picks` : b.prop ? `${tlogo(b.prop.team)}${esc(b.prop.label)}` : b.pick ? `${b.pick.result ? RESMARK[b.pick.result] + " " : ""}${legTxt(b.pick.result, logoLabel(b.pick.label, b.pick.team))}`   // 10/29: a straight team bet reads like a leg (the side you hold)
+    const name = b.picks && b.picks.length ? `${b.picks.length} picks` : b.prop ? `${phelm(b.prop.team)}${pnm(b.prop.label)}` : b.pick ? `${b.pick.result ? RESMARK[b.pick.result] + " " : ""}${legTxt(b.pick.result, logoLabel(b.pick.label, b.pick.team))}`   // 10/29: a straight team bet reads like a leg (the side you hold)
       : `${esc(b.title)}${b.outcome ? ` — ${esc(b.outcome)}` : ""}`;   // 10/19: single player bet
     const picks = b.picks && b.picks.length ? b.picks.map((p) => `<div class="s" style="padding:0 0 0 16px">${p.result ? RESMARK[p.result] + " " : "• "}${legTxt(p.result, logoLabel(p.label, p.team))}${liveLegTxt(lk, p, !!p.result)}${!p.result && legFlipped(p.label) ? ' <span class="y">⚠ app now picks the other side</span>' : ""}</div>`).join("") : "";
-    return `<div class="row"><span>${name}${lk.length ? " " + liveHeadTxt(lk) : ""}</span><span>${st}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
-      `<div class="s" style="padding:0 0 ${picks ? 2 : 6}px 8px">${money(b.cost)}${b.price != null ? ` at ${betCents(b.price)}¢` : ""} · ${b.sold ? `sold early for ${money(Math.max(0, (b.cost || 0) + (b.pl || 0)))}` : legLost(b) ? `−${money(b.cost)}` : `pays ${money(b.toWin)} if it wins`}</div>` + (picks ? `<div style="padding-bottom:6px">${picks}</div>` : "");
+    // 10/29 (owner: "Remove the wordings. If it wins. And put money and layout next to their names and put the $ x money pays $$$ in one line"): one line per bet --
+    // name · $cost at N¢ · pays $X · open / Won / Lost; the legs under it
+    return `<div class="row brow"><span class="bnm">${name}${lk.length ? " " + liveHeadTxt(lk) : ""}</span><span class="bmo">${money(b.cost)}<span class="bat">${b.price != null ? ` at ${betCents(b.price)}¢` : ""} ·</span> ${b.sold ? `sold early for ${money(Math.max(0, (b.cost || 0) + (b.pl || 0)))}` : legLost(b) ? `−${money(b.cost)}` : `pays ${money(b.toWin)}`}</span><span class="bst">${st}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
+      (picks ? `<div style="padding-bottom:6px">${picks}</div>` : '<div style="padding-bottom:6px"></div>');
   }
   const hit = b.legs.filter((l) => l.result === "W").length, lk = !b.sold && b.result === "pending" ? liveOf(b.legs) : [];
   const state = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? (b.pushUnconfirmed ? '<span class="y">Push leg</span>' : "Push") : (b.waiting ? '<span class="y">waiting for TD results</span>' : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : `<span class="dim">${hit} of ${b.legs.length} hit</span>`);
@@ -635,7 +643,7 @@ function renderMineNow() {
       return sc.disagree ? `<div class="s y">⚠ Settlement mismatch on ${sc.disagree} combo${sc.disagree === 1 ? "" : "s"}</div>`
         : ""; })() +
     `</div></div></div>` + T.drops;
-  $("record-mine").innerHTML = ddSlot($("record-mine"), wkChips) + top + `<div class="card" style="margin-top:10px">` +
+  $("record-mine").innerHTML = helmetize(ddSlot($("record-mine"), wkChips) + top + `<div class="card" style="margin-top:10px">` +
     (past || !open.length ? "" : openBySlot(open) +
     `<div class="sec"><div class="sh">Expected returns</div>` +
     `<div class="row"><span class="dim">If everything hits</span><span>${money(s.maxPayout)} (${cMoney(s.maxPayout - s.openCost)})</span></div>` +
@@ -645,7 +653,7 @@ function renderMineNow() {
     `<div class="drop${past ? " open" : ""}" id="settled">${(past ? shown : done).map(betRow).join("") || '<div class="s empty">None yet.</div>'}</div>` +
     `<div class="fold" data-drop="ban"><span>Analysis</span><span>▾</span></div><div class="drop" id="ban">${betsAnalysis(MB.bets)}</div>` +
     `</div>` +
-    `<div class="center"><button class="btn" id="sync-btn">↻ Sync account</button></div>`;
+    `<div class="center"><button class="btn" id="sync-btn">↻ Sync account</button></div>`);
   $("sync-btn").onclick = () => loadRecord(true);
   if (typeof Shell !== "undefined" && Shell.pinTop && $("record-mine").querySelector) Shell.pinTop($("record-mine").querySelector(".mbpin"));
   const mw = $("mb-wk"); if (mw) mw.onchange = () => { MBWEEK = mw.value === "all" ? "all" : Number(mw.value); renderMine(); };
@@ -1231,10 +1239,10 @@ const LAB_TABS = [["lines", "Game Lines"], ["halves", "Halves & Quarters"], ["pr
 let LABTYPE = "lines", LABWEEK = null, MPICKS = {}, LIVE_BOX = {}, LIVE_BOX_T = 0;
 // 10/29 (owner: "Player props need a sub tab for the others. Keep everything separated"): Player Props has its own stat chips -- the game page's, without First TD (not a pick)
 const MB_PROPS = [["td", "Anytime TD"], ["first", "First TD"], ["recyds", "Rec Yds"], ["rec", "Receptions"], ["rushyds", "Rush Yds"]];
-let MBPROP = (() => { try { const v = localStorage.getItem("mbProp:nfl"); return MB_PROPS.some(([k]) => k === v) ? v : "td"; } catch { return "td"; } })();
+let MBPROP = MB_PROPS[0][0];
 const mbChips = () => `<div class="gchips mbchips">${MB_PROPS.map(([k, t]) => `<button class="gchip${MBPROP === k ? " on" : ""}" type="button" data-mbprop="${k}">${t}</button>`).join("")}</div>`;
 // 10/15 (owner): ONE Bets tab -- My bets on the left (the list as before), Model bets on the right (the model's parlays). The choice is remembered.
-let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
+let BETSVIEW = "mine";   // 10/29 (owner: "It should always switch back to the first tab always. In order" / "I need first tabs only"): no tab is remembered on the phone
 // 10/21 night (owner): a page's drop-downs go to the right of its title (Shell.dd); without the shell (tests) they stay on top of the block
 function ddSlot(el, html) { if (typeof Shell !== "undefined" && Shell.dd && el && el.closest) { Shell.dd(el, html); return ""; } return html; }
 function applyBetsView() {
@@ -1266,14 +1274,14 @@ const teamSel = (teams) => `<div class="wksel"><select id="props-team" aria-labe
 const propLast = (p, tag) => { const l = p.last; if (!l) return '<span class="pp5 dim">—</span>';
   if (l.line == null) return `<span class="pp5 dim">${l.actual != null ? Math.round(l.actual * 10) / 10 : "—"}</span>`;
   return `<span class="pp5 ${l.result === "W" ? "g" : "r"}">${l.side === "over" ? "O" : "U"} ${l.line} ${l.result === "W" ? "✓" : "✗"}${l.actual != null ? ` <span class="dim">${Math.round(l.actual * 10) / 10}</span>` : ""}</span>`; };
-const propRow = (p) => { const r = p.result || (p.live && p.live.res) || null; return `<div class="pbl ppr${p.first ? " first" : ""}${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) : "•"} ${esc(p.name)}${p.result ? "" : liveBit(p.live && !p.live.res ? p.live : null)}</span><span class="pp2">${p.first ? "First TD" : p.stat === "td" ? "Anytime TD" : `${p.full && p.stat === "rec_yds" ? "Rec Yds " : p.stat === "rec" ? "Rec " : p.stat === "pass_yds" ? "Pass Yds " : p.stat === "rush_yds" ? "Rush Yds " : p.stat === "scrim_yds" ? "Scrim Yds " : ""}${p.side === "over" ? "Over" : "Under"} ${p.line}`}</span>${p.first ? "" : propLast(p)}<span class="pp3 mod">${Math.round((p.cal ?? p.chance) * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>` };
+const propRow = (p) => { const r = p.result || (p.live && p.live.res) || null; return `<div class="pbl ppr${p.first ? " first" : ""}${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) + " " : ""}${phelm(p.team)}${pnm(p.name)}${p.result ? "" : liveBit(p.live && !p.live.res ? p.live : null)}</span><span class="pp2">${p.first || p.stat === "td" ? "" : `${p.side === "over" ? "O" : "U"} ${p.line}${p.stat === "scrim_yds" ? " scrim" : ""}`}</span>${p.first ? "" : propLast(p)}<span class="pp3 mod">${Math.round((p.cal ?? p.chance) * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>` };
 // 10/28 late: + the Best TD picks ("Anytime TD"), the live state (the stat so far after the name, ✓ / ✗ the moment it can no longer change), p.full = every stat named (Model bets mixes them)
 // 10/20 night (owner): the POLYMARKET head carries the Polymarket logo on every props page (both sports); the First TD tab has NO LAST WK column (nothing to grade there)
-const propHead = (first, nm = "PLAYER") => `<div class="pbl ppr pph${first ? " first" : ""}"><span class="pp1">${nm}</span><span class="pp2">LINE</span>${first ? "" : '<span class="pp5">LAST WK</span>'}<span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
+const propHead = (first, nm = "PLAYER") => `<div class="pbl ppr pph${first ? " first" : ""}"><span class="pp1">${nm}</span><span class="pp2"></span>${first ? "" : '<span class="pp5">LAST WK</span>'}<span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
 // the rows of one game, split by team (away first, then home, then anyone with no team), each team with its small label (owner: "separate them by teams")
 function teamRows(g, row) {
   const teams = [...new Set([g.away, g.home, ...g.picks.map((p) => p.team || "")])].filter((t) => t != null);
-  return teams.map((t) => { const rs = g.picks.filter((p) => (p.team || "") === t); return rs.length ? `${t ? `<div class="pbl pteam">${tlogo(t)}${esc(t)}</div>` : ""}${rs.map(row).join("")}` : ""; }).join("");
+  return teams.map((t) => { const rs = g.picks.filter((p) => (p.team || "") === t); return rs.length ? rs.map(row).join("") : ""; }).join("");
 }
 // games (with kickoff + picks) -> blocks under the kickoff headers, like Model bets
 function propBlocks(games, row, first) {
@@ -1348,12 +1356,18 @@ const liveTag = (g) => { const b = LIVE_BOX[g.key]; return b && !b.final ? ` <sp
 // under it) · MODEL (the % in its win-rate colour) · POLYMARKET (the price); ✓ / ✗ in front and the row green / red once graded, the live state after the pick
 // 10/29 (owner: "why is this not in 1 line"): the game's name sits on its column-heading line (where PLAYER / PICK was), not on a line of its own
 const gameName = (g) => (g ? `<span class="pbn">${gameLogos(g.key || g.game)}${typeof liveTag === "function" && g.key ? liveTag(g) : g.started && !g.final ? ' <span class="lvb">● LIVE</span>' : ""}</span>` : "PICK");
-const pickHead = (nm = "PICK") => `<div class="pbl ppr pph first"><span class="pp1">${nm}</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
+const pickHead = (nm = "PICK") => `<div class="pbl ppr pph pk"><span class="pp1">${nm}</span><span class="pp2"></span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
 // 10/29 (owner: "Color code the numbers of the actual pick" / "I SAID THE NUMBER" / "to our models picks"): only the pick's number (the -3.5, the 213.5;
 // a moneyline's "ML") in the card picks' win-rate colours (green 56%+, light green 53-55%, yellow below); the MODEL % stays purple
 const numCol = (t, c) => { const m = /^(.*?)([+-]?\d+(?:\.\d+)?|\bML\b)(.*)$/.exec(String(t || "")); return m ? `${esc(m[1])}<span class="${c}">${esc(m[2])}</span>${esc(m[3])}` : ""; };
-const pickTr = (x) => { const r = normRes(x.result) || (x.live && x.live.res) || null, h = Number(x.hit), c = h >= 56 ? "g" : h >= 53 ? "lg" : "y";
-  return `<div class="pbl ppr first${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) : "•"} ${numCol(x.pick, c) || esc(x.pick)}${r ? "" : liveBit(x.live && !x.live.res ? x.live : null)}</span>` +
+// 10/29 (owner, Halves & Quarters screenshot: "Move the pick in a column and remove the words. Why are you not being consistent???"): every Model bets
+// table is the props table -- who (helmet + team, or the market) · the pick in its own column · MODEL · POLYMARKET; "1H" / "Over" / "Under" words cut to the pick
+// ("GB +3.5 1H" -> GB · +3.5, "CAR ML" -> CAR · ML, "Under 47.5" -> U 47.5, "Total touchdowns Under 5.5" -> Total touchdowns · U 5.5)
+const pickSplit = (t) => { const s = String(t || ""); let m = /^([A-Z]{2,4}) (ML|[+-]\d+(?:\.\d+)?)(?: 1H)?$/.exec(s); if (m) return [m[1], m[2], m[1]];
+  m = /^(.*?)\s*\b(Over|Under) (\d+(?:\.\d+)?)(?: 1H)?$/.exec(s); if (m) return [m[1], `${m[2][0]} ${m[3]}`, null];
+  m = /^(.*?):? (Yes|No)$/.exec(s); if (m) return [m[1], m[2], null]; return [s, "", null]; };
+const pickTr = (x) => { const r = normRes(x.result) || (x.live && x.live.res) || null, h = Number(x.hit), c = h >= 56 ? "g" : h >= 53 ? "lg" : "y"; const [who, pk, tm] = pickSplit(x.pick);
+  return `<div class="pbl ppr pk${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) + " " : ""}${tm ? phelm(tm) : ""}${esc(who)}${r ? "" : liveBit(x.live && !x.live.res ? x.live : null)}</span><span class="pp2">${pk ? numCol(pk, c) || esc(pk) : ""}</span>` +
     `<span class="pp3 mod">${isFinite(h) ? `${h >= 56 ? Math.round(h) : Math.floor(h)}%` : "—"}</span><span class="pp4">${x.price > 0 && x.price < 1 ? `${Math.round(x.price * 100)}¢` : "—"}</span></div>`; };
 const pickTable = (rows, g) => (rows.length ? pickHead(gameName(g)) + rows.map(pickTr).join("") : "");
 // a GAME PROPS label -> the market (on top) and the side (under it): "Total touchdowns Under 5.5" -> ["Total touchdowns", "Under 5.5"]
@@ -1365,8 +1379,8 @@ function tdBlock(g) {
   const src = g.tdAll && g.tdAll.length ? g.tdAll : (g.tdTop || []).map((t) => ({ player: t.player, team: t.team, fair: t.fair, price: t.price ?? null }));
   const rows = src.filter((r) => r.fair != null && usable(r)).sort((a, b) => b.fair - a.fair), per = {};
   const pool = rows.filter((r) => { const n = per[r.team] || 0; if (n >= 3) return false; per[r.team] = n + 1; return true; });   // owner 10/29: "only show top 3 of each team"
-  const row = (r) => { const sc = graded.get(`${r.team}|${r.player}`), h = tdRow({ r, g }); return sc == null ? h : h.replace('<span class="pp1">• ', `<span class="pp1">${legMark(sc ? "W" : "L")} `); };
-  const part = (t) => { const rs = pool.filter((r) => r.team === t); return rs.length ? `<div class="pbl pteam">${tlogo(t)}${esc(t)}</div>${rs.map(row).join("")}` : ""; };
+  const row = (r) => { const sc = graded.get(`${r.team}|${r.player}`), h = tdRow({ r, g }); return sc == null ? h : h.replace('<span class="pp1">', `<span class="pp1">${legMark(sc ? "W" : "L")} `); };
+  const part = (t) => { const rs = pool.filter((r) => r.team === t); return rs.map(row).join(""); };
   return pool.length ? `<div class="tdl">${tdHead(gameName(g))}${part(g.away)}${part(g.home)}</div>` : "";
 }
 // First TD in Model bets (10/29, owner: "PUT 1 on each team. And have it recorded and graded"): each team's likeliest first scorer (the First TD tab's
@@ -1378,7 +1392,7 @@ function firstBlock(g) {
     picks = [g.away, g.home].map((t) => rows.find((r) => r.team === t)).filter(Boolean).map((r) => ({ name: r.player, team: r.team, chance: r.first / 100, price: r.firstPrice ?? null, first: true })); }
   // 10/29 (owner: "I just need the names here remove first ... and the team names. Only add the logo next to their names"): one row per team's pick --
   // logo + name · MODEL · POLYMARKET, no team header lines, no "First TD" column
-  const row = (p) => { const r = p.result; return `<div class="pbl ppr first${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) : "•"} ${tlogo(p.team)}${esc(p.name)}</span>` +
+  const row = (p) => { const r = p.result; return `<div class="pbl ppr first${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) + " " : ""}${phelm(p.team)}${esc(p.name)}</span>` +
     `<span class="pp3 mod">${Math.round(p.chance * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`; };
   return picks.length ? `<div class="pbl ppr pph first"><span class="pp1">${gameName(g)}</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>${[g.away, g.home].flatMap((t) => picks.filter((p) => p.team === t)).map(row).join("")}` : "";
 }
@@ -1504,7 +1518,7 @@ const lsGet = (k, d) => { try { return localStorage.getItem(k) || d; } catch { r
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 const GTABS = [["lines", "Game Lines"], ["props", "Player Props"], ["gprops", "Game Props"], ["parlays", "Parlays"]];   // 10/28 night: GAME PROPS only on a game with a GAME PROPS pick (tabsOf)
 const tabsOf = (g) => GTABS.filter(([k]) => k !== "gprops" || (g && g.gprops && g.gprops.length));
-let GTAB = lsGet("gTab", "lines"), GPROP = lsGet("gProp:nfl", "td");
+let GTAB = "lines", GPROP = "td";
 if (!GTABS.some(([k]) => k === GTAB)) GTAB = "lines";
 if (!PROP_TABS.some(([k]) => k === GPROP)) GPROP = "td";
 const gameTabs = (g) => { const ts = tabsOf(g), on = ts.some(([k]) => k === GTAB) ? GTAB : "lines";
@@ -1522,7 +1536,7 @@ function gamePropsBody(g) {
     if (!TDW) loadTdWeeks().then((d) => { if (d && DETAIL === g.key && GTAB === "props") refreshDetail(); });
     const rows = (g.td || []).filter((r) => r.fair != null && usable(r)).sort((a, b) => b.fair - a.fair);
     const per = {}, pool = rows.filter((r) => { const n = per[r.team] || 0; if (n >= TD_POOL) return false; per[r.team] = n + 1; return true; });
-    const part = (t) => { const rs = pool.filter((r) => r.team === t); return rs.length ? `<div class="pbl pteam">${tlogo(t)}${esc(t)}</div>${rs.map((r) => tdRow({ r, g })).join("")}` : ""; };
+    const part = (t) => { const rs = pool.filter((r) => r.team === t); return rs.map((r) => tdRow({ r, g })).join(""); };
     return pool.length ? `<div class="pgrid tdl" style="margin-top:6px"><div class="par">${tdHead()}${part(g.away)}${part(g.home)}</div></div>` : gNone("No touchdown chances for this game yet.");
   }
   if (GPROP === "first") {
@@ -1572,7 +1586,7 @@ function linesBySlot() {
   for (const g of [...S.games].sort(order)) { const sl = (g.carry ? `WEEK ${g.week} · ` : "") + (g.kickoff ? labSlot(g.kickoff) : "GAMES"); if (!by[sl]) { by[sl] = []; slots.push(sl); } by[sl].push(g); }   // 10/19: the Monday game left from last week keeps its week in its header
   return slots.map((sl) => `<div class="sh labslot">${sl}</div><div class="tiles stack">${by[sl].map(tile).join("")}</div>`).join("");   // 10/18 (owner): just the slot name -- the time sits on each tile
 }
-function openGame(key) { LASTY = (typeof window !== "undefined" && window.scrollY) || 0; DETAIL = key; renderLines(); if (window.scrollTo) window.scrollTo(0, 0); setTimeout(() => slotMoney($("detail")), 60); const g = S.games.find((x) => x.key === key); if (g && g.started && !g.final) liveLoop(); kickBox(); }
+function openGame(key) { GTAB = "lines"; GPROP = "td"; LASTY = (typeof window !== "undefined" && window.scrollY) || 0; DETAIL = key; renderLines(); if (window.scrollTo) window.scrollTo(0, 0); setTimeout(() => slotMoney($("detail")), 60); const g = S.games.find((x) => x.key === key); if (g && g.started && !g.final) liveLoop(); kickBox(); }
 function closeGame() { if (typeof Shell !== "undefined" && Shell.chartStop) Shell.chartStop(); DETAIL = null; renderLines(); if (window.scrollTo) window.scrollTo(0, LASTY); }
 // the next game that has not started: refreshes the slate once when it kicks off
 function tickCd() {
@@ -1617,14 +1631,17 @@ async function loadSlate() {
   const open = [...document.querySelectorAll(".drop.open")].map((e) => e.id).filter(Boolean);   // keep your open dropdowns
   renderAll(); for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
   try { localStorage.setItem("lastSeen", new Date().toISOString()); } catch {} }   // next visit's "What changed" starts from now
+const firstTabs = () => { BETSVIEW = "mine"; LABTYPE = LAB_TABS[0][0]; MBPROP = MB_PROPS[0][0]; GTAB = "lines"; GPROP = "td"; };
+let LAST_TOP = null;
 function showPanel(name) {
+  { const top = /^(mybets|modelbets|record)/.test(name) ? "record" : String(name).split("-")[0]; if (LAST_TOP && top !== LAST_TOP) { firstTabs(); if (/^modelbets-/.test(name)) name = "modelbets"; } LAST_TOP = top; }   // 10/29 (owner): a page opened again starts on its first tabs
   setTimeout(() => slotMoney($("panel-" + String(name).split("-")[0])), 80);   // dollar amounts roll in when a page opens (owner 10/18 night)
   let sub = null;   // 10/17 (owner): My bets and Model bets are separate pages under Bets in the menu
   if (/^modelbets-/.test(name)) { const k = name.slice(10); if (LAB_TABS.some(([t]) => t === k)) LABTYPE = k; name = "modelbets"; }   // 10/17 (owner): the parlay types are menu sub tabs under Model bets
   if (name === "modelbets") sub = `modelbets-${LABTYPE}`;
   if (/^props-/.test(name)) { const k = name.slice(6); if (PROP_STAT[k] || k === "first") PROPTAB = k; name = "props"; }   // 10/20 (owner): the Player props stat tabs are menu sub tabs
   if (name === "props") sub = `props-${PROPTAB}`;
-  if (name === "mybets" || name === "modelbets") { sub = sub || name; BETSVIEW = name === "modelbets" ? "model" : "mine"; try { localStorage.setItem("betsView", BETSVIEW); } catch {} name = "record"; }
+  if (name === "mybets" || name === "modelbets") { sub = sub || name; BETSVIEW = name === "modelbets" ? "model" : "mine"; name = "record"; }
   if (name === "record" && !sub) sub = BETSVIEW === "model" ? `modelbets-${LABTYPE}` : "mybets";
   if (name === "home" || !$("panel-" + name)) name = "lines";   // 10/27: Home is the games list (an old #home link lands there)
   Shell.setActive(sub || name);   // 10/17: the menu replaces the tab bar
@@ -1649,16 +1666,20 @@ function routeHash() {
   showPanel(name);
 }
 window.addEventListener("hashchange", routeHash);
+// 10/29 (owner: "Why do tabs load in the middle of last used tab when I leave and go back on? It should always switch back to the first tab always"):
+// coming back to the app opens the page on its first tabs
+document.addEventListener("visibilitychange", () => { if (document.hidden || !LAST_TOP) return; firstTabs(); const h = LAST_TOP === "record" ? "#mybets" : `#${LAST_TOP}`;
+  if (DETAIL && LAST_TOP === "lines") { refreshDetail(); return; } if (location.hash !== h) history.replaceState(null, "", h); routeHash(); });
 $("al-read").onclick = () => { ALPREV = ALERTS.length ? ALERTS[0].t : ""; renderAlerts(); };
 document.addEventListener("click", (e) => {
   const d = e.target.closest("[data-drop]"); if (d) { const el = $(d.dataset.drop); if (el) { el.classList.toggle("open"); if (d.dataset.drop === "bestlist") { BEST_OPEN = el.classList.contains("open"); try { localStorage.setItem("bestOpen", BEST_OPEN ? "1" : "0"); } catch {} }
       if (d.dataset.drop === "gamebest") { GAMEBEST_OPEN = el.classList.contains("open"); try { localStorage.setItem("gameBestOpen", GAMEBEST_OPEN ? "1" : "0"); } catch {} } } return; }
-  const gtb = e.target.closest("[data-gtab]"); if (gtb) { GTAB = gtb.dataset.gtab; lsSet("gTab", GTAB); refreshDetail(); return; }   // 10/27: game page tabs
-  const mbp = e.target.closest("[data-mbprop]"); if (mbp) { MBPROP = mbp.dataset.mbprop; lsSet("mbProp:nfl", MBPROP); renderLabList(); return; }   // Model bets -> Player Props stat chips
-  const gpr = e.target.closest("[data-gprop]"); if (gpr) { GPROP = gpr.dataset.gprop; lsSet("gProp:nfl", GPROP); refreshDetail(); return; }
+  const gtb = e.target.closest("[data-gtab]"); if (gtb) { GTAB = gtb.dataset.gtab; refreshDetail(); return; }   // 10/27: game page tabs
+  const mbp = e.target.closest("[data-mbprop]"); if (mbp) { MBPROP = mbp.dataset.mbprop; renderLabList(); return; }   // Model bets -> Player Props stat chips
+  const gpr = e.target.closest("[data-gprop]"); if (gpr) { GPROP = gpr.dataset.gprop; refreshDetail(); return; }
   const gt = e.target.closest("[data-game]"); if (gt) { if (!$("panel-lines").classList.contains("on")) { history.replaceState(null, "", "#lines"); showPanel("lines"); } openGame(gt.dataset.game); return; }
   const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k) { history.replaceState(null, "", "#lines"); showPanel("lines"); openGame(k); } return; }
-  const bv = e.target.closest("[data-bv]"); if (bv) { history.replaceState(null, "", bv.dataset.bv === "model" ? "#modelbets" : "#mybets"); routeHash(); return; }   // 10/22: My bets | Model bets inside Bets -- the page key follows, so the sub-tab bar does too
+  const bv = e.target.closest("[data-bv]"); if (bv) { LABTYPE = LAB_TABS[0][0]; MBPROP = MB_PROPS[0][0]; history.replaceState(null, "", bv.dataset.bv === "model" ? "#modelbets" : "#mybets"); routeHash(); return; }   // 10/22: My bets | Model bets inside Bets -- the page key follows, so the sub-tab bar does too
   const lw = e.target.closest("[data-labw]"); if (lw) { LABWEEK = Number(lw.dataset.labw); renderLabList(); return; }
   const gb = e.target.closest("[data-gbw]"); if (gb) { GBGWEEK = gb.dataset.gbw === "all" ? "all" : Number(gb.dataset.gbw); $("gbg").innerHTML = gbgHtml(); return; }
   const ts = e.target.closest(".labslot.tdtog"); if (ts) { tdToggleSlot(ts); return; }   // 10/20 night (owner): open / close a time-slot list

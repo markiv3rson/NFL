@@ -367,7 +367,7 @@ ok(redisUrl({ UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://a:1", REDIS_URL: "redis
   ok(!fresh[0].player && !fresh[0].result, "slimLegs: Polymarket's leg carries no name and no grade");
   globalThis.fetch = real; await R.del("mybets:nba:ledger");
   const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
-  ok(/e\.prop \? `\$\{e\.prop\.result \? legMark\(e\.prop\.result\) \+ " " : ""\}\$\{e\.prop\.team \? tlogo\(e\.prop\.team\) : ""\}\$\{esc\(e\.prop\.label\)\}`/.test(app) && /openBySlot\(openB\)/.test(app) && /return block\(list\.filter\(isSingle\), "SINGLES"\) \+ block\(/.test(app) && /firstSingles = \(a\) => \[\.\.\.a\.filter\(isSingle\), \.\.\.a\.filter\(\(e\) => !isSingle\(e\)\)\]/.test(app) && !/stampFor|playStamps/.test(app),
+  ok(/e\.prop \? `\$\{e\.prop\.result \? legMark\(e\.prop\.result\) \+ " " : ""\}\$\{e\.prop\.team \? tlogo\(e\.prop\.team\) : ""\}\$\{pnm\(e\.prop\.label\)\}`/.test(app) && /openBySlot\(openB\)/.test(app) && /return block\(list\.filter\(isSingle\), "SINGLES"\) \+ block\(/.test(app) && /firstSingles = \(a\) => \[\.\.\.a\.filter\(isSingle\), \.\.\.a\.filter\(\(e\) => !isSingle\(e\)\)\]/.test(app) && !/stampFor|playStamps/.test(app),
     "NBA My bets page: a single shows the player + bet with the logo and its mark, singles sit on top of the open list, no HIT / MISS stamp (10/27)");
   ok(/const cMoney = \(v\) => \(v == null \? "—" : `<span class="\$\{Math\.abs\(v\) < 0\.005 \? "" : v > 0 \? "g" : "r"\}">\$\{Math\.abs\(v\) < 0\.005 \? "\$" : v > 0 \? "\+\$" : "−\$"\}/.test(app), "NBA page: a zero amount reads $0.00 with no sign and no colour, like the NFL page (10/27)");
   ok(/if \(PROPTEAM !== "all" && !teams\.includes\(PROPTEAM\)\) PROPTEAM = "all";/.test(app) && /if \(PROPTEAM !== "all" && !teams\.includes\(PROPTEAM\)\) PROPTEAM = "all";/.test(readFileSync(new URL("../../public/app.js", import.meta.url), "utf8")),
@@ -1328,7 +1328,7 @@ const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "u
   ok(/recordH1Shadows\(reg\)/.test(snapSrc) && /1H SPREAD · props rules", mv\.h1spr/.test(appSrc), "the snapshot records it; Models -> Shadow trackers shows its row"); }
 { // 10/28 (owner: "only add the logo next to their team name"): props rows carry no logo, the team label does
   const appSrc = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
-  ok(!/"•"\} \$\{tlogo\(p\.team/.test(appSrc) && /class="pbl pteam">\$\{tlogo\(t\)\}/.test(appSrc), "NBA props: no logo on a player row, the logo beside the team name"); }
+  ok(/\$\{tlogo\(p\.team\)\}\$\{pnm\(p\.name\)\}<\/span><span class="pp2">\$\{p\.side === "over" \? "O" : "U"\} \$\{p\.line\}<\/span>/.test(appSrc) && !/class="pbl pteam"/.test(appSrc), "NBA props (owner 10/29): no team title lines, the logo before each name, the pick (O 19.5) in its own column"); }
 { // 10/28: the NBA database refused every write from 7:30 PM PT 10/27, silently -- the System list now tests a write and shows the error
   const st = await import("../lib/status.js"), { getRedis } = await import("../lib/redis.js");
   const good = await st.dbHealth(getRedis());

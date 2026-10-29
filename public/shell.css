@@ -491,3 +491,78 @@ body.bnav-on .panel .pph .lvb { color:var(--red) !important; -webkit-text-stroke
 /* 10/29 (owner: "Who told you to add that? ... Remove it"): no BET column -- Model bets pick tables are PICK · MODEL · POLYMARKET (both sports) */
 #lab .ppr.first:not(.tdr):not(.tdh) { grid-template-columns:minmax(0,1fr) 40px 86px !important; grid-template-areas:"n m p" !important; }
 @media (min-width:600px) { #lab .ppr.first:not(.tdr):not(.tdh) { grid-template-columns:minmax(0,1fr) 70px 110px !important; } }
+/* 10/29 (owner: "put the header SLATEZZ BIG AND CENTER IN THE MIDDLE"): the top bar is SLATEZZ alone, centered and big (both sports) */
+.tbar { justify-content:center !important; }
+.tbar .slatelogo { font-size:clamp(34px,10.5vw,48px); margin:0 auto; padding-top:2px; }
+:root body.tbar-on:not(.game-on) { --tbh:62px; }
+/* 10/29 (owner: "Put the bell above nfl and put the model refresh on the bottom"; the bell = the owner's yellow bell, the unread number on its red circle):
+   bell · NFL · NBA · refresh, one floating column at the bottom right of every page */
+.lgfloat { align-items:center; }
+.lgfloat .tib { width:52px; height:52px; padding:0; opacity:.45; }   /* 10/29 (owner): the gold bell, the NFL / NBA balls' size; see-through like them until Alerts is open */
+.lgfloat .tib.on { opacity:1; color:inherit; }
+.lgfloat .tib .bellimg { width:36px; height:36px; display:block; }
+.lgfloat .tib .tcnt { display:flex !important; align-items:center; justify-content:center; position:absolute; top:4px; right:2px; left:auto; min-width:17px; height:17px; padding:0 4px; box-sizing:border-box; border-radius:9px; background:#e5484d; font-size:10.5px; font-weight:800; line-height:1; color:#fff; }
+.lgfloat .mref { width:52px; height:44px; color:#fff; }
+.lgfloat .mref svg { width:30px; height:30px; }
+/* 10/29 (owner, props screenshots: "Remove the team titles and put the team logos next to their names. And remove pts and put the pick in a column. Make
+   everything in 1 line" / "fix the spacing for polymarket and model percentage" / "It looks like it's the same on every other page"): ONE table for every
+   props-style list, both sports, every page (Model bets, game page, props pages): [✓] helmet / logo + name · pick · LAST · MODEL · POLYMARKET on one line;
+   the MODEL and POLYMARKET columns the same width everywhere, every number centered under its head, room between the two heads */
+:is(body, #lab) .ppr .phlm, :is(body, #lab) .ppr .pp1 .tlogo { width:16px; height:16px; object-fit:contain; vertical-align:-3px; margin:0 3px 0 0; flex:none; }
+:is(body, #lab) .ppr .nms { display:none; }
+:is(body, #lab) .ppr { column-gap:8px !important; row-gap:0 !important; align-items:center; }
+:is(body, #lab) .ppr .pp1 { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+:is(body, #lab) .ppr .pp2, :is(body, #lab) .ppr .pp5 { white-space:nowrap; text-align:center; justify-self:stretch; }
+:is(body, #lab) .ppr .pp3, :is(body, #lab) .ppr .pp4 { justify-self:stretch !important; text-align:center !important; white-space:nowrap; }
+:is(body, #lab) .ppr.pph .pp4 { display:flex !important; align-items:center; justify-content:center; gap:3px !important; overflow:visible; }
+/* rows with a pick column (+ LAST): name · pick · LAST · MODEL · POLYMARKET */
+:is(body, #lab) .ppr:not(.first):not(.pk) { grid-template-columns:minmax(0,1fr) 52px 76px 44px 92px !important; grid-template-areas:"n line l m p" !important; }
+:is(body, #lab) .ppr:not(.first):not(.pk) .pp1 { grid-area:n !important; grid-row:auto !important; } :is(body, #lab) .ppr:not(.first):not(.pk) .pp2 { grid-area:line !important; display:block !important; font-size:inherit; color:inherit; }
+:is(body, #lab) .ppr:not(.first):not(.pk) .pp5 { grid-area:l !important; } :is(body, #lab) .ppr .pp3 { grid-area:m !important; } :is(body, #lab) .ppr .pp4 { grid-area:p !important; }
+:is(body, #lab) .ppr.pph:not(.first) { grid-template-areas:"n n l m p" !important; } :is(body, #lab) .ppr.pph:not(.first) .pp2 { display:none !important; }
+/* rows without one (game lines, halves, game props, First TD): name / pick · MODEL · POLYMARKET */
+:is(body, #lab) .ppr.first:not(.tdr):not(.tdh), body #lab .ppr.first:not(.tdr):not(.tdh) { grid-template-columns:minmax(0,1fr) 44px 92px !important; grid-template-areas:"n m p" !important; }
+:is(body, #lab) .ppr.first:not(.tdr):not(.tdh) .pp1 { grid-area:n !important; grid-column:auto !important; } :is(body, #lab) .ppr.first:not(.tdr):not(.tdh) .pp2 { display:none !important; }
+/* Anytime TD rows keep their red note column, same MODEL / POLYMARKET widths */
+:is(body, #lab) .ppr.first.tdr, :is(body, #lab) .ppr.tdh, body #lab .ppr.first.tdr, body #lab .ppr.first.tdh { grid-template-columns:minmax(0,1fr) auto 44px 92px !important; }
+@media (max-width:599px) {
+  :is(body, #lab) .ppr .nmf { display:none; } :is(body, #lab) .ppr .nms { display:inline; }
+  :is(body, #lab) .ppr:not(.first):not(.pk) { grid-template-columns:minmax(0,1fr) 40px 60px 38px 80px !important; column-gap:6px !important; }
+  :is(body, #lab) .ppr.first:not(.tdr):not(.tdh), body #lab .ppr.first:not(.tdr):not(.tdh) { grid-template-columns:minmax(0,1fr) 40px 86px !important; column-gap:8px !important; }
+  :is(body, #lab) .ppr.first.tdr, :is(body, #lab) .ppr.tdh, body #lab .ppr.first.tdr, body #lab .ppr.first.tdh { grid-template-columns:minmax(0,1fr) auto 40px 86px !important; column-gap:6px !important; }
+  :is(body, #lab) .ppr:not(.pph) .pp2, :is(body, #lab) .ppr:not(.pph) .pp5 { font-size:10.5px !important; }
+  :is(body, #lab) .ppr.pph span { font-size:10px !important; letter-spacing:0 !important; }
+  :is(body, #lab) .ppr.pph .pp4 .pm, :is(body, #lab) .ppr.pph .pp4 .pm img { width:11px !important; height:11px !important; }
+}
+@media (max-width:379px) {
+  :is(body, #lab) .ppr:not(.first):not(.pk) { grid-template-columns:minmax(0,1fr) 40px 60px 38px 80px !important; column-gap:6px !important; }
+  :is(body, #lab) .ppr.first:not(.tdr):not(.tdh), body #lab .ppr.first:not(.tdr):not(.tdh) { grid-template-columns:minmax(0,1fr) 38px 82px !important; }
+  :is(body, #lab) .ppr.first.tdr, :is(body, #lab) .ppr.tdh, body #lab .ppr.first.tdr, body #lab .ppr.first.tdh { grid-template-columns:minmax(0,1fr) auto 38px 80px !important; column-gap:6px !important; }
+  :is(body, #lab) .ppr.pph span { font-size:9.5px !important; }
+}
+/* 10/29 (owner, Halves & Quarters: "Move the pick in a column and remove the words"): the Model bets pick tables (Game Lines, Halves & Quarters, Game Props,
+   both sports) -- helmet / logo + team (or the market) · the pick · MODEL · POLYMARKET, the same MODEL / POLYMARKET columns as the props tables */
+:is(body, #lab) .ppr.pk { grid-template-columns:minmax(0,1fr) 64px 44px 92px !important; grid-template-areas:"n line m p" !important; }
+:is(body, #lab) .ppr.pk .pp1 { grid-area:n !important; grid-column:auto !important; } :is(body, #lab) .ppr.pk .pp2 { grid-area:line !important; display:block !important; white-space:nowrap; text-align:center; font-size:inherit; color:#fff; }
+:is(body, #lab) .ppr.pph.pk { grid-template-areas:"n n m p" !important; } :is(body, #lab) .ppr.pph.pk .pp2 { display:none !important; }
+@media (max-width:599px) { :is(body, #lab) .ppr.pk { grid-template-columns:minmax(0,1fr) 56px 42px 84px !important; column-gap:8px !important; } }
+@media (max-width:379px) { :is(body, #lab) .ppr.pk { grid-template-columns:minmax(0,1fr) 52px 38px 80px !important; column-gap:6px !important; } }
+/* 10/29 (owner, My bets: "put money and layout next to their names and put the $ x money pays $$$ in one line"): one line per bet, both sports --
+   name (shortened on a phone) · $cost at N¢ · pays $X · open / Won / Lost */
+body .row.brow { display:grid !important; grid-template-columns:minmax(0,1fr) auto auto; align-items:baseline; column-gap:10px; }
+body .row.brow > .bnm { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+body .row.brow > .bmo { white-space:nowrap; font-size:11px; font-weight:400; color:var(--fade,#9a9aa6); text-transform:none; -webkit-text-stroke:0; letter-spacing:0; }
+body .row.brow > .bst { white-space:nowrap; text-align:right; }
+body .row.brow .nms { display:none; }
+@media (max-width:599px) { body .row.brow .nmf { display:none; } body .row.brow .nms { display:inline; } body .row.brow { column-gap:8px; } body .row.brow > .bmo { font-size:10.5px; } body .row.brow .bat { display:none; } }   /* a phone: "$10.00 pays $23.00" (the price only on a computer, where it fits) */
+/* 10/29: the Anytime TD rows on a computer name their columns too (MODEL / POLYMARKET sat on top of each other without them) */
+@media (min-width:600px) {
+  :is(body, #lab) .ppr.first.tdr, :is(body, #lab) .ppr.tdh { grid-template-areas:"n w m p" !important; grid-template-columns:minmax(0,1.4fr) minmax(0,1.2fr) 70px 110px !important; column-gap:16px !important; }
+  :is(body, #lab) .ppr.first.tdr .pp1, :is(body, #lab) .ppr.tdh .pp1 { grid-area:n !important; grid-column:auto !important; grid-row:auto !important; }
+  :is(body, #lab) .ppr.first.tdr .pp2, :is(body, #lab) .ppr.tdh .pp2 { grid-area:w !important; }
+  :is(body, #lab) .ppr.tdh .pp1 { grid-column:1 / 3 !important; grid-area:auto !important; }
+}
+@media (max-width:599px) { :is(body, #lab) .ppr:not(.pph) .pp5 { font-size:10px !important; letter-spacing:-.01em; } :is(body, #lab) .ppr.tdr .phlm { width:16px; height:16px; margin-right:3px; } }
+@media (max-width:379px) { :is(body, #lab) .ppr:not(.first):not(.pk) { grid-template-columns:minmax(0,1fr) 36px 54px 36px 80px !important; column-gap:6px !important; } }
+/* the small helmet everywhere it stands for a team in a line of text (My bets names and legs, props rows) */
+img.phlm { width:16px; height:16px; object-fit:contain; vertical-align:-3px; margin:0 4px 0 0; }
