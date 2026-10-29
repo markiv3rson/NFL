@@ -4,7 +4,7 @@ Read this first in every new chat. It holds the owner's rules, what the app is t
 Rewritten short on 10/28. The full day-by-day history up to 10/28 is in git: `git show 758518d:CLAUDE.md` (and `758518d:nba/CLAUDE.md`).
 NBA details: `nba/CLAUDE.md`. Where this file and an older note disagree, this file wins.
 
-## THE OWNER'S RULES (always, in this order — rewritten 10/29 from every message in the chat so the owner never has to repeat them)
+## THE OWNER'S RULES (always, in this order)
 
 **List these 18 rules to the owner at the start of every job.**
 
@@ -14,13 +14,13 @@ NBA details: `nba/CLAUDE.md`. Where this file and an older note disagree, this f
 
 **BUILDING**
 3. **Two separate commands.** "build now" = change / test / commit / push on the work branch only (this session: `claude/bold-hopper-nzjdvr`). "merge now" = PR + merge to main (live). Nothing else counts: not "yes", "do it", an option pick, anger or a screenshot. "build now merge now" together = both, in that order.
-4. **Exact words only.** Do what was said, word for word, nothing more. A screenshot or example the owner sends is the exact target: copy it. If a sketch is asked for, show it and wait before building. When a word could mean two things, take the plainest meaning, and never add lines, boxes, titles or tabs nobody asked for (10/29: "split" meant reorder, not a divider line or chips).
+4. **Exact words only.** Do what was said, word for word, nothing more. A screenshot or example the owner sends is the exact target: copy it. If a sketch is asked for, show it and wait before building. When a word could mean two things, take the plainest meaning, and never add lines, boxes, titles or tabs nobody asked for.
 5. **Don't touch what wasn't named.** Never remove, move or restyle anything outside the request. If the change truly needs that, say so first and wait.
 6. **Finish everything.** Before saying done, reread every owner message of that day and tick each item off. Never come back with half-done work; never say "done" until both sports are checked at phone size (rule 8). "Spend N minutes" = the full N minutes of real work (finding and fixing, not re-confirming).
 7. **Recheck = find what is WRONG and fix it.** Start where the app loses (records under 56% or under what they said, by stat / band / price / type), wrong numbers, broken pages, bad saved data (placeholder lines, stale statuses, wrong-week labels), every number quoted in the app vs the code's constant, every scheduled job and feed. Fix it and improve along the way. Never run the same check twice, never spend the time proving old work. No two numbers or picks may contradict each other. "Nothing found" needs the list of what was looked at. After any build, say only what changed and what was cut (with its numbers).
 
 **BOTH SPORTS**
-8. **One look, two sports.** Every look / layout change goes on NFL and NBA together, on every page that has the same thing. Every bug fix gets checked in the same spot on the other sport (10/29: NBA My bets showed a lost parlay as "Sold" while NFL was right). Code / model / pick changes asked for one sport stay in that sport; if a fix would also help the other, ask first. Check both at phone width (390 px, also 1440 px) in a real browser before saying done.
+8. **One look, two sports.** Every look / layout change goes on NFL and NBA together, on every page that has the same thing. Every bug fix gets checked in the same spot on the other sport. Code / model / pick changes asked for one sport stay in that sport; if a fix would also help the other, ask first. Check both at phone width (390 px, also 1440 px) in a real browser before saying done.
 
 **HOW THE APP LOOKS**
 9. **No notes.** No explanations, warnings, subtitles or leftover words anywhere (the one exception: the single ⓘ next to a MODEL header / Models section, opened by a tap). Say each thing once per page. Never add a section nobody asked for.
