@@ -26,9 +26,10 @@
   const PROPS = { nfl: [["td", "Anytime TD"], ["props-first", "First TD"], ["props-recyds", "Rec Yds"], ["props-rec", "Receptions"], ["props-rushyds", "Rush Yds"]],
     nba: [["props-pts", "Points"], ["props-reb", "Rebounds"], ["props-ast", "Assists"], ["props-pra", "PRA"], ["props-stl", "Steals"], ["props-blk", "Blocks"]] };
   const URL_ = { nfl: "/index.html", nba: "/nba/index.html" };
-  // the Model bets parlay types (10/20 night: Over/Under and Spread + Total removed; 10/21: NBA Prop Parlays 6 / 8 / 10 legs + Same Game; 3 legs at most elsewhere)
-  const TYPES = { nfl: [["best", "Best Legs"], ["3", "3 Leg"], ["2", "2 Leg"], ["pp6", "6 Leg"], ["pp8", "8 Leg"], ["pp10", "10 Leg"]],
-    nba: [["pp6", "6 Leg"], ["pp8", "8 Leg"], ["pp10", "10 Leg"], ["sgp4", "Same Game"]] };
+  // the Model bets tabs
+  // 10/28 late (owner: "Remove all the sub tabs under models bets ... sub tabs for all the models picks"): the pick tabs, no parlays (NBA has no halves / game props picks)
+  const TYPES = { nfl: [["lines", "Game Lines"], ["halves", "Halves &amp; Quarters"], ["props", "Player Props"], ["gprops", "Game Props"]],
+    nba: [["lines", "Game Lines"], ["props", "Player Props"]] };
   const OTHER = { nfl: "nba", nba: "nfl" };
   const REF_SVG = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>';
   // which bottom tab a page belongs to; the sub tabs a page shows
@@ -214,8 +215,12 @@
   // pick (lib/h1pick.js) has a side, with its % and price; ✓ / ✗ once graded. Every other half / quarter / team total / game prop failed its test
   // (no pick can show). Their prices are still saved every 15 min (gmpx:) for later tests. 10/28 night: the GAME PROPS tab is back with picks only (below).
   const cents = (x) => (x == null ? "—" : `${Math.round(x * 100)}¢`);
-  const h1Line = (k) => { const res = k.result === "W" ? ' <b class="g">✓</b>' : k.result === "L" ? ' <b class="r">✗</b>' : k.result === "P" ? ' <span class="dim">push</span>' : "";
-    return `<div class="s mkpick"><span class="lbw">Pick:</span> <b class="${k.said >= 56 ? "g" : k.said >= 53 ? "lg" : "y"}">${String(k.label).toUpperCase().replace(/[<>&"]/g, "")} · ${Math.floor(k.said)}%</b> <span class="mkp">· ${cents(k.price)}</span>${res}</div>`; };
+  // 10/28 late: one Pick line for every pick list (game page + Model bets): k = { label, said (%), price, result, lb (the word before it, "Pick:"), live }; live =
+  // { res } once the pick can no longer change (shown as its ✓ / ✗) or { now: "win" / "lose", txt } while the game is on. Green 56%+ rounds, below rounds down.
+  const h1Line = (k) => { const r = k.result || (k.live && k.live.res) || null, res = r === "W" ? ' <b class="g">✓</b>' : r === "L" ? ' <b class="r">✗</b>' : r === "P" ? ' <span class="dim">push</span>' : "";
+    const lv = !r && k.live && k.live.now ? ` <span class="lvx ${k.live.now === "win" ? "g" : "r"}">● ${String(k.live.txt || (k.live.now === "win" ? "winning" : "losing")).replace(/[<>&"]/g, "")}</span>` : "", sd = Number(k.said);
+    return `<div class="s mkpick"><span class="lbw">${k.lb || "Pick:"}</span> <b class="${sd >= 56 ? "g" : sd >= 53 ? "lg" : "y"}">${String(k.label).toUpperCase().replace(/[<>&"]/g, "")} · ${sd >= 56 ? Math.round(sd) : Math.floor(sd)}%</b> <span class="mkp">· ${cents(k.price)}</span>${res}${lv}</div>`; };
+  Shell.pickLine = h1Line;
   Shell.mktLines = (o) => (o && o.h1pick ? `<div class="trow"><div class="sh">HALVES &amp; QUARTERS</div></div><div class="card mkc"><div class="mks">1st Half spread</div>${h1Line(o.h1pick)}</div>` : "");
   // GAME PROPS tab (10/28 night, owner: "only show our picks if there are any"): the NFL GAME PROPS picks (lib/gameprops.js) one line each, the tab
   // only on a game that has one
@@ -293,5 +298,8 @@
     const h = b.closest(".ihd"), x = h && h.nextElementSibling; if (!x || !x.classList.contains("ibox")) return;
     x.hidden = !x.hidden; b.classList.toggle("on", !x.hidden);
   }, true);
+  // 10/28 late: a page opened straight from a link (…#models) starts at its top: the browser's own jump to the element named like the page (the Models
+  // list has id="models") left the four tiles hidden under the pinned title. Both sports.
+  if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("load", () => { try { const h = location.hash.slice(1); if (h && document.getElementById(h) && !document.documentElement.classList.contains("gpin")) window.scrollTo(0, 0); } catch {} });
   window.Shell = Shell;
 })();

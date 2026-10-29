@@ -2,7 +2,7 @@
 // Data (merged site: every NBA route lives under /api/nba): /api/slate (Polymarket lines + model + cards + parlays), /api/models, /api/mybets, /api/modelbets, /api/alerts.
 // A bet's average price: whole cents from 10c, else one decimal (1.6c, not "2c": $2 at 1.6c pays $125), two under 0.1c.
 const betCents = (p) => { const c = p * 100; return c >= 9.95 ? String(Math.round(c)) : c >= 0.095 ? c.toFixed(1) : c >= 0.005 ? c.toFixed(2) : "<0.01"; };
-let S = null, TEAMS = {}, DETAIL = null, LASTY = 0, MODELS = null, BETS = null, MODELBETS = null, FUT = null, MBDAY = null;
+let S = null, TEAMS = {}, DETAIL = null, LASTY = 0, MODELS = null, BETS = null, FUT = null, MBDAY = null;
 const $ = (id) => document.getElementById(id);
 const dash = '<span class="dim">—</span>';
 const esc = (t) => String(t == null ? "" : t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -325,16 +325,18 @@ let GPROPS = {}, GPROPS_LOADING = {};
 function refreshDetail() { const open = [...document.querySelectorAll(".drop.open")].map((e) => e.id).filter(Boolean); renderLines(); for (const id of open) { const e = $(id); if (e) e.classList.add("open"); } }
 function loadGameProps(day) {
   if (GPROPS_LOADING[day]) return; GPROPS_LOADING[day] = true;
-  fetch(`/api/nba/props?date=${day}`, { cache: "no-store" }).then((r) => r.json()).then((d) => { if (d && d.ok) GPROPS[day] = { d, t: Date.now() }; })
-    .catch(() => {}).finally(() => { GPROPS_LOADING[day] = false; if (DETAIL && GTAB === "props") refreshDetail(); });
+  fetch(`/api/nba/props?date=${day}`, { cache: "no-store" }).then((r) => r.json()).then((d) => { GPROPS[day] = { d: d && d.ok ? d : { games: [] }, t: Date.now() }; })
+    .catch(() => { GPROPS[day] = { d: { games: [] }, t: Date.now() - 4 * 60e3 }; }).finally(() => { GPROPS_LOADING[day] = false; if (BETSVIEW === "model") renderLabList(); if (DETAIL && GTAB === "props") refreshDetail(); });
 }
+// one NBA props row (the props page look; the Model bets Player Props tab uses it too)
+const npRow = (p) => `<div class="pbl ppr${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${esc(p.name)}</span><span class="pp2">${PROP_SHORT[p.stat] || ""} ${p.side === "over" ? "Over" : "Under"} ${p.line}</span>${propLast(p)}<span class="pp3 mod">${Math.round((p.cal ?? p.chance) * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
 function gamePropsBody(g) {
   const day = g.start ? etDay(g.start) : null; if (!day) return gNone("None for this game.");
   const c = GPROPS[day]; if (!c || Date.now() - c.t > 5 * 60e3) loadGameProps(day);
   if (!c) return gNone("Loading…");
   const pg = (c.d.games || []).find((x) => x.game === g.key), picks = pg ? (pg.picks || []).filter((p) => p.stat === GPROP) : [];
   if (!picks.length) return gNone("None for this game.");
-  const row = (p) => `<div class="pbl ppr${p.result === "W" ? " g" : p.result === "L" ? " r" : ""}"><span class="pp1">${p.result ? legMark(p.result) : "•"} ${esc(p.name)}</span><span class="pp2">${PROP_SHORT[p.stat] || ""} ${p.side === "over" ? "Over" : "Under"} ${p.line}</span>${propLast(p)}<span class="pp3 mod">${Math.round((p.cal ?? p.chance) * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`;
+  const row = npRow;
   const head = `<div class="pbl ppr pph"><span class="pp1">PLAYER</span><span class="pp2">LINE</span><span class="pp5">LAST</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
   const part = (t) => { const rs = picks.filter((p) => (p.team || "") === t); return rs.length ? `${t ? `<div class="pbl pteam">${tlogo(t)}${esc(t)}</div>` : ""}${rs.map(row).join("")}` : ""; };
   return `<div class="pgrid" style="margin-top:6px"><div class="par">${head}${[...new Set([g.away, g.home, ...picks.map((p) => p.team || "")])].map(part).join("")}</div></div>`;
@@ -435,7 +437,6 @@ function renderProps() {
 // 10/18 (owner): a Results page under Bets (the RESULT alert lines) was built and deleted the same day -- RESULT lines are saved (lib alerts listResults) but shown nowhere.
 async function loadBets() {
   try { BETS = await (await fetch("/api/nba/mybets", { cache: "no-store" })).json(); } catch { BETS = { ok: false }; }
-  try { const d = await (await fetch("/api/nba/modelbets", { cache: "no-store" })).json(); if (d && d.ok) MODELBETS = d; } catch {}
   renderBets(); renderLabList();
 }
 function renderBets() {
@@ -481,12 +482,13 @@ function renderBets() {
   if (typeof Shell !== "undefined" && Shell.pinTop && $("record-mine").querySelector) Shell.pinTop($("record-mine").querySelector(".mbpin"));
   $("sync-btn").onclick = async () => { toast("Syncing…", 0); try { const d = await (await fetch("/api/nba/mybets?sync=1", { cache: "no-store" })).json(); BETS = d; renderBets(); toast(d.sync && d.sync.ok ? `Synced ${d.sync.positions} positions.` : `Sync: ${(d.sync && d.sync.note) || "done"}`); } catch (e) { toast("Sync failed: " + e.message, 10000); } };
 }
-// Model bets: day drop-down at the top, the types are menu sub tabs, one list in tip-off order (lib/parlays.js)
+// MODEL BETS (10/28 late, owner: "Remove all the sub tabs under models bets and I need sub tabs for all the models picks in the card ... split by their time" /
+// "I don't want no parlays in there no more" / "The sub tabs should look the same as the card layout"; design = both sports): Game Lines = every game's card
+// picks (PICK, PICK w/ POINTS, ML PICK) in the card's Pick-line look; Player Props = the props rows. Under the tip-off headers, a day drop-down. NBA has no halves /
+// game props picks (the 1H SPREAD is a shadow). The days the slate carries come from it (the saved copies after tip-off); older days from /api/nba/modelpicks.
 const PTYPES = { sgp: "Same game · 2 legs", best4: "Parlay · top picks", pp6: "Prop Parlays · 6 legs", pp8: "Prop Parlays · 8 legs", pp10: "Prop Parlays · 10 legs", sgp4: "Same Game · 4 legs" };   // 10/21 (owner): Prop Parlays, $5 each   // 10/19 review: bought lines (sgp_pts, not built since 10/19) off the scoreboard   // 10/19: 3 legs at most, the 4 biggest favorites (fav4) is no longer built
-// 10/21 (owner): Model bets = Prop Parlays (6 Leg / 8 Leg / 10 Leg) then Same Game; the Parlay tab is gone (still saved and graded, on the scoreboard)
-const LAB_TABS = [["pp6", "Prop Parlays · 6 Leg"], ["pp8", "Prop Parlays · 8 Leg"], ["pp10", "Prop Parlays · 10 Leg"], ["sgp4", "Same Game"]];   // 10/21: Same Game = the 4-leg same-game parlays (sgp4)
-const isLabType = (tab, t) => t === tab;   // 10/19: the Bought tab left (PICK w/ POINTS only on the card)
-let LABTYPE = "pp6", LABDAY = null;
+const LAB_TABS = [["lines", "Game Lines"], ["props", "Player Props"]];
+let LABTYPE = "lines", LABDAY = null, MPICKS = {};
 const plText = (x, st) => `PL: ${x >= 10 ? Math.round(x) : x.toFixed(1)}x<span class="plw"> · $${st} → </span><span class="g">$${Math.round(st * x)}</span>`;
 const plPay = (p) => {
   if (!p || !p.legs || !p.legs.length || !p.legs.every((l) => l.price > 0 && l.price < 1)) return "PL: —";
@@ -550,25 +552,51 @@ function pBlock(title, p, showGame) {
   const foot = `<div class="ptb ptf"><span class="pt1"><span class="plb"${plTap(p)}>${pmLogo()} ${plShown(p)}</span></span><span class="pt2 mod">${pr == null ? "—" : `${Math.round(pr * 100)}%`}</span><span class="pt3">${res}</span></div>`;
   return `<div class="par"><div class="pbh"><span class="pbn">${title}</span></div>${head}${legs}${foot}</div>`;
 }
-function labParlays(day, type) {
-  const D = (MODELBETS && MODELBETS.days && MODELBETS.days[day]) || {}, rec = Object.keys(D).filter((t) => isLabType(type, t)).flatMap((t) => D[t]);
-  const today = S && S.dates && S.dates.includes(day);
-  const live = today ? (S.parlays || []).filter((p) => isLabType(type, p.type) && (p.game ? S.games.some((g) => g.key === p.game && g.date === day && !g.inProgress) : p.date ? p.date === day : day === S.dates[0])) : [];
-  const out = live.map((p) => ({ p, start: p.start || (p.legs[0] && (S.games.find((g) => g.key === p.legs[0].game) || {}).start) || null, title: p.game ? gameLogos(p.game) : esc(PTYPES[p.type] || p.type), across: !p.game }));
-  for (const r of rec) if (!out.some((x) => x.p.game === r.game && (r.game || x.p.type === r.type))) out.push({ p: r, start: r.start || null, title: r.game ? gameLogos(r.game) : esc(PTYPES[r.type] || r.type), across: !r.game });
-  return out.sort((a, b) => (Date.parse(a.start || 0) || 0) - (Date.parse(b.start || 0) || 0) || a.p.legs.length - b.p.legs.length);
+function loadModelPicks(day) {
+  if (loadModelPicks[day]) return; loadModelPicks[day] = true;
+  fetch(`/api/nba/modelpicks${day ? `?date=${day}` : ""}`, { cache: "no-store" }).then((r) => r.json()).then((d) => { MPICKS[day || ""] = { d: d && d.ok ? d : null, t: Date.now() }; if (d && d.ok && d.date && !day) MPICKS[d.date] = MPICKS[""]; })
+    .catch(() => { MPICKS[day || ""] = { d: null, t: Date.now() }; }).finally(() => { loadModelPicks[day] = false; if (BETSVIEW === "model") renderLabList(); });
 }
+// a game's picks: { spread, total, ml } each { pick, hit, price, result, pts }
+const lockedPick = (x) => (x && x.plain ? { pick: x.plain.label, hit: x.plain.pct, price: x.plain.price, result: normRes(x.plain.result), pts: x.pts ? { pick: x.pts.label, hit: x.pts.pct, price: x.pts.price, result: normRes(x.pts.result) } : null } : null);
+function labGames(day) {
+  if (S && (S.dates || []).includes(day)) return (S.games || []).filter((g) => g.date === day).map((g) => {
+    const card = (k) => { const C = cardOf(g, k); return C && C.plain ? { pick: C.plain.pick, hit: C.plain.hit, price: C.plain.price, pts: C.pts ? { pick: C.pts.pick, hit: C.pts.hit, price: C.pts.price } : null } : null; };
+    const mp = g.ml && g.ml.pick && (g.ml.pick.tier === "pick" || g.ml.pick.tier === "lean") ? g.ml.pick : null;
+    const lines = g.inProgress ? { spread: lockedPick(g.locked && g.locked.spread), total: lockedPick(g.locked && g.locked.total), ml: lockedPick(g.locked && g.locked.ml) }
+      : { spread: card("spread"), total: card("total"), ml: mp ? { pick: mp.label, hit: mp.pct, price: mp.price ?? null } : null };
+    return { key: g.key, away: g.away, home: g.home, start: g.start, date: g.date, lines };
+  });
+  const c = MPICKS[day]; return c && c.d ? (c.d.games || []).map((g) => ({ ...g, lines: { spread: lockedPick(g.locked && g.locked.spread), total: lockedPick(g.locked && g.locked.total), ml: lockedPick(g.locked && g.locked.ml) } })) : [];
+}
+const mpLine = (k) => Shell.pickLine(k);
+const npHead = () => `<div class="pbl ppr pph"><span class="pp1">PLAYER</span><span class="pp2">LINE</span><span class="pp5">LAST</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
+const LAB_BODY = {
+  lines: (g) => { const L = g.lines || {}, ln = (lb, x, title) => (x && x.pick ? `${title ? `<div class="mks">${title}</div>` : ""}` + mpLine({ lb, label: x.pick, said: x.hit, price: x.price, result: normRes(x.result) }) : "");
+    const sp = ln("Pick:", L.spread, "Spread &amp; ML") + ln("Pick w/ points:", L.spread && L.spread.pts) + ln("ML pick:", L.ml, L.spread && L.spread.pick ? "" : "Spread &amp; ML"), to = ln("Pick:", L.total, "Totals") + ln("Pick w/ points:", L.total && L.total.pts);
+    return sp + to ? `<div class="mkc">${sp}${to}</div>` : ""; },
+  props: (g) => { const c = GPROPS[g.date], pg = c && c.d ? (c.d.games || []).find((x) => x.game === g.key) : null, picks = (pg && pg.picks) || [];
+    const part = (t) => { const rs = picks.filter((p) => (p.team || "") === t); return rs.length ? `${t ? `<div class="pbl pteam">${tlogo(t)}${esc(t)}</div>` : ""}${rs.map(npRow).join("")}` : ""; };
+    return picks.length ? npHead() + [...new Set([g.away, g.home, ...picks.map((p) => p.team || "")])].map(part).join("") : ""; },
+};
 function renderLabList() {
   if (!$("lab")) return;
-  const days = [...new Set([...Object.keys((MODELBETS && MODELBETS.days) || {}), ...((S && S.dates) || [])])].sort().reverse();
-  // opens on the first day that has parlays of this type: today, then the next days, then the most recent past day (never an empty day when a full one exists)
-  const order = [...((S && S.dates) || []), ...days.filter((d) => !(S && S.dates && S.dates.includes(d)))];
-  const sel = LABDAY && days.includes(LABDAY) ? LABDAY : order.find((d) => labParlays(d, LABTYPE).length) || (S && S.dates && S.dates[0]) || days[0];
+  const saved = MPICKS[""] && MPICKS[""].d ? MPICKS[""].d.days || [] : [];
+  if (!MPICKS[""]) loadModelPicks("");
+  const days = [...new Set([...saved, ...((S && S.dates) || [])])].sort().reverse();
+  const sel = LABDAY && days.includes(LABDAY) ? LABDAY : (S && S.dates && S.dates[0]) || days[0] || null;
   const chips = `<div class="wksel"><select id="lab-wk" aria-label="Day">${[...days].reverse().map((d) => `<option value="${esc(d)}"${sel === d ? " selected" : ""}>${dayName(d)}</option>`).join("")}</select></div>`;   // 10/17 (owner): a drop-down, first recorded day first
-  const xs = sel ? labParlays(sel, LABTYPE) : [];
-  const slotTimes = {}; for (const x of xs) if (x.start && !x.across) { const sl = nbaSlot(x.start), tt = tipTime(x.start); (slotTimes[sl] = slotTimes[sl] || []).includes(tt) || slotTimes[sl].push(tt); }
-  let lastSlot = null; const blocks = xs.map((x) => { const sl = x.start && !x.across ? nbaSlot(x.start) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl; return h + pBlock(x.title, x.p, x.across); });
-  $("lab").innerHTML = ddSlot($("lab"), chips) + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim empty" style="margin-top:12px">None yet.</div>');
+  const live = !!(S && (S.dates || []).includes(sel));
+  if (sel && !live) { const c = MPICKS[sel]; if (!c || Date.now() - c.t > 10 * 60e3) loadModelPicks(sel); }
+  if (sel && LABTYPE === "props") { const c = GPROPS[sel]; if (!c || Date.now() - c.t > 5 * 60e3) loadGameProps(sel); }
+  const waiting = sel && ((!live && !MPICKS[sel]) || (LABTYPE === "props" && !GPROPS[sel]));
+  const games = sel ? labGames(sel).sort((a, b) => (Date.parse(a.start || 0) || 0) - (Date.parse(b.start || 0) || 0)) : [], body = LAB_BODY[LABTYPE] || LAB_BODY.lines;
+  const xs = games.map((g) => ({ g, html: body(g) })).filter((x) => x.html);
+  const slotTimes = {}; for (const { g } of xs) if (g.start) { const sl = nbaSlot(g.start), tt = tipTime(g.start); (slotTimes[sl] = slotTimes[sl] || []).includes(tt) || slotTimes[sl].push(tt); }
+  let lastSlot = null; const blocks = xs.map(({ g, html }) => { const sl = g.start ? nbaSlot(g.start) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
+    const sc = live ? scOf((S.games || []).find((x) => x.key === g.key) || g) : null, lv = sc && sc.st === "in" ? ' <span class="lvb">● LIVE</span>' : "";   // ESPN says it is being played
+    return h + `<div class="par"><div class="pbh c"><span class="pbn">${gameLogos(g.key)}${lv}</span></div>${html}</div>`; });
+  $("lab").innerHTML = ddSlot($("lab"), chips) + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : `<div class="s dim empty" style="margin-top:12px">${waiting ? "Loading…" : "None yet."}</div>`);
   const lw = $("lab-wk"); if (lw && lw.tagName === "SELECT") lw.onchange = () => { LABDAY = lw.value; renderLabList(); };
 }
 
@@ -665,7 +693,7 @@ function renderModels() {
     mSec("m-board", "3 · Parlay scoreboard", board) +
     mSec("m-acc", "4 · Accuracy vs the market", accRows) +
     mSec("m-fut", `5 · Futures · ${FUT && FUT.ok ? FUT.season : "season simulation"}`, futuresRows()) +
-    mSec("m-sys", "6 · System", sysRows, watch.length, sysBad);
+    mSec("m-sys", "6 · System", sysRows, (watch.length || (sysBad ? 1 : 0)));   // 10/28 late (owner): System never opens by itself; the ⚠ count says it
   $("models").innerHTML = paint($("models").innerHTML);
   for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
 }

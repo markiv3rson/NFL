@@ -248,9 +248,10 @@ body.tbar-on .lgt { gap:1px; } .lgt i { width:40px; height:40px; } .lgt img { wi
 html.lines-on body.bnav-on:not(.tbar-on) .pagewm::after { display:block !important; content:""; position:absolute; inset:0; background:rgba(5,5,9,.35); }
 @media (min-width:1100px) { html.lines-on body.bnav-on:not(.tbar-on)::after { filter:brightness(.65); } }
 /* the type / tab chips go under My bets | Model bets */
-body.bnav-on .phead .phchips { order:4; flex:1 0 100%; justify-content:center; margin:2px 0 0; }
-/* the type / tab chips go under My bets | Model bets */
-body.bnav-on .phead .phchips { order:4; flex:1 0 100%; justify-content:center; margin:2px 0 0; }
+body.bnav-on .phead .phchips { order:4; flex:1 0 100%; justify-content:safe center; margin:2px 0 0; }
+/* 10/28 late: the four Model bets tabs (GAME LINES · HALVES & QUARTERS · PLAYER PROPS · GAME PROPS) fit a phone on one line; a row still too wide starts at
+   its first chip and scrolls (a centered row that overflows used to cut its first chip off) */
+@media (max-width:440px) { body.bnav-on .phead .phchips { gap:10px; } body.bnav-on .phead .phchips .gchip { letter-spacing:.01em !important; } }
 
 /* ===== 10/28 CLEAN LAYOUT (owner, after the game-page sketches: "This is how clean and organized I want it ... consistent on every page"). Both sports.
    One style everywhere: text 11 px; titles / labels bold, white, capitals (Passion One tabs, system font elsewhere); every other letter and number
@@ -448,3 +449,5 @@ body.bnav-on .phead { background:var(--glass) !important; -webkit-backdrop-filte
 /* 10/28: the NFL 1H SPREAD pick line under the first-half spread rows (same size as the MODEL lines) */
 .mkc .mkpick { margin:6px 0 2px; font-size:13px; }
 .mkc .mkpick .mkp { color:#2e5cff; font-weight:800; }
+/* 10/28 late: on a computer the Model bets pick lines sit in a centered block under their game's name (not stuck to the left edge of the wide column). Both sports. */
+@media (min-width:700px) { #lab .pgrid > .par > .mkc { max-width:520px; margin:0 auto; } }
