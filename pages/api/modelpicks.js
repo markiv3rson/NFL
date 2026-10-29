@@ -9,9 +9,9 @@ import { lockedPicksFrom, gpOut, h1Out } from "../../lib/week";
 import { tkey } from "../../lib/tracked";
 const BEST_TD = 58;   // 10/29 (owner): the page's Best TD bar
 // Model bets -> Anytime TD (10/29, owner: "#1 on each team"): per team, the players who scored in at least one of their last 3 played games (earlier weeks'
-// graded results), the model's likeliest of them, kept only at 50%+ (the model's own %, else the shown %). Tested walk-forward 2022-26 weeks 5+: ~8 picks a
-// week scored 61.8% (2026: 65%); the old top-3 list 35.5%.
-const TDP_BAR = 50, TDP_RECENT = 3;
+// graded results), the model's likeliest of them (none -> the team's #1); every team gets one (owner: "even if it's under 50%"). Tested walk-forward 2022-26 weeks 5+: ~8 picks a
+// week scored 61.8% (2026: 65%); every team (owner later) ~30 a week, 43.2%; the old top-3 list 35.5%.
+const TDP_RECENT = 3;
 const tdVal = (p) => (p.model != null ? p.model : p.fair);
 const tdKey = (team, player) => `${team}|${player}`;
 // TD history before a week: team|player -> [true/false per played game], oldest first
@@ -27,14 +27,14 @@ async function tdHistory(r, season, upto) {
 // played games in a row without a TD (counted back from his last one) under 3 = he scored in at least one of his last 3
 const recent = (H, p) => { const a = H.get(tdKey(p.team, p.player)) || []; let k = 0; for (let i = a.length - 1; i >= 0 && !a[i]; i--) k++; return k < TDP_RECENT; };
 const tdPicksOf = (g, rs, H) => !rs || !Array.isArray(rs.td) ? [] : [g.away, g.home].map((t) => {
-  const p = rs.td.filter((x) => x.team === t && x.played !== false && recent(H, x)).sort((a, b) => tdVal(b) - tdVal(a))[0];
-  return p && tdVal(p) >= TDP_BAR ? { player: p.player, team: t, fair: p.fair, model: tdVal(p), price: p.ask ?? null, scored: typeof p.scored === "boolean" ? p.scored : null } : null; }).filter(Boolean);
+  const all = rs.td.filter((x) => x.team === t && x.played !== false).sort((a, b) => tdVal(b) - tdVal(a)), p = all.find((x) => recent(H, x)) || all[0];
+  return p ? { player: p.player, team: t, fair: p.fair, model: tdVal(p), price: p.ask ?? null, scored: typeof p.scored === "boolean" ? p.scored : null } : null; }).filter(Boolean);
 // 10/29 (owner: "I need records at the top of every tab in models bets ... the record of the picks on there winning and losing"): the season's W-L of
 // exactly the picks these tabs show (the same locked card picks, 1H / GAME PROPS / PASSING TDs picks and Best TD picks), every week so far.
 // Pushes count neither way. Cached 5 minutes.
 const REC_KEYS = ["spread", "spreadPts", "total", "totalPts", "ml", "h1", "gp", "ptd", "td", "ftd", "tdp"];
 async function seasonRecords(r, season, weeks) {
-  const ck = `modelpicks:rec2:${season}`, hit = jparse(await r.get(ck).catch(() => null)); if (hit) return hit;
+  const ck = `modelpicks:rec3:${season}`, hit = jparse(await r.get(ck).catch(() => null)); if (hit) return hit;
   const R = Object.fromEntries(REC_KEYS.map((k) => [k, { w: 0, l: 0 }])), add = (k, res) => { if (res === "W" || res === true) R[k].w++; else if (res === "L" || res === false) R[k].l++; };
   const H = new Map();   // the TD history so far (weeks before the one being counted)
   for (const week of weeks) {

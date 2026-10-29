@@ -364,7 +364,7 @@ function tdWeekLine(data, team, player) {
 // or 3 4 5 6 7 games"; SUPERSEDES the 10/21 "scored in his last 2 or off" cut): the page lists the TD_POOL (5 since the owner's later 10/27 ask) likeliest scorers per team, nobody is cut for a
 // drought; a player who did not score last game carries the red note with the count -- "✗ no TD last game", "✗ no TD last 2 games", "... last 5 games" (a player
 // with no TD this season counts every game he played). The page is still drawn only once the week feed is in. Model lists, parlays and grading unchanged.
-const TD_WARN = 1, TD_POOL = 5, TD_RECENT = 3, TD_PICK_BAR = 50;   // Model bets -> Anytime TD: #1 per team among players with a TD in their last 3 games, model 50%+ (owner 10/29)   // 10/27 later (owner: "for anytime td's show me the top 5 players on each team")
+const TD_WARN = 1, TD_POOL = 5, TD_RECENT = 3;   // Model bets -> Anytime TD: one per team, the model's #1 among players with a TD in their last 3 games (owner 10/29)   // 10/27 later (owner: "for anytime td's show me the top 5 players on each team")
 // the note text for a row, or null (scored last game, no feed yet, or no played games)
 function tdWarn(r, data, asOf) { if (data == null || !r) return null; const d = tdDrought(data, r.team, r.player, asOf); return d == null || d < TD_WARN ? null : d === 1 ? "✗ no TD last game" : `✗ no TD last ${d} games`; }
 async function loadTdWeeks() {
@@ -498,6 +498,13 @@ const liveHeadTxt = (ks) => (ks.length === 1 ? `<span class="r lvb">● LIVE · 
 const liveLegTxt = (ks, l, done) => (ks.length > 1 && !done && liveSc(l.game) ? ` <span class="r lvb">· ${esc(liveSc(l.game).lbl || "")}</span>` : "");
 // 10/29 (owner, My bets: "No logos on this page. Use the team helmets"): every team logo on My bets becomes the team's small helmet
 const helmetize = (h) => String(h).replace(/<img class="tlogo" src="([^"]*)"[^>]*>/g, (m, src) => { const t = Object.keys(LOGO_OVERRIDES).find((k) => LOGO_OVERRIDES[k] === src) || (/\/nfl\/500\/([A-Z]{2,4})\.png$/.exec(src) || [])[1]; return t ? phelm(t) : m; });
+// the one game every leg of a parlay belongs to ("CAR @ GB"), or null: a leg names it ("Over 43.5 · CAR @ GB" / its game) or is a team in it ("CAR +7.5")
+function oneGameOf(legs) {
+  const keyOf = (p) => p.game || (String(p.label || "").match(/·\s+([A-Z]{2,4} @ [A-Z]{2,4})$/) || [])[1] || null;
+  const keys = [...new Set(legs.map(keyOf).filter(Boolean))]; if (keys.length !== 1) return null;
+  const k = keys[0], teams = k.split(" @ "), teamOf = (p) => p.team || (String(p.label || "").match(/^([A-Z]{2,4}) (?:[+-][\d.]+|ML)\b/) || [])[1] || null;
+  return legs.every((p) => keyOf(p) === k || teams.includes(teamOf(p))) ? k : null;
+}
 function betRow(b) { return `<div class="betwrap">${betRowInner(b)}</div>`; }
 function betRowInner(b) {
   if (b.source === "account") {   // bet recorded automatically from your Polymarket account
@@ -505,7 +512,10 @@ function betRowInner(b) {
     const st = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : legLost(b) ? '<span class="r">Lost</span>' : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Even" : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : (b.waiting ? '<span class="y">waiting for TD results</span>' : '<span class="dim">open</span>');
     const name = b.picks && b.picks.length ? `${b.picks.length} picks` : b.prop ? `${phelm(b.prop.team)}${pnm(b.prop.label)}` : b.pick ? `${b.pick.result ? RESMARK[b.pick.result] + " " : ""}${legTxt(b.pick.result, logoLabel(b.pick.label, b.pick.team))}`   // 10/29: a straight team bet reads like a leg (the side you hold)
       : `${esc(b.title)}${b.outcome ? ` — ${esc(b.outcome)}` : ""}`;   // 10/19: single player bet
-    const picks = b.picks && b.picks.length ? b.picks.map((p) => `<div class="s" style="padding:0 0 0 16px">${p.result ? RESMARK[p.result] + " " : "• "}${legTxt(p.result, logoLabel(p.label, p.team))}${liveLegTxt(lk, p, !!p.result)}${!p.result && legFlipped(p.label) ? ' <span class="y">⚠ app now picks the other side</span>' : ""}</div>`).join("") : "";
+    // 10/29 (owner: "Why is the helmet and names here? If it's for the same game put it at the top below 2 PICKS"): a parlay whose legs are all one game shows
+    // that game once, under its name line; the legs drop their "· CAR @ GB"
+    const one = b.picks && b.picks.length > 1 ? oneGameOf(b.picks) : null, lbl = (p) => (one ? String(p.label).replace(` · ${one}`, "") : p.label);
+    const picks = b.picks && b.picks.length ? (one ? `<div class="s" style="padding:0 0 0 16px">${logoLabel(one)}</div>` : "") + b.picks.map((p) => `<div class="s" style="padding:0 0 0 16px">${p.result ? RESMARK[p.result] + " " : "• "}${legTxt(p.result, logoLabel(lbl(p), p.team))}${liveLegTxt(lk, p, !!p.result)}${!p.result && legFlipped(p.label) ? ' <span class="y">⚠ app now picks the other side</span>' : ""}</div>`).join("") : "";
     // 10/29 (owner: "Remove the wordings. If it wins. And put money and layout next to their names and put the $ x money pays $$$ in one line"): one line per bet --
     // name · $cost at N¢ · pays $X · open / Won / Lost; the legs under it
     return `<div class="row brow"><span class="bnm">${name}${lk.length ? " " + liveHeadTxt(lk) : ""}</span><span class="bmo">${money(b.cost)}<span class="bat">${b.price != null ? ` at ${betCents(b.price)}¢` : ""} ·</span> ${b.sold ? `sold early for ${money(Math.max(0, (b.cost || 0) + (b.pl || 0)))}` : legLost(b) ? `−${money(b.cost)}` : `pays ${money(b.toWin)}`}</span><span class="bst">${st}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
@@ -1377,15 +1387,16 @@ const gpSplit = (lb) => { const m = /^(.*?) ((?:Over|Under) [\d.]+|Yes|No)$/.exe
 // rows -- the 3 likeliest scorers per team (owner: "For anytime TD only show top 3 of each team"), position, the red "no TD last N games" note, MODEL · POLYMARKET; ✓ / ✗ once graded (past weeks: the graded list)
 function tdBlock(g) {
   // 10/29 (owner: "#1 on each team"): per team ONE pick -- among the players who scored in at least one of their last 3 played games (byes / games he sat
-  // out skipped, counted up to this game's week), the model's likeliest, kept only at 50%+ (the model's own %). Tested walk-forward 2022-26 weeks 5+:
-  // ~8 picks a week scored 61.8% (2026: 65%). A game that has started shows its saved, graded picks (/api/modelpicks tdPicks).
+  // out skipped, counted up to this game's week), the model's likeliest (owner later: every team, even under 50%). Tested walk-forward 2022-26 weeks 5+:
+  // ~30 picks a week scored 43.2% (the 50%+ ones 61.8%). A game that has started shows its saved, graded picks (/api/modelpicks tdPicks).
   let picks;
   if ((g.started || !(g.tdAll && g.tdAll.length)) && g.tdPicks) picks = g.tdPicks.map((t) => ({ player: t.player, team: t.team, fair: t.model, price: t.price ?? null, scored: t.scored }));
   else {
     if (!TDW) return "";
     const asOf = Number(g.week) || null, val = (r) => (r.model != null ? r.model : r.fair);
-    picks = [g.away, g.home].map((t) => (g.tdAll || []).filter((r) => r.team === t && r.fair != null && usable(r) && (tdDrought(TDW, r.team, r.player, asOf) ?? 0) < TD_RECENT)
-      .sort((a, b) => val(b) - val(a))[0]).filter((r) => r && val(r) >= TD_PICK_BAR).map((r) => ({ ...r, fair: val(r) }));
+    // 10/29 later (owner: "Show me at least 1 per team even if it's under 50%"): every team gets one -- the recent scorer if there is one, else the model's #1
+    picks = [g.away, g.home].map((t) => { const all = (g.tdAll || []).filter((r) => r.team === t && r.fair != null && usable(r)).sort((a, b) => val(b) - val(a));
+      return all.find((r) => (tdDrought(TDW, r.team, r.player, asOf) ?? 0) < TD_RECENT) || all[0]; }).filter(Boolean).map((r) => ({ ...r, fair: val(r) }));
   }
   const asOf = Number(g.week) || null;
   const row = (r) => { const h = tdRow({ r, g, asOf }); return typeof r.scored !== "boolean" ? h : h.replace('<span class="pp1">', `<span class="pp1">${legMark(r.scored ? "W" : "L")} `); };
