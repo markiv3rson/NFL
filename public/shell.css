@@ -463,3 +463,5 @@ body.bnav-on .panel .pph .lvb { color:var(--red) !important; -webkit-text-stroke
 #lab .ppr.first .pp2 { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 @media (min-width:600px) { #lab .ppr.first { grid-template-columns:minmax(0,1.4fr) minmax(0,1.2fr) 70px 110px !important; column-gap:16px; } }
 #lab .ppr.first.pph .pp2 { display:block !important; visibility:visible !important; }
+/* 10/29 (owner: "Separate the normal lines and the w/ points lines"): the w/ points picks start under a thin line, both sports */
+#lab .ppr.first.sep { margin-top:6px; padding-top:6px; border-top:1px solid rgba(255,255,255,.18); }

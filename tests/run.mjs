@@ -2162,7 +2162,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   ok(code === 400, "price history route: a bad team or start is refused"); }
 { // 10/28 (owner: "only add the logo next to their team name"): props / TD rows carry no logo, the team label does (Best TD picks keep theirs: no team label there)
   const a = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
-  ok(!/"•"\} \$\{tlogo\(p\.team/.test(a) && /• \$\{withGame \? tlogo\(r\.team\) : ""\}/.test(a) && (a.match(/class="pbl pteam">\$\{tlogo\(t\)\}/g) || []).length === 4, "NFL props / Anytime TD: the logo sits beside the team name, not on each player row"); }
+  const pr = a.slice(a.indexOf("const propRow = "), a.indexOf("const propHead = ")), fb = a.slice(a.indexOf("function firstBlock("), a.indexOf("const LAB_BODY"));
+  // 10/29 (owner, Model bets First TD: "I just need the names here remove first ... and the team names. Only add the logo next to their names")
+  ok(/\$\{tlogo\(p\.team\)\}\$\{esc\(p\.name\)\}/.test(fb) && !/pteam|First TD<|teamRows/.test(fb), "Model bets First TD: logo + name rows, no team lines, no First TD column");
+  ok(!/"•"\} \$\{tlogo\(p\.team/.test(pr) && /• \$\{withGame \? tlogo\(r\.team\) : ""\}/.test(a) && (a.match(/class="pbl pteam">\$\{tlogo\(t\)\}/g) || []).length === 4, "NFL props / Anytime TD: the logo sits beside the team name, not on each player row"); }
 { // 10/28: the NFL 1H SPREAD pick -- model equal to the Python fit, the props rules at 58%, record / rewrite / take out, grade on ESPN's first half, page + Models
   const h = await import("../lib/h1pick.js"), tr = await import("../lib/tracked.js"), ef = await import("../lib/espnFinals.js"), { getRedis } = await import("../lib/redis.js");
   const ref = JSON.parse(readFileSync(new URL("./h1_ref.json", import.meta.url), "utf8")); let worst = 0;
