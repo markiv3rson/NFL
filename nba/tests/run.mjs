@@ -1360,5 +1360,8 @@ const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "u
   const A = o.open[0], B = o.settled[0];
   ok(A.pick.label === "NOP +4.5" && A.shares === 10 && Math.abs(A.price - 0.51255) < 1e-9 && B.pick.label === "MIN -2.5" && B.result === "loss" && Math.abs(B.pl + 4.3176) < 1e-9 && o.record.l === 1,
     "NBA straight bets: the side held as a leg (NOP +4.5), shares positive with the price, a settled other-side bet graded from its own leg", { A, B }); }
+{ // 10/29 (owner: "I did not sell these I lost"): a combo with a lost leg listed under Settled reads Lost -$cost, never "Sold —"
+  const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
+  ok(/const state = \(e, settled\) => settled && e\.result \? /.test(app) && /: !e\.result && legLost\(e\) \? `−\$\{money\(e\.cost\)\}`/.test(app), "NBA My bets: a lost-leg combo under Settled says Lost, not Sold"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`);
 process.exit(bad ? 1 : 0);
