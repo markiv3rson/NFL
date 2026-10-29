@@ -70,29 +70,34 @@ const LINES = (away, home) => [
   { market: "spread", team: away, line: 10.5, points: 2, hist: 57.0, n: 6000, price: 0.62, label: `${away} +10.5` }, { market: "spread", team: home, line: -6.5, points: 2, hist: 56.5, n: 6000, price: 0.6, label: `${home} -6.5` },
   { market: "spread", team: home, line: -5.5, points: 3, hist: 60.0, n: 6000, price: 0.66, label: `${home} -5.5` }, { market: "spread", team: home, line: -4.5, points: 4, hist: 64.0, n: 6000, price: 0.7, label: `${home} -4.5` },
   { market: "total", side: "over", line: 223.5, points: 0, hist: 49.0, n: 4000, price: 0.5, label: "Over 223.5" }, { market: "total", side: "under", line: 223.5, points: 0, hist: 51.0, n: 4000, price: 0.5, label: "Under 223.5" },
-  { market: "total", side: "under", line: 225.5, points: 2, hist: 54.0, n: 4000, price: 0.55, label: "Under 225.5" }, { market: "total", side: "over", line: 221.5, points: 2, hist: 53.0, n: 4000, price: 0.55, label: "Over 221.5" }];
+  { market: "total", side: "under", line: 225.5, points: 2, hist: 54.0, n: 4000, price: 0.55, label: "Under 225.5" }, { market: "total", side: "over", line: 221.5, points: 2, hist: 53.0, n: 4000, price: 0.55, label: "Over 221.5" },
+  // 10/29 (owner: "+5 - +10"): 5-point lines, PICK w/ POINTS' first buy
+  { market: "spread", team: away, line: 13.5, points: 5, hist: 66.0, n: 6000, price: 0.74, label: `${away} +13.5` }, { market: "spread", team: home, line: -3.5, points: 5, hist: 67.0, n: 6000, price: 0.76, label: `${home} -3.5` },
+  { market: "total", side: "under", line: 228.5, points: 5, hist: 61.0, n: 4000, price: 0.66, label: "Under 228.5" }, { market: "total", side: "over", line: 218.5, points: 5, hist: 60.0, n: 4000, price: 0.65, label: "Over 218.5" }];
 const mk = (away, home, over = {}) => ({ key: `${away} @ ${home}`, away, home, date: "2026-10-21", start: tipLater, poly: { ml: { away: 0.26, home: 0.74, midAway: 0.26, midHome: 0.74 }, spread: { homeSpread: -8.5, home: 0.51, away: 0.49 }, total: { line: 223.5, over: 0.5, under: 0.5 } }, model: { margin: 3, total: 225 }, lines: LINES(away, home), ...over });
 { const g = mk("OKC", "ATL"), c = cp.buildCard(g);
   ok(c && c.spread.plain.id === "modelpick|spread" && c.spread.plain.pick === "OKC +8.5" && c.spread.plain.hit === 49.4 && c.spread.plain.price === 0.49, "no rule: PICK = the model's side at Polymarket's own line, at the model's honest rate (49.4%)", c && c.spread.plain);
-  ok(c.spread.rows.map((r) => `${r.pick}·${r.points}`).join("|") === "OKC +8.5·0|ATL -8.5·0|OKC +10.5·2|ATL -6.5·2|ATL -5.5·3|ATL -4.5·4", "list: both teams, the main line and every alternate up to 7 points (owner 10/16)", c.spread.rows.map((r) => r.pick));
+  ok(c.spread.rows.map((r) => `${r.pick}·${r.points}`).join("|") === "OKC +8.5·0|ATL -8.5·0|OKC +10.5·2|ATL -6.5·2|ATL -5.5·3|ATL -4.5·4|OKC +13.5·5|ATL -3.5·5", "list: both teams, the main line and every alternate up to 7 points (owner 10/16)", c.spread.rows.map((r) => r.pick));
   { const deep = mk("OKC", "ATL", { lines: [...LINES("OKC", "ATL"), { market: "spread", team: "ATL", line: -1.5, points: 7, hist: 73.0, n: 6000, price: 0.8, label: "ATL -1.5" }, { market: "spread", team: "ATL", line: -0.5, points: 8, hist: 76.0, n: 6000, price: 0.84, label: "ATL -0.5" }] }), cd = cp.buildCard(deep);
-    ok(cd.spread.rows.some((r) => r.points === 7) && !cd.spread.rows.some((r) => r.points === 8) && cd.spread.pts.pick === "OKC +10.5" && cp.MAX_LIST === 7 && cp.MAX_BUY === 3.5, "a 7-point line is listed, 8 points never; PICK w/ POINTS never goes past 3.5 points (the market prices every point)", cd.spread.pts); }
-  ok(c.spread.pts && c.spread.pts.pick === "OKC +10.5" && c.spread.pts.hit === 57 && c.spread.pts.id === "ptspick|spread", "PICK w/ POINTS (10/19): on the PICK's team (OKC), never the other side", c.spread.pts);
+    ok(cd.spread.rows.some((r) => r.points === 7) && !cd.spread.rows.some((r) => r.points === 8) && cd.spread.pts.pick === "OKC +13.5" && cp.MAX_LIST === 7 && cp.PTS_MIN === 5 && cp.PTS_MAX === 10, "a 7-point line is listed, 8 points never; PICK w/ POINTS (10/29) = the fewest points from 5 to 10 on the PICK's team", cd.spread.pts);
+    const far = cp.buildCard(mk("OKC", "ATL", { lines: [...LINES("OKC", "ATL").filter((x) => x.points < 5), { market: "spread", team: "OKC", line: 16.5, points: 8, hist: 74.0, n: 6000, price: 0.82, label: "OKC +16.5" }, { market: "spread", team: "OKC", line: 19.5, points: 11, hist: 80.0, n: 6000, price: 0.86, label: "OKC +19.5" }] }));
+    ok(far.spread.pts.pick === "OKC +16.5" && far.spread.pts.points === 8 && !far.spread.rows.some((r) => r.points > 7), "no 5-point line listed: the next one up (8 points), never past 10; the MORE list stops at 7", far.spread.pts); }
+  ok(c.spread.pts && c.spread.pts.pick === "OKC +13.5" && c.spread.pts.hit === 66 && c.spread.pts.points === 5 && c.spread.pts.id === "ptspick|spread" && !("first" in c.spread.pts), "PICK w/ POINTS (10/19, 10/29): on the PICK's team (OKC +13.5, 5 points), never the other side (ATL -3.5 reads 67%)", c.spread.pts);
   { const cf = cp.buildCard(mk("OKC", "ATL", { model: { margin: 12, total: 225 } }));
-    ok(cf.spread.plain.pick === "ATL -8.5" && cf.spread.pts.pick === "ATL -5.5" && cf.spread.pts.hit === 60, "PICK w/ POINTS: the far line that clearly wins more (on the PICK's team)", cf.spread.pts);
+    ok(cf.spread.plain.pick === "ATL -8.5" && cf.spread.pts.pick === "ATL -3.5" && cf.spread.pts.hit === 67, "PICK w/ POINTS on the PICK's team: ATL -3.5 (5 points)", cf.spread.pts);
     const cn = cp.buildCard(mk("OKC", "ATL", { model: null }));
-    ok(!cn.spread.plain && cn.spread.pts.pick === "ATL -5.5", "PICK w/ POINTS with no PICK at all: either side", cn.spread.pts); }
+    ok(!cn.spread.plain && cn.spread.pts.pick === "ATL -3.5", "PICK w/ POINTS with no PICK at all: either side (5 points both: the higher %, ATL -3.5 67%)", cn.spread.pts); }
   ok(c.total.plain.pick === "Over 223.5" && c.total.plain.hit === 50.4 && c.total.pts === null && c.total.rows.some((r) => r.pick === "Over 221.5" && r.hit === 53), "total (10/26 night): model's side at the main total, NO PICK w/ POINTS on it (a coin flip; live 18-21); the MORE list still shows every line", c.total);
   const g2 = mk("OKC", "ATL", { lines: LINES("OKC", "ATL").filter((x) => x.points <= 2) }), c2 = cp.buildCard(g2);
-  ok(c2.spread.pts.pick === "OKC +10.5" && c2.spread.pts.hit === 57, "PICK w/ POINTS: the fewest points that reach 56%, either team", c2.spread.pts);
+  ok(c2.spread.pts === null && c2.spread.plain.pick === "OKC +8.5", "PICK w/ POINTS (10/29): no line from 5 to 10 points listed -> none (the PICK stays)", c2.spread.pts);
   const g1p = mk("OKC", "ATL", { lines: [...LINES("OKC", "ATL").filter((x) => x.points <= 2), { market: "spread", team: "OKC", line: 9.5, points: 1, hist: 58.0, n: 6000, price: 0.55, label: "OKC +9.5" }] }), c4 = cp.buildCard(g1p);
-  ok(cp.MIN_BUY === 2 && c4.spread.rows.some((r) => r.pick === "OKC +9.5" && r.points === 1 && r.hit === 58) && c4.spread.pts.pick === "OKC +10.5" && c4.spread.pts.points === 2, "PICK w/ POINTS: 2 points is the first buy; a 1-point line is listed, never chosen (owner 10/16)", c4.spread.pts);
+  ok(c4.spread.rows.some((r) => r.pick === "OKC +9.5" && r.points === 1 && r.hit === 58) && c4.spread.pts === null, "PICK w/ POINTS (10/29): 1 / 2 point lines are listed, never chosen (5 is the first buy)", c4.spread.pts);
   const g3 = mk("OKC", "ATL", { move: { signal: { spread: { team: "OKC", open: 8.5, pts: 3 } } } }), c3 = cp.buildCard(g3);
   ok(c3.spread.plain.id === "cardpick|spread" && c3.spread.plain.ruleId === "linemove|spread" && c3.spread.plain.pick === "OKC +8.5" && c3.spread.plain.hit === 67.9, "LINE MOVE names the side: PICK at Polymarket's line, 67.9% while Polymarket still has the opening number", c3.spread.plain);
   // 10/24: the bought lines carry the PICK's lift (LINE MOVE 67.9% over a table main line of 49.0 -> +18.9): OKC +10.5 = 57.0 + 18.9 = 75.9, never under
   // the PICK; the other team's lines move down the same amount, floored at 100 - 67.9; PICK w/ POINTS = the fewest points (2) on OKC
   { const r = c3.spread.rows, okc2 = r.find((x) => x.pick === "OKC +10.5"), atl2 = r.find((x) => x.pick === "ATL -6.5"), atl0 = r.find((x) => x.pick === "ATL -8.5");
-    ok(okc2 && okc2.hit > 67.9 && Math.abs(okc2.hit - (57 + 67.9 - LINES("OKC", "ATL").find((x) => x.team === "OKC" && x.points === 0).hist)) < 0.11 && atl0.hit === 32.1 && atl2.hit >= 32.1 && atl2.hit < 56.5 && c3.spread.pts.pick === "OKC +10.5" && c3.spread.pts.hit === okc2.hit,
+    ok(okc2 && okc2.hit > 67.9 && Math.abs(okc2.hit - (57 + 67.9 - LINES("OKC", "ATL").find((x) => x.team === "OKC" && x.points === 0).hist)) < 0.11 && atl0.hit === 32.1 && atl2.hit >= 32.1 && atl2.hit < 56.5 && c3.spread.pts.pick === "OKC +13.5" && Math.abs(c3.spread.pts.hit - (66 + 67.9 - 49)) < 0.11,
       "LINE MOVE: lines with more points on the PICK's team carry its lift (never read under the PICK); the other team's move down the same", { r, pts: c3.spread.pts }); }
   const g4 = mk("OKC", "ATL", { move: { signal: { spread: { team: "OKC", open: 5.5, pts: 3 } } } });
   ok(cp.buildCard(g4).spread.plain.hit === 56.3, "LINE MOVE after Polymarket moved too: the closing-number rate (56.3%)");
@@ -176,7 +181,7 @@ const mk = (away, home, over = {}) => ({ key: `${away} @ ${home}`, away, home, d
   const s1 = await slate.buildSlate({ now: t0, events, injuries: { teams: {}, t: "2026-10-12T19:00:00Z" }, model });
   ok(s1.ok && s1.games.length >= 2 && s1.modelOk && s1.teams && s1.teams.TOR, "slate builds with teams for the page", s1.games.length);
   const g1 = s1.games.find((g) => g.key === "OKC @ ATL");
-  ok(g1.card && g1.card.spread.plain.pick === "OKC +8.5" && g1.card.spread.pts.pick === "OKC +10.5" && g1.card.total.plain.pick === "Over 223.5" && g1.card.total.pts === null, "the card is built on every game with model numbers (no PICK w/ POINTS on the model-side total)", g1.card && g1.card.spread);
+  ok(g1.card && g1.card.spread.plain.pick === "OKC +8.5" && g1.card.spread.pts.pick === "OKC +13.5" && g1.card.total.plain.pick === "Over 223.5" && g1.card.total.pts === null, "the card is built on every game with model numbers (no PICK w/ POINTS on the model-side total)", g1.card && g1.card.spread);
   ok(s1.bestBets.length === 1 && s1.bestBets[0].label === "ATL ML" && s1.bestBets[0].price > 0.7, "best bets: the green moneyline PICK, with its price; the model's 50% sides are not in it", s1.bestBets.map((p) => p.label));
   ok(!s1.parlays.some((p) => p.type === "sgp" || p.type === "sgp_pts" || p.type === "fav4"), "no 2-leg parlay from the model's 50% sides, no bought-lines parlay (10/19), no 4-favorites parlay with 3 games", s1.parlays.map((p) => p.type));
   const stored = await rec.loadPicks(); ok(stored.length === 4 && stored.every((p) => p.date === "2026-10-12") && stored.map((p) => p.id).sort().join("|") === "ml|modelpick|spread|modelpick|total|ptspick|spread" && stored.find((p) => p.id === "ml").price > 0.7, "every card pick is saved before tip-off with its id and price (no ptspick|total on a model-side total)", stored.map((p) => [p.id, p.price]));
@@ -204,7 +209,7 @@ const mk = (away, home, over = {}) => ({ key: `${away} @ ${home}`, away, home, d
   const g = live.games.find((x) => x.key === "OKC @ ATL");
   ok(g && g.inProgress === true && !g.card && g.ml.pick.tier === "none", "game in progress: no card, moneyline pick switched off", g && g.ml);
   ok(!live.bestBets.some((p) => p.game === "OKC @ ATL") && !live.parlays.some((p) => p.game === "OKC @ ATL"), "game in progress: not in best bets or parlays");
-  ok(g.locked && g.locked.spread.plain.label === "OKC +8.5" && g.locked.spread.pts.label === "OKC +10.5" && g.locked.ml.plain.label === "ATL ML" && g.locked.total.plain.label === "Over 223.5" && !g.locked.total.pts, "the picks saved before tip-off are shown locked", g.locked); }
+  ok(g.locked && g.locked.spread.plain.label === "OKC +8.5" && g.locked.spread.pts.label === "OKC +13.5" && g.locked.ml.plain.label === "ATL ML" && g.locked.total.plain.label === "Over 223.5" && !g.locked.total.pts, "the picks saved before tip-off are shown locked", g.locked); }
 
 // ---------- which environment variable holds the Redis address
 ok(redisUrl({}) === null && redisUrl({ NBA_REDIS_URL: "not a url" }) === null, "no NBA Redis address -> in-memory stand-in");
@@ -264,7 +269,7 @@ ok(redisUrl({ UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://a:1", REDIS_URL: "redis
   ok(g === 4 && done.length === 4 && by("ml").result === "loss" && by("modelpick|spread").result === "win" && by("ptspick|spread").result === "win" && by("modelpick|total").result === "loss" && !by("ptspick|total"), "gradeAll grades finished games only, every saved id", all.map((p) => [p.id, p.result]));
   const sm = rec.summarize(all);
   ok(sm.all.w === 1 && sm.all.l === 2 && sm.ml.l === 1 && sm.spread.w === 1 && sm.total.l === 1 && sm.pts.w === 1 && sm.pts.l === 0 && sm.model.w === 1 && sm["ptspick|spread"].w === 1 && !sm["ptspick|total"] && !sm.green.w && sm.green.l === 1, "record summary: by id, by market, bought lines apart, green picks (56%+) apart", sm);
-  ok(sm.ml.per100 === -100 && sm.pts.per100 != null && sm["ptspick|spread"].per100 === Math.round(100 / 0.62 - 100), "money per $100 at the saved price", [sm.ml.per100, sm["ptspick|spread"].per100]);
+  ok(sm.ml.per100 === -100 && sm.pts.per100 != null && sm["ptspick|spread"].per100 === Math.round(100 / 0.74 - 100), "money per $100 at the saved price", [sm.ml.per100, sm["ptspick|spread"].per100]);
   if (!(await pl.loadParlays()).length) { const R0 = globalThis.__TEST_REDIS__, k = "parlay:2026-10-12:sgp:OKC @ ATL"; await R0.set(k, JSON.stringify({ ...globalThis.__NBA_SGP__, date: "2026-10-12" })); await R0.sadd("parlay:ids", k); }   // the builds in between left it out (no green sides): put the saved copy back for the grading check
   const gp = await pl.gradeParlays(async () => ({ "OKC @ ATL": { away: 100, home: 90, final: true } }));
   const sps = await pl.loadParlays(); ok(gp === 1 && sps.find((p) => p.type === "sgp").result === "L" && sps.every((p) => p.ret === -p.stake), "parlays graded: a lost leg loses the parlay and its stake", sps.map((p) => [p.type, p.result, p.ret]));
@@ -1208,8 +1213,8 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(sp.spread.plain.ruleId === "bookgap|spread" && sp.spread.plain.pick === "ATL -8.5" && sp.spread.plain.hit === 57.3 && sp.spread.plain.id === "cardpick|spread", "BOOK GAP spread: books ATL -10.5 vs Polymarket -8.5 -> ATL -8.5 at 57.3%", sp.spread.plain);
   ok(sp.total.plain.ruleId === "bookgap|total" && sp.total.plain.pick === "Over 223.5" && sp.total.plain.hit === 64.1, "BOOK GAP total: books 227 vs Polymarket 223.5 -> Over 223.5 at 64.1%", sp.total.plain);
   { const o2 = sp.total.rows.find((r) => r.side === "over" && r.points === 2), a2 = sp.spread.rows.find((r) => r.team === "ATL" && r.points === 2), a3 = sp.spread.rows.find((r) => r.team === "ATL" && r.points === 3);
-    ok(o2 && o2.hit === 66.7 && a2 && a2.hit === 64.3 && a3 && a3.hit === 68.4 && sp.total.pts && sp.total.pts.hit === 66.7,
-      "BOOK GAP bought lines read the rule's own measured rates on real Polymarket closes (Over +2 66.7%, ATL +2 pts 64.3%, +3 68.4%), not the main-line lift", { o2, a2, a3, pts: sp.total.pts }); }
+    ok(o2 && o2.hit === 66.7 && a2 && a2.hit === 64.3 && a3 && a3.hit === 68.4 && sp.total.pts && sp.total.pts.points === 5 && sp.total.pts.hit === 68.2,
+      "BOOK GAP bought lines read the rule's own measured rates on real Polymarket closes (Over +2 66.7%, ATL +2 pts 64.3%, +3 68.4%), not the main-line lift; past 3 points (PICK w/ POINTS' 5) its 3-point rate", { o2, a2, a3, pts: sp.total.pts }); }
   const dog = bg({ spread: { homeSpread: -6.5 }, total: { line: 220 } });
   ok(dog.spread.plain.pick === "OKC +8.5" && dog.total.plain.pick === "Under 223.5", "BOOK GAP the other way: books ATL -6.5 -> OKC +8.5; books 220 -> Under", [dog.spread.plain.pick, dog.total.plain.pick]);
   const small = bg({ spread: { homeSpread: -9 }, total: { line: 224.5 } }), big = bg({ spread: { homeSpread: -14.5 }, total: { line: 233 } }), stale = bg({ spread: { homeSpread: -10.5 }, total: { line: 227 } }, old), nob = bg(null);

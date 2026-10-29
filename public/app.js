@@ -113,9 +113,12 @@ function cardBody(g, kind, C) {
   if (p) { const c2 = clsOf(p.hit); l2 = `<b class="${c2}" style="font-size:13px;white-space:nowrap"><span class="lbw">Pick w/ points:</span> ${esc(p.pick)} · ${hitTxt(p.hit, c2)}</b>`; }
   else l2 = `<span class="dim" style="font-size:13px;white-space:nowrap"><span class="lbw">Pick w/ points:</span> none</span>`;
   const grp = (r) => r.team || (r.side === "over" ? "Over" : "Under"), first = x ? x.team || (x.side === "over" ? "Over" : "Under") : null;
-  const names = [...new Set(C.rows.map(grp))].sort((a, b) => (a === first ? -1 : 0) - (b === first ? -1 : 0));
+  // 10/29 (owner: "only show one row that this is pick with points under more ... only show me the rest of the options if it wins"): under MORE the
+  // PICK w/ POINTS line, then only the other lines that win (56%+) -- never the PICK or the PICK w/ POINTS line a second time (both sports)
+  const won = C.rows.filter((r) => r.hit >= 56 && !(p && r.pick === p.pick) && !(x && r.pick === x.pick) && (!first || grp(r) === first));   // on the PICK's side only (the card never names both teams)
+  const names = [...new Set(won.map(grp))].sort((a, b) => (a === first ? -1 : 0) - (b === first ? -1 : 0));
   // one list split by team with a gap, no titles (owner 10/15); only the model's chosen row is green, all the way across
-  const rows = names.map((nm, i) => `<div style="margin-top:${i ? 8 : 2}px">` + C.rows.filter((r) => grp(r) === nm).map((r) => { const pk = !!(p && r.pick === p.pick);
+  const rows = names.map((nm, i) => `<div style="margin-top:${i ? 8 : 2}px">` + won.filter((r) => grp(r) === nm).map((r) => { const pk = !!(p && r.pick === p.pick);
     return `<div class="s${pk ? " g" : ""}" style="margin-top:2px;font-size:11px;white-space:nowrap">${esc(r.pick)} · ${ptsWord(r.points)} · ${hitTxt(r.hit, clsOf(r.hit))} · ${Math.round(r.price * 100)}¢</div>`; }).join("") + "</div>").join("");
   return `<div style="margin-top:6px">${l1}</div>` + moreBox(`<div style="margin-top:4px">${l2}</div>` + (rows ? `<div style="margin-top:6px">${rows}</div>` : ""));
 }
@@ -737,12 +740,12 @@ function whyBox(g, kind, info) {
 const MODEL_INFO = {
   spread: [["Model:", "the game model’s score guess. Data only."], ["Model (Team):", "team-stats model at Polymarket’s line; it becomes the PICK at 58%+ sure, but not once the line has moved 1+ point its way."],
     ["Model (Stack):", "everything the app knows in one model. With no tested rule it names the PICK."], ["Pick:", "the bet at Polymarket’s main line, from a tested rule (LINE MOVE, TEAM MODEL, OVERSHOOT, INJURY, BOUNCE BACK), else the Stack model’s side. Green 56%+, light green 53–55%, yellow below."], ["OVERSHOOT:", "the line moved 1+ point toward a side the game model still likes by 2+; the other side won 57% (242 games 2014-25)."], ["ML pick:", "the favorite’s moneyline when the Stack model backs the favorite and is priced 50–70% (won 67.7–69.7% in 2022-25, priced 56–65%); or the team model’s side when it is 58%+ sure and the line moved 1+ point against it (favorites won 88.9% of 18, underdogs priced 30–50¢ won 63.3% of 30, 2014-25)."],
-    ["Pick w/ points:", "same side, the fewest bought points (1–2) that won 56%+."], ["MORE list:", "every line within 2 points: points bought · history win % · Polymarket price."]],
+    ["Pick w/ points:", "same side, the fewest bought points from 5 to 10."], ["MORE list:", "the lines within 2 points that won 56%+: points bought · history win % · Polymarket price."]],
   total: [["Model:", "the game model’s total points guess. Data only."], ["Pick:", "Over or Under at Polymarket’s main total, from a tested rule, else the model’s side. Green 56%+, light green 53–55%, yellow below."],
-    ["Pick w/ points:", "same side, the fewest bought points (1–2) that won 56%+."], ["MORE list:", "every line within 2 points: points bought · history win % · Polymarket price."]],
+    ["Pick w/ points:", "same side, the fewest bought points from 5 to 10."], ["MORE list:", "the lines within 2 points that won 56%+: points bought · history win % · Polymarket price."]],
 };
 const CARD_INFO = [["PICK:", "the card’s bet at Polymarket’s main line (a tested rule, else the model’s side), locked at kickoff."],
-  ["PICK w/ POINTS:", "the same side with the fewest bought points (1–2) that won 56%+."], ["1H SPREAD:", "the first-half model’s side on Polymarket’s first-half spread lines (the model’s chance 2+ points over a 70–85¢ price, steady books), graded on the first-half score."],
+  ["PICK w/ POINTS:", "the same side with the fewest bought points from 5 to 10."], ["1H SPREAD:", "the first-half model’s side on Polymarket’s first-half spread lines (the model’s chance 2+ points over a 70–85¢ price, steady books), graded on the first-half score."],
   ["GAME PROPS:", "game and team props where the 600 past games nearest this spread and total beat Polymarket’s price (70%+ on 8 parts history + 2 parts price, 6+ points over the price, 30–82¢), graded on Polymarket’s result."],
   ["PASSING TDs:", "the game’s total passing TDs where the two QBs’ own passing-TD prices disagree with it by 8+ points: the side the QBs point to (70%+, 30–82¢, one per game), graded on Polymarket’s result."],
   ["Line value:", "points better (+) or worse than the line at kickoff."]];

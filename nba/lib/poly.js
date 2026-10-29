@@ -74,12 +74,13 @@ export function parseGame(markets, away, home) {
     const homeSpread = best.team === home ? best.line : -best.line;
     out.spread = { homeSpread, home: best.team === home ? best.price : best.other, away: best.team === home ? best.other : best.price };
   }
-  // Alternate spreads with a real two-sided book: what it costs to buy team X at line L (the TEASER lines). Lines beyond 15 left out.
+  // Alternate spreads with a real two-sided book: what it costs to buy team X at line L (the TEASER lines, PICK w/ POINTS 5-10 points). Lines beyond 25 left
+  // out (15 until 10/29: a +12.5 underdog bought 5 points is +17.5).
   const alts = [];
   for (const s of spreads) {
     if (!liveBook(s.m) || !(Number(s.m.bestAsk) - Number(s.m.bestBid) <= 0.08)) continue;
     const { team, line } = lineOf(s);
-    if (!team || isNaN(line) || Math.abs(line) > 15) continue;
+    if (!team || isNaN(line) || Math.abs(line) > 25) continue;
     const i = s.outcomes.findIndex((lab) => abbrOf(lab, away, home) === team); if (i < 0) continue;
     const other = team === home ? away : home;
     for (const [t, l, pr] of [[team, line, s.prices[i]], [other, -line, s.prices[1 - i]]])
