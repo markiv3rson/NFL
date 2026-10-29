@@ -1896,6 +1896,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   { const bands = { 70: { n: 100, said: 0.72, won: 0.62 } }, rows = [{ name: "A", stat: "rec_yds", side: "under", line: 50.5, chance: 0.72, price: 0.69 }, { name: "A", stat: "rec_yds", side: "under", line: 60.5, chance: 0.82, price: 0.7 }];
     const c = pr.onePerPlayer(rows, bands), raw = pr.onePerPlayer(rows.slice(0, 1));   // 10/23: 0.72 calibrates to 0.67 < 69c -> cut; the player's 60.5 line (82%, no band) shows
     ok(raw.length === 1 && c.length === 1 && c[0].line === 60.5 && Math.abs(c[0].cal - 0.772) < 1e-9 && c[0].model === 0.82, "props (10/23): with the calibration bands a row must be priced under its calibrated (shown) %; the player's next line shows", JSON.stringify(c)); }
+  { const bands = { 70: { n: 100, said: 0.72, won: 0.62 } }, row = { name: "K", stat: "rec_yds", side: "under", line: 20.5, chance: 0.72, price: 0.55 };
+    const c = pr.onePerPlayer([row], bands), raw = pr.onePerPlayer([row]);
+    ok(raw.length === 1 && c.length === 0, "props (10/29 night recheck): the family bar holds on the calibrated (shown) % -- 72% calibrating under 70 is not shown on a 70%+ list", { raw, c }); }
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8"), h = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
   ok(/class="pbl ppr/.test(app) && /pp1[\s\S]*pp2[\s\S]*pp3[\s\S]*pp4/.test(app) && /\.ppr \{ display:grid; grid-template-columns:minmax\(0,3fr\) minmax\(max-content,1fr\)/.test(h) && /onePerPlayer\(picks, bands\)/.test(readFileSync(new URL("../lib/props.js", import.meta.url), "utf8")), "props page rows are columns: player | line | win % | price; the server list and the record use onePerPlayer"); }
 // ---------- 10/20 (owner): Polymarket cents are GREEN (money) on the TD rows + head and the props rows + head, both sports

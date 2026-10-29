@@ -1051,6 +1051,8 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(pr.NBA_PROP_BAR === 0.70 && pr.MAX_PRICE === 0.82 && picks.length === 2 && picks[0].side === "over" && picks[0].price === 0.67 && picks[0].band === "70-80" && picks[1].side === "under" && picks[1].price === 0.62 && picks[1].band === "70-80" && !picks.some((p) => p.stat === "3pm"), "NBA props: the side the model likes more, only at 70%+ (10/29; 65% from 10/21; a 61% Under and a 55% Under are not picks), with that side's price", picks);
   const one = pr.onePerPlayer([{ name: "A", stat: "pts", chance: 0.8, price: 0.9 }, { name: "A", stat: "pts", chance: 0.7, price: 0.6 }, { name: "A", stat: "pts", chance: 0.8, price: 0.82 }, { name: "A", stat: "reb", chance: 0.65, price: null }, { name: "B", stat: "pts", chance: 0.66, price: 0.66 }]);
   ok(one.length === 1 && one[0].name === "A" && one[0].chance === 0.7, "NBA props: one row per player and stat = the highest % priced under its % and under 82c (80% at 90c and 80% at 82c are out, owner 10/29: cap 82c); no price = not a row (10/21); a line priced at its % is dropped", one);
+  { const row = { name: "Z", stat: "pts", side: "over", line: 10.5, chance: 0.9, price: 0.62 }, cut = pr.onePerPlayer([row], { 70: { n: 300, said: 0.75, won: 0.6 } });
+    ok(pr.onePerPlayer([row]).length === 1 && cut.length === 0, "NBA props (10/29 night recheck): a row whose calibrated (shown) % falls under 70 is not shown", cut); }
   const two = pr.onePerPlayer([{ name: "Jayson Tatum", stat: "pra", chance: 0.985, price: null }, { name: "Jayson Tatum", stat: "pra", chance: 0.74, price: 0.6 }]);
   ok(two.length === 1 && two[0].chance === 0.74, "NBA props: an unpriced 98.5% rung never pushes the player's priced line off the page (10/21 recheck)", two);
   // scoring: a not-started game with recorded lines is sent to the service, the answer saved per game; a started game is not
@@ -1230,6 +1232,10 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   { const o2 = sp.total.rows.find((r) => r.side === "over" && r.points === 2), a2 = sp.spread.rows.find((r) => r.team === "ATL" && r.points === 2), a3 = sp.spread.rows.find((r) => r.team === "ATL" && r.points === 3);
     ok(o2 && o2.hit === 66.7 && a2 && a2.hit === 64.3 && a3 && a3.hit === 68.4 && sp.total.pts && sp.total.pts.points === 5 && sp.total.pts.hit === 68.2,
       "BOOK GAP bought lines read the rule's own measured rates on real Polymarket closes (Over +2 66.7%, ATL +2 pts 64.3%, +3 68.4%), not the main-line lift; past 3 points (PICK w/ POINTS' 5) its 3-point rate", { o2, a2, a3, pts: sp.total.pts }); }
+  { // 10/29 night recheck: past 3 points a BOOK GAP line reads the larger of its 3-point rate and the table + half the lift (a +8 line no longer stuck at 68.4)
+    const far = bg({ spread: { homeSpread: -10.5 }, total: { line: 227 } }, T, { lines: [...LINES("OKC", "ATL"), { market: "spread", team: "ATL", line: -0.5, points: 8, hist: 76.0, n: 700, price: 0.8, label: "ATL -0.5" }] });
+    const r8 = far.spread.rows.find((r) => r.points === 8) || far.spread.pts;
+    ok(far.spread.plain.ruleId === "bookgap|spread" && far.spread.pts && far.spread.pts.points === 8 && far.spread.pts.hit >= 76 && far.spread.pts.hit < 80, "BOOK GAP +8: the table + half the lift (>= 76, not the 68.4 3-point rate), so the 72% rule can pick it", far.spread.pts); }
   const dog = bg({ spread: { homeSpread: -6.5 }, total: { line: 220 } });
   ok(dog.spread.plain.pick === "OKC +8.5" && dog.total.plain.pick === "Under 223.5", "BOOK GAP the other way: books ATL -6.5 -> OKC +8.5; books 220 -> Under", [dog.spread.plain.pick, dog.total.plain.pick]);
   const small = bg({ spread: { homeSpread: -9 }, total: { line: 224.5 } }), big = bg({ spread: { homeSpread: -14.5 }, total: { line: 233 } }), stale = bg({ spread: { homeSpread: -10.5 }, total: { line: 227 } }, old), nob = bg(null);
