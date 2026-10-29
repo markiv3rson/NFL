@@ -112,12 +112,16 @@ function ptsRate(ph, h0, pts) {
   const i = Math.floor(pts), f = pts - i;
   return r1(v[i] + (v[i + 1] - v[i]) * f);
 }
-function boundRows(raw, plain, mine) {
+// 10/29 weekend check (the NFL card's fix; PICK w/ POINTS buys 5-10 points): on SPREADS a rule PICK's own more-points lines keep its edge as a share of the
+// losses (loss ratio) instead of adding it: LINE MOVE spreads measured +1 / +2 / +3 won 71.0 / 72.7 / 74.1% (adding said 71.4 / 74.4 / 77.4 and keeps
+// growing past it; loss ratio 70.1 / 71.7 / 72.9); NFL rules replayed at +5-10 the same way. Totals keep adding (63.8 / 65.2 / 67.5 vs 63.8 / 65.5 / 68.1).
+function boundRows(raw, plain, mine, ratio = false) {
   if (!plain || !isFinite(plain.hit)) return raw;
   const m0 = raw.find((r) => r.points === 0 && mine(r)), base = m0 && isFinite(m0.hist) ? m0.hist : null, lift = base == null || !String(plain.id).startsWith("cardpick|") ? 0 : plain.hit - base;
   const p = r1(plain.hit), q = r1(100 - plain.hit), ph = plain.ptsHit;
+  const up = (r) => (ratio && lift && base < 100 ? r1(100 - ((100 - r.hist) * (100 - plain.hit)) / (100 - base)) : r1(r.hist + lift));
   return raw.map((r) => { const own = mine(r), floor = own ? p : q;
-    const hit = r.points === 0 ? floor : own && ph && r.points > 0 ? Math.max(ptsRate(ph, plain.hit, r.points), floor) : Math.max(r1(r.hist + (own ? lift : -lift)), floor);
+    const hit = r.points === 0 ? floor : own && ph && r.points > 0 ? Math.max(ptsRate(ph, plain.hit, r.points), floor) : Math.max(own ? up(r) : r1(r.hist - lift), floor);
     return { ...r, hit }; });
 }
 function spreadPart(g) {
@@ -146,7 +150,7 @@ function spreadPart(g) {
   }
   // 10/19 (owner: "why is your decision making wrong" -- the NFL one-side rule of 10/18): PICK w/ POINTS sits on the PICK's team; BOS @ DET read PICK DET +1.5 and
   // PICK w/ POINTS BOS +1.5, a guaranteed loser on one of the two. With no PICK it may still use either side.
-  const all = boundRows(raw, plain, (r) => r.team === plain.team).map(({ hist, ...r }) => r), rows = finishRows(all), b = pickPts(plain ? all.filter((r) => r.team === plain.team) : all), pts = b ? { id: "ptspick|spread", kind: "spread", ...noFirst(b), ruleId: plain ? plain.ruleId : null } : null;
+  const all = boundRows(raw, plain, (r) => r.team === plain.team, true).map(({ hist, ...r }) => r), rows = finishRows(all), b = pickPts(plain ? all.filter((r) => r.team === plain.team) : all), pts = b ? { id: "ptspick|spread", kind: "spread", ...noFirst(b), ruleId: plain ? plain.ruleId : null } : null;
   if (!plain && !rows.length) return null;
   return { kind: "spread", plain, pts, rows };
 }
