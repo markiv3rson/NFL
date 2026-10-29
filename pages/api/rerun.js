@@ -11,7 +11,7 @@ import { alertsFromRerun } from "../../lib/alerts";
 import { windAtKickoff, venue, isNeutral } from "../../lib/wind";
 import { loadSnaps, qbFirstStart, sameName } from "../../lib/snaps";
 import { loadEspnInjuries, espnOutFor, espnQuestionableFor } from "../../lib/espn";
-import { propLinesFor, K_PROPMODEL, mergeModels } from "../../lib/props";
+import { propLinesFor, K_PROPMODEL, mergeModels, withTdModel } from "../../lib/props";
 import { recordTdJump } from "../../lib/tracked";
 export const config = { maxDuration: 300 };
 
@@ -166,7 +166,7 @@ async function rerunWeek(req, base, season, week, early) {
         const [pr, pr2] = await Promise.all([post(base, "/prop-probs", body, []), post(base, "/prop-probs2", body, []).catch(() => null)]);
         if (pr && pr.ok) for (const r of pr.results || []) { const q = withLines.find((z) => z.x.key === r.game); if (!q || !Array.isArray(r.rows)) continue;
           const r2 = pr2 && pr2.ok ? (pr2.results || []).find((z) => z.game === r.game) : null;
-          await setJSON(K_PROPMODEL(season, week, q.x.key), { runAt, rows: mergeModels(r.rows, r2 ? r2.rows : null), ...(r2 ? { m2: pr2.built || true } : {}) }); nProps++; }
+          await setJSON(K_PROPMODEL(season, week, q.x.key), { runAt, rows: withTdModel(mergeModels(r.rows, r2 ? r2.rows : null), store.td[q.x.key], q.x.away, q.x.home), ...(r2 ? { m2: pr2.built || true } : {}) }); nProps++; }
         else if (pr && !pr.building) errors.push(`props: ${String(pr.error || "no reply").slice(0, 120)}`);
       }
     } catch (e) { errors.push(`props: ${String(e.message || e).slice(0, 120)}`); }
