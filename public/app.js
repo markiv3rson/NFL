@@ -1367,7 +1367,7 @@ const pickSplit = (t) => { const s = String(t || ""); let m = /^([A-Z]{2,4}) (ML
   m = /^(.*?)\s*\b(Over|Under) (\d+(?:\.\d+)?)(?: 1H)?$/.exec(s); if (m) return [m[1], `${m[2][0]} ${m[3]}`, null];
   m = /^(.*?):? (Yes|No)$/.exec(s); if (m) return [m[1], m[2], null]; return [s, "", null]; };
 const pickTr = (x) => { const r = normRes(x.result) || (x.live && x.live.res) || null, h = Number(x.hit), c = h >= 56 ? "g" : h >= 53 ? "lg" : "y"; const [who, pk, tm] = pickSplit(x.pick);
-  return `<div class="pbl ppr pk${x.gl ? " pgl" : ""}${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) + " " : ""}${tm ? phelm(tm) : ""}${esc(who)}${r ? "" : liveBit(x.live && !x.live.res ? x.live : null)}</span><span class="pp2">${pk ? numCol(pk, c) || esc(pk) : ""}${x.kind === "w/ points" ? ' <span class="wpt">w/ points</span>' : ""}</span>` +
+  return `<div class="pbl ppr pk${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) + " " : ""}${tm ? phelm(tm) : ""}${esc(who)}${r ? "" : liveBit(x.live && !x.live.res ? x.live : null)}</span><span class="pp2">${pk ? numCol(pk, c) || esc(pk) : ""}</span>` +
     `<span class="pp3 mod">${isFinite(h) ? `${h >= 56 ? Math.round(h) : Math.floor(h)}%` : "—"}</span><span class="pp4">${x.price > 0 && x.price < 1 ? `${Math.round(x.price * 100)}¢` : "—"}</span></div>`; };
 const pickTable = (rows, g) => (rows.length ? pickHead(gameName(g)) + rows.map(pickTr).join("") : "");
 // a GAME PROPS label -> the market (on top) and the side (under it): "Total touchdowns Under 5.5" -> ["Total touchdowns", "Under 5.5"]
@@ -1396,10 +1396,16 @@ function firstBlock(g) {
     `<span class="pp3 mod">${Math.round(p.chance * 100)}%</span><span class="pp4">${p.price != null ? `${Math.round(p.price * 100)}¢` : "—"}</span></div>`; };
   return picks.length ? `<div class="pbl ppr pph first"><span class="pp1">${gameName(g)}</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>${[g.away, g.home].flatMap((t) => picks.filter((p) => p.team === t)).map(row).join("")}` : "";
 }
+// 10/29 (owner, 9:36 PM "That looks good" sketch + 1:45 AM "ONLY PUT W/ POINTS NEXT TO THEIR PICK"): Game Lines rows stay one line -- "• DET -3.5",
+// BET ("w/ points" on a w/ points line only, the owner's 6:48 PM screenshot) · MODEL · POLYMARKET; the pick not split from its team
+const glHead = (nm) => `<div class="pbl ppr pph first glr"><span class="pp1">${nm}</span><span class="pp2"></span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
+const glTr = (x) => { const r = normRes(x.result) || (x.live && x.live.res) || null, h = Number(x.hit), c = h >= 56 ? "g" : h >= 53 ? "lg" : "y";
+  return `<div class="pbl ppr first glr${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) : "•"} ${numCol(x.pick, c) || esc(x.pick)}${r ? "" : liveBit(x.live && !x.live.res ? x.live : null)}</span><span class="pp2">${x.kind === "w/ points" ? "w/ points" : ""}</span>` +
+    `<span class="pp3 mod">${isFinite(h) ? `${h >= 56 ? Math.round(h) : Math.floor(h)}%` : "—"}</span><span class="pp4">${x.price > 0 && x.price < 1 ? `${Math.round(x.price * 100)}¢` : "—"}</span></div>`; };
 const LAB_BODY = {
-  lines: (g) => { const L = g.lines || {}, row = (x, kind) => (x && x.pick ? { gl: true, pick: x.pick, kind, hit: x.hit, price: x.price, result: x.result, live: normRes(x.result) ? null : liveMark(g, { kind: "line", label: x.pick }) } : null);
+  lines: (g) => { const L = g.lines || {}, row = (x, kind) => (x && x.pick ? { pick: x.pick, kind, hit: x.hit, price: x.price, result: x.result, live: normRes(x.result) ? null : liveMark(g, { kind: "line", label: x.pick }) } : null);
     const rows = [row(L.ml, ""), row(L.spread, ""), row(L.total, ""), row(L.spread && L.spread.pts && L.spread.pts.pick !== L.spread.pick ? L.spread.pts : null, "w/ points"), row(L.total && L.total.pts && L.total.pts.pick !== L.total.pick ? L.total.pts : null, "w/ points")].filter(Boolean);
-    return rows.length ? pickHead(gameName(g)).replace('pph pk"', 'pph pk pgl"') + rows.map(pickTr).join("") : ""; },
+    return rows.length ? glHead(gameName(g)) + rows.map(glTr).join("") : ""; },
   halves: (g) => { const k = g.h1pick; return k && k.label ? pickTable([{ pick: k.label, kind: "1st Half spread", hit: k.said, price: k.price, result: k.result, live: k.result ? null : liveMark(g, { kind: "h1", team: k.team, line: k.line }) }], g) : ""; },
   gprops: (g) => pickTable((g.gprops || []).map((k) => { const [mk, side] = gpSplit(k.label);
     return { pick: k.label, kind: k.fam === "ptd_qb" ? `${side} · passing TDs pick` : side, hit: k.said, price: k.price, result: k.result, live: k.result ? null : liveMark(g, { kind: "gp", cond: k.cond, long: k.long !== false }) }; }), g),
