@@ -311,7 +311,7 @@ function tdRow(x, withGame) {
 const tdHead = (nm = "PLAYER") => `<div class="pbl ppr pph first tdh"><span class="pp1">${nm}</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
 const earlyNote = (g) => (g && g.early ? '<span class="pill p-y" style="padding:0 6px;font-size:10px">Early estimate</span>' : "");
 // One Anytime TD section for the slate in S: price moves, then the top 3 per team, most likely first.
-const BEST_TD = 55;
+const BEST_TD = 58;   // 10/29 (owner's table): Best TD picks 58%+ (was 55)
 // 10/14 audit: a player at 54.6% is NOT a "55%+" Best TD pick, so he must not be shown as 55% either (below the line the % rounds down, like the card picks)
 const tdPct = (v) => (v < BEST_TD && Math.round(v) >= BEST_TD ? BEST_TD - 1 : Math.round(v));
 // every game not started: the team split (away % / home %) and each team's three likeliest first scorers (the model's first-TD chance, Polymarket's price)
@@ -731,7 +731,7 @@ const MODEL_INFO = {
 const CARD_INFO = [["PICK:", "the card’s bet at Polymarket’s main line (a tested rule, else the model’s side), locked at kickoff."],
   ["PICK w/ POINTS:", "the same side with the fewest bought points (1–2) that won 56%+."], ["1H SPREAD:", "the first-half model’s side on Polymarket’s first-half spread lines (the model’s chance 2+ points over a 70–85¢ price, steady books), graded on the first-half score."],
   ["GAME PROPS:", "game and team props where the 600 past games nearest this spread and total beat Polymarket’s price (70%+ on 8 parts history + 2 parts price, 6+ points over the price, 30–82¢), graded on Polymarket’s result."],
-  ["PASSING TDs:", "the game’s total passing TDs where the two QBs’ own passing-TD prices disagree with it by 8+ points: the side the QBs point to (30–82¢, one per game), graded on Polymarket’s result."],
+  ["PASSING TDs:", "the game’s total passing TDs where the two QBs’ own passing-TD prices disagree with it by 8+ points: the side the QBs point to (70%+, 30–82¢, one per game), graded on Polymarket’s result."],
   ["Line value:", "points better (+) or worse than the line at kickoff."]];
 const TRACK_INFO = [["Test picks,", "never shown on a card: recorded and graded live. One becomes a pick only after it holds 56%+ over about 100 games."],
   ["INJURY EARLY:", "a starter newly out; the healthy team at the line of that moment."], ["TD JUMP:", "a player’s TD chance up 10+ points between reruns; did he score?"],
