@@ -17,7 +17,7 @@ export const pickRows = (g) => {
   const card = g.card; if (!card) return rows;
   for (const k of ["spread", "total"]) { const c = card[k]; if (!c) continue;
     if (c.plain && c.plain.line != null) rows.push(base(c.plain.id, k, c.plain));
-    if (c.pts && c.pts.line != null) rows.push(base(c.pts.id, k, c.pts)); }
+    if (c.pts && c.pts.line != null) rows.push({ ...base(c.pts.id, k, c.pts), r72: true }); }   // r72: chosen by the 10/29 late 72% / 82c rule
   return rows;
 };
 // the side of a pick: the team on a spread, Over / Under on a total
@@ -39,6 +39,13 @@ export async function recordPicks(games, now = Date.now()) {
       if (/^ptspick\|/.test(row.id) && !row.alt) { const pk = pickOf(row.market); if (pk && sideOf(pk) !== sideOf(row)) continue; }
       if (isStubPick(row)) continue;   // 10/26: a placeholder line (a side at 0.9+) is never saved as a pick
       const key = KEY(row.date, row.game, row.id);
+      // 10/29 late (owner: "make sure it saves the new rule"): a PICK w/ POINTS saved before the 72% / 82c rule went live (no r72 mark) is re-saved
+      // once with the card's line before tip-off; the old row stays under removed:<key> (written once). Only games not started reach this loop.
+      const old = /^ptspick\|/.test(row.id) ? v[row.market === "spread" ? 0 : 3] : null;
+      if (old && !old.r72 && (old.label !== row.label || Number(old.points) !== Number(row.points))) {   // the same line under both rules: kept as saved
+        await r.set(`removed:${key}`, JSON.stringify({ ...old, removedAt: new Date(now).toISOString(), why: "PICK w/ POINTS saved under the old fewest-points rule (10/29 late: 72% / 82c)" }), "NX");
+        await r.set(key, JSON.stringify(row)); await r.sadd(IDS, key); n++; continue;
+      }
       if (!(await r.set(key, JSON.stringify(row), "NX"))) continue;   // the first sighting stands (NX: saved only when new, one command)
       await r.sadd(IDS, key); n++;
     }
