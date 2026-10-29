@@ -1227,6 +1227,10 @@ function sgpBox(g) {
 // ✓ / ✗ once graded; while a game is on (and until its official grade) the live state from ESPN's box score (liveMark, /api/livebox).
 const LAB_TABS = [["lines", "Game Lines"], ["halves", "Halves & Quarters"], ["props", "Player Props"], ["gprops", "Game Props"]];
 let LABTYPE = "lines", LABWEEK = null, MPICKS = {}, LIVE_BOX = {}, LIVE_BOX_T = 0;
+// 10/29 (owner: "Player props need a sub tab for the others. Keep everything separated"): Player Props has its own stat chips -- the game page's, without First TD (not a pick)
+const MB_PROPS = [["td", "Anytime TD"], ["recyds", "Rec Yds"], ["rec", "Receptions"], ["rushyds", "Rush Yds"]];
+let MBPROP = (() => { try { const v = localStorage.getItem("mbProp:nfl"); return MB_PROPS.some(([k]) => k === v) ? v : "td"; } catch { return "td"; } })();
+const mbChips = () => `<div class="gchips mbchips">${MB_PROPS.map(([k, t]) => `<button class="gchip${MBPROP === k ? " on" : ""}" type="button" data-mbprop="${k}">${t}</button>`).join("")}</div>`;
 // 10/15 (owner): ONE Bets tab -- My bets on the left (the list as before), Model bets on the right (the model's parlays). The choice is remembered.
 let BETSVIEW = (() => { try { return localStorage.getItem("betsView") === "model" ? "model" : "mine"; } catch { return "mine"; } })();
 // 10/21 night (owner): a page's drop-downs go to the right of its title (Shell.dd); without the shell (tests) they stay on top of the block
@@ -1336,22 +1340,57 @@ function labGames(wk) {
       h1pick: g.h1pick || sv.h1pick || null, gprops: (g.gprops && g.gprops.length ? g.gprops : sv.gprops) || [], td: !pre && sv.td && sv.td.length ? sv.td : tdPicksOf(g) };
   });
 }
-// one Pick line in the card's look (public/shell.js Shell.pickLine)
-const mpLine = (k) => Shell.pickLine(k);
+
 const liveTag = (g) => { const b = LIVE_BOX[g.key]; return b && !b.final ? ` <span class="lvb">● LIVE · ${esc(b.lbl || "")}</span>` : !b && g.started && !g.final ? ' <span class="lvb">● LIVE</span>' : ""; };
+// 10/29 (owner, Game Lines screenshot: "Make this into a table format"): every Model bets tab is a table like Player Props -- PICK (the bet on top, what kind
+// under it) · MODEL (the % in its win-rate colour) · POLYMARKET (the price); ✓ / ✗ in front and the row green / red once graded, the live state after the pick
+const pickHead = () => `<div class="pbl ppr pph first"><span class="pp1">PICK</span><span class="pp2">BET</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
+const pickTr = (x) => { const r = normRes(x.result) || (x.live && x.live.res) || null, h = Number(x.hit), c = h >= 56 ? "g" : h >= 53 ? "lg" : "y";
+  return `<div class="pbl ppr first${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) : "•"} ${esc(x.pick)}${r ? "" : liveBit(x.live && !x.live.res ? x.live : null)}</span><span class="pp2">${esc(x.kind)}</span>` +
+    `<span class="pp3 ${c}">${isFinite(h) ? `${h >= 56 ? Math.round(h) : Math.floor(h)}%` : "—"}</span><span class="pp4">${x.price > 0 && x.price < 1 ? `${Math.round(x.price * 100)}¢` : "—"}</span></div>`; };
+const pickTable = (rows) => (rows.length ? pickHead() + rows.map(pickTr).join("") : "");
+// a GAME PROPS label -> the market (on top) and the side (under it): "Total touchdowns Under 5.5" -> ["Total touchdowns", "Under 5.5"]
+const gpSplit = (lb) => { const m = /^(.*?) ((?:Over|Under) [\d.]+|Yes|No)$/.exec(String(lb || "")); return m ? [m[1], m[2]] : [String(lb || ""), ""]; };
 const LAB_BODY = {
-  lines: (g) => { const L = g.lines || {}, ln = (lb, x, title) => (x && x.pick ? `${title ? `<div class="mks">${title}</div>` : ""}` + mpLine({ lb, label: x.pick, said: x.hit, price: x.price, result: normRes(x.result), live: normRes(x.result) ? null : liveMark(g, { kind: "line", label: x.pick }) }) : "");
-    const sp = ln("Pick:", L.spread, "Spread &amp; ML") + ln("Pick w/ points:", L.spread && L.spread.pts) + ln("ML pick:", L.ml, L.spread && L.spread.pick ? "" : "Spread &amp; ML"), to = ln("Pick:", L.total, "Totals") + ln("Pick w/ points:", L.total && L.total.pts);
-    return sp + to ? `<div class="mkc">${sp}${to}</div>` : ""; },
-  halves: (g) => { const k = g.h1pick; return k && k.label ? `<div class="mkc"><div class="mks">1st Half spread</div>${mpLine({ ...k, live: k.result ? null : liveMark(g, { kind: "h1", team: k.team, line: k.line }) })}</div>` : ""; },
-  gprops: (g) => ((g.gprops || []).length ? `<div class="mkc">${g.gprops.map((k) => mpLine({ ...k, live: k.result ? null : liveMark(g, { kind: "gp", cond: k.cond, long: k.long !== false }) })).join("")}</div>` : ""),
+  lines: (g) => { const L = g.lines || {}, row = (x, kind) => (x && x.pick ? { pick: x.pick, kind, hit: x.hit, price: x.price, result: x.result, live: normRes(x.result) ? null : liveMark(g, { kind: "line", label: x.pick }) } : null);
+    return pickTable([row(L.spread, "Spread"), row(L.spread && L.spread.pts, "Spread · w/ points"), row(L.ml, "Moneyline"), row(L.total, "Total"), row(L.total && L.total.pts, "Total · w/ points")].filter(Boolean)); },
+  halves: (g) => { const k = g.h1pick; return k && k.label ? pickTable([{ pick: k.label, kind: "1st Half spread", hit: k.said, price: k.price, result: k.result, live: k.result ? null : liveMark(g, { kind: "h1", team: k.team, line: k.line }) }]) : ""; },
+  gprops: (g) => pickTable((g.gprops || []).map((k) => { const [mk, side] = gpSplit(k.label);
+    return { pick: mk, kind: k.fam === "ptd_qb" ? `${side} · passing TDs pick` : side, hit: k.said, price: k.price, result: k.result, live: k.result ? null : liveMark(g, { kind: "gp", cond: k.cond, long: k.long !== false }) }; })),
   props: (g) => { const c = GPROPS[Number(g.week)], pg = c && c.d ? (c.d.games || []).find((x) => x.game === g.key) : null;
+    const want = MBPROP === "td" ? ["td"] : tabStats(PROP_STAT[MBPROP] || "rec_yds");
     const picks = [...((pg && pg.picks) || []), ...(g.td || []).map((t) => ({ name: t.player, team: t.team, stat: "td", side: "over", line: 0.5, chance: t.fair / 100, cal: tdPct(t.fair) / 100, price: t.price, result: t.scored === true ? "W" : t.scored === false ? "L" : null }))]
-      .map((p) => ({ ...p, full: true, live: p.result ? null : liveMark(g, { kind: p.stat === "td" ? "td" : "prop", name: p.name, team: p.team, stat: p.stat, side: p.side, line: p.line }) }));
+      .filter((p) => want.includes(p.stat)).map((p) => ({ ...p, full: true, live: p.result ? null : liveMark(g, { kind: p.stat === "td" ? "td" : "prop", name: p.name, team: p.team, stat: p.stat, side: p.side, line: p.line }) }));
     return picks.length ? `${propHead(false)}${teamRows({ away: g.away, home: g.home, picks }, propRow)}` : ""; },
 };
+// RECORDS (10/29, owner: "I need records at the top of every tab in models bets. Of the record of the picks on there winning and losing"): a row of record tiles on
+// each tab, the Models tiles' look -- the season's W-L of that tab's picks (/api/modelpicks?rec=1, props from /api/props) and, under it, the week on screen.
+// The colour is the win rate (green 56%+, light green 53-55%, yellow below). Pushes count neither way.
+let MPRECS = null, MPRECS_T = 0;
+function loadModelRecs() {
+  if (loadModelRecs.busy || (MPRECS && Date.now() - MPRECS_T < 5 * 60e3)) return; loadModelRecs.busy = true;
+  fetch(`/api/modelpicks?rec=1`, { cache: "no-store" }).then((r) => r.json()).then((d) => { if (d && d.ok && d.records) MPRECS = d.records; MPRECS_T = Date.now(); }).catch(() => { MPRECS_T = Date.now(); })
+    .finally(() => { loadModelRecs.busy = false; if (labOn()) renderLabList(); });
+}
+const wl = (xs) => { const r = { w: 0, l: 0 }; for (const x of xs) { const v = x === true ? "W" : x === false ? "L" : normRes(x); if (v === "W") r.w++; else if (v === "L") r.l++; } return r; };
+const recTileMb = (label, season, week) => { const n = season ? season.w + season.l : 0, pc = n ? (100 * season.w) / n : null, c = pc == null ? "" : pc >= 56 ? "g" : pc >= 53 ? "lg" : "y";
+  return `<div class="stat"><div class="k">${label}</div><div class="v ${c}">${season ? `${season.w}–${season.l}` : "…"}</div><div class="k2">${pc == null ? "—" : `${pc >= 56 ? Math.round(pc) : Math.floor(pc)}% won`}${week && week.w + week.l ? ` · wk ${week.w}–${week.l}` : ""}</div></div>`; };
+function labRecords(games, sel) {
+  const R = MPRECS || null, g = (k) => (R ? R[k] : null), L = (f) => games.map((x) => f(x.lines || {})).filter(Boolean);
+  if (LABTYPE === "lines") return [recTileMb("SPREAD PICKS", g("spread"), wl(L((l) => l.spread && l.spread.result))), recTileMb("TOTAL PICKS", g("total"), wl(L((l) => l.total && l.total.result))),
+    recTileMb("ML PICKS", g("ml"), wl(L((l) => l.ml && l.ml.result))), recTileMb("W/ POINTS", R ? { w: R.spreadPts.w + R.totalPts.w, l: R.spreadPts.l + R.totalPts.l } : null, wl([...L((l) => l.spread && l.spread.pts && l.spread.pts.result), ...L((l) => l.total && l.total.pts && l.total.pts.result)]))];
+  if (LABTYPE === "halves") return [recTileMb("1H SPREAD", g("h1"), wl(games.map((x) => x.h1pick && x.h1pick.result)))];
+  if (LABTYPE === "gprops") { const gp = games.flatMap((x) => x.gprops || []);
+    return [recTileMb("GAME PROPS", g("gp"), wl(gp.filter((k) => k.fam !== "ptd_qb").map((k) => k.result))), recTileMb("PASSING TDs", g("ptd"), wl(gp.filter((k) => k.fam === "ptd_qb").map((k) => k.result)))]; }
+  const lab = (MB_PROPS.find(([k]) => k === MBPROP) || [, ""])[1].toUpperCase();
+  if (MBPROP === "td") return [recTileMb(lab, g("td"), wl(games.flatMap((x) => (x.td || []).map((t) => t.scored))))];
+  const st = PROP_STAT[MBPROP] || "rec_yds", c = GPROPS[sel], rc = c && c.d && c.d.records ? c.d.records[st] : null, want = tabStats(st);
+  const wk = wl(games.flatMap((x) => { const pg = c && c.d ? (c.d.games || []).find((y) => y.game === x.key) : null; return ((pg && pg.picks) || []).filter((p) => want.includes(p.stat)).map((p) => p.result); }));
+  return [recTileMb(lab, rc ? { w: rc.w || 0, l: rc.l || 0 } : c ? { w: 0, l: 0 } : null, wk)];
+}
 function renderLabList() {
   if (!$("lab")) return;
+  loadModelRecs();
   const cur = S && S.week != null ? Number(S.week) : null, sel = Number(LABWEEK || cur || 1), weeks = []; for (let w = cur || sel; w >= 1; w--) weeks.push(w);
   const chips = `<div class="wksel"><select id="lab-wk" aria-label="Week">${[...weeks].reverse().map((w) => `<option value="${w}"${sel === w ? " selected" : ""}>Week ${w}</option>`).join("")}</select></div>`;
   const wks = isCurWk(sel) ? [...new Set(((S && S.games) || []).map((g) => Number(g.week || S.week)))] : [sel];
@@ -1363,7 +1402,7 @@ function renderLabList() {
   const slotTimes = {}; for (const { g } of xs) if (g.kickoff) { const sl = labSlot(g.kickoff), tt = tm(g.kickoff); (slotTimes[sl] = slotTimes[sl] || []).includes(tt) || slotTimes[sl].push(tt); }
   let lastSlot = null; const blocks = xs.map(({ g, html }) => { const sl = g.kickoff ? (g.week && cur && Number(g.week) !== sel ? `WEEK ${g.week} · ` : "") + labSlot(g.kickoff) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${(slotTimes[labSlot(g.kickoff)] || []).map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
     return h + `<div class="par"><div class="pbh c"><span class="pbn">${gameLogos(g.key)}${liveTag(g)}</span></div>${html}</div>`; });
-  $("lab").innerHTML = ddSlot($("lab"), chips) + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : `<div class="s dim empty" style="margin-top:12px">${waiting ? "Loading…" : "None yet."}</div>`);
+  $("lab").innerHTML = ddSlot($("lab"), chips) + (LABTYPE === "props" ? mbChips() : "") + `<div class="stats mbrec">${labRecords(games, sel).join("")}</div>` + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : `<div class="s dim empty" style="margin-top:12px">${waiting ? "Loading…" : "None yet."}</div>`);
   const lw = $("lab-wk"); if (lw && lw.tagName === "SELECT") lw.onchange = () => { LABWEEK = Number(lw.value); renderLabList(); };
   kickBox();
 }
@@ -1581,6 +1620,7 @@ document.addEventListener("click", (e) => {
   const d = e.target.closest("[data-drop]"); if (d) { const el = $(d.dataset.drop); if (el) { el.classList.toggle("open"); if (d.dataset.drop === "bestlist") { BEST_OPEN = el.classList.contains("open"); try { localStorage.setItem("bestOpen", BEST_OPEN ? "1" : "0"); } catch {} }
       if (d.dataset.drop === "gamebest") { GAMEBEST_OPEN = el.classList.contains("open"); try { localStorage.setItem("gameBestOpen", GAMEBEST_OPEN ? "1" : "0"); } catch {} } } return; }
   const gtb = e.target.closest("[data-gtab]"); if (gtb) { GTAB = gtb.dataset.gtab; lsSet("gTab", GTAB); refreshDetail(); return; }   // 10/27: game page tabs
+  const mbp = e.target.closest("[data-mbprop]"); if (mbp) { MBPROP = mbp.dataset.mbprop; lsSet("mbProp:nfl", MBPROP); renderLabList(); return; }   // Model bets -> Player Props stat chips
   const gpr = e.target.closest("[data-gprop]"); if (gpr) { GPROP = gpr.dataset.gprop; lsSet("gProp:nfl", GPROP); refreshDetail(); return; }
   const gt = e.target.closest("[data-game]"); if (gt) { if (!$("panel-lines").classList.contains("on")) { history.replaceState(null, "", "#lines"); showPanel("lines"); } openGame(gt.dataset.game); return; }
   const al = e.target.closest("[data-algame]"); if (al) { const k = al.dataset.algame; if (k) { history.replaceState(null, "", "#lines"); showPanel("lines"); openGame(k); } return; }

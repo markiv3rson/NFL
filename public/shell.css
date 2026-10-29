@@ -449,5 +449,16 @@ body.bnav-on .phead { background:var(--glass) !important; -webkit-backdrop-filte
 /* 10/28: the NFL 1H SPREAD pick line under the first-half spread rows (same size as the MODEL lines) */
 .mkc .mkpick { margin:6px 0 2px; font-size:13px; }
 .mkc .mkpick .mkp { color:#2e5cff; font-weight:800; }
-/* 10/28 late: on a computer the Model bets pick lines sit in a centered block under their game's name (not stuck to the left edge of the wide column). Both sports. */
-@media (min-width:700px) { #lab .pgrid > .par > .mkc { max-width:520px; margin:0 auto; } }
+/* 10/29 (owner: "Player props need a sub tab for the others"): Model bets -> Player Props stat chips, centered under the tabs (from the first chip when too wide). Both sports. */
+#lab .mbchips { justify-content:safe center; margin:6px 2px 2px; }
+/* 10/29 (owner: "records at the top of every tab in models bets"): the Model bets record tiles, the Models tiles' look -- up to 4 across, a single tile centered. Both sports. */
+#lab .stats.mbrec { display:flex; justify-content:center; gap:6px; margin:8px 0 4px !important; }
+#lab .stats.mbrec > .stat { flex:1 1 0; min-width:0; max-width:240px; }
+/* 10/29 (owner, My bets screenshot: "fix this issue on my pages"): the rows scrolling up showed through the pinned profit card and stuck out half-cut under
+   its edge. A solid band now sits behind the card, joined to the title's band, full width, with a short fade under it -- rows slide out of sight cleanly.
+   Both sports. */
+.mbpin::before { content:""; position:absolute; z-index:-1; left:-40px; right:-40px; top:-14px; bottom:-22px; pointer-events:none;
+  background:linear-gradient(to bottom,#0b0b10 0,#0b0b10 calc(100% - 22px),rgba(11,11,16,0) 100%); }
+/* the card's own face (its 20% fill + thin outline) drawn above that band */
+.mbpin { background:none !important; border-color:transparent !important; }
+.mbpin::after { content:""; position:absolute; z-index:-1; inset:0; border-radius:16px; pointer-events:none; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.14); }
