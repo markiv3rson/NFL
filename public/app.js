@@ -494,9 +494,10 @@ const liveLegTxt = (ks, l, done) => (ks.length > 1 && !done && liveSc(l.game) ? 
 function betRow(b) { return `<div class="betwrap">${betRowInner(b)}</div>`; }
 function betRowInner(b) {
   if (b.source === "account") {   // bet recorded automatically from your Polymarket account
-    const lk = !b.sold && (!b.result || b.result === "pending") ? liveOf(b.picks || (b.prop ? [b.prop] : [])) : [];
+    const lk = !b.sold && (!b.result || b.result === "pending") ? liveOf(b.picks || (b.prop ? [b.prop] : b.pick ? [b.pick] : [])) : [];
     const st = b.sold ? `<span class="${b.pl >= 0 ? "g" : "r"}">Sold</span>` : legLost(b) ? '<span class="r">Lost</span>' : b.result === "W" ? '<span class="g">Won</span>' : b.result === "L" ? '<span class="r">Lost</span>' : b.result === "P" ? "Even" : b.result === "settled" ? '<span class="y">settled — P/L not reported</span>' : (b.waiting ? '<span class="y">waiting for TD results</span>' : '<span class="dim">open</span>');
-    const name = b.picks && b.picks.length ? `${b.picks.length} picks` : b.prop ? `${tlogo(b.prop.team)}${esc(b.prop.label)}` : `${esc(b.title)}${b.outcome ? ` — ${esc(b.outcome)}` : ""}`;   // 10/19: single player bet
+    const name = b.picks && b.picks.length ? `${b.picks.length} picks` : b.prop ? `${tlogo(b.prop.team)}${esc(b.prop.label)}` : b.pick ? `${b.pick.result ? RESMARK[b.pick.result] + " " : ""}${legTxt(b.pick.result, logoLabel(b.pick.label, b.pick.team))}`   // 10/29: a straight team bet reads like a leg (the side you hold)
+      : `${esc(b.title)}${b.outcome ? ` — ${esc(b.outcome)}` : ""}`;   // 10/19: single player bet
     const picks = b.picks && b.picks.length ? b.picks.map((p) => `<div class="s" style="padding:0 0 0 16px">${p.result ? RESMARK[p.result] + " " : "• "}${legTxt(p.result, logoLabel(p.label, p.team))}${liveLegTxt(lk, p, !!p.result)}${!p.result && legFlipped(p.label) ? ' <span class="y">⚠ app now picks the other side</span>' : ""}</div>`).join("") : "";
     return `<div class="row"><span>${name}${lk.length ? " " + liveHeadTxt(lk) : ""}</span><span>${st}${b.pl != null ? ` ${cMoney(b.pl)}` : ""}</span></div>` +
       `<div class="s" style="padding:0 0 ${picks ? 2 : 6}px 8px">${money(b.cost)}${b.price != null ? ` at ${betCents(b.price)}¢` : ""} · ${b.sold ? `sold early for ${money(Math.max(0, (b.cost || 0) + (b.pl || 0)))}` : legLost(b) ? `−${money(b.cost)}` : `pays ${money(b.toWin)} if it wins`}</div>` + (picks ? `<div style="padding-bottom:6px">${picks}</div>` : "");
@@ -1377,8 +1378,8 @@ const recTileMb = (label, season, week) => { const n = season ? season.w + seaso
   return `<div class="stat"><div class="k">${label}</div><div class="v ${c}">${season ? `${season.w}–${season.l}` : "…"}</div><div class="k2">${pc == null ? "—" : `${pc >= 56 ? Math.round(pc) : Math.floor(pc)}% won`}${week && week.w + week.l ? ` · wk ${week.w}–${week.l}` : ""}</div></div>`; };
 function labRecords(games, sel) {
   const R = MPRECS || null, g = (k) => (R ? R[k] : null), L = (f) => games.map((x) => f(x.lines || {})).filter(Boolean);
-  if (LABTYPE === "lines") return [recTileMb("SPREAD PICKS", g("spread"), wl(L((l) => l.spread && l.spread.result))), recTileMb("TOTAL PICKS", g("total"), wl(L((l) => l.total && l.total.result))),
-    recTileMb("ML PICKS", g("ml"), wl(L((l) => l.ml && l.ml.result))), recTileMb("W/ POINTS", R ? { w: R.spreadPts.w + R.totalPts.w, l: R.spreadPts.l + R.totalPts.l } : null, wl([...L((l) => l.spread && l.spread.pts && l.spread.pts.result), ...L((l) => l.total && l.total.pts && l.total.pts.result)]))];
+  if (LABTYPE === "lines") return [recTileMb("SPREAD", g("spread"), wl(L((l) => l.spread && l.spread.result))), recTileMb("TOTAL", g("total"), wl(L((l) => l.total && l.total.result))),
+    recTileMb("ML", g("ml"), wl(L((l) => l.ml && l.ml.result))), recTileMb("W/ POINTS", R ? { w: R.spreadPts.w + R.totalPts.w, l: R.spreadPts.l + R.totalPts.l } : null, wl([...L((l) => l.spread && l.spread.pts && l.spread.pts.result), ...L((l) => l.total && l.total.pts && l.total.pts.result)]))];
   if (LABTYPE === "halves") return [recTileMb("1H SPREAD", g("h1"), wl(games.map((x) => x.h1pick && x.h1pick.result)))];
   if (LABTYPE === "gprops") { const gp = games.flatMap((x) => x.gprops || []);
     return [recTileMb("GAME PROPS", g("gp"), wl(gp.filter((k) => k.fam !== "ptd_qb").map((k) => k.result))), recTileMb("PASSING TDs", g("ptd"), wl(gp.filter((k) => k.fam === "ptd_qb").map((k) => k.result)))]; }

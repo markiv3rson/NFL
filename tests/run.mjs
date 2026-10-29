@@ -576,7 +576,7 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
             "Model bets Player Props (10/29 owner): its own stat chips (Anytime TD / Rec Yds / Receptions / Rush Yds), each stat on its own; scrimmage yards ride Rush Yds", hp.slice(0, 400));
           vm.runInContext(`LABTYPE = "lines"; MPRECS = { spread: { w: 15, l: 13 }, spreadPts: { w: 17, l: 11 }, total: { w: 15, l: 12 }, totalPts: { w: 14, l: 14 }, ml: { w: 9, l: 3 }, h1: { w: 0, l: 0 }, gp: { w: 4, l: 1 }, ptd: { w: 1, l: 1 }, td: { w: 5, l: 2 } }; MPRECS_T = Date.now()`, ctx);
           ctx.T.renderLabList(); const hrec = box.innerHTML; vm.runInContext(`LABTYPE = "halves"`, ctx); ctx.T.renderLabList(); const hrec2 = box.innerHTML; vm.runInContext(`LABTYPE = "gprops"`, ctx); ctx.T.renderLabList(); const hrec3 = box.innerHTML;
-          ok(/class="stats mbrec"><div class="stat"><div class="k">SPREAD PICKS<\/div><div class="v lg">15–13<\/div><div class="k2">53% won<\/div>/.test(hrec) && /TOTAL PICKS<\/div><div class="v lg">15–12<\/div><div class="k2">55% won · wk 0–1/.test(hrec) && /ML PICKS<\/div><div class="v g">9–3/.test(hrec) && /W\/ POINTS<\/div><div class="v lg">31–25/.test(hrec)
+          ok(/class="stats mbrec"><div class="stat"><div class="k">SPREAD<\/div><div class="v lg">15–13<\/div><div class="k2">53% won<\/div>/.test(hrec) && /TOTAL<\/div><div class="v lg">15–12<\/div><div class="k2">55% won · wk 0–1/.test(hrec) && /ML<\/div><div class="v g">9–3/.test(hrec) && /W\/ POINTS<\/div><div class="v lg">31–25/.test(hrec)
             && /1H SPREAD<\/div><div class="v ">0–0<\/div><div class="k2">—/.test(hrec2) && /GAME PROPS<\/div><div class="v g">4–1/.test(hrec3) && /PASSING TDs<\/div><div class="v y">1–1/.test(hrec3),
             "Model bets records (10/29 owner): season W-L of the tab's picks on top of every tab, the week on screen under it, coloured by win rate", hrec.slice(hrec.indexOf("mbrec"), hrec.indexOf("mbrec") + 700));
           vm.runInContext(`MPRECS = null`, ctx);
@@ -2324,5 +2324,10 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const mp = readFileSync(new URL("../pages/api/modelpicks.js", import.meta.url), "utf8"), tk = readFileSync(new URL("../lib/tracked.js", import.meta.url), "utf8"), gpx = readFileSync(new URL("../lib/gameprops.js", import.meta.url), "utf8");
   ok(/lockedPicksFrom\(locked \|\| \{\}, g\.key\)/.test(mp) && /p\.fair >= BEST_TD/.test(mp) && /cond: pk\.cond \|\| null/.test(tk) && /long, cond: p, label/.test(gpx) && /cond: \{ fam: "ptd_t", kind: "over", col: "ptd_t", line: L \}/.test(gpx),
     "GAME PROPS picks are saved with their condition (live grading); /api/modelpicks reads the locked card picks + Best TD picks"); }
+{ // 10/29 (owner: straight bets "like in a parlay style"; a bet on the market's other side read "pays -$10.00" with no price): lib/sides.js
+  const { teamSingle, sideOf } = await import("../lib/sides.js");
+  const a = teamSingle("asc-nba-den-no-2026-10-28-neg-4pt5", true), b = teamSingle("asc-nba-gs-min-2026-10-28-neg-7pt5", false), c = teamSingle("aec-nba-lal-lac-2026-10-28", false), d = teamSingle("aec-nfl-buf-lv-2026-10-26", true), e = teamSingle("tsc-nba-cha-det-2026-10-28-215pt5", true);
+  ok(a.label === "NO +4.5" && a.game === "DEN @ NO" && b.label === "GS -7.5" && c.label === "LAL ML" && d.label === "LV ML" && e.label === "Under 215.5" && teamSingle("astatc-nba-x", false) === null && sideOf(-10).shares === 10 && sideOf(-10).short === true,
+    "straight bets: the side held from the slug (the other side of the market on a negative position: the other team, the opposite line, the Under)", [a, b, c, d, e]); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} checks passed`);
 process.exit(bad ? 1 : 0);

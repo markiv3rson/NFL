@@ -445,10 +445,12 @@ function renderBets() {
   // 10/17 (owner): a Polymarket combo lists its legs under it like NFL's (✓ / ✗, team logo, won leg green, lost leg red)
   // 10/18 (owner, same as NFL): an open bet whose game is being played says ● LIVE · Q3 6:30 (no scores); with 2+ live games each undecided leg carries its clock
   const liveSc = (k) => { const sc = k && NBL[k]; return sc && sc.st === "in" ? sc : null; };
-  const liveOf = (e) => [...new Set((e.picks || []).map((p) => p.game).concat(e.prop && e.prop.game ? [e.prop.game] : []).filter((k) => liveSc(k)))];
+  const liveOf = (e) => [...new Set((e.picks || []).map((p) => p.game).concat(e.prop && e.prop.game ? [e.prop.game] : [], e.pick && e.pick.game ? [e.pick.game] : []).filter((k) => liveSc(k)))];
   const legLost = (e) => !e.sold && !e.resolved && (e.picks || []).some((p) => p && p.result === "L");   // same as NFL: a combo with a lost leg is done
   const legRow = (p, lk = []) => `<div class="s" style="padding:0 0 0 16px">${p.result ? legMark(p.result) + " " : "• "}${legTxt(p.result, `${p.team ? tlogo(p.team) : ""}${esc(p.label)}`)}${p.kind === "total" && p.game ? ` <span class="dim">${gameLogos(p.game)}</span>` : ""}${lk.length > 1 && !p.result && liveSc(p.game) ? ` <span class="r lvb">· ${esc(liveSc(p.game).lbl || "")}</span>` : ""}</div>`;
-  const betName = (e) => (e.picks && e.picks.length ? `${e.picks.length} picks` : e.prop ? `${e.prop.result ? legMark(e.prop.result) + " " : ""}${e.prop.team ? tlogo(e.prop.team) : ""}${esc(e.prop.label)}` : `${esc(e.title)}${e.outcome ? ` — ${esc(e.outcome)}` : ""}`);   // 10/27: a single player bet = the player + the bet
+  // 10/29 (owner: "Why doesn't it show it like in a parlay style?"): a straight team bet reads like a leg -- ✓ / ✗, the team's logo, the side you hold ("NOP +4.5")
+  const betName = (e) => (e.picks && e.picks.length ? `${e.picks.length} picks` : e.prop ? `${e.prop.result ? legMark(e.prop.result) + " " : ""}${e.prop.team ? tlogo(e.prop.team) : ""}${esc(e.prop.label)}`
+    : e.pick ? `${e.pick.result ? legMark(e.pick.result) + " " : ""}${legTxt(e.pick.result, `${e.pick.team ? tlogo(e.pick.team) : ""}${esc(e.pick.label)}`)}${e.pick.kind === "total" && e.pick.game ? ` <span class="dim">${gameLogos(e.pick.game)}</span>` : ""}` : `${esc(e.title)}${e.outcome ? ` — ${esc(e.outcome)}` : ""}`);   // 10/27: a single player bet = the player + the bet
   const isSingle = (e) => !(e.picks && e.picks.length), firstSingles = (a) => [...a.filter(isSingle), ...a.filter((e) => !isSingle(e))];   // 10/27 (owner): singles on top, then the combos
   // 10/27 (owner: "make everything consistent"): the rows read like NFL's -- right side open / Won +$ / Lost −$ / Sold, under it "$cost at N¢ · pays $X if it wins"
   const state = (e, settled) => settled ? (e.result === "win" ? '<span class="g">Won</span>' : e.result === "loss" ? '<span class="r">Lost</span>' : `<span class="${e.pl >= 0 ? "g" : "r"}">Sold</span>`) + " " + cMoney(e.pl) : legLost(e) ? `<span class="r">Lost</span> ${cMoney(-(e.cost || 0))}` : '<span class="dim">open</span>';
@@ -462,7 +464,7 @@ function renderBets() {
   // it works like NFL's week picker: the day's bets (open ones by their game day, settled ones by the day they closed), the record / profit / staked of
   // that day, a past day lists its results open, "Season" = all. The default is today.
   const etDay = (t) => (t ? new Date(t).toLocaleDateString("en-CA", { timeZone: "America/New_York" }) : null), today = etDay(new Date());
-  const dayOf = (e) => (e.result ? etDay(e.closedAt || (e.resolved && e.resolved.t) || (e.sold && e.sold.t)) : ((e.picks || []).map((p) => p.date).filter(Boolean).sort()[0] || (e.prop && e.prop.date) || etDay(e.firstSeen)));
+  const dayOf = (e) => (e.result ? etDay(e.closedAt || (e.resolved && e.resolved.t) || (e.sold && e.sold.t)) : ((e.picks || []).map((p) => p.date).filter(Boolean).sort()[0] || (e.prop && e.prop.date) || (e.pick && e.pick.date) || etDay(e.firstSeen)));
   const all = [...(j.open || []), ...(j.settled || [])];
   const days = [...new Set(all.map(dayOf).filter(Boolean).concat([today]))].sort();
   const sel = MBDAY === "all" || days.includes(MBDAY) ? MBDAY : today;
@@ -594,8 +596,8 @@ const recTileMb = (label, season, day) => { const n = season ? season.w + season
   return `<div class="stat"><div class="k">${label}</div><div class="v ${c}">${season ? `${season.w}–${season.l}` : "…"}</div><div class="k2">${pc == null ? "—" : `${pc >= 56 ? Math.round(pc) : Math.floor(pc)}% won`}${day && day.w + day.l ? ` · day ${day.w}–${day.l}` : ""}</div></div>`; };
 function labRecords(games, sel) {
   const R = MPICKS[""] && MPICKS[""].d ? MPICKS[""].d.records || null : null, L = (f) => games.map((x) => f(x.lines || {})).filter(Boolean);
-  if (LABTYPE === "lines") return [recTileMb("SPREAD PICKS", R && R.spread, wl(L((l) => l.spread && l.spread.result))), recTileMb("TOTAL PICKS", R && R.total, wl(L((l) => l.total && l.total.result))),
-    recTileMb("ML PICKS", R && R.ml, wl(L((l) => l.ml && l.ml.result))), recTileMb("W/ POINTS", R ? { w: R.spreadPts.w + R.totalPts.w, l: R.spreadPts.l + R.totalPts.l } : null, wl([...L((l) => l.spread && l.spread.pts && l.spread.pts.result), ...L((l) => l.total && l.total.pts && l.total.pts.result)]))];
+  if (LABTYPE === "lines") return [recTileMb("SPREAD", R && R.spread, wl(L((l) => l.spread && l.spread.result))), recTileMb("TOTAL", R && R.total, wl(L((l) => l.total && l.total.result))),
+    recTileMb("ML", R && R.ml, wl(L((l) => l.ml && l.ml.result))), recTileMb("W/ POINTS", R ? { w: R.spreadPts.w + R.totalPts.w, l: R.spreadPts.l + R.totalPts.l } : null, wl([...L((l) => l.spread && l.spread.pts && l.spread.pts.result), ...L((l) => l.total && l.total.pts && l.total.pts.result)]))];
   const c = GPROPS[sel], rc = c && c.d && c.d.record ? c.d.record[MBPROP] : null, lab = (GPROP_TABS.find(([k]) => k === MBPROP) || [, ""])[1].toUpperCase();
   const day = wl(games.flatMap((x) => { const pg = c && c.d ? (c.d.games || []).find((y) => y.game === x.key) : null; return ((pg && pg.picks) || []).filter((p) => p.stat === MBPROP).map((p) => p.result); }));
   return [recTileMb(lab, rc ? { w: rc.w || 0, l: rc.l || 0 } : c ? { w: 0, l: 0 } : null, day)];
