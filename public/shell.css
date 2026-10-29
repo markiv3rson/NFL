@@ -458,7 +458,8 @@ body.bnav-on .phead { background:var(--glass) !important; -webkit-backdrop-filte
 body.bnav-on .panel .pph .lvb { color:var(--red) !important; -webkit-text-stroke:0; }
 /* 10/29 (owner: "Make these in 1 line" / "TABLE FORMAT"): the Model bets pick tables are one row per pick, every value in its own column on that row:
    PICK (the game's name heads it) · BET · MODEL · POLYMARKET -- at every width, nothing stacked. Both sports. */
-#lab .ppr.first { grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) 44px 70px !important; grid-template-areas:"n line m p" !important; column-gap:6px; }
+#lab .ppr.first { grid-template-columns:minmax(0,1fr) minmax(0,1fr) 40px 86px !important; grid-template-areas:"n line m p" !important; column-gap:6px; }
 #lab .ppr.first.tdr, #lab .ppr.first.tdh { grid-template-columns:minmax(0,1fr) 104px 36px 64px !important; grid-template-areas:"n w m p" "line w m p" !important; }
 #lab .ppr.first .pp2 { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 @media (min-width:600px) { #lab .ppr.first { grid-template-columns:minmax(0,1.4fr) minmax(0,1.2fr) 70px 110px !important; column-gap:16px; } }
+#lab .ppr.first.pph .pp2 { display:block !important; visibility:visible !important; }
