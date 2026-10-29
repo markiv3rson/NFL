@@ -367,7 +367,7 @@ ok(redisUrl({ UPSTASH_REDIS_REST_URL_REDIS_URL: "redis://a:1", REDIS_URL: "redis
   ok(!fresh[0].player && !fresh[0].result, "slimLegs: Polymarket's leg carries no name and no grade");
   globalThis.fetch = real; await R.del("mybets:nba:ledger");
   const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
-  ok(/e\.prop \? `\$\{e\.prop\.result \? legMark\(e\.prop\.result\) \+ " " : ""\}\$\{e\.prop\.team \? tlogo\(e\.prop\.team\) : ""\}\$\{esc\(e\.prop\.label\)\}`/.test(app) && /rowsOf\(firstSingles\(openB\), false\)/.test(app) && /firstSingles = \(a\) => \[\.\.\.a\.filter\(isSingle\), \.\.\.a\.filter\(\(e\) => !isSingle\(e\)\)\]/.test(app) && !/stampFor|playStamps/.test(app),
+  ok(/e\.prop \? `\$\{e\.prop\.result \? legMark\(e\.prop\.result\) \+ " " : ""\}\$\{e\.prop\.team \? tlogo\(e\.prop\.team\) : ""\}\$\{esc\(e\.prop\.label\)\}`/.test(app) && /openBySlot\(openB\)/.test(app) && /return block\(list\.filter\(isSingle\), "SINGLES"\) \+ block\(/.test(app) && /firstSingles = \(a\) => \[\.\.\.a\.filter\(isSingle\), \.\.\.a\.filter\(\(e\) => !isSingle\(e\)\)\]/.test(app) && !/stampFor|playStamps/.test(app),
     "NBA My bets page: a single shows the player + bet with the logo and its mark, singles sit on top of the open list, no HIT / MISS stamp (10/27)");
   ok(/const cMoney = \(v\) => \(v == null \? "—" : `<span class="\$\{Math\.abs\(v\) < 0\.005 \? "" : v > 0 \? "g" : "r"\}">\$\{Math\.abs\(v\) < 0\.005 \? "\$" : v > 0 \? "\+\$" : "−\$"\}/.test(app), "NBA page: a zero amount reads $0.00 with no sign and no colour, like the NFL page (10/27)");
   ok(/if \(PROPTEAM !== "all" && !teams\.includes\(PROPTEAM\)\) PROPTEAM = "all";/.test(app) && /if \(PROPTEAM !== "all" && !teams\.includes\(PROPTEAM\)\) PROPTEAM = "all";/.test(readFileSync(new URL("../../public/app.js", import.meta.url), "utf8")),
@@ -1360,5 +1360,8 @@ const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "u
   const A = o.open[0], B = o.settled[0];
   ok(A.pick.label === "NOP +4.5" && A.shares === 10 && Math.abs(A.price - 0.51255) < 1e-9 && B.pick.label === "MIN -2.5" && B.result === "loss" && Math.abs(B.pl + 4.3176) < 1e-9 && o.record.l === 1,
     "NBA straight bets: the side held as a leg (NOP +4.5), shares positive with the price, a settled other-side bet graded from its own leg", { A, B }); }
+{ // 10/29 (owner: "I did not sell these I lost"): a combo with a lost leg listed under Settled reads Lost -$cost, never "Sold —"
+  const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
+  ok(/const state = \(e, settled\) => settled && e\.result \? /.test(app) && /: !e\.result && legLost\(e\) \? `−\$\{money\(e\.cost\)\}`/.test(app), "NBA My bets: a lost-leg combo under Settled says Lost, not Sold"); }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`);
 process.exit(bad ? 1 : 0);

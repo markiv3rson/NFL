@@ -454,3 +454,25 @@ body.bnav-on .phead { background:var(--glass) !important; -webkit-backdrop-filte
 /* 10/29 (owner: "records at the top of every tab in models bets"): the Model bets record tiles, the Models tiles' look -- up to 4 across, a single tile centered. Both sports. */
 #lab .stats.mbrec { display:flex; justify-content:center; gap:6px; margin:8px 0 4px !important; }
 #lab .stats.mbrec > .stat { flex:1 1 0; min-width:0; max-width:240px; }
+/* 10/29: Model bets -- the game's name sits on the heading line; its LIVE mark keeps its red there */
+body.bnav-on .panel .pph .lvb { color:var(--red) !important; -webkit-text-stroke:0; }
+/* 10/29 (owner: "Make these in 1 line" / "TABLE FORMAT"): the Model bets pick tables are one row per pick, every value in its own column on that row:
+   PICK (the game's name heads it) · BET · MODEL · POLYMARKET -- at every width, nothing stacked. Both sports. */
+#lab .ppr.first { grid-template-columns:minmax(0,1fr) minmax(0,1fr) 40px 86px !important; grid-template-areas:"n line m p" !important; column-gap:6px; }
+#lab .ppr.first.tdr, #lab .ppr.first.tdh { grid-template-columns:minmax(0,1fr) 104px 36px 64px !important; grid-template-areas:"n w m p" "line w m p" !important; }
+#lab .ppr.first .pp2 { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+@media (min-width:600px) { #lab .ppr.first { grid-template-columns:minmax(0,1.4fr) minmax(0,1.2fr) 70px 110px !important; column-gap:16px; } }
+#lab .ppr.first.pph .pp2 { display:block !important; visibility:visible !important; }
+/* 10/29 (owner, Model bets Anytime TD: the Polymarket logo sat on top of MODEL and POLYMARKET ran off the screen): the TD table's MODEL and POLYMARKET
+   columns as wide as the other Model bets tables' */
+#lab .ppr.first.tdr, #lab .ppr.first.tdh { grid-template-columns:minmax(0,1fr) 96px 42px 84px !important; column-gap:4px; }
+@media (min-width:600px) { #lab .ppr.first.tdr, #lab .ppr.first.tdh { grid-template-columns:minmax(0,1.4fr) minmax(0,1.2fr) 70px 110px !important; column-gap:16px; } }
+/* 10/29 (owner: NFL and NBA the same, everything organized): a finished tile's pick line wraps inside the middle; the team names never break or drop out of line (both sports) */
+.tile .nm > .t { flex:0 0 auto; white-space:nowrap; }
+.tile .nm > .tmid { flex:1 1 auto; min-width:0; }
+/* 10/29 (look check): the game name on a Model bets column heading ("CAR @ GB" with both logos) fits its column on a phone -- small logos, a wider first column (both sports) */
+#lab .pph .pbn .tlogo { width:14px; height:14px; margin:0 3px 0 0; vertical-align:-2px; }
+#lab .ppr.first:not(.tdr):not(.tdh) { grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr) 40px 86px !important; }
+@media (min-width:600px) { #lab .ppr.first:not(.tdr):not(.tdh) { grid-template-columns:minmax(0,1.4fr) minmax(0,1.2fr) 70px 110px !important; } }
+/* 10/29 (look check): a record tile's label stays on one line (both sports) */
+.stats .stat .k { white-space:nowrap; letter-spacing:.02em; }

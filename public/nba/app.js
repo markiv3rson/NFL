@@ -453,11 +453,20 @@ function renderBets() {
     : e.pick ? `${e.pick.result ? legMark(e.pick.result) + " " : ""}${legTxt(e.pick.result, `${e.pick.team ? tlogo(e.pick.team) : ""}${esc(e.pick.label)}`)}${e.pick.kind === "total" && e.pick.game ? ` <span class="dim">${gameLogos(e.pick.game)}</span>` : ""}` : `${esc(e.title)}${e.outcome ? ` — ${esc(e.outcome)}` : ""}`);   // 10/27: a single player bet = the player + the bet
   const isSingle = (e) => !(e.picks && e.picks.length), firstSingles = (a) => [...a.filter(isSingle), ...a.filter((e) => !isSingle(e))];   // 10/27 (owner): singles on top, then the combos
   // 10/27 (owner: "make everything consistent"): the rows read like NFL's -- right side open / Won +$ / Lost −$ / Sold, under it "$cost at N¢ · pays $X if it wins"
-  const state = (e, settled) => settled ? (e.result === "win" ? '<span class="g">Won</span>' : e.result === "loss" ? '<span class="r">Lost</span>' : `<span class="${e.pl >= 0 ? "g" : "r"}">Sold</span>`) + " " + cMoney(e.pl) : legLost(e) ? `<span class="r">Lost</span> ${cMoney(-(e.cost || 0))}` : '<span class="dim">open</span>';
-  const sub = (e, settled) => `${money(e.cost)}${e.price ? ` at ${betCents(e.price)}¢` : ""} · ${settled && e.result === "sold" ? `sold early for ${money(Math.max(0, (e.cost || 0) + (e.pl || 0)))}` : !settled && legLost(e) ? `−${money(e.cost)}` : `pays ${money(e.shares)} if it wins`}`;
+  // 10/29 (owner: "I did not sell these I lost"): a combo with a lost leg sits under Settled before Polymarket settles it -- it reads Lost −$cost (like NFL), never "Sold —"
+  const state = (e, settled) => settled && e.result ? (e.result === "win" ? '<span class="g">Won</span>' : e.result === "loss" ? '<span class="r">Lost</span>' : `<span class="${e.pl >= 0 ? "g" : "r"}">Sold</span>`) + " " + cMoney(e.pl) : legLost(e) ? `<span class="r">Lost</span> ${cMoney(-(e.cost || 0))}` : '<span class="dim">open</span>';
+  const sub = (e, settled) => `${money(e.cost)}${e.price ? ` at ${betCents(e.price)}¢` : ""} · ${settled && e.result === "sold" ? `sold early for ${money(Math.max(0, (e.cost || 0) + (e.pl || 0)))}` : !e.result && legLost(e) ? `−${money(e.cost)}` : `pays ${money(e.shares)} if it wins`}`;
   const rowsOf = (a, settled) => a.map((e) => { const lk = settled ? [] : liveOf(e), lv = lk.length === 1 ? `<span class="r lvb">● LIVE · ${esc(liveSc(lk[0]).lbl || "")}</span> ` : lk.length ? '<span class="r lvb">● LIVE</span> ' : "";
     return `<div class="betwrap"><div class="row"><span>${betName(e)}${lv ? " " + lv.trim() : ""}</span><span>${state(e, settled)}</span></div>` +
     `${(e.picks || []).map((p) => legRow(p, lk)).join("")}<div class="s" style="padding:0 0 6px 8px">${sub(e, settled)}</div></div>`; }).join("");
+  // 10/29 (owner: NFL and NBA the same): open bets under tip-off slot headers like NFL's -- the singles first ("SINGLES · NIGHT GAMES"), then the parlays by slot
+  const SLOTS = ["EARLY GAMES", "NIGHT GAMES", "LATE GAMES"], gameOf = (k) => k && S && (S.games || []).find((g) => g.key === k);
+  const slotsOf = (e) => [...new Set([...(e.picks || []).map((p) => p.game), e.prop && e.prop.game, e.pick && e.pick.game].map(gameOf).filter((g) => g && g.start).map((g) => nbaSlot(g.start)))];
+  const openBySlot = (list) => { const block = (xs, word) => { const head = (k) => (word ? `${word} · ${k}` : k), groups = Object.fromEntries(SLOTS.map((k) => [k, []])), mixed = [], other = [];
+      for (const e of xs) { const sl = slotsOf(e); if (sl.length === 1) groups[sl[0]].push(e); else if (sl.length > 1) mixed.push(e); else other.push(e); }
+      return SLOTS.filter((k) => groups[k].length).map((k) => `<div class="sec"><div class="sh">${head(k)}</div>${rowsOf(groups[k], false)}</div>`).join("") +
+        (mixed.length ? `<div class="sec"><div class="sh">${head("MIXED TIMES")}</div>${rowsOf(mixed, false)}</div>` : "") + (other.length ? `<div class="sec"><div class="sh">${head("TIME UNKNOWN")}</div>${rowsOf(other, false)}</div>` : ""); };
+    return block(list.filter(isSingle), "SINGLES") + block(list.filter((e) => !isSingle(e)), ""); };
   const open = [...document.querySelectorAll("#record-mine .drop.open")].map((e) => e.id);
   // 10/17 (owner: "make everything consistent"): a day drop-down like NFL's week drop-down.
   // 10/27 (owner: "This pop up don't even work"): it picked only which SETTLED bets sat inside the closed Settled fold, so a tap changed nothing on screen. Now
@@ -476,7 +485,7 @@ function renderBets() {
   $("record-mine").innerHTML = ddSlot($("record-mine"), dayPick) + topCard(`<div class="row"><span class="dim">Staked</span><span>${money(staked)} · settled</span></div>`,
     `<div class="mbhero"><span class="lbl">Profit · ${sel === "all" ? "this season" : dayName(sel)}</span><b>${cMoney(pl)}</b>` +
     `<span class="sub"><span class="${tot ? (w / tot >= 0.5 ? "g" : "r") : "dim"}">${tot ? `${w}–${l}` : "0–0"}</span>${sold ? ` · ${sold} sold` : ""} · ${past ? `${shown.length} bet${shown.length === 1 ? "" : "s"}` : `${openB.length} open · ${money(openB.reduce((a, e) => a + (e.cost || 0), 0))} staked`}</span></div>`) +
-    `<div class="card" style="margin-top:10px">` + (past || !openB.length ? "" : `<div class="sec"><div class="sh">Open</div>${rowsOf(firstSingles(openB), false)}</div>`) +
+    `<div class="card" style="margin-top:10px">` + (past || !openB.length ? "" : openBySlot(openB)) +
     `<div class="fold" data-drop="settled"><span>${past ? "Results" : "Settled bets"}</span><span>▾</span></div><div class="drop${past ? " open" : ""}" id="settled">${done.length ? rowsOf(done, true) : '<div class="s dim empty">None yet.</div>'}</div></div>` +
     `<div class="center"><button class="btn" id="sync-btn">↻ Sync account</button></div>`;
   for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
@@ -574,20 +583,27 @@ function labGames(day) {
   });
   const c = MPICKS[day]; return c && c.d ? (c.d.games || []).map((g) => ({ ...g, lines: { spread: lockedPick(g.locked && g.locked.spread), total: lockedPick(g.locked && g.locked.total), ml: lockedPick(g.locked && g.locked.ml) } })) : [];
 }
-const npHead = () => `<div class="pbl ppr pph"><span class="pp1">PLAYER</span><span class="pp2">LINE</span><span class="pp5">LAST</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
+const npHead = (nm = "PLAYER") => `<div class="pbl ppr pph"><span class="pp1">${nm}</span><span class="pp2">LINE</span><span class="pp5">LAST</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
 // 10/29 (owner: "Make this into a table format"; design = both sports): the Game Lines tab as a table like Player Props -- PICK (the bet, its kind under it) ·
 // MODEL (the % in its win-rate colour) · POLYMARKET; ✓ / ✗ and the row green / red once graded
-const pickHead = () => `<div class="pbl ppr pph first"><span class="pp1">PICK</span><span class="pp2">BET</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
+// 10/29 (owner: "why is this not in 1 line"; design = both sports): the game's name sits on its column-heading line (where PLAYER / PICK was)
+const gameNameN = (g) => { const live = S && (S.dates || []).includes(g.date), sc = live ? scOf((S.games || []).find((x) => x.key === g.key) || g) : null;
+  return `<span class="pbn">${gameLogos(g.key)}${sc && sc.st === "in" ? ' <span class="lvb">● LIVE</span>' : ""}</span>`; };
+const pickHead = (nm = "PICK") => `<div class="pbl ppr pph first"><span class="pp1">${nm}</span><span class="pp2">BET</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
+// 10/29 (owner: "Color code the numbers of the actual pick" / "I SAID THE NUMBER" / "to our models picks"): only the pick's number (the -3.5, the 213.5;
+// a moneyline's "ML") in the card picks' win-rate colours (green 56%+, light green 53-55%, yellow below); the MODEL % stays purple
+const numCol = (t, c) => { const m = /^(.*?)([+-]?\d+(?:\.\d+)?|\bML\b)(.*)$/.exec(String(t || "")); return m ? `${esc(m[1])}<span class="${c}">${esc(m[2])}</span>${esc(m[3])}` : ""; };
 const pickTr = (x) => { const r = normRes(x.result), h = Number(x.hit), c = h >= 56 ? "g" : h >= 53 ? "lg" : "y";
-  return `<div class="pbl ppr first${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) : "•"} ${esc(x.pick)}</span><span class="pp2">${esc(x.kind)}</span>` +
+  return `<div class="pbl ppr first${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) : "•"} ${numCol(x.pick, c) || esc(x.pick)}</span><span class="pp2">${numCol(x.pick, c) ? esc(x.kind) : numCol(x.kind, c) || esc(x.kind)}</span>` +
     `<span class="pp3 mod">${isFinite(h) ? `${h >= 56 ? Math.round(h) : Math.floor(h)}%` : "—"}</span><span class="pp4">${x.price > 0 && x.price < 1 ? `${Math.round(x.price * 100)}¢` : "—"}</span></div>`; };
+// 10/29 (owner: "remove moneyline spread and total ... I should only see w/ points in that row"): on Game Lines the BET column says only "w/ points", on a PICK w/ POINTS line
 const LAB_BODY = {
   lines: (g) => { const L = g.lines || {}, row = (x, kind) => (x && x.pick ? { pick: x.pick, kind, hit: x.hit, price: x.price, result: x.result } : null);
-    const rows = [row(L.spread, "Spread"), row(L.spread && L.spread.pts, "Spread · w/ points"), row(L.ml, "Moneyline"), row(L.total, "Total"), row(L.total && L.total.pts, "Total · w/ points")].filter(Boolean);
-    return rows.length ? pickHead() + rows.map(pickTr).join("") : ""; },
+    const rows = [row(L.ml, ""), row(L.spread, ""), row(L.total, ""), row(L.spread && L.spread.pts && L.spread.pts.pick !== L.spread.pick ? L.spread.pts : null, "w/ points"), row(L.total && L.total.pts && L.total.pts.pick !== L.total.pick ? L.total.pts : null, "w/ points")].filter(Boolean);
+    return rows.length ? pickHead(gameNameN(g)) + rows.map(pickTr).join("") : ""; },
   props: (g) => { const c = GPROPS[g.date], pg = c && c.d ? (c.d.games || []).find((x) => x.game === g.key) : null, picks = ((pg && pg.picks) || []).filter((p) => p.stat === MBPROP);
     const part = (t) => { const rs = picks.filter((p) => (p.team || "") === t); return rs.length ? `${t ? `<div class="pbl pteam">${tlogo(t)}${esc(t)}</div>` : ""}${rs.map(npRow).join("")}` : ""; };
-    return picks.length ? npHead() + [...new Set([g.away, g.home, ...picks.map((p) => p.team || "")])].map(part).join("") : ""; },
+    return picks.length ? npHead(gameNameN(g)) + [...new Set([g.away, g.home, ...picks.map((p) => p.team || "")])].map(part).join("") : ""; },
 };
 // RECORDS (10/29, owner: "I need records at the top of every tab in models bets"; design = both sports): the season's W-L of the tab's picks (/api/nba/modelpicks
 // records, props from /api/nba/props) and the day on screen under it; the colour is the win rate. Pushes count neither way.
@@ -617,8 +633,7 @@ function renderLabList() {
   const xs = games.map((g) => ({ g, html: body(g) })).filter((x) => x.html);
   const slotTimes = {}; for (const { g } of xs) if (g.start) { const sl = nbaSlot(g.start), tt = tipTime(g.start); (slotTimes[sl] = slotTimes[sl] || []).includes(tt) || slotTimes[sl].push(tt); }
   let lastSlot = null; const blocks = xs.map(({ g, html }) => { const sl = g.start ? nbaSlot(g.start) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
-    const sc = live ? scOf((S.games || []).find((x) => x.key === g.key) || g) : null, lv = sc && sc.st === "in" ? ' <span class="lvb">● LIVE</span>' : "";   // ESPN says it is being played
-    return h + `<div class="par"><div class="pbh"><span class="pbn">${gameLogos(g.key)}${lv}</span></div>${html}</div>`; });
+    return h + `<div class="par">${html}</div>`; });
   $("lab").innerHTML = ddSlot($("lab"), chips) + (LABTYPE === "props" ? mbChips() : "") + `<div class="stats mbrec">${labRecords(games, sel).join("")}</div>` + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : `<div class="s dim empty" style="margin-top:12px">${waiting ? "Loading…" : "None yet."}</div>`);
   const lw = $("lab-wk"); if (lw && lw.tagName === "SELECT") lw.onchange = () => { LABDAY = lw.value; renderLabList(); };
 }
