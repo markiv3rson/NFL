@@ -65,6 +65,11 @@
       document.querySelectorAll(".lgt[data-sp]").forEach((a) => a.setAttribute("href", `${URL_[a.dataset.sp]}#${same}`));
       Shell.choose(sp);   // Home and Model open on the sport last chosen
       document.body.classList.toggle("tbar-on", panel === "lines");   // 10/27 (owner): the SLATEZZ bar is on Home only
+      // 10/29 (owner: "It gets stuck like that when I switch pages"): the iPhone kept a pinned title where it sat on the page before (Home's, a SLATEZZ bar
+      // lower), leaving a gap of background over the title and the My bets card under it. Every switch now makes each pinned title take its place again
+      // (its top flipped and put back, read in between so the phone redraws it), then re-measures the pinned card. Both sports.
+      if (document.querySelectorAll) { document.querySelectorAll(".phead").forEach((h) => { h.style.top = "0px"; void h.offsetHeight; h.style.top = ""; void h.offsetHeight; });
+        if (TOPS) { TOPS.forEach(topSize); if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => TOPS.forEach(topSize)); if (typeof setTimeout === "function") setTimeout(() => TOPS.forEach(topSize), 350); } }
     },
     counts: {},
     setCount(sp, id, n) { Shell.counts[`${sp}-${id}`] = n; const e = document.getElementById(`mcnt-${sp}-${id}`); if (!e) return; e.textContent = n > 9 ? "9+" : String(n || ""); e.style.display = n ? "flex" : "none"; },
