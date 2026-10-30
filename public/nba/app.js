@@ -569,15 +569,18 @@ function loadModelPicks(day) {
 }
 // a game's picks: { spread, total, ml } each { pick, hit, price, result, pts }
 const lockedPick = (x) => (x && x.plain ? { pick: x.plain.label, hit: x.plain.pct, price: x.plain.price, result: normRes(x.plain.result), pts: x.pts ? { pick: x.pts.label, hit: x.pts.pct, price: x.pts.price, result: normRes(x.pts.result) } : null } : null);
+// 10/30 (owner: "Where's the games"): the live slate drops a game once it is final, so a day the slate still carries also takes its finished games from the
+// saved picks (/api/nba/modelpicks?date=) -- 10/29 at 8:19 PM showed MEM @ POR only (CLE @ ATL / SAC @ NOP final: record 4-2, rows "None yet")
+const savedGames = (day) => { const c = MPICKS[day]; return c && c.d ? (c.d.games || []).map((g) => ({ ...g, lines: { spread: lockedPick(g.locked && g.locked.spread), total: lockedPick(g.locked && g.locked.total), ml: lockedPick(g.locked && g.locked.ml) } })) : []; };
 function labGames(day) {
-  if (S && (S.dates || []).includes(day)) return (S.games || []).filter((g) => g.date === day).map((g) => {
+  if (S && (S.dates || []).includes(day)) { const live = (S.games || []).filter((g) => g.date === day).map((g) => {
     const card = (k) => { const C = cardOf(g, k); return C && C.plain ? { pick: C.plain.pick, hit: C.plain.hit, price: C.plain.price, pts: C.pts ? { pick: C.pts.pick, hit: C.pts.hit, price: C.pts.price } : null } : null; };
     const mp = g.ml && g.ml.pick && (g.ml.pick.tier === "pick" || g.ml.pick.tier === "lean") ? g.ml.pick : null;
     const lines = g.inProgress ? { spread: lockedPick(g.locked && g.locked.spread), total: lockedPick(g.locked && g.locked.total), ml: lockedPick(g.locked && g.locked.ml) }
       : { spread: card("spread"), total: card("total"), ml: mp ? { pick: mp.label, hit: mp.pct, price: mp.price ?? null } : null };
     return { key: g.key, away: g.away, home: g.home, start: g.start, date: g.date, lines };
-  });
-  const c = MPICKS[day]; return c && c.d ? (c.d.games || []).map((g) => ({ ...g, lines: { spread: lockedPick(g.locked && g.locked.spread), total: lockedPick(g.locked && g.locked.total), ml: lockedPick(g.locked && g.locked.ml) } })) : [];
+  }); return [...live, ...savedGames(day).filter((g) => !live.some((x) => x.key === g.key))]; }
+  return savedGames(day);
 }
 const npHead = (nm = "PLAYER") => `<div class="pbl ppr pph"><span class="pp1">${nm}</span><span class="pp2"></span><span class="pp5">LAST</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
 // 10/29 (owner: "Make this into a table format"; design = both sports): the Game Lines tab as a table like Player Props -- PICK (the bet, its kind under it) ·
@@ -633,7 +636,7 @@ function renderLabList() {
   const sel = LABDAY && days.includes(LABDAY) ? LABDAY : (S && S.dates && S.dates[0]) || days[0] || null;
   const chips = `<div class="wksel"><select id="lab-wk" aria-label="Day">${dayOpts("lab-wk", [...days].reverse(), sel)}</select></div>`;   // 10/17 (owner): a drop-down, first recorded day first
   const live = !!(S && (S.dates || []).includes(sel));
-  if (sel && !live) { const c = MPICKS[sel]; if (!c || Date.now() - c.t > 10 * 60e3) loadModelPicks(sel); }
+  if (sel) { const c = MPICKS[sel]; if (!c || Date.now() - c.t > (live ? 5 : 10) * 60e3) loadModelPicks(sel); }   // a live day too: its finished games come from the saved picks
   if (sel && LABTYPE === "props") { const c = GPROPS[sel]; if (!c || Date.now() - c.t > 5 * 60e3) loadGameProps(sel); }
   const waiting = sel && ((!live && !MPICKS[sel]) || (LABTYPE === "props" && !GPROPS[sel]));
   const games = sel ? labGames(sel).sort((a, b) => (Date.parse(a.start || 0) || 0) - (Date.parse(b.start || 0) || 0)) : [], body = LAB_BODY[LABTYPE] || LAB_BODY.lines;
