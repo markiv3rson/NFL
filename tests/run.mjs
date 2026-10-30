@@ -2224,9 +2224,9 @@ ok(nameMatches("Bi.Robinson", "Bijan Robinson 1+ touchdowns") && !nameMatches("B
   const sh = readFileSync(new URL("../public/shell.js", import.meta.url), "utf8"), ap = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
   ok(/h1PickNow\(getRedis\(\), SEASON, g, pin, p, gm\)/.test(pp) && /recordGameMarkets\(getRedis\(\), SEASON, g, gm, t\)/.test(pp) && /gradeH1Week\(season, week, games, espnFirstHalves\)/.test(gr) && /G\.h1pick = h1Out\(o\)/.test(wk), "the 15-min pull records the pick + every game-market price; grading and the slate read it");
   ok(/h1pick: g\.h1pick \? \{ \.\.\.g\.h1pick, live:/.test(ap) && /\+ h1Row\(\)/.test(ap), "Models -> Card picks has the 1H SPREAD row");
-  // 10/28 (owner: "do not put all of the market on here ... just choose our pick"): the game page shows the 1H pick alone, never a market's price list; no Game Props tab
+  // 10/28 (owner: "do not put all of the market on here ... just choose our pick"): the game page shows the 1H pick alone, never a market's price list; a Game Props tab only on a game with a GAME PROPS pick (NBA 10/30)
   const mk = /Shell\.mktLines = \(o\) => \(o && o\.h1pick \? `[^`]*h1Line\(o\.h1pick\)[^`]*` : ""\);/.test(sh);
-  ok(mk && !/Shell\.mktProps|Shell\.mktLoad|gamemarkets\?away|class="mkx/.test(sh) && !/"gprops"/.test(readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8")) && !(await import("node:fs")).existsSync(new URL("../pages/api/gamemarkets.js", import.meta.url)),
+  ok(mk && !/Shell\.mktProps|Shell\.mktLoad|gamemarkets\?away|class="mkx/.test(sh) && /tabsOf = \(g\) => GTABS\.filter\(\(\[k\]\) => k !== "gprops" \|\| \(g && g\.gprops && g\.gprops\.length\)\)/.test(readFileSync(new URL("../public/nba/app.js", import.meta.url), "utf8")) && !(await import("node:fs")).existsSync(new URL("../pages/api/gamemarkets.js", import.meta.url)),
     "game page: the 1H pick line only (no price lists, no /api/gamemarkets), both sports"); }
 { // 10/28 night: the GAME PROPS pick (lib/gameprops.js) -- the history chance, the rule, the parse, the labels, recording, grading, the page
   const G = await import("../lib/gameprops.js"), tr = await import("../lib/tracked.js"), { getRedis } = await import("../lib/redis.js"), r = getRedis();

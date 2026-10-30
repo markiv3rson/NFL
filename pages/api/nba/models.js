@@ -5,6 +5,8 @@ import { loadCloses } from "../../../nba/lib/closes";
 import { loadParlays, summarizeParlays } from "../../../nba/lib/parlays";
 import { getStatus } from "../../../nba/lib/status";
 import { nbaPropDays, propShadows } from "../../../nba/lib/props";
+import { getRedis } from "../../../nba/lib/redis";
+import { gamePropsRecord } from "../../../nba/lib/gameprops";
 export const config = { maxDuration: 30 };
 export default async function handler(req, res) {
   try {
@@ -17,6 +19,7 @@ export default async function handler(req, res) {
     const parlays = summarizeParlays(await loadParlays().catch(() => []));
     const clv = clvSummary(picks, await loadCloses().catch(() => []));
     const props = await propShadows(await nbaPropDays().catch(() => [])).catch(() => null);   // 10/21 prop shadow trackers
-    res.status(200).json({ ok: true, error, report: svc && svc.report, patterns: svc && svc.patterns, rebuild: svc && svc.status, record: summarize(picks), recent: picks.slice(0, 40), system, clv, moves, parlays, props });
+    const gprops = await gamePropsRecord(getRedis()).catch(() => null);   // 10/30: the GAME PROPS pick (lib/gameprops.js)
+    res.status(200).json({ ok: true, error, gprops, report: svc && svc.report, patterns: svc && svc.patterns, rebuild: svc && svc.status, record: summarize(picks), recent: picks.slice(0, 40), system, clv, moves, parlays, props });
   } catch (err) { res.status(500).json({ ok: false, error: String(err) }); }
 }

@@ -3,6 +3,8 @@
 // lib/record.js lockedFor) with W / L once graded, and each game's tip-off from ESPN's scoreboard. The page uses the live slate for the days it carries.
 import { loadPicks, MB_FROM } from "../../../nba/lib/record";
 import { finalsFor } from "../../../nba/lib/espn";
+import { getRedis } from "../../../nba/lib/redis";
+import { loadGameProps, gamePropsRecord } from "../../../nba/lib/gameprops";
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   try {
@@ -16,8 +18,9 @@ export default async function handler(req, res) {
       (L[k] = L[k] || {})[slot] = { label: p.label, pct: p.pct, result: p.result || null, price: p.price ?? null };
     }
     const keys = [...new Set([...Object.keys(by), ...Object.keys(fin)])];
+    const gp = date ? await loadGameProps(getRedis(), keys.map((key) => ({ key, date }))).catch(() => ({})) : {};   // 10/30: the GAME PROPS picks (lib/gameprops.js)
     const games = keys.map((key) => { const [away, home] = key.split(" @ "), f = fin[key] || {};
-      return { key, away, home, date, start: f.start || null, final: !!f.final, awayScore: f.away ?? null, homeScore: f.home ?? null, locked: by[key] || null }; });
+      return { key, away, home, date, start: f.start || null, final: !!f.final, awayScore: f.away ?? null, homeScore: f.home ?? null, locked: by[key] || null, ...(gp[key] ? { gprops: gp[key] } : {}) }; });
     // 10/29 (owner: "records at the top of every tab in models bets"): the season's W-L of the same picks (every saved day; pushes count neither way)
     // 10/29 (owner: "start fresh ... only for model bets"): counted from 10/29 on (MB_FROM); every older day stays saved, graded and in the day drop-down
     const R = { spread: { w: 0, l: 0 }, spreadPts: { w: 0, l: 0 }, total: { w: 0, l: 0 }, totalPts: { w: 0, l: 0 }, ml: { w: 0, l: 0 } }, seen = {};
@@ -26,6 +29,7 @@ export default async function handler(req, res) {
       if (/^modelpick\|/.test(id) && all.some((x) => x.date === p.date && x.game === p.game && String(x.id) === `cardpick|${p.market}`)) continue;   // the card shows the rule pick
       const sk = `${k}|${slot}`; if (seen[sk]) continue; seen[sk] = 1;
       if (p.result === "win") R[slot].w++; else if (p.result === "loss") R[slot].l++; }
+    R.gp = await gamePropsRecord(getRedis(), MB_FROM).catch(() => ({ w: 0, l: 0 }));
     res.status(200).json({ ok: true, date, days, games, records: R });
   } catch (e) { res.status(200).json({ ok: false, error: String(e).slice(0, 200) }); }
 }

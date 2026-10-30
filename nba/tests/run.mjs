@@ -1281,7 +1281,7 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(pn4.angleSides({ ...g1, date: "2027-03-05", context: ctx(2, 2), starOut: { home: 0, away: 0 }, model: { total: 240 }, poly: { spread: { homeSpread: -3 }, total: { line: 227.5 } } }).filter((x) => x.market === "total").map((x) => x.kind + ":" + x.side).join() === "mtotlate:over", "model 240 vs 227.5 in March, nobody out -> only the late-season Over");
   ok(!/TIRED \+ STAR OUT · fade|Shadow trackers/.test(readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8")), "10/29 late (owner: the tracked angles off): no Shadow trackers on Models; the angles are still recorded"); }
 const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8"), sl = readFileSync(new URL("../lib/slate.js", import.meta.url), "utf8");
-  ok(/const LAB_TABS = \[\["lines", "Game Lines"\], \["props", "Player Props"\]\];/.test(app) && /picks = \(\(pg && pg\.picks\) \|\| \[\]\)\.filter\(\(p\) => p\.stat === MBPROP\)/.test(app) && /data-mbprop/.test(app) && /class="stats mbrec">\$\{labRecords\(games, sel\)/.test(app) && /records: R \}/.test(readFileSync(new URL("../../pages/api/nba/modelpicks.js", import.meta.url), "utf8")) && !/Prop Parlays · 10 legs|Parlay scoreboard|Props · 82¢\+ hidden rows/.test(app) && /buildPropParlays\(d, out, now, legs\)/.test(sl) && /buildSameGame4\(d, out, now, legs\)/.test(sl) && /l\.market !== "prop"/.test(sl),
+  ok(/const LAB_TABS = \[\["lines", "Game Lines"\], \["props", "Player Props"\], \["gprops", "Game Props"\]\];/.test(app) && /picks = \(\(pg && pg\.picks\) \|\| \[\]\)\.filter\(\(p\) => p\.stat === MBPROP\)/.test(app) && /data-mbprop/.test(app) && /class="stats mbrec">\$\{labRecords\(games, sel\)/.test(app) && /records: R \}/.test(readFileSync(new URL("../../pages/api/nba/modelpicks.js", import.meta.url), "utf8")) && !/Prop Parlays · 10 legs|Parlay scoreboard|Props · 82¢\+ hidden rows/.test(app) && /buildPropParlays\(d, out, now, legs\)/.test(sl) && /buildSameGame4\(d, out, now, legs\)/.test(sl) && /l\.market !== "prop"/.test(sl),
     "Prop Parlays: built on the slate, never sent for a Polymarket combo quote; 10/29 late: no parlays or shadow rows on the page"); }
 { // 10/26 (owner, design = both sports): the per-game facts on top of the NBA MODEL ⓘ box (nba/lib/why.js)
   const { gameWhy } = whyLib, now = Date.parse("2026-10-26T23:00:00Z");
@@ -1433,7 +1433,63 @@ const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "u
   if (rec.summarize) { const S = rec.summarize([{ id: "modelpick|total", market: "total", ruleId: "refs|total", result: "win", pct: 52.8 }, { id: "modelpick|total", market: "total", ruleId: "model|total", result: "loss", pct: 50.4 }]);
     ok(S["rule:refs|total"] && S["rule:refs|total"].w === 1 && S["rule:refs|total"].l === 0 && S.model.w === 1 && S.model.l === 1, "refs: its own record row, inside the model-side record", S["rule:refs|total"]); }
   const slate = readFileSync(new URL("../lib/slate.js", import.meta.url), "utf8");
-  ok(/if \(g\.date === today && crews\[g\.key\]\) row\.crew = crews\[g\.key\];[^\n]*\n\s*row\.card = m\.model \? buildCard\(row\)/.test(slate), "refs: the slate puts today's crew on TODAY's game only, before the card is built");
+  ok(/if \(g\.date === today && crews\[g\.key\]\) row\.crew = crews\[g\.key\];[^\n]*\n(?:[^\n]*\n)?\s*row\.card = m\.model \? buildCard\(row\)/.test(slate), "refs: the slate puts today's crew on TODAY's game only, before the card is built");
+}
+
+// NBA GAME PROPS (10/30, lib/gameprops.js): parse every market kind Polymarket US lists, the history chance, the 80% / 30-82c rule, saving, grading, record
+{ const gp = await import("../lib/gameprops.js");
+  const Q = (x) => `Will the ${x}`;
+  const P1 = gp.ngpParse("Will the BOS Celtics cover -0.5 vs the DET Pistons in the first quarter of BOS Celtics vs. DET Pistons?", "BOS", "DET"),
+    P2 = gp.ngpParse("Will the first half total in BOS Celtics vs. DET Pistons be more than 106.5?", "BOS", "DET"),
+    P3 = gp.ngpParse("Will BOS Celtics score more than 51.5 points in the second half of BOS Celtics vs. DET Pistons?", "BOS", "DET"),
+    P4 = gp.ngpParse("Will BOS Celtics vs. DET Pistons go to overtime?", "BOS", "DET"),
+    P5 = gp.ngpParse("Will the BOS Celtics beat the DET Pistons by 1-5 points?", "BOS", "DET"),
+    P6 = gp.ngpParse("Will the DET Pistons reach 20 points before the BOS Celtics?", "BOS", "DET"),
+    P7 = gp.ngpParse(Q("BOS Celtics reach 15 points before the DET Pistons?"), "BOS", "DET");
+  ok(P1 && P1.k === "cover" && P1.part === "q1" && P1.s === "a" && P1.line === -0.5 && P2 && P2.k === "total" && P2.part === "1h" && P2.line === 106.5 && P3 && P3.k === "tpts" && P3.part === "2h" && P3.s === "a"
+    && P4 && P4.k === "ot" && P5 && P5.k === "margin" && P5.lo === 1 && P5.hi === 5 && P5.s === "a" && P6 && P6.k === "race" && P6.n === 20 && P6.s === "h" && P7 === null,
+    "game props: each Polymarket US market kind parses to its condition (race only to 10 / 20 / 30: the history has no other)", { P1, P2, P3, P4, P5, P6, P7 });
+  const c1 = gp.ngpChance(P4, 3, 225), c2 = gp.ngpChance({ k: "tpts", part: "fg", s: "h", line: 80.5 }, 3, 225), c3 = gp.ngpChance({ k: "total", part: "q1", line: 54.5 }, 3, 225);
+  ok(c1 > 0.03 && c1 < 0.12 && c2 > 0.97 && c3 > 0.3 && c3 < 0.7, "game props: the 600 nearest past games -- overtime ~6%, a home team scoring 81+ almost always, a 1Q total near its line ~half", { c1, c2, c3 });
+  ok(gp.ngpQualifies(0.80, 0.82) && !gp.ngpQualifies(0.799, 0.7) && !gp.ngpQualifies(0.9, 0.83) && !gp.ngpQualifies(0.9, 0.29) && Math.abs(gp.ngpShown(0.85, 0.75) - 0.83) < 1e-9,
+    "game props: shown = 0.8 history + 0.2 price, 80%+, priced 30-82c");
+  ok(gp.ngpPrices({ bestAskQuote: { value: "0.80" }, bestBidQuote: { value: "0.78" } }).ps === 0.22 && !gp.ngpPrices({ bestAskQuote: 0.6, bestBidQuote: 0.3 }) && !gp.ngpPrices({ bestAskQuote: 0.6, bestBidQuote: 0.58, closed: true }),
+    "game props: a real two-sided book only (98-106c), the short side = 1 - the bid");
+  const mk = (type, q, slug, ask, bid) => ({ sportsMarketType: type, question: q, slug, bestAskQuote: ask, bestBidQuote: bid, marketSides: [{ long: true }, { long: false }] });
+  const ev = { markets: [mk("basketball_team_total_points", "Will DET Pistons score more than 100.5 points in BOS Celtics vs. DET Pistons?", "tt-det", 0.81, 0.79),
+    mk("basketball_team_total_points", "Will DET Pistons score more than 104.5 points in BOS Celtics vs. DET Pistons?", "tt-det2", 0.70, 0.68),
+    mk("basketball_game_overtime", "Will BOS Celtics vs. DET Pistons go to overtime?", "ot", 0.06, 0.04),
+    mk("basketball_game_overtime", "Will BOS Celtics vs. DET Pistons go to overtime?", "ot2", 0.22, 0.20),
+    mk("basketball_player_points", "Will the DET Pistons reach 10 points before the BOS Celtics?", "pl", 0.5, 0.48),
+    mk("basketball_team_full_game_spread", "Will the DET Pistons cover -3.5 vs the BOS Celtics in BOS Celtics vs. DET Pistons?", "fg", 0.5, 0.48)] };
+  const picks = gp.ngpPicks(ev, "BOS", "DET", 3, 225), ot = picks.find((x) => x.type === "basketball_game_overtime");
+  ok(picks.length && picks.every((x) => x.said >= 0.8 && x.price >= 0.3 && x.price <= 0.82) && new Set(picks.map((x) => x.type)).size === picks.length && !picks.some((x) => /player|full_game/.test(x.type)),
+    "game props: one pick per market type, never a player or full-game market, every one 80%+ at 30-82c", picks.map((x) => `${x.label} ${x.said} ${x.price}`));
+  ok(ot && ot.slug === "ot2" && ot.long === false && ot.label === "Overtime No" && Math.abs(ot.price - 0.8) < 1e-9, "game props: a side over 82c never qualifies (Overtime No at 96c) -- the other book's No at 80c is the type's pick", ot);
+  ok(gp.ngpLabel(P1, true, "BOS", "DET") === "BOS -0.5 1Q" && gp.ngpLabel(P1, false, "BOS", "DET") === "DET +0.5 1Q" && gp.ngpLabel(P2, false, "BOS", "DET") === "1H total Under 106.5" && gp.ngpLabel(P6, true, "BOS", "DET") === "DET first to 20 Yes",
+    "game props: plain labels");
+  const st = (o) => ({ closed: true, outcomePrices: JSON.stringify(o), marketSides: [{ long: true }, { long: false }] });
+  ok(gp.ngpResult(st(["0", "1"]), false) === "W" && gp.ngpResult(st(["0", "1"]), true) === "L" && gp.ngpResult(st(["0.5", "0.5"]), true) === "P" && gp.ngpResult({ ...st(["1", "0"]), closed: false }, true) === null,
+    "game props: graded on Polymarket's own settlement (outcomePrices in marketSides order)");
+  const r = new RedisMock(), start = "2026-10-31T23:30:00Z", t0 = Date.parse(start), g = { key: "BOS @ DET", date: "2026-10-31", start, poly: { spread: { homeSpread: -3 }, total: { line: 225 } } };
+  const sv = await gp.saveGameProps(r, g, ev, t0 - 5 * 3600e3), k = gp.K_GPROPS(g.date, g.key), saved = JSON.parse(await r.get(k));
+  ok(sv.length === picks.length && saved.picks.length === picks.length && saved.picks.every((x) => x.said >= 80 && x.said <= 100 && x.hist === undefined) && (await r.smembers(gp.GP_IDS)).includes(k),
+    "game props: saved with the shown % in percent, listed under gprops:ids", saved.picks);
+  await gp.saveGameProps(r, g, { markets: [] }, t0 - 30 * 60e3);
+  ok(JSON.parse(await r.get(k)).picks.length === picks.length, "game props: in the last hour a blank book never erases the saved picks");
+  await gp.saveGameProps(r, g, { markets: [] }, t0 + 60e3);
+  ok(JSON.parse(await r.get(k)).picks.length === picks.length, "game props: after tip-off nothing is rewritten");
+  const g2 = { ...g, key: "NYK @ MIA" }; await gp.saveGameProps(r, g2, ev, t0 - 5 * 3600e3); await gp.saveGameProps(r, g2, { markets: [] }, t0 - 4 * 3600e3);
+  ok(!(await r.get(gp.K_GPROPS(g2.date, g2.key))) && !(await r.smembers(gp.GP_IDS)).includes(gp.K_GPROPS(g2.date, g2.key)), "game props: a game whose picks stop qualifying (1+ h before tip) loses them");
+  const closedEv = { markets: saved.picks.map((x, i) => ({ slug: x.slug, ...st(i ? ["1", "0"] : ["0", "1"]) })) };
+  let asked = null; const nG = await gp.gradeGameProps(r, async (slug) => { asked = slug; return closedEv; }, (a, h, s2) => `nba-${a}-${h}-${s2.slice(0, 10)}`.toLowerCase(), t0 + 4 * 3600e3);
+  const graded = JSON.parse(await r.get(k)).picks, want = saved.picks.map((x, i) => ((i ? x.long : !x.long) ? "W" : "L"));
+  ok(nG === 1 && asked === "nba-bos-det-2026-10-31" && graded.map((x) => x.result).join() === want.join(), "game props: graded 3+ h after tip from the game's event", { asked, graded: graded.map((x) => x.result), want });
+  const R = await gp.gamePropsRecord(r, "2026-10-30"), Rw = want.filter((x) => x === "W").length;
+  ok(R.w === Rw && R.l === want.length - Rw && R.pending === 0 && (await gp.gamePropsRecord(r, "2026-11-01")).w === 0, "game props: the record counts from the given day on", R);
+  const h1 = readFileSync(new URL("../lib/h1spread.js", import.meta.url), "utf8"), app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
+  ok(/saveGameProps\(r, g, ev, now\)/.test(h1) && /tabsOf = \(g\) => GTABS\.filter\(\(\[k\]\) => k !== "gprops" \|\| \(g && g\.gprops && g\.gprops\.length\)\)/.test(app), "game props: recorded at every snapshot; the game page tab only on a game with a pick");
+  ok(/recTileMb\("GAME PROPS", R && R\.gp/.test(app) && /recRow\("GAME PROPS · PICK", j\.gprops\)/.test(app), "game props: Model bets record tile + Models row");
 }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`);
 process.exit(bad ? 1 : 0);
