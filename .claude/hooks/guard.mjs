@@ -95,10 +95,34 @@ if (mode === "pre") {
   process.exit(0);
 }
 
+// rules 1 / 6 / 18 on every reply: what the reply says vs what the turn did. turn = the assistant entries after the owner's message.
+const PROMISE = /\b(I['’]ll|I will|I['’]m going to|I am going to|let me|next[,:]? I\b)|\b(running|testing|checking|starting|pulling|downloading|building|doing|working on|digging)\b[^.!?\n]{0,40}\bnow\b/i;
+const CONDITIONAL = /\b(say|send|tell me|when you|once you|if you|after you|your ["“']?(build|merge) now)\b/i;
+const WORK_ASK = /\b(research|test(s|ing)?|dig|download|find|look (into|up)|check|recheck|scan|pull|run)\b/i;
+function replyProblems(prompt, turn) {
+  let text = "", tools = 0, background = 0;
+  for (const d of turn) {
+    if (d.type !== "assistant" || !d.message || !Array.isArray(d.message.content)) continue;
+    for (const c of d.message.content) {
+      if (c.type === "text" && c.text.trim()) text = c.text;
+      if (c.type === "tool_use") { tools++; if (c.input && c.input.run_in_background) background++; }
+    }
+  }
+  const out = [], sentences = text.split(/(?<=[.!?])\s+|\n+/).filter(Boolean);
+  if (/\b(sorry|apologi[sz]e|my apologies)\b/i.test(text)) out.push('rule 1: no "sorry". Say what was wrong and what you did about it, nothing else.');
+  const promise = sentences.find((s) => PROMISE.test(s) && !CONDITIONAL.test(s));
+  if (promise && (tools === 0 || background === 0)) out.push(`rule 6: the reply promises work that is not running ("${promise.trim().slice(0, 80)}"). Do the work in this turn, or start it as a background job and say it is running.`);
+  const question = /\?\s*$/.test(String(prompt).trim());
+  if (!question && WORK_ASK.test(prompt) && tools === 0) out.push("rules 6 / 18: the owner asked for work and nothing ran. Do it now (tools in this turn, slow jobs in the background with a progress line).");
+  if (question && tools === 0 && text.split(/\s+/).filter(Boolean).length > 180) out.push("rule 1: a question gets a short, plain answer. Cut it down and stop.");
+  return out;
+}
+
 if (mode === "stop") {
   if (input.stop_hook_active) process.exit(0);
   const L = tail(); let start = -1, prompt = "";
   for (let i = L.length - 1; i >= 0; i--) { const t = ownerText(L[i]); if (t != null) { start = i; prompt = t; break; } }
+  if (start >= 0) { const p = replyProblems(prompt, L.slice(start + 1)); if (p.length) block(p.join("\n")); }
   if (start < 0 || !BUILD.test(prompt)) process.exit(0);
   let lastEdit = -1, lastTest = -1, lastPageEdit = -1, lastLook = -1, lastText = "";
   L.slice(start + 1).forEach((d, i) => {
