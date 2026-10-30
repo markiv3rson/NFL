@@ -40,6 +40,7 @@ const PAGES = [
   ["nfl", "game-parlays", "", [".tile", '[data-gtab="parlays"]']], ["nba", "game-parlays", "", [".tile", '[data-gtab="parlays"]']],
   ["nfl", "props-2", "props-recyds", null], ["nba", "props-2", "props-reb", null], ["nfl", "props-first", "props-first", null],
   ["nfl", "mybets-settled", "mybets", ['[data-drop="settled"]']], ["nba", "mybets-settled", "mybets", ['[data-drop="settled"]']],
+  ["nfl", "mybets-slotshut", "mybets", ['[data-drop^="bs-"]']], ["nba", "mybets-slotshut", "mybets", ['[data-drop^="bs-"]']],   // 10/30: a time slot tapped shut
   ["nfl", "props-3", "props-rec", null], ["nfl", "props-4", "props-rushyds", null], ["nba", "props-3", "props-ast", null], ["nba", "props-4", "props-pra", null],
   ["nba", "props-5", "props-stl", null], ["nba", "props-6", "props-blk", null],
   ["nfl", "modelbets-td", "modelbets-props", ['[data-mbprop="td"]']], ["nfl", "modelbets-first", "modelbets-props", ['[data-mbprop="first"]']],
@@ -111,6 +112,7 @@ async function checkPage(ctx, [W, sp, name, hash, click]) {
     return out;
   }, { ONE_LINE, KINDS });
   const tag = `${sp.toUpperCase()} ${name}${W === 390 ? "" : ` (${W} px)`}`;
+  if (process.env.SHOTS) { mkdirSync(process.env.SHOTS, { recursive: true }); await page.screenshot({ path: join(process.env.SHOTS, `${sp}-${name}-${W}.png`), fullPage: true }); }   // SHOTS=dir saves each page (to look at a change)
   if (errs.length) fails.push(`${tag}: page error ${errs[0]}`);
   if (r.over) fails.push(`${tag}: runs off the screen (sideways scroll)`);
   for (const w of [...new Set(r.wrap)]) fails.push(`${tag}: wraps onto 2 lines -- ${w}`);

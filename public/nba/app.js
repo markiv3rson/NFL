@@ -465,15 +465,18 @@ function renderBets() {
     // 10/29 (owner, same as NFL: "If it's for the same game put it at the top below 2 PICKS"): a parlay whose legs are all one game shows it once, under its name line
     `${(() => { const ks = [...new Set((e.picks || []).map((p) => p.game))], one = (e.picks || []).length > 1 && ks.length === 1 && ks[0] ? ks[0] : null;
       return (one ? `<div class="s" style="padding:0 0 0 16px">${gameLogos(one)}</div>` : "") + (e.picks || []).map((p) => legRow(p, lk, one)).join(""); })()}<div style="padding-bottom:6px"></div></div>`; }).join("");
+  // 10/30 (owner, both sports): "3 BETS" next to the slot, the header opens / closes the slot (open at first; a closed one stays closed through refreshes)
+  const slotSec = (word, label, n, body) => { const id = "bs-" + `${word || "P"}-${label}`.replace(/[^A-Za-z0-9]+/g, "-");
+    return `<div class="sec"><div class="sh slotdd" data-drop="${id}"><span>${label} · ${n} ${n === 1 ? "BET" : "BETS"}</span><span>▾</span></div><div class="drop open slotb" id="${id}">${body}</div></div>`; };
   // 10/29 (owner: NFL and NBA the same): open bets under tip-off slot headers like NFL's -- the singles first ("SINGLES · NIGHT GAMES"), then the parlays by slot
   const SLOTS = ["EARLY GAMES", "NIGHT GAMES", "LATE GAMES"], gameOf = (k) => k && S && (S.games || []).find((g) => g.key === k);
   const slotsOf = (e) => [...new Set([...(e.picks || []).map((p) => p.game), e.prop && e.prop.game, e.pick && e.pick.game].map(gameOf).filter((g) => g && g.start).map((g) => nbaSlot(g.start)))];
   const openBySlot = (list) => { const block = (xs, word) => { const head = (k) => (word ? `${word} · ${k}` : k), groups = Object.fromEntries(SLOTS.map((k) => [k, []])), mixed = [], other = [];
       for (const e of xs) { const sl = slotsOf(e); if (sl.length === 1) groups[sl[0]].push(e); else if (sl.length > 1) mixed.push(e); else other.push(e); }
-      return SLOTS.filter((k) => groups[k].length).map((k) => `<div class="sec"><div class="sh">${head(k)}</div>${rowsOf(groups[k], false)}</div>`).join("") +
-        (mixed.length ? `<div class="sec"><div class="sh">${head("MIXED TIMES")}</div>${rowsOf(mixed, false)}</div>` : "") + (other.length ? `<div class="sec"><div class="sh">${head("TIME UNKNOWN")}</div>${rowsOf(other, false)}</div>` : ""); };
+      return SLOTS.filter((k) => groups[k].length).map((k) => slotSec(word, head(k), groups[k].length, rowsOf(groups[k], false))).join("") +
+        (mixed.length ? slotSec(word, head("MIXED TIMES"), mixed.length, rowsOf(mixed, false)) : "") + (other.length ? slotSec(word, head("TIME UNKNOWN"), other.length, rowsOf(other, false)) : ""); };
     return block(list.filter(isSingle), "SINGLES") + block(list.filter((e) => !isSingle(e)), ""); };
-  const open = [...document.querySelectorAll("#record-mine .drop.open")].map((e) => e.id);
+  const open = [...document.querySelectorAll("#record-mine .drop.open")].map((e) => e.id), shut = [...document.querySelectorAll("#record-mine .drop.slotb:not(.open)")].map((e) => e.id);   // a slot you closed stays closed
   // 10/17 (owner: "make everything consistent"): a day drop-down like NFL's week drop-down.
   // 10/27 (owner: "This pop up don't even work"): it picked only which SETTLED bets sat inside the closed Settled fold, so a tap changed nothing on screen. Now
   // it works like NFL's week picker: the day's bets (open ones by their game day, settled ones by the day they closed), the record / profit / staked of
@@ -495,6 +498,7 @@ function renderBets() {
     `<div class="fold" data-drop="settled"><span>${past ? "Results" : "Settled bets"}</span><span>▾</span></div><div class="drop${past ? " open" : ""}" id="settled">${done.length ? rowsOf(done, true) : '<div class="s dim empty">None yet.</div>'}</div></div>` +
     `<div class="center"><button class="btn" id="sync-btn">↻ Sync account</button></div>`;
   for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
+  for (const id of shut) { const e = $(id); if (e) e.classList.remove("open"); }
   const md = $("mb-day"); if (md && md.tagName === "SELECT") md.onchange = () => dayPicked(md, "mb-day", (v) => { MBDAY = v; }, renderBets);
   if (typeof Shell !== "undefined" && Shell.pinTop && $("record-mine").querySelector) Shell.pinTop($("record-mine").querySelector(".mbpin"));
   $("sync-btn").onclick = async () => { toast("Syncing…", 0); try { const d = await (await fetch("/api/nba/mybets?sync=1", { cache: "no-store" })).json(); BETS = d; renderBets(); toast(d.sync && d.sync.ok ? `Synced ${d.sync.positions} positions.` : `Sync: ${(d.sync && d.sync.note) || "done"}`); } catch (e) { toast("Sync failed: " + e.message, 10000); } };

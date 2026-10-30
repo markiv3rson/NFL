@@ -587,3 +587,9 @@ img.phlm { width:16px; height:16px; object-fit:contain; vertical-align:-3px; mar
 @media (max-width:379px) { :is(body, #lab) .pgrid:has(.pu) .ppr:not(.first):not(.pk) { grid-template-columns:minmax(0,1fr) 53px 57px 36px 80px !important; column-gap:5px !important; } }
 /* 10/29 (owner: "make it slide left and right"): the tab / chip rows take a sideways swipe themselves (both sports) */
 .gchips, .gtabs { touch-action:manipulation; overscroll-behavior-x:contain; pointer-events:auto; }
+/* 10/30 (owner): My bets time slots open / close by their header ("10 AM GAMES · 3 BETS ▾"), both sports; the rows inside look as before */
+.sec > .sh.slotdd { display:flex; justify-content:space-between; align-items:center; gap:8px; cursor:pointer; user-select:none; }
+.sec > .sh.slotdd > span:last-child { flex-shrink:0; }
+.sec > .drop.slotb { margin-top:0; border-top:0; padding-top:0; font-size:inherit; }
+/* 10/30: a 375 px phone (the look check's narrowest) cut "✓ C.Cunningham" on a graded props row: there the ✓ / ✗ stands in for the team logo, both sports */
+@media (max-width:389px) { :is(body, #lab) .ppr.g:not(.pph) .pp1 .tlogo, :is(body, #lab) .ppr.r:not(.pph) .pp1 .tlogo { display:none; } }
