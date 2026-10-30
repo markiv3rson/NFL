@@ -633,7 +633,8 @@ const recTileMb = (label, season, day) => { const n = season ? season.w + season
 function labRecords(games, sel) {
   const R = MPICKS[""] && MPICKS[""].d ? MPICKS[""].d.records || null : null, L = (f) => games.map((x) => f(x.lines || {})).filter(Boolean);
   if (LABTYPE === "lines") return [recTileMb("SPREAD", R && R.spread, wl(L((l) => l.spread && l.spread.result))), recTileMb("TOTAL", R && R.total, wl(L((l) => l.total && l.total.result))),
-    recTileMb("ML", R && R.ml, wl(L((l) => l.ml && l.ml.result))), recTileMb("W/ POINTS", R ? { w: R.spreadPts.w + R.totalPts.w, l: R.spreadPts.l + R.totalPts.l } : null, wl([...L((l) => l.spread && l.spread.pts && l.spread.pts.result), ...L((l) => l.total && l.total.pts && l.total.pts.result)]))];
+    recTileMb("ML", R && R.ml, wl(L((l) => l.ml && l.ml.result))), recTileMb("SPREAD W/ PTS", R && R.spreadPts, wl(L((l) => l.spread && l.spread.pts && l.spread.pts.result))),
+    recTileMb("TOTAL W/ PTS", R && R.totalPts, wl(L((l) => l.total && l.total.pts && l.total.pts.result)))];   // 10/30 (owner: "2 w/ points record board. dont combine them")
   if (LABTYPE === "gprops") return [recTileMb("GAME PROPS", R && R.gp, wl(games.flatMap((x) => (x.gprops || []).map((k) => k.result))))];
   const c = GPROPS[sel], rc = c && c.d && c.d.record ? c.d.record[MBPROP] : null, lab = (GPROP_TABS.find(([k]) => k === MBPROP) || [, ""])[1].toUpperCase();
   const day = wl(games.flatMap((x) => { const pg = c && c.d ? (c.d.games || []).find((y) => y.game === x.key) : null; return ((pg && pg.picks) || []).filter((p) => p.stat === MBPROP).map((p) => p.result); }));
@@ -655,7 +656,7 @@ function renderLabList() {
   const slotTimes = {}; for (const { g } of xs) if (g.start) { const sl = nbaSlot(g.start), tt = tipTime(g.start); (slotTimes[sl] = slotTimes[sl] || []).includes(tt) || slotTimes[sl].push(tt); }
   let lastSlot = null; const blocks = xs.map(({ g, html }) => { const sl = g.start ? nbaSlot(g.start) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
     return h + `<div class="par">${html}</div>`; });
-  $("lab").innerHTML = ddSlot($("lab"), chips) + (LABTYPE === "props" ? mbChips() : "") + `<div class="stats mbrec">${labRecords(games, sel).join("")}</div>` + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : `<div class="s dim empty" style="margin-top:12px">${waiting ? "Loading…" : "None yet."}</div>`);
+  $("lab").innerHTML = ddSlot($("lab"), chips) + (LABTYPE === "props" ? mbChips() : "") + `<div class="stats mbrec${LABTYPE === "lines" ? " r5" : ""}">${labRecords(games, sel).join("")}</div>` + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : `<div class="s dim empty" style="margin-top:12px">${waiting ? "Loading…" : "None yet."}</div>`);
   const lw = $("lab-wk"); if (lw && lw.tagName === "SELECT") lw.onchange = () => dayPicked(lw, "lab-wk", (v) => { LABDAY = v; }, renderLabList);
 }
 

@@ -578,6 +578,11 @@ img.phlm { width:16px; height:16px; object-fit:contain; vertical-align:-3px; mar
 /* 10/29 (owner: "Make it to a square like the fucking others. Why is it stretched across?"): a Model bets record tile is always the width of one tile in
    the row of 4 (SPREAD · TOTAL · ML · W/ POINTS), also when the tab has only 1 or 2 tiles (STEALS, REBOUNDS, 1H SPREAD, ANYTIME TD, GAME PROPS ...), both sports */
 #lab .stats.mbrec > .stat { flex:0 0 calc((100% - 18px) / 4) !important; max-width:calc((100% - 18px) / 4) !important; }
+/* 10/30 (owner: "2 w/ points record board ... I should see 5 at the top in 1 row"): Game Lines = SPREAD · TOTAL · ML · SPREAD W/ PTS · TOTAL W/ PTS, five in one row, both sports */
+#lab .stats.mbrec.r5 { gap:4px; }
+#lab .stats.mbrec.r5 > .stat { flex:0 0 calc((100% - 16px) / 5) !important; max-width:calc((100% - 16px) / 5) !important; padding-left:2px !important; padding-right:2px !important; }
+#lab .stats.mbrec.r5 > .stat .k { font-size:8.5px !important; letter-spacing:0 !important; }
+#lab .stats.mbrec.r5 > .stat .k2 { font-size:9px !important; letter-spacing:0 !important; }
 /* 10/29 (props build, look check): a props table with "U 18.5 att" / "U 80.5 scrim" rows (the NFL Rush Yds tab) gets a wider pick column so they stay on
    one line (the 40 px column cut them to "U 18…"); every other table keeps its widths. The stat word after the line is smaller and faded */
 :is(body, #lab) .ppr .pp2 .pu { font-size:9px; color:var(--fade); margin-left:2px; }
