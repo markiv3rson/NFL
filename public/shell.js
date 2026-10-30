@@ -102,7 +102,7 @@
     // "Model Refresh: 4:10pm 10/17" at the bottom right of the page header (10/21 night; was under SLATEZZ): the newer of the NFL and NBA model runs (10/17, owner: one short line, newest time)
     runTxt(iso) {
       const d = iso ? new Date(iso) : null; if (!d || isNaN(d)) return "—";
-      return `${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).replace(/\s?([AP]M)$/, (m, x) => x.toLowerCase())} ${d.getMonth() + 1}/${d.getDate()}`;
+      return `${d.toLocaleTimeString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit" }).replace(/\s?([AP]M)$/, (m, x) => x.toLowerCase())} ${d.toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", month: "numeric", day: "numeric" })}`;   // 10/30: Pacific (rule 12)
     },
     // just the time under the refresh icon: the one row under the title has no room for words (owner 10/21 night)
     async loadRun() {
@@ -202,7 +202,7 @@
     let g = "";
     const step = hi - lo > 0.5 ? 0.2 : 0.1;
     for (let v = Math.ceil(lo / step - 1e-9) * step; v <= hi + 1e-9; v += step) g += `<line x1="${P.l}" x2="${w - P.r + 4}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" class="gl"/><text x="${P.l - 5}" y="${(Y(v) + 3).toFixed(1)}" class="ga" text-anchor="end">${Math.round(v * 100)}%</text>`;
-    const span = x1 - x0, short = span < 2 * 86400, n = 4, fmt = (t) => new Date(t * 1000).toLocaleString(undefined, short ? { hour: "numeric", minute: "2-digit" } : { month: "short", day: "numeric" });
+    const span = x1 - x0, short = span < 2 * 86400, n = 4, fmt = (t) => new Date(t * 1000).toLocaleString(undefined, short ? { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit" } : { timeZone: "America/Los_Angeles", month: "short", day: "numeric" });
     for (let i = 0; i <= n; i++) { const t = x0 + (span * i) / n; g += `<text x="${X(t).toFixed(1)}" y="${H - 5}" class="ga" text-anchor="${i === 0 ? "start" : i === n ? "end" : "middle"}">${fmt(t)}</text>`; }
     const last = pts[pts.length - 1]; let ya = Y(last[1]), yh = Y(last[2]);
     if (Math.abs(ya - yh) < 30) { const mid = (ya + yh) / 2, up = ya <= yh ? -1 : 1; ya = mid + up * 15; yh = mid - up * 15; }

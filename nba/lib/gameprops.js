@@ -10,6 +10,9 @@ import { GPN, GPCOLS } from "./gameprops_data";
 import { usCode } from "../../lib/polyus";
 
 export const NGP_BAR = 0.80, NGP_CAP = 0.82, NGP_MIN = 0.30, NGP_PRICE_W = 0.2, NGP_NEAR = 600, NGP_RACE_MIN = 300;
+// 10/30 recheck: the test's prices were all from the 2 hours before tip (2.5 picks a game); hours earlier the books gave ~7 a game the test never saw,
+// so picks are made only inside that window (a copy saved earlier is taken out)
+export const NGP_WINDOW_MS = 2 * 3600e3;
 export const ngpShown = (c, px) => (1 - NGP_PRICE_W) * c + NGP_PRICE_W * px;
 export const ngpQualifies = (shown, px) => shown != null && px != null && shown >= NGP_BAR - 1e-9 && px >= NGP_MIN && px <= NGP_CAP;
 
@@ -125,9 +128,10 @@ export function ngpResult(m, long) {
 export const K_GPROPS = (date, game) => `gprops:${date}:${game}`, GP_IDS = "gprops:ids";
 export async function saveGameProps(r, g, ev, now = Date.now()) {
   if (!g || !g.poly || !g.poly.spread || g.poly.spread.homeSpread == null || !g.poly.total || g.poly.total.line == null || now >= Date.parse(g.start)) return null;
+  const k = K_GPROPS(g.date, g.key);
+  if (Date.parse(g.start) - now > NGP_WINDOW_MS) { await r.del(k).catch(() => 0); await r.srem(GP_IDS, k).catch(() => 0); return []; }
   const [away, home] = g.key.split(" @ "), picks = ngpPicks(ev, away, home, -Number(g.poly.spread.homeSpread), Number(g.poly.total.line))
     .map(({ hist, ...p }) => ({ ...p, said: Math.round(p.said * 1000) / 10 }));
-  const k = K_GPROPS(g.date, g.key);
   if (!picks.length) { if (Date.parse(g.start) - now > 3600e3) { await r.del(k).catch(() => 0); await r.srem(GP_IDS, k).catch(() => 0); } return picks; }
   await r.set(k, JSON.stringify({ t: new Date(now).toISOString(), start: g.start, picks })).catch(() => 0); await r.sadd(GP_IDS, k).catch(() => 0);
   return picks;
