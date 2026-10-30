@@ -60,6 +60,13 @@ export async function recordPicks(games, now = Date.now()) {
     }
     for (const k of ["spread", "total"]) {
       const pk = KEY(g.date, g.key, `ptspick|${k}`), old = cur[`ptspick|${k}`], pick = cur[`cardpick|${k}`] || cur[`modelpick|${k}`];
+      // 10/30 recheck: a PICK w/ POINTS saved under the old fewest-points rule (no r72) while the card now has none (no 5-10 point line yet) leaves the
+      // record before tip-off too -- MEM @ POR 10/29 kept "Over 229.5" (3 points, 68%) on Model bets
+      const modelTotal = k === "total" && !!pick && pick.id === "modelpick|total";   // the 10/26 rule below covers a model-side total (its own why)
+      if (old && !old.r72 && !modelTotal && !rows.some((x) => x.id === `ptspick|${k}`)) {
+        await r.set(`removed:${pk}`, JSON.stringify({ ...old, removedAt: new Date(now).toISOString(), why: "PICK w/ POINTS saved under the old fewest-points rule; the 72% / 82c card has none" }), "NX");
+        await r.del(pk); await r.srem(IDS, pk); cur[`ptspick|${k}`] = null; n++; continue;
+      }
       // 10/26 night: the card no longer buys points on the model-side TOTAL, so a saved ptspick|total under a modelpick|total (saved before the change) leaves the record before tip-off too
       const noneNow = !!old && !!pick && k === "total" && pick.id === "modelpick|total" && !rows.some((x) => x.id === "ptspick|total");
       if (!old || !pick || ((sideOf(old) === sideOf(pick) || old.alt) && !noneNow)) continue;

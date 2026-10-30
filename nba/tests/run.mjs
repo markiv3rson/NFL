@@ -1011,6 +1011,11 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   const gR = { key: G, date: D, start: "2026-12-31T00:00:00Z", card: { total: { plain: { id: "cardpick|total", ruleId: "bookgap|total", side: "under", line: 230.5, pick: "Under 230.5", hit: 64.1 }, pts: { id: "ptspick|total", side: "under", line: 232.5, pick: "Under 232.5", hit: 66.7, points: 2 } } } };
   await rec.recordPicks([gR], Date.parse("2026-12-30T18:30:00Z"));
   ok(JSON.parse(await R.get(K("ptspick|total"))).label === "Under 232.5" && !(await R.get(`removed:${K("ptspick|total")}`)), "record (10/26 night): a rule total's PICK w/ POINTS stays");
+  { // 10/30 recheck: an old-rule PICK w/ POINTS with no 72% / 82c line on the card leaves the record before tip-off (kept under removed:)
+    await R.set(K("ptspick|total"), JSON.stringify({ date: D, game: G, id: "ptspick|total", market: "total", side: "under", line: 233.5, label: "Under 233.5", points: 3 })); await R.sadd("pick:ids", K("ptspick|total")); await R.del(`removed:${K("ptspick|total")}`);
+    await rec.recordPicks([{ ...gR, card: { total: { ...gR.card.total, pts: null } } }], Date.parse("2026-12-30T18:35:00Z"));
+    ok(!(await R.get(K("ptspick|total"))) && !(await R.smembers("pick:ids")).includes(K("ptspick|total")) && /72% \/ 82c card has none/.test(JSON.parse(await R.get(`removed:${K("ptspick|total")}`)).why),
+      "record (10/30): an old-rule PICK w/ POINTS leaves the record when the card has no 72% / 82c line"); await R.del(`removed:${K("ptspick|total")}`); }
   { // 10/29 late (owner: "make sure it saves the new rule"): a PICK w/ POINTS saved under the old fewest-points rule is re-saved once before tip-off
     await R.set(K("ptspick|total"), JSON.stringify({ date: D, game: G, id: "ptspick|total", market: "total", side: "under", line: 235.5, label: "Under 235.5", points: 5 })); await R.del(`first:${K("ptspick|total")}`);
     const gN = { ...gR, card: { total: { ...gR.card.total, pts: { id: "ptspick|total", side: "under", line: 238.5, pick: "Under 238.5", hit: 72.4, points: 8 } } } };
@@ -1103,8 +1108,11 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(g === 1 && rec.all.w === 1 && rec.all.l === 0 && rec.pts.w === 1 && rec.pra.l === 0 && rec.reb.w === 0 && day2[0].final && day2[0].picks.find((p) => p.name === "Jaylen Brown").result === "W" && graded.find((p) => p.name === "Cade Cunningham").result === "L", "NBA props grading: W / L from the box score, RECORD per stat (Overs only since 10/23), the page shows ✓ / ✗; the cut Under is still graded in the background", { g, rec });
   ok((await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2026-12-31T08:00:00Z"), fetchBox: async () => { throw new Error("no"); } })) === 0, "NBA props grading: a graded game is never graded twice");
   { // 10/22 (owner): the page's % is the calibrated chance (`cal`, the same number the prop parlay legs use); the rows stay the model's own
-    const bands = await pr.propCalibration(Date.now(), true), d = await pr.nbaPropsForDay("2026-12-30", Date.now() + 1);
-    ok(d[0].picks.every((p) => typeof p.cal === "number" && Math.abs(p.cal - pr.calibrate(p.chance, bands)) < 1e-9) && /p\.cal \?\? p\.chance/.test(readFileSync("public/nba/app.js", "utf8")), "NBA props page: every row carries its calibrated % and the page shows it (10/22)", d[0].picks); }
+    const cal = await pr.propCalByDay(Date.now(), true), bands = pr.bandsFor(cal, "2026-12-30"), d = await pr.nbaPropsForDay("2026-12-30", Date.now() + 1);
+    ok(d[0].picks.every((p) => typeof p.cal === "number" && Math.abs(p.cal - pr.calibrate(p.chance, bands)) < 1e-9) && /p\.cal \?\? p\.chance/.test(readFileSync("public/nba/app.js", "utf8")), "NBA props page: every row carries its calibrated % and the page shows it (10/22)", d[0].picks);
+    // 10/30: a day's rows use the bands of the days BEFORE it -- its own graded rows (Brown's win) never move its own % or list
+    const fullB = JSON.stringify(cal.full), dayB = JSON.stringify(bands), next = pr.bandsFor(cal, "2026-12-31");
+    ok(dayB !== fullB && JSON.stringify(next) === fullB && Object.values(bands).every((b) => b.n >= 0), "NBA props (10/30): each day is calibrated from the days before it only; the next day uses every graded day", { dayB, fullB }); }
   { // 10/21 review: ESPN corrects box scores after the final -> one more look 6+ hours later re-grades the saved rows (Cunningham's PRA 44 -> 38 flips Under 39.5 to a win), then never again
     const fixedBox = { "BOS @ DET": { final: true, players: { ...box["BOS @ DET"].players, "cade cunningham": { pts: 26, reb: 5, ast: 7, pra: 38, "3pm": 3, stl: 1, blk: 1 } } } };
     const early = await pr.gradeNbaProps({ dates: ["2026-12-30"], now: Date.parse("2026-12-31T10:00:00Z"), fetchBox: async () => fixedBox });
@@ -1229,7 +1237,7 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
       "Prop Parlays (10/22): per game from that game's spread / total / ML / props (spread and ML never both on one game: the stronger stays); a game short of a size gives its legs to one mixed parlay of that size", pp2.map((p) => [p.type, p.game, p.legs.map((l) => l.label)]));
     await R.hset(pr.K_NBAPROPRES("2027-01-01"), "X @ Y", JSON.stringify({ picks: Array.from({ length: 50 }, (_, i) => ({ name: `P${String.fromCharCode(97 + (i % 26))}${String.fromCharCode(97 + Math.floor(i / 26))}`, stat: "pts", side: "over", line: 20.5, chance: 0.82, price: 0.65, result: i < 35 ? "W" : "L" })) }));
     await R.set(pr.K_NBAPROPMODEL("2027-01-01", "X @ Y"), JSON.stringify({ rows: [] }));
-    const bands = await pr.propCalibration(now, true); await R.del(pr.K_NBAPROPRES("2027-01-01")); await R.del(pr.K_NBAPROPMODEL("2027-01-01", "X @ Y")); await R.del("nbapropcal2");
+    const bands = await pr.propCalibration(now, true); await R.del(pr.K_NBAPROPRES("2027-01-01")); await R.del(pr.K_NBAPROPMODEL("2027-01-01", "X @ Y")); await R.del("nbapropcal2"); await R.del("nbapropcal3");
     const c = pr.calibrate(0.82, bands);
     const e = 0.4 * 0.82 + 0.6 * 0.65, ce = pr.calibrate(e, bands);   // 10/23: bands of the Over's blended % (0.718 -> the 70 band; 70%+ bar since 10/29)
     ok(bands[70] && bands[70].n === 50 && Math.abs(bands[70].won - 0.7) < 1e-9 && Math.abs(ce - (e + (0.7 - e) * 50 / 150)) < 1e-6 && c === 0.82 && pr.calibrate(0.67, bands) === 0.67,
