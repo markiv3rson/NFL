@@ -101,6 +101,11 @@ async function checkPage(ctx, [W, sp, name, hash, click]) {
       for (let row = h.nextElementSibling; row && row.classList.contains("ppr") && !row.classList.contains("pph"); row = row.nextElementSibling) { if (!vis(row)) continue;
         for (const k of ["pp3", "pp4", "pp5"]) { const hc = h.querySelector(`:scope > .${k}`), vc = row.querySelector(`:scope > .${k}`); if (!hc || !vc || !vis(hc) || !vis(vc)) continue;
           const a = mid(hc), b = mid(vc); if (a != null && b != null && Math.abs(a - b) > 8) out.offc.push(`${lbl(hc)} "${lbl(vc)}" (${Math.round(b - a)} px)`); } } }
+    // 10/29 night (owner: "Why is this not centered" -- the Models tiles): every row of record tiles sits in the middle (the space left of the first tile = right of the last, 3 px)
+    out.side = [];
+    for (const row of document.querySelectorAll(".stats")) { if (!vis(row)) continue; const ts = [...row.children].filter((c) => c.classList.contains("stat") && vis(c)); if (!ts.length) continue;
+      const rb = row.getBoundingClientRect(), cs = getComputedStyle(row), l = ts[0].getBoundingClientRect().left - rb.left - parseFloat(cs.paddingLeft), r = rb.right - parseFloat(cs.paddingRight) - ts[ts.length - 1].getBoundingClientRect().right;
+      if (Math.abs(l - r) > 3) out.side.push(`"${lbl(row)}" (${Math.round(l)} px left, ${Math.round(r)} px right)`); }
     for (const [k, s] of Object.entries(KINDS)) { const e = [...document.querySelectorAll(s)].find(vis); if (!e) continue; const cs = getComputedStyle(e);
       out.style[k] = { size: cs.fontSize, weight: cs.fontWeight, caps: cs.textTransform, font: cs.fontFamily.split(",")[0].trim(), colour: cs.color, sample: lbl(e) }; }
     return out;
@@ -113,6 +118,7 @@ async function checkPage(ctx, [W, sp, name, hash, click]) {
   for (const w of [...new Set(r.overlap)]) fails.push(`${tag}: columns overlap -- ${w}`);
   for (const w of [...new Set(r.tight)]) fails.push(`${tag}: columns touch -- ${w}`);
   for (const w of [...new Set(r.offc)]) fails.push(`${tag}: not under its heading -- ${w}`);
+  for (const w of [...new Set(r.side)]) fails.push(`${tag}: tiles not centered -- ${w}`);
   if (W === 390) (styles[name] = styles[name] || {})[sp] = r.style;
   await page.close();
 }
