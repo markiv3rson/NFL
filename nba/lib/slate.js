@@ -162,7 +162,7 @@ export async function buildSlate({ now = Date.now(), days = 1, events = null, in
   if (pullBooks) booksPull = await pullBooksIfDue(games.filter((g) => !preOf(g)), { now, fetcher: booksFetch, force: forceBooks }).catch((e) => ({ pulled: false, note: String(e.message || e).slice(0, 160) }));
   const bk = await loadBooks().catch(() => null);
   const moves = await lineMoves(games, now).catch(() => ({}));
-  const crews = games.some((g) => g.date === etDate(new Date(now).toISOString())) ? await loadCrews(now).catch(() => ({})) : {};   // 10/30: today's referee crews (official.nba.com, ~9 AM ET)
+  const today = etDate(new Date(now).toISOString()), crews = games.some((g) => g.date === today) ? await loadCrews(now).catch(() => ({})) : {};   // 10/30: today's referee crews (official.nba.com, ~9 AM ET)
   const locked = {}, otByDate = {};
   for (const g of games) if (now >= Date.parse(g.start)) locked[g.key] = await lockedFor(g.date, g.key).catch(() => null);
   // 10/23 (owner): a started game shows its tip-off line (the last Polymarket line saved before tip-off, lib/closes.js) under Polymarket, like NFL's kickoff line
@@ -179,7 +179,7 @@ export async function buildSlate({ now = Date.now(), days = 1, events = null, in
     row.inProgress = now >= Date.parse(g.start);
     if (row.inProgress) for (const k of ["spread", "total", "ml"]) if (row[k] && row[k].pick) row[k] = { ...row[k], pick: { ...row[k].pick, tier: "none" } };
     if (m.context) { const o = otByDate[g.date]; const fh = fatigueOf(m.context.home, g.home, o), fa = fatigueOf(m.context.away, g.away, o); if (fh || fa) row.fatigue = { home: fh, away: fa }; }
-    if (crews[g.key]) row.crew = crews[g.key];
+    if (g.date === today && crews[g.key]) row.crew = crews[g.key];   // the page lists today's games only: a rematch on a later day never takes tonight's crew
     row.card = m.model ? buildCard(row) : null;          // PICK / PICK w/ POINTS / every buyable line (lib/cardpick.js)
     row.why = row.card && !row.inProgress ? gameWhy({ ...row, now }, now) : null;   // 10/26: the per-game facts for the MODEL ⓘ box (lib/why.js), display only
     if (row.inProgress) row.locked = locked[g.key] || null;

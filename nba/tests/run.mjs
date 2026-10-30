@@ -1433,7 +1433,7 @@ const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "u
   if (rec.summarize) { const S = rec.summarize([{ id: "modelpick|total", market: "total", ruleId: "refs|total", result: "win", pct: 52.8 }, { id: "modelpick|total", market: "total", ruleId: "model|total", result: "loss", pct: 50.4 }]);
     ok(S["rule:refs|total"] && S["rule:refs|total"].w === 1 && S["rule:refs|total"].l === 0 && S.model.w === 1 && S.model.l === 1, "refs: its own record row, inside the model-side record", S["rule:refs|total"]); }
   const slate = readFileSync(new URL("../lib/slate.js", import.meta.url), "utf8");
-  ok(/if \(crews\[g\.key\]\) row\.crew = crews\[g\.key\];\s*row\.card = m\.model \? buildCard\(row\)/.test(slate), "refs: the slate puts today's crew on the game before the card is built");
+  ok(/if \(g\.date === today && crews\[g\.key\]\) row\.crew = crews\[g\.key\];[^\n]*\n\s*row\.card = m\.model \? buildCard\(row\)/.test(slate), "refs: the slate puts today's crew on TODAY's game only, before the card is built");
 }
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`);
 process.exit(bad ? 1 : 0);
