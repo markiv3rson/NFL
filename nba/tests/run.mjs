@@ -440,6 +440,15 @@ if (existsSync(new URL("../middleware.ts", import.meta.url))) { const ts = (awai
   ok(/recRow\("SHOT QUALITY · total", rc\["rule:shotq\|total"\]\)/.test(app), "Models tab: a SHOT QUALITY record row");
   ok(/PICK w\/ POINTS/.test(app) && /cardBody\(/.test(app) && /moreBox\(/.test(app) && !/pBlock\(/.test(app) && /applyBetsView/.test(app) && /labStats\(/.test(app) && /mSec\(/.test(app), "page: PICK / PICK w/ POINTS card with MORE, Bets toggle, Models tiles + flat sections; 10/29 late: no parlay blocks");
   ok(/const legPct = \(l\) => \{ const v = \(l\.prob \|\| 0\) \* 100, k = l\.market \|\| l\.kind; return k === "spread" \|\| k === "total" \? \(v >= 56 \? Math\.round\(v\) : Math\.floor\(v\)\) : Math\.round\(v\); \};/.test(app) && !/mod">\$\{Math\.round\(\(l\.prob \|\| 0\) \* 100\)\}%/.test(app), "page: a leg's % follows the NFL rounding rule -- a spread / total leg under 56% rounds DOWN (10/21: a 55.6% leg read 56%)");
+  { // 10/30 (owner: "only show 7 days and then have another option to show the rest of the season" / "shorten the list by month"): every NBA day drop-down
+    const src = app.slice(app.indexOf("const DDMONTH"), app.indexOf("// a month line picked"));
+    const f = new Function("esc", "dayName", src + "; return { dayOpts, DDMONTH };")((x) => x, (d) => `D${d.slice(5)}`);
+    const days = ["2026-10-14", "2026-10-15", "2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-24", "2026-10-25", "2026-10-26", "2026-10-27", "2026-10-28", "2026-10-29", "2026-10-30", "2026-11-02"];
+    const vals = (h) => [...h.matchAll(/value="([^"]+)"/g)].map((m) => m[1]);
+    const a = vals(f.dayOpts("x", days, "2026-11-02")), b = vals(f.dayOpts("x", days, "2026-10-15")); f.DDMONTH.y = "2026-10"; const c = vals(f.dayOpts("y", days, "2026-11-02"));
+    const ids = ["props-day", "mb-day", "lab-wk"].every((id) => app.includes(`dayOpts("${id}"`) && app.includes(`dayPicked(`) && app.includes(`"${id}", (v)`));
+    ok(a.join() === "m:2026-10,2026-10-25,2026-10-26,2026-10-27,2026-10-28,2026-10-29,2026-10-30,2026-11-02" && b.includes("2026-10-15") && b.includes("2026-10-14") && !b.includes("m:2026-10")
+      && c.length === days.length && ids, "NBA day drop-downs: the last 7 days, older days as one line per month that opens its days (the shown day's month is open)", { a, b, c }); }
   ok(!/LEAN/.test(app) && !/TEASER/.test(app) && !/Anytime TD|anytime-td/i.test(app), "page: no LEAN, no teasers, no TD");
   ok(!/has not beaten the market|Watching only|not a pick\b|Tested on 2024-26 only|Saved and graded to|what the model counted|can't see/i.test(app), "page: no explanatory notes (owner 10/15: show data only)");
   ok(/secRow\("SPREAD &amp; ML", injPill\(g, "inj"\)\)/.test(app) && !/secRow\("MONEYLINE"/.test(app) && /secRow\("TOTALS"\)/.test(app) && /class="trow"><div class="sh">\$\{title\}<\/div>\$\{pills\}/.test(app), "game page (10/23, = NFL): SPREAD & ML + TOTALS section rows, the Injuries pill on the SPREAD & ML row");

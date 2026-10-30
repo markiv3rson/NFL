@@ -377,6 +377,17 @@ const topCard = (rows, hero = "") => { const T = ticketRows(); return `<div clas
 // ---------- Bets: My bets | Model bets
 let BETSVIEW = "mine";   // 10/29 (owner: "It should always switch back to the first tab always. In order" / "I need first tabs only"): no tab is remembered on the phone
 // 10/21 night (owner): a page's drop-downs go to the right of its title (Shell.dd); without the shell (tests) they stay on top of the block
+// 10/30 (owner: "only show 7 days and then have another option to show the rest of the season for NBA, since it's always every day" / "shorten the list by
+// month"): a day drop-down lists the last 7 days; every older month is one line ("October") that opens that month's days (Player Props, My bets, Model bets)
+const DDMONTH = {}, MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+function dayOpts(id, days, sel) {
+  const ds = days.filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)), recent = new Set([...ds].sort().slice(-7)), seen = new Set();
+  const open = DDMONTH[id] || (sel && ds.includes(sel) && !recent.has(sel) ? sel.slice(0, 7) : null);
+  return days.map((d) => { if (!ds.includes(d) || recent.has(d) || d.slice(0, 7) === open) return `<option value="${esc(d)}"${sel === d ? " selected" : ""}>${dayName(d)}</option>`;
+    const m = d.slice(0, 7); if (seen.has(m)) return ""; seen.add(m); return `<option value="m:${m}">${MONTH_NAMES[Number(m.slice(5)) - 1]}</option>`; }).join("");
+}
+// a month line picked: open its days (the shown day stays) and draw the list again
+const dayPicked = (el, id, set, redraw) => { if (el.value.startsWith("m:")) { DDMONTH[id] = el.value.slice(2); redraw(); return; } set(el.value); redraw(); };
 function ddSlot(el, html) { if (typeof Shell !== "undefined" && Shell.dd && el && el.closest) { Shell.dd(el, html); return ""; } return html; }
 function applyBetsView() {
   const bt = $("bets-title"); if (bt) bt.innerHTML = BETSVIEW === "model" ? "Model bets" : "My bets";   // 10/27: the parlay type is the chip under the switch
@@ -405,7 +416,7 @@ function renderProps() {
   const tt = $("props-title"); if (tt) tt.innerHTML = `Player props<span class="ptab"> · ${esc((PROP_TABS.find(([k]) => k === PROPTAB) || [, "Points"])[1])}</span>`;
   const d = PROPS; if (!d) { el.innerHTML = '<div class="s dim" style="margin-top:12px">Loading…</div>'; return; }
   const days = d.days && d.days.length ? d.days : [d.date];
-  const dsel = `<div class="wksel"><select id="props-day" aria-label="Day">${days.map((x) => `<option value="${x}"${x === d.date ? " selected" : ""}>${dayName(x)}</option>`).join("")}</select></div>`;
+  const dsel = `<div class="wksel"><select id="props-day" aria-label="Day">${dayOpts("props-day", days, d.date)}</select></div>`;
   const all = (d.games || []).map((g) => ({ ...g, picks: (g.picks || []).filter((p) => p.stat === PROPTAB) })).filter((g) => g.picks.length);
   const teams = [...new Set(all.flatMap((g) => g.picks.map((p) => p.team).filter(Boolean)))].sort();
   if (PROPTEAM !== "all" && !teams.includes(PROPTEAM)) PROPTEAM = "all";   // 10/27: a team chosen on another day / tab with no rows here would leave "None yet." under a drop-down reading "All teams"
@@ -423,7 +434,7 @@ function renderProps() {
     // 10/20 night (owner): a game being played says LIVE on its props block -- its rows are the copy locked at tip-off (a started game is never re-scored), graded from the box score
     return h + `<div class="par"><div class="pbh"><span class="pbn">${gameLogos(g.game)}${g.start && !g.final && Date.parse(g.start) <= Date.now() ? ' <span class="lvb">● LIVE</span>' : ""}</span></div>${head}${teamRows(g)}</div>`; });
   el.innerHTML = ddSlot(el, dsel + tsel) + tile + (games.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : '<div class="s dim empty" style="margin-top:12px">None yet.</div>');
-  const pd = $("props-day"); if (pd && pd.tagName === "SELECT") pd.onchange = () => { PROPDAY = pd.value; loadProps(); };
+  const pd = $("props-day"); if (pd && pd.tagName === "SELECT") pd.onchange = () => dayPicked(pd, "props-day", (v) => { PROPDAY = v; }, () => (pd.value.startsWith("m:") ? renderProps() : loadProps()));
   const ps = $("props-team"); if (ps && ps.tagName === "SELECT") ps.onchange = () => { PROPTEAM = ps.value; renderProps(); };
 }
 // 10/18 (owner): a Results page under Bets (the RESULT alert lines) was built and deleted the same day -- RESULT lines are saved (lib alerts listResults) but shown nowhere.
@@ -476,7 +487,7 @@ function renderBets() {
   const past = sel !== "all" && sel < today;
   const w = done.filter((e) => e.result === "win").length, l = done.filter((e) => e.result === "loss" || (!e.result && legLost(e))).length, sold = done.filter((e) => e.result === "sold").length;
   const pl = done.reduce((a, e) => a + (e.result ? e.pl : -(e.cost || 0)), 0), staked = done.reduce((a, e) => a + (e.cost || 0), 0), tot = w + l;
-  const dayPick = `<div class="wksel"><select id="mb-day" aria-label="Day">${days.map((d) => `<option value="${d}"${sel === d ? " selected" : ""}>${dayName(d)}</option>`).join("")}<option value="all"${sel === "all" ? " selected" : ""}>Season</option></select></div>`;
+  const dayPick = `<div class="wksel"><select id="mb-day" aria-label="Day">${dayOpts("mb-day", days, sel)}<option value="all"${sel === "all" ? " selected" : ""}>Season</option></select></div>`;
   $("record-mine").innerHTML = ddSlot($("record-mine"), dayPick) + topCard(`<div class="row"><span class="dim">Staked</span><span>${money(staked)} · settled</span></div>`,
     `<div class="mbhero"><span class="lbl">Profit · ${sel === "all" ? "this season" : dayName(sel)}</span><b>${cMoney(pl)}</b>` +
     `<span class="sub"><span class="${tot ? (w / tot >= 0.5 ? "g" : "r") : "dim"}">${tot ? `${w}–${l}` : "0–0"}</span>${sold ? ` · ${sold} sold` : ""} · ${past ? `${shown.length} bet${shown.length === 1 ? "" : "s"}` : `${openB.length} open · ${money(openB.reduce((a, e) => a + (e.cost || 0), 0))} staked`}</span></div>`) +
@@ -484,7 +495,7 @@ function renderBets() {
     `<div class="fold" data-drop="settled"><span>${past ? "Results" : "Settled bets"}</span><span>▾</span></div><div class="drop${past ? " open" : ""}" id="settled">${done.length ? rowsOf(done, true) : '<div class="s dim empty">None yet.</div>'}</div></div>` +
     `<div class="center"><button class="btn" id="sync-btn">↻ Sync account</button></div>`;
   for (const id of open) { const e = $(id); if (e) e.classList.add("open"); }
-  const md = $("mb-day"); if (md && md.tagName === "SELECT") md.onchange = () => { MBDAY = md.value; renderBets(); };
+  const md = $("mb-day"); if (md && md.tagName === "SELECT") md.onchange = () => dayPicked(md, "mb-day", (v) => { MBDAY = v; }, renderBets);
   if (typeof Shell !== "undefined" && Shell.pinTop && $("record-mine").querySelector) Shell.pinTop($("record-mine").querySelector(".mbpin"));
   $("sync-btn").onclick = async () => { toast("Syncing…", 0); try { const d = await (await fetch("/api/nba/mybets?sync=1", { cache: "no-store" })).json(); BETS = d; renderBets(); toast(d.sync && d.sync.ok ? `Synced ${d.sync.positions} positions.` : `Sync: ${(d.sync && d.sync.note) || "done"}`); } catch (e) { toast("Sync failed: " + e.message, 10000); } };
 }
@@ -620,7 +631,7 @@ function renderLabList() {
   if (!MPICKS[""] || Date.now() - MPICKS[""].t > 5 * 60e3) loadModelPicks("");
   const days = [...new Set([...saved, ...((S && S.dates) || [])])].sort().reverse();
   const sel = LABDAY && days.includes(LABDAY) ? LABDAY : (S && S.dates && S.dates[0]) || days[0] || null;
-  const chips = `<div class="wksel"><select id="lab-wk" aria-label="Day">${[...days].reverse().map((d) => `<option value="${esc(d)}"${sel === d ? " selected" : ""}>${dayName(d)}</option>`).join("")}</select></div>`;   // 10/17 (owner): a drop-down, first recorded day first
+  const chips = `<div class="wksel"><select id="lab-wk" aria-label="Day">${dayOpts("lab-wk", [...days].reverse(), sel)}</select></div>`;   // 10/17 (owner): a drop-down, first recorded day first
   const live = !!(S && (S.dates || []).includes(sel));
   if (sel && !live) { const c = MPICKS[sel]; if (!c || Date.now() - c.t > 10 * 60e3) loadModelPicks(sel); }
   if (sel && LABTYPE === "props") { const c = GPROPS[sel]; if (!c || Date.now() - c.t > 5 * 60e3) loadGameProps(sel); }
@@ -631,7 +642,7 @@ function renderLabList() {
   let lastSlot = null; const blocks = xs.map(({ g, html }) => { const sl = g.start ? nbaSlot(g.start) : null, h = sl && sl !== lastSlot ? `<div class="sh labslot">${sl} <span class="lst">· ${slotTimes[sl].map(esc).join(" · ")}</span></div>` : ""; if (sl) lastSlot = sl;
     return h + `<div class="par">${html}</div>`; });
   $("lab").innerHTML = ddSlot($("lab"), chips) + (LABTYPE === "props" ? mbChips() : "") + `<div class="stats mbrec">${labRecords(games, sel).join("")}</div>` + (xs.length ? `<div class="pgrid" style="margin-top:6px">${blocks.join("")}</div>` : `<div class="s dim empty" style="margin-top:12px">${waiting ? "Loading…" : "None yet."}</div>`);
-  const lw = $("lab-wk"); if (lw && lw.tagName === "SELECT") lw.onchange = () => { LABDAY = lw.value; renderLabList(); };
+  const lw = $("lab-wk"); if (lw && lw.tagName === "SELECT") lw.onchange = () => dayPicked(lw, "lab-wk", (v) => { LABDAY = v; }, renderLabList);
 }
 
 // ---------- Models: four tiles, then flat sections (headers with a line, rows two across)
