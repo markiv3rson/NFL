@@ -1412,5 +1412,28 @@ const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "u
 { // 10/29 (owner: "I did not sell these I lost"): a combo with a lost leg listed under Settled reads Lost -$cost, never "Sold —"
   const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "utf8");
   ok(/const state = \(e, settled\) => settled && e\.result \? /.test(app) && /: !e\.result && legLost\(e\) \? `−\$\{money\(e\.cost\)\}`/.test(app), "NBA My bets: a lost-leg combo under Settled says Lost, not Sold"); }
+{ // 10/30: referee crews (lib/refs.js) -- official.nba.com's table parsed, a crew's score from refs_data.js, the side only on a total no rule names
+  const rf = await import("../lib/refs.js"), rd = await import("../lib/refs_data.js");
+  const html = `<table><tr><th>Game</th></tr><tr><td>Charlotte @ Washington</td><td><a href="x">James Capers (#19)</a></td><td><a>Sean Corbin (#33)</a></td><td>Brandon Schwab (#49)</td><td></td></tr>
+    <tr><td>L.A. Lakers @ Golden State</td><td>Tony Brothers (#25)</td><td>John Butler (#30)</td><td>Jenna Schroeder (#20)</td><td></td></tr><tr><td>LA Clippers @ Minnesota</td><td>JB DeRosa (#14)</td><td>Marat Kogut (#32)</td><td>Che Flores (#91)</td><td></td></tr></table>
+    WNBA Referee Assignments <table><tr><td>Las Vegas @ Seattle</td><td>A B</td><td>C D</td><td>E F</td></tr></table>`;
+  const G = rf.parseAssignments(html);
+  ok(Object.keys(G).join("|") === "CHA @ WAS|LAL @ GSW|LAC @ MIN" && G["CHA @ WAS"].join(",") === "James Capers,Sean Corbin,Brandon Schwab", "refs: the NBA table parsed (numbers dropped, L.A. / LA teams, the WNBA table left out)", G);
+  const names = Object.keys(rd.REFS), hiRef = names.filter((x) => rd.REFS[x][1] >= 30).sort((a, b) => rd.REFS[b][0] / (rd.REFS[b][1] + rd.REF_K) - rd.REFS[a][0] / (rd.REFS[a][1] + rd.REF_K));
+  const top3 = hiRef.slice(0, 3), bot3 = hiRef.slice(-3);
+  ok(rf.crewSide(top3) === "over" && rf.crewSide(bot3) === "under" && rf.crewSide(["Nobody Here", ...top3.slice(1)]) === null && rf.crewSide(top3.slice(0, 2)) === null && rd.REF_LO < rd.REF_HI,
+    "refs: the 3 highest-scoring refs lean Over, the 3 lowest Under; an unknown ref or a short crew = no side", { top3, bot3 });
+  const over = cp.buildCard(mk("OKC", "ATL", { crew: top3 })), plainT = cp.buildCard(mk("OKC", "ATL"));
+  ok(over.total.plain.ruleId === "refs|total" && over.total.plain.side === "over" && over.total.plain.hit === rf.REF_HIT && over.total.plain.id === "modelpick|total" && over.total.plain.why === "REF CREW" && !over.total.pts,
+    "refs: no rule on the total -> the crew's side, 52.8% (yellow), saved as the model-side total, no PICK w/ POINTS", over.total);
+  ok(plainT.total.plain.ruleId === "model|total" && over.spread.plain.pick === plainT.spread.plain.pick, "refs: no crew -> the model's side as before; the spread never changes", plainT.total.plain);
+  const ruled = cp.buildCard(mk("OKC", "ATL", { crew: top3, move: { signal: { total: { side: "under", pts: 3, open: 223.5 } } } }));
+  ok(ruled.total.plain.ruleId === "linemove|total" && ruled.total.plain.side === "under", "refs: a tested rule still names the total over a crew", ruled.total.plain);
+  const rec = await import("../lib/record.js");
+  if (rec.summarize) { const S = rec.summarize([{ id: "modelpick|total", market: "total", ruleId: "refs|total", result: "win", pct: 52.8 }, { id: "modelpick|total", market: "total", ruleId: "model|total", result: "loss", pct: 50.4 }]);
+    ok(S["rule:refs|total"] && S["rule:refs|total"].w === 1 && S["rule:refs|total"].l === 0 && S.model.w === 1 && S.model.l === 1, "refs: its own record row, inside the model-side record", S["rule:refs|total"]); }
+  const slate = readFileSync(new URL("../lib/slate.js", import.meta.url), "utf8");
+  ok(/if \(g\.date === today && crews\[g\.key\]\) row\.crew = crews\[g\.key\];[^\n]*\n\s*row\.card = m\.model \? buildCard\(row\)/.test(slate), "refs: the slate puts today's crew on TODAY's game only, before the card is built");
+}
 console.log(bad ? `${bad} of ${n} checks FAILED` : `all ${n} site checks passed`);
 process.exit(bad ? 1 : 0);
