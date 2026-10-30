@@ -14,8 +14,9 @@ const signCls = (x) => (x == null || Math.abs(x) < 1e-9 ? "" : x > 0 ? "g" : "r"
 const cMoney = (x) => (x == null ? "—" : `<span class="${signCls(x)}">${x < 0 ? "−$" : x > 0 ? "+$" : "$"}${Math.abs(x).toFixed(2)}</span>`);
 const money = (x) => (x < 0 ? "−$" : "$") + Math.abs(x).toFixed(2);
 const cPct = (x, d = 1) => (x == null ? "—" : `<span class="${signCls(x)}">${x >= 0 ? "+" : "−"}${Math.abs(x * 100).toFixed(d)}%</span>`);
-const tm = (iso) => (!iso || isNaN(new Date(iso)) ? "TBD" : new Date(iso).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" }));
-const hm = (iso) => new Date(iso).toLocaleString(undefined, { weekday: "short", month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" });
+// 10/30 recheck (rule 12: every time Pacific): every time shown is read in Pacific time, whatever zone the phone is set to
+const tm = (iso) => (!iso || isNaN(new Date(iso)) ? "TBD" : new Date(iso).toLocaleString(undefined, { timeZone: "America/Los_Angeles", weekday: "short", hour: "numeric", minute: "2-digit" }));
+const hm = (iso) => new Date(iso).toLocaleString(undefined, { timeZone: "America/Los_Angeles", weekday: "short", month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" });
 function toast(msg, ms = 7000) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast._h); if (ms) toast._h = setTimeout(() => t.classList.remove("show"), ms); }
 
 // ---------- shared card parts ----------
@@ -895,7 +896,7 @@ function renderMine() { keepOpenState("record-mine", renderMineNow); }
 function renderModel() { keepOpenState("models", renderModelNow); }
 function renderRecord() { renderMine(); renderModel(); }
 // "Updated" line at the top of Models and Bets, so you can tell the numbers are fresh (they reload every 2 minutes while you are on the tab).
-function stampUpdated() { const t = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }); for (const id of ["upd-record", "upd-models"]) { const e = $(id); if (e) e.textContent = `Updated ${t}`; } }
+function stampUpdated() { const t = new Date().toLocaleTimeString(undefined, { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit" }); for (const id of ["upd-record", "upd-models"]) { const e = $(id); if (e) e.textContent = `Updated ${t}`; } }
 async function loadRecord(sync = false) {
   if (sync) toast("Syncing…", 0);
   try {
@@ -951,7 +952,7 @@ function bestBets() {
 function slotOf(g) {
   if (!g || !g.kickoff) return "Afternoon";
   if (/TNF|SNF|MNF/.test(g.badge || "")) return "Primetime";
-  const h = new Date(g.kickoff).getHours();
+  const h = Number(new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone: "America/Los_Angeles" }).format(new Date(g.kickoff)));
   return h < 12 ? "Morning" : h < 17 ? "Afternoon" : "Primetime";
 }
 // Remembered open/closed (10/9): the page redraws every few seconds during games, which kept reopening the list.

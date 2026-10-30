@@ -58,7 +58,7 @@ const KINDS = { "page title": ".phead h1, .phead .ttl, h1", "slot header": ".sh"
   "tile team": ".tile .nm > .t", "tile middle": ".tile .mid", "record tile label": ".stat .k", "record tile number": ".stat .v", "row": ".card .row > span:first-child", "profit": ".mbhero b", "fold": ".fold > span:first-child", "game tab": ".gtab", "game team": "#detail .t" };
 
 const browser = await pw.chromium.launch(exe ? { executablePath: exe } : {});
-async function newCtx() { const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, timezoneId: "America/Los_Angeles", locale: "en-US" });
+async function newCtx() { const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, timezoneId: process.env.LOOK_TZ || "America/Los_Angeles", locale: "en-US" });
 await ctx.route("**/*", async (route) => {
   const u = new URL(route.request().url());
   if (u.hostname !== "look.test") return /\.(png|jpe?g|webp|svg|gif)$/i.test(u.pathname) || route.request().resourceType() === "image" ? route.fulfill({ body: PNG, contentType: "image/png" }) : route.abort();

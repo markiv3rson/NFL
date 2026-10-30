@@ -1472,14 +1472,16 @@ const app = readFileSync(new URL("../../public/nba/app.js", import.meta.url), "u
   ok(gp.ngpResult(st(["0", "1"]), false) === "W" && gp.ngpResult(st(["0", "1"]), true) === "L" && gp.ngpResult(st(["0.5", "0.5"]), true) === "P" && gp.ngpResult({ ...st(["1", "0"]), closed: false }, true) === null,
     "game props: graded on Polymarket's own settlement (outcomePrices in marketSides order)");
   const r = new RedisMock(), start = "2026-10-31T23:30:00Z", t0 = Date.parse(start), g = { key: "BOS @ DET", date: "2026-10-31", start, poly: { spread: { homeSpread: -3 }, total: { line: 225 } } };
-  const sv = await gp.saveGameProps(r, g, ev, t0 - 5 * 3600e3), k = gp.K_GPROPS(g.date, g.key), saved = JSON.parse(await r.get(k));
+  const early = await gp.saveGameProps(r, g, ev, t0 - 3 * 3600e3);
+  ok(early.length === 0 && !(await r.get(gp.K_GPROPS(g.date, g.key))), "game props: nothing saved 2+ hours before tip (the test's prices were all from the last 2 hours)");
+  const sv = await gp.saveGameProps(r, g, ev, t0 - 90 * 60e3), k = gp.K_GPROPS(g.date, g.key), saved = JSON.parse(await r.get(k));
   ok(sv.length === picks.length && saved.picks.length === picks.length && saved.picks.every((x) => x.said >= 80 && x.said <= 100 && x.hist === undefined) && (await r.smembers(gp.GP_IDS)).includes(k),
     "game props: saved with the shown % in percent, listed under gprops:ids", saved.picks);
   await gp.saveGameProps(r, g, { markets: [] }, t0 - 30 * 60e3);
   ok(JSON.parse(await r.get(k)).picks.length === picks.length, "game props: in the last hour a blank book never erases the saved picks");
   await gp.saveGameProps(r, g, { markets: [] }, t0 + 60e3);
   ok(JSON.parse(await r.get(k)).picks.length === picks.length, "game props: after tip-off nothing is rewritten");
-  const g2 = { ...g, key: "NYK @ MIA" }; await gp.saveGameProps(r, g2, ev, t0 - 5 * 3600e3); await gp.saveGameProps(r, g2, { markets: [] }, t0 - 4 * 3600e3);
+  const g2 = { ...g, key: "NYK @ MIA" }; await gp.saveGameProps(r, g2, ev, t0 - 110 * 60e3); await gp.saveGameProps(r, g2, { markets: [] }, t0 - 100 * 60e3);
   ok(!(await r.get(gp.K_GPROPS(g2.date, g2.key))) && !(await r.smembers(gp.GP_IDS)).includes(gp.K_GPROPS(g2.date, g2.key)), "game props: a game whose picks stop qualifying (1+ h before tip) loses them");
   const closedEv = { markets: saved.picks.map((x, i) => ({ slug: x.slug, ...st(i ? ["1", "0"] : ["0", "1"]) })) };
   let asked = null; const nG = await gp.gradeGameProps(r, async (slug) => { asked = slug; return closedEv; }, (a, h, s2) => `nba-${a}-${h}-${s2.slice(0, 10)}`.toLowerCase(), t0 + 4 * 3600e3);

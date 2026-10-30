@@ -12,9 +12,10 @@ const toAm = (p) => { if (!(p > 0 && p < 1)) return null; return p >= 0.5 ? Math
 const cents = (p) => (p > 0 && p < 1 ? Math.round(p * 100) + "¢" : "—");
 const money = (v) => (v == null ? "—" : (v < 0 ? "−" : "") + "$" + Math.abs(v).toFixed(2));
 const cMoney = (v) => (v == null ? "—" : `<span class="${Math.abs(v) < 0.005 ? "" : v > 0 ? "g" : "r"}">${Math.abs(v) < 0.005 ? "$" : v > 0 ? "+$" : "−$"}${Math.abs(v).toFixed(2)}</span>`);   // zero reads "$0.00", no sign, no colour (same as NFL)
-const tm = (iso) => (!iso || isNaN(new Date(iso)) ? "TBD" : new Date(iso).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" }));
-const hm = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { weekday: "short", month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—");
-const dayName = (d) => (d ? new Date(d + "T12:00:00").toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric" }) : "—");
+// 10/30 recheck (rule 12: every time Pacific): every time shown is read in Pacific time, whatever zone the phone is set to
+const tm = (iso) => (!iso || isNaN(new Date(iso)) ? "TBD" : new Date(iso).toLocaleString(undefined, { timeZone: "America/Los_Angeles", weekday: "short", hour: "numeric", minute: "2-digit" }));
+const hm = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { timeZone: "America/Los_Angeles", weekday: "short", month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—");
+const dayName = (d) => (d ? new Date(d + "T12:00:00Z").toLocaleString(undefined, { timeZone: "America/Los_Angeles", weekday: "short", month: "short", day: "numeric" }) : "—");
 const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 function toast(msg, ms = 7000) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast._h); if (ms) toast._h = setTimeout(() => t.classList.remove("show"), ms); }
 const REDUCE = (() => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } })();
@@ -162,7 +163,7 @@ function renderLines() {
   $("lines").innerHTML = (S.games.length ? linesByDay() : '<div class="tiles"><div class="s dim">No NBA games on Polymarket right now.</div></div>');
 }
 // 10/17 (owner: "make everything consistent"): Game Lines stacked one game per row under a header per day with its tip times, like NFL's time slots
-const tipTime = (iso) => (!iso || isNaN(new Date(iso)) ? "TBD" : new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }));
+const tipTime = (iso) => (!iso || isNaN(new Date(iso)) ? "TBD" : new Date(iso).toLocaleTimeString(undefined, { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit" }));
 function linesByDay() {
   const days = [], by = {};
   for (const g of [...S.games].sort((a, b) => String(a.date).localeCompare(String(b.date)) || (Date.parse(a.start) || 0) - (Date.parse(b.start) || 0))) { const d = g.date || "TBD"; if (!by[d]) { by[d] = []; days.push(d); } by[d].push(g); }
@@ -714,7 +715,7 @@ const dateLast = (v) => { const one = (x) => { const m = /^((?:[A-Za-z]{3}, )?\d
 function renderModels() {
   const j = MODELS; if (!j || !j.ok) { $("models").innerHTML = '<div class="s dim" style="margin-top:12px">Models unavailable right now.</div>'; return; }
   const r = j.report, rb = j.rebuild, rc = j.record || {}, sy = j.system || null;
-  $("upd-models").textContent = `Updated ${new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
+  $("upd-models").textContent = `Updated ${new Date().toLocaleTimeString(undefined, { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit" })}`;
   const open = [...document.querySelectorAll("#models .drop.open")].map((e) => e.id);
   // card picks: PICK (rule / model side), PICK w/ POINTS, moneyline; shadow trackers below
   const cardRows = `<div class="s ihd"><b>Card picks</b>${IBTN}</div>` + ibox(CARD_INFO) + REC_HEAD + recRow("PICK · spread", rc["cardpick|spread"]) + recRow("LINE MOVE · spread", rc["rule:linemove|spread"]) + recRow("BOOK GAP · spread", rc["rule:bookgap|spread"]) + recRow("FATIGUE · spread", rc["rule:fatigue|spread"]) + recRow("ATS REGRESSION · spread", rc["rule:atsreg|spread"]) + recRow("PICK w/ POINTS · spread", rc["ptspick|spread"]) + recRow("PICK · total", rc["cardpick|total"]) + recRow("TOTAL MOVE · total", rc["rule:linemove|total"]) + recRow("BOOK GAP · total", rc["rule:bookgap|total"]) + recRow("SHOT QUALITY · total", rc["rule:shotq|total"]) + recRow("PICK w/ POINTS · total", rc["ptspick|total"]) +
