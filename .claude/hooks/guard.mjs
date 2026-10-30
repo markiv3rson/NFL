@@ -108,6 +108,7 @@ function replyProblems(prompt, turn) {
       if (c.type === "tool_use") { tools++; if (c.input && c.input.run_in_background) background++; }
     }
   }
+  text = text.replace(/"[^"\n]*"|“[^”\n]*”|`[^`\n]*`/g, " ");   // quoted words are quotes (a rule, a block message), not what the reply says
   const out = [], sentences = text.split(/(?<=[.!?])\s+|\n+/).filter(Boolean);
   if (/\b(sorry|apologi[sz]e|my apologies)\b/i.test(text)) out.push('rule 1: no "sorry". Say what was wrong and what you did about it, nothing else.');
   const promise = sentences.find((s) => PROMISE.test(s) && !CONDITIONAL.test(s));

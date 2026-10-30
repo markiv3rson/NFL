@@ -26,5 +26,7 @@ run("short answer to a question", [owner("So what"), say("The wind idea is out: 
 run("question with a conditional I'll", [owner("Can you build it?"), say('Send "build now" and I\'ll build it.')], false);
 run("work done in the turn", [owner("Find more research"), tool("Bash", { command: "python3 x.py" }), result(), say("Tested 12 claims: none hold on unseen games.")], false);
 run("background job started and said", [owner("download everything"), tool("Bash", { command: "python3 pull.py", run_in_background: true }), result(), say("The download is running in the background; I'll report when it finishes.")], false);
+run("reply quoting the blocked words", [owner("Build now"), tool("Bash", { command: "npm run test:site" }), result(),
+  say('It blocks a reply that says "sorry" or promises work ("running now", "I\'ll…") that is not running.')], false);
 console.log(fail ? `${fail} guard check(s) failed` : `all ${n} guard checks pass`);
 process.exit(fail ? 1 : 0);
