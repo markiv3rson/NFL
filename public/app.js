@@ -622,14 +622,18 @@ function betSlots(b) {
   if (isSingle(b)) { const sl = kickSlot(singleGame(b, games)); if (sl) out.add(sl); }
   return [...out];
 }
+// 10/30 (owner: "put the number of bets placed next to the time slot" / "turns into a drop down menu also. Open and closes the time slot", both sports):
+// each slot header = "10 AM GAMES · 3 BETS ▾", tap to close / open; open at first, a closed slot stays closed through refreshes (keepOpenState)
+const slotSec = (word, label, n, body) => { const id = "bs-" + `${word || "P"}-${label}`.replace(/[^A-Za-z0-9]+/g, "-");
+  return `<div class="sec"><div class="sh slotdd" data-drop="${id}"><span>${label} · ${n} ${n === 1 ? "BET" : "BETS"}</span><span>▾</span></div><div class="drop open slotb" id="${id}">${body}</div></div>`; };
 // 10/27 (owner: "put the single bets at the top of the list first then the parlays"): the open list = every single bet (by kickoff slot), then the combos
 function openBySlot(open) {
   const block = (list, word) => {   // 10/27 (owner: "Remove the word Combo in Bets"): the singles keep their word, the parlays' headers are the time slot alone
     const groups = Object.fromEntries(BET_SLOTS.map((k) => [k, []])), mixed = [], other = [], head = (k) => (word ? `${word} · ${k}` : k);
     for (const b of list) { const sl = betSlots(b); if (sl.length === 1) groups[sl[0]].push(b); else if (sl.length > 1) mixed.push({ b, sl }); else other.push(b); }
-    return BET_SLOTS.filter((k) => groups[k].length).map((k) => `<div class="sec"><div class="sh">${head(k)}</div>${groups[k].map(betRow).join("")}</div>`).join("") +
-      (mixed.length ? `<div class="sec"><div class="sh">${head("MIXED TIMES")}</div>${mixed.map(({ b, sl }) => `<div class="s dim" style="margin-top:6px">${sl.sort((x, y) => BET_SLOTS.indexOf(x) - BET_SLOTS.indexOf(y)).join(" + ")}</div>${betRow(b)}`).join("")}</div>` : "") +
-      (other.length ? `<div class="sec"><div class="sh">${head("TIME UNKNOWN")}</div>${other.map(betRow).join("")}</div>` : "");
+    return BET_SLOTS.filter((k) => groups[k].length).map((k) => slotSec(word, head(k), groups[k].length, groups[k].map(betRow).join(""))).join("") +
+      (mixed.length ? slotSec(word, head("MIXED TIMES"), mixed.length, mixed.map(({ b, sl }) => `<div class="s dim" style="margin-top:6px">${sl.sort((x, y) => BET_SLOTS.indexOf(x) - BET_SLOTS.indexOf(y)).join(" + ")}</div>${betRow(b)}`).join("")) : "") +
+      (other.length ? slotSec(word, head("TIME UNKNOWN"), other.length, other.map(betRow).join("")) : "");
   };
   return block(open.filter(isSingle), "SINGLES") + block(open.filter((b) => !isSingle(b)), "");
 }
