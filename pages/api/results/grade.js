@@ -2,7 +2,7 @@ import { gradeRecent } from "../../../lib/grade";
 import { syncAccount } from "../../../lib/mybets";
 import { getRedis } from "../../../lib/redis";
 import { compactOldWeeks } from "../../../lib/compact";
-export const config = { maxDuration: 120 };
+export const config = { maxDuration: 300 };
 export default async function handler(req, res) {
   try {
     // ?lock=1 (the open page): at most one run every 5 minutes across every open tab/phone; the scheduler calls without it.

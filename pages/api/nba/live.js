@@ -1,6 +1,7 @@
 // NBA live scores for the home screen (10/17, merged site): ESPN's public scoreboard for today and yesterday (Eastern),
 // { "AWAY @ HOME": { a, h, st: "pre" | "in" | "post", lbl: "Q3 6:30" } }. Display only; nothing is saved.
 import { espnAbbr } from "../../../nba/lib/espn";
+import { getRedis } from "../../../nba/lib/redis";
 
 const ymd = (d) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(d).replace(/-/g, "");
 export function parseLive(json) {
@@ -22,12 +23,16 @@ export function parseLive(json) {
 }
 export default async function handler(req, res) {
   try {
+    // 10/30 (owner: live "as soon as possible"): the page asks every 5 s; a 4-second cache so open phones share one ESPN pull
+    const r = getRedis(), hit = await r.get("live:cache").catch(() => null); if (hit) return res.status(200).json(JSON.parse(hit));
     const base = process.env.ESPN_SCOREBOARD_URL || "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard";
     const days = [ymd(new Date(Date.now() - 864e5)), ymd(new Date())];
     const scores = {};
     for (const d of days) {
       try { const r = await fetch(`${base}?dates=${d}`, { cache: "no-store", signal: AbortSignal.timeout(8000) }); if (r.ok) Object.assign(scores, parseLive(await r.json())); } catch {}
     }
-    res.status(200).json({ ok: true, t: new Date().toISOString(), scores });
+    const body = { ok: true, t: new Date().toISOString(), scores };
+    if (Object.keys(scores).length) await r.set("live:cache", JSON.stringify(body), "EX", 4).catch(() => {});
+    res.status(200).json(body);
   } catch (e) { res.status(200).json({ ok: false, error: String(e).slice(0, 120), scores: {} }); }
 }

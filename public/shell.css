@@ -590,6 +590,9 @@ img.phlm { width:16px; height:16px; object-fit:contain; vertical-align:-3px; mar
 /* 10/30 (owner): My bets time slots open / close by their header ("10 AM GAMES · 3 BETS ▾"), both sports; the rows inside look as before */
 .sec > .sh.slotdd { display:flex; justify-content:space-between; align-items:center; gap:8px; cursor:pointer; user-select:none; }
 .sec > .sh.slotdd > span:last-child { flex-shrink:0; }
+/* 10/30 (owner: "turn the 1 bet and 9 bets blue with the polymarket logo to the left of it", both sports) */
+.sec > .sh.slotdd .slotn { color:#2e5cff; white-space:nowrap; }
+.sec > .sh.slotdd .slotn .pm, .sec > .sh.slotdd .slotn .pm img { width:12px; height:12px; margin-right:3px; vertical-align:-2px; display:inline-block; }
 .sec > .drop.slotb { margin-top:0; border-top:0; padding-top:0; font-size:inherit; }
 /* 10/30: a 375 px phone (the look check's narrowest) cut "✓ C.Cunningham" on a graded props row: there the ✓ / ✗ stands in for the team logo, both sports */
 @media (max-width:389px) { :is(body, #lab) .ppr.g:not(.pph) .pp1 .tlogo, :is(body, #lab) .ppr.r:not(.pph) .pp1 .tlogo { display:none; } }

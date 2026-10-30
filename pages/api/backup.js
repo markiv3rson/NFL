@@ -4,7 +4,7 @@
 // the likely reason the status panel still says "Last backup: none yet". Now: ?cursor=0 → up to ~2 MB of keys plus
 // the next cursor; the Railway scheduler keeps asking until cursor comes back "0" and saves one combined file.
 import { getRedis } from "../../lib/redis";
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 300 };
 const BUDGET = 2_000_000;
 export default async function handler(req, res) {
   try {

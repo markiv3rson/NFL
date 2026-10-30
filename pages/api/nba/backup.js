@@ -2,7 +2,7 @@
 // ?cursor=0 -> up to ~2 MB of keys plus the next cursor; the NBA Railway scheduler keeps asking until the cursor is "0" and saves one file.
 // ?mark=volume|temporary|failed&files=N -> the scheduler reports how the save went (status:backup, shown on the Models tab).
 import { getRedis } from "../../../nba/lib/redis";
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 300 };
 const BUDGET = 2_000_000;
 export default async function handler(req, res) {
   try {

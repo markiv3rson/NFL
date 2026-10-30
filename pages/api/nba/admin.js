@@ -4,7 +4,7 @@ import { startRebuild, unrecordDay } from "../../../nba/lib/admin";
 import { gradeNbaProps } from "../../../nba/lib/props";
 import { gradeParlays } from "../../../nba/lib/parlays";
 import { finalsFor, sharedBox } from "../../../nba/lib/espn";
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 300 };
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   try {

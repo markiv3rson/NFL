@@ -2,7 +2,7 @@ import { SEASON, currentWeek, loadGames, started } from "../../lib/games";
 import { fetchEvents } from "../../lib/poly";
 import { liveLines, liveScores } from "../../lib/live";
 import { getRedis, BUILD } from "../../lib/redis";
-// Current Polymarket lines for games in progress. Read-only: writes nothing but a 15-second cache (so a few open tabs
+// Current Polymarket lines for games in progress. Read-only: writes nothing but a 4-second cache (10/30, owner: live "as soon as possible"; was 15 s) (so a few open tabs
 // share one Polymarket request). Polymarket is only called while some game is actually in progress.
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store"); res.setHeader("Content-Type", "application/json");
@@ -19,7 +19,7 @@ export default async function handler(req, res) {
       const [lines, scores] = await Promise.all([liveLines(games, events), liveScores(games)]);
       body = JSON.stringify({ ok: true, t, games: lines, scores });
     }
-    await r.set(ck, body, "EX", 15).catch(() => {});
+    await r.set(ck, body, "EX", 4).catch(() => {});
     res.status(200).send(body);
   } catch (err) { res.status(502).send(JSON.stringify({ ok: false, error: String(err) })); }
 }

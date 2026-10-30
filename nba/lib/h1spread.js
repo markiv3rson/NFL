@@ -33,7 +33,7 @@ export function h1Side(homeSpread, rows, away, home) {
   return best && { ...best, pc: Math.round(best.pc * 1000) / 1000 };
 }
 const LM_IDS = "lm:ids", key = (date, game) => `lm:${date}:${game}:h1spr-spread`;
-export async function recordH1Shadows(games, now = Date.now(), getEvent = usEvent, budgetMs = 25e3) {
+export async function recordH1Shadows(games, now = Date.now(), getEvent = usEvent, budgetMs = 90e3) {
   const r = getRedis(), t0 = Date.now(); let n = 0;
   const todo = (games || []).filter((g) => now < Date.parse(g.start) && Date.parse(g.start) - now < 30 * 3600e3 && g.poly && g.poly.spread && g.poly.spread.homeSpread != null);
   for (let i = 0; i < todo.length; i += 4) {
