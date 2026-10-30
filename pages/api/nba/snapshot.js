@@ -7,7 +7,7 @@ import { markSnapshot, logError } from "../../../nba/lib/status";
 import { recordBookGaps, recordGaps, recordInjuryShadow, recordAngleShadows, recordMoves, pullPinnacle, pinnacleFailed, pinnacleOk } from "../../../nba/lib/pinnacle";
 import { scoreNbaProps } from "../../../nba/lib/props";
 import { recordH1Shadows } from "../../../nba/lib/h1spread";
-export const config = { maxDuration: 120 };   // 10/23: room for the props retry (25 s + 3 s + 25 s) after the slate build
+export const config = { maxDuration: 300 };   // 10/23: room for the props retry (25 s + 3 s + 25 s) after the slate build; 10/30 (Pro plan): 300 s, the GAME PROPS / 1H pass 90 s
 export default async function handler(req, res) {
   try {
     const data = await buildSlate({ days: 1, pullBooks: true, forceBooks: req.query.books === "now" });

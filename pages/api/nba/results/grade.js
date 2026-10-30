@@ -8,7 +8,7 @@ import { getRedis } from "../../../../nba/lib/redis";
 import { gradeGameProps } from "../../../../nba/lib/gameprops";
 import { usEvent } from "../../../../lib/polyus";
 import { eventSlug } from "../../../../lib/gamemarkets";
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 300 };   // 10/30 (Pro plan): a busy night grades in one run
 export default async function handler(req, res) {
   try { const box = sharedBox();
     res.status(200).json({ ok: true, graded: await gradeAll(), moves: await gradeMoves(finalsFor, gradePick).catch(() => 0), parlays: await gradeParlays(finalsFor, box).catch(() => 0), props: await gradeNbaProps({ fetchBox: box }).catch(() => 0), compacted: await compactNbaProps().catch(() => 0),

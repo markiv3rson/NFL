@@ -15,7 +15,7 @@ import { getJSON, setJSON, pushCapped, K } from "../../lib/redis";
 import { isThinMarket } from "../../lib/odds";
 import { logError } from "../../lib/status";
 import { sanePoly } from "../../lib/sane";
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 85 };
 // 10/19 review (owner: "delete what is not helping"): the PINNACLE LINE MOVE and ORDER-BOOK TILT shadow picks are gone -- Pinnacle LINE MOVE never fired in
 // weeks 3-6 (Polymarket follows the books), the tilt went 3-2; the two order-book reads per game they needed are gone too. Old rows stay graded history.
 // TD prices every 30 min (10/16, owner: "get me my prices"): the scheduled snapshots (7 AM / 3 PM / 7 PM) were the only TD price refresh, so a market Polymarket

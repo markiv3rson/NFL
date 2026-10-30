@@ -7,7 +7,7 @@ import { setJSON, getRedis, SLATE_CACHE, BUILD, K } from "../../lib/redis";
 import { computeWatch } from "../../lib/watchdog";
 import { winnersSummary, recordedFor } from "../../lib/paper";
 import { saveParlayList } from "../../lib/comboquote";
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 85 };
 export default async function handler(req, res) {
   try {
     const cacheable = !req.query.week;

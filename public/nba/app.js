@@ -469,7 +469,7 @@ function renderBets() {
       return (one ? `<div class="s" style="padding:0 0 0 16px">${gameLogos(one)}</div>` : "") + (e.picks || []).map((p) => legRow(p, lk, one)).join(""); })()}<div style="padding-bottom:6px"></div></div>`; }).join("");
   // 10/30 (owner, both sports): "3 BETS" next to the slot, the header opens / closes the slot (open at first; a closed one stays closed through refreshes)
   const slotSec = (word, label, n, body) => { const id = "bs-" + `${word || "P"}-${label}`.replace(/[^A-Za-z0-9]+/g, "-");
-    return `<div class="sec"><div class="sh slotdd" data-drop="${id}"><span>${label} · ${n} ${n === 1 ? "BET" : "BETS"}</span><span>▾</span></div><div class="drop open slotb" id="${id}">${body}</div></div>`; };
+    return `<div class="sec"><div class="sh slotdd" data-drop="${id}"><span>${label} · <span class="slotn">${pmLogo()}${n} ${n === 1 ? "BET" : "BETS"}</span></span><span>▾</span></div><div class="drop open slotb" id="${id}">${body}</div></div>`; };
   // 10/29 (owner: NFL and NBA the same): open bets under tip-off slot headers like NFL's -- the singles first ("SINGLES · NIGHT GAMES"), then the parlays by slot
   const SLOTS = ["EARLY GAMES", "NIGHT GAMES", "LATE GAMES"], gameOf = (k) => k && S && (S.games || []).find((g) => g.key === k);
   const slotsOf = (e) => [...new Set([...(e.picks || []).map((p) => p.game), e.prop && e.prop.game, e.pick && e.pick.game].map(gameOf).filter((g) => g && g.start).map((g) => nbaSlot(g.start)))];
@@ -837,7 +837,7 @@ document.addEventListener("click", (e) => {
   const fu = e.target.closest("[data-fut]"); if (fu) { FUTSEC = fu.dataset.fut; renderModels(); const el = $("m-fut"); if (el) el.classList.add("open"); }
 });
 function catchUp() { fetch("/api/nba/results/grade", { cache: "no-store" }).then((r) => r.json()).then((d) => { if (d && (d.graded || d.parlays) && ($("panel-record").classList.contains("on") || $("panel-models").classList.contains("on"))) { loadBets(); loadModels(); } }).catch(() => {}); }
-setInterval(() => { if (!document.hidden) loadLiveScores(); }, 30000);   // scores every 30 s while a game is on
+setInterval(() => { if (!document.hidden) loadLiveScores(); }, 5000);   // scores every 5 s while a game is on (10/30 owner: "as soon as possible"; was 30 s)
 function autoRefresh() { setTimeout(async () => { if (!document.hidden) { try { await loadSlate(); await loadAlerts(); } catch {} } autoRefresh(); }, 120e3); }
 loadAlerts(); setInterval(() => { if (!document.hidden) loadAlerts(); }, 120e3);
 Shell.init("nba");

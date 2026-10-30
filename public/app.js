@@ -625,7 +625,7 @@ function betSlots(b) {
 // 10/30 (owner: "put the number of bets placed next to the time slot" / "turns into a drop down menu also. Open and closes the time slot", both sports):
 // each slot header = "10 AM GAMES · 3 BETS ▾", tap to close / open; open at first, a closed slot stays closed through refreshes (keepOpenState)
 const slotSec = (word, label, n, body) => { const id = "bs-" + `${word || "P"}-${label}`.replace(/[^A-Za-z0-9]+/g, "-");
-  return `<div class="sec"><div class="sh slotdd" data-drop="${id}"><span>${label} · ${n} ${n === 1 ? "BET" : "BETS"}</span><span>▾</span></div><div class="drop open slotb" id="${id}">${body}</div></div>`; };
+  return `<div class="sec"><div class="sh slotdd" data-drop="${id}"><span>${label} · <span class="slotn">${pmLogo()}${n} ${n === 1 ? "BET" : "BETS"}</span></span><span>▾</span></div><div class="drop open slotb" id="${id}">${body}</div></div>`; };
 // 10/27 (owner: "put the single bets at the top of the list first then the parlays"): the open list = every single bet (by kickoff slot), then the combos
 function openBySlot(open) {
   const block = (list, word) => {   // 10/27 (owner: "Remove the word Combo in Bets"): the singles keep their word, the parlays' headers are the time slot alone
@@ -1006,7 +1006,9 @@ async function loadLive() {
   try { const d = await (await fetch("/api/live", { cache: "no-store" })).json();
     if (d.ok) { LIVE = d.games || {}; LIVE_SC = d.scores || {}; LIVE_T = d.t; if (rec) { if (MB) renderMine(); } else if (DETAIL) refreshDetail(); else renderLines(); } } catch {}
 }
-function liveLoop() { clearTimeout(liveLoop._h); loadLive().finally(() => { liveLoop._h = setTimeout(liveLoop, 30000); }); }
+// 10/30 (owner: "i want my live time updated as soon as possible"): live scores, clock and live grading every 5 s (was 30 s); the routes cache 4 s
+const LIVE_MS = 5000;
+function liveLoop() { clearTimeout(liveLoop._h); loadLive().finally(() => { liveLoop._h = setTimeout(liveLoop, LIVE_MS); }); }
 let DETAIL = null, LASTY = 0, ALERTS = [], ALPREV = null;
 const pmLogo = () => '<span class="pm"><img src="/polymarket.png" alt=""></span>';   // 10/20 night (owner): the real Polymarket logo everywhere
 const injBadge = (team) => `<span class="injb"><img src="${logoUrl(team)}" alt="" onerror="this.style.visibility='hidden'"><u>+</u></span>`;
@@ -1428,9 +1430,9 @@ async function loadLiveBox() {
   try { const d = await (await fetch("/api/livebox", { cache: "no-store" })).json(); if (d && d.ok) { LIVE_BOX = d.games || {}; LIVE_BOX_T = Date.now(); if (labOn()) renderLabList(); else if (DETAIL) refreshDetail(); } } catch {}
   finally { loadLiveBox.busy = false; }
 }
-function boxLoop() { clearTimeout(boxLoop._h); if (!boxWanted()) { boxLoop._on = false; return; } boxLoop._on = true; loadLiveBox().finally(() => { boxLoop._h = setTimeout(boxLoop, 30000); }); }
+function boxLoop() { clearTimeout(boxLoop._h); if (!boxWanted()) { boxLoop._on = false; return; } boxLoop._on = true; loadLiveBox().finally(() => { boxLoop._h = setTimeout(boxLoop, LIVE_MS); }); }
 // a page that shows picks (Model bets, a game page) pulls the live box score at once when the last pull is 30+ s old, and keeps the 30-s loop going
-const kickBox = () => { if (!boxWanted()) return; if (!boxLoop._on) boxLoop(); else if (Date.now() - LIVE_BOX_T > 30e3) loadLiveBox(); };
+const kickBox = () => { if (!boxWanted()) return; if (!boxLoop._on) boxLoop(); else if (Date.now() - LIVE_BOX_T > LIVE_MS) loadLiveBox(); };
 const boxPlayer = (b, name, team) => (b.pl || []).find((p) => (!team || !p.t || p.t === team) && tdNameEq(p.n, name)) || null;
 const STAT_LIVE = { rec_yds: (p) => p.recYds, rec: (p) => p.rec, rush_yds: (p) => p.rushYds, scrim_yds: (p) => p.rushYds + p.recYds, rush_att: (p) => p.car || 0, pass_td: (p) => p.passTd || 0, atd: (p) => p.recTd + p.rushTd + (p.retTd || 0) };   // 10/29: + rushing attempts, passing TDs, TDs (No TD rows)
 function liveMark(g, x) {
