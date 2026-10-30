@@ -27,9 +27,9 @@
     nba: [["props-pts", "Points"], ["props-reb", "Rebounds"], ["props-ast", "Assists"], ["props-pra", "PRA"], ["props-stl", "Steals"], ["props-blk", "Blocks"]] };
   const URL_ = { nfl: "/index.html", nba: "/nba/index.html" };
   // the Model bets tabs
-  // 10/28 late (owner: "Remove all the sub tabs under models bets ... sub tabs for all the models picks"): the pick tabs, no parlays (NBA has no halves / game props picks)
+  // 10/28 late (owner: "Remove all the sub tabs under models bets ... sub tabs for all the models picks"): the pick tabs, no parlays (NBA has no halves picks; its GAME PROPS tab 10/30)
   const TYPES = { nfl: [["lines", "Game Lines"], ["halves", "Halves &amp; Quarters"], ["props", "Player Props"], ["gprops", "Game Props"]],
-    nba: [["lines", "Game Lines"], ["props", "Player Props"]] };
+    nba: [["lines", "Game Lines"], ["props", "Player Props"], ["gprops", "Game Props"]] };
   const OTHER = { nfl: "nba", nba: "nfl" };
   const REF_SVG = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>';
   // which bottom tab a page belongs to; the sub tabs a page shows

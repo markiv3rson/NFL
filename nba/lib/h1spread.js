@@ -11,6 +11,7 @@ import { H1 } from "./h1spread_data";
 import { getRedis } from "./redis";
 import { usEvent } from "../../lib/polyus";
 import { eventSlug, parseGameMarkets } from "../../lib/gamemarkets";
+import { saveGameProps } from "./gameprops";
 
 const near = (arr, v) => { let b = 0; for (let i = 1; i < arr.length; i++) if (Math.abs(arr[i] - v) < Math.abs(arr[b] - v)) b = i; return b; };
 // the home team's chance to cover home first-half line l (e.g. -3.5), given the full-game home spread (site sign: -6.5 = home favored by 6.5)
@@ -44,6 +45,7 @@ export async function recordH1Shadows(games, now = Date.now(), getEvent = usEven
       const gm = parseGameMarkets(ev, "nba", away, home), P = gm.periods["1h"], s = h1Side(g.poly.spread.homeSpread, P && (P.spreadAll || P.spread), away, home);   // 10/28: every priced first-half line, not the 5 the page shows
       { const pk = `gmpx:${g.date}:${g.key}`, o = await r.get(pk).catch(() => null), ft = o ? (JSON.parse(o).first || null) : null, t = new Date(now).toISOString();   // 10/28: every other game market's prices, first + latest
         await r.set(pk, JSON.stringify({ first: ft || { t, gm }, last: { t, gm } }), "EX", 120 * 86400).catch(() => 0); }
+      await saveGameProps(r, g, ev, now).catch(() => 0);   // 10/30: the GAME PROPS pick (lib/gameprops.js) reads the same event
       const old = await r.get(k).catch(() => null);
       if (!s) { if (old) { await r.del(k).catch(() => 0); await r.srem(LM_IDS, k).catch(() => 0); } return; }
       const first = old ? (JSON.parse(old).first || null) : { line: s.line, px: s.px, t: new Date(now).toISOString() };

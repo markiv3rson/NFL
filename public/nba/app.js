@@ -265,7 +265,7 @@ const MODEL_INFO = {
 };
 const CARD_INFO = [["PICK:", "the card’s bet at Polymarket’s main line, locked at tip-off."], ["LINE MOVE / BOOK GAP / FATIGUE / ATS REGRESSION / SHOT QUALITY:", "the tested rules that named a PICK."],
   ["PICK w/ POINTS:", "the fewest bought points from 5 to 10 the model gives 72%+ (totals 70%+) at 82¢ or less: the PICK’s side; a spread with no tested rule takes the team whose line wins more; none on the model-side total."], ["MODEL SIDE:", "no rule fired; the model’s side (about 50%)."], ["REF CREW:", "no rule fired on the total; the game’s referee crew leans it Over or Under (52.8%)."],
-  ["MONEYLINE:", "the market’s favorite to win."], ["GREEN 56%+:", "every pick shown green; “said” = the average % shown."]];
+  ["MONEYLINE:", "the market’s favorite to win."], ["GAME PROPS:", "quarter, half and team markets where the 600 past games nearest this spread and total beat Polymarket’s price (80%+ on 8 parts history + 2 parts price, 30–82¢), graded on Polymarket’s result."], ["GREEN 56%+:", "every pick shown green; “said” = the average % shown."]];
 // 10/23 (owner: "make all the layout consistent"): the NFL game page -- SPREAD & ML in one card (Polymarket spread + moneyline, the sportsbook line,
 // the model's spread lines, then the moneyline PICK), TOTALS in the other; POLYMARKET header with LIVE · 1s ago on its right; the tip-off line under it
 const pmHead = (g) => `<div class="k pmk"><span>${pmLogo()}POLYMARKET</span>${g.inProgress && !isFinal(g) ? `<span class="pmt"><span class="r">LIVE</span>${S && S.now ? ` · ${ago(S.now)}` : ""}</span>` : ""}</div>`;
@@ -310,12 +310,13 @@ function linesBg() { const p = $("panel-lines"); document.documentElement.classL
 // GAME PAGE TABS (10/27, owner; design = both sports, same as NFL): GAME LINES · PLAYER PROPS · PARLAYS under the game card, the prop kinds as plain-text sub tabs
 const lsGet = (k, d) => { try { return localStorage.getItem(k) || d; } catch { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
-const GTABS = [["lines", "Game Lines"], ["props", "Player Props"]];   // 10/28: GAME PROPS tab out -- only winning picks show, none of those markets has one
+const GTABS = [["lines", "Game Lines"], ["props", "Player Props"], ["gprops", "Game Props"]];   // 10/30: GAME PROPS only on a game with a GAME PROPS pick (tabsOf, = NFL)
+const tabsOf = (g) => GTABS.filter(([k]) => k !== "gprops" || (g && g.gprops && g.gprops.length));
 const GPROP_TABS = [["pts", "Points"], ["reb", "Rebounds"], ["ast", "Assists"], ["pra", "PRA"], ["stl", "Steals"], ["blk", "Blocks"]];
 let GTAB = "lines", GPROP = "pts";
 if (!GTABS.some(([k]) => k === GTAB)) GTAB = "lines";
 if (!GPROP_TABS.some(([k]) => k === GPROP)) GPROP = "pts";
-const gameTabs = () => `<div class="gtabs">${GTABS.map(([k, t]) => `<button class="gtab${GTAB === k ? " on" : ""}" type="button" data-gtab="${k}">${t}</button>`).join("")}</div>`;
+const gameTabs = (g) => `<div class="gtabs">${tabsOf(g).map(([k, t]) => `<button class="gtab${GTAB === k ? " on" : ""}" type="button" data-gtab="${k}">${t}</button>`).join("")}</div>`;
 const gameChips = () => `<div class="gchips">${GPROP_TABS.map(([k, t]) => `<button class="gchip${GPROP === k ? " on" : ""}" type="button" data-gprop="${k}">${t}</button>`).join("")}</div>`;
 const gNone = (t) => `<div class="card" style="margin-top:10px"><div class="inner"><div class="s dim">${t}</div></div></div>`;
 const etDay = (iso) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
@@ -348,11 +349,12 @@ function renderDetail(g) {
   $("lines").style.display = "none"; $("detail").style.display = ""; linesBg();
   document.body.classList.add("game-on");   // 10/18 (owner, same as NFL): the game card is the header; ← Games under it
   const co = chartOf(g), mk = typeof Shell !== "undefined" && Shell.mktLines;   // 10/27: the other Polymarket markets (halves, quarters, team totals, game / team props)
-  const body = GTAB === "props" ? gameChips() + gamePropsBody(g)
+  const tab = tabsOf(g).some(([k]) => k === GTAB) ? GTAB : "lines";   // a game without a GAME PROPS pick shows Game Lines
+  const body = tab === "props" ? gameChips() + gamePropsBody(g) : tab === "gprops" ? Shell.gpLines({ gprops: g.gprops })
     : secRow("SPREAD &amp; ML", injPill(g, "inj")) + marketCard(g, "spread", "inj") + secRow("TOTALS") + marketCard(g, "total") + (mk ? Shell.mktLines(co) : "");
   const was = $("detail").querySelector ? $("detail").querySelector(".grest") : null, keepY = was ? was.scrollTop : 0;
   // 10/28 (owner, design = both sports): the team card, the chart, ← Games and the tabs stay put (.gtop); only the part under them scrolls (.grest, Shell.pinGame)
-  $("detail").innerHTML = `<div class="gtop">${typeof Shell !== "undefined" && Shell.chartBlock ? detailTop(g).replace('class="card dtop"', 'class="card dtop dblend"') + Shell.chartBlock(co) : detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs()}</div><div class="grest">${body}</div>`;
+  $("detail").innerHTML = `<div class="gtop">${typeof Shell !== "undefined" && Shell.chartBlock ? detailTop(g).replace('class="card dtop"', 'class="card dtop dblend"') + Shell.chartBlock(co) : detailTop(g)}<button class="back" id="back-btn">← Games</button>${gameTabs(g)}</div><div class="grest">${body}</div>`;
   if (typeof Shell !== "undefined" && Shell.chartLoad) Shell.chartLoad(co);
   $("back-btn").onclick = closeGame;
   setBg($("panel-lines").classList.contains("on") ? g : null);
@@ -507,7 +509,7 @@ function renderBets() {
 // "I don't want no parlays in there no more" / "The sub tabs should look the same as the card layout"; design = both sports): Game Lines = every game's card
 // picks (PICK, PICK w/ POINTS, ML PICK) in the card's Pick-line look; Player Props = the props rows. Under the tip-off headers, a day drop-down. NBA has no halves /
 // game props picks (the 1H SPREAD is a shadow). The days the slate carries come from it (the saved copies after tip-off); older days from /api/nba/modelpicks.
-const LAB_TABS = [["lines", "Game Lines"], ["props", "Player Props"]];
+const LAB_TABS = [["lines", "Game Lines"], ["props", "Player Props"], ["gprops", "Game Props"]];
 let LABTYPE = "lines", LABDAY = null, MPICKS = {};
 // 10/29 (owner: "Player props need a sub tab for the others. Keep everything separated"; design = both sports): Player Props has its own stat chips (the game page's)
 let MBPROP = "pts";
@@ -575,15 +577,16 @@ function loadModelPicks(day) {
 const lockedPick = (x) => (x && x.plain ? { pick: x.plain.label, hit: x.plain.pct, price: x.plain.price, result: normRes(x.plain.result), pts: x.pts ? { pick: x.pts.label, hit: x.pts.pct, price: x.pts.price, result: normRes(x.pts.result) } : null } : null);
 // 10/30 (owner: "Where's the games"): the live slate drops a game once it is final, so a day the slate still carries also takes its finished games from the
 // saved picks (/api/nba/modelpicks?date=) -- 10/29 at 8:19 PM showed MEM @ POR only (CLE @ ATL / SAC @ NOP final: record 4-2, rows "None yet")
-const savedGames = (day) => { const c = MPICKS[day]; return c && c.d ? (c.d.games || []).map((g) => ({ ...g, lines: { spread: lockedPick(g.locked && g.locked.spread), total: lockedPick(g.locked && g.locked.total), ml: lockedPick(g.locked && g.locked.ml) } })) : []; };
+const savedGames = (day) => { const c = MPICKS[day]; return c && c.d ? (c.d.games || []).map((g) => ({ ...g, gprops: g.gprops || [], lines: { spread: lockedPick(g.locked && g.locked.spread), total: lockedPick(g.locked && g.locked.total), ml: lockedPick(g.locked && g.locked.ml) } })) : []; };
 function labGames(day) {
   if (S && (S.dates || []).includes(day)) { const live = (S.games || []).filter((g) => g.date === day).map((g) => {
     const card = (k) => { const C = cardOf(g, k); return C && C.plain ? { pick: C.plain.pick, hit: C.plain.hit, price: C.plain.price, pts: C.pts ? { pick: C.pts.pick, hit: C.pts.hit, price: C.pts.price } : null } : null; };
     const mp = g.ml && g.ml.pick && (g.ml.pick.tier === "pick" || g.ml.pick.tier === "lean") ? g.ml.pick : null;
     const lines = g.inProgress ? { spread: lockedPick(g.locked && g.locked.spread), total: lockedPick(g.locked && g.locked.total), ml: lockedPick(g.locked && g.locked.ml) }
       : { spread: card("spread"), total: card("total"), ml: mp ? { pick: mp.label, hit: mp.pct, price: mp.price ?? null } : null };
-    return { key: g.key, away: g.away, home: g.home, start: g.start, date: g.date, lines };
-  }); return [...live, ...savedGames(day).filter((g) => !live.some((x) => x.key === g.key))]; }
+    return { key: g.key, away: g.away, home: g.home, start: g.start, date: g.date, lines, gprops: g.gprops || [] };
+  }); const sv = savedGames(day); for (const x of live) { const o = sv.find((y) => y.key === x.key); if (o && o.gprops.length && (!x.gprops.length || o.gprops.some((k) => k.result))) x.gprops = o.gprops; }   // graded copies win
+  return [...live, ...sv.filter((g) => !live.some((x) => x.key === g.key))]; }
   return savedGames(day);
 }
 const npHead = (nm = "PLAYER") => `<div class="pbl ppr pph"><span class="pp1">${nm}</span><span class="pp2"></span><span class="pp5">LAST</span><span class="pp3">MODEL</span><span class="pp4">${pmLogo()}POLYMARKET</span></div>`;
@@ -602,7 +605,9 @@ const numCol = (t, c) => { const m = /^(.*?)([+-]?\d+(?:\.\d+)?|\bML\b)(.*)$/.ex
 const pickSplit = (t) => { const s = String(t || ""); let m = /^([A-Z]{2,4}) (ML|[+-]\d+(?:\.\d+)?)(?: 1H)?$/.exec(s); if (m) return [m[1], m[2], m[1]];
   m = /^(.*?)\s*\b(Over|Under) (\d+(?:\.\d+)?)(?: 1H)?$/.exec(s); if (m) return [m[1], `${m[2][0]} ${m[3]}`, null];
   m = /^(.*?):? (Yes|No)$/.exec(s); if (m) return [m[1], m[2], null]; return [s, "", null]; };
-const pickTr = (x) => { const r = normRes(x.result), h = Number(x.hit), c = h >= 56 ? "g" : h >= 53 ? "lg" : "y"; const [who, pk, tm] = pickSplit(x.pick);
+// a GAME PROPS quarter / half spread keeps its part with the team ("CHI -1.5 1Q" -> CHI 1Q · -1.5)
+const gpSplit = (t) => { const m = /^([A-Z]{2,4}) ([+-]\d+(?:\.\d+)?) ([1-4]Q|[12]H)$/.exec(String(t || "")); return m ? [`${m[1]} ${m[3]}`, m[2], m[1]] : pickSplit(t); };
+const pickTr = (x) => { const r = normRes(x.result), h = Number(x.hit), c = h >= 56 ? "g" : h >= 53 ? "lg" : "y"; const [who, pk, tm] = x.gp ? gpSplit(x.pick) : pickSplit(x.pick);
   return `<div class="pbl ppr pk${r === "W" ? " g" : r === "L" ? " r" : ""}"><span class="pp1">${r ? legMark(r) + " " : ""}${tm ? tlogo(tm) : ""}${esc(who)}</span><span class="pp2">${pk ? numCol(pk, c) || esc(pk) : ""}</span>` +
     `<span class="pp3 mod">${isFinite(h) ? `${h >= 56 ? Math.round(h) : Math.floor(h)}%` : "—"}</span><span class="pp4">${x.price > 0 && x.price < 1 ? `${Math.round(x.price * 100)}¢` : "—"}</span></div>`; };
 // 10/29 (owner, 9:36 PM "That looks good" sketch + 1:45 AM "ONLY PUT W/ POINTS NEXT TO THEIR PICK"): Game Lines rows stay one line -- "• DET -3.5",
@@ -618,6 +623,7 @@ const LAB_BODY = {
   props: (g) => { const c = GPROPS[g.date], pg = c && c.d ? (c.d.games || []).find((x) => x.game === g.key) : null, picks = ((pg && pg.picks) || []).filter((p) => p.stat === MBPROP);
     const part = (t) => { const rs = picks.filter((p) => (p.team || "") === t); return rs.map(npRow).join(""); };
     return picks.length ? npHead(gameNameN(g)) + [...new Set([g.away, g.home, ...picks.map((p) => p.team || "")])].map(part).join("") : ""; },
+  gprops: (g) => ((g.gprops || []).length ? pickHead(gameNameN(g)) + g.gprops.map((k) => pickTr({ pick: k.label, gp: true, hit: k.said, price: k.price, result: k.result })).join("") : ""),   // 10/30: the GAME PROPS picks (lib/gameprops.js)
 };
 // RECORDS (10/29, owner: "I need records at the top of every tab in models bets"; design = both sports): the season's W-L of the tab's picks (/api/nba/modelpicks
 // records, props from /api/nba/props) and the day on screen under it; the colour is the win rate. Pushes count neither way.
@@ -628,6 +634,7 @@ function labRecords(games, sel) {
   const R = MPICKS[""] && MPICKS[""].d ? MPICKS[""].d.records || null : null, L = (f) => games.map((x) => f(x.lines || {})).filter(Boolean);
   if (LABTYPE === "lines") return [recTileMb("SPREAD", R && R.spread, wl(L((l) => l.spread && l.spread.result))), recTileMb("TOTAL", R && R.total, wl(L((l) => l.total && l.total.result))),
     recTileMb("ML", R && R.ml, wl(L((l) => l.ml && l.ml.result))), recTileMb("W/ POINTS", R ? { w: R.spreadPts.w + R.totalPts.w, l: R.spreadPts.l + R.totalPts.l } : null, wl([...L((l) => l.spread && l.spread.pts && l.spread.pts.result), ...L((l) => l.total && l.total.pts && l.total.pts.result)]))];
+  if (LABTYPE === "gprops") return [recTileMb("GAME PROPS", R && R.gp, wl(games.flatMap((x) => (x.gprops || []).map((k) => k.result))))];
   const c = GPROPS[sel], rc = c && c.d && c.d.record ? c.d.record[MBPROP] : null, lab = (GPROP_TABS.find(([k]) => k === MBPROP) || [, ""])[1].toUpperCase();
   const day = wl(games.flatMap((x) => { const pg = c && c.d ? (c.d.games || []).find((y) => y.game === x.key) : null; return ((pg && pg.picks) || []).filter((p) => p.stat === MBPROP).map((p) => p.result); }));
   return [recTileMb(lab, rc ? { w: rc.w || 0, l: rc.l || 0 } : c ? { w: 0, l: 0 } : null, day)];
@@ -710,7 +717,7 @@ function renderModels() {
   const open = [...document.querySelectorAll("#models .drop.open")].map((e) => e.id);
   // card picks: PICK (rule / model side), PICK w/ POINTS, moneyline; shadow trackers below
   const cardRows = `<div class="s ihd"><b>Card picks</b>${IBTN}</div>` + ibox(CARD_INFO) + REC_HEAD + recRow("PICK · spread", rc["cardpick|spread"]) + recRow("LINE MOVE · spread", rc["rule:linemove|spread"]) + recRow("BOOK GAP · spread", rc["rule:bookgap|spread"]) + recRow("FATIGUE · spread", rc["rule:fatigue|spread"]) + recRow("ATS REGRESSION · spread", rc["rule:atsreg|spread"]) + recRow("PICK w/ POINTS · spread", rc["ptspick|spread"]) + recRow("PICK · total", rc["cardpick|total"]) + recRow("TOTAL MOVE · total", rc["rule:linemove|total"]) + recRow("BOOK GAP · total", rc["rule:bookgap|total"]) + recRow("SHOT QUALITY · total", rc["rule:shotq|total"]) + recRow("PICK w/ POINTS · total", rc["ptspick|total"]) +
-    recRow("MODEL SIDE · spread", rc["modelpick|spread"]) + recRow("MODEL SIDE · total", rc["modelpick|total"]) + recRow("REF CREW · total", rc["rule:refs|total"]) + recRow("MONEYLINE", rc.ml) + recRow("GREEN · 56%+", rc.green, true);
+    recRow("MODEL SIDE · spread", rc["modelpick|spread"]) + recRow("MODEL SIDE · total", rc["modelpick|total"]) + recRow("REF CREW · total", rc["rule:refs|total"]) + recRow("GAME PROPS · PICK", j.gprops) + recRow("MONEYLINE", rc.ml) + recRow("GREEN · 56%+", rc.green, true);
   const accRows = r ? r.rows.map((x) => `<div class="row"><span class="dim">${esc(x.model)}</span><span>ours <b>${x.ours_same_games}</b> · market <b class="mkt">${x.market}</b> <span class="${x.ours_same_games <= x.market ? "g" : "r"}">${x.ours_same_games <= x.market ? "better" : "worse"}</span></span></div>`).join("") +
     (r.spread_side ? `<div class="row"><span class="dim">Model's spread side</span><span>${r.spread_side.overall}%</span></div>` : "") + (r.total_side ? `<div class="row"><span class="dim">Model's total side</span><span>${r.total_side.overall}%</span></div>` : "") +
     `<div class="row" style="grid-column:1/-1"><span class="dim">Win chance check</span><span>${r.win_calibration.map((x) => `said ${x.said}: won ${x.home_won}% (${x.games})`).join(" · ")}</span></div>` +

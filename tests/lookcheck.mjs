@@ -45,7 +45,11 @@ const PAGES = [
   ["nba", "props-5", "props-stl", null], ["nba", "props-6", "props-blk", null],
   ["nfl", "modelbets-td", "modelbets-props", ['[data-mbprop="td"]']], ["nfl", "modelbets-first", "modelbets-props", ['[data-mbprop="first"]']],
   ["nfl", "modelbets-recyds", "modelbets-props", ['[data-mbprop="recyds"]']], ["nba", "modelbets-reb", "modelbets-props", ['[data-mbprop="reb"]']],
+  ["nba", "modelbets-gprops", "modelbets-gprops", null], ["nba", "game-gprops", "", [".tile", '[data-gtab="gprops"]']],   // 10/30: NBA GAME PROPS (sample picks, GP_SAMPLE)
 ];
+// 10/30: the NBA GAME PROPS picks appear on game day only, so the saved data may hold none -- its pages get these (the longest labels lib/gameprops.js writes)
+const GP_SAMPLE = [["BOS -0.5 1Q", 84.1, 0.8, "W"], ["1H total Under 106.5", 82.3, 0.74, "L"], ["DET 2H points Over 51.5", 81.0, 0.79, null], ["BOS wins by 21+ No", 86.4, 0.81, null],
+  ["Overtime No", 85.9, 0.8, null], ["DET first to 20 Yes", 80.2, 0.62, null]].map(([label, said, price, result], i) => ({ type: `t${i}`, slug: `s${i}`, long: true, label, said, price, result }));
 const WIDTHS = [390, 430, 375, 1440];   // phone (every check), the owner's iPhone 15 Pro Max (430), a small phone (375) and computer (off the screen / wraps / cut / overlap)
 // one-line pieces (never wrap, never cut)
 const ONE_LINE = [".tile .nm > .t", ".sh", ".ppr:not(.pph):not(.tdr) .pp1", ".row.brow > .bnm", ".gchip", ".pph > span", ".ppr .pp3", ".ppr .pp4", ".stat .k", ".mbhero .lbl", ".pbn"];
@@ -79,6 +83,9 @@ async function checkPage(ctx, [W, sp, name, hash, click]) {
   page.on("pageerror", (e) => errs.push(String(e).split("\n")[0]));
   await page.clock.setFixedTime(meta.t);
   await page.addInitScript(() => { try { localStorage.clear(); sessionStorage.clear(); sessionStorage.setItem("slz-live", "1"); } catch {} });   // slz-live: the page opens on its own hash, not Home
+  if (/gprops/.test(name) && sp === "nba") await page.route(/\/api\/nba\/(live|slate|modelpicks)/, async (route) => { const u = new URL(route.request().url()), f = fixName(u.pathname, u.search.slice(1));
+    let j = {}; try { j = JSON.parse(readFileSync(f, "utf8")); } catch {} for (const g of j.games || []) g.gprops = GP_SAMPLE; if (j.records) j.records.gp = { w: 9, l: 2 };
+    return route.fulfill({ contentType: "application/json", body: JSON.stringify(j) }); });
   await page.goto(`http://look.test/${sp === "nba" ? "nba/" : ""}index.html${hash ? "#" + hash : ""}`);
   await page.waitForTimeout(3500);
   for (const c of [].concat(click || [])) { await page.evaluate((s) => { const t = [...document.querySelectorAll(s)].find((e) => e.offsetParent); if (t) t.click(); }, c); await page.waitForTimeout(1800); }
