@@ -8,6 +8,7 @@
 //                      it (owner 10/16: "check buying 2 3 4 5 6 7 points"), each with its historical win rate given a main line like this one
 //                      (railway-model-service live._lines) and its price. The page's MORE list shows only the lines that win (56%+), 10/29.
 // Win rate decides, price is only shown (owner 10/15). Colors on the page: green 56%+, light green 53-55%, yellow below.
+import { crewSide, REF_HIT, REF_N } from "./refs";
 const r1 = (x) => Math.round(x * 10) / 10;
 const sg = (x) => (x > 0 ? "+" : "") + x;
 export const PTS_BAR = 56, MAX_LIST = 7;
@@ -187,6 +188,9 @@ function totalPart(g) {
   const rule = [lm, bookGapRule(g, "total"), shotRule(g, tl)].filter(Boolean).sort((a, b) => b.hit - a.hit)[0] || null;   // several rules: the higher tested rate names the side
   if (rule) {
     plain = { id: "cardpick|total", ruleId: rule.ruleId, kind: "total", side: rule.side, line: tl, pick: `${nm(rule.side)} ${tl}`, hit: rule.hit, n: rule.n, price: priced(rule.side === "over" ? pt.over : pt.under), why: rule.why, ...(rule.atOpen != null ? { atOpen: rule.atOpen } : {}), ...(rule.ptsHit ? { ptsHit: rule.ptsHit } : {}) };
+  } else if (crewSide(g.crew)) {                                                    // 10/30: no rule, an extreme referee crew (lib/refs.js) names the side instead of the model (52.8% vs ~50%)
+    const side = crewSide(g.crew);
+    plain = { id: "modelpick|total", ruleId: "refs|total", kind: "total", side, line: tl, pick: `${nm(side)} ${tl}`, hit: REF_HIT, n: REF_N, price: priced(side === "over" ? pt.over : pt.under), why: "REF CREW" };
   } else if (m && isFinite(m.total)) {                                              // no rule: the model's total against the main total (a tie goes Under)
     const side = m.total > tl ? "over" : "under";
     plain = { id: "modelpick|total", ruleId: "model|total", kind: "total", side, line: tl, pick: `${nm(side)} ${tl}`, hit: MODEL_HIT.total, n: MODEL_N, price: priced(side === "over" ? pt.over : pt.under) };

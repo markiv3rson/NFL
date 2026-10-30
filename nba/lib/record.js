@@ -137,7 +137,7 @@ export function summarize(picks) {
     add(id, p);
     if (/^ptspick\|/.test(id)) { add("pts", p); continue; }                       // bought lines are their own record
     add("all", p); if (p.market !== id) add(p.market, p); if (Number(p.pct) >= 56) add("green", p);
-    if (/^modelpick\|/.test(id)) add("model", p); else if (/^cardpick\|/.test(id)) { add("rule", p); if (p.ruleId) add(`rule:${p.ruleId}`, p); }   // each tested rule keeps its own record
+    if (/^modelpick\|/.test(id)) { add("model", p); if (p.ruleId === "refs|total") add("rule:refs|total", p); } else if (/^cardpick\|/.test(id)) { add("rule", p); if (p.ruleId) add(`rule:${p.ruleId}`, p); }   // each tested rule keeps its own record
   }
   for (const e of Object.values(by)) { e.pct = e.w + e.l ? Math.round((e.w / (e.w + e.l)) * 1000) / 10 : null; e.said = e.saidN ? Math.round((e.saidSum / e.saidN) * 10) / 10 : null;
     e.per100 = e.stk ? Math.round((e.ret / e.stk) * 100) : null; delete e.saidSum; delete e.saidN; delete e.stk; delete e.ret; }

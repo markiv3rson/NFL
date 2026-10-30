@@ -3,12 +3,14 @@
 // PICK and the ones that did not (and why), Pinnacle's and Polymarket's moves, the sportsbooks vs Polymarket, rest / fatigue, ATS form, shot quality,
 // the model vs the line, injuries with points per game, and the moneyline pick. Every line is [label, words, mark]: +1 = for the PICK's side,
 // -1 = against it, 0 = neither. Display only.
+import { REF_HIT } from "./refs";
 import { MODEL_HIT, MOVE_HIT, ATS_HIT, ATS_MAX, ATS_MIN_N, SHOT_COLD, SHOT_SQ, BGAP_SP, BGAP_TOT, bgapFresh, PTS_BAR } from "./cardpick";
 const sg = (x) => (x > 0 ? "+" : "") + x;
 const r1 = (x) => Math.round(Number(x) * 10) / 10;
 const fin = (x) => x != null && x !== "" && isFinite(Number(x));
 export const RULE_WORDS = { "linemove|spread": "LINE MOVE rule", "bookgap|spread": "BOOK GAP rule", "fatigue|spread": "FATIGUE rule", "atsreg|spread": "ATS REGRESSION rule", "model|spread": `the model's side (no tested rule fired; about a coin flip, ${MODEL_HIT.spread}%)`,
-  "linemove|total": "TOTAL MOVE rule", "bookgap|total": "BOOK GAP rule", "shotq|total": "SHOT QUALITY rule", "model|total": `the model's side (no tested rule fired; ${MODEL_HIT.total}%)` };
+  "linemove|total": "TOTAL MOVE rule", "bookgap|total": "BOOK GAP rule", "shotq|total": "SHOT QUALITY rule", "model|total": `the model's side (no tested rule fired; ${MODEL_HIT.total}%)`,
+  "refs|total": `REF CREW (no tested rule fired; tonight's referee crew's totals history, ${REF_HIT}%)` };
 export function ptTime(iso) { if (!iso) return ""; try { return new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", weekday: "short", hour: "numeric", minute: "2-digit" }).format(new Date(iso)); } catch { return ""; } }
 function injWords(rows) {   // the listed players of one team by points a game: "L.James Questionable (24.1 ppg)"
   const xs = (rows || []).filter((x) => x && x.name).slice().sort((a, b) => Number(b.ppg || 0) - Number(a.ppg || 0));
